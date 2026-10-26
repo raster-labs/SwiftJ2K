@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
 
-/// JPEG 2000 controls with explicit names and units (API-04). Milestone 2
-/// exposes the two structural choices of the scalar lossless path; block
-/// coding, progression and container controls arrive with their capabilities.
+/// JPEG 2000 controls with explicit names and units (API-04).
 public struct CodecOptions: Sendable, Equatable {
+    /// Block-coding mode: Part 1 EBCOT (`.part1`, default) or Part 15 FBCOT (`.htj2k`).
+    public enum BlockCoding: String, Sendable, Equatable, CaseIterable {
+        case part1
+        case htj2k
+    }
+
     /// Number of 5/3 wavelet decomposition levels, 0...32. `nil` selects
     /// `min(5, floor(log2(min(width, height))))`, the largest count the common
     /// reference encoders accept for the image.
@@ -13,12 +17,19 @@ public struct CodecOptions: Sendable, Equatable {
     /// product does not exceed 4096 (ISO/IEC 15444-1 Table A.18).
     public let codeBlockWidth: Int
     public let codeBlockHeight: Int
+    /// Block-coding mode selected for encoding.
+    public let blockCoding: BlockCoding
 
     public init() {
-        decompositionLevels = nil; codeBlockWidth = 64; codeBlockHeight = 64
+        decompositionLevels = nil; codeBlockWidth = 64; codeBlockHeight = 64; blockCoding = .part1
     }
 
-    public init(decompositionLevels: Int? = nil, codeBlockWidth: Int = 64, codeBlockHeight: Int = 64) throws {
+    public init(
+        decompositionLevels: Int? = nil,
+        codeBlockWidth: Int = 64,
+        codeBlockHeight: Int = 64,
+        blockCoding: BlockCoding = .part1
+    ) throws {
         if let levels = decompositionLevels {
             guard levels >= 0, levels <= 32 else {
                 throw CodecError(.invalidArgument, "Decomposition levels must lie in 0...32.")
@@ -35,6 +46,7 @@ public struct CodecOptions: Sendable, Equatable {
         self.decompositionLevels = decompositionLevels
         self.codeBlockWidth = codeBlockWidth
         self.codeBlockHeight = codeBlockHeight
+        self.blockCoding = blockCoding
     }
 }
 
@@ -126,11 +138,11 @@ public struct DecodedImage: Sendable {
     public let report: OperationReport
 }
 
-/// Scalar lossless JPEG 2000 Part 1 encoder for the shared greyscale profile.
+/// Scalar lossless JPEG 2000 Part 1 and Part 15 (HTJ2K) encoder for the shared greyscale profile.
 public struct Encoder: Sendable {
     public let configuration: EncoderConfiguration
     public static let capabilities = CodecCapabilities(
-        formats: [ScalarLosslessCodec.format], compressionModes: [.lossless],
+        formats: [ScalarLosslessCodec.format, ScalarLosslessCodec.htj2kFormat], compressionModes: [.lossless],
         sampleTypes: [.unsignedInteger], meaningfulPrecision: 1...16,
         layouts: [CodecCapabilities.sharedGreyscaleLayout], availableBackends: [.scalarCPU],
         canInspect: false, canEncode: true, canDecode: false)
@@ -163,7 +175,8 @@ public struct Encoder: Sendable {
         let parameters = ScalarLosslessCodec.EncodeParameters(
             decompositionLevels: levels,
             codeBlockWidthExponent: configuration.codecOptions.codeBlockWidth.trailingZeroBitCount,
-            codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount)
+            codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount,
+            blockCoding: configuration.codecOptions.blockCoding)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
         let (bytes, workspace) = try ScalarLosslessCodec.encode(image: image, parameters: parameters,
                                                                 limits: options.resourceLimits, progress: options.progress)
@@ -177,16 +190,19 @@ public struct Encoder: Sendable {
                                      peakWorkspaceBytes: workspace,
                                      elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
-        return EncodedImage(data: Data(bytes), encoding: EncodingDescription(format: ScalarLosslessCodec.format, mode: .lossless),
+        let outputFormat = configuration.codecOptions.blockCoding == .htj2k
+            ? ScalarLosslessCodec.htj2kFormat
+            : ScalarLosslessCodec.format
+        return EncodedImage(data: Data(bytes), encoding: EncodingDescription(format: outputFormat, mode: .lossless),
                             report: report)
     }
 }
 
-/// Scalar lossless JPEG 2000 Part 1 decoder for the shared greyscale profile.
+/// Scalar lossless JPEG 2000 Part 1 and Part 15 (HTJ2K) decoder for the shared greyscale profile.
 public struct Decoder: Sendable {
     public let configuration: DecoderConfiguration
     public static let capabilities = CodecCapabilities(
-        formats: [ScalarLosslessCodec.format], compressionModes: [.lossless],
+        formats: [ScalarLosslessCodec.format, ScalarLosslessCodec.htj2kFormat], compressionModes: [.lossless],
         sampleTypes: [.unsignedInteger], meaningfulPrecision: 1...16,
         layouts: [CodecCapabilities.sharedGreyscaleLayout], availableBackends: [.scalarCPU],
         canInspect: true, canEncode: false, canDecode: true)
@@ -200,7 +216,7 @@ public struct Decoder: Sendable {
         let descriptor = try ImageDescriptor.greyscale16(width: profile.width, height: profile.height,
                                                          meaningfulBits: profile.precision,
                                                          limits: options.resourceLimits)
-        return ImageInfo(format: ScalarLosslessCodec.format, descriptor: descriptor, frameCount: 1, metadata: .empty)
+        return ImageInfo(format: profile.format, descriptor: descriptor, frameCount: 1, metadata: .empty)
     }
 
     /// Allocates one final destination and decodes through the same path as

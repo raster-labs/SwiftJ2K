@@ -1,0 +1,32 @@
+{
+  "source_sha": "9fa8fd0ec43f554f475454acd484aa1029c9b859",
+  "source_identity": "isolated git archive; no source/test modifications",
+  "auditor": "Codex",
+  "date": "2026-10-26",
+  "environment": {
+    "macOS": "27.0.1",
+    "build": "26A434",
+    "architecture": "arm64",
+    "swift": "Apple Swift 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)"
+  },
+  "debug": {
+    "command": "xcrun swift test --scratch-path ../final-build-9fa8fd0 --cache-path ../baseline-cache --config-path ../baseline-config --security-path ../baseline-security --build-system native --jobs 2 --disable-xctest",
+    "exit_code": 0,
+    "test_declarations": 93,
+    "suites": 2,
+    "ht_fixture_cases": 120,
+    "seconds": 6.797,
+    "log_sha256": "2aa3898ed897d29d0730d1d446966e5c77d5576636df8d9daa1ab3f05528a5f5"
+  },
+  "cli": {
+    "command": "python3 Scripts/test-cli.py --binary ../final-build-9fa8fd0/arm64-apple-macosx/debug/swiftj2k-cli --output ../final-cli-9fa8fd0",
+    "configuration": "debug",
+    "exit_code": 0,
+    "checks": 174,
+    "status": "passed",
+    "report_sha256": "c6a19b1fb41a077bfe16755dc1379d9dbfdfff5a808b58bc6809504b3fc23df6"
+  },
+  "log_location": "Audit workspace work/swiftj2k-audit; original raw receipts retained by Codex",
+  "acceptance": "not accepted; see canonical MILESTONE6.md open gates",
+  "documentation_takeover": "Antigravity explicitly released documentation/evidence scope and acknowledged zero writes/tests/background tasks until handback. Codec implementation unchanged."
+}

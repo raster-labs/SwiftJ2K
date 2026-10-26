@@ -27,7 +27,8 @@ def main():
     def cli(*values,expected=0):return run([binary,*values],expected)
     def document(r):
         d=json.loads(r.stdout);assert d['version']==version and d['minimumAppleOS']=='26.0'
-        assert d['canEncode'] is True and d['canDecode'] is True and d['canInspect'] is True and d['formats']==['jpeg2000-codestream']
+        assert d['canEncode'] is True and d['canDecode'] is True and d['canInspect'] is True and d['canTranscode'] is True
+        assert d['formats']==['htj2k-codestream','jpeg2000-codestream']
         return d
     try:
         root=cli('--help');assert 'USAGE:' in root.stdout and 'unavailable' in root.stdout and not root.stderr
@@ -56,12 +57,11 @@ def main():
             r=cli(*form,expected=2);assert not r.stdout and r.stderr
         with tempfile.TemporaryDirectory(prefix='cli stage spaces ',dir=out) as temp:
             temp=Path(temp);payload=temp/'private image λ.raw';payload.write_bytes(b'unchanged')
-            for verb in ['encode','decode','inspect','validate']:
+            for verb in ['encode','decode','inspect','validate','transcode']:
                 assert 'USAGE:' in cli(verb,'--help').stdout and 'UNAVAILABLE' not in cli(verb,'--help').stdout
-            assert 'UNAVAILABLE:' in cli('transcode','--help').stdout
-            r=cli('transcode','--input','-','--output',str(payload),'-vvvvv',expected=4)
-            assert not r.stdout and str(payload) not in r.stderr and payload.read_bytes()==b'unchanged'
-            # Codec verbs on the repository fixtures (CLI-02, CLI-03, CLI-04).
+            r=cli('transcode','--input',str(payload),'--output',str(temp/'out.j2c'),'-vvvvv',expected=4)
+            assert not r.stdout and str(payload) not in r.stderr and not (temp/'out.j2c').exists() and payload.read_bytes()==b'unchanged'
+            # Codec verbs on the repository fixtures (CLI-02, CLI-03, CLI-04, CLI-06).
             fixtures=repo/'Tests/SwiftJ2KTests/Fixtures/Lossless'
             manifest=json.loads((fixtures/'manifest.json').read_text())
             def pgm_samples(path):
@@ -105,17 +105,42 @@ def main():
                 piped=subprocess.run(f'"{binary}" decode -i - -o - < "{stream}" | "{binary}" encode -i - --input-format nrrd -o - | "{binary}" decode -i - -o -',shell=True,capture_output=True,timeout=60)
                 report['commands'].append({'argv':['sh','-c','decode | encode | decode'],'exit_code':piped.returncode,'expected_exit_code':0,'stderr':piped.stderr.decode(errors='replace')});save()
                 assert piped.returncode==0 and nrrd_samples(piped.stdout)[3]==samples
+                # Native J2K <-> HTJ2K transcode and HTJ2K encode/decode/inspect/validate (Milestone 6).
+                ht_encoded=temp/(entry['name']+' ht-encoded.j2c')
+                r=cli('encode','-i',decoded,'-o',ht_encoded,'--output-format','htj2k','--json','--levels','2','--code-block','32x32')
+                ht_ereport=json.loads(r.stderr);assert not r.stdout and ht_ereport['format']=='htj2k-codestream'
+                ht_info=json.loads(cli('inspect','-i',ht_encoded,'--input-format','htj2k','--json').stdout)
+                assert ht_info['format']=='htj2k-codestream' and ht_info['width']==w and ht_info['height']==h
+                converted=temp/(entry['name']+' converted.j2c')
+                r=cli('transcode','-i',stream,'--input-format','j2k','--output-format','htj2k','--mode','lossless','-o',converted,'--json')
+                treport=json.loads(r.stderr);assert not r.stdout and treport['command']=='transcode' and treport['format']=='htj2k-codestream'
+                assert treport['processingPath']=='coefficients' and treport['pixelAllocations']==0 and treport['copyEvents']==0
+                cli('transcode','-i',stream,'-o',converted,expected=6)
+                restored=temp/(entry['name']+' restored.j2k')
+                r=cli('transcode','-i',converted,'--input-format','htj2k','--output-format','j2k','--mode','lossless','-o',restored,'--json')
+                rreport=json.loads(r.stderr);assert not r.stdout and rreport['format']=='jpeg2000-codestream' and rreport['processingPath']=='coefficients'
+                t_piped=subprocess.run(f'"{binary}" transcode -i - -o - < "{stream}" | "{binary}" transcode -i - -o - | "{binary}" decode -i - -o -',shell=True,capture_output=True,timeout=60)
+                report['commands'].append({'argv':['sh','-c','transcode | transcode | decode'],'exit_code':t_piped.returncode,'expected_exit_code':0,'stderr':t_piped.stderr.decode(errors='replace')});save()
+                assert t_piped.returncode==0 and nrrd_samples(t_piped.stdout)[3]==samples
                 assert not [f for f in temp.iterdir() if f.name.endswith('.tmp')]
             # Exit statuses: 2 usage, 3 malformed, 4 unsupported format/feature, 5 limit/deadline, 6 I/O.
             good=fixtures/'g16_64x64_random.opj.j2k';nine=fixtures/'g16_64x64_random.irreversible97.j2k'
-            for form in [['encode'],['decode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
+            for form in [['encode'],['decode','-i',good],['transcode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
                          ['decode','-i',good,'-o','x','--input-format','tiff'],['encode','-i',good,'-o','x','--precision','17'],
                          ['encode','-i',good,'-o','x','--code-block','3x3'],['encode','-i',good,'-o','x','--levels','40'],
+                         ['transcode','-i',good,'-o','x','--precision','12'],
                          ['validate','-i',good,'--threads','9'],['validate','-i',good,'--timeout','-1'],['validate','-i',good,'-i',good]]:
                 r=cli(*form,expected=2);assert not r.stdout and r.stderr
             truncated=temp/'truncated.j2k';truncated.write_bytes(good.read_bytes()[:100])
+            ht_good=repo/'Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph.j2c'
             for form,code in [(['validate','-i',nine],4),(['validate','-i',truncated],3),(['validate','-i',payload],4),
                               (['encode','-i',good,'-o',temp/'x.j2k'],4),(['decode','-i',good,'-o',temp/'x.nrrd','--input-format','nrrd'],4),
+                              (['decode','-i',good,'-o',temp/'x.nrrd','--input-format','htj2k'],4),
+                              (['decode','-i',ht_good,'-o',temp/'x.nrrd','--input-format','j2k'],4),
+                              (['transcode','-i',good,'-o',temp/'x.j2k','--output-format','j2k'],4),
+                              (['transcode','-i',ht_good,'-o',temp/'x.j2k','--output-format','htj2k'],4),
+                              (['transcode','-i',good,'-o',temp/'x.j2k','--output-format','nrrd'],4),
+                              (['transcode','-i',good,'-o',temp/'x.j2k','--levels','1'],4),
                               (['decode','-i',good,'-o',temp/'x.nrrd','--mode','lossy'],4),(['decode','-i',good,'-o',temp/'x.nrrd','--backend','metal'],4),
                               (['validate','-i',fixtures/'g16_256x256_smooth.opj.j2k','--timeout','0.000001'],5),
                               (['validate','-i',fixtures/'g16_256x256_smooth.opj.j2k','--max-memory','1000'],5),

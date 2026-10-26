@@ -1,0 +1,21 @@
+{
+  "source_sha": "9fa8fd0ec43f554f475454acd484aa1029c9b859",
+  "command": [
+    "<AUDIT_WORK>/final-build-9fa8fd0/arm64-apple-macosx/debug/swiftj2k-cli",
+    "transcode",
+    "-i",
+    "<AUDIT_WORK>/com-preservation-input.j2k",
+    "-o",
+    "<AUDIT_WORK>/com-preservation-output.j2c",
+    "--output-format",
+    "htj2k",
+    "--json"
+  ],
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "{\"backend\":\"scalar\",\"command\":\"transcode\",\"copyEvents\":0,\"elapsedSeconds\":0.015696374999999999,\"fidelity\":\"exactSamples\",\"format\":\"htj2k-codestream\",\"inputBytes\":165,\"mode\":\"lossless\",\"outputBytes\":99,\"peakWorkspaceBytes\":45326,\"pixelAllocations\":0,\"processingPath\":\"coefficients\",\"sourceFormat\":\"jpeg2000-codestream\"}\n",
+  "input_sha256": "009495627e766fda7250e0fd34b2d921e278aa34c1bf7889beb55cb1ec7d574a",
+  "unique_comment_present_in_input": true,
+  "unique_comment_present_in_output": false,
+  "reproduction": "Insert FF64 COM marker immediately after SOC, Lcom=4+payload length, Rcom=1 and ASCII payload Codex-M6-ancillary-metadata-audit into first Lossless manifest fixture; transcode to HT using default options. Source contains payload; successful output omits it."
+}

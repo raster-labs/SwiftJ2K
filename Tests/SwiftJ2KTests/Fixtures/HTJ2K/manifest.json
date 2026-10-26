@@ -1,0 +1,2332 @@
+{
+ "fixtures": [
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 144,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_1x1_max.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "2a285b40ef35eb4870198b1e6c0b8eeffd428652d0ff4b405dc14eb3b5b9ded1",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 128,
+     "description": "one decomposition level",
+     "file": "g16_1x1_max.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "8c9b254827e4bd4deef174f4079d887c1f853f982623874e9bd9f9dc337db1e2",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 144,
+     "description": "32x32 code-blocks",
+     "file": "g16_1x1_max.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "c2dc5401ef3c110b1cb65aa7141538ce7e79548b4d45f9e96869d012bd5fe84f",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 132,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_1x1_max.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cab581e053d79347cf93021946763b4a1baef8a0eeb30d398b91d7de39687e84",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 144,
+     "description": "LRCP progression",
+     "file": "g16_1x1_max.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "a00b886de600a5c8439e0a7350f46084b37526895b0a9155b57af55d1fc6741a",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 238,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_1x1_max.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "25e7db7e6ac4af847ccad13eaac405931ae56a70ddc0f5fb42df6cabf41797e1",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 228,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_1x1_max.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "ec0b3ed9bd9de6caa08707f421f7cc55cf274744da93c1786ef09977dab5beb4",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 238,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_1x1_max.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "124717844488d464ed2242b682f6b82f34890b12b6a11d6f263c46d78ce6053c",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 285,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_1x1_max.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "08dbb0e81bea2a489325f83794a7f5991aab7b3d5b7f90a68ebc61345dce2734",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 285,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_1x1_max.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "d326c320823aec9694993b3b507cc317de5a6043a220bd437914e31ec061cae1",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 286,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_1x1_max.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "edb57aac0b19bb94e1d84782b6a378f4aebbcb0305e80ecbdb57584cbaa7b5fa",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 239,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_1x1_max.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "d1273f87e2981dde3da96d7736d7e95a5548f9beb60a3621d55c0f5df1a7c85e",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 1,
+   "maximum": 65535,
+   "meaningfulBits": 16,
+   "minimum": 65535,
+   "name": "g16_1x1_max",
+   "pgm_sha256": "9ed7cb3531838771cb9db512e1ccb15b7efd8dd30c77b1905da25c64557072f4",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "ca2fd00fa001190744c15c317643ab092e7048ce086a243e2be9437c898de1bb",
+   "storageBits": 16,
+   "width": 1
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 145,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_8x8_zero.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "842e8dad7f6c9f3ac483656d6eac8ca7c8fbcf6980515d42f24970b76478086f",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 164,
+     "description": "one decomposition level",
+     "file": "g16_8x8_zero.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b66917b1b17b886443aa6c43488b8af335c3ab48d7dbab5bdb684ede797339fa",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 145,
+     "description": "32x32 code-blocks",
+     "file": "g16_8x8_zero.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "3e89caadfea144a7d6f367636d7dacafb492eba789fe3ea8e7d5bae3d716d66b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 140,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_8x8_zero.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "3140bff078c5d165f49ba1ef3359832b48831c71475a8ff4fe959f606c1d61be",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 145,
+     "description": "LRCP progression",
+     "file": "g16_8x8_zero.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "599b4397e73b9ef2351c3b2f6338aff2c5a488f94763173d2edf0e16abc25c42",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 239,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_8x8_zero.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b7152424b56e62d669a4c00cebfcc44a3e1f262bd294580a52ee6665faae6501",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 229,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_8x8_zero.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "e10c55c8f4dc3f109871eb546d0300364e368a51b58f169ce00ee6f99534d55f",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 239,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_8x8_zero.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "4a42883202d96f05e69e38bbdc5a1eb2603d7d770a0699d95e2ebfe51bd41ff1",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 286,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_8x8_zero.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "74f1b0ec9e4a7689ac1d80cbd9e3ef2f54a800893dc3ffec8615fd49e8fcc594",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 286,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_8x8_zero.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "5e9eda924522ccdd2185770684edde5be36b9c9ffffcb7e198f4d494e4d0f80e",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 287,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_8x8_zero.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "e8e02927ef312106761c029244b04c52f00f5b6497f1580c72ecfd3c79d1cd44",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 240,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_8x8_zero.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "96c4cf74c11ee463fe4f381bb70bc60b374b9b3bbb42e645215e965d4fa94916",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 8,
+   "maximum": 0,
+   "meaningfulBits": 16,
+   "minimum": 0,
+   "name": "g16_8x8_zero",
+   "pgm_sha256": "a30c8ac78ac77c0017e018bccead0ac39d8ef380fb192d6d0b1da765b0dfe2c9",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+   "storageBits": 16,
+   "width": 8
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 144,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_8x8_const.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "9731ffea0c560eb738b91749a8ae8d2f021baf93fdf6d56d4c016e323595b05d",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 164,
+     "description": "one decomposition level",
+     "file": "g16_8x8_const.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "74bf7e5bc15605eab37502f5eaa6c2bb303c622a1fce7b0fc729eb25c256bfd9",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 144,
+     "description": "32x32 code-blocks",
+     "file": "g16_8x8_const.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "ccce5825f8899db8847078de6da1f33c2386664298732a8c584d847ad76fd83b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 139,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_8x8_const.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "83eeb0810381b28e08dcf75ebd1c4f73703b01614d08b9b4fa12e3a6a1d12955",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 144,
+     "description": "LRCP progression",
+     "file": "g16_8x8_const.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cc34ff3f5ee399840dbdad1e2c1e715a96e890814c19a85768851f3a4bdb5e09",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 238,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_8x8_const.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "52385cf989575a3942db29c166b289a0b2e0829c4e84e4656f5bd917be0f3ba8",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 228,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_8x8_const.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cd6e965b6491b3eeb6bb7cbb779ba44ca045133375be121a519afa207acccb44",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 238,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_8x8_const.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "25748c181ddd636504c0b13eb9c5bd50d469ee2739d681719af06f36f4ce57d3",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 285,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_8x8_const.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "6cfbf8f19018f55af73220182bb0df492f4d5e342f1a9cb6eccefbc84d3d146f",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 285,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_8x8_const.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "76eb24746e005111cd13f73328d7b4c509eae29d3188a57bb7fc4c3b566c1ac0",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 286,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_8x8_const.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "7e9cc437544d084a7b2a07654d36110292d178014290b045a1e0f77b1312a584",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 239,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_8x8_const.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "ea71af9e59c5b7375164f40327e456ec59ad76d301a4c79aadb5c837e3958189",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 8,
+   "maximum": 65535,
+   "meaningfulBits": 16,
+   "minimum": 65535,
+   "name": "g16_8x8_const",
+   "pgm_sha256": "ea241d039ee22c239e0988ca256b294ae92ea06078b06fb78f3418ac00f6f6c1",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "e9175db65a9789096ca9cb5524d3abc2107df03e3c9ba3af1aca628f9c5d3bd2",
+   "storageBits": 16,
+   "width": 8
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 178,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g12_5x3_ramp_extremes.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "3a2035336f3fd8177d213e5d7644a99a8dd07919e1bef2b10e858cb672eb9ce3",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 152,
+     "description": "one decomposition level",
+     "file": "g12_5x3_ramp_extremes.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "8a3e044957a8913a9a045a47a14887fdb9cc503af26b224aa56f210401216cc7",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 178,
+     "description": "32x32 code-blocks",
+     "file": "g12_5x3_ramp_extremes.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "de390d60bcfddad970ed2069c166405628e5573fdf1536b4f5445883c8e83473",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 160,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g12_5x3_ramp_extremes.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "f44980998c681d37181973220d0203704afcd01d44dd417035de32fe71cf40c0",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 178,
+     "description": "LRCP progression",
+     "file": "g12_5x3_ramp_extremes.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "8032a5febf8f3225e4cd9dedd404dbf7fcb1d706ca3a003bbc17667a3052b17b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 272,
+     "description": "Kakadu HT only, defaults",
+     "file": "g12_5x3_ramp_extremes.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "57f1b490e3a2e2cda589615ef2fecac9a44c6f09d511f0d0e67251796fea21d5",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 262,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g12_5x3_ramp_extremes.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b6a634fd90dbdf0e0ae4349ffe80ec3e4d50a1a6038c4abe6eda3ea0dfdffb91",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 272,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g12_5x3_ramp_extremes.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "1bba77ca6a47eb20c7cdcd3baaf62738560afa0598a9184b143aa15be7d41fa5",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 323,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g12_5x3_ramp_extremes.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "e743d0c8d580ed4ab31cc68b250b7d627da93e4dc41d7a06b8cb0863a0f4c9f0",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 323,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g12_5x3_ramp_extremes.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "746c72a06f28d4069ff49a6077185595e64dfcb27fead52f4c2d0ae0e65b7199",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 320,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g12_5x3_ramp_extremes.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "55390f36b48c0e0f8d712030dc179204d84650179c53e87e63627c24dfe7e512",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 274,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g12_5x3_ramp_extremes.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "03081d20edd230206aeafa5fd285a70d95b73bd1c96e73703611b2fad0cb13f9",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 3,
+   "maximum": 4095,
+   "meaningfulBits": 12,
+   "minimum": 1,
+   "name": "g12_5x3_ramp_extremes",
+   "pgm_sha256": "ab4bf95cfcefa76e0233f2613be1009baaf4898941aa607d8ea7c9b55a0798d2",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "34a1930c3229a471bd3e256e15cc6c05301e4ba138afda439f16b6fc6a4b7551",
+   "storageBits": 16,
+   "width": 5
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 227,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_17x9_alternating.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cf6d0ad2862b12eef16a7f3c0b19472b35e267c22b79a440db2adc5dc66a28aa",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 211,
+     "description": "one decomposition level",
+     "file": "g16_17x9_alternating.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "ff4f5635e2ab31fe06c223cbceee96d2006b1555a1af445941b960cc2191987b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 227,
+     "description": "32x32 code-blocks",
+     "file": "g16_17x9_alternating.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "0406ed4ba297aeb2833b21275d537f454fd70a4e8f73eb7328d0f487c9af3e34",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 215,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_17x9_alternating.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b725fe2e1c45e70436bb6cafdb535adc8968359d68f8b09bea2e533101862f60",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 227,
+     "description": "LRCP progression",
+     "file": "g16_17x9_alternating.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "2f69985194cdef29edc8a9d1a2319ba4b1ce1d174b84f0a630f264d1c01ab8ab",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 321,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_17x9_alternating.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "2c758636c6ef1cc6fc1ef9f7bb580fb4e0346f4f55c4ea2950d1de3a26efe10a",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 311,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_17x9_alternating.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "e4a7a2697f63930df497feb905bcc7e20f3b59159bf80cbcf71755a54401e66d",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 321,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_17x9_alternating.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "5ec3ba0184e6090595b5b6cb25a2fb061bf366f92309e05b75b545914a2e9e30",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 366,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_17x9_alternating.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "c05b8b958e33961176859f2c6af843d2551e3499b731fb62bf9087754d8bbe94",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 366,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_17x9_alternating.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "40d2fc14fd09e2c97293f29bd697baaa4d6ea8e6d5b43940ff899484438c7c25",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 369,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_17x9_alternating.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "a4ed14bfb1f4f05e1b7200a661d53307650f02317fe72ca2732132946ad4814d",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 321,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_17x9_alternating.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "52a6c9edfbe54147192378f1c667cdd9e3e3461f740a106bba7504b58b3daeb0",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 9,
+   "maximum": 65535,
+   "meaningfulBits": 16,
+   "minimum": 0,
+   "name": "g16_17x9_alternating",
+   "pgm_sha256": "483754f4e221d8b65ddd387bdf13a6830604f3cd95f386e81c8872cd0302ec9e",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "079fb4563583225c59c982f1354692b3f6d5e10e051574637e01b3a1acdfc33e",
+   "storageBits": 16,
+   "width": 17
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 9046,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_64x64_random.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "0e4ea8f2a5cc9521abdf94fea602971e0e808978f89a7cad4bc4734285dd890f",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 8912,
+     "description": "one decomposition level",
+     "file": "g16_64x64_random.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "7e55bd516dc85bf14d802442e2aa6cedc20f3b08e929a9b4bd7e7c64e1ecd8e5",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 9046,
+     "description": "32x32 code-blocks",
+     "file": "g16_64x64_random.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "eddf8d8def67cbd2a712f79924ea96741cf60d422a8509b8d84261211303ec1a",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 9052,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_64x64_random.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "20e145838a3c340337eaa50c527f26a050568df7f931275ac3d7c72805b83dac",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 9046,
+     "description": "LRCP progression",
+     "file": "g16_64x64_random.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "d4e67f6961254916417bb0e39b6a0291a549535a5fee223b0f84210512bf75b0",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 9140,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_64x64_random.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "bc7f7a009a7dc018a2a6735e85f7f1aa70744428b12e7398f927966555929012",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 9089,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_64x64_random.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "e7145b4cad62fc7ea61b0d86ee7ba7273e9c42f211e752fad56d39e3a5ccbadd",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 9589,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_64x64_random.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "4ee8c65be4349d9a2fa430d6aa1b5141307b4beeda8445387e2c44e053ce2761",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 9213,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_64x64_random.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "679653a7987ba1dcd458ce790f0db690e3ea6fc6e1d184a81dea47ab34aa0c71",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 9213,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_64x64_random.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "ddef656fa645165c6038f805d03832103491c0088ec98ff228cc8a701ac61342",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 9324,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_64x64_random.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "025ace15909c0a8189032df24a9e27a2a7a3ca0648cfff61e9827bc9f8067b21",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 9145,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_64x64_random.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "0f09a9d89b881acba694cf2b8a3d56454d15c0beede5e7443598799b324f264c",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 64,
+   "maximum": 65512,
+   "meaningfulBits": 16,
+   "minimum": 6,
+   "name": "g16_64x64_random",
+   "pgm_sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "5eb5c5ec74007192be61fcd501aef8cb5da6acefe1e33ca335ee46746e75730a",
+   "storageBits": 16,
+   "width": 64
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 4218,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g12_129x67_gradient.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "c9600e9f8864b58ca45154d4cbd3e0c5f0ca53bf1e97f6a25c85a7eaf329bb68",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 5240,
+     "description": "one decomposition level",
+     "file": "g12_129x67_gradient.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "638973b8376c4f60a8817efcf36e4d4dd1d0ccce784d6d88357ad8eb83f05f2b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 4263,
+     "description": "32x32 code-blocks",
+     "file": "g12_129x67_gradient.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "14387ad49673f594cace1b0bc2df37ca5c67b90c0c52e7859c549d1c504c880e",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 4573,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g12_129x67_gradient.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b0f3de442f22201c42d691268d8b272b57703439d3167e5e03d405507348c5a9",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 4218,
+     "description": "LRCP progression",
+     "file": "g12_129x67_gradient.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "71e742993e8be0757375d0505b4366d141e246307561affc89300b3f6d38d59b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 4311,
+     "description": "Kakadu HT only, defaults",
+     "file": "g12_129x67_gradient.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "655b07e4be626a3525188c863087ec45bc08f6a573b896e81356adeb26bbfbfc",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 4365,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g12_129x67_gradient.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "2820fc0a521cc7e63416944aec887d53e98a3a4204b2a1a70b2a8e6f7a796bb6",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 5659,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g12_129x67_gradient.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "7746b97d63d3125cd25973d5f53c123183804f2febc9233a0b04fd506e39e46c",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 4393,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g12_129x67_gradient.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "ca83daaa23de034e083d6169a62938888feaad833cc34ba138676cb210b04cc9",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 4393,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g12_129x67_gradient.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "b224d7a0252fe074ff7ead62fa1d1ae33654dbaa155ee98832458cba5c4c64f7",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 4808,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g12_129x67_gradient.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "051a2317262901c35276a0d27e61cc183a150fd1f56fa926d92b5dc05d8d0b7b",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 4317,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g12_129x67_gradient.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "5970e3899810c511dfca2ce641b35f6c907936c11e769c7d813126ec39222ef8",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 67,
+   "maximum": 4095,
+   "meaningfulBits": 12,
+   "minimum": 0,
+   "name": "g12_129x67_gradient",
+   "pgm_sha256": "7b4fcaabb0c07ba2ac997984dd79c1a0b973ef1528018636d54030ae67953f0e",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "5fb9a205fdb8802a81c98e3d08303f8ec8a91cd49d8d59341d5012c85a64cb9a",
+   "storageBits": 16,
+   "width": 129
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 72801,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g16_256x256_smooth.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "9e01e6f926d28b6f59f80be9948b27c6b762fe7173c5531e644adde3aaeb356e",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 83161,
+     "description": "one decomposition level",
+     "file": "g16_256x256_smooth.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "39657cf27bb2d4c348369be302700928dd8ae88199b72bef6650d6cc1631658a",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 73391,
+     "description": "32x32 code-blocks",
+     "file": "g16_256x256_smooth.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "d41196ec85eb708d88527538d3d2e72dd6736b9621915cd7f46d05f0609dfbc3",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 76408,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g16_256x256_smooth.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "dadaf5917a2ee07bce5b1c595cf8085533a8ca15abe37d4650eed54cec492784",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 72801,
+     "description": "LRCP progression",
+     "file": "g16_256x256_smooth.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "88ddb6b307051d53342c1ef905c3dc99a30cd0f9405ceb98d36cbbdff2d5df19",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 72895,
+     "description": "Kakadu HT only, defaults",
+     "file": "g16_256x256_smooth.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cb55db627adaf75951543a1105eaca19f1d2d8d382b604742c6a46caf5c6410e",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 73556,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g16_256x256_smooth.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "9bfe869070ad6b75a0c09bee63ba7be202b32ea04a8d8910221b1319f98d4608",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 85032,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g16_256x256_smooth.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "9a245e844a372d813d960a61681ad7033ead94758042a6d2b32b5646de23c9da",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 72996,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g16_256x256_smooth.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "98355d9dbef560a382fb04445487607cca07a0dee65d86b49948aabece797260",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 72996,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g16_256x256_smooth.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "d3c11b8f7403d140e6aaff71007527e39eca240c559f71e7456b1e86ed1c809e",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 76256,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g16_256x256_smooth.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "391257e5d9dd505b9234a7ffa00a2fe57eabb22af82dd7c401aa14d5bc6041de",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 72902,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g16_256x256_smooth.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "6baf9a8f8d0dc61de96cf28f8ef3c5d06a1867e4c9e7eec8ebde5a61df88de8a",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 256,
+   "maximum": 55736,
+   "meaningfulBits": 16,
+   "minimum": 9801,
+   "name": "g16_256x256_smooth",
+   "pgm_sha256": "f976af0067bf5fa298922bb1d341d3358e83ecba28b087fcb8ef7f4c6fc516a5",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "68ca04a7f9069ac6dda9c3d422627f91470cc169f7413e39aa68997919ded4a7",
+   "storageBits": 16,
+   "width": 256
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 1243,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g08_37x23_random.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "27110a19906e0cb3d02294576062af3e19fb003a10c2c7824eae510a129fcb53",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 1144,
+     "description": "one decomposition level",
+     "file": "g08_37x23_random.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "18eb14725a9c416660a10aec90e4869a05f24ae6921c0f758c8f3b68483f7151",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 1243,
+     "description": "32x32 code-blocks",
+     "file": "g08_37x23_random.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "b04d07379cfdb043aa5928c7af2f1010c5830b6b931be4bac58794f17828c50f",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 1192,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g08_37x23_random.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "090b4f10559bfad8937d4fbdcb4849ad24ee4f800d6546c193bfcb0bb21dcd0b",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 1243,
+     "description": "LRCP progression",
+     "file": "g08_37x23_random.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "2da26afeb2158e5b0976269ef0a4f43bd1f6ec64e76cb55e2fa6a44726b4c9f0",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 1335,
+     "description": "Kakadu HT only, defaults",
+     "file": "g08_37x23_random.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "4cfe4c37133a6be44a6249a9e0b88eafae32a2e4dad6cd1957a9806f2b502cbc",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 1301,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g08_37x23_random.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "e12981e26a03731761bf619b129bf21e9dbdd754e7a834930279de74b87465db",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 1416,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g08_37x23_random.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "ce18c22f66f2812b3bc9c6e142fb9d03cb7382c9687cc7890d80a726a27675be",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 1411,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g08_37x23_random.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "73c94b3e7db23f18e21bbd7ea3cd0b5057d441ecb491c3a57fdc0d5100abaafc",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 1411,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g08_37x23_random.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "dcb7cb348e92fc1d42eb18bffd90d1f3efdbf8c1593c7b59be9fb3469d21b993",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 1411,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g08_37x23_random.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "f30dbc4d4b648c2231b6e3ed6bef796021c893810396cf3af72e5646f85f7d02",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 1338,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g08_37x23_random.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "e68a98f8e19f591b0e55e31a3d5e1aad23f54e18fe68e339928d0f054ffc71d9",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 23,
+   "maximum": 255,
+   "meaningfulBits": 8,
+   "minimum": 0,
+   "name": "g08_37x23_random",
+   "pgm_sha256": "884b65208c052d3d8ca92c45f01b1ccb95ba179365b05f4981314544eedf3e32",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "a527628108dae306deb2086c3cbc4046e8e4f5e1709e9baedebda5f1a5a6ceec",
+   "storageBits": 16,
+   "width": 37
+  },
+  {
+   "codestreams": [
+    {
+     "arguments": [],
+     "bytes": 35281,
+     "description": "OpenJPH defaults: HT only, 5 levels, 64x64, RPCL",
+     "file": "g10_300x200_gradient.ojph.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "01b2ebcf23c49e2d77183d92c159c82b088a920c272040d24cad71f1672ae492",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-num_decomps",
+      "1"
+     ],
+     "bytes": 40312,
+     "description": "one decomposition level",
+     "file": "g10_300x200_gradient.ojph_n1.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "adce79e5b90339368bdeaab4ec0210fff3431673828340dd056929c03cd2e858",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{32,32}"
+     ],
+     "bytes": 35404,
+     "description": "32x32 code-blocks",
+     "file": "g10_300x200_gradient.ojph_b32.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cb35076207e2bb95aea32b2f4fe21bf1988863e9f66b2fd76f42b302225c21a1",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-block_size",
+      "{16,16}",
+      "-num_decomps",
+      "2"
+     ],
+     "bytes": 37310,
+     "description": "16x16 code-blocks, two levels",
+     "file": "g10_300x200_gradient.ojph_b16_n2.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "8e737416874dd2b2af76ec475a8542a09f34ddcd749269cb33ea8ac2f0a2e6ad",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "-prog_order",
+      "LRCP"
+     ],
+     "bytes": 35281,
+     "description": "LRCP progression",
+     "file": "g10_300x200_gradient.ojph_lrcp.j2c",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "118f033472f1d765c242efb55a682817db0f956ed536b9ebaad3eae1919238c6",
+     "tool": "ojph",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT"
+     ],
+     "bytes": 35379,
+     "description": "Kakadu HT only, defaults",
+     "file": "g10_300x200_gradient.kdu_ht.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "8642964e721bc2be6b358dc64221fcb3d16d3e4a6369037859be76e8773402ef",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clevels=3",
+      "Cblk={32,32}"
+     ],
+     "bytes": 35781,
+     "description": "Kakadu HT, three levels, 32x32 blocks",
+     "file": "g10_300x200_gradient.kdu_ht_l3.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "bfecfdf1fe7f8e0a181c45491f3feda82512cea3cf2f87c9c17465b1b0dcd9b1",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Stiles={32,32}"
+     ],
+     "bytes": 42146,
+     "description": "Kakadu HT, 32x32 tiles",
+     "file": "g10_300x200_gradient.kdu_ht_tiles.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "cdd1acd84746df199d141971aee4137a91f6dd76f1ab6135b4cad3367aa56f58",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3"
+     ],
+     "bytes": 35507,
+     "description": "Kakadu HT, three quality layers: HT code-blocks with several HT sets (7 passes); OpenJPH decodes one layer only and OpenJPEG at most 3 HT passes, so Kakadu is the only oracle",
+     "file": "g10_300x200_gradient.kdu_ht_layers.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "0e9f0a316b61af00e9230b813e74ae1a0efe820260ccb37db9a4e2d90d6f40d6",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Clayers=3",
+      "Corder=LRCP"
+     ],
+     "bytes": 35507,
+     "description": "Kakadu HT, three layers, LRCP",
+     "file": "g10_300x200_gradient.kdu_ht_layers_lrcp.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "cb960343f9fa6ff5a7f9d85b3bd3a0bfaa7572dfaaccb82e08546b60d18410e4",
+     "tool": "kdu",
+     "triangulated": false
+    },
+    {
+     "arguments": [
+      "Cmodes=HT",
+      "Cprecincts={32,32}",
+      "Corder=RPCL",
+      "Cuse_sop=yes",
+      "Cuse_eph=yes"
+     ],
+     "bytes": 37442,
+     "description": "Kakadu HT, precincts, RPCL, SOP/EPH",
+     "file": "g10_300x200_gradient.kdu_ht_precincts.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": true,
+      "openjph": true
+     },
+     "produced": true,
+     "sha256": "780043d22eb92dffcf2e22c26cb74bf1313de37ff80243ceace19c4007d2f784",
+     "tool": "kdu",
+     "triangulated": true
+    },
+    {
+     "arguments": [
+      "Cmodes=HT|HTMIX"
+     ],
+     "bytes": 35387,
+     "description": "Kakadu HT with legacy blocks permitted (mixed); Kakadu-only oracle",
+     "file": "g10_300x200_gradient.kdu_htmix.j2k",
+     "independent_decode_exact": {
+      "kakadu": true,
+      "openjpeg": null,
+      "openjph": null
+     },
+     "produced": true,
+     "sha256": "87199dd3e39f1a93e59a9a7cffbd3cbbfe33aa17f412dc4dce1bda0e457bdbb4",
+     "tool": "kdu",
+     "triangulated": false
+    }
+   ],
+   "height": 200,
+   "maximum": 1023,
+   "meaningfulBits": 10,
+   "minimum": 0,
+   "name": "g10_300x200_gradient",
+   "pgm_sha256": "5f87477abe608abb7f417ac1bfbd09564195f9a72eb4d712b867cd32ef41e11e",
+   "sampleType": "unsigned",
+   "sample_digest_le16": "ad26f22a4c005beadd3d7a7dbc8f0ade90b384be43f5f8ca69cd944da4e94aa3",
+   "storageBits": 16,
+   "width": 300
+  }
+ ],
+ "generator": "generate-htj2k-fixtures.py (deterministic; same images and seeds as the Part 1 set)",
+ "licence": "Apache-2.0 (synthetic, in-house)",
+ "standard": "ISO/IEC 15444-15 (HTJ2K)",
+ "tools": {
+  "kakadu": "Compiled against the Kakadu core system, version v8.4.1 (kdu_compress/kdu_expand, proprietary; test oracle only)",
+  "openjpeg": "OpenJPEG 2.5.4 (opj_decompress, BSD-2-Clause; Part 15 decode oracle)",
+  "openjph": "OpenJPH 0.30.1 (ojph_compress/ojph_expand, BSD-2-Clause)"
+ }
+}
