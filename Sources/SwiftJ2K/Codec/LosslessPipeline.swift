@@ -601,7 +601,7 @@ enum ScalarLosslessCodec {
         metadataPolicy: MetadataPolicy = .preserve,
         limits: ResourceLimits,
         progress: (@Sendable (ProgressUpdate) -> Void)?
-    ) throws -> ([UInt8], Int) {
+    ) throws -> (Data, Int) {
         let work = WorkGuard(limits: limits)
         try work.check()
 
@@ -716,7 +716,7 @@ enum ScalarLosslessCodec {
         guard exactMainHeaderBytes <= limits.maximumCompressedBytes else {
             throw CodecError(.resourceLimitExceeded, "Transcoded main header exceeds the compressed-size limit.")
         }
-        let headerOutAllocBytes = 32 + exactMainHeaderBytes
+        let headerOutAllocBytes = exactMainHeaderBytes
         let headerWorkspace = try checkedAdd(persistentStructureBytes, headerOutAllocBytes)
         peakWorkspace = max(peakWorkspace, headerWorkspace)
         guard peakWorkspace <= limits.maximumWorkspaceBytes,
@@ -724,7 +724,10 @@ enum ScalarLosslessCodec {
             throw CodecError(.resourceLimitExceeded, "Compressed input, workspace and header output exceed the admission budget.")
         }
         StorageTelemetry.recordStage("output-writer", bytes: headerOutAllocBytes)
-        var out = try ByteWriter(reserving: exactMainHeaderBytes, maximumBytes: exactMainHeaderBytes)
+        var out = try BoundedByteWriter(
+            reserving: exactMainHeaderBytes, maximumBytes: exactMainHeaderBytes,
+            maximumAllocationBytes: headerOutAllocBytes
+        )
         try out.writeUInt16Checked(Marker.soc)
         let size = ImageSizeSegment(
             capabilities: isHT ? 0x4000 : 0,
@@ -874,14 +877,14 @@ enum ScalarLosslessCodec {
                 try checkedAdd(persistentStructureBytes, out.allocatedBytes),
                 try checkedAdd(targetFootprint.encodeStateStructBytes, tileEncodedRetainedBytes)
             )
-            let headerWriterAlloc = exactTileHeaderBytes > 0 ? (32 + exactTileHeaderBytes) : 0
-            let minPacketWriterNeeded = try checkedAdd(headerWriterAlloc, 32 + tileEncodedPayloadBytes)
+            let headerWriterAlloc = exactTileHeaderBytes
+            let minPacketWriterNeeded = try checkedAdd(headerWriterAlloc, tileEncodedPayloadBytes)
             guard try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded) <= limits.maximumWorkspaceBytes,
                   try checkedAdd(bytes.count, try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded)) <= limits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Packet assembly workspace exceeds workspace or memory limits.")
             }
-            let wsAvailForTileWriter = limits.maximumWorkspaceBytes - liveDuringPacketEncode - headerWriterAlloc - 32
-            let memAvailForTileWriter = limits.maximumMemoryBytes - bytes.count - liveDuringPacketEncode - headerWriterAlloc - 32
+            let wsAvailForTileWriter = limits.maximumWorkspaceBytes - liveDuringPacketEncode - headerWriterAlloc
+            let memAvailForTileWriter = limits.maximumMemoryBytes - bytes.count - liveDuringPacketEncode - headerWriterAlloc
             // Final codestream adds SOT (12) + tileHeader + SOD (2) + tileWriter + EOC (2) = 16 + tileHeader + tileWriter.
             let compAvailForTileWriter = limits.maximumCompressedBytes - out.count - 16 - exactTileHeaderBytes
             let maxTileWriterBytes = min(min(wsAvailForTileWriter, memAvailForTileWriter), compAvailForTileWriter)
@@ -889,9 +892,12 @@ enum ScalarLosslessCodec {
                 throw CodecError(.resourceLimitExceeded, "Transcoded packet stream exceeds the compressed-size or memory limit.")
             }
             let reservedTileWriterCap = min(initialTileWriterCap, maxTileWriterBytes)
-            StorageTelemetry.recordStage("packet-writer", bytes: headerWriterAlloc + 32 + reservedTileWriterCap)
+            StorageTelemetry.recordStage("packet-writer", bytes: headerWriterAlloc + reservedTileWriterCap)
 
-            var tileHeaderWriter = try ByteWriter(reserving: exactTileHeaderBytes, maximumBytes: exactTileHeaderBytes)
+            var tileHeaderWriter = try BoundedByteWriter(
+                reserving: exactTileHeaderBytes, maximumBytes: exactTileHeaderBytes,
+                maximumAllocationBytes: headerWriterAlloc
+            )
             if tile.codingStyle.decompositionLevels != firstTile.codingStyle.decompositionLevels {
                 try CodestreamSyntax.writeCOD(tileCOD, into: &tileHeaderWriter)
                 try CodestreamSyntax.writeQCD(tileQCD, into: &tileHeaderWriter)
@@ -901,7 +907,10 @@ enum ScalarLosslessCodec {
                     try tileHeaderWriter.writeSegment(marker: Marker.com, payload: comment)
                 }
             }
-            var tileWriter = try ByteWriter(reserving: reservedTileWriterCap, maximumBytes: maxTileWriterBytes)
+            var tileWriter = try BoundedByteWriter(
+                reserving: reservedTileWriterCap, maximumBytes: maxTileWriterBytes,
+                maximumAllocationBytes: min(wsAvailForTileWriter, memAvailForTileWriter)
+            )
             try Tier2.encodePackets(geometry: targetTileGeometry, encodings: encodings, into: &tileWriter, cancellation: work.check)
             // Release retained block encodings before copying assembled packets into `out`.
             encodings = []
@@ -909,7 +918,10 @@ enum ScalarLosslessCodec {
             let packetAssemblyBytes = try checkedAdd(tileHeaderWriter.count, tileWriter.count)
             StorageTelemetry.recordWorkspaceAllocation(bytes: packetAssemblyBytes)
             let packetAssemblyAlloc = try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.allocatedBytes)
-            let tilePacketWorkspace = try checkedAdd(liveDuringPacketEncode, packetAssemblyAlloc)
+            let tilePacketWorkspace = try checkedAdd(
+                liveDuringPacketEncode,
+                try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.peakAllocationBytes)
+            )
             peakWorkspace = max(peakWorkspace, tilePacketWorkspace)
             guard peakWorkspace <= limits.maximumWorkspaceBytes,
                   try checkedAdd(bytes.count, tilePacketWorkspace) <= limits.maximumMemoryBytes else {
@@ -922,32 +934,50 @@ enum ScalarLosslessCodec {
             guard projectedOutputBytes <= limits.maximumCompressedBytes else {
                 throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
             }
-            // Now `encodings` is released; during `out` append, `persistentStructureBytes` + `packetAssemblyAlloc` + `projectedOutputAlloc` are live.
-            let projectedOutputAlloc = 32 + max(out.capacity, projectedOutputBytes)
-            let appendLiveWorkspace = try checkedAdd(
-                try checkedAdd(persistentStructureBytes, packetAssemblyAlloc),
-                projectedOutputAlloc
-            )
-            peakWorkspace = max(peakWorkspace, appendLiveWorkspace)
-            guard peakWorkspace <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(bytes.count, appendLiveWorkspace) <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Compressed input, packet workspace and growing output exceed the memory budget.")
+            // Encodings have been released. Admission includes both the old and
+            // replacement output buffers during growth, before either is allocated.
+            let appendOtherWorkspace = try checkedAdd(persistentStructureBytes, packetAssemblyAlloc)
+            let appendOtherResident = try checkedAdd(bytes.count, appendOtherWorkspace)
+            guard appendOtherWorkspace <= limits.maximumWorkspaceBytes,
+                  appendOtherResident <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Packet workspace exceeds the output admission budget.")
             }
-            try out.updateMaximumBytes(projectedOutputBytes)
+            let outputAllocationBudget = min(
+                limits.maximumWorkspaceBytes - appendOtherWorkspace,
+                limits.maximumMemoryBytes - appendOtherResident
+            )
+            try out.updateBudget(maximumBytes: projectedOutputBytes, maximumAllocationBytes: outputAllocationBudget)
+            // Include EOC in the one reservation, avoiding a second whole-output
+            // reallocation just to append its last two bytes.
+            try out.reserveCapacity(projectedOutputBytes)
+            peakWorkspace = max(peakWorkspace, try checkedAdd(appendOtherWorkspace, out.peakAllocationBytes))
             try out.writeUInt16Checked(Marker.sot)
             try out.writeUInt16Checked(10)
             try out.writeUInt16Checked(UInt16(tile.index))
             try out.writeUInt32Checked(UInt32(psot))
             try out.writeUInt8Checked(0)
             try out.writeUInt8Checked(1)
-            try out.writeBytesChecked(tileHeaderWriter.bytes)
+            try out.writeBytesChecked(from: tileHeaderWriter)
             try out.writeUInt16Checked(Marker.sod)
-            try out.writeBytesChecked(tileWriter.bytes)
+            try out.writeBytesChecked(from: tileWriter)
         }
         try out.writeUInt16Checked(Marker.eoc)
         guard out.count <= limits.maximumCompressedBytes else {
             throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
         }
-        return (out.bytes, peakWorkspace)
+        // The input/profile and owned output are still live while Data copies the
+        // final bytes. Admit that overlap here, not after returning another Array.
+        let publicationWorkspace = try checkedAdd(
+            persistentStructureBytes, try checkedAdd(out.allocatedBytes, out.count)
+        )
+        guard publicationWorkspace <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, publicationWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Publishing transcoded Data exceeds the admission budget.")
+        }
+        try work.check()
+        StorageTelemetry.recordStage("output-data", bytes: out.count)
+        let output = try out.copyData()
+        peakWorkspace = max(peakWorkspace, publicationWorkspace)
+        return (output, peakWorkspace)
     }
 }

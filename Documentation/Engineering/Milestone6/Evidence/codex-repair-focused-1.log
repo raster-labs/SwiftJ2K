@@ -1,0 +1,99 @@
+Building for debugging...
+[0/13] $AUDIT_WORK/repair-build/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[0/13] Write swiftj2k-cli-entitlement.plist
+[2/13] Write sources
+[6/13] Copying Fixtures
+[7/13] Write swift-version--58304C5D6DBC2206.txt
+[9/24] Emitting module SwiftJ2K
+[10/24] Compiling SwiftJ2K BitIO.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[11/24] Compiling SwiftJ2K BitPlaneCoder.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[12/24] Compiling SwiftJ2K BoundedByteWriter.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[13/24] Compiling SwiftJ2K Codestream.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[14/24] Compiling SwiftJ2K ContextModeling.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[15/24] Compiling SwiftJ2K HTBlockCoder.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[16/24] Compiling SwiftJ2K HTTables.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[17/24] Compiling SwiftJ2K LosslessPipeline.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[18/24] Compiling SwiftJ2K MQCoder.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[19/24] Compiling SwiftJ2K TagTree.swift
+$AUDIT_CHECKOUT/Sources/SwiftJ2K/Codec/BoundedByteWriter.swift:41:5: error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 39 |     private var maximumAllocationBytes: Int
+ 40 | 
+ 41 |     init(reserving capacity: Int, maximumBytes: Int, maximumAllocationBytes: Int) throws {
+    |     `- error: conditional initialization or destruction of noncopyable types is not supported; this variable must be consistently in an initialized or uninitialized state through every code path
+ 42 |         guard capacity >= 0, maximumBytes >= 0, maximumAllocationBytes >= 0,
+ 43 |               capacity <= maximumBytes, capacity <= maximumAllocationBytes else {
+[20/34] Compiling SwiftJ2K Tier2.swift
+[21/34] Compiling SwiftJ2K Wavelet53.swift
+[22/34] Compiling SwiftJ2K CodecAPI.swift
+[23/34] Compiling SwiftJ2K Errors.swift
+[24/34] Compiling SwiftJ2K Image.swift
+[25/34] Compiling SwiftJ2K ImageDescriptor.swift
+[26/34] Compiling SwiftJ2K ImageStorage.swift
+[27/34] Compiling SwiftJ2K Options.swift
+[28/34] Compiling SwiftJ2K Telemetry.swift
+[29/34] Compiling SwiftJ2K Transcoding.swift
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+error: fatalError

@@ -565,8 +565,8 @@ enum Tier2 {
     // MARK: - Encoding (single layer, LRCP, default style)
 
     /// `encodings` is indexed `[resolution][precinct][band][block]`.
-    static func encodePackets(geometry: TileGeometry, encodings: [[[[CodeBlockEncoding]]]],
-                              into out: inout ByteWriter, cancellation: () throws -> Void) throws {
+    static func encodePackets<Output: CodestreamByteSink & ~Copyable>(geometry: TileGeometry, encodings: [[[[CodeBlockEncoding]]]],
+                              into out: inout Output, cancellation: () throws -> Void) throws {
         for resolution in geometry.resolutions {
             for (p, precinct) in resolution.precincts.enumerated() {
                 try cancellation()

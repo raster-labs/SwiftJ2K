@@ -9,6 +9,20 @@ Started 25 September 2026 on the owner's assignment ("merge PR 18 and start Mile
 
 Contract **0.10.0**; pinned predecessor Raster-Lab/J2KSwift `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`. Scope from IMPLEMENTATION.md's programme: Part 15 block coder (MEL, VLC, MagSgn, cleanup), CAP/CPF/COD HT signalling, HT decode and encode for the current greyscale lossless profile (HT Rev Only first, then HT Only and mixed), and lossless J2K ↔ HTJ2K transcoding in memory and through `swiftj2k-cli transcode` per TRANSCODING.md and POL-09. Oracles: OpenJPH 0.30.1 (BSD-2-Clause, Part 15 reference), Kakadu 8.4.1 (`Cmodes=HT`), OpenJPEG 2.5.4 (Part 15 decode). This record separates what was executed from what remains open.
 
+## Scoped resource repair — 26 October 2026
+
+The user merged PR #20 (`5223630`) into main as `1133f36`; that merge is preserved and does not establish Milestone 6 engineering acceptance. Follow-up draft [PR #21](https://github.com/raster-labs/SwiftJ2K/pull/21) contains the later metadata, consumer and resource changes.
+
+Codex independently reproduced an output admission defect on submitted `fabe127`: a 17-byte logical writer limit grew its Array to capacity 32, using 64 accounted bytes where the caller admitted 49. Antigravity positively stopped and released the bounded output/packet-writer repair and its callers/tests/evidence to Codex. Other Milestone 6 work remains with Antigravity, stopped until explicit handback.
+
+The scoped repair uses a synchronous noncopyable byte-buffer owner. Every reservation admits the old and new requested capacities before allocation, and packet copies do not materialise intermediary Arrays. Final Data publication is admitted while the input/profile/output are still live. Byte-buffer capacity accounting excludes allocator bookkeeping and size-class padding; it is not an RSS measurement. Three regression declarations check exact denial boundaries, unchanged prefixes on refusal, direct copies and publication lifetime. The resource regression now allows a tighter budget to select smaller growth capacity only when the reported bound fits that budget and output bytes remain identical.
+
+Final repair debug and release runs each reported 98 declarations with no failures: **97 completed normally and one existing Part 1 decode cancellation declaration self-cancelled**. The transcoder cancellation test now cancels a child operation and completes normally. Seven focused AddressSanitizer declarations plus two malformed-input/cancellation declarations completed with no sanitizer findings; 178 CLI checks passed. The [source hashes and receipts](Engineering/Milestone6/Evidence/codex-bounded-writer-repair.json) preserve the failing baseline probe and initial repair compile failure. These are Codex repair checks, not independent review of Codex-authored code.
+
+Eight controlled case/direction comparisons produced byte-identical output to the previous release binary. The small `g16_64x64_random` HTJ2K-to-J2K case showed an API-time median increase of **5.62%**, repeated at **6.65%** (2.1576 to 2.3010 ms in the repeat). This is an **open performance finding**, not an accepted safety trade-off. The runs used five warm-ups and 20 alternating timed CLI invocations, recording API and wall times separately; they do not replace long-lived in-memory consumer qualification. Raw samples are linked in the receipt.
+
+**Still open:** complete parser/geometry/encoder scratch and metadata capacity qualification, the performance finding, required fuzz campaigns, applicable harness/platform gates, HT refinement/multiple active sets, the existing Part 1 cancellation-test outcome, and actual provider CI on the final pushed head. The bounded-writer subtask does not close the whole resource finding or accept Milestone 6.
+
 ## Predecessor audit
 
 Read at the pinned revision with `git show 7acc9ae4…:<path>` (the local J2KSwift working tree is not the pinned state). Executed 25 September 2026.

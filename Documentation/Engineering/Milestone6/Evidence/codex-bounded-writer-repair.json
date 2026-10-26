@@ -1,0 +1,112 @@
+{
+  "time": "2026-10-26T12:08:28.089824+00:00",
+  "base_sha": "fabe1275247d5bc8210a1178a8706c76a5ad5938",
+  "writer": "Codex, temporary scoped takeover after positive Antigravity stop/release",
+  "authority": "User delegated-development-audit workflow; no main writes or merge authority",
+  "finding": "M6-AUD-006 bounded output-buffer subtask only",
+  "failure": "17 logical output bytes admitted as49 bytes including the assumed Array header; Swift Array capacity32 reports64 allocated bytes. Old/new overlap also missing.",
+  "repair": "Noncopyable synchronous explicitly owned byte buffer; admit old+new requested capacities before allocation; bounded direct packet copies; admit Data publication while parser/profile/output remain live. No new public API or runtime codec dependency.",
+  "accounting_boundary": "Requested owned byte-buffer capacities; allocator size-class padding and runtime/RSS overhead remain separate measurements. Other source/target geometry, parser metadata and encoder scratch accounting still require qualification. This is not full M6-AUD-006 closure.",
+  "source_files_sha256": {
+    "Sources/SwiftJ2K/Codec/BitIO.swift": "4b7a49143abcd84b7139c70d57016f2d8cc89584e41b95bd86bf2f5567798324",
+    "Sources/SwiftJ2K/Codec/BoundedByteWriter.swift": "6410af3964d3cff4907bf71478ae74b1ad9f21ee383865f6b60e4ecc4af2724f",
+    "Sources/SwiftJ2K/Codec/Codestream.swift": "5f82cb69355911f22ef1db3f0269cbe1ab8bc40150ae2b964483421690ed92f1",
+    "Sources/SwiftJ2K/Codec/LosslessPipeline.swift": "4dcd75205f6e588634a77b1ac0ea1cb89cbe976a643aa04823cf8911acf31829",
+    "Sources/SwiftJ2K/Codec/Tier2.swift": "77594bb0b2a635276e29cde0a9653ce11483229b7b7df9001f4dc42ba9da540e",
+    "Sources/SwiftJ2K/Transcoding.swift": "2e36acab905e4b6d9b1973b2cfdc3c9b6d6b279da57dd588deeb10bdec03960b",
+    "Tests/SwiftJ2KTests/BoundedByteWriterTests.swift": "47f62a123aecd24c1c223c5d2e3c195c88745ef0544dfe35a6e59ae6adc6bdb4",
+    "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift": "28b0f0f13cba23f9347395b69954697fc9133dbfbf06093eba308d9fa0237f35"
+  },
+  "receipts": [
+    {
+      "file": "codex-resource-probe-fabe127.log",
+      "exit_code": 1,
+      "scope": "Independent reproducer on submitted fabe127, not repair source",
+      "raw_log_sha256": "fa821ba85aae73ac7603d687569b7fd8a22a9ed60e4449985369340fea25e0d9",
+      "sanitised_log_sha256": "fa821ba85aae73ac7603d687569b7fd8a22a9ed60e4449985369340fea25e0d9"
+    },
+    {
+      "file": "codex-repair-focused-1.log",
+      "exit_code": 1,
+      "scope": "Initial repair compile failure; noncopyable initialiser fixed afterwards",
+      "raw_log_sha256": "f8a8304c72b1e2a02990d08ccbc54a2aa6571563435c83913a8e1ecd5828ca10",
+      "sanitised_log_sha256": "c32a6638f99dc483c8b718020df7de9635fbedefd959cb3a6164a90c776218ca"
+    },
+    {
+      "file": "codex-repair-release-full.log",
+      "exit_code": 0,
+      "scope": "Pre-cancellation-test correction: runner reports98 passed;96 completed normally,2 self-cancelled. Not98 normally completed tests.",
+      "raw_log_sha256": "fec6cd40ab4d458f16763d8436c731136b8c60b82add868aac50e10e71415c37",
+      "sanitised_log_sha256": "66b7d298574962b59852b90310c8e3fbe998fe691b8e59609f4a960413619f3a"
+    },
+    {
+      "file": "codex-repair-asan-focused.log",
+      "exit_code": 0,
+      "scope": "7 selected declarations completed, including4 bidirectional oracle cases. Their test bodies and production source remain unchanged after the later cancellation-test correction.",
+      "raw_log_sha256": "bbb252d33d50a5978d0200021cd778d1c21baaaabae7bbe184fc2f85626d5cc2",
+      "sanitised_log_sha256": "f86f308113451404de3651f3d5224a1a8511f861d15ddacaf948a79d66b9e410"
+    },
+    {
+      "file": "codex-repair-debug-final.log",
+      "exit_code": 0,
+      "scope": "Final source: runner reports98;97 declarations completed normally,1 pre-existing Part1 decode cancellation test self-cancelled; no failures.",
+      "raw_log_sha256": "1ae1fe8c3612db4663b5237a712270713dacc38051ad62a38876ccec56dc9b3a",
+      "sanitised_log_sha256": "1ae1fe8c3612db4663b5237a712270713dacc38051ad62a38876ccec56dc9b3a"
+    },
+    {
+      "file": "codex-repair-release-final.log",
+      "exit_code": 0,
+      "scope": "Final source: runner reports98;97 completed normally,1 pre-existing Part1 decode cancellation test self-cancelled; no failures.",
+      "raw_log_sha256": "a862b2694e8c94fc4c842c25251584125b74d43b01d0204cdf2f95a186041a3f",
+      "sanitised_log_sha256": "a862b2694e8c94fc4c842c25251584125b74d43b01d0204cdf2f95a186041a3f"
+    },
+    {
+      "file": "codex-repair-asan-failure-paths.log",
+      "exit_code": 0,
+      "scope": "Before test correction: malformed-input test completed; transcode cancellation test self-cancelled. Not2 normally completed tests.",
+      "raw_log_sha256": "004900c29148fc7c719ce0b445042b77702dbeeefd1aa4b9ddf843aa89225c12",
+      "sanitised_log_sha256": "004900c29148fc7c719ce0b445042b77702dbeeefd1aa4b9ddf843aa89225c12"
+    },
+    {
+      "file": "codex-repair-asan-failure-paths-final.log",
+      "exit_code": 0,
+      "scope": "Final source:2 targeted declarations both completed normally, including transcode cancellation; no sanitizer findings.",
+      "raw_log_sha256": "92309e32bbd8660d3d7a1ad630ba99c229bc055f7f384cd4db6cc1c6c9d9d677",
+      "sanitised_log_sha256": "92309e32bbd8660d3d7a1ad630ba99c229bc055f7f384cd4db6cc1c6c9d9d677"
+    }
+  ],
+  "toolchain": "Apple Swift6.4 swiftlang-6.4.0.34.1; arm64 macOS27.0.1 build26A434; native SwiftPM engine,2 jobs",
+  "commands": [
+    "xcrun swift test --build-system native --jobs 2 --disable-xctest -c release",
+    "xcrun swift test --build-system native --jobs 2 --disable-xctest --sanitize address --filter boundedWriter|transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput|transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits|nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking|independentOraclesVerifyTranscodedOutputsInBothDirections"
+  ],
+  "pending": [
+    "Exact pushed-head providerCI",
+    "Investigate/reconcile confirmed small-case performance regression; full controlled performance qualification stillopen",
+    "Broader resource accounting, including geometry/capacity/parser/encoder scratch; no complete memory-gate acceptance",
+    "Pre-existing Part1 decode cancellation declaration self-cancels: test outcome must be reconciled",
+    "One-hour fuzz/harness/platform qualification; HT refinement/multiple active sets"
+  ],
+  "engineering_acceptance": "Milestone6 remains unaccepted; no release/merge approval.",
+  "initial_test_file_sha256": "223061bd766a1ae06c12bbdffaf2f52941f37726f34c3727eef6484c4bf5d4b7",
+  "cli": {
+    "status": "passed",
+    "checks": 178,
+    "binary_sha256": "97650c5e4c2a22c6047bc3ec18b71441d828e3c5114fb808899e13251417cb26",
+    "raw_report_sha256": "133c66132ec9adc6cfbbc8f45337e31b4da0faefc077370bae01f8bf21410066",
+    "file": "codex-repair-cli.json"
+  },
+  "performance": {
+    "status": "OPEN, confirmed regression requiring investigation/decision; no safety trade-off accepted",
+    "method": "5 warm-up +20 timed alternating sequential release CLI runs,8 case/direction pairs. Repeated g16_64x64_random both directions with same methodology. API elapsed and CLI wall time separately recorded; no other local native validation running.",
+    "baseline_artifact_sha256": "97521aae91bacfd9e527003f8d88d1de9993818c698f099793b30687a5918210",
+    "candidate_artifact_sha256": "97650c5e4c2a22c6047bc3ec18b71441d828e3c5114fb808899e13251417cb26",
+    "output": "All8 case/direction outputs byte-identical to baseline;4 cases include12bit and16bit data.",
+    "regression": "g16_64x64_random HT->J2K API median +5.619% (2.154479 ->2.2755415ms); repeat +6.649% (2.1575625 ->2.301021ms). Other initial cases -2.07% to+4.85%. Cold-process API timings, not a long-lived in-memory consumer qualification.",
+    "receipts": [
+      "codex-repair-performance.json",
+      "codex-repair-performance-repeat.json"
+    ]
+  },
+  "task_acceptance": "Bounded writer correctness/lifetime subtask verified locally; M6-AUD-006 overall, performance and milestone acceptance remain open. Handback will request developer review, not infer approval."
+}

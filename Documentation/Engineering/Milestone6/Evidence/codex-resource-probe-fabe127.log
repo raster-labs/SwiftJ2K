@@ -1,0 +1,17 @@
+[0/1] Planning build
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test codexAuditWriterCapacityFitsTheAdmittedAllocation() started.
+✘ Test codexAuditWriterCapacityFitsTheAdmittedAllocation() recorded an issue at CodexAuditResourceProbe.swift:13:5: Expectation failed: writer.allocatedBytes <= 32 + payloadBudget
+↳ logical budget=17, count=17, capacity=32, allocated=64; transcode admits 32 + projected logical bytes
+↳ writer.allocatedBytes <= 32 + payloadBudget → false
+↳   writer.allocatedBytes → 64
+↳   32 + payloadBudget → 49
+✘ Test codexAuditWriterCapacityFitsTheAdmittedAllocation() failed after 0.001 seconds with 1 issue.
+↳ // Independent probe of the capacity assumption used by transcode preflight.
+↳ // This file exists only in the isolated audit archive, not the developer tree.
+✘ Test run with 1 test in 0 suites failed after 0.001 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - SwiftJ2KPackageTests (Swift Testing)

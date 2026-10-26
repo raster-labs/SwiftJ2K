@@ -65,8 +65,10 @@ struct ByteReader {
     }
 }
 
-/// Big-endian byte writer used to assemble marker segments and packets.
-struct ByteWriter {
+/// Array-backed marker sink for the existing encoder and small marker payloads.
+/// `maximumBytes` limits length only; it is not an allocation budget. Transcoding
+/// uses BoundedByteWriter for buffers that grow under a live-memory ceiling.
+struct ByteWriter: CodestreamByteSink {
     private(set) var bytes: [UInt8] = []
     private(set) var maximumBytes: Int
 
@@ -77,28 +79,7 @@ struct ByteWriter {
         }
     }
 
-    init(reserving capacity: Int, maximumBytes: Int) throws {
-        guard capacity >= 0, maximumBytes >= 0, capacity <= maximumBytes else {
-            throw CodecError(.resourceLimitExceeded, "Output buffer reservation exceeds the byte budget.")
-        }
-        self.maximumBytes = maximumBytes
-        if capacity > 0 {
-            bytes.reserveCapacity(capacity)
-        }
-    }
-
     var count: Int { bytes.count }
-    var capacity: Int { bytes.capacity }
-    var allocatedBytes: Int {
-        (bytes.isEmpty && bytes.capacity == 0) ? 0 : (32 + max(bytes.count, bytes.capacity))
-    }
-
-    mutating func updateMaximumBytes(_ newMaximum: Int) throws {
-        guard newMaximum >= 0, bytes.count <= newMaximum else {
-            throw CodecError(.resourceLimitExceeded, "Output buffer exceeds the updated byte budget.")
-        }
-        maximumBytes = newMaximum
-    }
 
     mutating func ensureRoom(for additional: Int) throws {
         let needed = try checkedAdd(bytes.count, additional)

@@ -673,7 +673,7 @@ enum CodestreamSyntax {
 
     // MARK: - Writing
 
-    static func writeSIZ(_ size: ImageSizeSegment, into w: inout ByteWriter) throws {
+    static func writeSIZ<Output: CodestreamByteSink & ~Copyable>(_ size: ImageSizeSegment, into w: inout Output) throws {
         var p = ByteWriter(capacity: 38 + 3 * size.components.count)
         p.writeUInt16(size.capabilities)
         for value in [size.width, size.height, size.originX, size.originY,
@@ -692,20 +692,20 @@ enum CodestreamSyntax {
         try w.writeSegment(marker: Marker.siz, payload: p.bytes)
     }
 
-    static func writeCAP(_ cap: ExtendedCapabilitiesSegment, into w: inout ByteWriter) throws {
+    static func writeCAP<Output: CodestreamByteSink & ~Copyable>(_ cap: ExtendedCapabilitiesSegment, into w: inout Output) throws {
         var p = ByteWriter(capacity: 6)
         p.writeUInt32(cap.pcap)
         p.writeUInt16(cap.ccap15)
         try w.writeSegment(marker: Marker.cap, payload: p.bytes)
     }
 
-    static func writeCPF(_ cpf: CorrespondingProfileSegment, into w: inout ByteWriter) throws {
+    static func writeCPF<Output: CodestreamByteSink & ~Copyable>(_ cpf: CorrespondingProfileSegment, into w: inout Output) throws {
         var p = ByteWriter(capacity: 2 * cpf.values.count)
         for value in cpf.values { p.writeUInt16(value) }
         try w.writeSegment(marker: Marker.cpf, payload: p.bytes)
     }
 
-    static func writeCOD(_ cod: CodingStyleSegment, into w: inout ByteWriter) throws {
+    static func writeCOD<Output: CodestreamByteSink & ~Copyable>(_ cod: CodingStyleSegment, into w: inout Output) throws {
         var p = ByteWriter(capacity: 16)
         p.writeUInt8((cod.usesPrecincts ? 0x01 : 0) | (cod.usesSOP ? 0x02 : 0) | (cod.usesEPH ? 0x04 : 0))
         p.writeUInt8(cod.progression)
@@ -722,7 +722,7 @@ enum CodestreamSyntax {
         try w.writeSegment(marker: Marker.cod, payload: p.bytes)
     }
 
-    static func writeQCD(_ qcd: QuantizationSegment, into w: inout ByteWriter) throws {
+    static func writeQCD<Output: CodestreamByteSink & ~Copyable>(_ qcd: QuantizationSegment, into w: inout Output) throws {
         var p = ByteWriter(capacity: 2 + qcd.exponents.count)
         p.writeUInt8(UInt8(qcd.guardBits) << 5 | qcd.style.rawValue)
         switch qcd.style {

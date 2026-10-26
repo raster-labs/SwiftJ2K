@@ -794,10 +794,17 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
         guard update.phase == .processing, update.completedUnits > 0 else { return }
         withUnsafeCurrentTask { $0?.cancel() }
     }
-    do {
-        _ = try await transcoder.transcode(data, to: .jpeg2000, options: .init(progress: cancelProgress))
-        Issue.record("cancelled transcode succeeded")
-    } catch is CancellationError {}
+    // Cancel a child operation, not Swift Testing's test task. The test must
+    // complete normally after checking the cancellation result and cleanup.
+    let cancelledOperation = Task {
+        do {
+            _ = try await transcoder.transcode(data, to: .jpeg2000, options: .init(progress: cancelProgress))
+            return false
+        } catch is CancellationError {
+            return true
+        }
+    }
+    #expect(try await cancelledOperation.value)
 }
 
 @Test func boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() async throws {
@@ -1149,11 +1156,17 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
         #expect(!denyCompressedRecorder.events.map(\.stage).contains("output-data"))
     }
 
-    // 5. Total memory limit accounts for concurrent resident buffers + peakWorkspace.
+    // 5. The successful operation must stay inside its own admission budget.
+    // A prior run's peak is not a minimum: bounded writers may choose a smaller
+    // growth capacity under a tighter limit. Either denial or a lower measured
+    // bound is valid; accepting the same excessive bound is not. The writer tests
+    // separately check the exact unavoidable old+new allocation boundary.
     let tightMemoryLimits = try ResourceLimits(maximumMemoryBytes: sourceEncoded.data.count + peakWorkspace - 1)
     do {
-        _ = try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: tightMemoryLimits))
-        Issue.record("transcode should fail when resident input + workspace exceeds maximumMemoryBytes")
+        let bounded = try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: tightMemoryLimits))
+        let boundedWorkspace = try #require(bounded.report.peakWorkspaceBytes)
+        #expect(sourceEncoded.data.count + boundedWorkspace <= tightMemoryLimits.maximumMemoryBytes)
+        #expect(bounded.data == transcoded.data)
     } catch let error as CodecError {
         #expect(error.category == .resourceLimitExceeded)
     }

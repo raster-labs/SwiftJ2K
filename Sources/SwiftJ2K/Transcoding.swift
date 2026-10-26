@@ -121,7 +121,7 @@ public struct Transcoder: Sendable {
             limits: options.resourceLimits,
             metadataPolicy: options.metadataPolicy
         )
-        let (outputBytes, workspace) = try ScalarLosslessCodec.transcode(
+        let (publishedData, workspace) = try ScalarLosslessCodec.transcode(
             bytes: bytes,
             profile: profile,
             to: target,
@@ -131,20 +131,7 @@ public struct Transcoder: Sendable {
             progress: options.progress
         )
         bytes = []
-        guard outputBytes.count <= options.resourceLimits.maximumCompressedBytes else {
-            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
-        }
-        let outputArrayBytes = try checkedAdd(32, max(outputBytes.count, outputBytes.capacity))
-        let outputPublishResident = try checkedAdd(
-            data.count,
-            try checkedAdd(outputArrayBytes, outputBytes.count)
-        )
-        guard outputPublishResident <= options.resourceLimits.maximumMemoryBytes else {
-            throw CodecError(.resourceLimitExceeded, "Publishing transcoded Data exceeds the memory budget.")
-        }
         try Task.checkCancellation()
-        StorageTelemetry.recordStage("output-data", bytes: outputBytes.count)
-        let publishedData = Data(outputBytes)
         let elapsed = clock.now - started
         let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
         let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
