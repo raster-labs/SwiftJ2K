@@ -1,0 +1,536 @@
+Building for debugging...
+[Planning deferred tasks]
+[12 / 46]
+[13 / 47] SwiftJ2K
+[24 / 58] SwiftJ2K
+[31 / 55] swiftj2k-cli-product
+[33 / 57] swiftj2k-cli-product
+[34 / 57] SwiftJ2K
+[41 / 56] SwiftJ2KTests-product
+[44 / 69]
+[55 / 69] SwiftJ2KTests-product
+[56 / 69]
+[63 / 69] SwiftJ2KTests-product
+[65 / 69] SwiftJ2KTests-product
+[67 / 69] SwiftJ2KTests-product
+Build complete! (7.31 sec)
+Test Suite 'All tests' started at 2026-10-26 15:51:27.065.
+Test Suite 'All tests' passed at 2026-10-26 15:51:27.073.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.008) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Descriptor validation" started.
+◇ Test truncatedCodestreamsFailWithDefinedErrors() started.
+◇ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() started.
+◇ Suite "Byte-order sample access" started.
+◇ Test roundTripThroughCallerStorageWithDifferentStridesOnEachSide() started.
+◇ Test waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test refusedLayoutLeavesDestinationReusableAndCancelledWorkInvalidatesIt() started.
+◇ Test concurrentReadersOfOneCallerOwnerAgreeWhileAMutationAttemptFails() started.
+◇ Test cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test progressIsMonotonicAndCompletesAfterPublication() started.
+◇ Test sameTokenCannotAuthoriseConcurrentOverlappingBorrows() started.
+◇ Test syntheticExactSamplesAndPadding(precision:) started.
+◇ Test cancelledEncodeLeavesTheSourceIntactAndPublishesNothing() started.
+◇ Test headerOnlyInputIsMalformedNotAnImage() started.
+◇ Test packetBitCoderStuffsAfterFF() started.
+◇ Test integerOverflowWithExplicitLargeLimitsThrows() started.
+◇ Test safeSampleAccessHonoursExplicitBigEndian() started.
+◇ Test htSignallingAndUnsupportedPassStructuresFailPredictably() started.
+◇ Test codecOptionsAreValidatedExplicitly() started.
+◇ Test htj2kExtremeValuesAndKMaxReversibleGainRegression() started.
+◇ Test cancellationDuringSyntheticRowsInvalidatesDestination() started.
+◇ Test safeWriterRejectsOutOfRangeInsteadOfTruncating() started.
+◇ Test configurationsAndBackendRequestsRejectUnsupportedChoices() started.
+◇ Test paddedStorageCountsTowardsDecodedLimit() started.
+◇ Test supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test singleBitCorruptionNeverTrapsOrHangs() started.
+◇ Test independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test extremeValuesSurviveEveryPrecision() started.
+◇ Test bothCopyPoliciesUseTheSharedPathAndReportNoCopy() started.
+◇ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test decodeIntoCallerStorageKeepsIdentityAndLeavesPaddingUntouched() started.
+◇ Test case passing 1 argument point → .sealing to cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test htj2kSharedStorageAndZeroIntermediateFilesProof() started.
+◇ Test singleBitCorruptionOnHTJ2KNeverTrapsOrHangs() started.
+◇ Test explicitLargerMetadataLimitIsHonoured() started.
+◇ Test htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test invalidResourceProfilesAndProgressFailPredictably() started.
+◇ Test concurrentAdaptersReserveExactlyOneWriter() started.
+◇ Test pixelAndDimensionLimitsRejectBeforeAllocation() started.
+◇ Test case passing 1 argument point → .validatingSealedStorage to cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test publicOperationsRejectForeignBytesAndAdvertiseScalarLosslessCoverage() started.
+◇ Test failedFillInvalidatesDestination() started.
+◇ Test safeSampleWriterRejectsOutOfRangeWithoutTruncating() started.
+◇ Test cancellationInsideWriteCannotPublishPartialImage() started.
+◇ Test htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test incompatibleDestinationIsRejectedInPreflight() started.
+◇ Test colourCodestreamsAreRejected() started.
+◇ Test validButUnsupportedCodestreamsAreRejectedBeforeDecoding(variant:expected:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.layers3_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test encoderIgnoresRowPaddingAndReadsSharedStorageOnce() started.
+◇ Test encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() started.
+◇ Test decoderPreservesTaskCancellationError() started.
+◇ Test borrowedStorageRejectsForgedLeasesAndPublication() started.
+◇ Test case passing 2 arguments width → 1, height → 1 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test metadataAndDestinationLimitsUseCallerBudget() started.
+◇ Test allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test reentrantLeaseOperationsRejectWithoutDeadlocking() started.
+◇ Test independentAllocationAndMemoryCeilingsAreEnforced() started.
+◇ Test sealedOwnerSupportsConcurrentReadersAndNestedRead() started.
+◇ Test cancellationDuringDecodeInvalidatesTheDestination() started.
+◇ Test encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test mutationsOfStrideAndByteOrderAreCaughtByTheSharedStorageChecks() started.
+◇ Test imageRetainsAdapterUntilLastImageReleaseExactlyOnce() started.
+◇ Test encoderRefusesMetadataItCannotCarry() started.
+◇ Test boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() started.
+◇ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() started.
+◇ Test allocatingDecodeUsesTheSameFinalOutputPathWithOneAllocation() started.
+◇ Test abandonedDestinationInvalidatesItsReservedOwner() started.
+◇ Test encoderRejectsSamplesOutsideDeclaredPrecision() started.
+◇ Test independentPublicCallShapesReportTheirActualCoverage() started.
+◇ Test adaptersShareWriterAuthorityAndRejectForgedLease() started.
+◇ Test descriptorMutationRejectsInvalidStridesAndOffsets() started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.layers3_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test cancellationIsCheckedBeforeAllocatingStorage() started.
+◇ Test resourceLimitsGateAdmission() started.
+◇ Test tagTreeEncodesAndDecodesInclusionAndZeroBitPlanes() started.
+◇ Test htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test unknownMeasurementsStayUnknownAndMetadataIsBounded() started.
+◇ Test mqCoderRoundTripsRandomSymbolsOverAllContexts() started.
+◇ Test case passing 1 argument precision → 12 to syntheticExactSamplesAndPadding(precision:) started.
+◇ Test case passing 2 arguments width → 1, height → 9 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.bypass_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument precision → 16 to syntheticExactSamplesAndPadding(precision:) started.
+◇ Test deterministicLayoutMutation() started.
+◇ Test rejectsInvalidGeometryAndPrecision() started.
+◇ Test paddedOddDimensionsAndPrecision() started.
+◇ Test finalRowNeedsOnlyItsActualSampleBytes() started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.reset_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test rejectsOverlappingPlanesAndIncompleteMapping() started.
+◇ Test semanticMetadataMustAgreeWithComponents() started.
+◇ Test rejectsMisalignedOffsetsAndStrides() started.
+◇ Test writesGoldenBytesForPackedAndPadded12And16BitSamples() started.
+◇ Test initialisesExternalSampleBytesAtOddAddressWithoutChangingPadding() started.
+◇ Test rejectsArithmeticOverflowBeforeAllocation() started.
+◇ Test refusesShortProviderBeforeLoadingSample() started.
+◇ Test readsIndependentGoldenBytesFromOddPhysicalAddress() started.
+◇ Test outOfPrecisionWriteInvalidatesDestination() started.
+◇ Test rejectsCoordinatesBeforeOffsetArithmetic() started.
+◇ Test case passing 2 arguments width → 9, height → 1 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.restart_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.causal_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 2, height → 3 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.erterm_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "precincts" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.segsym_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "sop_eph" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 2 arguments width → 33, height → 17 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument variant → "rpcl" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.allstyles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "cprl" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 2 arguments width → 64, height → 64 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.bypass_restart_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "kdu_tileparts" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument variant → "kdu_plt" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.allstyles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument variant → "tiled" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles37x29_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "layers2" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles64_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "bypass" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 2 arguments width → 1, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "termall" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 4 arguments name → "g12_129x67_gradient", variant → "opj", prefix → 6, padding → 10 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test case passing 1 argument variant → "segsym" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 2 arguments width → 1, height → 7 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_tiles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument variant → "kdu_ht" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 7, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.pcrl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.cprl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 4 arguments name → "g16_17x9_alternating", variant → "kdu", prefix → 2, padding → 4 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.rpcl_precincts_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 2, height → 2 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.everything_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.everything_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.layers3_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 3, height → 5 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.layers3_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 4 arguments name → "g12_129x67_gradient", variant → "kdu_l3", prefix → 0, padding → 0 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.bypass_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 65, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.reset_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.restart_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 1, height → 65 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.causal_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.erterm_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 17, height → 33 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.segsym_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.allstyles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 1, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.bypass_restart_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.allstyles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 1, height → 7 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles37x29_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 7, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles64_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 2, height → 2 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_tiles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 3, height → 5 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 2 arguments width → 65, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.pcrl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 1, height → 65 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.cprl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments width → 17, height → 33 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.rpcl_precincts_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.everything_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 0, blockWidth → 64, blockHeight → 64 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.everything_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 1, blockWidth → 16, blockHeight → 16 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 2 arguments variant → "irreversible97", expected → "9/7" to validButUnsupportedCodestreamsAreRejectedBeforeDecoding(variant:expected:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 2, blockWidth → 32, blockHeight → 8 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 0, blockWidth → 64, blockHeight → 64 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 3, blockWidth → 4, blockHeight → 4 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 1, blockWidth → 16, blockHeight → 16 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 5, blockWidth → 64, blockHeight → 64 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 2, blockWidth → 32, blockHeight → 8 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 6, blockWidth → 8, blockHeight → 512 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 3, blockWidth → 4, blockHeight → 4 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 5, blockWidth → 64, blockHeight → 64 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 3 arguments levels → 6, blockWidth → 8, blockHeight → 512 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test waveletForwardInverseIsIdentity(width:height:) with 6 test cases passed after 109.300 seconds.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test sameTokenCannotAuthoriseConcurrentOverlappingBorrows() passed after 109.371 seconds.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test syntheticExactSamplesAndPadding(precision:) with 2 test cases passed after 140.637 seconds.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test headerOnlyInputIsMalformedNotAnImage() passed after 144.423 seconds.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test packetBitCoderStuffsAfterFF() passed after 196.195 seconds.
+✔ Test integerOverflowWithExplicitLargeLimitsThrows() passed after 196.195 seconds.
+✔ Test safeSampleAccessHonoursExplicitBigEndian() passed after 196.196 seconds.
+✔ Test codecOptionsAreValidatedExplicitly() passed after 196.196 seconds.
+✔ Test truncatedCodestreamsFailWithDefinedErrors() passed after 196.198 seconds.
+✔ Test safeWriterRejectsOutOfRangeInsteadOfTruncating() passed after 200.314 seconds.
+✔ Test configurationsAndBackendRequestsRejectUnsupportedChoices() passed after 200.318 seconds.
+✔ Test htSignallingAndUnsupportedPassStructuresFailPredictably() passed after 200.323 seconds.
+✔ Test syntaxCoverageVariantsDecodeExactly(file:) with 44 test cases passed after 200.328 seconds.
+✔ Test paddedStorageCountsTowardsDecodedLimit() passed after 200.326 seconds.
+✔ Test extremeValuesSurviveEveryPrecision() passed after 200.327 seconds.
+✔ Test independentCodestreamsDecodeToTheGeneratedSamples(key:) with 51 test cases passed after 200.338 seconds.
+✔ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() passed after 200.341 seconds.
+✔ Test supportedSyntaxVariantsDecodeExactly(variant:) with 12 test cases passed after 200.340 seconds.
+✔ Test bothCopyPoliciesUseTheSharedPathAndReportNoCopy() passed after 200.340 seconds.
+✔ Test htj2kExtremeValuesAndKMaxReversibleGainRegression() passed after 200.342 seconds.
+✔ Test degenerateGeometriesRoundTrip(width:height:) with 8 test cases passed after 200.341 seconds.
+✔ Test roundTripThroughCallerStorageWithDifferentStridesOnEachSide() passed after 200.345 seconds.
+✔ Test decodeIntoCallerStorageKeepsIdentityAndLeavesPaddingUntouched() passed after 200.340 seconds.
+✔ Test decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) with 3 test cases passed after 200.342 seconds.
+✔ Test explicitLargerMetadataLimitIsHonoured() passed after 200.343 seconds.
+✔ Test progressIsMonotonicAndCompletesAfterPublication() passed after 200.349 seconds.
+✔ Test invalidResourceProfilesAndProgressFailPredictably() passed after 200.343 seconds.
+✔ Test htj2kDegenerateGeometriesRoundTrip(width:height:) with 8 test cases passed after 200.345 seconds.
+✔ Test singleBitCorruptionNeverTrapsOrHangs() passed after 200.351 seconds.
+✔ Test pixelAndDimensionLimitsRejectBeforeAllocation() passed after 200.346 seconds.
+✔ Test htj2kSharedStorageAndZeroIntermediateFilesProof() passed after 200.348 seconds.
+✔ Test publicOperationsRejectForeignBytesAndAdvertiseScalarLosslessCoverage() passed after 200.349 seconds.
+✔ Test failedFillInvalidatesDestination() passed after 200.350 seconds.
+✔ Test safeSampleWriterRejectsOutOfRangeWithoutTruncating() passed after 200.350 seconds.
+✔ Test incompatibleDestinationIsRejectedInPreflight() passed after 200.349 seconds.
+✔ Test htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) with 6 test cases passed after 200.350 seconds.
+✔ Test colourCodestreamsAreRejected() passed after 200.350 seconds.
+✔ Test validButUnsupportedCodestreamsAreRejectedBeforeDecoding(variant:expected:) with 1 test case passed after 200.350 seconds.
+➜ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() was cancelled after 200.467 seconds.
+✔ Test singleBitCorruptionOnHTJ2KNeverTrapsOrHangs() passed after 200.474 seconds.
+✔ Test borrowedStorageRejectsForgedLeasesAndPublication() passed after 200.467 seconds.
+✔ Test encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) with 6 test cases passed after 200.469 seconds.
+✔ Test metadataAndDestinationLimitsUseCallerBudget() passed after 200.466 seconds.
+✔ Test reentrantLeaseOperationsRejectWithoutDeadlocking() passed after 200.471 seconds.
+✔ Test independentAllocationAndMemoryCeilingsAreEnforced() passed after 200.472 seconds.
+➜ Test cancellationDuringDecodeInvalidatesTheDestination() was cancelled after 200.471 seconds.
+✔ Test encoderOutputDecodesExactlyWithDefaultOptions(name:) with 10 test cases passed after 200.472 seconds.
+✔ Test imageRetainsAdapterUntilLastImageReleaseExactlyOnce() passed after 200.472 seconds.
+✔ Test encoderRefusesMetadataItCannotCarry() passed after 200.472 seconds.
+✔ Test abandonedDestinationInvalidatesItsReservedOwner() passed after 200.471 seconds.
+✔ Test encoderRejectsSamplesOutsideDeclaredPrecision() passed after 200.472 seconds.
+✔ Test independentPublicCallShapesReportTheirActualCoverage() passed after 200.472 seconds.
+✔ Test descriptorMutationRejectsInvalidStridesAndOffsets() passed after 200.472 seconds.
+✔ Test adaptersShareWriterAuthorityAndRejectForgedLease() passed after 200.472 seconds.
+✔ Test resourceLimitsGateAdmission() passed after 200.471 seconds.
+✔ Test tagTreeEncodesAndDecodesInclusionAndZeroBitPlanes() passed after 200.471 seconds.
+✔ Test htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) with 10 test cases passed after 200.472 seconds.
+✔ Test allocatingDecodeUsesTheSameFinalOutputPathWithOneAllocation() passed after 200.476 seconds.
+✔ Test unknownMeasurementsStayUnknownAndMetadataIsBounded() passed after 200.470 seconds.
+✔ Test mqCoderRoundTripsRandomSymbolsOverAllContexts() passed after 200.470 seconds.
+✔ Test boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() passed after 200.480 seconds.
+✔ Test mutationsOfStrideAndByteOrderAreCaughtByTheSharedStorageChecks() passed after 200.482 seconds.
+✔ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() passed after 200.481 seconds.
+✔ Test deterministicLayoutMutation() passed after 200.408 seconds.
+✔ Test rejectsInvalidGeometryAndPrecision() passed after 199.392 seconds.
+✔ Test paddedOddDimensionsAndPrecision() passed after 199.392 seconds.
+✔ Test finalRowNeedsOnlyItsActualSampleBytes() passed after 199.393 seconds.
+✔ Test rejectsOverlappingPlanesAndIncompleteMapping() passed after 197.737 seconds.
+✔ Test semanticMetadataMustAgreeWithComponents() passed after 197.738 seconds.
+✔ Test rejectsMisalignedOffsetsAndStrides() passed after 197.740 seconds.
+✔ Test writesGoldenBytesForPackedAndPadded12And16BitSamples() passed after 197.740 seconds.
+✔ Test initialisesExternalSampleBytesAtOddAddressWithoutChangingPadding() passed after 197.740 seconds.
+✔ Test rejectsArithmeticOverflowBeforeAllocation() passed after 197.740 seconds.
+✔ Test refusesShortProviderBeforeLoadingSample() passed after 197.735 seconds.
+✔ Test readsIndependentGoldenBytesFromOddPhysicalAddress() passed after 197.735 seconds.
+✔ Test outOfPrecisionWriteInvalidatesDestination() passed after 197.731 seconds.
+✔ Test rejectsCoordinatesBeforeOffsetArithmetic() passed after 197.730 seconds.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test cancellationInProviderFinalisationPreventsPublication(_:) with 2 test cases passed after 200.514 seconds.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test refusedLayoutLeavesDestinationReusableAndCancelledWorkInvalidatesIt() passed after 200.608 seconds.
+✔ Test cancellationDuringSyntheticRowsInvalidatesDestination() passed after 200.608 seconds.
+✔ Test concurrentAdaptersReserveExactlyOneWriter() passed after 200.602 seconds.
+✔ Test cancellationInsideWriteCannotPublishPartialImage() passed after 200.600 seconds.
+✔ Test allHTJ2KFixturesDecodeToExactSamples(key:) with 120 test cases passed after 200.594 seconds.
+✔ Test decoderPreservesTaskCancellationError() passed after 200.598 seconds.
+✔ Test sealedOwnerSupportsConcurrentReadersAndNestedRead() passed after 200.593 seconds.
+✔ Test cancellationIsCheckedBeforeAllocatingStorage() passed after 200.588 seconds.
+✔ Suite "Descriptor validation" passed after 200.614 seconds.
+✔ Suite "Byte-order sample access" passed after 200.614 seconds.
+◇ Test case passing 1 argument name → "g16_8x8_const" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test encoderIgnoresRowPaddingAndReadsSharedStorageOnce() passed after 200.718 seconds.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) with 10 test cases passed after 203.059 seconds.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test concurrentReadersOfOneCallerOwnerAgreeWhileAMutationAttemptFails() passed after 203.651 seconds.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) with 4 test cases passed after 204.016 seconds.
+◇ Test case passing 1 argument name → "g08_37x23_random" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test independentDecodersReadSuccessorCodestreams(name:) with 10 test cases passed after 205.225 seconds.
+✔ Test cancelledEncodeLeavesTheSourceIntactAndPublishesNothing() passed after 207.965 seconds.
+✔ Test nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) with 10 test cases passed after 208.048 seconds.
+✔ Test run with 93 tests in 2 suites passed after 208.057 seconds.

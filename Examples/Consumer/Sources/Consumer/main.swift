@@ -27,6 +27,17 @@ import SwiftJ2K
                 throw SwiftJ2K.CodecError(.internalFailure, "Lossless round trip changed a sample.")
             }
         }
-        print("Independent SwiftJ2K consumer passed; \(encoded.data.count)-byte lossless codestream round-tripped.")
+        let htEncoder = try SwiftJ2K.Encoder(configuration: .init(codecOptions: try .init(blockCoding: .htj2k)))
+        let htEncoded = try await htEncoder.encode(image)
+        let transcoder = try SwiftJ2K.Transcoder()
+        let transcodedToPart1 = try await transcoder.transcode(htEncoded.data, to: .jpeg2000)
+        let transcodedToHT = try await transcoder.transcode(transcodedToPart1.data, to: .htj2k)
+        let htDecoded = try await decoder.decode(transcodedToHT.data)
+        for y in 0..<2 {
+            for x in 0..<3 where try htDecoded.image.sampleUInt16(x: x, y: y) != image.sampleUInt16(x: x, y: y) {
+                throw SwiftJ2K.CodecError(.internalFailure, "HTJ2K/transcode round trip changed a sample.")
+            }
+        }
+        print("Independent SwiftJ2K consumer passed; \(encoded.data.count)-byte Part 1 and \(htEncoded.data.count)-byte HTJ2K codestreams round-tripped and transcoded.")
     }
 }

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // swiftj2k-cli: the standalone executable of the SwiftJ2K library (CLI_CONTRACT
-// CLI-01..CLI-04, CLI-07..CLI-09). Milestone 4 wires encode, decode, inspect
-// and validate to the library over the NRRD interchange profile described in
-// CLI.md; transcode stays reserved. Library errors map to exit statuses here
-// and nowhere else; the library never terminates the process.
+// CLI-01..CLI-04, CLI-06..CLI-09). Milestone 4 wired encode, decode, inspect
+// and validate over the NRRD interchange profile; Milestone 6 adds Part 15
+// HTJ2K and native compressed-domain J2K <-> HTJ2K transcode. Library errors
+// map to exit statuses here and nowhere else; the library never terminates the
+// process.
 import Foundation
 import Synchronization
 import SwiftJ2K
@@ -134,11 +135,11 @@ private func help(_ command: String?) -> String {
     INPUT AND OUTPUT
       -i, --input PATH           Input file, or '-' for standard input (read completely).
       -o, --output PATH          Final output file, or '-' for binary standard output.
-      --input-format FORMAT     j2k (raw JPEG 2000 codestream) or nrrd; checked against the bytes.
-      --output-format FORMAT    j2k or nrrd; the default follows the command.
+      --input-format FORMAT     j2k, htj2k or nrrd; checked against the bytes.
+      --output-format FORMAT    j2k, htj2k or nrrd; the default follows the command.
       --overwrite               Replace an existing output file. Output is written to a sibling
                                 temporary file and renamed into place; nothing partial remains.
-      --json                    Structured report on stderr (encode/decode/validate) or stdout (inspect).
+      --json                    Structured report on stderr (encode/decode/transcode) or stdout (inspect/validate).
 
     LIMITS AND POLICIES
       --mode lossless           The only mode; near-lossless and lossy are unsupported (exit 4).
@@ -159,7 +160,7 @@ private func help(_ command: String?) -> String {
             return """
             USAGE: \(tool) capabilities [--json] [OPTIONS]
 
-            Report this library's current encode/decode/inspect support without reading files.
+            Report this library's current encode/decode/inspect/transcode support without reading files.
             --json writes one JSON document to stdout; diagnostics stay on stderr.
 
             \(common)
@@ -170,11 +171,11 @@ private func help(_ command: String?) -> String {
             """ + "\n"
         case "encode":
             return """
-            USAGE: \(tool) encode -i IMAGE.nrrd -o OUT.j2k [--levels N] [--code-block WxH] [--precision N] [OPTIONS]
+            USAGE: \(tool) encode -i IMAGE.nrrd -o OUT.j2k [--output-format j2k|htj2k] [--levels N] [--code-block WxH] [--precision N] [OPTIONS]
 
             Losslessly encode one unsigned greyscale NRRD image (1..16 meaningful bits in 16-bit
-            samples) to a raw JPEG 2000 Part 1 codestream: reversible 5/3 wavelet, one tile, one
-            layer, default code-block style.
+            samples) to a raw JPEG 2000 Part 1 (j2k) or HTJ2K Part 15 (htj2k) codestream:
+            reversible 5/3 wavelet, one tile, one layer, default code-block style.
 
             CODEC OPTIONS
               --levels N                Decomposition levels 0..32; default min(5, floor(log2(min(w, h)))).
@@ -187,14 +188,16 @@ private func help(_ command: String?) -> String {
 
             EXAMPLES
               \(tool) encode -i slice.nrrd -o slice.j2k --precision 12
+              \(tool) encode -i slice.nrrd -o slice.j2c --output-format htj2k --precision 12
               cat slice.nrrd | \(tool) encode -i - --input-format nrrd -o - > slice.j2k
             """ + "\n"
         case "decode":
             return """
             USAGE: \(tool) decode -i IN.j2k -o IMAGE.nrrd [OPTIONS]
 
-            Decode a raw JPEG 2000 Part 1 codestream (unsigned greyscale, 1..16 bits, reversible
-            5/3, any tiles, layers, code-block styles and progression orders) to the NRRD profile.
+            Decode a raw JPEG 2000 Part 1 or HTJ2K Part 15 codestream (unsigned greyscale,
+            1..16 bits, reversible 5/3, any tiles, layers, code-block styles and progression
+            orders) to the NRRD profile.
 
             \(io)
 
@@ -208,8 +211,9 @@ private func help(_ command: String?) -> String {
             return """
             USAGE: \(tool) inspect -i IN.j2k [--json] [OPTIONS]
 
-            Bounded structural inspection of a codestream: geometry, precision and tiles are read
-            from the main and tile-part headers without decoding samples. Output goes to stdout.
+            Bounded structural inspection of a JPEG 2000 or HTJ2K codestream: geometry, precision
+            and tiles are read from the main and tile-part headers without decoding samples.
+            Output goes to stdout.
 
             \(io)
 
@@ -222,8 +226,8 @@ private func help(_ command: String?) -> String {
             return """
             USAGE: \(tool) validate -i IN.j2k [--json] [OPTIONS]
 
-            Fully decode a codestream in memory and report success or the defined failure.
-            No output file is written.
+            Fully decode a JPEG 2000 or HTJ2K codestream in memory and report success or the
+            defined failure. No output file is written.
 
             \(io)
 
@@ -234,12 +238,25 @@ private func help(_ command: String?) -> String {
             """ + "\n"
         default:
             return """
-            USAGE: \(tool) transcode [OPTIONS]
+            USAGE: \(tool) transcode -i IN.j2k -o OUT.j2c [--input-format j2k|htj2k] [--output-format j2k|htj2k] [--levels N] [--code-block WxH] [OPTIONS]
 
-            UNAVAILABLE: native JPEG 2000 <-> HTJ2K transcoding is reserved (exit 4).
-            No input is opened, no standard input is consumed and no output file is created.
+            Losslessly transcode between raw JPEG 2000 Part 1 (j2k) and HTJ2K Part 15 (htj2k)
+            codestreams in the wavelet coefficient domain without materialising an intermediate
+            pixel image or writing temporary image files.
+
+            CODEC OPTIONS
+              --levels N                Target decomposition levels 0..32; default preserves source levels
+                                        (changing levels is rejected with exit 4 on the coefficient path).
+              --code-block WxH          Target code-block size, powers of two 4..1024 with W*H <= 4096; default 64x64.
+
+            \(io)
 
             \(common)
+
+            EXAMPLES
+              \(tool) transcode -i source.j2k --input-format j2k --output-format htj2k --mode lossless -o converted.j2c
+              \(tool) transcode -i converted.j2c --input-format htj2k --output-format j2k --mode lossless -o restored.j2k
+              \(tool) transcode -i - -o - < source.j2k > converted.j2c
             """ + "\n"
         }
     }
@@ -248,15 +265,16 @@ private func help(_ command: String?) -> String {
     USAGE: \(tool) [OPTIONS] <command> [OPTIONS]
 
     COMMANDS
-      encode                     NRRD greyscale image -> lossless JPEG 2000 codestream.
-      decode                     JPEG 2000 codestream -> NRRD greyscale image.
+      encode                     NRRD greyscale image -> lossless JPEG 2000 or HTJ2K codestream.
+      decode                     JPEG 2000 or HTJ2K codestream -> NRRD greyscale image.
       inspect                    Report codestream geometry without decoding.
       validate                   Fully decode in memory and report the result.
-      capabilities [--json]      Report actual library support (scalar lossless JPEG 2000).
+      transcode                  Lossless JPEG 2000 <-> HTJ2K compressed-domain transcoding.
+      capabilities [--json]      Report actual library support (scalar lossless JPEG 2000 and HTJ2K).
       help [command]             Show global or command-specific help.
       version                    Show the development version.
-      transcode                  Reserved; unavailable until native transcoding is qualified (exit 4).
 
+    Accelerated backends and lossy/near-lossless modes are unavailable (exit 4).
     Swift 6.2 minimum, Swift 6.4 qualified; Apple OS baseline 26.0. CLI hosts: macOS/Linux.
 
     \(common)
@@ -264,6 +282,7 @@ private func help(_ command: String?) -> String {
     EXAMPLES
       \(tool) encode -i slice.nrrd -o slice.j2k --precision 12
       \(tool) decode -i slice.j2k -o slice.nrrd
+      \(tool) transcode -i source.j2k --input-format j2k --output-format htj2k --mode lossless -o converted.j2c
       \(tool) inspect -i slice.j2k --json
       \(tool) capabilities --json -vv
     """ + "\n"
@@ -429,17 +448,33 @@ private func publish(_ data: Data, to path: String, overwrite: Bool) throws {
 }
 
 private func detectFormat(_ data: Data, declared: String?) throws -> String {
-    let isJ2K = data.count >= 2 && data[data.startIndex] == 0xFF && data[data.startIndex + 1] == 0x4F
+    let isCodestream = data.count >= 2 && data[data.startIndex] == 0xFF && data[data.startIndex + 1] == 0x4F
     let isNRRD = data.count >= 4 && data.prefix(4) == Data("NRRD".utf8)
-    let detected = isJ2K ? "j2k" : (isNRRD ? "nrrd" : nil)
+    let detected: String?
+    if isCodestream {
+        if data.count >= 8 && data[data.startIndex + 2] == 0xFF && data[data.startIndex + 3] == 0x51 {
+            let rsiz = (UInt16(data[data.startIndex + 6]) << 8) | UInt16(data[data.startIndex + 7])
+            detected = (rsiz & 0x4000) != 0 ? "htj2k" : "j2k"
+        } else {
+            detected = "j2k"
+        }
+    } else if isNRRD {
+        detected = "nrrd"
+    } else {
+        detected = nil
+    }
     if let declared {
-        guard ["j2k", "nrrd"].contains(declared) else { throw UsageError(message: "--input-format must be j2k or nrrd.") }
+        guard ["j2k", "htj2k", "nrrd"].contains(declared) else {
+            throw UsageError(message: "--input-format must be j2k, htj2k or nrrd.")
+        }
         guard detected == declared else {
             throw ExitFailure(status: 4, message: "unsupported format: the input bytes are not \(declared) as declared.")
         }
         return declared
     }
-    guard let detected else { throw ExitFailure(status: 4, message: "unsupported format: input is neither a JPEG 2000 codestream nor NRRD.") }
+    guard let detected else {
+        throw ExitFailure(status: 4, message: "unsupported format: input is neither a JPEG 2000/HTJ2K codestream nor NRRD.")
+    }
     return detected
 }
 
@@ -483,13 +518,12 @@ private func report(_ fields: [String: Any], json: Bool, to handle: FileHandle) 
 
 private func runCodecCommand(_ command: String, _ context: CodecContext) async throws -> Int32 {
     let options = context.options
-    guard command != "transcode" else {
-        try write("\(tool): unsupported feature: native transcoding is not implemented; no input/output opened.\n", to: .standardError)
-        return 4
-    }
     guard let inputPath = options.values["--input"] else { throw UsageError(message: "\(command) requires --input.") }
     let limits = try limits(from: options)
     // Every option value is validated before any input is opened (CLI-02).
+    if let declaredInput = options.values["--input-format"], !["j2k", "htj2k", "nrrd"].contains(declaredInput) {
+        throw UsageError(message: "--input-format must be j2k, htj2k or nrrd.")
+    }
     var defaultPrecision: Int? = nil
     if let text = options.values["--precision"] {
         guard let value = Int(text), (1...16).contains(value) else { throw UsageError(message: "--precision must be 1..16.") }
@@ -509,12 +543,18 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
     let codecOptions: CodecOptions
     do { codecOptions = try CodecOptions(decompositionLevels: levels, codeBlockWidth: blockWidth, codeBlockHeight: blockHeight) }
     catch let error as CodecError { throw UsageError(message: error.message) }
-    if command != "encode", options.values["--precision"] != nil || options.values["--levels"] != nil || options.values["--code-block"] != nil {
-        throw UsageError(message: "--precision, --levels and --code-block apply to encode only.")
+    if command != "encode", options.values["--precision"] != nil {
+        throw UsageError(message: "--precision applies to encode only.")
     }
-    for (option, allowed) in [("--output", ["encode", "decode"]), ("--output-format", ["encode", "decode"])]
+    if !["encode", "transcode"].contains(command), options.values["--levels"] != nil || options.values["--code-block"] != nil {
+        throw UsageError(message: "--levels and --code-block apply to encode and transcode only.")
+    }
+    for (option, allowed) in [("--output", ["encode", "decode", "transcode"]), ("--output-format", ["encode", "decode", "transcode"])]
     where options.values[option] != nil && !allowed.contains(command) {
         throw UsageError(message: "\(option) is not accepted by \(command).")
+    }
+    if ["encode", "decode", "transcode"].contains(command), options.values["--output"] == nil {
+        throw UsageError(message: "\(command) requires --output.")
     }
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
     let started = ContinuousClock.now
@@ -528,7 +568,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
 
     switch command {
     case "inspect":
-        guard format == "j2k" else { throw ExitFailure(status: 4, message: "unsupported format: inspect reads JPEG 2000 codestreams.") }
+        guard format == "j2k" || format == "htj2k" else {
+            throw ExitFailure(status: 4, message: "unsupported format: inspect reads JPEG 2000 or HTJ2K codestreams.")
+        }
         let info = try Decoder().inspect(input, options: .init(resourceLimits: limits))
         let fields: [String: Any] = ["format": info.format, "width": info.descriptor.width, "height": info.descriptor.height,
                                      "meaningfulBits": info.descriptor.meaningfulBits, "storageBits": info.descriptor.storageBits,
@@ -539,7 +581,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
             try write("format: \(info.format)\nwidth: \(info.descriptor.width)\nheight: \(info.descriptor.height)\nmeaningful bits: \(info.descriptor.meaningfulBits)\nstorage bits: \(info.descriptor.storageBits)\ncomponents: 1\nbytes: \(input.count)\n", to: .standardOutput)
         }
     case "validate":
-        guard format == "j2k" else { throw ExitFailure(status: 4, message: "unsupported format: validate reads JPEG 2000 codestreams.") }
+        guard format == "j2k" || format == "htj2k" else {
+            throw ExitFailure(status: 4, message: "unsupported format: validate reads JPEG 2000 or HTJ2K codestreams.")
+        }
         try context.diagnostic(2, "decoding in memory")
         let decoded = try await Decoder().decode(input, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
         let elapsed = ContinuousClock.now - started
@@ -549,7 +593,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         if options.json { try report(fields, json: true, to: .standardOutput) }
         else { try write("valid: \(decoded.image.descriptor.width)x\(decoded.image.descriptor.height), \(decoded.image.descriptor.meaningfulBits) meaningful bits, \(input.count) bytes\n", to: .standardOutput) }
     case "decode":
-        guard format == "j2k" else { throw ExitFailure(status: 4, message: "unsupported format: decode reads JPEG 2000 codestreams.") }
+        guard format == "j2k" || format == "htj2k" else {
+            throw ExitFailure(status: 4, message: "unsupported format: decode reads JPEG 2000 or HTJ2K codestreams.")
+        }
         guard let outputPath = options.values["--output"] else { throw UsageError(message: "decode requires --output.") }
         if let declared = options.values["--output-format"], declared != "nrrd" {
             throw ExitFailure(status: 4, message: "unsupported format: decode writes nrrd.")
@@ -583,8 +629,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
     case "encode":
         guard format == "nrrd" else { throw ExitFailure(status: 4, message: "unsupported format: encode reads NRRD images.") }
         guard let outputPath = options.values["--output"] else { throw UsageError(message: "encode requires --output.") }
-        if let declared = options.values["--output-format"], declared != "j2k" {
-            throw ExitFailure(status: 4, message: "unsupported format: encode writes j2k.")
+        let outputFormat = options.values["--output-format"] ?? "j2k"
+        guard ["j2k", "htj2k"].contains(outputFormat) else {
+            throw ExitFailure(status: 4, message: "unsupported format: encode writes j2k or htj2k.")
         }
         let nrrd = try NRRD.parse(input, defaultPrecision: defaultPrecision)
         try context.diagnostic(3, "NRRD \(nrrd.width)x\(nrrd.height), \(nrrd.meaningfulBits) meaningful bits, \(nrrd.bigEndian ? "big" : "little") endian")
@@ -603,7 +650,10 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
             }
         }
         try context.diagnostic(2, "encoding")
-        let encoder = try Encoder(configuration: EncoderConfiguration(mode: .lossless, codecOptions: codecOptions))
+        let blockCoding: CodecOptions.BlockCoding = (outputFormat == "htj2k") ? .htj2k : .part1
+        let encodeOptions = try CodecOptions(decompositionLevels: levels, codeBlockWidth: blockWidth,
+                                             codeBlockHeight: blockHeight, blockCoding: blockCoding)
+        let encoder = try Encoder(configuration: EncoderConfiguration(mode: .lossless, codecOptions: encodeOptions))
         let encoded = try await encoder.encode(image, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
         try context.diagnostic(2, "publishing output")
         try publish(encoded.data, to: outputPath, overwrite: options.overwrite)
@@ -612,6 +662,38 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
                     "width": nrrd.width, "height": nrrd.height, "meaningfulBits": nrrd.meaningfulBits,
                     "format": encoded.encoding.format, "mode": "lossless", "backend": "scalar", "fidelity": "exactSamples",
                     "copyEvents": encoded.report.copyEvents.count, "peakWorkspaceBytes": encoded.report.peakWorkspaceBytes ?? -1,
+                    "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
+    case "transcode":
+        guard format == "j2k" || format == "htj2k" else {
+            throw ExitFailure(status: 4, message: "unsupported format: transcode reads JPEG 2000 or HTJ2K codestreams.")
+        }
+        guard let outputPath = options.values["--output"] else { throw UsageError(message: "transcode requires --output.") }
+        let targetFormat: String
+        if let declared = options.values["--output-format"] {
+            guard ["j2k", "htj2k"].contains(declared) else {
+                throw ExitFailure(status: 4, message: "unsupported format: transcode writes j2k or htj2k.")
+            }
+            targetFormat = declared
+        } else {
+            targetFormat = (format == "j2k") ? "htj2k" : "j2k"
+        }
+        guard targetFormat != format else {
+            throw ExitFailure(status: 4, message: "unsupported format: input is already \(format); transcode requires j2k -> htj2k or htj2k -> j2k.")
+        }
+        let target: TranscodeTarget = (targetFormat == "htj2k") ? .htj2k : .jpeg2000
+        try context.diagnostic(2, "transcoding \(format) -> \(targetFormat)")
+        let transcoder = try Transcoder(configuration: TranscoderConfiguration(mode: .lossless, codecOptions: codecOptions))
+        let transcoded = try await transcoder.transcode(input, to: target, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
+        try context.diagnostic(2, "publishing output")
+        try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
+        let elapsed = ContinuousClock.now - started
+        try report(["command": "transcode", "inputBytes": input.count, "outputBytes": transcoded.data.count,
+                    "sourceFormat": format == "htj2k" ? "htj2k-codestream" : "jpeg2000-codestream",
+                    "format": transcoded.encoding.format, "mode": "lossless", "backend": "scalar",
+                    "fidelity": "exactSamples", "processingPath": "coefficients",
+                    "copyEvents": transcoded.report.copyEvents.count,
+                    "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
+                    "peakWorkspaceBytes": transcoded.report.peakWorkspaceBytes ?? -1,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
     default:
         throw UsageError(message: "Unknown command.")
@@ -649,15 +731,16 @@ private func run() async throws -> Int32 {
     if options.command == "capabilities" {
         let encoder = SwiftJ2K.Encoder.capabilities
         let decoder = SwiftJ2K.Decoder.capabilities
+        let canTranscode = !SwiftJ2K.Transcoder.capabilities.isEmpty
         let formats = Array(Set(encoder.formats + decoder.formats)).sorted()
         if options.json {
             let payload: [String: Any] = ["tool": tool, "version": version, "minimumAppleOS": "26.0",
                 "canEncode": encoder.canEncode, "canDecode": decoder.canDecode,
-                "canInspect": decoder.canInspect, "formats": formats]
+                "canInspect": decoder.canInspect, "canTranscode": canTranscode, "formats": formats]
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             try FileHandle.standardOutput.write(contentsOf: data + Data([10]))
         } else {
-            try write("\(tool) \(version)\nencode: \(encoder.canEncode)\ndecode: \(decoder.canDecode)\ninspect: \(decoder.canInspect)\nformats: \(formats.isEmpty ? "none" : formats.joined(separator: ", "))\n", to: .standardOutput)
+            try write("\(tool) \(version)\nencode: \(encoder.canEncode)\ndecode: \(decoder.canDecode)\ninspect: \(decoder.canInspect)\ntranscode: \(canTranscode)\nformats: \(formats.isEmpty ? "none" : formats.joined(separator: ", "))\n", to: .standardOutput)
         }
         try diagnostic(3, "advertised formats: \(formats.count); capability values read from the library")
         try diagnostic(4, "elapsed seconds: \(elapsedSeconds(ContinuousClock.now - start))")

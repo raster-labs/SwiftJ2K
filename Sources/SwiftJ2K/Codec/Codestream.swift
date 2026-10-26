@@ -19,7 +19,74 @@ enum Marker {
     static let qcd: UInt16 = 0xFF5C, qcc: UInt16 = 0xFF5D, poc: UInt16 = 0xFF5F
     static let tlm: UInt16 = 0xFF55, plm: UInt16 = 0xFF57, plt: UInt16 = 0xFF58
     static let ppm: UInt16 = 0xFF60, ppt: UInt16 = 0xFF61, sop: UInt16 = 0xFF91, eph: UInt16 = 0xFF92
-    static let crg: UInt16 = 0xFF63, com: UInt16 = 0xFF64, cap: UInt16 = 0xFF50
+    static let crg: UInt16 = 0xFF63, com: UInt16 = 0xFF64, cap: UInt16 = 0xFF50, cpf: UInt16 = 0xFF59
+}
+
+/// Extended capabilities marker segment `CAP` (ISO/IEC 15444-15 Annex A, Table A.1–A.3).
+struct ExtendedCapabilitiesSegment: Sendable, Equatable {
+    enum CodingMode: UInt8, Sendable, Equatable {
+        case htOnly = 0       // Bits 14–15 = 0: all code-blocks are HT code-blocks
+        case htDeclared = 1   // Bits 14–15 = 1: tile-parts are either all HT or all Part 1 per COD/COC
+        case mixed = 3        // Bits 14–15 = 3: tile-parts may mix HT and Part 1 code-blocks
+    }
+
+    let pcap: UInt32
+    let ccap15: UInt16
+    let mode: CodingMode
+    let multiHT: Bool
+    let regionOfInterestPresent: Bool
+    let heterogeneousTileParts: Bool
+    let irreversible: Bool
+    let magbField: Int
+    let magnitudeBound: Int
+
+    init(ccap15: UInt16, pcap: UInt32 = 0x0002_0000) throws {
+        guard pcap == 0x0002_0000 else {
+            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 15 (HTJ2K).")
+        }
+        let rawMode = UInt8((ccap15 >> 14) & 0x03)
+        guard let mode = CodingMode(rawValue: rawMode) else {
+            throw CodecError(.malformedInput, "CAP Ccap15 bits 14–15 carry reserved value 2.")
+        }
+        let multiField = (ccap15 >> 12) & 0x03
+        guard multiField <= 1 else {
+            throw CodecError(.malformedInput, "CAP Ccap15 bits 12–13 carry reserved value \(multiField).")
+        }
+        guard (ccap15 >> 6) & 0x0F == 0 else {
+            throw CodecError(.malformedInput, "CAP Ccap15 reserved bits 6–9 must be zero.")
+        }
+        let magb = Int(ccap15 & 0x1F)
+        let bound: Int
+        if magb < 27 {
+            bound = 8 + magb
+        } else if magb < 31 {
+            bound = 35 + 4 * (magb - 27)
+        } else {
+            bound = 74
+        }
+        self.pcap = pcap
+        self.ccap15 = ccap15
+        self.mode = mode
+        self.multiHT = (multiField == 1)
+        self.regionOfInterestPresent = ((ccap15 >> 11) & 0x01) != 0
+        self.heterogeneousTileParts = ((ccap15 >> 10) & 0x01) != 0
+        self.irreversible = ((ccap15 >> 5) & 0x01) != 0
+        self.magbField = magb
+        self.magnitudeBound = bound
+    }
+
+    /// Builds a Part 15 `HTONLY` / `SINGLEHT` / `HTREV` `CAP` segment for the given quantization segment.
+    static func losslessHTOnly(for qcd: QuantizationSegment) throws -> Self {
+        let maxExponent = qcd.exponents.max() ?? 0
+        let maxMb = qcd.guardBits + maxExponent - 1
+        let magb = UInt16(max(0, min(26, maxMb - 8)))
+        return try Self(ccap15: magb)
+    }
+}
+
+/// Corresponding profile marker segment `CPF` (0xFF59).
+struct CorrespondingProfileSegment: Sendable, Equatable {
+    let values: [UInt16]
 }
 
 struct ComponentSignalling: Sendable, Equatable {
@@ -70,6 +137,17 @@ struct CodingStyleSegment: Sendable, Equatable {
         guard usesPrecincts, r < precinctExponents.count else { return (15, 15) }
         return precinctExponents[r]
     }
+
+    /// Merges a COC segment over this COD segment, preserving COD-only fields.
+    func applying(coc: CodingStyleSegment) -> CodingStyleSegment {
+        var merged = coc
+        merged.usesSOP = usesSOP
+        merged.usesEPH = usesEPH
+        merged.progression = progression
+        merged.layers = layers
+        merged.componentTransform = componentTransform
+        return merged
+    }
 }
 
 /// QCD marker segment (A.6.4).
@@ -101,12 +179,25 @@ struct TileHeaderOverrides: Sendable {
 /// Everything the main header and the tile-part headers declare.
 struct ParsedCodestream: Sendable {
     let size: ImageSizeSegment
+    let extendedCapabilities: ExtendedCapabilitiesSegment?
+    let correspondingProfile: CorrespondingProfileSegment?
     let codingStyle: CodingStyleSegment           // COD merged with any COC for component 0
     let quantization: QuantizationSegment         // QCD merged with any QCC for component 0
     let tileParts: [TilePartRecord]
     let tileOverrides: [Int: TileHeaderOverrides]
     let sawEndOfCodestream: Bool
     let mainHeaderMarkers: [UInt16]
+
+    /// Whether the codestream signals Part 15 (HTJ2K) extended capabilities or HT block coding.
+    var isHTJ2K: Bool {
+        if extendedCapabilities != nil { return true }
+        if (codingStyle.codeBlockStyle & 0x40) != 0 { return true }
+        for override in tileOverrides.values {
+            if let cod = override.codingStyle, (cod.codeBlockStyle & 0x40) != 0 { return true }
+            if let coc = override.componentCodingStyle, (coc.codeBlockStyle & 0x40) != 0 { return true }
+        }
+        return false
+    }
 
     /// Effective coding style and quantization for a tile (COC/QCC beat COD/QCD;
     /// tile-part header segments beat main header segments).
@@ -118,7 +209,7 @@ struct ParsedCodestream: Sendable {
                 // component-specific segment always wins over the general one at the same scope.
                 cod = tileCOD
             }
-            if let tileCOC = overrides.componentCodingStyle { cod = tileCOC }
+            if let tileCOC = overrides.componentCodingStyle { cod = cod.applying(coc: tileCOC) }
             if let tileQCD = overrides.quantization { qcd = tileQCD }
             if let tileQCC = overrides.componentQuantization { qcd = tileQCC }
         }
@@ -135,6 +226,8 @@ enum CodestreamSyntax {
             throw CodecError(.unsupportedFormat, "Input does not begin with a JPEG 2000 codestream SOC marker.")
         }
         var size: ImageSizeSegment?
+        var cap: ExtendedCapabilitiesSegment?
+        var cpf: CorrespondingProfileSegment?
         var cod: CodingStyleSegment?
         var coc: [Int: CodingStyleSegment] = [:]
         var qcd: QuantizationSegment?
@@ -151,6 +244,14 @@ enum CodestreamSyntax {
             case Marker.siz:
                 guard size == nil else { throw CodecError(.malformedInput, "Duplicate SIZ marker segment.") }
                 size = try parseSIZ(payload, limits: limits)
+            case Marker.cap:
+                guard size != nil else { throw CodecError(.malformedInput, "CAP precedes SIZ.") }
+                guard cap == nil else { throw CodecError(.malformedInput, "Duplicate CAP marker segment.") }
+                cap = try parseCAP(payload)
+            case Marker.cpf:
+                guard size != nil else { throw CodecError(.malformedInput, "CPF precedes SIZ.") }
+                guard cpf == nil else { throw CodecError(.malformedInput, "Duplicate CPF marker segment.") }
+                cpf = try parseCPF(payload)
             case Marker.cod:
                 guard size != nil else { throw CodecError(.malformedInput, "COD precedes SIZ.") }
                 guard cod == nil else { throw CodecError(.malformedInput, "Duplicate COD marker segment.") }
@@ -172,8 +273,6 @@ enum CodestreamSyntax {
                 throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
             case Marker.ppm:
                 throw CodecError(.unsupportedFeature, "Packed packet headers (PPM) are not supported.")
-            case Marker.cap:
-                throw CodecError(.unsupportedFeature, "Extended capabilities (CAP) signal Part 2 or Part 15 coding, which is not supported.")
             case Marker.tlm, Marker.plm, Marker.crg, Marker.com:
                 break
             default:
@@ -187,7 +286,7 @@ enum CodestreamSyntax {
         guard let size else { throw CodecError(.malformedInput, "Main header has no SIZ marker segment.") }
         guard var codingStyle = cod else { throw CodecError(.malformedInput, "Main header has no COD marker segment.") }
         guard var quantization = qcd else { throw CodecError(.malformedInput, "Main header has no QCD marker segment.") }
-        if let override = coc[0] { codingStyle = override }
+        if let override = coc[0] { codingStyle = codingStyle.applying(coc: override) }
         if let override = qcc[0] { quantization = override }
 
         // Tile-parts.
@@ -265,9 +364,93 @@ enum CodestreamSyntax {
             }
         }
         guard !tileParts.isEmpty else { throw CodecError(.malformedInput, "Codestream contains no tile-part.") }
-        return ParsedCodestream(size: size, codingStyle: codingStyle, quantization: quantization,
-                                tileParts: tileParts, tileOverrides: tileOverrides,
-                                sawEndOfCodestream: sawEOC, mainHeaderMarkers: markers)
+
+        let parsed = ParsedCodestream(
+            size: size,
+            extendedCapabilities: cap,
+            correspondingProfile: cpf,
+            codingStyle: codingStyle,
+            quantization: quantization,
+            tileParts: tileParts,
+            tileOverrides: tileOverrides,
+            sawEndOfCodestream: sawEOC,
+            mainHeaderMarkers: markers
+        )
+        try validateHTSignalling(parsed)
+        return parsed
+    }
+
+    private static func validateHTSignalling(_ parsed: ParsedCodestream) throws {
+        let rsizSignalsCAP = (parsed.size.capabilities & 0x4000) != 0
+        if rsizSignalsCAP && parsed.extendedCapabilities == nil {
+            throw CodecError(.malformedInput, "SIZ Rsiz sets bit 14 (0x4000) without a CAP marker segment.")
+        }
+        if !rsizSignalsCAP && parsed.extendedCapabilities != nil {
+            throw CodecError(.malformedInput, "CAP marker segment is present without SIZ Rsiz bit 14 (0x4000).")
+        }
+
+        // Collect all effective CodingStyleSegments (main header and any tile overrides).
+        var styles: [CodingStyleSegment] = [parsed.codingStyle]
+        for tileIndex in parsed.tileOverrides.keys.sorted() {
+            styles.append(parsed.effectiveParameters(tile: tileIndex).0)
+        }
+
+        for style in styles {
+            let htBit = (style.codeBlockStyle & 0x40) != 0
+            let mixedBit = (style.codeBlockStyle & 0x80) != 0
+            if mixedBit && !htBit {
+                throw CodecError(.malformedInput, "COD/COC sets HT mixed bit (0x80) without HT coding bit (0x40).")
+            }
+            if htBit {
+                guard let cap = parsed.extendedCapabilities else {
+                    throw CodecError(.malformedInput, "COD/COC enables HTJ2K block coding (0x40) without a Part 15 CAP marker segment.")
+                }
+                if mixedBit && cap.mode != .mixed {
+                    throw CodecError(.malformedInput, "COD/COC enables mixed HT/Part 1 coding (0xC0) when CAP Ccap15 is not HTMIXED.")
+                }
+            }
+        }
+
+        if let cap = parsed.extendedCapabilities {
+            if cap.mode == .htOnly {
+                for style in styles where (style.codeBlockStyle & 0x40) == 0 {
+                    throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
+                }
+            }
+        }
+    }
+
+    static func parseCAP(_ payload: [UInt8]) throws -> ExtendedCapabilitiesSegment {
+        var r = ByteReader(payload)
+        guard payload.count >= 4 else {
+            throw CodecError(.malformedInput, "CAP marker segment is shorter than 4 bytes.")
+        }
+        let pcap = try r.readUInt32()
+        let count = pcap.nonzeroBitCount
+        guard payload.count == 4 + 2 * count else {
+            throw CodecError(.malformedInput, "CAP marker segment length disagrees with Pcap bit count.")
+        }
+        guard pcap != 0 else {
+            throw CodecError(.malformedInput, "CAP marker segment Pcap is zero.")
+        }
+        guard pcap == 0x0002_0000 else {
+            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 15 (HTJ2K).")
+        }
+        let ccap15 = try r.readUInt16()
+        return try ExtendedCapabilitiesSegment(ccap15: ccap15, pcap: pcap)
+    }
+
+    static func parseCPF(_ payload: [UInt8]) throws -> CorrespondingProfileSegment {
+        guard payload.count >= 2, payload.count % 2 == 0 else {
+            throw CodecError(.malformedInput, "CPF marker segment has an invalid length.")
+        }
+        var r = ByteReader(payload)
+        var values: [UInt16] = []
+        values.reserveCapacity(payload.count / 2)
+        while !r.isAtEnd {
+            values.append(try r.readUInt16())
+        }
+        return CorrespondingProfileSegment(values: values)
     }
 
     private static func readSegmentPayload(_ reader: inout ByteReader, marker: UInt16) throws -> [UInt8] {
@@ -434,6 +617,19 @@ enum CodestreamSyntax {
             p.writeUInt8(UInt8(component.verticalSeparation))
         }
         try w.writeSegment(marker: Marker.siz, payload: p.bytes)
+    }
+
+    static func writeCAP(_ cap: ExtendedCapabilitiesSegment, into w: inout ByteWriter) throws {
+        var p = ByteWriter(capacity: 6)
+        p.writeUInt32(cap.pcap)
+        p.writeUInt16(cap.ccap15)
+        try w.writeSegment(marker: Marker.cap, payload: p.bytes)
+    }
+
+    static func writeCPF(_ cpf: CorrespondingProfileSegment, into w: inout ByteWriter) throws {
+        var p = ByteWriter(capacity: 2 * cpf.values.count)
+        for value in cpf.values { p.writeUInt16(value) }
+        try w.writeSegment(marker: Marker.cpf, payload: p.bytes)
     }
 
     static func writeCOD(_ cod: CodingStyleSegment, into w: inout ByteWriter) throws {

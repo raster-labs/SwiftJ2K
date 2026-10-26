@@ -78,7 +78,7 @@ enum Wavelet53 {
     }
 
     /// 1D_SR: reconstructs `x` over [i0, i0+n) from `low`/`high`.
-    static func synthesise(low: [Int32], high: [Int32], i0: Int, count n: Int, into x: inout [Int32]) {
+    static func synthesise(low: [Int32], high: [Int32], i0: Int, count n: Int, into x: inout [Int32]) throws {
         let i1 = i0 + n
         if n == 1 {
             x[0] = i0 & 1 == 0 ? low[0] : high[0] / 2
@@ -98,16 +98,28 @@ enum Wavelet53 {
         evenValues.reserveCapacity((lastEven - firstEven) / 2 + 1)
         var i = firstEven
         while i <= lastEven {
-            let left = extended(y, i0: i0, n: n, at: i - 1), right = extended(y, i0: i0, n: n, at: i + 1)
-            evenValues.append(extended(y, i0: i0, n: n, at: i) - ((left + right + 2) >> 2))
+            let left = Int64(extended(y, i0: i0, n: n, at: i - 1))
+            let right = Int64(extended(y, i0: i0, n: n, at: i + 1))
+            let center = Int64(extended(y, i0: i0, n: n, at: i))
+            let even = center - ((left + right + 2) >> 2)
+            guard even >= Int64(Int32.min), even <= Int64(Int32.max) else {
+                throw CodecError(.malformedInput, "Wavelet synthesis overflowed the 32-bit coefficient range.")
+            }
+            evenValues.append(Int32(even))
             i += 2
         }
         @inline(__always) func evenX(_ coordinate: Int) -> Int32 { evenValues[(coordinate - firstEven) / 2] }
         // X(2n+1) = Y(2n+1) + floor((X(2n) + X(2n+2)) / 2) for odd coordinates in [i0, i1)
         for coordinate in i0..<i1 {
-            x[coordinate - i0] = coordinate & 1 == 0
-                ? evenX(coordinate)
-                : y[coordinate - i0] + ((evenX(coordinate - 1) + evenX(coordinate + 1)) >> 1)
+            if coordinate & 1 == 0 {
+                x[coordinate - i0] = evenX(coordinate)
+            } else {
+                let odd = Int64(y[coordinate - i0]) + ((Int64(evenX(coordinate - 1)) + Int64(evenX(coordinate + 1))) >> 1)
+                guard odd >= Int64(Int32.min), odd <= Int64(Int32.max) else {
+                    throw CodecError(.malformedInput, "Wavelet synthesis overflowed the 32-bit coefficient range.")
+                }
+                x[coordinate - i0] = Int32(odd)
+            }
         }
     }
 
@@ -161,14 +173,14 @@ enum Wavelet53 {
             for y in 0..<h {
                 for i in 0..<lowW { low[i] = plane[y * stride + i] }
                 for i in 0..<(w - lowW) { high[i] = plane[y * stride + lowW + i] }
-                synthesise(low: low, high: high, i0: rx0, count: w, into: &line)
+                try synthesise(low: low, high: high, i0: rx0, count: w, into: &line)
                 for x in 0..<w { plane[y * stride + x] = line[x] }
                 if y & 63 == 63 { try cancellation() }
             }
             for x in 0..<w {
                 for i in 0..<lowH { low[i] = plane[i * stride + x] }
                 for i in 0..<(h - lowH) { high[i] = plane[(lowH + i) * stride + x] }
-                synthesise(low: low, high: high, i0: ry0, count: h, into: &line)
+                try synthesise(low: low, high: high, i0: ry0, count: h, into: &line)
                 for y in 0..<h { plane[y * stride + x] = line[y] }
                 if x & 63 == 63 { try cancellation() }
             }

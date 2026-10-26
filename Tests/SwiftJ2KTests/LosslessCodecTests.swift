@@ -96,7 +96,7 @@ func independentCodestreamsDecodeToTheGeneratedSamples(key: String) async throws
 }
 
 @Test(arguments: ["precincts", "sop_eph", "rpcl", "cprl", "kdu_tileparts", "kdu_plt",
-                  "tiled", "layers2", "bypass", "termall", "segsym"])
+                  "tiled", "layers2", "bypass", "termall", "segsym", "kdu_ht"])
 func supportedSyntaxVariantsDecodeExactly(variant: String) async throws {
     let entry = Fixtures.manifest.fixtures.first { $0.name == "g16_64x64_random" }!
     let data = try Fixtures.bytes("g16_64x64_random.\(variant).j2k")
@@ -104,7 +104,7 @@ func supportedSyntaxVariantsDecodeExactly(variant: String) async throws {
     try expectSamples(decoded.image, equal: try Fixtures.samples(entry), width: 64, height: 64)
 }
 
-@Test(arguments: [("irreversible97", "9/7"), ("kdu_ht", "Part 15")])
+@Test(arguments: [("irreversible97", "9/7")])
 func validButUnsupportedCodestreamsAreRejectedBeforeDecoding(variant: String, expected: String) async throws {
     let data = try Fixtures.bytes("g16_64x64_random.\(variant).j2k")
     let decoder = try Decoder()

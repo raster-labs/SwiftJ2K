@@ -219,6 +219,10 @@ enum SharedStorageProof {
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
         .appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/Lossless")
+    static let htj2kFixturesDirectory = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/HTJ2K")
 
     /// Sentinel-filled caller allocation; borrows are counted by the harness.
     final class SentinelOwner: SwiftJ2K.WritableImageStorage, @unchecked Sendable {
@@ -394,6 +398,95 @@ enum SharedStorageProof {
             } catch let error as SwiftJ2K.CodecError { try require(error.category == .storageUnavailable, "Unexpected second-writer error.") }
 
             print("PASS: \(c.name) \(c.width)x\(c.height)@\(c.bits) prefix \(c.prefix) padding \(c.padding): decoded into the caller owner (1 allocation, 1 write borrow, identity kept, padding intact), re-encoded from it (\(readsAfter - readsBefore) read borrow, \(encoded.data.count) bytes, workspace \(encoded.report.peakWorkspaceBytes ?? -1) bytes), live heap +\(heldAfterDecode) B after decode and +\(heapAfterEncode - heapBefore) B after encode, oracles \(oracles.isEmpty ? "none available" : oracles.joined(separator: "+")) exact; JPEG-LS leg \(jpegLSLeg)")
+        }
+
+        // Milestone 6: HTJ2K shared-storage decode/encode and native J2K <-> HTJ2K coefficient transcoding.
+        let htCases: [(name: String, file: String, width: Int, height: Int, bits: Int, prefix: Int, padding: Int)] = [
+            ("g12_129x67_gradient", "g12_129x67_gradient.ojph.j2c", 129, 67, 12, 6, 10),
+            ("g16_17x9_alternating", "g16_17x9_alternating.kdu_ht.j2k", 17, 9, 16, 2, 4),
+            ("g16_256x256_smooth", "g16_256x256_smooth.ojph_b32.j2c", 256, 256, 16, 0, 0),
+        ]
+        let transcoder = try SwiftJ2K.Transcoder()
+        let htEncoder = try SwiftJ2K.Encoder(configuration: .init(codecOptions: try .init(blockCoding: .htj2k)))
+        for c in htCases {
+            let expected = try pgmSamples(fixturesDirectory.appendingPathComponent(c.name + ".pgm"), count: c.width * c.height)
+            let codestream = try Data(contentsOf: htj2kFixturesDirectory.appendingPathComponent(c.file))
+            let rowBytes = c.width * 2 + c.padding
+            let capacity = c.prefix + rowBytes * c.height
+            let metrics = Metrics()
+            let descriptorsBefore = openDescriptors()
+            let heapBefore = liveHeapBytes()
+
+            let owner = SentinelOwner(byteCount: capacity, metrics: metrics)
+            let descriptor = try SwiftJ2K.ImageDescriptor.greyscale16(width: c.width, height: c.height, meaningfulBits: c.bits, rowBytes: rowBytes, offset: c.prefix)
+            let destination = try SwiftJ2K.ImageDestination(descriptor: descriptor, storage: owner)
+            let decoder = try SwiftJ2K.Decoder()
+            let info = try decoder.inspect(codestream)
+            try require(info.format == "htj2k-codestream" && info.descriptor.width == c.width && info.descriptor.meaningfulBits == c.bits, "HTJ2K inspection disagrees with fixture.")
+
+            let decoded = try await decoder.decode(codestream, into: destination)
+            let heapAfterDecode = liveHeapBytes()
+            try require(decoded.image.storage.allocationID == owner.allocationID, "HTJ2K decode changed allocation identity.")
+            try require(decoded.report.pixelAllocationCount == 0 && decoded.report.copyEvents.isEmpty, "HTJ2K decode reported an allocation or copy.")
+            try owner.read { bytes in
+                for i in 0..<c.prefix { try require(bytes[i] == 0xA5, "HTJ2K prefix byte was written.") }
+                for y in 0..<c.height {
+                    for p in (c.width * 2)..<rowBytes { try require(bytes[c.prefix + y * rowBytes + p] == 0xA5, "HTJ2K padding byte was written.") }
+                    for x in 0..<c.width {
+                        let at = c.prefix + y * rowBytes + x * 2
+                        try require(UInt16(bytes[at]) | UInt16(bytes[at + 1]) << 8 == expected[y * c.width + x], "HTJ2K decoded sample differs.")
+                    }
+                }
+            }
+
+            let readsBefore = metrics.counts.withLock { $0.reads }
+            let reencodedHT = try await htEncoder.encode(decoded.image)
+            let readsAfter = metrics.counts.withLock { $0.reads }
+            try require(readsAfter == readsBefore + 1, "HTJ2K encoder did not read the owner exactly once.")
+            try require(reencodedHT.encoding.format == "htj2k-codestream" && reencodedHT.report.pixelAllocationCount == 0 && reencodedHT.report.copyEvents.isEmpty, "HTJ2K encode reported an allocation or copy.")
+
+            // Native compressed-to-compressed transcode: HTJ2K -> Part 1 -> HTJ2K.
+            let toPart1 = try await transcoder.transcode(codestream, to: .jpeg2000)
+            let backToHT = try await transcoder.transcode(toPart1.data, to: .htj2k)
+            try require(toPart1.encoding.format == "jpeg2000-codestream" && toPart1.report.pixelAllocationCount == 0 && toPart1.report.copyEvents.isEmpty, "HT->J2K transcode reported pixel allocation or copy.")
+            try require(backToHT.encoding.format == "htj2k-codestream" && backToHT.report.pixelAllocationCount == 0 && backToHT.report.copyEvents.isEmpty, "J2K->HT transcode reported pixel allocation or copy.")
+            let heapAfterTranscode = liveHeapBytes()
+
+            var oracles: [String] = []
+            let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("swiftj2k-ht-harness-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: temporary) }
+            let htInput = temporary.appendingPathComponent("re-encoded.j2c")
+            let part1Input = temporary.appendingPathComponent("transcoded.j2k")
+            let roundtripHTInput = temporary.appendingPathComponent("transcoded.j2c")
+            try reencodedHT.data.write(to: htInput)
+            try toPart1.data.write(to: part1Input)
+            try backToHT.data.write(to: roundtripHTInput)
+            for (label, tool, extra) in [
+                ("OpenJPH", "/opt/homebrew/bin/ojph_expand", [String]()),
+                ("Kakadu", "/usr/local/bin/kdu_expand", ["-quiet"]),
+                ("OpenJPEG", "/opt/homebrew/bin/opj_decompress", [String]()),
+            ] where FileManager.default.isExecutableFile(atPath: tool) {
+                for (tag, file) in [("ht", htInput), ("rt-ht", roundtripHTInput)] + (label == "OpenJPH" ? [] : [("part1", part1Input)]) {
+                    let output = temporary.appendingPathComponent("\(label)-\(tag).pgm")
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: tool)
+                    process.arguments = ["-i", file.path, "-o", output.path] + extra
+                    process.standardOutput = FileHandle.nullDevice; process.standardError = FileHandle.nullDevice
+                    try process.run(); process.waitUntilExit()
+                    try require(process.terminationStatus == 0, "\(label) rejected \(tag) codestream.")
+                    try require(try pgmSamples(output, count: c.width * c.height) == expected, "\(label) decoded different samples for \(tag).")
+                }
+                oracles.append(label)
+            }
+
+            let counts = metrics.counts.withLock { $0 }
+            try require(counts.allocations == 1 && counts.writes == 1, "Expected one HTJ2K owner allocation and one write borrow.")
+            let heldAfterDecode = heapAfterDecode - heapBefore
+            try require(heldAfterDecode < capacity + 64 * 1024, "Live heap grew by \(heldAfterDecode) B after HTJ2K decode.")
+            try require(openDescriptors() == descriptorsBefore, "A file descriptor was opened by the HTJ2K/transcode library path.")
+
+            print("PASS: HTJ2K+Transcode \(c.name) \(c.width)x\(c.height)@\(c.bits) prefix \(c.prefix) padding \(c.padding): HT decoded into caller owner (1 allocation, 1 write borrow, padding intact), HT re-encoded (\(reencodedHT.data.count) B), coefficient-transcoded HT->J2K (\(toPart1.data.count) B, 0 pixel allocs) and J2K->HT (\(backToHT.data.count) B, 0 pixel allocs), live heap +\(heldAfterDecode) B after decode and +\(heapAfterTranscode - heapBefore) B after transcode, oracles \(oracles.isEmpty ? "none available" : oracles.joined(separator: "+")) exact")
         }
     }
 }

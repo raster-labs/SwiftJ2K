@@ -59,24 +59,31 @@ struct TileGeometry: Sendable {
     var codeBlockCount: Int { resolutions.reduce(0) { $0 + $1.precincts.reduce(0) { $0 + $1.blockCount } } }
 }
 
-/// Code-block style bits (Table A.19).
+/// Code-block style bits (Table A.19 and ISO/IEC 15444-15 Table A.4).
 struct CodeBlockStyle: Sendable, Equatable {
     let bypass: Bool, reset: Bool, terminateAll: Bool, causal: Bool, predictable: Bool, segmentationSymbols: Bool
+    let ht: Bool, htMixed: Bool
     init(bits: UInt8) {
         bypass = bits & 0x01 != 0; reset = bits & 0x02 != 0; terminateAll = bits & 0x04 != 0
         causal = bits & 0x08 != 0; predictable = bits & 0x10 != 0; segmentationSymbols = bits & 0x20 != 0
+        ht = bits & 0x40 != 0; htMixed = bits & 0x80 != 0
     }
     static let `default` = CodeBlockStyle(bits: 0)
 
     /// Whether coding pass `index` (0 = the first cleanup pass) ends a
     /// codeword segment (Table D.9 / D.10).
     func passTerminates(_ index: Int) -> Bool {
+        if ht {
+            // In Part 15, bit 0 (`bypass`) signals the presence of HT SigProp/MagRef refinement
+            // passes in a second codeword segment (`Lref`) after the cleanup pass (`Lcup`).
+            return bypass && index == 0
+        }
         if terminateAll { return true }
         if bypass { return index == 9 || (index >= 10 && (index - 10) % 3 != 0) }
         return false
     }
     /// Whether coding pass `index` is coded raw under selective bypass.
-    func passIsRaw(_ index: Int) -> Bool { bypass && index >= 10 && (index - 10) % 3 != 2 }
+    func passIsRaw(_ index: Int) -> Bool { !ht && bypass && index >= 10 && (index - 10) % 3 != 2 }
 }
 
 /// Bytes of one codeword segment, concatenated across layers.
@@ -88,6 +95,7 @@ struct CodewordSegment: Sendable {
 /// What packets have contributed to one code-block so far.
 struct CodeBlockContribution: Sendable {
     var included = false
+    var isHT = false
     var lblock = 3
     var zeroBitPlanes = 0
     var passes = 0
@@ -334,7 +342,8 @@ enum Tier2 {
                                 .decode(reader: &reader, leaf: k, threshold: Int32(address.layer + 1))
                         }
                         guard included else { continue }
-                        if !state.included {
+                        let firstInclusion = !state.included
+                        if firstInclusion {
                             var threshold: Int32 = 1
                             while try !trees[address.resolution][address.precinct].msb[b].decode(reader: &reader, leaf: k, threshold: threshold) {
                                 threshold += 1
@@ -342,6 +351,9 @@ enum Tier2 {
                             }
                             state.included = true
                             state.zeroBitPlanes = Int(trees[address.resolution][address.precinct].msb[b].value(leaf: k))
+                            if style.ht && !style.htMixed {
+                                state.isHT = true
+                            }
                         }
                         let newPasses = try readPassCount(&reader)
                         while try reader.readBit() {
@@ -350,7 +362,17 @@ enum Tier2 {
                         }
                         let chunks = segmentPassCounts(start: state.passes, count: newPasses, style: style)
                         var lengths: [Int] = []
-                        for chunk in chunks { lengths.append(try reader.readBits(state.lblock + floorLog2(chunk))) }
+                        for (chunkIndex, chunk) in chunks.enumerated() {
+                            let bitCount = state.lblock + floorLog2(chunk)
+                            let length = try reader.readBits(bitCount)
+                            if firstInclusion && chunkIndex == 0 && style.ht && style.htMixed {
+                                // ISO/IEC 15444-15 Clause B.10.6: in mixed HT/Part 1 mode, an HT
+                                // code-block signals lblock > 3 on first inclusion and has the MSB
+                                // of its first length field equal to 0.
+                                state.isHT = state.lblock > 3 && bitCount >= 1 && ((length >> (bitCount - 1)) == 0)
+                            }
+                            lengths.append(length)
+                        }
                         order.append((b, k, chunks, lengths))
                         result[address.resolution][address.precinct][b][k] = state
                     }
@@ -370,9 +392,14 @@ enum Tier2 {
                     guard cursor + length <= end else {
                         throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
                     }
-                    // Continue an open segment or start a new one.
-                    let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
-                    if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
+                    if state.isHT {
+                        if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
+                            state.segments.append(CodewordSegment())
+                        }
+                    } else {
+                        let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
+                        if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
+                    }
                     state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
                     state.segments[state.segments.count - 1].passes += chunk
                     state.passes += chunk

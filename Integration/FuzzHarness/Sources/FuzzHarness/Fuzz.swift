@@ -132,13 +132,13 @@ struct Fuzz {
         let slowMilliseconds = Double(option("--slow-ms") ?? "2000") ?? 2000
         let corpus = URL(fileURLWithPath: option("--corpus") ?? "Tests/SwiftJ2KTests/Fixtures/Lossless")
         let output = URL(fileURLWithPath: option("--output") ?? "fuzz-output")
-        guard ["inspect", "decode", "decodeInto"].contains(entry) else {
+        guard ["inspect", "decode", "decodeInto", "transcodeToHT", "transcodeToJ2K"].contains(entry) else {
             FileHandle.standardError.write(Data("unknown --entry \(entry)\n".utf8)); exit(2)
         }
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
 
         let names = try FileManager.default.contentsOfDirectory(atPath: corpus.path)
-            .filter { $0.hasSuffix(".j2k") }.sorted()
+            .filter { $0.hasSuffix(".j2k") || $0.hasSuffix(".j2c") }.sorted()
         let seeds = try names.map { [UInt8](try Data(contentsOf: corpus.appendingPathComponent($0))) }
         guard !seeds.isEmpty else { FileHandle.standardError.write(Data("empty corpus\n".utf8)); exit(2) }
 
@@ -146,7 +146,9 @@ struct Fuzz {
                                         maximumWorkspaceBytes: 256 << 20, maximumPixels: 8_000_000,
                                         maximumDimension: 8192, deadlineSeconds: 5, maximumMemoryBytes: 512 << 20)
         let options = DecodeOptions(resourceLimits: limits)
+        let transcodeOptions = TranscodeOptions(resourceLimits: limits)
         let decoder = try Decoder()
+        let transcoder = try Transcoder()
         let mutator = Mutator(seeds: seeds)
         var rng = SplitMix64(state: seed)
         let clock = ContinuousClock()
@@ -191,6 +193,10 @@ struct Fuzz {
                     _ = try decoder.inspect(data, options: options)
                 case "decode":
                     _ = try await decoder.decode(data, options: options)
+                case "transcodeToHT":
+                    _ = try await transcoder.transcode(data, to: .htj2k, options: transcodeOptions)
+                case "transcodeToJ2K":
+                    _ = try await transcoder.transcode(data, to: .jpeg2000, options: transcodeOptions)
                 default:
                     let info = try decoder.inspect(data, options: options)
                     let destination = try ImageDestination.allocate(descriptor: info.descriptor, limits: limits)

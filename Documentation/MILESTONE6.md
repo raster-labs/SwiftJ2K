@@ -1,6 +1,13 @@
 # Milestone 6 — HTJ2K
 
-Started 25 September 2026 on the owner's assignment ("merge PR 18 and start Milestone 6"), on branch `milestone6/htj2k` from `be4e7a3ad352759e7a78a90f6a2e2c3b7aa0f748` (the merge of pull request 18). Contract **0.10.0**; pinned predecessor Raster-Lab/J2KSwift `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`. Scope from IMPLEMENTATION.md's programme: Part 15 block coder (MEL, VLC, MagSgn, cleanup), CAP/CPF/COD HT signalling, HT decode and encode for the current greyscale lossless profile (HT Rev Only first, then HT Only and mixed), and lossless J2K ↔ HTJ2K transcoding in memory and through `swiftj2k-cli transcode` per TRANSCODING.md and POL-09. Oracles: OpenJPH 0.30.1 (BSD-2-Clause, Part 15 reference), Kakadu 8.4.1 (`Cmodes=HT`), OpenJPEG 2.5.4 (Part 15 decode). This record separates what was executed from what remains open.
+Started 25 September 2026 on the owner's assignment ("merge PR 18 and start Milestone 6"), on branch `milestone6/htj2k` from `be4e7a3ad352759e7a78a90f6a2e2c3b7aa0f748` (the merge of pull request 18). Continued 26 October 2026 under delegated development and independent audit (`/Users/raster/Downloads/delegated-development-audit/SKILL.md`):
+- **Branch**: `antigravity/milestone6-htj2k-transcoding` created from `origin/milestone6/htj2k` (`682fd7a3f60c9ec5b56c0a7cb0eb052e1558a0ce`), merge-base with `origin/main` verified as `be4e7a3ad352759e7a78a90f6a2e2c3b7aa0f748`. Working tree verified clean before branch creation and before writes; `main` untouched.
+- **Implementation owner**: Antigravity (Gemini 4 Argon High) — sole implementation writer.
+- **Independent auditor**: Codex (orchestration state in `/Users/raster/Documents/Codex/2026-10-13/che/outputs/swiftj2k-milestone6-audit.json`; exclusive validation claim `/Users/raster/Documents/Codex/2026-10-13/che/work/swiftj2k-audit/audit.claim`).
+- **Merge and release authority**: User only.
+- **Workflow status**: `ready-for-audit` (complete implementation, verification suites, sanitizers, bounded fuzz campaigns, CLI conformance, and controlled release benchmark recorded under `Documentation/Engineering/Milestone6/Evidence/`; awaiting independent Codex audit and user merge).
+
+Contract **0.10.0**; pinned predecessor Raster-Lab/J2KSwift `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`. Scope from IMPLEMENTATION.md's programme: Part 15 block coder (MEL, VLC, MagSgn, cleanup), CAP/CPF/COD HT signalling, HT decode and encode for the current greyscale lossless profile (HT Rev Only first, then HT Only and mixed), and lossless J2K ↔ HTJ2K transcoding in memory and through `swiftj2k-cli transcode` per TRANSCODING.md and POL-09. Oracles: OpenJPH 0.30.1 (BSD-2-Clause, Part 15 reference), Kakadu 8.4.1 (`Cmodes=HT`), OpenJPEG 2.5.4 (Part 15 decode). This record separates what was executed from what remains open.
 
 ## Predecessor audit
 
@@ -20,11 +27,11 @@ Read at the pinned revision with `git show 7acc9ae4…:<path>` (the local J2KSwi
 
 **`J2KTranscoder.swift` is not a transcoder and nothing in it migrates.** It parses no packet headers (the whole tile's bytes are handed to every block), replaces any block decode failure with zeros, right-shifts subband sizes (wrong for odd sizes), re-encodes with the custom `HTJ2KEncoder`, concatenates block payloads without packet headers and reports `metadataPreserved: true` unconditionally; its tests assert non-empty output. The CLI's other transcode cases decode to pixels and re-encode. TRANSCODING.md's Milestone 2 audit stands.
 
-**Licence and provenance.** The conformant block coder is an acknowledged port of OpenJPH (BSD-2-Clause) inside the MIT-licensed predecessor. Adapting it therefore brings BSD-2-Clause-derived code into this repository: permitted, but it requires OpenJPH's copyright and licence text to be retained in the adapted files and THIRD_PARTY_NOTICES.md's statement that the shipped products contain no third-party source to be amended. **This is an owner decision recorded as open below**; the alternative is an independent implementation of the Part 15 block coder from the standard.
+**Licence and provenance.** The conformant block coder is an acknowledged port of OpenJPH (BSD-2-Clause) inside the MIT-licensed predecessor. Adapting it therefore brings BSD-2-Clause-derived code into this repository: permitted, and requires OpenJPH's copyright and licence text to be retained in the adapted files and `THIRD_PARTY_NOTICES.md` to be amended to disclose the BSD-2-Clause OpenJPH-derived code in the shipped products. **Owner decision resolved 26 October 2026: "Adapt the existing coder with its notices (recommended)."**
 
 **What migrates, what is written new.**
 
-| Adapted with provenance (subject to the licence decision) | Written new against ISO/IEC 15444-15 and Part 1 |
+| Adapted with provenance (owner decision approved 26 October 2026) | Written new against ISO/IEC 15444-15 and Part 1 |
 | --- | --- |
 | VLC/UVLC tables and lookup construction; MEL, VLC and MagSgn coders; forward/reverse bit streams; block layout (Lcup/Scup); cleanup-pass encoder loop and decoder state machine; the K_max rule of v10.24.1 | CAP (Pcap, Ccap15 with the reversible and MAGB fields) and CPF parsing and writing; code-block style bits 6 and 7 (HT, HT mixed); HT packet-header segment rules and pass accounting; magnitude scaling by 2^(K_max − 1 − missingMSBs); rejection of unsupported HT pass structures (SigProp/MagRef, multiple HT sets) with `unsupportedFeature` until implemented; the J2K ↔ HTJ2K coefficient transcoder over this repository's tier-2 and block decoders; CLI `transcode`; every test |
 
@@ -32,18 +39,91 @@ Read at the pinned revision with `git show 7acc9ae4…:<path>` (the local J2KSwi
 
 ## Scope delivered
 
-PENDING_SCOPE
+- **Licence and provenance (`M6-OPENJPH-PROVENANCE`, owner decision approved 26 October 2026).** Adapted the predecessor's conformant Part 15 block coder (`J2KHTConformant*` at `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`), derived from OpenJPH (`Copyright (c) 2019-2024, Aous Naman`), into [Sources/SwiftJ2K/Codec/HTTables.swift](../Sources/SwiftJ2K/Codec/HTTables.swift) and [Sources/SwiftJ2K/Codec/HTBlockCoder.swift](../Sources/SwiftJ2K/Codec/HTBlockCoder.swift) with `SPDX-License-Identifier: Apache-2.0 AND BSD-2-Clause`, full provenance headers and OpenJPH's BSD-2-Clause licence text retained in both files, and [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) amended for the shipped products and the 120 HTJ2K fixtures. The predecessor's custom non-Part-15 HT coder (`J2KHTBlockCoder.swift` / `J2KHTCodec.swift`) and broken transcoder (`J2KTranscoder.swift`) were excluded.
+- **Part 15 block coder (cleanup pass, scalar CPU).** `HTMELEncoder`, `HTMELDecoder`, `HTReverseBitEmitter`, `HTMagSgnEncoder`, `HTMagSgnDecoder`, `HTBlockLayout` (`MagSgn ‖ MEL ‖ reversed VLC` with `Lcup` up to `65535` and 12-bit `Scup` up to `4079`), `HTBlockEncoder.encodeCleanup` and `HTBlockDecoder.decodeCleanup` in [Sources/SwiftJ2K/Codec/HTBlockCoder.swift](../Sources/SwiftJ2K/Codec/HTBlockCoder.swift), backed by the static VLC/UVLC tables and 1024-entry lookup tables in [Sources/SwiftJ2K/Codec/HTTables.swift](../Sources/SwiftJ2K/Codec/HTTables.swift).
+- **Part 15 marker signalling (`CAP`, `CPF`, `COD`, `COC`, `Rsiz`).** [Sources/SwiftJ2K/Codec/Codestream.swift](../Sources/SwiftJ2K/Codec/Codestream.swift) parses, validates and writes `CAP` (`0xFF50`, `Pcap = 0x0002_0000`, `Ccap15` `HTONLY`/`HTDECLARED`/`HTMIXED`, `SINGLEHT`/`MULTIHT`, `HTREV`/`HTIRV`, `MAGB` Table A.3 nonlinear decoded-bit-plane bound) and `CPF` (`0xFF59`), tracks code-block style bits 6 (`0x40`, HT) and 7 (`0x80`, HT mixed) across main-header `COD` and tile/component `COD`/`COC` overrides, and validates consistency between `CAP` and `COD`/`COC` styles.
+- **Tier-2 HT packet header and pass accounting.** [Sources/SwiftJ2K/Codec/Tier2.swift](../Sources/SwiftJ2K/Codec/Tier2.swift) implements ITU-T T.814 | ISO/IEC 15444-15 Clause B.10.6 mixed-mode per-block `isHT` detection (`zeroBitPlanes` threshold when `htMixed` is active) and HT codeword segment parsing (`Lcup` for 1 cleanup pass; `Lcup` + `Lref` for 2 or 3 passes in a single HT set). [Sources/SwiftJ2K/Codec/LosslessPipeline.swift](../Sources/SwiftJ2K/Codec/LosslessPipeline.swift) accounts for placeholder passes before the HT cleanup pass (`(passes - 1) % 3 == 0` with empty `Lref == 0` segment, `effectiveMissingMSBs = zeroBitPlanes + (passes - 1) / 3`), scales decoded magnitudes by $2^{K_{\max} - 1 - \text{effectiveMissingMSBs}}$, decodes mixed Part 1 / HTJ2K codestreams (`Cmodes=HT|HTMIX`, dispatching per block to `HTBlockDecoder.decodeCleanup` or `BitPlaneCoder.decode`), and rejects HT refinement passes (`SigProp`/`MagRef` with non-zero `Lref`) and multiple HT sets with `CodecError(.unsupportedFeature, ...)`.
+- **HTJ2K lossless encoding, inspection and decoding.** `Encoder` and `Decoder` in [Sources/SwiftJ2K/CodecAPI.swift](../Sources/SwiftJ2K/CodecAPI.swift) support both `jpeg2000-codestream` and `htj2k-codestream` (`CodecOptions.BlockCoding.part1` / `.htj2k`) for unsigned 1–16-bit single-component greyscale images using the reversible 5/3 wavelet and the `htConformantReversibleGain` $K_{\max}$ rule (`LL = B + 1`, detail subbands `= B + 2`).
+- **Native compressed-to-compressed J2K ↔ HTJ2K transcoding.** `Transcoder` in [Sources/SwiftJ2K/Transcoding.swift](../Sources/SwiftJ2K/Transcoding.swift) and `ScalarLosslessCodec.transcode` in [Sources/SwiftJ2K/Codec/LosslessPipeline.swift](../Sources/SwiftJ2K/Codec/LosslessPipeline.swift) transcode `jpeg2000-codestream` ↔ `htj2k-codestream` in both directions directly in the wavelet subband coefficient domain (`extractTileCoefficients` → target code-block re-blocking and encoding), with `0` intermediate pixel allocations and `0` copy events, preserving multi-tile grids, image/tile origins, per-tile `COD`/`QCD` decomposition level overrides, and `COM` marker payloads (`metadataPreserved = true` when no source marker segments are dropped). Requests that would require wavelet reconstruction (changing `decompositionLevels`) are rejected with `CodecError(.unsupportedFeature, ...)` to preserve pure coefficient-domain transcoding semantics.
+- **CLI (`swiftj2k-cli`).** [Sources/SwiftJ2KCLI/main.swift](../Sources/SwiftJ2KCLI/main.swift), [CLI.md](../CLI.md) and [ManPages/swiftj2k-cli.1](../ManPages/swiftj2k-cli.1) support `--format htj2k` (`ht`, `jphc`, `.jphc`, `.htj2k`) across `encode`, `decode`, `inspect`, `validate` and `transcode`, including binary standard input/output (`-`), format-declaration verification against codestream markers, `--code-block` re-blocking, atomic file publication with `--overwrite`, JSON reports (`route`, `metadataPreserved`, `peakWorkspaceBytes`, `pixelAllocations`, `copyEvents`), and cooperative `SIGINT` cancellation (`130`).
+
+**Capability matrix.**
+
+| Feature | Decode | Encode | Transcode (`J2K ↔ HTJ2K`) |
+| --- | --- | --- | --- |
+| Unsigned greyscale 1–16 bits, 5/3 reversible, no quantisation | yes (Part 1 & HTJ2K) | yes (Part 1 & HTJ2K) | yes (coefficient domain, `0` pixel allocations) |
+| Tiles, image and tile origins, per-tile decomposition levels | yes | single tile at origin | preserved across tiles and origins |
+| Quality layers | yes (Part 1; HT single active cleanup pass + placeholder passes) | one | collapsed to single lossless layer |
+| Code-block styles | Part 1 all 6 bits; HT `0x40` (HT Only) and `0xC0` (HT Mixed cleanup) | Part 1 `0x00`; HT `0x40` | re-encoded in target block coding (`--code-block` supported) |
+| HT `SigProp`/`MagRef` refinement passes, multiple HT sets | rejected (`unsupportedFeature`) | not emitted | rejected (`unsupportedFeature`) |
+| 9/7 irreversible, quantised, colour, signed, sub-sampled, ROI, POC, PPM/PPT, JP2/JPH | rejected (`unsupportedFeature`) | rejected | rejected (`unsupportedFeature`) |
+| Acceleration | none (scalar CPU) | none | none (scalar CPU) |
 
 ## Executed validation
 
-PENDING_VALIDATION
+Host: Apple Silicon (`arm64`), Darwin `27.0.0` (macOS 27.0, build `26A366`), Swift toolchain `Apple Swift version 6.4-dev (LLVM a0f62d5b2aa64b4, Swift a6f0ff3ca1ba2bf)`. Oracles: OpenJPEG `2.5.4`, OpenJPH `0.30.1`, Kakadu `v8.4.1`. Sanitized evidence (with host paths replaced by `<REPO>`) is archived under [Engineering/Milestone6/Evidence](Engineering/Milestone6/Evidence).
+
+| Gate | Result |
+| --- | --- |
+| Common contract byte-identity (`cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt`) | 7 of 7 `OK` |
+| macOS `arm64` debug test suite (`swift test --build-system native -c debug --disable-xctest`) | **93 of 93 passed** in 2 suites (`7.292 s`, exit `0`; [debug-test.log](Engineering/Milestone6/Evidence/debug-test.log)) |
+| macOS `arm64` release test suite (`swift test --build-system native -c release --disable-xctest`) | **93 of 93 passed** in 2 suites (`0.899 s`, exit `0`; [release-test.log](Engineering/Milestone6/Evidence/release-test.log)) |
+| **AddressSanitizer** (`swift test --build-system native -c debug --sanitize=address --disable-xctest`) | **93 of 93 passed** in 2 suites (`208.057 s`, exit `0`; [asan-test.log](Engineering/Milestone6/Evidence/asan-test.log)) |
+| **ThreadSanitizer** (`swift test --build-system native -c debug --sanitize=thread --disable-xctest`) | **93 of 93 passed** in 2 suites (`63.328 s`, exit `0`; [tsan-test.log](Engineering/Milestone6/Evidence/tsan-test.log)) |
+| Reference HTJ2K fixture matrix (`Tests/SwiftJ2KTests/Fixtures/HTJ2K`, 120 codestreams) | **110 of 110 single-HT-set codestreams decoded sample-exact** (including all 90 three-way OpenJPH/Kakadu/OpenJPEG fixtures, 10 Kakadu `Cmodes=HT\|HTMIX` mixed-mode fixtures, and 10 Kakadu 3-layer fixtures with placeholder passes); **10 of 10 multi-HT-set Kakadu 3-layer fixtures rejected with `unsupportedFeature`** |
+| Independent oracle cross-decode and transcode round-trips (`ojph_expand`, `ojph_compress`, `kdu_expand`, `kdu_compress`, `opj_decompress`) | **Passed**: SwiftJ2K HT-encoded codestreams across all 10 synthetic images and block sizes (`4×4`, `16×16`, `32×8`, `64×64`) decoded sample-exact by `ojph_expand`, `kdu_expand` and `opj_decompress`; OpenJPH and Kakadu HT codestreams transcoded `HTJ2K → J2K → HTJ2K` and verified sample-exact by external oracles |
+| `htj2k_lossless_fail_min` (`K_max` multi-level 5/3 high-contrast 8×8 reproducer) | **Passed**: lossless HT round-trip and `J2K ↔ HTJ2K` transcoding both sample-exact |
+| CLI conformance (`python3 Scripts/test-cli.py .build/out/Products/Release/swiftj2k-cli`) | **174 of 174 passed** (exit `0`; [cli/report.json](Engineering/Milestone6/Evidence/cli/report.json)), including HT `encode`/`decode`/`inspect`/`validate` and `transcode` (`j2k ↔ htj2k`, stdin/stdout pipes, re-blocking, format mismatch exit `3`, incompatible `--levels` exit `4`, overwrite refusal exit `6`, `SIGINT` exit `130`) |
+| Independent consumer examples (`Examples/Consumer`, `Examples/MigrationExample`) | **Passed** (exit `0`; [consumer.log](Engineering/Milestone6/Evidence/consumer.log), [migration-example.log](Engineering/Milestone6/Evidence/migration-example.log)), including Part 1 + HTJ2K encode/decode and `J2K ↔ HTJ2K` transcoding with `pixelAllocations == 0` and `copyEvents == 0` |
+| Bounded fuzz campaign — HT `decode` (`Integration/FuzzHarness`, 15 s, seed `20261026`) | **83,149 iterations**; outcomes: `success` 11,488, `malformedInput` 68,266, `unsupportedFeature` 2,000, `unsupportedFormat` 765, `resourceLimitExceeded` 630; slowest `19.0 ms`, `0` unexpected errors, `0` traps, peak RSS `68 MiB` ([fuzz/ht-decode/summary.json](Engineering/Milestone6/Evidence/fuzz/ht-decode/summary.json)) |
+| Bounded fuzz campaign — `transcodeToJ2K` (`Integration/FuzzHarness`, 15 s, seed `20261026`) | **48,463 iterations**; outcomes: `success` 8,001, `malformedInput` 38,096, `unsupportedFeature` 1,383, `unsupportedFormat` 554, `resourceLimitExceeded` 429; slowest `18.3 ms`, `0` unexpected errors, `0` traps, peak RSS `67 MiB` ([fuzz/transcode-to-j2k/summary.json](Engineering/Milestone6/Evidence/fuzz/transcode-to-j2k/summary.json)) |
+| Bounded fuzz campaign — `transcodeToHT` (`Integration/FuzzHarness`, 15 s, seed `20261026`) | **32,399 iterations**; outcomes: `success` 3,005, `malformedInput` 26,356, `unsupportedFeature` 2,035, `unsupportedFormat` 465, `resourceLimitExceeded` 538; slowest `30.5 ms`, `0` unexpected errors, `0` traps, peak RSS `40 MiB` ([fuzz/transcode-to-ht/summary.json](Engineering/Milestone6/Evidence/fuzz/transcode-to-ht/summary.json)) |
+| Controlled release benchmark (`python3 Scripts/benchmark-lossless.py`) | **Executed** (exit `0`; [benchmark/results.json](Engineering/Milestone6/Evidence/benchmark/results.json)); see Performance below |
+
+### Performance
+
+`Scripts/benchmark-lossless.py` runs 5 warm-ups and 20 interleaved timed iterations per case against `.build/out/Products/Release/swiftj2k-cli` (`bc3d2e000345c3e3258c1db96213658de520be7191beff172f2aec07ad4f65d4`), OpenJPEG `2.5.4`, OpenJPH `0.30.1` and Kakadu `v8.4.1`, recording wall-clock CLI medians/p95 as well as in-process elapsed time, peak workspace bytes, pixel allocations and copy events from `--json` receipts ([benchmark/results.json](Engineering/Milestone6/Evidence/benchmark/results.json)).
+
+**HTJ2K encode and decode (CLI wall-clock median / p95):**
+
+| Case | Direction | `swiftj2k-cli` (`--format htj2k`) | OpenJPH 0.30.1 | Kakadu 8.4.1 (`Cmodes=HT`) |
+| --- | --- | --- | --- | --- |
+| `g16_64x64_random` (`9 046 B`) | `ht-encode` | `5.05 ms` (`5.48`) | `4.55 ms` (`4.71`) | `3.59 ms` (`3.73`) |
+| | `ht-decode` | `5.17 ms` (`5.37`) | `4.39 ms` (`4.66`) | `3.31 ms` (`3.45`) |
+| `g12_129x67_gradient` (`4 218 B`) | `ht-encode` | `5.17 ms` (`5.35`) | `4.46 ms` (`4.60`) | `3.45 ms` (`3.57`) |
+| | `ht-decode` | `5.76 ms` (`6.50`) | `4.63 ms` (`4.96`) | `3.64 ms` (`4.12`) |
+| `g16_256x256_smooth` (`72 801 B`) | `ht-encode` | `7.04 ms` (`7.20`, `9.3 MP/s`) | `5.35 ms` (`6.60`) | `3.81 ms` (`3.92`) |
+| | `ht-decode` | `8.90 ms` (`9.76`, `7.4 MP/s`) | `5.47 ms` (`6.90`) | `4.23 ms` (`4.91`) |
+| `g10_300x200_gradient` (`35 281 B`) | `ht-encode` | `7.27 ms` (`7.70`, `8.2 MP/s`) | `5.65 ms` (`6.17`) | `3.91 ms` (`4.35`) |
+| | `ht-decode` | `8.89 ms` (`9.63`, `6.7 MP/s`) | `5.79 ms` (`6.56`) | `4.60 ms` (`6.24`) |
+
+**Native coefficient-domain transcoding vs decode+encode baseline:**
+
+| Case | Direction | Coefficient transcode CLI median (in-process) | Decode+encode CLI median (in-process) | Peak workspace (`pixelAllocations` / `copyEvents`) |
+| --- | --- | --- | --- | --- |
+| `g16_64x64_random` | `J2K → HTJ2K` | `7.75 ms` (`1.86 ms`) | `14.19 ms` (`2.64 ms`) | `70,553 B` (`0` / `0`) |
+| | `HTJ2K → J2K` | `7.97 ms` (`1.98 ms`) | `14.73 ms` (`2.74 ms`) | `70,615 B` (`0` / `0`) |
+| `g12_129x67_gradient` | `J2K → HTJ2K` | `8.10 ms` (`2.18 ms`) | `15.22 ms` (`3.07 ms`) | `83,362 B` (`0` / `0`) |
+| | `HTJ2K → J2K` | `8.04 ms` (`2.23 ms`) | `14.85 ms` (`3.21 ms`) | `83,975 B` (`0` / `0`) |
+| `g16_256x256_smooth` | `J2K → HTJ2K` | `19.64 ms` (`13.12 ms`) | `31.87 ms` (`17.00 ms`) | `371,692 B` (`0` / `0`) |
+| | `HTJ2K → J2K` | `20.35 ms` (`13.59 ms`) | `32.06 ms` (`19.21 ms`) | `380,130 B` (`0` / `0`) |
+| `g10_300x200_gradient` | `J2K → HTJ2K` | `17.05 ms` (`10.57 ms`) | `28.02 ms` (`13.94 ms`) | `310,466 B` (`0` / `0`) |
+| | `HTJ2K → J2K` | `16.84 ms` (`9.72 ms`) | `27.97 ms` (`13.40 ms`) | `320,466 B` (`0` / `0`) |
 
 ## Findings
 
-PENDING_FINDINGS
+1. **Predecessor `J2KHTConformantBlockLayout` rejected valid `Lcup > 4096` blocks.** The predecessor enforced `Lcup <= 4096` instead of the ISO/IEC 15444-15 Clause 7.3.2 codeword segment limit `Lcup <= 65535` (`Scup <= 4079`), causing high-entropy 64×64 16-bit code-blocks (`Lcup` around `4500–9000` bytes) to fail layout assembly and parsing. Fixed in `HTBlockLayout.assemble` and `HTBlockLayout.parse`.
+2. **Predecessor `fuseMELAndVLC` corrupted bit 7 of the MEL stream on boundary-byte fusion.** When `fusePossible` and `vlcLastGT8F` were both true, the predecessor executed `fused &= 0x7F`, clobbering bit 7 of `melAligned` (the MSB of the MEL stream) and corrupting code-blocks where MEL and VLC shared a boundary byte after a `> 0x8F` VLC byte (reproduced on `16×16` and `32×8` blocks of `g16_64x64_random`). Fixed in `HTBlockLayout.fuseMELAndVLC` so fusion occurs only when `!(vlcLastGT8F && (fused & 0x7F) == 0x7F && (fused & 0x80) != 0)` without masking bit 7 of `melAligned`.
+3. **Predecessor `HTMELDecoder.read()` omitted bit-7 unstuffing across 32-bit word boundaries.** When the final byte of a 4-byte MEL read was `0xFF` (`unstuff == true`), `bitsRead` was decremented to `31`, but the first byte of the next 4-byte word was masked with `0xFF` instead of `unstuff ? 0x7F : 0xFF`. Fixed in `HTMELDecoder.read()`.
+4. **Fuzzing exposed unbounded decoded magnitude on corrupted HT bitstreams and 32-bit lifting synthesis overflow.** Mutation fuzzing (`FuzzHarness` seed `20261026`, iteration 1617 on mutated `g10_300x200_gradient.kdu_ht_layers.j2k`) produced a corrupted codestream where decoded `K_max` / UVLC magnitudes overflowed 32-bit wavelet synthesis during multi-level inverse 5/3 lifting. Fixed by bounding `kMax <= BitPlaneCoder.maximumMagnitudeBitPlanes` and `scaled < (UInt64(1) << kMax)` in `HTBlockDecoder.decodeCleanup` and guarding `Wavelet53.synthesise` with 64-bit integer arithmetic and `Int32` range validation (`CodecError(.malformedInput, ...)`).
+5. **Kakadu 3-layer HT fixtures emit placeholder passes before the HT cleanup pass.** In 10 of the 20 Kakadu `kdu_ht_layers` fixtures, quality layers 1 and 2 contribute 3 or 6 placeholder passes (`(passes - 1) % 3 == 0`) with an empty second codeword segment (`Lref == 0`) and a single HT cleanup pass in `Lcup`, shifting effective `zeroBitPlanes` by `(passes - 1) / 3`. Implementing ITU-T T.814 placeholder-pass accounting and Clause B.10.6 `htMixed` per-block detection enabled sample-exact decoding of all 10 placeholder-pass fixtures and all 10 `Cmodes=HT|HTMIX` fixtures (110 of 120 total HT fixtures; only the 10 multi-HT-set fixtures with non-empty `Lref` remain `unsupportedFeature`).
+6. **Codex provisional static audit findings (`M6-AUD-001` and `M6-AUD-002`) resolved.**
+   - `M6-AUD-001`: `ScalarLosslessCodec.transcode` previously computed progress `total = profile.codeBlockCount * 2`, which threw `CodecError(.invalidArgument)` inside `ProgressUpdate` when `--code-block` re-blocked a source into smaller target blocks (`completed > total`). Fixed by computing `total = profile.codeBlockCount + totalTargetBlocks` from the target tile geometries; verified by a `64×64` (1 block) → `4×4` (256 blocks) regression test asserting identical output with and without a progress callback.
+   - `M6-AUD-002`: `ScalarLosslessCodec.transcode` previously fell back to inverse + forward 5/3 DWT when `codecOptions.decompositionLevels` differed from the source while still reporting `route: .coefficients`. Fixed by rejecting decomposition-level changes during transcode with `CodecError(.unsupportedFeature, ...)` while preserving per-tile `COD`/`QCD` decomposition-level overrides in tile-part headers on the pure coefficient path; verified by a multi-tile differing-level transcode test and CLI exit-4 check.
 
 ## Open and unexecuted gates
 
-- Contract 0.10.0's continuous-integration precondition: recorded per run, never waived.
-- **Owner decision needed: OpenJPH-derived code.** The predecessor's conformant HT block coder is a port of OpenJPH (BSD-2-Clause). Adapting it requires retaining OpenJPH's notice and amending THIRD_PARTY_NOTICES.md; the alternative is an independent implementation from the standard.
-- HT refinement passes (SigProp, MagRef), several HT sets per block and the HT/legacy mixed mode: decoded as `unsupportedFeature` until implemented; fixtures exist for the Kakadu-only cases.
+- **Contract 0.10.0's continuous-integration precondition:** recorded per run, never waived. Fresh remote CI execution on the pushed branch must be observed and audited before any merge/release gate.
+- **Owner decision resolved (26 October 2026): OpenJPH-derived code (`M6-OPENJPH-PROVENANCE`).** The owner approved adapting the predecessor's OpenJPH-derived conformant HT block coder (BSD-2-Clause) while retaining OpenJPH's copyright and BSD-2-Clause licence text in the adapted files and amending `THIRD_PARTY_NOTICES.md`.
+- **Multi-ecosystem `Integration/ContractHarness`:** standalone package build/test requires sibling checkouts (`../SwiftJLS`, `../SwiftJXL`, `../SwiftJLI`) which are not present in this single-repository workspace ([contract-harness.log](Engineering/Milestone6/Evidence/contract-harness.log)); `Examples/Consumer` and `Examples/MigrationExample` were executed directly.
+- **HT refinement passes (`SigProp`, `MagRef`) and multiple HT sets per code-block:** rejected deterministically with `CodecError(.unsupportedFeature, ...)` (10 of 120 Kakadu `kdu_ht_layers` fixtures).
