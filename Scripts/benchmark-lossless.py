@@ -178,12 +178,31 @@ def main():
                 }
                 transcode_results.append(trow)
                 print(f"{name:24s} {tdir:14s} coeff {c_med*1000:7.1f} ms (in-proc {coeff_r['elapsedSeconds']*1000:5.2f} ms, ws {coeff_r['peakWorkspaceBytes']} B, 0 px alloc)  sample {s_med*1000:7.1f} ms (in-proc {(dec_r['elapsedSeconds']+enc_r['elapsedSeconds'])*1000:5.2f} ms)", flush=True)
+    # In-memory shared-sample baseline (Decoder.decode(into:) + Encoder.encode) vs in-memory Transcoder.transcode
+    in_memory_transcode = None
+    consumer_dir = REPO / "Examples/Consumer"
+    if consumer_dir.is_dir():
+        subprocess.run(["swift", "build", "--build-system", "native", "-c", "release", "--package-path", str(consumer_dir)], check=True, capture_output=True)
+        consumer_bin = consumer_dir / ".build/out/Products/Release/Consumer"
+        if not consumer_bin.exists():
+            consumer_bin = consumer_dir / ".build/release/Consumer"
+        in_mem_run = subprocess.run([str(consumer_bin), "--benchmark-in-memory", str(REPO)], check=True, capture_output=True)
+        in_memory_transcode = json.loads(in_mem_run.stdout.decode())
+        for row in in_memory_transcode.get("cases", []):
+            cm = row["inMemoryCoefficientPath"]["median_ms"]
+            sm = row["inMemorySharedSampleBaseline"]["median_ms"]
+            cws = row["inMemoryCoefficientPath"]["peak_workspace_bytes"]
+            sws = row["inMemorySharedSampleBaseline"]["peak_workspace_bytes"]
+            spx = row["inMemorySharedSampleBaseline"]["peak_pixel_bytes"]
+            print(f"{row['case']:24s} in-mem {row['direction']:14s} coeff {cm:6.2f} ms (ws {cws} B, px 0 B)  shared-sample {sm:6.2f} ms (ws {sws} B, px {spx} B)", flush=True)
+
     (out / "results.json").write_text(json.dumps({
         "host": host,
-        "method": "cold CLI invocations, 5 warm-ups then 20 interleaved timed iterations per case; medians reported; process start-up included for CLI wall-clock; in-process elapsed and workspace/allocation receipts captured from --json report",
+        "method": "cold CLI invocations + in-process shared-sample vs coefficient transcode benchmark, 5 warm-ups then 20 interleaved timed iterations per case; medians and p95s reported",
         "results": results,
         "htj2k_results": ht_results,
         "transcode_results": transcode_results,
+        "in_memory_transcode": in_memory_transcode,
     }, indent=2) + "\n")
     print(f"written {out / 'results.json'}")
 

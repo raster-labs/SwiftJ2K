@@ -68,10 +68,44 @@ struct ByteReader {
 /// Big-endian byte writer used to assemble marker segments and packets.
 struct ByteWriter {
     private(set) var bytes: [UInt8] = []
+    private(set) var maximumBytes: Int
 
-    init(capacity: Int = 0) { bytes.reserveCapacity(capacity) }
+    init(capacity: Int = 0, maximumBytes: Int = Int.max) {
+        self.maximumBytes = maximumBytes
+        if capacity > 0 {
+            bytes.reserveCapacity(min(capacity, maximumBytes))
+        }
+    }
+
+    init(reserving capacity: Int, maximumBytes: Int) throws {
+        guard capacity >= 0, maximumBytes >= 0, capacity <= maximumBytes else {
+            throw CodecError(.resourceLimitExceeded, "Output buffer reservation exceeds the byte budget.")
+        }
+        self.maximumBytes = maximumBytes
+        if capacity > 0 {
+            bytes.reserveCapacity(capacity)
+        }
+    }
 
     var count: Int { bytes.count }
+    var capacity: Int { bytes.capacity }
+    var allocatedBytes: Int {
+        (bytes.isEmpty && bytes.capacity == 0) ? 0 : (32 + max(bytes.count, bytes.capacity))
+    }
+
+    mutating func updateMaximumBytes(_ newMaximum: Int) throws {
+        guard newMaximum >= 0, bytes.count <= newMaximum else {
+            throw CodecError(.resourceLimitExceeded, "Output buffer exceeds the updated byte budget.")
+        }
+        maximumBytes = newMaximum
+    }
+
+    mutating func ensureRoom(for additional: Int) throws {
+        let needed = try checkedAdd(bytes.count, additional)
+        guard needed <= maximumBytes else {
+            throw CodecError(.resourceLimitExceeded, "Output buffer growth exceeds the byte budget.")
+        }
+    }
 
     mutating func writeUInt8(_ value: UInt8) { bytes.append(value) }
     mutating func writeUInt16(_ value: UInt16) {
@@ -84,11 +118,30 @@ struct ByteWriter {
     mutating func writeBytes(_ other: [UInt8]) { bytes.append(contentsOf: other) }
     mutating func writeBytes(_ other: ArraySlice<UInt8>) { bytes.append(contentsOf: other) }
 
+    mutating func writeUInt8Checked(_ value: UInt8) throws {
+        try ensureRoom(for: 1)
+        bytes.append(value)
+    }
+    mutating func writeUInt16Checked(_ value: UInt16) throws {
+        try ensureRoom(for: 2)
+        bytes.append(UInt8(value >> 8)); bytes.append(UInt8(value & 0xFF))
+    }
+    mutating func writeUInt32Checked(_ value: UInt32) throws {
+        try ensureRoom(for: 4)
+        bytes.append(UInt8(value >> 24)); bytes.append(UInt8((value >> 16) & 0xFF))
+        bytes.append(UInt8((value >> 8) & 0xFF)); bytes.append(UInt8(value & 0xFF))
+    }
+    mutating func writeBytesChecked(_ other: [UInt8]) throws {
+        try ensureRoom(for: other.count)
+        bytes.append(contentsOf: other)
+    }
+
     /// Writes a marker segment with its length field (Lxxx includes itself).
     mutating func writeSegment(marker: UInt16, payload: [UInt8]) throws {
         guard payload.count + 2 <= Int(UInt16.max) else {
             throw CodecError(.internalFailure, "Marker segment payload exceeds the 16-bit length field.")
         }
+        try ensureRoom(for: 4 + payload.count)
         writeUInt16(marker)
         writeUInt16(UInt16(payload.count + 2))
         writeBytes(payload)

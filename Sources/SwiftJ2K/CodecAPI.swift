@@ -109,13 +109,21 @@ public struct OperationReport: Sendable, Equatable {
     public let peakPixelBytes: Int?
     public let peakWorkspaceBytes: Int?
     public let elapsedSeconds: Double?
+    public let discardedMetadataCount: Int?
+    public let discardedMetadataBytes: Int?
+    public let discardedMetadataKinds: [String]
     public init(backend: Backend, fallbackReason: String? = nil, fidelity: Fidelity,
                 copyEvents: [CopyEvent] = [], pixelAllocationCount: Int? = nil,
-                peakPixelBytes: Int? = nil, peakWorkspaceBytes: Int? = nil, elapsedSeconds: Double? = nil) {
+                peakPixelBytes: Int? = nil, peakWorkspaceBytes: Int? = nil, elapsedSeconds: Double? = nil,
+                discardedMetadataCount: Int? = nil, discardedMetadataBytes: Int? = nil,
+                discardedMetadataKinds: [String] = []) {
         self.backend = backend; self.fallbackReason = fallbackReason; self.fidelity = fidelity
         self.copyEvents = copyEvents; self.pixelAllocationCount = pixelAllocationCount
         self.peakPixelBytes = peakPixelBytes; self.peakWorkspaceBytes = peakWorkspaceBytes
         self.elapsedSeconds = elapsedSeconds
+        self.discardedMetadataCount = discardedMetadataCount
+        self.discardedMetadataBytes = discardedMetadataBytes
+        self.discardedMetadataKinds = discardedMetadataKinds
     }
 }
 public struct ImageInfo: Sendable {
@@ -212,7 +220,8 @@ public struct Decoder: Sendable {
     /// Bounded structural inspection: parses the main and tile-part headers only.
     public func inspect(_ data: Data, options: DecodeOptions = .init()) throws -> ImageInfo {
         try validateInput(data, options)
-        let profile = try ScalarLosslessCodec.inspect([UInt8](data), limits: options.resourceLimits)
+        let profile = try ScalarLosslessCodec.inspect([UInt8](data), limits: options.resourceLimits,
+                                                      metadataPolicy: options.metadataPolicy)
         let descriptor = try ImageDescriptor.greyscale16(width: profile.width, height: profile.height,
                                                          meaningfulBits: profile.precision,
                                                          limits: options.resourceLimits)
@@ -225,7 +234,8 @@ public struct Decoder: Sendable {
         try Task.checkCancellation()
         try validateInput(data, options)
         let bytes = [UInt8](data)
-        let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits)
+        let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
+                                                      metadataPolicy: options.metadataPolicy)
         let descriptor = try ImageDescriptor.greyscale16(width: profile.width, height: profile.height,
                                                          meaningfulBits: profile.precision,
                                                          limits: options.resourceLimits)
@@ -240,7 +250,8 @@ public struct Decoder: Sendable {
         try Task.checkCancellation()
         try validateInput(data, options)
         let bytes = [UInt8](data)
-        let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits)
+        let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
+                                                      metadataPolicy: options.metadataPolicy)
         return try run(bytes: bytes, profile: profile, into: destination, options: options, allocations: 0)
     }
 
@@ -253,10 +264,16 @@ public struct Decoder: Sendable {
                                                                 limits: options.resourceLimits, progress: options.progress)
         try Task.checkCancellation()
         let elapsed = clock.now - started
+        let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
+        let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
+        let discardedKinds = (discardedCount > 0) ? ["COM"] : []
         let report = OperationReport(backend: .scalarCPU, fidelity: .exactSamples, copyEvents: [],
                                      pixelAllocationCount: allocations, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
-                                     elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
+                                     elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
+                                     discardedMetadataCount: discardedCount,
+                                     discardedMetadataBytes: discardedBytes,
+                                     discardedMetadataKinds: discardedKinds)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
         return DecodedImage(image: image, report: report)
     }

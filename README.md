@@ -31,9 +31,9 @@ Milestone 1 established the API and memory contract with synthetic buffers ([evi
 
 ## Native in-memory transcoding
 
-Standalone **lossless J2K ↔ HTJ2K transcoding** in `Transcoder` and `swiftj2k-cli transcode` operates directly on decoded wavelet subband coefficients in memory (`pixelAllocations == 0`, `copyEvents == 0`), preserving every logical sample, declared precision, tile/origin geometry and per-tile decomposition level overrides across both directions. See [transcoding instructions and source-review findings](TRANSCODING.md) and [Milestone 6 evidence](Documentation/MILESTONE6.md).
+Standalone **lossless J2K ↔ HTJ2K transcoding** in `Transcoder` and `swiftj2k-cli transcode` operates directly on decoded wavelet subband coefficients in memory (`pixelAllocations == 0`, `copyEvents == 0`), preserving every logical sample, declared precision, tile/origin geometry, per-tile decomposition level overrides and main/tile-part `COM` marker segments under `MetadataPolicy.preserve` (or omitting them under `.discardAncillary`, bounded by `ResourceLimits.maximumMetadataBytes`) across both directions. See [transcoding instructions and source-review findings](TRANSCODING.md) and [Milestone 6 evidence](Documentation/MILESTONE6.md).
 
-Audit of `9fa8fd0`: COM annotations are currently dropped; metadata-policy repair and qualification gates remain open in [MILESTONE6.md](Documentation/MILESTONE6.md). This submission has not received engineering acceptance.
+Milestone 6 audit status, HT breadth reconciliation (`SigProp`/`MagRef` and multiple active HT sets remain `unsupportedFeature`) and qualification gates are tracked in [MILESTONE6.md](Documentation/MILESTONE6.md).
 
 ## Relationship to the suite
 
