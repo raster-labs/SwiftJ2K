@@ -157,6 +157,51 @@ struct QuantizationSegment: Sendable, Equatable {
     let guardBits: Int
     let exponents: [Int]
     let mantissas: [Int]
+
+    /// Expands a scalar-derived (`Sqcd = 1`) quantisation segment to `1 + 3 * decompositionLevels`
+    /// subband entries per ISO/IEC 15444-1 Eq. E-2: `eps_b = eps_0 - (N_L - n_b) = eps_0 - max(0, r - 1)`.
+    func expanded(decompositionLevels: Int) throws -> QuantizationSegment {
+        guard style == .scalarDerived, exponents.count == 1, mantissas.count == 1 else {
+            return self
+        }
+        let eps0 = exponents[0]
+        let mu0 = mantissas[0]
+        var expOut: [Int] = [eps0]
+        var manOut: [Int] = [mu0]
+        expOut.reserveCapacity(1 + 3 * decompositionLevels)
+        manOut.reserveCapacity(1 + 3 * decompositionLevels)
+        if decompositionLevels >= 1 {
+            for r in 1...decompositionLevels {
+                let epsB = eps0 - (r - 1)
+                guard epsB >= 0 else {
+                    throw CodecError(.malformedInput, "Scalar-derived quantisation exponent underflows below zero.")
+                }
+                for _ in 0..<3 {
+                    expOut.append(epsB)
+                    manOut.append(mu0)
+                }
+            }
+        }
+        return QuantizationSegment(style: .scalarDerived, guardBits: guardBits,
+                                   exponents: expOut, mantissas: manOut)
+    }
+}
+
+/// RGN marker segment (A.6.3, Table A.25).
+struct RegionOfInterestSegment: Sendable, Equatable {
+    let component: Int
+    let style: UInt8   // 0 = MaxShift (Annex H.1)
+    let shift: Int
+}
+
+/// One entry in a POC marker segment (A.6.6, Table A.26).
+struct ProgressionOrderChangeEntry: Sendable, Equatable {
+    let resolutionStart: Int
+    let componentStart: Int
+    let layerEnd: Int
+    let resolutionEnd: Int
+    let componentEnd: Int
+    let progression: UInt8
 }
 
 /// One tile-part's location within the codestream (A.4.2).
@@ -176,13 +221,17 @@ struct TilePartRecord: Sendable, Equatable {
     }
 }
 
-/// Coding and quantization segments found in a tile's first tile-part
-/// header, which override the main header for that tile (A.4.2, Table A.5).
+/// Coding and quantization segments found in a tile-part header, which
+/// override the main header for that tile (A.4.2, Table A.5).
 struct TileHeaderOverrides: Sendable {
     var codingStyle: CodingStyleSegment?
     var componentCodingStyle: CodingStyleSegment?
+    var componentCodingStyles: [Int: CodingStyleSegment] = [:]
     var quantization: QuantizationSegment?
     var componentQuantization: QuantizationSegment?
+    var componentQuantizations: [Int: QuantizationSegment] = [:]
+    var regionsOfInterest: [Int: RegionOfInterestSegment] = [:]
+    var progressionChanges: [ProgressionOrderChangeEntry] = []
 }
 
 /// Everything the main header and the tile-part headers declare.
@@ -192,6 +241,12 @@ struct ParsedCodestream: Sendable {
     let correspondingProfile: CorrespondingProfileSegment?
     let codingStyle: CodingStyleSegment           // COD merged with any COC for component 0
     let quantization: QuantizationSegment         // QCD merged with any QCC for component 0
+    let baseCodingStyle: CodingStyleSegment
+    let componentCodingStyles: [Int: CodingStyleSegment]
+    let baseQuantization: QuantizationSegment
+    let componentQuantizations: [Int: QuantizationSegment]
+    let regionsOfInterest: [Int: RegionOfInterestSegment]
+    let progressionChanges: [ProgressionOrderChangeEntry]
     let tileParts: [TilePartRecord]
     let tileOverrides: [Int: TileHeaderOverrides]
     let sawEndOfCodestream: Bool
@@ -201,32 +256,103 @@ struct ParsedCodestream: Sendable {
     let commentCount: Int
     let commentPayloadBytes: Int
 
+    init(
+        size: ImageSizeSegment,
+        extendedCapabilities: ExtendedCapabilitiesSegment?,
+        correspondingProfile: CorrespondingProfileSegment?,
+        codingStyle: CodingStyleSegment,
+        quantization: QuantizationSegment,
+        baseCodingStyle: CodingStyleSegment? = nil,
+        componentCodingStyles: [Int: CodingStyleSegment] = [:],
+        baseQuantization: QuantizationSegment? = nil,
+        componentQuantizations: [Int: QuantizationSegment] = [:],
+        regionsOfInterest: [Int: RegionOfInterestSegment] = [:],
+        progressionChanges: [ProgressionOrderChangeEntry] = [],
+        tileParts: [TilePartRecord],
+        tileOverrides: [Int: TileHeaderOverrides],
+        sawEndOfCodestream: Bool,
+        mainHeaderMarkers: [UInt16],
+        mainHeaderComments: [[UInt8]],
+        componentRegistration: [UInt8]?,
+        commentCount: Int,
+        commentPayloadBytes: Int
+    ) {
+        self.size = size
+        self.extendedCapabilities = extendedCapabilities
+        self.correspondingProfile = correspondingProfile
+        self.codingStyle = codingStyle
+        self.quantization = quantization
+        self.baseCodingStyle = baseCodingStyle ?? codingStyle
+        self.componentCodingStyles = componentCodingStyles
+        self.baseQuantization = baseQuantization ?? quantization
+        self.componentQuantizations = componentQuantizations
+        self.regionsOfInterest = regionsOfInterest
+        self.progressionChanges = progressionChanges
+        self.tileParts = tileParts
+        self.tileOverrides = tileOverrides
+        self.sawEndOfCodestream = sawEndOfCodestream
+        self.mainHeaderMarkers = mainHeaderMarkers
+        self.mainHeaderComments = mainHeaderComments
+        self.componentRegistration = componentRegistration
+        self.commentCount = commentCount
+        self.commentPayloadBytes = commentPayloadBytes
+    }
+
     /// Whether the codestream signals Part 15 (HTJ2K) extended capabilities or HT block coding.
     var isHTJ2K: Bool {
         if extendedCapabilities != nil { return true }
         if (codingStyle.codeBlockStyle & 0x40) != 0 { return true }
+        for coc in componentCodingStyles.values where (coc.codeBlockStyle & 0x40) != 0 { return true }
         for override in tileOverrides.values {
             if let cod = override.codingStyle, (cod.codeBlockStyle & 0x40) != 0 { return true }
             if let coc = override.componentCodingStyle, (coc.codeBlockStyle & 0x40) != 0 { return true }
+            for coc in override.componentCodingStyles.values where (coc.codeBlockStyle & 0x40) != 0 { return true }
         }
         return false
     }
 
-    /// Effective coding style and quantization for a tile (COC/QCC beat COD/QCD;
+    /// Effective coding style and quantization for a tile and component (COC/QCC beat COD/QCD;
     /// tile-part header segments beat main header segments).
-    func effectiveParameters(tile: Int) -> (CodingStyleSegment, QuantizationSegment) {
-        var cod = codingStyle, qcd = quantization
+    func effectiveParameters(tile: Int, component: Int = 0) -> (CodingStyleSegment, QuantizationSegment) {
+        var cod = component == 0 ? codingStyle : baseCodingStyle
+        var qcd = component == 0 ? quantization : baseQuantization
+        if component != 0 {
+            if let mainCOC = componentCodingStyles[component] { cod = cod.applying(coc: mainCOC) }
+            if let mainQCC = componentQuantizations[component] { qcd = mainQCC }
+        }
         if let overrides = tileOverrides[tile] {
             if let tileCOD = overrides.codingStyle {
-                // A tile COD replaces the main COD but not a main COC for this component; the
-                // component-specific segment always wins over the general one at the same scope.
                 cod = tileCOD
             }
-            if let tileCOC = overrides.componentCodingStyle { cod = cod.applying(coc: tileCOC) }
+            if component == 0, let tileCOC = overrides.componentCodingStyle {
+                cod = cod.applying(coc: tileCOC)
+            } else if let tileCOC = overrides.componentCodingStyles[component] {
+                cod = cod.applying(coc: tileCOC)
+            }
             if let tileQCD = overrides.quantization { qcd = tileQCD }
-            if let tileQCC = overrides.componentQuantization { qcd = tileQCC }
+            if component == 0, let tileQCC = overrides.componentQuantization {
+                qcd = tileQCC
+            } else if let tileQCC = overrides.componentQuantizations[component] {
+                qcd = tileQCC
+            }
         }
         return (cod, qcd)
+    }
+
+    /// Effective MaxShift ROI shift for a tile and component (`0` when no `RGN` applies).
+    func effectiveROIShift(tile: Int, component: Int) -> Int {
+        if let tileRGN = tileOverrides[tile]?.regionsOfInterest[component] {
+            return tileRGN.shift
+        }
+        return regionsOfInterest[component]?.shift ?? 0
+    }
+
+    /// Effective POC entries for a tile (tile-part POC entries if present, else main-header POC entries).
+    func effectiveProgressionChanges(tile: Int) -> [ProgressionOrderChangeEntry] {
+        if let tilePOC = tileOverrides[tile]?.progressionChanges, !tilePOC.isEmpty {
+            return tilePOC
+        }
+        return progressionChanges
     }
 }
 
@@ -249,6 +375,8 @@ enum CodestreamSyntax {
         var coc: [Int: CodingStyleSegment] = [:]
         var qcd: QuantizationSegment?
         var qcc: [Int: QuantizationSegment] = [:]
+        var rgn: [Int: RegionOfInterestSegment] = [:]
+        var poc: [ProgressionOrderChangeEntry] = []
         var markers: [UInt16] = []
         var mainHeaderComments: [[UInt8]] = []
         var crg: [UInt8]?
@@ -296,12 +424,6 @@ enum CodestreamSyntax {
                 continue
             }
             switch marker {
-            case Marker.rgn:
-                _ = try skipSegmentPayload(&reader, marker: marker)
-                throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported.")
-            case Marker.poc:
-                _ = try skipSegmentPayload(&reader, marker: marker)
-                throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
             case Marker.ppm:
                 _ = try skipSegmentPayload(&reader, marker: marker)
                 throw CodecError(.unsupportedFeature, "Packed packet headers (PPM) are not supported.")
@@ -347,6 +469,13 @@ enum CodestreamSyntax {
                 guard let size else { throw CodecError(.malformedInput, "QCC precedes SIZ.") }
                 let (component, segment) = try parseQCC(payload, componentCount: size.components.count)
                 qcc[component] = segment
+            case Marker.rgn:
+                guard let size else { throw CodecError(.malformedInput, "RGN precedes SIZ.") }
+                let segment = try parseRGN(payload, componentCount: size.components.count)
+                rgn[segment.component] = segment
+            case Marker.poc:
+                guard let size else { throw CodecError(.malformedInput, "POC precedes SIZ.") }
+                poc.append(contentsOf: try parsePOC(payload, componentCount: size.components.count))
             case Marker.crg:
                 guard let size else { throw CodecError(.malformedInput, "CRG precedes SIZ.") }
                 guard crg == nil else { throw CodecError(.malformedInput, "Duplicate CRG marker segment.") }
@@ -359,8 +488,10 @@ enum CodestreamSyntax {
             }
         }
         guard let size else { throw CodecError(.malformedInput, "Main header has no SIZ marker segment.") }
-        guard var codingStyle = cod else { throw CodecError(.malformedInput, "Main header has no COD marker segment.") }
-        guard var quantization = qcd else { throw CodecError(.malformedInput, "Main header has no QCD marker segment.") }
+        guard let baseCOD = cod else { throw CodecError(.malformedInput, "Main header has no COD marker segment.") }
+        guard let baseQCD = qcd else { throw CodecError(.malformedInput, "Main header has no QCD marker segment.") }
+        var codingStyle = baseCOD
+        var quantization = baseQCD
         if let override = coc[0] { codingStyle = codingStyle.applying(coc: override) }
         if let override = qcc[0] { quantization = override }
 
@@ -392,7 +523,7 @@ enum CodestreamSyntax {
                 let tileMarker = try reader.readUInt16()
                 if tileMarker == Marker.sod { break }
                 switch tileMarker {
-                case Marker.cod, Marker.coc, Marker.qcd, Marker.qcc:
+                case Marker.cod, Marker.coc, Marker.qcd, Marker.qcc, Marker.rgn:
                     guard partIndex == 0 else {
                         throw CodecError(.malformedInput, "Coding overrides are only allowed in a tile's first tile-part header.")
                     }
@@ -402,17 +533,19 @@ enum CodestreamSyntax {
                     case Marker.coc:
                         let (component, segment) = try parseCOC(payload, componentCount: size.components.count)
                         if component == 0 { overrides.componentCodingStyle = segment }
+                        overrides.componentCodingStyles[component] = segment
                     case Marker.qcd: overrides.quantization = try parseQuantization(payload)
-                    default:
+                    case Marker.qcc:
                         let (component, segment) = try parseQCC(payload, componentCount: size.components.count)
                         if component == 0 { overrides.componentQuantization = segment }
+                        overrides.componentQuantizations[component] = segment
+                    default:
+                        let segment = try parseRGN(payload, componentCount: size.components.count)
+                        overrides.regionsOfInterest[segment.component] = segment
                     }
-                case Marker.rgn:
-                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
-                    throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported.")
                 case Marker.poc:
-                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
-                    throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
+                    let payload = try readSegmentPayload(&reader, marker: tileMarker, limits: limits, codestreamBytes: bytes.count)
+                    overrides.progressionChanges.append(contentsOf: try parsePOC(payload, componentCount: size.components.count))
                 case Marker.ppt:
                     _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Packed packet headers (PPT) are not supported.")
@@ -455,6 +588,12 @@ enum CodestreamSyntax {
             correspondingProfile: cpf,
             codingStyle: codingStyle,
             quantization: quantization,
+            baseCodingStyle: baseCOD,
+            componentCodingStyles: coc,
+            baseQuantization: baseQCD,
+            componentQuantizations: qcc,
+            regionsOfInterest: rgn,
+            progressionChanges: poc,
             tileParts: tileParts,
             tileOverrides: tileOverrides,
             sawEndOfCodestream: sawEOC,
@@ -713,6 +852,52 @@ enum CodestreamSyntax {
         return QuantizationSegment(style: style, guardBits: guardBits, exponents: exponents, mantissas: mantissas)
     }
 
+    // MARK: - RGN / POC
+
+    static func parseRGN(_ payload: [UInt8], componentCount: Int) throws -> RegionOfInterestSegment {
+        var r = ByteReader(payload)
+        let component = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
+        guard component < componentCount else {
+            throw CodecError(.malformedInput, "RGN names a missing component.")
+        }
+        let style = try r.readUInt8()
+        guard style == 0 else {
+            throw CodecError(.unsupportedFeature, "RGN style \(style) is not supported; only MaxShift (Srgn = 0) is part of ISO/IEC 15444-1.")
+        }
+        let shift = Int(try r.readUInt8())
+        guard shift <= 37, r.isAtEnd else {
+            throw CodecError(.malformedInput, "RGN shift is out of range or segment has trailing bytes.")
+        }
+        return RegionOfInterestSegment(component: component, style: style, shift: shift)
+    }
+
+    static func parsePOC(_ payload: [UInt8], componentCount: Int) throws -> [ProgressionOrderChangeEntry] {
+        let entrySize = componentCount < 257 ? 7 : 9
+        guard !payload.isEmpty, payload.count % entrySize == 0 else {
+            throw CodecError(.malformedInput, "POC marker segment length is not a multiple of entry size \(entrySize).")
+        }
+        var r = ByteReader(payload)
+        var entries: [ProgressionOrderChangeEntry] = []
+        entries.reserveCapacity(payload.count / entrySize)
+        while !r.isAtEnd {
+            let rs = Int(try r.readUInt8())
+            let cs = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
+            let lye = Int(try r.readUInt16())
+            let re = Int(try r.readUInt8())
+            let rawCE = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
+            let ce = (componentCount < 257 && rawCE == 0) ? 256 : rawCE
+            let prog = try r.readUInt8()
+            guard rs < re, re <= 33, cs < ce, lye >= 1, prog <= 4 else {
+                throw CodecError(.malformedInput, "POC entry bounds or progression order are invalid.")
+            }
+            entries.append(ProgressionOrderChangeEntry(
+                resolutionStart: rs, componentStart: cs, layerEnd: lye,
+                resolutionEnd: re, componentEnd: ce, progression: prog
+            ))
+        }
+        return entries
+    }
+
     // MARK: - Writing
 
     static func writeSIZ<Output: CodestreamByteSink & ~Copyable>(_ size: ImageSizeSegment, into w: inout Output) throws {
@@ -765,16 +950,54 @@ enum CodestreamSyntax {
     }
 
     static func writeQCD<Output: CodestreamByteSink & ~Copyable>(_ qcd: QuantizationSegment, into w: inout Output) throws {
-        var p = ByteWriter(capacity: 2 + qcd.exponents.count)
+        var p = ByteWriter(capacity: 2 + 2 * qcd.exponents.count)
         p.writeUInt8(UInt8(qcd.guardBits) << 5 | qcd.style.rawValue)
         switch qcd.style {
         case .none:
             for exponent in qcd.exponents { p.writeUInt8(UInt8(exponent) << 3) }
-        case .scalarDerived, .scalarExpounded:
+        case .scalarDerived:
+            if let exp0 = qcd.exponents.first, let man0 = qcd.mantissas.first {
+                p.writeUInt16(UInt16(exp0) << 11 | UInt16(man0))
+            }
+        case .scalarExpounded:
             for (exponent, mantissa) in zip(qcd.exponents, qcd.mantissas) {
                 p.writeUInt16(UInt16(exponent) << 11 | UInt16(mantissa))
             }
         }
         try w.writeSegment(marker: Marker.qcd, payload: p.bytes)
+    }
+
+    static func writeRGN<Output: CodestreamByteSink & ~Copyable>(_ rgn: RegionOfInterestSegment, componentCount: Int, into w: inout Output) throws {
+        var p = ByteWriter(capacity: 4)
+        if componentCount < 257 {
+            p.writeUInt8(UInt8(rgn.component))
+        } else {
+            p.writeUInt16(UInt16(rgn.component))
+        }
+        p.writeUInt8(rgn.style)
+        p.writeUInt8(UInt8(rgn.shift))
+        try w.writeSegment(marker: Marker.rgn, payload: p.bytes)
+    }
+
+    static func writePOC<Output: CodestreamByteSink & ~Copyable>(_ entries: [ProgressionOrderChangeEntry], componentCount: Int, into w: inout Output) throws {
+        guard !entries.isEmpty else { return }
+        var p = ByteWriter(capacity: entries.count * (componentCount < 257 ? 7 : 9))
+        for entry in entries {
+            p.writeUInt8(UInt8(entry.resolutionStart))
+            if componentCount < 257 {
+                p.writeUInt8(UInt8(entry.componentStart))
+            } else {
+                p.writeUInt16(UInt16(entry.componentStart))
+            }
+            p.writeUInt16(UInt16(entry.layerEnd))
+            p.writeUInt8(UInt8(entry.resolutionEnd))
+            if componentCount < 257 {
+                p.writeUInt8(entry.componentEnd == 256 ? 0 : UInt8(entry.componentEnd))
+            } else {
+                p.writeUInt16(UInt16(entry.componentEnd))
+            }
+            p.writeUInt8(entry.progression)
+        }
+        try w.writeSegment(marker: Marker.poc, payload: p.bytes)
     }
 }

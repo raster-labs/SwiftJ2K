@@ -100,7 +100,7 @@ import SwiftJ2K
     let decoder = try SwiftJ2K.Decoder(configuration: .init())
     let transcoder = try SwiftJ2K.Transcoder(configuration: .init(mode: .lossless))
     #expect(encoder.capabilities.canEncode && decoder.capabilities.canDecode && decoder.capabilities.canInspect)
-    #expect(encoder.capabilities.formats == ["jpeg2000-codestream", "htj2k-codestream"] && decoder.capabilities.compressionModes == [.lossless])
+    #expect(encoder.capabilities.formats == ["jpeg2000-codestream", "htj2k-codestream"] && decoder.capabilities.compressionModes.contains(.lossless) && decoder.capabilities.compressionModes.contains(.lossy))
     #expect(encoder.capabilities.availableBackends == [.scalarCPU] && decoder.capabilities.meaningfulPrecision == 1...16)
     #expect(transcoder.capabilities.count == 2)
     let image = try ImageDestination.allocate(descriptor: .greyscale16(width: 1, height: 1))

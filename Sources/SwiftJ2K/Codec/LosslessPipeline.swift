@@ -96,6 +96,13 @@ enum ScalarLosslessCodec {
         guard size.components.count == 1 else {
             throw CodecError(.unsupportedFeature, "Only single-component (greyscale) codestreams are supported.")
         }
+        guard parsed.regionsOfInterest.isEmpty,
+              parsed.progressionChanges.isEmpty,
+              parsed.tileOverrides.values.allSatisfy({
+                  $0.regionsOfInterest.isEmpty && $0.progressionChanges.isEmpty
+              }) else {
+            throw CodecError(.unsupportedFeature, "RGN or POC markers require the general Part 1 pipeline.")
+        }
         let component = size.components[0]
         guard !component.signed else { throw CodecError(.unsupportedFeature, "Signed components are not supported.") }
         guard component.precision <= 16 else {

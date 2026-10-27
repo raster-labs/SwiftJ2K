@@ -12,7 +12,7 @@ import SwiftJ2K
     #expect(decoder.capabilities.canDecode && decoder.capabilities.canInspect && !decoder.capabilities.canEncode)
     #expect(encoder.capabilities.formats == decoder.capabilities.formats)
     #expect(encoder.capabilities.availableBackends == [.scalarCPU])
-    #expect(encoder.capabilities.layouts == [CodecCapabilities.sharedGreyscaleLayout])
+    #expect(encoder.capabilities.layouts.contains(CodecCapabilities.sharedGreyscaleLayout))
     let descriptor = try ImageDescriptor.greyscale16(width: 1, height: 1)
     let destination = try ImageDestination.allocate(descriptor: descriptor)
     do {
@@ -35,8 +35,10 @@ import SwiftJ2K
 
 @Test func configurationsAndBackendRequestsRejectUnsupportedChoices() throws {
     #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .nearLossless(maximumAbsoluteError: 0)) }
-    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .nearLossless(maximumAbsoluteError: 1)) }
-    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossy) }
+    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossless, codecOptions: CodecOptions(wavelet: .irreversible97)) }
+    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossy, codecOptions: CodecOptions(blockCoding: .htj2k)) }
+    _ = try EncoderConfiguration(mode: .nearLossless(maximumAbsoluteError: 1))
+    _ = try EncoderConfiguration(mode: .lossy)
     do {
         _ = try SwiftJ2K.Decoder().inspect(Data(), options: .init(executionPolicy: .required(.accelerated)))
         Issue.record("Required acceleration is unavailable.")
