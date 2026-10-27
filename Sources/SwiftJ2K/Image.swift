@@ -72,6 +72,42 @@ public struct Image: Sendable {
             return try loadUInt16(bytes, at: offset, order: descriptor.byteOrder)
         }
     }
+
+    /// Component-aware integer sample accessor for 8-bit or 16-bit unsigned/signed descriptors.
+    public func sampleInt(component: Int = 0, x: Int, y: Int) throws -> Int {
+        guard descriptor.sampleType == .unsignedInteger || descriptor.sampleType == .signedInteger else {
+            throw CodecError(.unsupportedFeature, "Sample helper requires integer sample storage.")
+        }
+        guard component >= 0, component < descriptor.components.count,
+              x >= 0, y >= 0, x < descriptor.width, y < descriptor.height else {
+            throw CodecError(.invalidArgument, "Sample component or coordinates are outside the image.")
+        }
+        let offset = try sampleByteOffset(descriptor: descriptor, component: component, x: x, y: y)
+        return try storage.withUnsafeBytes { bytes in
+            guard bytes.count >= descriptor.requiredByteCount else {
+                throw CodecError(.storageUnavailable, "Provider returned insufficient capacity.")
+            }
+            return try loadSampleInt(bytes, at: offset, storageBits: descriptor.storageBits,
+                                     signed: descriptor.sampleType == .signedInteger,
+                                     order: descriptor.byteOrder)
+        }
+    }
+
+    /// Component-aware unsigned 16-bit sample accessor (supports 8-bit or 16-bit unsigned descriptors).
+    public func sampleUInt16(component: Int, x: Int, y: Int) throws -> UInt16 {
+        guard descriptor.sampleType == .unsignedInteger else {
+            throw CodecError(.unsupportedFeature, "Unsigned sample helper requires unsigned integer storage.")
+        }
+        return UInt16(try sampleInt(component: component, x: x, y: y))
+    }
+
+    /// Component-aware signed 16-bit sample accessor (supports 8-bit or 16-bit signed descriptors).
+    public func sampleInt16(component: Int = 0, x: Int, y: Int) throws -> Int16 {
+        guard descriptor.sampleType == .signedInteger else {
+            throw CodecError(.unsupportedFeature, "Signed sample helper requires signed integer storage.")
+        }
+        return Int16(try sampleInt(component: component, x: x, y: y))
+    }
 }
 
 /// Reserves the provider on construction; abandoned destinations abort on release.
@@ -175,9 +211,103 @@ public final class ImageDestination: Sendable {
             }
         }
     }
+
+    /// Synthetic signed 16-bit greyscale sample initialisation.
+    public func writeInt16(_ sample: (Int, Int) throws -> Int16) throws -> Image {
+        guard descriptor.sampleType == .signedInteger, descriptor.storageBits == 16,
+              descriptor.components == [.grey], descriptor.planes.count == 1 else {
+            throw CodecError(.unsupportedFeature, "Sample helper requires signed 16-bit greyscale.")
+        }
+        let plane = descriptor.planes[0]
+        let minVal = -(1 << (descriptor.meaningfulBits - 1))
+        let maxVal = (1 << (descriptor.meaningfulBits - 1)) - 1
+        return try write { bytes in
+            for y in 0..<descriptor.height {
+                try Task.checkCancellation()
+                for x in 0..<descriptor.width {
+                    let value = Int(try sample(x, y))
+                    guard value >= minVal && value <= maxVal else {
+                        throw CodecError(.invalidArgument, "Signed sample exceeds declared meaningful precision.")
+                    }
+                    let offset = plane.offset + y * plane.rowBytes + x * plane.pixelStride
+                    try storeUInt16(UInt16(bitPattern: Int16(value)), into: bytes, at: offset, order: descriptor.byteOrder)
+                }
+            }
+        }
+    }
+
+    /// Component-aware integer sample writer for any 8-bit or 16-bit unsigned/signed layout (planar or interleaved).
+    public func writeSamples(_ sample: (_ component: Int, _ x: Int, _ y: Int) throws -> Int) throws -> Image {
+        guard descriptor.sampleType == .unsignedInteger || descriptor.sampleType == .signedInteger else {
+            throw CodecError(.unsupportedFeature, "Sample helper requires integer sample storage.")
+        }
+        let signed = descriptor.sampleType == .signedInteger
+        let minVal = signed ? -(1 << (descriptor.meaningfulBits - 1)) : 0
+        let maxVal = signed ? ((1 << (descriptor.meaningfulBits - 1)) - 1) : ((1 << descriptor.meaningfulBits) - 1)
+        return try write { bytes in
+            for plane in descriptor.planes {
+                for y in 0..<descriptor.height {
+                    try Task.checkCancellation()
+                    let rowBase = plane.offset + y * plane.rowBytes
+                    for x in 0..<descriptor.width {
+                        let pixelBase = rowBase + x * plane.pixelStride
+                        for (compIdxInPlane, component) in plane.components.enumerated() {
+                            let value = try sample(component, x, y)
+                            guard value >= minVal && value <= maxVal else {
+                                throw CodecError(.invalidArgument, "Sample exceeds declared meaningful precision.")
+                            }
+                            let offset = pixelBase + compIdxInPlane * plane.sampleStride
+                            try storeSampleInt(value, into: bytes, at: offset,
+                                               storageBits: descriptor.storageBits,
+                                               signed: signed, order: descriptor.byteOrder)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
-// MARK: - Byte-order-explicit 16-bit sample access
+// MARK: - Byte-order-explicit 8/16-bit sample access
+
+@inline(__always)
+func sampleByteOffset(descriptor: ImageDescriptor, component: Int, x: Int, y: Int) throws -> Int {
+    for plane in descriptor.planes {
+        if let compIdx = plane.components.firstIndex(of: component) {
+            return plane.offset + y * plane.rowBytes + x * plane.pixelStride + compIdx * plane.sampleStride
+        }
+    }
+    throw CodecError(.invalidArgument, "Component \(component) is not mapped in any plane.")
+}
+
+@inline(__always)
+func loadSampleInt(_ bytes: UnsafeRawBufferPointer, at offset: Int,
+                   storageBits: Int, signed: Bool, order: ByteOrder) throws -> Int {
+    if storageBits == 8 {
+        guard offset >= 0, offset < bytes.count else {
+            throw CodecError(.storageUnavailable, "Sample extent lies outside the retained allocation.")
+        }
+        let raw = bytes[offset]
+        return signed ? Int(Int8(bitPattern: raw)) : Int(raw)
+    } else {
+        let raw = try loadUInt16(bytes, at: offset, order: order)
+        return signed ? Int(Int16(bitPattern: raw)) : Int(raw)
+    }
+}
+
+@inline(__always)
+func storeSampleInt(_ value: Int, into bytes: UnsafeMutableRawBufferPointer,
+                    at offset: Int, storageBits: Int, signed: Bool, order: ByteOrder) throws {
+    if storageBits == 8 {
+        guard offset >= 0, offset < bytes.count else {
+            throw CodecError(.storageUnavailable, "Sample extent lies outside the retained allocation.")
+        }
+        bytes[offset] = signed ? UInt8(bitPattern: Int8(truncatingIfNeeded: value)) : UInt8(truncatingIfNeeded: value)
+    } else {
+        let word = signed ? UInt16(bitPattern: Int16(truncatingIfNeeded: value)) : UInt16(truncatingIfNeeded: value)
+        try storeUInt16(word, into: bytes, at: offset, order: order)
+    }
+}
 
 // These replace the `RawSpan.load(fromByteOffset:as:_:)` and
 // `OutputRawSpan.append(_:as:_:)` byte-order operations. Those standard-library

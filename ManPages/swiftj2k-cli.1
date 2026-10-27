@@ -1,33 +1,38 @@
-.TH SWIFTJ2K-CLI 1 "October 26, 2026" "12.1.0" "Swift Image Compression Suite"
+.TH SWIFTJ2K-CLI 1 "October 27, 2026" "12.1.0" "Swift Image Compression Suite"
 .SH NAME
-swiftj2k-cli \- lossless JPEG 2000 and HTJ2K encode, decode, transcode, inspect and validate for SwiftJ2K
+swiftj2k-cli \- JPEG 2000 Part 1 and HTJ2K Part 15 encode, decode, transcode, inspect and validate for SwiftJ2K
 .SH SYNOPSIS
 .B swiftj2k-cli
 .RI [ options ] " command " [ options ]
 .SH DESCRIPTION
-The standalone executable of the SwiftJ2K library. It losslessly encodes
-unsigned greyscale images (1 to 16 meaningful bits in 16-bit samples) to raw
-JPEG 2000 Part 1 (j2k) or HTJ2K Part 15 (htj2k) codestreams, decodes such
-codestreams (any tile grid, quality layers, code-block styles and progression
-orders, reversible 5/3 wavelet, no quantisation), transcodes losslessly
-between Part 1 and Part 15 in the wavelet coefficient domain without
-materialising an intermediate pixel image, inspects and validates codestreams,
-and reports the library's capabilities. Images enter and leave through the
-NRRD interchange profile below; a shell pipe carries bytes, never shared
-storage.
+The standalone executable of the SwiftJ2K library. It encodes unsigned and
+signed 1 to 16-bit greyscale, RGB, RGBA and multi-component images (in 8-bit or
+16-bit NRRD storage) to raw JPEG 2000 Part 1 (j2k) codestreams in lossless,
+near-lossless or lossy mode, or to lossless HTJ2K Part 15 (htj2k) codestreams;
+decodes Part 1 and Part 15 codestreams (5/3 reversible or 9/7 irreversible
+wavelets, RCT or ICT colour transforms, unsigned or signed samples, scalar
+derived or expounded quantisation, RGN MaxShift ROI, multi-tile, multi-layer,
+precincts, POC progression changes, SOP/EPH and code-block styles); transcodes
+losslessly between Part 1 and Part 15 in the wavelet coefficient domain without
+materialising an intermediate pixel image; inspects and validates codestreams;
+and reports the library's capabilities. Images enter and leave through the NRRD
+interchange profile below; a shell pipe carries bytes, never shared storage.
 Build with Swift 6.2 or later (6.4 qualified) in Swift 6 language mode. Apple OS
 minimum is 26.0. CLI hosts are macOS and Linux; consult the qualification
 records for executed coverage.
 .SH COMMANDS
 .TP
-.B encode \-i IMAGE.nrrd \-o OUT.j2k [\-\-output-format j2k|htj2k] [\-\-levels N] [\-\-code-block WxH] [\-\-precision N]
-Encode one NRRD greyscale image to a raw Part 1 (j2k, default) or Part 15
-(htj2k) codestream: reversible 5/3 wavelet, one tile, one layer. \-\-levels
-selects 0..32 decomposition levels (default min(5, floor(log2(min(width,
-height))))), \-\-code-block a power-of-two size from 4 to 1024 whose area is
-at most 4096 (default 64x64), and \-\-precision the meaningful bits when the
-NRRD header carries no swiftj2k.meaningfulbits key (default 16). A key that
-contradicts \-\-precision is a usage error.
+.B encode \-i IMAGE.nrrd \-o OUT.j2k [\-\-output-format j2k|htj2k] [CODEC OPTIONS]
+Encode an NRRD image to a raw Part 1 (j2k, default) or Part 15 (htj2k)
+codestream. Supported codec options include \-\-mode lossless|near-lossless|lossy
+(\-\-lossy shorthand), \-\-max-error E (\-\-near-lossless E), \-\-quality Q
+(0.0..1.0), \-\-bpp RATE, \-\-layers N (1..255), \-\-wavelet auto|53|97,
+\-\-mct auto|none|rct|ict, \-\-progression lrcp|rlcp|rpcl|pcrl|cprl,
+\-\-tile-size WxH, \-\-precincts WxH, \-\-roi X,Y,W,H[,SHIFT], \-\-guard-bits N
+(1..7), \-\-qstyle auto|none|derived|expounded, \-\-sop, \-\-eph, \-\-levels N
+(0..32), \-\-code-block WxH (powers of two 4..1024 with W*H <= 4096, default
+64x64) and \-\-precision N (meaningful bits when the NRRD header carries no
+swiftj2k.meaningfulbits key).
 .TP
 .B decode \-i IN.j2k \-o IMAGE.nrrd
 Decode a Part 1 or HTJ2K codestream to the NRRD profile with little-endian
@@ -81,8 +86,9 @@ For inspect and validate, a JSON document on stdout. For encode, decode and
 transcode, a JSON report on stderr so that binary stdout stays clean.
 .SH LIMIT AND POLICY OPTIONS
 .TP
-.B \-\-mode lossless
-The only mode; near-lossless, lossy and \-\-max-error return 4.
+.B \-\-mode lossless|near-lossless|lossy
+Selects the compression mode for encode (default lossless). Decode, validate and
+transcode accept lossless only; near-lossless or lossy on those verbs returns 4.
 .TP
 .B \-\-backend scalar
 The only backend; any other name returns 4.
@@ -100,13 +106,12 @@ Worker limit 1..8, admission budget in bytes for input, output and workspace,
 and the operation deadline (exit 5 when exceeded).
 .SH NRRD PROFILE
 Attached header ending in an empty line, magic NRRD0001 to NRRD0005, fields
-type: uint16, dimension: 2, sizes: W H, encoding: raw and endian: little or
-big. The key swiftj2k.meaningfulbits:=N (1..16) records the declared
-precision; decode always writes it. Detached data files, line or byte skips,
-block sizes, other types, dimensions and encodings are refused (exit 4);
-a data length other than W*H*2 bytes is malformed (exit 3). Comments are
-ignored. This is the CLI-04 interchange profile of the suite contract, not a
-private format.
+type: uint8|int8|uint16|int16, dimension: 2 (sizes: W H) or dimension: 3
+(sizes: C W H, sample-interleaved or planar with kinds), encoding: raw and
+endian: little or big (for 16-bit types). The key swiftj2k.meaningfulbits:=N
+(1..16) records the declared precision; decode always writes it. Detached data
+files, line or byte skips, block sizes, other types, dimensions and encodings
+are refused (exit 4); a mismatched data byte length is malformed (exit 3).
 .SH OPTIONS
 .TP
 .B \-h, \-\-help
@@ -144,11 +149,10 @@ published.
 .SH EXAMPLES
 .nf
 swiftj2k-cli encode \-i slice.nrrd \-o slice.j2k \-\-precision 12
+swiftj2k-cli encode \-i rgb.nrrd \-o rgb.j2k \-\-mode lossy \-\-quality 0.85 \-\-wavelet 97 \-\-mct ict
 swiftj2k-cli encode \-i slice.nrrd \-o slice.j2c \-\-output-format htj2k \-\-precision 12
 swiftj2k-cli decode \-i slice.j2k \-o slice.nrrd \-\-overwrite
 swiftj2k-cli transcode \-i source.j2k \-\-input-format j2k \-\-output-format htj2k \-\-mode lossless \-o converted.j2c
-swiftj2k-cli transcode \-i converted.j2c \-\-input-format htj2k \-\-output-format j2k \-\-mode lossless \-o restored.j2k
-swiftj2k-cli decode \-i \- \-o \- < slice.j2k | swiftj2k-cli encode \-i \- \-\-input-format nrrd \-o out.j2k
 swiftj2k-cli inspect \-i slice.j2k \-\-json
 swiftj2k-cli validate \-i slice.j2k
 swiftj2k-cli capabilities \-\-json \-vv
@@ -166,4 +170,4 @@ No index refresh is needed for direct lookup; no sudo runs automatically.
 .SH SEE ALSO
 .BR man (1)
 .PP
-CLI.md, TRANSCODING.md and Documentation/MILESTONE6.md in the SwiftJ2K repository.
+CLI.md, TRANSCODING.md and Documentation/MILESTONE7.md in the SwiftJ2K repository.

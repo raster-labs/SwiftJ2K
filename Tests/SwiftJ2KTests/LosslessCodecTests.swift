@@ -105,20 +105,28 @@ func supportedSyntaxVariantsDecodeExactly(variant: String) async throws {
 }
 
 @Test(arguments: [("irreversible97", "9/7")])
-func validButUnsupportedCodestreamsAreRejectedBeforeDecoding(variant: String, expected: String) async throws {
+func irreversible97FixtureDecodesWithLossyFidelityAndPart2IsRejected(variant: String, expected: String) async throws {
     let data = try Fixtures.bytes("g16_64x64_random.\(variant).j2k")
     let decoder = try Decoder()
+    let info = try decoder.inspect(data)
+    #expect(info.descriptor.width == 64 && info.descriptor.height == 64)
+    let decoded = try await decoder.decode(data)
+    #expect(decoded.report.fidelity == .lossy)
+
+    // Part 2 Rsiz (0x8000) at bytes 6..7 remains unsupported and leaves the caller's destination reusable.
+    var part2Data = data
+    part2Data[6] = 0x80
+    part2Data[7] = 0x02
     let destination = try ImageDestination.allocate(descriptor: .greyscale16(width: 64, height: 64))
     for attempt in 0..<2 {
         do {
-            if attempt == 0 { _ = try decoder.inspect(data) } else { _ = try await decoder.decode(data, into: destination) }
-            Issue.record("\(variant) was accepted")
+            if attempt == 0 { _ = try decoder.inspect(part2Data) } else { _ = try await decoder.decode(part2Data, into: destination) }
+            Issue.record("Part 2 Rsiz codestream was accepted")
         } catch let error as CodecError {
-            #expect(error.category == .unsupportedFeature, "\(variant): \(error.message)")
-            #expect(error.message.contains(expected), "\(variant): \(error.message)")
+            #expect(error.category == .unsupportedFeature, "\(error.message)")
+            #expect(error.message.contains("Part 2"), "\(error.message)")
         }
     }
-    // Preflight rejection leaves the caller's destination reusable.
     #expect(try destination.writeUInt16 { _, _ in 5 }.sampleUInt16(x: 63, y: 63) == 5)
 }
 
@@ -136,14 +144,13 @@ func syntaxCoverageVariantsDecodeExactly(file: String) async throws {
     try expectSamples(decoded.image, equal: try Fixtures.samples(entry), width: entry.width, height: entry.height)
 }
 
-@Test func colourCodestreamsAreRejected() async throws {
+@Test func colourCodestreamsInspectAndDecode() async throws {
     let data = try Fixtures.bytes(Fixtures.manifest.rgb_fixture.file)
-    do {
-        _ = try await Decoder().decode(data)
-        Issue.record("RGB codestream was accepted")
-    } catch let error as CodecError {
-        #expect(error.category == .unsupportedFeature && error.message.contains("single-component"))
-    }
+    let decoder = try Decoder()
+    let info = try decoder.inspect(data)
+    #expect(info.descriptor.width == 16 && info.descriptor.height == 16 && info.descriptor.components == [.red, .green, .blue])
+    let decoded = try await decoder.decode(data)
+    #expect(decoded.image.descriptor.components == [.red, .green, .blue])
 }
 
 // MARK: - Round trips through the successor encoder

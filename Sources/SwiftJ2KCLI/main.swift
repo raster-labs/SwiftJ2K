@@ -2,10 +2,12 @@
 //
 // swiftj2k-cli: the standalone executable of the SwiftJ2K library (CLI_CONTRACT
 // CLI-01..CLI-04, CLI-06..CLI-09). Milestone 4 wired encode, decode, inspect
-// and validate over the NRRD interchange profile; Milestone 6 adds Part 15
-// HTJ2K and native compressed-domain J2K <-> HTJ2K transcode. Library errors
-// map to exit statuses here and nowhere else; the library never terminates the
-// process.
+// and validate over the NRRD interchange profile; Milestone 6 added Part 15
+// HTJ2K and native compressed-domain J2K <-> HTJ2K transcode; Milestone 7 adds
+// Part 1 breadth (lossy/near-lossless, 9/7 wavelet, signed/8-bit/multi-component
+// NRRD, RCT/ICT, progression orders, multi-tile, multi-layer, precincts, and ROI).
+// Library errors map to exit statuses here and nowhere else; the library never
+// terminates the process.
 import Foundation
 import Synchronization
 import SwiftJ2K
@@ -18,9 +20,14 @@ import Glibc
 private let tool = "swiftj2k-cli"
 private let version = "12.1.0"
 private let codecCommands = ["encode", "decode", "inspect", "validate", "transcode"]
-private let valueOptions: Set<String> = ["--input", "-i", "--output", "-o", "--input-format", "--output-format",
-    "--mode", "--max-error", "--backend", "--copy-policy", "--metadata-policy", "--threads", "--max-memory", "--timeout",
-    "--levels", "--code-block", "--precision"]
+private let valueOptions: Set<String> = [
+    "--input", "-i", "--output", "-o", "--input-format", "--output-format",
+    "--mode", "--max-error", "--near-lossless", "--backend", "--copy-policy",
+    "--metadata-policy", "--threads", "--max-memory", "--timeout",
+    "--levels", "--code-block", "--precision",
+    "--quality", "--bpp", "--layers", "--wavelet", "--mct", "--colour-transform",
+    "--progression", "--tile-size", "--precincts", "--roi", "--guard-bits", "--qstyle"
+]
 
 private struct UsageError: Error { let message: String }
 private struct ExitFailure: Error { let status: Int32; let message: String }
@@ -33,8 +40,10 @@ private struct Options {
     var quiet = false
     var verbosity = 0
     var overwrite = false
+    var sop = false
+    var eph = false
     var values: [String: String] = [:]
-    var codecOptions: Bool { !values.isEmpty || overwrite }
+    var codecOptions: Bool { !values.isEmpty || overwrite || sop || eph }
 }
 
 private func parse(_ args: [String]) throws -> Options {
@@ -76,11 +85,26 @@ private func parse(_ args: [String]) throws -> Options {
         } else if !positionalOnly && arg.hasPrefix("-v") && arg.count > 2 && arg.dropFirst().allSatisfy({ $0 == "v" }) {
             options.verbosity += arg.count - 1
         } else if !positionalOnly && valueOptions.contains(arg) {
-            let canonical = arg == "-i" ? "--input" : (arg == "-o" ? "--output" : arg)
+            let canonical: String
+            switch arg {
+            case "-i": canonical = "--input"
+            case "-o": canonical = "--output"
+            case "--colour-transform": canonical = "--mct"
+            case "--near-lossless": canonical = "--max-error"
+            default: canonical = arg
+            }
             let value = try consumeValue()
             guard options.values[canonical] == nil else { throw UsageError(message: "\(canonical) was given twice.") }
             options.values[canonical] = value
+            if arg == "--near-lossless" && options.values["--mode"] == nil {
+                options.values["--mode"] = "near-lossless"
+            }
+        } else if !positionalOnly && arg == "--lossy" {
+            guard options.values["--mode"] == nil else { throw UsageError(message: "--mode was given twice.") }
+            options.values["--mode"] = "lossy"
         } else if !positionalOnly && arg == "--overwrite" { options.overwrite = true }
+        else if !positionalOnly && arg == "--sop" { options.sop = true }
+        else if !positionalOnly && arg == "--eph" { options.eph = true }
         else if !positionalOnly && arg.hasPrefix("-") {
             throw UsageError(message: "Unknown option. Use \(tool) --help.")
         } else if options.command == nil { options.command = arg }
@@ -142,7 +166,8 @@ private func help(_ command: String?) -> String {
       --json                    Structured report on stderr (encode/decode/transcode) or stdout (inspect/validate).
 
     LIMITS AND POLICIES
-      --mode lossless           The only mode; near-lossless and lossy are unsupported (exit 4).
+      --mode MODE               lossless (default), near-lossless or lossy (encode only).
+      --max-error E             Maximum absolute sample error E >= 1 for near-lossless mode.
       --backend NAME            scalar (default); accelerated backends are unavailable (exit 4).
       --copy-policy POLICY      require-sharing (default) or allow-copy; neither copies here.
       --metadata-policy POLICY  preserve (default) or discard-ancillary (COM marker segments).
@@ -151,9 +176,10 @@ private func help(_ command: String?) -> String {
       --timeout SECONDS         Operation deadline (exit 5 when exceeded).
 
     NRRD PROFILE (CLI.md)
-      Attached header, 2-D, type uint16, encoding raw, explicit endian, no detached data.
+      Attached header, 2-D greyscale or 3-D multi-component, type uint8/int8/uint16/int16,
+      encoding raw, explicit endian for 16-bit, no detached data.
       A key 'swiftj2k.meaningfulbits:=N' carries 1..16 meaningful bits; on encode
-      --precision N supplies it when the header has none (default 16).
+      --precision N supplies it when the header has none.
     """
     if let command {
         switch command {
@@ -172,16 +198,29 @@ private func help(_ command: String?) -> String {
             """ + "\n"
         case "encode":
             return """
-            USAGE: \(tool) encode -i IMAGE.nrrd -o OUT.j2k [--output-format j2k|htj2k] [--levels N] [--code-block WxH] [--precision N] [OPTIONS]
+            USAGE: \(tool) encode -i IMAGE.nrrd -o OUT.j2k [--output-format j2k|htj2k] [CODEC OPTIONS] [OPTIONS]
 
-            Losslessly encode one unsigned greyscale NRRD image (1..16 meaningful bits in 16-bit
-            samples) to a raw JPEG 2000 Part 1 (j2k) or HTJ2K Part 15 (htj2k) codestream:
-            reversible 5/3 wavelet, one tile, one layer, default code-block style.
+            Encode an NRRD image (unsigned or signed 1..16-bit greyscale, RGB, or multi-component)
+            to a raw JPEG 2000 Part 1 (j2k) or HTJ2K Part 15 (htj2k) codestream.
 
             CODEC OPTIONS
+              --mode MODE               lossless (default), near-lossless or lossy; --lossy is a shorthand.
+              --max-error E             Positive error bound for near-lossless (--near-lossless E).
+              --quality Q               Lossy quality factor in 0.0..1.0.
+              --bpp RATE                Target compressed bitrate in bits per pixel (> 0).
+              --layers N                Number of quality layers 1..255 (default 1).
+              --wavelet auto|53|97      Wavelet transform filter (default auto).
+              --mct auto|none|rct|ict   Multi-component colour transform (default auto).
+              --progression ORDER       lrcp (default), rlcp, rpcl, pcrl or cprl.
+              --tile-size WxH           Tile dimensions in reference grid samples.
+              --precincts WxH           Precinct size, powers of two 1..32768.
+              --roi X,Y,W,H[,SHIFT]     Rectangular Region of Interest encoded via RGN MaxShift.
+              --guard-bits N            Guard bits 1..7 (default 2).
+              --qstyle STYLE            auto, none, derived or expounded.
+              --sop / --eph             Emit SOP (0xFF91) / EPH (0xFF92) packet markers.
               --levels N                Decomposition levels 0..32; default min(5, floor(log2(min(w, h)))).
               --code-block WxH          Code-block size, powers of two 4..1024 with W*H <= 4096; default 64x64.
-              --precision N             Meaningful bits when the NRRD header carries none; default 16.
+              --precision N             Meaningful bits when the NRRD header carries none.
 
             \(io)
 
@@ -189,6 +228,7 @@ private func help(_ command: String?) -> String {
 
             EXAMPLES
               \(tool) encode -i slice.nrrd -o slice.j2k --precision 12
+              \(tool) encode -i rgb.nrrd -o rgb.j2k --mode lossy --quality 0.8 --wavelet 97 --mct ict
               \(tool) encode -i slice.nrrd -o slice.j2c --output-format htj2k --precision 12
               cat slice.nrrd | \(tool) encode -i - --input-format nrrd -o - > slice.j2k
             """ + "\n"
@@ -196,9 +236,9 @@ private func help(_ command: String?) -> String {
             return """
             USAGE: \(tool) decode -i IN.j2k -o IMAGE.nrrd [OPTIONS]
 
-            Decode a raw JPEG 2000 Part 1 or HTJ2K Part 15 codestream (unsigned greyscale,
-            1..16 bits, reversible 5/3, any tiles, layers, code-block styles and progression
-            orders) to the NRRD profile.
+            Decode a raw JPEG 2000 Part 1 or HTJ2K Part 15 codestream (unsigned or signed,
+            1..16 bits, 1..N components, 5/3 or 9/7, RCT or ICT, any tiles, layers, ROI,
+            code-block styles and progression orders) to the NRRD profile.
 
             \(io)
 
@@ -266,22 +306,23 @@ private func help(_ command: String?) -> String {
     USAGE: \(tool) [OPTIONS] <command> [OPTIONS]
 
     COMMANDS
-      encode                     NRRD greyscale image -> lossless JPEG 2000 or HTJ2K codestream.
-      decode                     JPEG 2000 or HTJ2K codestream -> NRRD greyscale image.
+      encode                     NRRD image -> JPEG 2000 (lossless/near-lossless/lossy) or HTJ2K codestream.
+      decode                     JPEG 2000 or HTJ2K codestream -> NRRD image.
       inspect                    Report codestream geometry without decoding.
       validate                   Fully decode in memory and report the result.
       transcode                  Lossless JPEG 2000 <-> HTJ2K compressed-domain transcoding.
-      capabilities [--json]      Report actual library support (scalar lossless JPEG 2000 and HTJ2K).
+      capabilities [--json]      Report actual library support (scalar JPEG 2000 Part 1 and HTJ2K Part 15).
       help [command]             Show global or command-specific help.
       version                    Show the development version.
 
-    Accelerated backends and lossy/near-lossless modes are unavailable (exit 4).
+    Accelerated backends are unavailable (exit 4).
     Swift 6.2 minimum, Swift 6.4 qualified; Apple OS baseline 26.0. CLI hosts: macOS/Linux.
 
     \(common)
 
     EXAMPLES
       \(tool) encode -i slice.nrrd -o slice.j2k --precision 12
+      \(tool) encode -i rgb.nrrd -o rgb.j2k --mode lossy --quality 0.8 --wavelet 97 --mct ict
       \(tool) decode -i slice.j2k -o slice.nrrd
       \(tool) transcode -i source.j2k --input-format j2k --output-format htj2k --mode lossless -o converted.j2c
       \(tool) inspect -i slice.j2k --json
@@ -298,9 +339,13 @@ private func write(_ text: String, to handle: FileHandle) throws {
 private struct NRRDImage {
     let width: Int
     let height: Int
+    let components: Int
+    let componentsFirst: Bool   // true when 3D layout is [C, W, H], false when [W, H, C] or 2D
+    let storageBits: Int        // 8 or 16
+    let signed: Bool
     let meaningfulBits: Int
     let bigEndian: Bool
-    let samples: Data          // raw 16-bit samples in the file's byte order
+    let samples: Data
 }
 
 private enum NRRD {
@@ -341,56 +386,140 @@ private enum NRRD {
         where fields[forbidden] != nil {
             throw ExitFailure(status: 4, message: "unsupported format: NRRD '\(forbidden)' is outside the attached-raw profile.")
         }
-        guard let type = fields["type"]?.lowercased(),
-              ["uint16", "ushort", "unsigned short", "unsigned short int", "uint16_t"].contains(type) else {
-            throw ExitFailure(status: 4, message: "unsupported format: NRRD type must be uint16 for this profile.")
+        guard let type = fields["type"]?.lowercased() else {
+            throw ExitFailure(status: 4, message: "unsupported format: NRRD header is missing type.")
         }
-        guard fields["dimension"] == "2" else {
-            throw ExitFailure(status: 4, message: "unsupported format: NRRD dimension must be 2.")
+        let storageBits: Int
+        let signed: Bool
+        if ["uint16", "ushort", "unsigned short", "unsigned short int", "uint16_t"].contains(type) {
+            storageBits = 16; signed = false
+        } else if ["int16", "short", "short int", "signed short", "signed short int", "int16_t"].contains(type) {
+            storageBits = 16; signed = true
+        } else if ["uint8", "uchar", "unsigned char", "uint8_t"].contains(type) {
+            storageBits = 8; signed = false
+        } else if ["int8", "signed char", "int8_t"].contains(type) {
+            storageBits = 8; signed = true
+        } else {
+            throw ExitFailure(status: 4, message: "unsupported format: NRRD type must be uint8, int8, uint16 or int16.")
+        }
+        guard let dimStr = fields["dimension"], dimStr == "2" || dimStr == "3" else {
+            throw ExitFailure(status: 4, message: "unsupported format: NRRD dimension must be 2 or 3.")
         }
         guard let encoding = fields["encoding"]?.lowercased(), encoding == "raw" else {
             throw ExitFailure(status: 4, message: "unsupported format: NRRD encoding must be raw.")
         }
-        guard let endian = fields["endian"]?.lowercased(), endian == "little" || endian == "big" else {
-            throw ExitFailure(status: 3, message: "malformed input: NRRD endian must be little or big for 16-bit samples.")
+        let bigEndian: Bool
+        if storageBits == 16 {
+            guard let endian = fields["endian"]?.lowercased(), endian == "little" || endian == "big" else {
+                throw ExitFailure(status: 3, message: "malformed input: NRRD endian must be little or big for 16-bit samples.")
+            }
+            bigEndian = (endian == "big")
+        } else {
+            bigEndian = (fields["endian"]?.lowercased() == "big")
         }
+
         let sizes = (fields["sizes"] ?? "").split(separator: " ").compactMap { Int($0) }
-        guard sizes.count == 2, sizes[0] > 0, sizes[1] > 0 else {
-            throw ExitFailure(status: 3, message: "malformed input: NRRD sizes must be two positive integers.")
+        let width: Int
+        let height: Int
+        let components: Int
+        let componentsFirst: Bool
+
+        if dimStr == "2" {
+            guard sizes.count == 2, sizes[0] > 0, sizes[1] > 0 else {
+                throw ExitFailure(status: 3, message: "malformed input: NRRD sizes must be two positive integers.")
+            }
+            width = sizes[0]
+            height = sizes[1]
+            components = 1
+            componentsFirst = true
+        } else {
+            guard sizes.count == 3, sizes[0] > 0, sizes[1] > 0, sizes[2] > 0 else {
+                throw ExitFailure(status: 3, message: "malformed input: 3-D NRRD sizes must be three positive integers.")
+            }
+            let kinds = (fields["kinds"] ?? "").lowercased().split(separator: " ").map(String.init)
+            let compKinds: Set<String> = ["list", "vector", "rgb-color", "rgba-color", "3-color", "4-color", "point", "covariant-vector"]
+            if kinds.count == 3 && compKinds.contains(kinds[2]) && !compKinds.contains(kinds[0]) {
+                width = sizes[0]; height = sizes[1]; components = sizes[2]; componentsFirst = false
+            } else if kinds.count == 3 && compKinds.contains(kinds[0]) {
+                components = sizes[0]; width = sizes[1]; height = sizes[2]; componentsFirst = true
+            } else if sizes[0] <= 16 && (sizes[2] > 16 || sizes[0] <= sizes[2]) {
+                components = sizes[0]; width = sizes[1]; height = sizes[2]; componentsFirst = true
+            } else {
+                width = sizes[0]; height = sizes[1]; components = sizes[2]; componentsFirst = false
+            }
         }
-        var precision = defaultPrecision ?? 16
+
+        var precision = defaultPrecision ?? storageBits
         if let declared = keyValues["swiftj2k.meaningfulbits"] {
-            guard let value = Int(declared), (1...16).contains(value) else {
-                throw ExitFailure(status: 3, message: "malformed input: swiftj2k.meaningfulbits must be 1..16.")
+            guard let value = Int(declared), (1...storageBits).contains(value) else {
+                throw ExitFailure(status: 3, message: "malformed input: swiftj2k.meaningfulbits must be 1..\(storageBits).")
             }
             if let requested = defaultPrecision, requested != value {
                 throw ExitFailure(status: 2, message: "invalid argument: --precision \(requested) contradicts the header key swiftj2k.meaningfulbits:=\(value).")
             }
             precision = value
         }
-        let (count, overflow) = sizes[0].multipliedReportingOverflow(by: sizes[1])
-        guard !overflow, count <= Int.max / 2 else { throw ExitFailure(status: 5, message: "resource limit: NRRD size overflows.") }
-        let expected = count * 2
+        guard (1...storageBits).contains(precision) else {
+            throw ExitFailure(status: 2, message: "invalid argument: --precision \(precision) exceeds \(storageBits)-bit NRRD storage.")
+        }
+
+        let (wh, ov1) = width.multipliedReportingOverflow(by: height)
+        let (totalSamples, ov2) = wh.multipliedReportingOverflow(by: components)
+        let bytesPerSample = storageBits / 8
+        let (expected, ov3) = totalSamples.multipliedReportingOverflow(by: bytesPerSample)
+        guard !ov1 && !ov2 && !ov3, expected >= 0 else {
+            throw ExitFailure(status: 5, message: "resource limit: NRRD size overflows.")
+        }
         guard bytes.count - position == expected else {
             throw ExitFailure(status: 3, message: "malformed input: NRRD data holds \(bytes.count - position) bytes, expected \(expected).")
         }
-        return NRRDImage(width: sizes[0], height: sizes[1], meaningfulBits: precision, bigEndian: endian == "big",
-                         samples: data.subdata(in: position..<position + expected))
+        return NRRDImage(
+            width: width, height: height, components: components,
+            componentsFirst: componentsFirst, storageBits: storageBits,
+            signed: signed, meaningfulBits: precision, bigEndian: bigEndian,
+            samples: data.subdata(in: position..<position + expected)
+        )
     }
 
-    static func header(width: Int, height: Int, meaningfulBits: Int) -> Data {
-        Data("""
-        NRRD0004
-        # SwiftJ2K interchange profile 1: 2-D unsigned 16-bit greyscale, raw attached data (CLI.md)
-        type: uint16
-        dimension: 2
-        sizes: \(width) \(height)
-        encoding: raw
-        endian: little
-        kinds: space space
-        swiftj2k.meaningfulbits:=\(meaningfulBits)
-
-        """.utf8) + Data([0x0A])   // the multi-line literal ends without the blank terminator line
+    static func header(descriptor: ImageDescriptor) -> Data {
+        let typeName: String
+        if descriptor.storageBits == 8 {
+            typeName = descriptor.sampleType == .signedInteger ? "int8" : "uint8"
+        } else {
+            typeName = descriptor.sampleType == .signedInteger ? "int16" : "uint16"
+        }
+        if descriptor.components.count == 1 {
+            var lines = [
+                "NRRD0004",
+                "# SwiftJ2K interchange profile 1: 2-D greyscale, raw attached data (CLI.md)",
+                "type: \(typeName)",
+                "dimension: 2",
+                "sizes: \(descriptor.width) \(descriptor.height)",
+                "encoding: raw"
+            ]
+            if descriptor.storageBits == 16 {
+                lines.append("endian: little")
+            }
+            lines.append("kinds: space space")
+            lines.append("swiftj2k.meaningfulbits:=\(descriptor.meaningfulBits)")
+            return Data((lines.joined(separator: "\n") + "\n\n").utf8)
+        } else {
+            let kind0 = descriptor.components.count == 3 ? "RGB-color" : (descriptor.components.count == 4 ? "RGBA-color" : "list")
+            var lines = [
+                "NRRD0004",
+                "# SwiftJ2K multi-component NRRD interchange profile, raw attached data (CLI.md)",
+                "type: \(typeName)",
+                "dimension: 3",
+                "sizes: \(descriptor.components.count) \(descriptor.width) \(descriptor.height)",
+                "encoding: raw"
+            ]
+            if descriptor.storageBits == 16 {
+                lines.append("endian: little")
+            }
+            lines.append("kinds: \(kind0) space space")
+            lines.append("swiftj2k.meaningfulbits:=\(descriptor.meaningfulBits)")
+            return Data((lines.joined(separator: "\n") + "\n\n").utf8)
+        }
     }
 }
 
@@ -439,8 +568,6 @@ private func publish(_ data: Data, to path: String, overwrite: Bool) throws {
     let temporary = url.deletingLastPathComponent().appendingPathComponent(".\(url.lastPathComponent).\(tool)-\(getpid()).tmp")
     do {
         try data.write(to: temporary, options: [.withoutOverwriting])
-        // POSIX rename(2) is atomic and replaces an existing destination on
-        // both Darwin and Linux; FileManager.replaceItemAt is not portable.
         guard rename(temporary.path, url.path) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
     } catch {
         try? FileManager.default.removeItem(at: temporary)
@@ -495,7 +622,7 @@ private func detectFormat(_ data: Data, declared: String?) throws -> String {
     return detected
 }
 
-private func limits(from options: Options) throws -> ResourceLimits {
+private func limits(from options: Options, command: String) throws -> ResourceLimits {
     var workers = min(ProcessInfo.processInfo.activeProcessorCount, 8)
     var memory = 1024 * 1024 * 1024
     var deadline = 120.0
@@ -511,9 +638,13 @@ private func limits(from options: Options) throws -> ResourceLimits {
         guard let value = Double(text), value > 0, value.isFinite else { throw UsageError(message: "--timeout must be positive seconds.") }
         deadline = value
     }
-    if let mode = options.values["--mode"], mode != "lossless" {
-        guard ["near-lossless", "lossy"].contains(mode) else { throw UsageError(message: "--mode must be lossless, near-lossless or lossy.") }
-        throw ExitFailure(status: 4, message: "unsupported: only lossless mode is implemented.")
+    if let mode = options.values["--mode"] {
+        guard ["lossless", "near-lossless", "lossy"].contains(mode) else {
+            throw UsageError(message: "--mode must be lossless, near-lossless or lossy.")
+        }
+        if mode != "lossless" && command != "encode" {
+            throw ExitFailure(status: 4, message: "unsupported: \(mode) mode applies to encode only.")
+        }
     }
     if let backend = options.values["--backend"], backend != "scalar" {
         throw ExitFailure(status: 4, message: "unsupported: backend '\(backend)' is not available; only scalar exists.")
@@ -524,10 +655,19 @@ private func limits(from options: Options) throws -> ResourceLimits {
     if let meta = options.values["--metadata-policy"] {
         guard ["preserve", "discard-ancillary"].contains(meta) else { throw UsageError(message: "--metadata-policy must be preserve or discard-ancillary.") }
     }
-    if options.values["--max-error"] != nil {
-        throw ExitFailure(status: 4, message: "unsupported: --max-error applies to near-lossless modes, which are not implemented.")
+    if options.values["--max-error"] != nil && command != "encode" {
+        throw ExitFailure(status: 4, message: "unsupported: --max-error applies to encode only.")
     }
     return try ResourceLimits(maximumWorkers: workers, deadlineSeconds: deadline, maximumMemoryBytes: memory)
+}
+
+private func fidelityString(_ fidelity: Fidelity) -> String {
+    switch fidelity {
+    case .exactSamples: return "exactSamples"
+    case .boundedError(let b): return "boundedError(\(b))"
+    case .lossy: return "lossy"
+    case .originalBitstream: return "originalBitstream"
+    }
 }
 
 private func report(_ fields: [String: Any], json: Bool, to handle: FileHandle) throws {
@@ -536,10 +676,187 @@ private func report(_ fields: [String: Any], json: Bool, to handle: FileHandle) 
     try handle.write(contentsOf: data + Data([10]))
 }
 
+private func parseEncodeConfiguration(
+    options: Options,
+    levels: Int?,
+    blockWidth: Int,
+    blockHeight: Int,
+    blockCoding: CodecOptions.BlockCoding
+) throws -> EncoderConfiguration {
+    let modeStr = options.values["--mode"] ?? "lossless"
+    let mode: CompressionMode
+    switch modeStr {
+    case "lossless":
+        if options.values["--max-error"] != nil {
+            throw UsageError(message: "--max-error requires --mode near-lossless.")
+        }
+        mode = .lossless
+    case "near-lossless":
+        let boundStr = options.values["--max-error"] ?? "1"
+        guard let bound = Int(boundStr), bound >= 1 else {
+            throw UsageError(message: "--max-error must be a positive integer (>= 1).")
+        }
+        mode = .nearLossless(maximumAbsoluteError: bound)
+    case "lossy":
+        if options.values["--max-error"] != nil {
+            throw UsageError(message: "--max-error cannot be combined with --mode lossy.")
+        }
+        mode = .lossy
+    default:
+        throw UsageError(message: "--mode must be lossless, near-lossless or lossy.")
+    }
+
+    var wavelet: CodecOptions.WaveletTransform = .automatic
+    if let wText = options.values["--wavelet"]?.lowercased() {
+        switch wText {
+        case "auto", "automatic": wavelet = .automatic
+        case "53", "reversible53": wavelet = .reversible53
+        case "97", "irreversible97": wavelet = .irreversible97
+        default: throw UsageError(message: "--wavelet must be auto, 53 or 97.")
+        }
+    }
+
+    var colourTransform: CodecOptions.ColourTransform = .automatic
+    if let mText = options.values["--mct"]?.lowercased() {
+        switch mText {
+        case "auto", "automatic": colourTransform = .automatic
+        case "none": colourTransform = .none
+        case "rct": colourTransform = .rct
+        case "ict": colourTransform = .ict
+        default: throw UsageError(message: "--mct must be auto, none, rct or ict.")
+        }
+    }
+
+    var progressionOrder: CodecOptions.ProgressionOrder = .lrcp
+    if let pText = options.values["--progression"]?.lowercased() {
+        switch pText {
+        case "lrcp": progressionOrder = .lrcp
+        case "rlcp": progressionOrder = .rlcp
+        case "rpcl": progressionOrder = .rpcl
+        case "pcrl": progressionOrder = .pcrl
+        case "cprl": progressionOrder = .cprl
+        default: throw UsageError(message: "--progression must be lrcp, rlcp, rpcl, pcrl or cprl.")
+        }
+    }
+
+    var quality: Double? = nil
+    if let qText = options.values["--quality"] {
+        guard let q = Double(qText), q.isFinite, (0.0...1.0).contains(q) else {
+            throw UsageError(message: "--quality must be in 0.0..1.0.")
+        }
+        quality = q
+    }
+
+    var targetBpp: Double? = nil
+    if let bText = options.values["--bpp"] {
+        guard let b = Double(bText), b.isFinite, b > 0.0 else {
+            throw UsageError(message: "--bpp must be a positive number.")
+        }
+        targetBpp = b
+    }
+
+    var layers = 1
+    if let lText = options.values["--layers"] {
+        guard let l = Int(lText), (1...255).contains(l) else {
+            throw UsageError(message: "--layers must be 1..255.")
+        }
+        layers = l
+    }
+
+    var guardBits = 2
+    if let gText = options.values["--guard-bits"] {
+        guard let g = Int(gText), (1...7).contains(g) else {
+            throw UsageError(message: "--guard-bits must be 1..7.")
+        }
+        guardBits = g
+    }
+
+    var qStyle: CodecOptions.QuantizationStyle = .automatic
+    if let qsText = options.values["--qstyle"]?.lowercased() {
+        switch qsText {
+        case "auto", "automatic": qStyle = .automatic
+        case "none": qStyle = .none
+        case "derived", "scalarderived": qStyle = .scalarDerived
+        case "expounded", "scalarexpounded": qStyle = .scalarExpounded
+        default: throw UsageError(message: "--qstyle must be auto, none, derived or expounded.")
+        }
+    }
+
+    var tileWidth: Int? = nil
+    var tileHeight: Int? = nil
+    if let tText = options.values["--tile-size"] {
+        let parts = tText.lowercased().split(separator: "x").compactMap { Int($0) }
+        guard parts.count == 2, parts[0] >= 1, parts[1] >= 1 else {
+            throw UsageError(message: "--tile-size must be WxH with positive integers.")
+        }
+        tileWidth = parts[0]; tileHeight = parts[1]
+    }
+
+    var precinctSizes: [CodecOptions.PrecinctSize] = []
+    if let prText = options.values["--precincts"] {
+        for item in prText.split(separator: ",") {
+            let parts = item.lowercased().split(separator: "x").compactMap { Int($0) }
+            guard parts.count == 2 else {
+                throw UsageError(message: "--precincts must be WxH (or comma-separated WxH list).")
+            }
+            do {
+                precinctSizes.append(try CodecOptions.PrecinctSize(width: parts[0], height: parts[1]))
+            } catch let error as CodecError {
+                throw UsageError(message: error.message)
+            }
+        }
+    }
+
+    var roi: CodecOptions.RegionOfInterest? = nil
+    if let rText = options.values["--roi"] {
+        let parts = rText.split(separator: ",").compactMap { Int($0) }
+        guard parts.count == 4 || parts.count == 5 else {
+            throw UsageError(message: "--roi must be X,Y,W,H or X,Y,W,H,SHIFT.")
+        }
+        do {
+            roi = try CodecOptions.RegionOfInterest(
+                x: parts[0], y: parts[1], width: parts[2], height: parts[3],
+                shift: parts.count == 5 ? parts[4] : nil
+            )
+        } catch let error as CodecError {
+            throw UsageError(message: error.message)
+        }
+    }
+
+    do {
+        let codecOptions = try CodecOptions(
+            decompositionLevels: levels,
+            codeBlockWidth: blockWidth,
+            codeBlockHeight: blockHeight,
+            blockCoding: blockCoding,
+            wavelet: wavelet,
+            colourTransform: colourTransform,
+            progressionOrder: progressionOrder,
+            quality: quality,
+            targetBitsPerPixel: targetBpp,
+            qualityLayers: layers,
+            quantizationStyle: qStyle,
+            guardBits: guardBits,
+            tileWidth: tileWidth,
+            tileHeight: tileHeight,
+            precinctSizes: precinctSizes,
+            usesSOP: options.sop,
+            usesEPH: options.eph,
+            regionOfInterest: roi
+        )
+        return try EncoderConfiguration(mode: mode, codecOptions: codecOptions)
+    } catch let error as CodecError {
+        if error.category == .unsupportedFeature {
+            throw ExitFailure(status: 4, message: "unsupported: \(error.message)")
+        }
+        throw UsageError(message: error.message)
+    }
+}
+
 private func runCodecCommand(_ command: String, _ context: CodecContext) async throws -> Int32 {
     let options = context.options
     guard let inputPath = options.values["--input"] else { throw UsageError(message: "\(command) requires --input.") }
-    let limits = try limits(from: options)
+    let limits = try limits(from: options, command: command)
     // Every option value is validated before any input is opened (CLI-02).
     if let declaredInput = options.values["--input-format"], !["j2k", "htj2k", "nrrd"].contains(declaredInput) {
         throw UsageError(message: "--input-format must be j2k, htj2k or nrrd.")
@@ -563,8 +880,17 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
     let codecOptions: CodecOptions
     do { codecOptions = try CodecOptions(decompositionLevels: levels, codeBlockWidth: blockWidth, codeBlockHeight: blockHeight) }
     catch let error as CodecError { throw UsageError(message: error.message) }
-    if command != "encode", options.values["--precision"] != nil {
-        throw UsageError(message: "--precision applies to encode only.")
+    let encodeOnlyFlags = [
+        "--precision", "--quality", "--bpp", "--layers", "--wavelet", "--mct",
+        "--progression", "--tile-size", "--precincts", "--roi", "--guard-bits", "--qstyle"
+    ]
+    if command != "encode" {
+        for flag in encodeOnlyFlags where options.values[flag] != nil {
+            throw UsageError(message: "\(flag) applies to encode only.")
+        }
+        if options.sop || options.eph {
+            throw UsageError(message: "--sop and --eph apply to encode only.")
+        }
     }
     if !["encode", "transcode"].contains(command), options.values["--levels"] != nil || options.values["--code-block"] != nil {
         throw UsageError(message: "--levels and --code-block apply to encode and transcode only.")
@@ -593,13 +919,17 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
             throw ExitFailure(status: 4, message: "unsupported format: inspect reads JPEG 2000 or HTJ2K codestreams.")
         }
         let info = try Decoder().inspect(input, options: .init(resourceLimits: limits))
-        let fields: [String: Any] = ["format": info.format, "width": info.descriptor.width, "height": info.descriptor.height,
-                                     "meaningfulBits": info.descriptor.meaningfulBits, "storageBits": info.descriptor.storageBits,
-                                     "sampleType": "unsignedInteger", "components": 1, "frames": info.frameCount, "bytes": input.count]
+        let sampleTypeStr = info.descriptor.sampleType == .signedInteger ? "signedInteger" : "unsignedInteger"
+        let compCount = info.descriptor.components.count
+        let fields: [String: Any] = [
+            "format": info.format, "width": info.descriptor.width, "height": info.descriptor.height,
+            "meaningfulBits": info.descriptor.meaningfulBits, "storageBits": info.descriptor.storageBits,
+            "sampleType": sampleTypeStr, "components": compCount, "frames": info.frameCount, "bytes": input.count
+        ]
         if options.json {
             try report(fields, json: true, to: .standardOutput)
         } else {
-            try write("format: \(info.format)\nwidth: \(info.descriptor.width)\nheight: \(info.descriptor.height)\nmeaningful bits: \(info.descriptor.meaningfulBits)\nstorage bits: \(info.descriptor.storageBits)\ncomponents: 1\nbytes: \(input.count)\n", to: .standardOutput)
+            try write("format: \(info.format)\nwidth: \(info.descriptor.width)\nheight: \(info.descriptor.height)\nmeaningful bits: \(info.descriptor.meaningfulBits)\nstorage bits: \(info.descriptor.storageBits)\ncomponents: \(compCount)\nbytes: \(input.count)\n", to: .standardOutput)
         }
     case "validate":
         guard format == "j2k" || format == "htj2k" else {
@@ -608,9 +938,14 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try context.diagnostic(2, "decoding in memory")
         let decoded = try await Decoder().decode(input, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
         let elapsed = ContinuousClock.now - started
-        let fields: [String: Any] = ["valid": true, "width": decoded.image.descriptor.width, "height": decoded.image.descriptor.height,
-                                     "meaningfulBits": decoded.image.descriptor.meaningfulBits, "backend": "scalar",
-                                     "fidelity": "exactSamples", "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)]
+        let fields: [String: Any] = [
+            "valid": true, "width": decoded.image.descriptor.width, "height": decoded.image.descriptor.height,
+            "meaningfulBits": decoded.image.descriptor.meaningfulBits,
+            "components": decoded.image.descriptor.components.count,
+            "backend": "scalar",
+            "fidelity": fidelityString(decoded.report.fidelity),
+            "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
+        ]
         if options.json { try report(fields, json: true, to: .standardOutput) }
         else { try write("valid: \(decoded.image.descriptor.width)x\(decoded.image.descriptor.height), \(decoded.image.descriptor.meaningfulBits) meaningful bits, \(input.count) bytes\n", to: .standardOutput) }
     case "decode":
@@ -627,17 +962,47 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
             options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
         )
         let descriptor = decoded.image.descriptor
-        var output = NRRD.header(width: descriptor.width, height: descriptor.height, meaningfulBits: descriptor.meaningfulBits)
-        output.reserveCapacity(output.count + descriptor.width * descriptor.height * 2)
-        // Serialise samples row by row in little-endian order (a pipe carries bytes, not storage).
-        try decoded.image.storage.withUnsafeBytes { bytes in
-            let plane = descriptor.planes[0]
+        let compCount = descriptor.components.count
+        let sampleBytes = descriptor.storageBits / 8
+        var output = NRRD.header(descriptor: descriptor)
+        output.reserveCapacity(output.count + descriptor.width * descriptor.height * compCount * sampleBytes)
+
+        if compCount == 1 {
+            try decoded.image.storage.withUnsafeBytes { bytes in
+                let plane = descriptor.planes[0]
+                for y in 0..<descriptor.height {
+                    let row = plane.offset + y * plane.rowBytes
+                    for x in 0..<descriptor.width {
+                        let at = row + x * plane.pixelStride
+                        if sampleBytes == 1 {
+                            output.append(bytes[at])
+                        } else if descriptor.byteOrder == .littleEndian {
+                            output.append(bytes[at]); output.append(bytes[at + 1])
+                        } else {
+                            output.append(bytes[at + 1]); output.append(bytes[at])
+                        }
+                    }
+                }
+            }
+        } else {
+            // 3D NRRD [C, W, H] with little-endian samples:
             for y in 0..<descriptor.height {
-                let row = plane.offset + y * plane.rowBytes
                 for x in 0..<descriptor.width {
-                    let at = row + x * plane.pixelStride
-                    if descriptor.byteOrder == .littleEndian { output.append(bytes[at]); output.append(bytes[at + 1]) }
-                    else { output.append(bytes[at + 1]); output.append(bytes[at]) }
+                    for c in 0..<compCount {
+                        let val = try decoded.image.sampleInt(component: c, x: x, y: y)
+                        if sampleBytes == 1 {
+                            let b = descriptor.sampleType == .signedInteger
+                                ? UInt8(bitPattern: Int8(truncatingIfNeeded: val))
+                                : UInt8(truncatingIfNeeded: val)
+                            output.append(b)
+                        } else {
+                            let w = descriptor.sampleType == .signedInteger
+                                ? UInt16(bitPattern: Int16(truncatingIfNeeded: val))
+                                : UInt16(truncatingIfNeeded: val)
+                            output.append(UInt8(truncatingIfNeeded: w))
+                            output.append(UInt8(truncatingIfNeeded: w >> 8))
+                        }
+                    }
                 }
             }
         }
@@ -645,8 +1010,10 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try publish(output, to: outputPath, overwrite: options.overwrite)
         let elapsed = ContinuousClock.now - started
         try report(["command": "decode", "inputBytes": input.count, "outputBytes": output.count,
-                    "width": descriptor.width, "height": descriptor.height, "meaningfulBits": descriptor.meaningfulBits,
-                    "backend": "scalar", "fidelity": "exactSamples", "copyEvents": decoded.report.copyEvents.count,
+                    "width": descriptor.width, "height": descriptor.height,
+                    "components": compCount, "meaningfulBits": descriptor.meaningfulBits,
+                    "backend": "scalar", "fidelity": fidelityString(decoded.report.fidelity),
+                    "copyEvents": decoded.report.copyEvents.count,
                     "pixelAllocations": decoded.report.pixelAllocationCount ?? -1,
                     "peakWorkspaceBytes": decoded.report.peakWorkspaceBytes ?? -1,
                     "discardedMetadataCount": decoded.report.discardedMetadataCount ?? 0,
@@ -660,34 +1027,88 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         guard ["j2k", "htj2k"].contains(outputFormat) else {
             throw ExitFailure(status: 4, message: "unsupported format: encode writes j2k or htj2k.")
         }
+        let blockCoding: CodecOptions.BlockCoding = (outputFormat == "htj2k") ? .htj2k : .part1
+        let encoderConfig = try parseEncodeConfiguration(
+            options: options, levels: levels, blockWidth: blockWidth,
+            blockHeight: blockHeight, blockCoding: blockCoding
+        )
         let nrrd = try NRRD.parse(input, defaultPrecision: defaultPrecision)
-        try context.diagnostic(3, "NRRD \(nrrd.width)x\(nrrd.height), \(nrrd.meaningfulBits) meaningful bits, \(nrrd.bigEndian ? "big" : "little") endian")
-        let descriptor = try ImageDescriptor.greyscale16(width: nrrd.width, height: nrrd.height,
-                                                         meaningfulBits: nrrd.meaningfulBits, limits: limits)
+        try context.diagnostic(3, "NRRD \(nrrd.width)x\(nrrd.height)x\(nrrd.components), \(nrrd.meaningfulBits) meaningful bits")
+
+        let descriptor: ImageDescriptor
+        if nrrd.components == 1 {
+            if nrrd.storageBits == 16 && !nrrd.signed {
+                descriptor = try ImageDescriptor.greyscale16(
+                    width: nrrd.width, height: nrrd.height, meaningfulBits: nrrd.meaningfulBits, limits: limits
+                )
+            } else if nrrd.storageBits == 16 && nrrd.signed {
+                descriptor = try ImageDescriptor.signedGreyscale16(
+                    width: nrrd.width, height: nrrd.height, meaningfulBits: nrrd.meaningfulBits, limits: limits
+                )
+            } else {
+                descriptor = try ImageDescriptor.greyscale8(
+                    width: nrrd.width, height: nrrd.height, meaningfulBits: nrrd.meaningfulBits,
+                    signed: nrrd.signed, limits: limits
+                )
+            }
+        } else if nrrd.components == 3 {
+            descriptor = try ImageDescriptor.rgbPlanar(
+                width: nrrd.width, height: nrrd.height, storageBits: nrrd.storageBits,
+                meaningfulBits: nrrd.meaningfulBits, signed: nrrd.signed, limits: limits
+            )
+        } else {
+            descriptor = try ImageDescriptor.multiComponentPlanar(
+                width: nrrd.width, height: nrrd.height, componentCount: nrrd.components,
+                storageBits: nrrd.storageBits, meaningfulBits: nrrd.meaningfulBits,
+                sampleType: nrrd.signed ? .signedInteger : .unsignedInteger, limits: limits
+            )
+        }
+
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
-        let maximum = UInt16((1 << nrrd.meaningfulBits) - 1)
+        let minVal = nrrd.signed ? -(1 << (nrrd.meaningfulBits - 1)) : 0
+        let maxVal = nrrd.signed ? ((1 << (nrrd.meaningfulBits - 1)) - 1) : ((1 << nrrd.meaningfulBits) - 1)
+        let bytesPerSample = nrrd.storageBits / 8
+
         let image = try nrrd.samples.withUnsafeBytes { source -> Image in
-            try destination.writeUInt16 { x, y in
-                let at = (y * nrrd.width + x) * 2
-                let value = nrrd.bigEndian ? UInt16(source[at]) << 8 | UInt16(source[at + 1]) : UInt16(source[at]) | UInt16(source[at + 1]) << 8
-                guard value <= maximum else {
+            try destination.writeSamples { c, x, y in
+                let sampleIndex: Int
+                if nrrd.components == 1 {
+                    sampleIndex = y * nrrd.width + x
+                } else if nrrd.componentsFirst {
+                    sampleIndex = (y * nrrd.width + x) * nrrd.components + c
+                } else {
+                    sampleIndex = (c * nrrd.height + y) * nrrd.width + x
+                }
+                let at = sampleIndex * bytesPerSample
+                let value: Int
+                if bytesPerSample == 1 {
+                    let raw = source[at]
+                    value = nrrd.signed ? Int(Int8(bitPattern: raw)) : Int(raw)
+                } else {
+                    let word = nrrd.bigEndian
+                        ? (UInt16(source[at]) << 8 | UInt16(source[at + 1]))
+                        : (UInt16(source[at]) | UInt16(source[at + 1]) << 8)
+                    value = nrrd.signed ? Int(Int16(bitPattern: word)) : Int(word)
+                }
+                guard value >= minVal && value <= maxVal else {
                     throw CodecError(.invalidArgument, "a sample exceeds \(nrrd.meaningfulBits) meaningful bits; use --precision or fix the header key.")
                 }
                 return value
             }
         }
+
         try context.diagnostic(2, "encoding")
-        let blockCoding: CodecOptions.BlockCoding = (outputFormat == "htj2k") ? .htj2k : .part1
-        let encodeOptions = try CodecOptions(decompositionLevels: levels, codeBlockWidth: blockWidth,
-                                             codeBlockHeight: blockHeight, blockCoding: blockCoding)
-        let encoder = try Encoder(configuration: EncoderConfiguration(mode: .lossless, codecOptions: encodeOptions))
+        let encoder = try Encoder(configuration: encoderConfig)
         let encoded = try await encoder.encode(image, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
         try context.diagnostic(2, "publishing output")
         try publish(encoded.data, to: outputPath, overwrite: options.overwrite)
         let elapsed = ContinuousClock.now - started
+        let modeStr = options.values["--mode"] ?? "lossless"
         try report(["command": "encode", "inputBytes": input.count, "outputBytes": encoded.data.count,
-                    "width": nrrd.width, "height": nrrd.height, "meaningfulBits": nrrd.meaningfulBits,
-                    "format": encoded.encoding.format, "mode": "lossless", "backend": "scalar", "fidelity": "exactSamples",
+                    "width": nrrd.width, "height": nrrd.height, "components": nrrd.components,
+                    "meaningfulBits": nrrd.meaningfulBits,
+                    "format": encoded.encoding.format, "mode": modeStr, "backend": "scalar",
+                    "fidelity": fidelityString(encoded.report.fidelity),
                     "copyEvents": encoded.report.copyEvents.count, "peakWorkspaceBytes": encoded.report.peakWorkspaceBytes ?? -1,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
     case "transcode":
@@ -793,11 +1214,6 @@ private func run() async throws -> Int32 {
     }
 }
 
-// CLI process boundary only: a closed pipe is reported as exit 6, never SIGPIPE success,
-// and SIGINT cancels the in-flight operation cooperatively (exit 130). Top-level code is
-// main-actor isolated, so the process is driven from a nonisolated function: the work
-// runs on a detached task and the interrupt handler on a global queue, neither touching
-// main-actor state, while the main thread waits on a semaphore.
 nonisolated func drive() -> Int32 {
     _ = signal(SIGPIPE, SIG_IGN)
     _ = signal(SIGINT, SIG_IGN)

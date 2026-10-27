@@ -38,7 +38,7 @@ Files under `Sources/SwiftJ2K/Codec/` whose provenance header names Raster-Lab/J
 
 ## Test fixtures
 
-`Tests/SwiftJ2KTests/Fixtures/Lossless/` and `Tests/SwiftJ2KTests/Fixtures/HTJ2K/` are synthetic and in-house: the source images are generated deterministically by `Scripts/generate-lossless-fixtures.py` and `Scripts/generate-htj2k-fixtures.py` (seeds recorded in each directory's `manifest.json`), and every codestream is an *output* of a reference encoder run on those images. No fixture contains clinical, personal or third-party image data. The fixtures are Apache-2.0 with the repository. Each `manifest.json` records each file's SHA-256 and the tool and arguments that produced it.
+`Tests/SwiftJ2KTests/Fixtures/Lossless/`, `Tests/SwiftJ2KTests/Fixtures/HTJ2K/` and `Tests/SwiftJ2KTests/Fixtures/Part1Breadth/` are synthetic and in-house: the source images are generated deterministically by `Scripts/generate-lossless-fixtures.py`, `Scripts/generate-htj2k-fixtures.py` and `Scripts/generate-part1-breadth-fixtures.py` (seeds recorded in each directory's `manifest.json`), and every codestream is an *output* of a reference encoder run on those images. No fixture contains clinical, personal or third-party image data. The fixtures are Apache-2.0 with the repository. Each `manifest.json` records each file's SHA-256 and the tool and arguments that produced it.
 
 ## Development tools (oracles and generators, never linked or shipped)
 

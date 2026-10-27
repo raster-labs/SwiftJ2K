@@ -620,4 +620,493 @@ enum Tier2 {
             }
         }
     }
+
+    // MARK: - Multi-component, Multi-layer, POC & All-Progression Packet Coding (Milestone 7)
+
+    struct ComponentPacketAddress: Sendable, Hashable {
+        let layer: Int
+        let resolution: Int
+        let component: Int
+        let precinct: Int
+    }
+
+    static func multiComponentPacketSequence(
+        geometries: [TileGeometry],
+        codingStyle cod: CodingStyleSegment,
+        progressionChanges: [ProgressionOrderChangeEntry] = []
+    ) throws -> [ComponentPacketAddress] {
+        let componentCount = geometries.count
+        guard componentCount > 0 else { return [] }
+        let maxLevels = geometries.map(\.levels).max() ?? 0
+        let totalLayers = cod.layers
+
+        let volumes: [ProgressionOrderChangeEntry]
+        if progressionChanges.isEmpty {
+            volumes = [ProgressionOrderChangeEntry(
+                resolutionStart: 0,
+                componentStart: 0,
+                layerEnd: totalLayers,
+                resolutionEnd: maxLevels + 1,
+                componentEnd: componentCount,
+                progression: cod.progression
+            )]
+        } else {
+            volumes = progressionChanges
+        }
+
+        var sequence: [ComponentPacketAddress] = []
+        var emittedPackets = Set<ComponentPacketAddress>()
+
+        func emitPacket(layer l: Int, resolution r: Int, component c: Int, precinct p: Int) {
+            let addr = ComponentPacketAddress(layer: l, resolution: r, component: c, precinct: p)
+            if emittedPackets.insert(addr).inserted {
+                sequence.append(addr)
+            }
+        }
+
+        func precinctIndex(component c: Int, resolution r: Int, x: Int, y: Int) -> Int? {
+            let geom = geometries[c]
+            guard r <= geom.levels else { return nil }
+            let res = geom.resolutions[r]
+            guard res.precinctsWide > 0, res.precinctsHigh > 0 else { return nil }
+            let shift = geom.levels - r
+            let stepX = 1 << (res.ppx + shift), stepY = 1 << (res.ppy + shift)
+            let startsX = x % stepX == 0 || (x == geom.x0 && (res.x0 << shift) % stepX != 0)
+            let startsY = y % stepY == 0 || (y == geom.y0 && (res.y0 << shift) % stepY != 0)
+            guard startsX, startsY else { return nil }
+            let rx = Wavelet53.ceilDivPowerOfTwo(x, shift), ry = Wavelet53.ceilDivPowerOfTwo(y, shift)
+            let px = Wavelet53.floorDiv(rx, 1 << res.ppx) - Wavelet53.floorDiv(res.x0, 1 << res.ppx)
+            let py = Wavelet53.floorDiv(ry, 1 << res.ppy) - Wavelet53.floorDiv(res.y0, 1 << res.ppy)
+            guard px >= 0, px < res.precinctsWide, py >= 0, py < res.precinctsHigh else { return nil }
+            return py * res.precinctsWide + px
+        }
+
+        func positions(_ start: Int, _ end: Int, _ step: Int) -> [Int] {
+            var values: [Int] = []
+            var v = start
+            let safeStep = max(1, step)
+            while v < end {
+                values.append(v)
+                v += safeStep - (((v % safeStep) + safeStep) % safeStep)
+            }
+            return values
+        }
+
+        for vol in volumes {
+            let rStart = max(0, vol.resolutionStart)
+            let rEnd = min(maxLevels + 1, vol.resolutionEnd)
+            let cStart = max(0, vol.componentStart)
+            let cEnd = min(componentCount, vol.componentEnd)
+            let lEnd = min(totalLayers, vol.layerEnd)
+            guard rStart < rEnd, cStart < cEnd, lEnd > 0 else { continue }
+
+            switch vol.progression {
+            case 0: // LRCP
+                for l in 0..<lEnd {
+                    for r in rStart..<rEnd {
+                        for c in cStart..<cEnd where r <= geometries[c].levels {
+                            for p in 0..<geometries[c].resolutions[r].precincts.count {
+                                emitPacket(layer: l, resolution: r, component: c, precinct: p)
+                            }
+                        }
+                    }
+                }
+            case 1: // RLCP
+                for r in rStart..<rEnd {
+                    for l in 0..<lEnd {
+                        for c in cStart..<cEnd where r <= geometries[c].levels {
+                            for p in 0..<geometries[c].resolutions[r].precincts.count {
+                                emitPacket(layer: l, resolution: r, component: c, precinct: p)
+                            }
+                        }
+                    }
+                }
+            case 2, 3, 4: // RPCL, PCRL, CPRL
+                var stepX = Int.max, stepY = Int.max
+                var minX = Int.max, maxX = Int.min, minY = Int.max, maxY = Int.min
+                for c in cStart..<cEnd {
+                    let geom = geometries[c]
+                    minX = min(minX, geom.x0); maxX = max(maxX, geom.x1)
+                    minY = min(minY, geom.y0); maxY = max(maxY, geom.y1)
+                    for r in rStart..<min(rEnd, geom.levels + 1) {
+                        let res = geom.resolutions[r]
+                        stepX = min(stepX, 1 << (res.ppx + geom.levels - r))
+                        stepY = min(stepY, 1 << (res.ppy + geom.levels - r))
+                    }
+                }
+                guard stepX < Int.max, stepY < Int.max, minX < maxX, minY < maxY else { continue }
+                let xs = positions(minX, maxX, stepX)
+                let ys = positions(minY, maxY, stepY)
+                var seenCRP = Set<Int>()
+                func emitCRP(_ c: Int, _ r: Int, _ x: Int, _ y: Int) {
+                    guard let p = precinctIndex(component: c, resolution: r, x: x, y: y) else { return }
+                    let key = (c << 40) | (r << 32) | p
+                    guard seenCRP.insert(key).inserted else { return }
+                    for l in 0..<lEnd {
+                        emitPacket(layer: l, resolution: r, component: c, precinct: p)
+                    }
+                }
+                if vol.progression == 2 { // RPCL
+                    for r in rStart..<rEnd {
+                        for y in ys {
+                            for x in xs {
+                                for c in cStart..<cEnd where r <= geometries[c].levels {
+                                    emitCRP(c, r, x, y)
+                                }
+                            }
+                        }
+                    }
+                } else if vol.progression == 3 { // PCRL
+                    for y in ys {
+                        for x in xs {
+                            for c in cStart..<cEnd {
+                                for r in rStart..<min(rEnd, geometries[c].levels + 1) {
+                                    emitCRP(c, r, x, y)
+                                }
+                            }
+                        }
+                    }
+                } else { // CPRL
+                    for c in cStart..<cEnd {
+                        for y in ys {
+                            for x in xs {
+                                for r in rStart..<min(rEnd, geometries[c].levels + 1) {
+                                    emitCRP(c, r, x, y)
+                                }
+                            }
+                        }
+                    }
+                }
+            default:
+                throw CodecError(.malformedInput, "Unknown progression order \(vol.progression).")
+            }
+        }
+
+        // If a custom POC did not cover all packets, append any remaining packets in LRCP order.
+        let expected = geometries.reduce(0) { $0 + $1.resolutions.reduce(0) { $0 + $1.precincts.count } } * totalLayers
+        if sequence.count < expected {
+            for l in 0..<totalLayers {
+                for r in 0...maxLevels {
+                    for c in 0..<componentCount where r <= geometries[c].levels {
+                        for p in 0..<geometries[c].resolutions[r].precincts.count {
+                            emitPacket(layer: l, resolution: r, component: c, precinct: p)
+                        }
+                    }
+                }
+            }
+        }
+        return sequence
+    }
+
+    /// Reads every packet of a multi-component tile. Returns contributions indexed
+    /// `[component][resolution][precinct][band][block]`.
+    static func decodePacketsMulti(
+        geometries: [TileGeometry],
+        codingStyles: [CodingStyleSegment],
+        progressionChanges: [ProgressionOrderChangeEntry] = [],
+        bytes: [UInt8],
+        range: Range<Int>,
+        cancellation: () throws -> Void
+    ) throws -> [[[[[CodeBlockContribution]]]]] {
+        let styles = codingStyles.map { CodeBlockStyle(bits: $0.codeBlockStyle) }
+        let baseCOD = codingStyles[0]
+
+        var result: [[[[[CodeBlockContribution]]]]] = geometries.map { geom in
+            geom.resolutions.map { resolution in
+                resolution.precincts.map { precinct in
+                    precinct.bands.map { [CodeBlockContribution](repeating: CodeBlockContribution(), count: $0.blocks.count) }
+                }
+            }
+        }
+        var trees: [[[PrecinctTrees]]] = geometries.map { geom in
+            geom.resolutions.map { resolution in
+                resolution.precincts.map { precinct in
+                    PrecinctTrees(
+                        inclusion: precinct.bands.map { TagTree(width: $0.blocksWide, height: $0.blocksHigh) },
+                        msb: precinct.bands.map { TagTree(width: $0.blocksWide, height: $0.blocksHigh) }
+                    )
+                }
+            }
+        }
+
+        var cursor = range.lowerBound
+        let end = range.upperBound
+        let sequence = try multiComponentPacketSequence(
+            geometries: geometries,
+            codingStyle: baseCOD,
+            progressionChanges: progressionChanges
+        )
+
+        for address in sequence {
+            try cancellation()
+            if cursor >= end { break }
+            let c = address.component
+            let r = address.resolution
+            let p = address.precinct
+            let style = styles[c]
+            let resolution = geometries[c].resolutions[r]
+            let precinct = resolution.precincts[p]
+            if baseCOD.usesSOP, cursor + 6 <= end, bytes[cursor] == 0xFF, bytes[cursor + 1] == 0x91 {
+                cursor += 6
+            }
+            var reader = PacketBitReader(bytes: bytes, start: cursor, end: end)
+            var order: [(band: Int, block: Int, chunks: [Int], lengths: [Int])] = []
+            if try reader.readBit() {
+                for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                    for k in 0..<precinctBand.blocks.count {
+                        var state = result[c][r][p][b][k]
+                        let included: Bool
+                        if state.included {
+                            included = try reader.readBit()
+                        } else {
+                            included = try trees[c][r][p].inclusion[b]
+                                .decode(reader: &reader, leaf: k, threshold: Int32(address.layer + 1))
+                        }
+                        guard included else { continue }
+                        let firstInclusion = !state.included
+                        if firstInclusion {
+                            var threshold: Int32 = 1
+                            while try !trees[c][r][p].msb[b].decode(reader: &reader, leaf: k, threshold: threshold) {
+                                threshold += 1
+                                guard threshold <= 80 else {
+                                    throw CodecError(.malformedInput, "Zero bit-plane count is not representable.")
+                                }
+                            }
+                            state.included = true
+                            state.zeroBitPlanes = Int(trees[c][r][p].msb[b].value(leaf: k))
+                            if style.ht && !style.htMixed {
+                                state.isHT = true
+                            }
+                        }
+                        let newPasses = try readPassCount(&reader)
+                        while try reader.readBit() {
+                            state.lblock += 1
+                            guard state.lblock <= 40 else {
+                                throw CodecError(.malformedInput, "Lblock signalling is not representable.")
+                            }
+                        }
+                        let chunks = segmentPassCounts(start: state.passes, count: newPasses, style: style)
+                        var lengths: [Int] = []
+                        for (chunkIndex, chunk) in chunks.enumerated() {
+                            let bitCount = state.lblock + floorLog2(chunk)
+                            let length = try reader.readBits(bitCount)
+                            if firstInclusion && chunkIndex == 0 && style.ht && style.htMixed {
+                                state.isHT = state.lblock > 3 && bitCount >= 1 && ((length >> (bitCount - 1)) == 0)
+                            }
+                            lengths.append(length)
+                        }
+                        order.append((b, k, chunks, lengths))
+                        result[c][r][p][b][k] = state
+                    }
+                }
+            }
+            try reader.alignToByte()
+            cursor = reader.position
+            if baseCOD.usesEPH {
+                guard cursor + 2 <= end, bytes[cursor] == 0xFF, bytes[cursor + 1] == 0x92 else {
+                    throw CodecError(.malformedInput, "EPH marker is missing after a packet header.")
+                }
+                cursor += 2
+            }
+            for entry in order {
+                var state = result[c][r][p][entry.band][entry.block]
+                for (chunk, length) in zip(entry.chunks, entry.lengths) {
+                    guard cursor + length <= end else {
+                        throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+                    }
+                    if state.isHT {
+                        if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
+                            state.segments.append(CodewordSegment())
+                        }
+                    } else {
+                        let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
+                        if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
+                    }
+                    state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
+                    state.segments[state.segments.count - 1].passes += chunk
+                    state.passes += chunk
+                    cursor += length
+                }
+                result[c][r][p][entry.band][entry.block] = state
+            }
+        }
+        return result
+    }
+
+    private struct BlockEncodeProgress {
+        var included = false
+        var lblock = 3
+        var emittedPasses = 0
+        var emittedBytes = 0
+        var firstLayer: Int
+    }
+
+    /// Encodes all packets of a multi-component tile across all layers, resolutions,
+    /// components, and precincts in the order specified by `codingStyles[0]` and `progressionChanges`.
+    /// `encodings` is indexed `[component][resolution][precinct][band][block]`.
+    static func encodePacketsMulti<Output: CodestreamByteSink & ~Copyable>(
+        geometries: [TileGeometry],
+        codingStyles: [CodingStyleSegment],
+        progressionChanges: [ProgressionOrderChangeEntry] = [],
+        encodings: [[[[[CodeBlockEncoding]]]]],
+        into out: inout Output,
+        cancellation: () throws -> Void
+    ) throws {
+        let baseCOD = codingStyles[0]
+        let totalLayers = baseCOD.layers
+        let styles = codingStyles.map { CodeBlockStyle(bits: $0.codeBlockStyle) }
+
+        var trees: [[[PrecinctTrees]]] = []
+        var progressState: [[[[[BlockEncodeProgress]]]]] = []
+        trees.reserveCapacity(geometries.count)
+        progressState.reserveCapacity(geometries.count)
+
+        for (c, geom) in geometries.enumerated() {
+            var compTrees: [[PrecinctTrees]] = []
+            var compState: [[[[BlockEncodeProgress]]]] = []
+            compTrees.reserveCapacity(geom.resolutions.count)
+            compState.reserveCapacity(geom.resolutions.count)
+            for (r, resolution) in geom.resolutions.enumerated() {
+                var resTrees: [PrecinctTrees] = []
+                var resState: [[[BlockEncodeProgress]]] = []
+                resTrees.reserveCapacity(resolution.precincts.count)
+                resState.reserveCapacity(resolution.precincts.count)
+                for (p, precinct) in resolution.precincts.enumerated() {
+                    var incTrees: [TagTree] = []
+                    var msbTrees: [TagTree] = []
+                    var precState: [[BlockEncodeProgress]] = []
+                    incTrees.reserveCapacity(precinct.bands.count)
+                    msbTrees.reserveCapacity(precinct.bands.count)
+                    precState.reserveCapacity(precinct.bands.count)
+                    for (b, precinctBand) in precinct.bands.enumerated() {
+                        var inc = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                        var msb = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                        var bandState: [BlockEncodeProgress] = []
+                        bandState.reserveCapacity(precinctBand.blocks.count)
+                        for k in 0..<precinctBand.blocks.count {
+                            let enc = encodings[c][r][p][b][k]
+                            let firstLayer = enc.layerPassCounts.firstIndex(where: { $0 > 0 }) ?? totalLayers
+                            try inc.setValue(leaf: k, value: Int32(firstLayer))
+                            try msb.setValue(leaf: k, value: Int32(enc.zeroBitPlanes))
+                            bandState.append(BlockEncodeProgress(firstLayer: firstLayer))
+                        }
+                        incTrees.append(inc)
+                        msbTrees.append(msb)
+                        precState.append(bandState)
+                    }
+                    resTrees.append(PrecinctTrees(inclusion: incTrees, msb: msbTrees))
+                    resState.append(precState)
+                }
+                compTrees.append(resTrees)
+                compState.append(resState)
+            }
+            trees.append(compTrees)
+            progressState.append(compState)
+        }
+
+        let sequence = try multiComponentPacketSequence(
+            geometries: geometries,
+            codingStyle: baseCOD,
+            progressionChanges: progressionChanges
+        )
+        var sopSequenceNumber: UInt16 = 0
+
+        for address in sequence {
+            try cancellation()
+            let c = address.component
+            let r = address.resolution
+            let p = address.precinct
+            let l = address.layer
+            let style = styles[c]
+            let precinct = geometries[c].resolutions[r].precincts[p]
+
+            if baseCOD.usesSOP {
+                try out.writeBytesChecked([
+                    0xFF, 0x91, 0x00, 0x04,
+                    UInt8(sopSequenceNumber >> 8), UInt8(sopSequenceNumber & 0xFF)
+                ])
+                sopSequenceNumber &+= 1
+            }
+
+            let anyIncludedInPacket = precinct.bands.enumerated().contains { b, band in
+                band.blocks.indices.contains { k in
+                    let enc = encodings[c][r][p][b][k]
+                    let layerPasses = l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0
+                    return layerPasses > 0
+                }
+            }
+
+            var header = PacketBitWriter()
+            header.writeBit(anyIncludedInPacket)
+            var packetBodySlices: [ArraySlice<UInt8>] = []
+
+            if anyIncludedInPacket {
+                for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                    for k in 0..<precinctBand.blocks.count {
+                        let enc = encodings[c][r][p][b][k]
+                        var st = progressState[c][r][p][b][k]
+                        let newPasses = l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0
+
+                        if !st.included {
+                            try trees[c][r][p].inclusion[b].encode(writer: &header, leaf: k, threshold: Int32(l + 1))
+                            guard newPasses > 0 else {
+                                progressState[c][r][p][b][k] = st
+                                continue
+                            }
+                            st.included = true
+                            try trees[c][r][p].msb[b].encode(writer: &header, leaf: k, threshold: Int32(enc.zeroBitPlanes) + 1)
+                        } else {
+                            header.writeBit(newPasses > 0)
+                            guard newPasses > 0 else {
+                                progressState[c][r][p][b][k] = st
+                                continue
+                            }
+                        }
+
+                        try writePassCount(newPasses, &header)
+                        let chunks = segmentPassCounts(start: st.emittedPasses, count: newPasses, style: style)
+                        var chunkRanges: [Range<Int>] = []
+                        chunkRanges.reserveCapacity(chunks.count)
+                        var passCursor = st.emittedPasses
+                        var byteCursor = st.emittedBytes
+                        for chunk in chunks {
+                            passCursor += chunk
+                            let endByte = (passCursor - 1 < enc.passByteOffsets.count)
+                                ? enc.passByteOffsets[passCursor - 1]
+                                : enc.data.count
+                            let clampedEnd = max(byteCursor, min(enc.data.count, endByte))
+                            chunkRanges.append(byteCursor..<clampedEnd)
+                            byteCursor = clampedEnd
+                        }
+
+                        for (chunk, range) in zip(chunks, chunkRanges) {
+                            let segLen = range.count
+                            let needed = segLen > 0 ? (Int.bitWidth - segLen.leadingZeroBitCount) : 1
+                            while st.lblock + floorLog2(chunk) < needed {
+                                header.writeBit(true)
+                                st.lblock += 1
+                            }
+                        }
+                        header.writeBit(false)
+                        for (chunk, range) in zip(chunks, chunkRanges) {
+                            header.writeBits(range.count, count: st.lblock + floorLog2(chunk))
+                            packetBodySlices.append(enc.data[range])
+                        }
+
+                        st.emittedPasses = passCursor
+                        st.emittedBytes = byteCursor
+                        progressState[c][r][p][b][k] = st
+                    }
+                }
+            }
+
+            try out.writeBytesChecked(header.finish())
+            if baseCOD.usesEPH {
+                try out.writeBytesChecked([0xFF, 0x92])
+            }
+            for slice in packetBodySlices where !slice.isEmpty {
+                try out.writeBytesChecked(Array(slice))
+            }
+        }
+    }
 }

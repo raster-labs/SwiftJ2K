@@ -180,6 +180,63 @@ struct MQEncoder: Sendable {
         while let last = output.last, last == 0xFF { output.removeLast() }
         return output
     }
+
+    /// Number of bytes already committed to `output` before termination.
+    var emittedByteCount: Int { output.count }
+
+    /// Exact byte length that `finish()` would produce at the current state,
+    /// computed in scalar registers without mutating `self` or copying `output`.
+    func terminatedByteCount() -> Int {
+        var cSim = c
+        let aSim = a
+        var ctSim = ct
+        var bufSim = buffer
+        var tail: [UInt8] = []
+        tail.reserveCapacity(4)
+
+        func byteOutSim() {
+            if bufSim >= 0 {
+                if bufSim == 0xFF {
+                    tail.append(0xFF)
+                    bufSim = Int((cSim >> 20) & 0xFF)
+                    cSim &= 0x000F_FFFF
+                    ctSim = 7
+                } else {
+                    bufSim += Int(cSim >> 27)
+                    cSim &= 0x07FF_FFFF
+                    tail.append(UInt8(bufSim & 0xFF))
+                    if bufSim == 0xFF {
+                        bufSim = Int((cSim >> 20) & 0xFF)
+                        cSim &= 0x000F_FFFF
+                        ctSim = 7
+                    } else {
+                        bufSim = Int((cSim >> 19) & 0xFF)
+                        cSim &= 0x0007_FFFF
+                        ctSim = 8
+                    }
+                }
+            } else {
+                cSim &= 0x07FF_FFFF
+                bufSim = Int((cSim >> 19) & 0xFF)
+                cSim &= 0x0007_FFFF
+                ctSim = 8
+            }
+        }
+
+        let limit = cSim &+ aSim
+        cSim |= 0x0000_FFFF
+        if cSim >= limit { cSim &-= 0x8000 }
+        cSim <<= UInt32(ctSim); byteOutSim()
+        cSim <<= UInt32(ctSim); byteOutSim()
+        if bufSim >= 0 && bufSim != 0xFF { tail.append(UInt8(bufSim & 0xFF)) }
+        while let last = tail.last, last == 0xFF { tail.removeLast() }
+        if tail.isEmpty {
+            var count = output.count
+            while count > 0 && output[count - 1] == 0xFF { count -= 1 }
+            return count
+        }
+        return output.count + tail.count
+    }
 }
 
 /// MQ decoder over one codeword segment. Reading past the segment feeds 0xFF,

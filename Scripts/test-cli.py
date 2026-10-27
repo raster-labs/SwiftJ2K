@@ -140,6 +140,24 @@ def main():
             assert com_text not in com_disc.read_bytes() and disc_rep['discardedMetadataCount']>=1 and disc_rep['discardedMetadataBytes']>=len(com_payload) and disc_rep['discardedMetadataKinds']==['COM']
             # Exit statuses: 2 usage, 3 malformed, 4 unsupported format/feature, 5 limit/deadline, 6 I/O.
             good=fixtures/'g16_64x64_random.opj.j2k';nine=fixtures/'g16_64x64_random.irreversible97.j2k'
+            assert json.loads(cli('validate','-i',nine,'--json').stdout)['valid'] is True
+            part2=temp/'part2.j2k';gbytes=bytearray(good.read_bytes());gbytes[6]=0x80;gbytes[7]=0x02;part2.write_bytes(bytes(gbytes))
+            # Milestone 7 CLI breadth: lossy, near-lossless, signed int16 NRRD, and 3D RGB NRRD.
+            rgb_nrrd=temp/'rgb8.nrrd'
+            rgb_payload=bytes((i*7)&255 for i in range(3*16*12))
+            rgb_nrrd.write_bytes(b'NRRD0004\ntype: uint8\ndimension: 3\nsizes: 3 16 12\nencoding: raw\nkinds: RGB-color space space\nswiftj2k.meaningfulbits:=8\n\n'+rgb_payload)
+            rgb_j2k=temp/'rgb_rct.j2k';rgb_ict=temp/'rgb_ict.j2k';rgb_dec=temp/'rgb_dec.nrrd'
+            r_rct=cli('encode','-i',rgb_nrrd,'-o',rgb_j2k,'--wavelet','53','--mct','rct','--tile-size','8x6','--layers','2','--sop','--eph','--json')
+            assert json.loads(r_rct.stderr)['fidelity']=='exactSamples'
+            cli('decode','-i',rgb_j2k,'-o',rgb_dec,'--json')
+            assert rgb_dec.read_bytes().endswith(rgb_payload)
+            r_ict=cli('encode','-i',rgb_nrrd,'-o',rgb_ict,'--mode','lossy','--quality','0.85','--wavelet','97','--mct','ict','--json')
+            assert json.loads(r_ict.stderr)['fidelity']=='lossy'
+            assert json.loads(cli('validate','-i',rgb_ict,'--json').stdout)['valid'] is True
+            s16_nrrd=temp/'signed16.nrrd';s16_j2k=temp/'signed16_nl.j2k'
+            s16_nrrd.write_bytes(b'NRRD0004\ntype: int16\ndimension: 2\nsizes: 16 12\nencoding: raw\nendian: little\n\n'+b'\x00\x80\xff\x7f'*(16*6))
+            r_nl=cli('encode','-i',s16_nrrd,'-o',s16_j2k,'--mode','near-lossless','--max-error','2','--roi','2,2,8,6','--json')
+            assert json.loads(r_nl.stderr)['fidelity']=='boundedError(2)'
             for form in [['encode'],['decode','-i',good],['transcode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
                          ['decode','-i',good,'-o','x','--input-format','tiff'],['encode','-i',good,'-o','x','--precision','17'],
                          ['encode','-i',good,'-o','x','--code-block','3x3'],['encode','-i',good,'-o','x','--levels','40'],
@@ -148,7 +166,7 @@ def main():
                 r=cli(*form,expected=2);assert not r.stdout and r.stderr
             truncated=temp/'truncated.j2k';truncated.write_bytes(good.read_bytes()[:100])
             ht_good=repo/'Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph.j2c'
-            for form,code in [(['validate','-i',nine],4),(['validate','-i',truncated],3),(['validate','-i',payload],4),
+            for form,code in [(['validate','-i',part2],4),(['validate','-i',truncated],3),(['validate','-i',payload],4),
                               (['encode','-i',good,'-o',temp/'x.j2k'],4),(['decode','-i',good,'-o',temp/'x.nrrd','--input-format','nrrd'],4),
                               (['decode','-i',good,'-o',temp/'x.nrrd','--input-format','htj2k'],4),
                               (['decode','-i',ht_good,'-o',temp/'x.nrrd','--input-format','j2k'],4),
