@@ -47,9 +47,15 @@ internal struct HTMELEncoder: Sendable {
     private var run: Int = 0
     private var k: Int = 0
     private var threshold: Int = 1
+    private let maximumBytes: Int
+    internal private(set) var overflowed = false
 
-    internal init() {
-        buffer.reserveCapacity(192)
+    internal init(maximumBytes: Int = Int.max) {
+        self.maximumBytes = maximumBytes
+        let reserved = min(192, max(0, maximumBytes))
+        if reserved > 0 {
+            buffer.reserveCapacity(reserved)
+        }
     }
 
     internal mutating func reset() {
@@ -59,13 +65,18 @@ internal struct HTMELEncoder: Sendable {
         run = 0
         k = 0
         threshold = 1
+        overflowed = false
     }
 
     private mutating func emitBit(_ bit: Bool) {
         tmp = (tmp << 1) | (bit ? 1 : 0)
         rem -= 1
         if rem == 0 {
-            buffer.append(tmp)
+            if buffer.count < maximumBytes {
+                buffer.append(tmp)
+            } else {
+                overflowed = true
+            }
             rem = (tmp == 0xFF) ? 7 : 8
             tmp = 0
         }
@@ -225,9 +236,12 @@ internal struct HTReverseBitEmitter: Sendable {
     private var tmp: UInt64 = 0xF
     private var usedBits: Int = 4
     private var lastGreaterThan8F: Bool = true
+    private let maximumBytes: Int
+    internal private(set) var overflowed: Bool = false
 
-    internal init() {
-        bytes.reserveCapacity(512)
+    internal init(maximumBytes: Int = Int.max) {
+        self.maximumBytes = max(1, maximumBytes)
+        bytes.reserveCapacity(min(512, max(1, maximumBytes)))
     }
 
     internal mutating func reset() {
@@ -236,10 +250,11 @@ internal struct HTReverseBitEmitter: Sendable {
         tmp = 0xF
         usedBits = 4
         lastGreaterThan8F = true
+        overflowed = false
     }
 
     internal mutating func encode(codeword: Int, count: Int) {
-        guard count > 0 else { return }
+        guard count > 0, !overflowed else { return }
         let mask = (UInt64(1) << count) - 1
         let cw = UInt64(codeword) & mask
         tmp |= cw << usedBits
@@ -249,11 +264,13 @@ internal struct HTReverseBitEmitter: Sendable {
             var byte = UInt8(tmp & 0xFF)
             if lastGreaterThan8F && (byte & 0x7F) == 0x7F {
                 byte &= 0x7F
+                guard bytes.count < maximumBytes else { overflowed = true; return }
                 bytes.append(byte)
                 lastGreaterThan8F = false
                 tmp >>= 7
                 usedBits -= 7
             } else {
+                guard bytes.count < maximumBytes else { overflowed = true; return }
                 bytes.append(byte)
                 lastGreaterThan8F = byte > 0x8F
                 tmp >>= 8
@@ -289,9 +306,12 @@ internal struct HTMagSgnEncoder: Sendable {
     private var tmp: UInt64 = 0
     private var usedBits: Int = 0
     private var maxBits: Int = 8
+    private let maximumBytes: Int
+    internal private(set) var overflowed: Bool = false
 
-    internal init() {
-        bytes.reserveCapacity(1024)
+    internal init(maximumBytes: Int = Int.max) {
+        self.maximumBytes = max(0, maximumBytes)
+        bytes.reserveCapacity(min(1024, max(0, maximumBytes)))
     }
 
     internal mutating func reset() {
@@ -299,10 +319,11 @@ internal struct HTMagSgnEncoder: Sendable {
         tmp = 0
         usedBits = 0
         maxBits = 8
+        overflowed = false
     }
 
     internal mutating func encode(codeword: UInt32, count: Int) {
-        guard count > 0 else { return }
+        guard count > 0, !overflowed else { return }
         let mask: UInt64 = (count >= 32) ? 0xFFFF_FFFF : ((UInt64(1) << count) - 1)
         let cw = UInt64(codeword) & mask
         tmp |= cw << usedBits
@@ -311,6 +332,7 @@ internal struct HTMagSgnEncoder: Sendable {
         while usedBits >= maxBits {
             let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
             let byte = UInt8(tmp & pageMask)
+            guard bytes.count < maximumBytes else { overflowed = true; return }
             bytes.append(byte)
             tmp >>= maxBits
             usedBits -= maxBits
@@ -319,7 +341,7 @@ internal struct HTMagSgnEncoder: Sendable {
     }
 
     internal mutating func encode64(codeword: UInt64, count: Int) {
-        guard count > 0 else { return }
+        guard count > 0, !overflowed else { return }
         if usedBits &+ count <= 64 {
             let mask: UInt64 = (count >= 64) ? ~UInt64(0) : ((UInt64(1) << count) - 1)
             let cw = codeword & mask
@@ -328,6 +350,7 @@ internal struct HTMagSgnEncoder: Sendable {
             while usedBits >= maxBits {
                 let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
                 let byte = UInt8(tmp & pageMask)
+                guard bytes.count < maximumBytes else { overflowed = true; return }
                 bytes.append(byte)
                 tmp >>= maxBits
                 usedBits &-= maxBits
@@ -342,12 +365,14 @@ internal struct HTMagSgnEncoder: Sendable {
     }
 
     internal mutating func terminate() {
+        guard !overflowed else { return }
         if usedBits > 0 {
             let unused = maxBits - usedBits
             let padMask: UInt64 = (UInt64(1) << unused) - 1
             tmp |= padMask << usedBits
             let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
             let byte = UInt8(tmp & pageMask)
+            guard bytes.count < maximumBytes else { overflowed = true; return }
             bytes.append(byte)
             tmp = 0
             usedBits = 0
@@ -464,7 +489,8 @@ internal enum HTBlockLayout {
     internal static func assemble(
         magsgn: [UInt8],
         mel: inout HTMELEncoder,
-        vlc: HTReverseBitEmitter
+        vlc: HTReverseBitEmitter,
+        maximumOutputBytes: Int = Int.max
     ) throws -> [UInt8] {
         var melVlc = fuseMELAndVLC(mel: &mel, vlc: vlc)
         let scup = melVlc.count
@@ -477,6 +503,9 @@ internal enum HTBlockLayout {
         let lcup = magsgn.count + scup
         guard lcup <= 65535 else {
             throw CodecError(.resourceLimitExceeded, "HTJ2K Lcup (\(lcup)) exceeds 65535-byte Part 15 limit.")
+        }
+        guard !mel.overflowed, !vlc.overflowed, lcup <= maximumOutputBytes else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment (\(lcup) bytes) exceeds the remaining block admission budget.")
         }
         melVlc[scup - 1] = UInt8((scup >> 4) & 0xFF)
         melVlc[scup - 2] = (melVlc[scup - 2] & 0xF0) | UInt8(scup & 0x0F)
@@ -524,12 +553,14 @@ internal enum HTBlockEncoder {
     ///   - width: Code-block width in samples (`1...64`).
     ///   - height: Code-block height in samples (`1...64`).
     ///   - bandShift: Bit-plane index of the cleanup pass (`0` for lossless full-precision coding).
+    ///   - maximumOutputBytes: Upper bound on retained cleanup segment bytes (`Int.max` when unbounded).
     /// - Returns: Assembled Part 15 cleanup-pass segment bytes (`Lcup` bytes), or empty array if all coefficients are zero at `bandShift`.
     internal static func encodeCleanup(
         coefficients: [Int32],
         width: Int,
         height: Int,
-        bandShift: Int = 0
+        bandShift: Int = 0,
+        maximumOutputBytes: Int = Int.max
     ) throws -> [UInt8] {
         guard width >= 1, height >= 1, coefficients.count == width * height else {
             throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
@@ -551,9 +582,13 @@ internal enum HTBlockEncoder {
             return []
         }
 
-        var magsgnEnc = HTMagSgnEncoder()
-        var melEnc = HTMELEncoder()
-        var vlcEnc = HTReverseBitEmitter()
+        guard maximumOutputBytes >= 2 else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment exceeds the remaining block admission budget.")
+        }
+
+        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes)
+        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes))
+        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes))
 
         try encodeLoop(
             coefficients: coefficients,
@@ -566,7 +601,15 @@ internal enum HTBlockEncoder {
         )
 
         let magsgnBytes = magsgnEnc.finish()
-        return try HTBlockLayout.assemble(magsgn: magsgnBytes, mel: &melEnc, vlc: vlcEnc)
+        guard !magsgnEnc.overflowed else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K MagSgn stream exceeds the remaining block admission budget.")
+        }
+        return try HTBlockLayout.assemble(
+            magsgn: magsgnBytes,
+            mel: &melEnc,
+            vlc: vlcEnc,
+            maximumOutputBytes: maximumOutputBytes
+        )
     }
 
     private static func encodeLoop(
@@ -1253,7 +1296,6 @@ private struct DecodeState {
         e_1: Int
     ) throws {
         if rho == 0 { return }
-        let offsets = [(0, 0), (0, 1), (1, 0), (1, 1)]
         for i in 0..<4 {
             let bit = (rho >> i) & 1
             if bit == 0 { continue }
@@ -1273,7 +1315,8 @@ private struct DecodeState {
             guard mu <= 0x7FFF_FFFF else {
                 throw CodecError(.malformedInput, "HTJ2K cleanup magnitude overflows 31-bit representation.")
             }
-            let (dx, dy) = offsets[i]
+            let dx = i >> 1
+            let dy = i & 1
             let xi = baseX + dx
             let yi = baseY + dy
             if xi >= width || yi >= height { continue }

@@ -183,9 +183,9 @@ def main():
     consumer_dir = REPO / "Examples/Consumer"
     if consumer_dir.is_dir():
         subprocess.run(["swift", "build", "--build-system", "native", "-c", "release", "--package-path", str(consumer_dir)], check=True, capture_output=True)
-        consumer_bin = consumer_dir / ".build/out/Products/Release/Consumer"
+        consumer_bin = consumer_dir / ".build/release/Consumer"
         if not consumer_bin.exists():
-            consumer_bin = consumer_dir / ".build/release/Consumer"
+            consumer_bin = consumer_dir / ".build/out/Products/Release/Consumer"
         in_mem_run = subprocess.run([str(consumer_bin), "--benchmark-in-memory", str(REPO)], check=True, capture_output=True)
         in_memory_transcode = json.loads(in_mem_run.stdout.decode())
         for row in in_memory_transcode.get("cases", []):

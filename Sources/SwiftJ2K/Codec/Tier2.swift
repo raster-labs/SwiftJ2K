@@ -260,11 +260,13 @@ enum Tier2 {
                                  codingStyle cod: CodingStyleSegment) throws -> TileGeometry {
         let levels = cod.decompositionLevels
         var resolutions: [ResolutionGeometry] = []
+        resolutions.reserveCapacity(levels + 1)
         for r in 0...levels {
             let shift = levels - r
             let trx0 = Wavelet53.ceilDivPowerOfTwo(tcx0, shift), trx1 = Wavelet53.ceilDivPowerOfTwo(tcx1, shift)
             let try0 = Wavelet53.ceilDivPowerOfTwo(tcy0, shift), try1 = Wavelet53.ceilDivPowerOfTwo(tcy1, shift)
             var bands: [BandGeometry] = []
+            bands.reserveCapacity(r == 0 ? 1 : 3)
             func bandRange(_ c0: Int, _ c1: Int, level nb: Int, high: Bool) -> (Int, Int) {
                 let denominator = 1 << nb
                 let offset = high ? 1 << (nb - 1) : 0
@@ -307,9 +309,11 @@ enum Tier2 {
             }
             let firstPrecinctX = Wavelet53.floorDiv(trx0, 1 << ppx), firstPrecinctY = Wavelet53.floorDiv(try0, 1 << ppy)
             var precincts: [PrecinctGeometry] = []
+            precincts.reserveCapacity(precinctsWide * precinctsHigh)
             for py in 0..<precinctsHigh {
                 for px in 0..<precinctsWide {
                     var precinctBands: [PrecinctBandGeometry] = []
+                    precinctBands.reserveCapacity(bands.count)
                     for (bandIndex, band) in bands.enumerated() {
                         // Precinct rectangle in band coordinates, clipped to the band.
                         let bx0 = max(band.x0, (firstPrecinctX + px) << bandPPX)
@@ -323,6 +327,7 @@ enum Tier2 {
                             let firstRow = Wavelet53.floorDiv(by0, 1 << ycb), lastRow = Wavelet53.floorDiv(by1 - 1, 1 << ycb)
                             blocksWide = lastColumn - firstColumn + 1
                             blocksHigh = lastRow - firstRow + 1
+                            blocks.reserveCapacity(blocksWide * blocksHigh)
                             for row in firstRow...lastRow {
                                 for column in firstColumn...lastColumn {
                                     let x0 = max(bx0, column << xcb), x1 = min(bx1, (column + 1) << xcb)

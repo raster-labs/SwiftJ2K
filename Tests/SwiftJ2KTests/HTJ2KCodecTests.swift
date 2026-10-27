@@ -712,7 +712,12 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     )
     #expect(transcoded.report.copyEvents.isEmpty)
     #expect(transcoded.report.pixelAllocationCount == 0 && transcoded.report.peakPixelBytes == 0)
-    let newSwiftJ2KTempFiles = midFilesBox.withLock { $0 }.filter { $0.contains("swiftj2k") || $0.contains("j2k") || $0.contains("htj2k") }
+    let newSwiftJ2KTempFiles = midFilesBox.withLock { $0 }.filter {
+        !$0.hasPrefix("swiftj2k-oracle-")
+            && !$0.hasPrefix("swiftj2k-ht-oracle-")
+            && !$0.hasPrefix("swiftj2k-transcode-oracle-")
+            && ($0.contains("swiftj2k") || $0.contains("j2k") || $0.contains("htj2k"))
+    }
     #expect(newSwiftJ2KTempFiles.isEmpty, "Unexpected temporary files created during in-memory transcode: \(newSwiftJ2KTempFiles)")
 }
 
@@ -1169,5 +1174,46 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
         #expect(bounded.data == transcoded.data)
     } catch let error as CodecError {
         #expect(error.category == .resourceLimitExceeded)
+    }
+
+    // 6. Pre-allocation denial of COM metadata ("comment-metadata" stage is never recorded when denied):
+    let comPayload: [UInt8] = [0x00, 0x01] + Array(repeating: 0x41, count: 64)
+    let comLen = UInt16(2 + comPayload.count)
+    var sourceWithCOM = [UInt8](sourceEncoded.data[0..<2])
+    sourceWithCOM.append(contentsOf: [0xFF, 0x64, UInt8(comLen >> 8), UInt8(comLen & 0xFF)])
+    sourceWithCOM.append(contentsOf: comPayload)
+    sourceWithCOM.append(contentsOf: sourceEncoded.data[2...])
+    let denyCOMRecorder = StorageTelemetry.Recorder()
+    let denyCOMLimits = try ResourceLimits(maximumMetadataBytes: comPayload.count - 1)
+    do {
+        _ = try await StorageTelemetry.$recorder.withValue(denyCOMRecorder) {
+            try await reblockTranscoder.transcode(Data(sourceWithCOM), to: .htj2k, options: .init(resourceLimits: denyCOMLimits))
+        }
+        Issue.record("transcode should reject oversized COM segment before slicing comment-metadata")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+    #expect(!denyCOMRecorder.events.map(\.stage).contains("comment-metadata"))
+
+    // 7. Single-block encoder output budget (`maximumOutputBytes`) aborts before retaining an oversized 64x64 block:
+    let coeffs64 = samples.map { Int32($0) - 32768 }
+    #expect(throws: CodecError.self) {
+        _ = try BitPlaneCoder.encode(
+            coefficients: coeffs64,
+            width: 64,
+            height: 64,
+            orientation: .ll,
+            magnitudeBitPlanes: 16,
+            maximumOutputBytes: 64
+        )
+    }
+    #expect(throws: CodecError.self) {
+        _ = try HTBlockEncoder.encodeCleanup(
+            coefficients: coeffs64,
+            width: 64,
+            height: 64,
+            bandShift: 0,
+            maximumOutputBytes: 64
+        )
     }
 }

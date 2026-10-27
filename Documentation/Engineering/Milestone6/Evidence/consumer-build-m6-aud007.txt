@@ -1,0 +1,11 @@
+Building for production...
+[Planning deferred tasks]
+[4 / 7]
+[5 / 8] SwiftJ2K
+[6 / 9] SwiftJ2K
+[12 / 15] Consumer-product
+[13 / 16] Consumer-product
+[15 / 16] Consumer-product
+[16 / 16] Consumer-product
+Build complete! (14.76 sec)
+Independent SwiftJ2K consumer passed; 106-byte Part 1 and 126-byte HTJ2K codestreams round-tripped and transcoded.

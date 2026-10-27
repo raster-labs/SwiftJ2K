@@ -278,6 +278,7 @@ enum CodestreamSyntax {
                   try checkedAdd(bytes.count, retainedBytes) <= limits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Retained COM metadata exceeds workspace or memory limits.")
             }
+            StorageTelemetry.recordStage("comment-metadata", bytes: 32 + payloadCount)
             let slice = Array(bytes[reader.position..<(reader.position + payloadCount)])
             try reader.skip(payloadCount)
             return slice
@@ -294,7 +295,30 @@ enum CodestreamSyntax {
                 }
                 continue
             }
-            let payload = try readSegmentPayload(&reader, marker: marker)
+            switch marker {
+            case Marker.rgn:
+                _ = try skipSegmentPayload(&reader, marker: marker)
+                throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported.")
+            case Marker.poc:
+                _ = try skipSegmentPayload(&reader, marker: marker)
+                throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
+            case Marker.ppm:
+                _ = try skipSegmentPayload(&reader, marker: marker)
+                throw CodecError(.unsupportedFeature, "Packed packet headers (PPM) are not supported.")
+            case Marker.tlm, Marker.plm:
+                _ = try skipSegmentPayload(&reader, marker: marker)
+                markers.append(marker)
+                continue
+            default:
+                guard marker & 0xFF00 == 0xFF00 else {
+                    throw CodecError(.malformedInput, "Expected a marker in the main header.")
+                }
+                if (0xFF30...0xFF3F).contains(marker) {
+                    markers.append(marker)
+                    continue
+                }
+            }
+            let payload = try readSegmentPayload(&reader, marker: marker, limits: limits, codestreamBytes: bytes.count)
             markers.append(marker)
             switch marker {
             case Marker.siz:
@@ -323,12 +347,6 @@ enum CodestreamSyntax {
                 guard let size else { throw CodecError(.malformedInput, "QCC precedes SIZ.") }
                 let (component, segment) = try parseQCC(payload, componentCount: size.components.count)
                 qcc[component] = segment
-            case Marker.rgn:
-                throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported.")
-            case Marker.poc:
-                throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
-            case Marker.ppm:
-                throw CodecError(.unsupportedFeature, "Packed packet headers (PPM) are not supported.")
             case Marker.crg:
                 guard let size else { throw CodecError(.malformedInput, "CRG precedes SIZ.") }
                 guard crg == nil else { throw CodecError(.malformedInput, "Duplicate CRG marker segment.") }
@@ -336,13 +354,7 @@ enum CodestreamSyntax {
                     throw CodecError(.malformedInput, "CRG marker segment length disagrees with component count.")
                 }
                 crg = payload
-            case Marker.tlm, Marker.plm:
-                break
             default:
-                guard marker & 0xFF00 == 0xFF00 else {
-                    throw CodecError(.malformedInput, "Expected a marker in the main header.")
-                }
-                if (0xFF30...0xFF3F).contains(marker) { break }   // reserved markers without segments
                 throw CodecError(.unsupportedFeature, "Marker segment \(String(marker, radix: 16)) is not supported.")
             }
         }
@@ -384,7 +396,7 @@ enum CodestreamSyntax {
                     guard partIndex == 0 else {
                         throw CodecError(.malformedInput, "Coding overrides are only allowed in a tile's first tile-part header.")
                     }
-                    let payload = try readSegmentPayload(&reader, marker: tileMarker)
+                    let payload = try readSegmentPayload(&reader, marker: tileMarker, limits: limits, codestreamBytes: bytes.count)
                     switch tileMarker {
                     case Marker.cod: overrides.codingStyle = try parseCOD(payload)
                     case Marker.coc:
@@ -396,17 +408,20 @@ enum CodestreamSyntax {
                         if component == 0 { overrides.componentQuantization = segment }
                     }
                 case Marker.rgn:
+                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported.")
                 case Marker.poc:
+                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Progression order changes (POC) are not supported.")
                 case Marker.ppt:
+                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Packed packet headers (PPT) are not supported.")
                 case Marker.com:
                     if let comment = try parseCommentSegment() {
                         partComments.append(comment)
                     }
                 case Marker.plt:
-                    _ = try readSegmentPayload(&reader, marker: tileMarker)
+                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
                 default:
                     throw CodecError(.malformedInput, "Unexpected marker \(String(tileMarker, radix: 16)) in a tile-part header.")
                 }
@@ -526,15 +541,42 @@ enum CodestreamSyntax {
         return CorrespondingProfileSegment(values: values)
     }
 
-    private static func readSegmentPayload(_ reader: inout ByteReader, marker: UInt16) throws -> [UInt8] {
+    private static func skipSegmentPayload(_ reader: inout ByteReader, marker: UInt16) throws -> Int {
         let length = Int(try reader.readUInt16())
         guard length >= 2 else { throw CodecError(.malformedInput, "Marker segment length below 2.") }
-        guard reader.remaining >= length - 2 else {
+        let payloadCount = length - 2
+        guard reader.remaining >= payloadCount else {
             throw CodecError(.malformedInput, "Marker segment \(String(marker, radix: 16)) is truncated.")
         }
+        try reader.skip(payloadCount)
+        return payloadCount
+    }
+
+    private static func readSegmentPayload(
+        _ reader: inout ByteReader,
+        marker: UInt16,
+        limits: ResourceLimits,
+        codestreamBytes: Int
+    ) throws -> [UInt8] {
+        let length = Int(try reader.readUInt16())
+        guard length >= 2 else { throw CodecError(.malformedInput, "Marker segment length below 2.") }
+        let payloadCount = length - 2
+        guard reader.remaining >= payloadCount else {
+            throw CodecError(.malformedInput, "Marker segment \(String(marker, radix: 16)) is truncated.")
+        }
+        if marker == Marker.crg {
+            guard payloadCount <= limits.maximumMetadataBytes else {
+                throw CodecError(.resourceLimitExceeded, "CRG marker segment exceeds the metadata byte limit.")
+            }
+        }
+        let segmentAllocationBytes = try checkedAdd(32, payloadCount)
+        guard segmentAllocationBytes <= limits.maximumWorkspaceBytes,
+              try checkedAdd(codestreamBytes, segmentAllocationBytes) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Marker segment \(String(marker, radix: 16)) payload exceeds workspace or memory limits.")
+        }
         let start = reader.position
-        try reader.skip(length - 2)
-        return Array(reader.bytes[start..<start + length - 2])
+        try reader.skip(payloadCount)
+        return Array(reader.bytes[start..<start + payloadCount])
     }
 
     // MARK: - SIZ

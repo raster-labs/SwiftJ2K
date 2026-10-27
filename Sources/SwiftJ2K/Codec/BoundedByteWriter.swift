@@ -77,6 +77,7 @@ struct BoundedByteWriter: ~Copyable, CodestreamByteSink {
         peakAllocationBytes = capacity
     }
 
+    @inline(__always)
     private mutating func ensureRoom(for additional: Int) throws {
         guard additional >= 0 else {
             throw CodecError(.internalFailure, "Negative output buffer growth.")
@@ -85,7 +86,11 @@ struct BoundedByteWriter: ~Copyable, CodestreamByteSink {
         guard needed <= maximumBytes else {
             throw CodecError(.resourceLimitExceeded, "Output buffer growth exceeds the compressed-byte limit.")
         }
-        guard needed > capacity else { return }
+        if needed <= capacity { return }
+        try growStorage(needed: needed)
+    }
+
+    private mutating func growStorage(needed: Int) throws {
         // The old allocation remains live until its initialised prefix is copied.
         // Prefer amortised growth, but fall back to the exact requirement under a
         // tight budget. Neither choice is permitted to allocate before admission.
@@ -114,6 +119,7 @@ struct BoundedByteWriter: ~Copyable, CodestreamByteSink {
         StorageTelemetry.recordStage("bounded-byte-buffer", bytes: newCapacity)
     }
 
+    @inline(__always)
     mutating func writeUInt8Checked(_ value: UInt8) throws {
         try ensureRoom(for: 1)
         guard let storage else { throw CodecError(.internalFailure, "Missing output storage.") }
@@ -121,18 +127,27 @@ struct BoundedByteWriter: ~Copyable, CodestreamByteSink {
         count += 1
     }
 
+    @inline(__always)
     mutating func writeUInt16Checked(_ value: UInt16) throws {
         try ensureRoom(for: 2)
-        try writeUInt8Checked(UInt8(value >> 8))
-        try writeUInt8Checked(UInt8(value & 0xff))
+        guard let storage else { throw CodecError(.internalFailure, "Missing output storage.") }
+        storage.storeBytes(of: UInt8(value >> 8), toByteOffset: count, as: UInt8.self)
+        storage.storeBytes(of: UInt8(value & 0xff), toByteOffset: count + 1, as: UInt8.self)
+        count += 2
     }
 
+    @inline(__always)
     mutating func writeUInt32Checked(_ value: UInt32) throws {
         try ensureRoom(for: 4)
-        try writeUInt16Checked(UInt16(value >> 16))
-        try writeUInt16Checked(UInt16(value & 0xffff))
+        guard let storage else { throw CodecError(.internalFailure, "Missing output storage.") }
+        storage.storeBytes(of: UInt8(value >> 24), toByteOffset: count, as: UInt8.self)
+        storage.storeBytes(of: UInt8((value >> 16) & 0xff), toByteOffset: count + 1, as: UInt8.self)
+        storage.storeBytes(of: UInt8((value >> 8) & 0xff), toByteOffset: count + 2, as: UInt8.self)
+        storage.storeBytes(of: UInt8(value & 0xff), toByteOffset: count + 3, as: UInt8.self)
+        count += 4
     }
 
+    @inline(__always)
     mutating func writeBytesChecked(_ bytes: [UInt8]) throws {
         try ensureRoom(for: bytes.count)
         if !bytes.isEmpty {

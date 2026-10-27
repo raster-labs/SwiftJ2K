@@ -389,19 +389,31 @@ enum ScalarLosslessCodec {
         progress: (@Sendable (ProgressUpdate) -> Void)?
     ) throws -> [[[[CodeBlockEncoding]]]] {
         var encodings: [[[[CodeBlockEncoding]]]] = []
+        encodings.reserveCapacity(geometry.resolutions.count)
         var coefficients: [Int32] = []
+        coefficients.reserveCapacity(BitPlaneCoder.maximumCoefficients)
+        let shouldRecordBlockStage = recordBlockStages && StorageTelemetry.recorder != nil
         for resolution in geometry.resolutions {
             var perPrecinct: [[[CodeBlockEncoding]]] = []
+            perPrecinct.reserveCapacity(resolution.precincts.count)
             for precinct in resolution.precincts {
                 var perBand: [[CodeBlockEncoding]] = []
+                perBand.reserveCapacity(precinct.bands.count)
                 for precinctBand in precinct.bands {
                     let band = resolution.bands[precinctBand.bandIndex]
                     let mb = qcd.guardBits + qcd.exponents[band.quantizationIndex] - 1
                     var perBlock: [CodeBlockEncoding] = []
+                    perBlock.reserveCapacity(precinctBand.blocks.count)
                     for block in precinctBand.blocks {
                         try work.check()
                         guard runningEncodedBytes <= maxRetainedEncodedBytes else {
                             throw CodecError(.resourceLimitExceeded, "Encoded code-block payloads exceed the workspace or memory admission budget.")
+                        }
+                        let blockMaxOutputBytes: Int
+                        if maxRetainedEncodedBytes == Int.max {
+                            blockMaxOutputBytes = Int.max
+                        } else {
+                            blockMaxOutputBytes = max(0, maxRetainedEncodedBytes - runningEncodedBytes - 32)
                         }
                         coefficients.removeAll(keepingCapacity: true)
                         for row in 0..<block.height {
@@ -416,14 +428,16 @@ enum ScalarLosslessCodec {
                                 width: block.width,
                                 height: block.height,
                                 orientation: band.orientation,
-                                magnitudeBitPlanes: mb
+                                magnitudeBitPlanes: mb,
+                                maximumOutputBytes: blockMaxOutputBytes
                             )
                         case .htj2k:
                             let coded = try HTBlockEncoder.encodeCleanup(
                                 coefficients: coefficients,
                                 width: block.width,
                                 height: block.height,
-                                bandShift: 0
+                                bandShift: 0,
+                                maximumOutputBytes: blockMaxOutputBytes
                             )
                             encoding = CodeBlockEncoding(
                                 data: coded,
@@ -437,7 +451,7 @@ enum ScalarLosslessCodec {
                             throw CodecError(.resourceLimitExceeded, "Retained code-block encodings exceed the workspace or memory admission budget.")
                         }
                         runningEncodedBytes = nextEncodedBytes
-                        if recordBlockStages && blockRetainedBytes > 0 {
+                        if shouldRecordBlockStage && blockRetainedBytes > 0 {
                             StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
                         }
                         perBlock.append(encoding)
