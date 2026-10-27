@@ -483,9 +483,6 @@ enum ScalarLosslessCodec {
               descriptor.components == [.grey], descriptor.planes.count == 1, descriptor.alpha == .absent else {
             throw CodecError(.unsupportedFeature, "Only unsigned 16-bit single-plane greyscale images can be encoded.")
         }
-        guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
-            throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
-        }
         let width = descriptor.width, height = descriptor.height, precision = descriptor.meaningfulBits
         let workspace = try workspaceBytes(planePixels: width * height, joinedBytes: 0)
         guard workspace <= limits.maximumWorkspaceBytes else {

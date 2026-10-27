@@ -651,8 +651,10 @@ enum Part1Pipeline {
         guard descriptor.storageBits == 8 || descriptor.storageBits == 16 else {
             throw CodecError(.unsupportedFeature, "Only 8-bit and 16-bit integer storage are supported.")
         }
-        guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
-            throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
+        if configuration.codecOptions.containerFormat == .codestream {
+            guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
+                throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
+            }
         }
 
         let width = descriptor.width
