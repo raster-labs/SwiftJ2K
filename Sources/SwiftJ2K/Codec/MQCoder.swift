@@ -87,8 +87,25 @@ struct MQEncoder: Sendable {
     private var ct = 12
     private var buffer = -1
     private var output: [UInt8] = []
+    private let maximumOutputBytes: Int
+    private(set) var overflowed = false
 
-    init(capacityHint: Int = 256) { output.reserveCapacity(max(capacityHint, 16)) }
+    init(capacityHint: Int = 256, maximumOutputBytes: Int = Int.max) {
+        self.maximumOutputBytes = maximumOutputBytes
+        let reserved = min(max(capacityHint, 16), max(0, maximumOutputBytes))
+        if reserved > 0 {
+            output.reserveCapacity(reserved)
+        }
+    }
+
+    @inline(__always)
+    private mutating func emitByte(_ byte: UInt8) {
+        guard output.count < maximumOutputBytes else {
+            overflowed = true
+            return
+        }
+        output.append(byte)
+    }
 
     /// CODEMPS / CODELPS (C.2.4, C.2.6).
     @inline(__always)
@@ -124,14 +141,14 @@ struct MQEncoder: Sendable {
     private mutating func byteOut() {
         if buffer >= 0 {
             if buffer == 0xFF {
-                output.append(0xFF)
+                emitByte(0xFF)
                 buffer = Int((c >> 20) & 0xFF)
                 c &= 0x000F_FFFF
                 ct = 7
             } else {
                 buffer += Int(c >> 27)
                 c &= 0x07FF_FFFF
-                output.append(UInt8(buffer & 0xFF))
+                emitByte(UInt8(buffer & 0xFF))
                 if buffer == 0xFF {
                     buffer = Int((c >> 20) & 0xFF)
                     c &= 0x000F_FFFF
@@ -159,7 +176,7 @@ struct MQEncoder: Sendable {
         if c >= limit { c &-= 0x8000 }
         c <<= UInt32(ct); byteOut()
         c <<= UInt32(ct); byteOut()
-        if buffer >= 0 && buffer != 0xFF { output.append(UInt8(buffer & 0xFF)) }
+        if buffer >= 0 && buffer != 0xFF { emitByte(UInt8(buffer & 0xFF)) }
         while let last = output.last, last == 0xFF { output.removeLast() }
         return output
     }

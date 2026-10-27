@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
 import SwiftJ2K
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 @main struct Consumer {
     static func main() async throws {
+        let args = Array(CommandLine.arguments.dropFirst())
+        if args.count == 2, args[0] == "--benchmark-in-memory" {
+            try await runInMemoryBenchmark(repoRoot: URL(fileURLWithPath: args[1]))
+            return
+        }
         let descriptor = try SwiftJ2K.ImageDescriptor.greyscale16(width: 3, height: 2,
             meaningfulBits: 12, rowBytes: 8)
         let destination = try SwiftJ2K.ImageDestination.allocate(descriptor: descriptor)
@@ -39,5 +49,142 @@ import SwiftJ2K
             }
         }
         print("Independent SwiftJ2K consumer passed; \(encoded.data.count)-byte Part 1 and \(htEncoded.data.count)-byte HTJ2K codestreams round-tripped and transcoded.")
+    }
+
+    private static func maxRSSBytes() -> Int {
+        var usage = rusage()
+        getrusage(RUSAGE_SELF, &usage)
+        #if os(macOS)
+        return Int(usage.ru_maxrss)
+        #else
+        return Int(usage.ru_maxrss) * 1024
+        #endif
+    }
+
+    private static func ms(_ duration: Duration) -> Double {
+        (Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18) * 1000.0
+    }
+
+    private static func stats(_ samples: [Double]) -> [String: Any] {
+        let sorted = samples.sorted()
+        let n = sorted.count
+        let median = n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+        let p95 = sorted[Int(0.95 * Double(n - 1))]
+        return [
+            "median_ms": median,
+            "p95_ms": p95,
+            "min_ms": sorted.first ?? 0,
+            "max_ms": sorted.last ?? 0,
+            "samples_ms": samples
+        ]
+    }
+
+    private static func runInMemoryBenchmark(repoRoot: URL) async throws {
+        let cases: [(name: String, j2kFile: String, htFile: String)] = [
+            ("g16_64x64_random", "g16_64x64_random.opj.j2k", "g16_64x64_random.ojph.j2c"),
+            ("g12_129x67_gradient", "g12_129x67_gradient.opj.j2k", "g12_129x67_gradient.ojph.j2c"),
+            ("g16_256x256_smooth", "g16_256x256_smooth.opj.j2k", "g16_256x256_smooth.ojph.j2c"),
+            ("g10_300x200_gradient", "g10_300x200_gradient.opj.j2k", "g10_300x200_gradient.ojph.j2c")
+        ]
+        let losslessDir = repoRoot.appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/Lossless")
+        let htDir = repoRoot.appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/HTJ2K")
+        let decoder = try SwiftJ2K.Decoder()
+        let transcoder = try SwiftJ2K.Transcoder()
+        let part1Encoder = try SwiftJ2K.Encoder(configuration: .init(codecOptions: try .init(blockCoding: .part1)))
+        let htEncoder = try SwiftJ2K.Encoder(configuration: .init(codecOptions: try .init(blockCoding: .htj2k)))
+        let clock = ContinuousClock()
+        let warmups = 5
+        let iterations = 20
+        var rows: [[String: Any]] = []
+
+        for c in cases {
+            let j2kData = try Data(contentsOf: losslessDir.appendingPathComponent(c.j2kFile))
+            let htData = try Data(contentsOf: htDir.appendingPathComponent(c.htFile))
+            let info = try decoder.inspect(j2kData)
+            let descriptor = info.descriptor
+
+            for (dirName, srcData, target, encoder) in [
+                ("j2k-to-htj2k", j2kData, SwiftJ2K.TranscodeTarget.htj2k, htEncoder),
+                ("htj2k-to-j2k", htData, SwiftJ2K.TranscodeTarget.jpeg2000, part1Encoder)
+            ] {
+                func runCoeff() async throws -> (Double, SwiftJ2K.EncodedImage) {
+                    let t0 = clock.now
+                    let out = try await transcoder.transcode(srcData, to: target)
+                    return (ms(clock.now - t0), out)
+                }
+                func runSharedSample() async throws -> (Double, SwiftJ2K.DecodedImage, SwiftJ2K.EncodedImage) {
+                    let t0 = clock.now
+                    let dest = try SwiftJ2K.ImageDestination.allocate(descriptor: descriptor)
+                    let dec = try await decoder.decode(srcData, into: dest)
+                    let enc = try await encoder.encode(dec.image)
+                    return (ms(clock.now - t0), dec, enc)
+                }
+
+                for _ in 0..<warmups {
+                    _ = try await runCoeff()
+                    _ = try await runSharedSample()
+                }
+
+                var coeffTimes: [Double] = []
+                var sharedTimes: [Double] = []
+                var lastCoeff: SwiftJ2K.EncodedImage?
+                var lastDec: SwiftJ2K.DecodedImage?
+                var lastEnc: SwiftJ2K.EncodedImage?
+
+                for i in 0..<iterations {
+                    if i % 2 == 0 {
+                        let (ct, co) = try await runCoeff()
+                        let (st, sd, se) = try await runSharedSample()
+                        coeffTimes.append(ct); sharedTimes.append(st)
+                        lastCoeff = co; lastDec = sd; lastEnc = se
+                    } else {
+                        let (st, sd, se) = try await runSharedSample()
+                        let (ct, co) = try await runCoeff()
+                        coeffTimes.append(ct); sharedTimes.append(st)
+                        lastCoeff = co; lastDec = sd; lastEnc = se
+                    }
+                }
+
+                guard let co = lastCoeff, let sd = lastDec, let se = lastEnc else { continue }
+                var coeffStats = stats(coeffTimes)
+                coeffStats["peak_workspace_bytes"] = co.report.peakWorkspaceBytes ?? -1
+                coeffStats["peak_pixel_bytes"] = co.report.peakPixelBytes ?? 0
+                coeffStats["pixel_allocations"] = co.report.pixelAllocationCount ?? 0
+                coeffStats["copy_events"] = co.report.copyEvents.count
+                coeffStats["output_bytes"] = co.data.count
+
+                var sharedStats = stats(sharedTimes)
+                let decWS = sd.report.peakWorkspaceBytes ?? 0
+                let encWS = se.report.peakWorkspaceBytes ?? 0
+                sharedStats["decode_peak_workspace_bytes"] = decWS
+                sharedStats["encode_peak_workspace_bytes"] = encWS
+                sharedStats["peak_workspace_bytes"] = max(decWS, encWS)
+                sharedStats["peak_pixel_bytes"] = sd.report.peakPixelBytes ?? (descriptor.width * descriptor.height * 2)
+                sharedStats["pixel_allocations"] = 1 // 1 caller-allocated shared ImageDestination
+                sharedStats["decode_into_pixel_allocations"] = sd.report.pixelAllocationCount ?? 0
+                sharedStats["encode_pixel_allocations"] = se.report.pixelAllocationCount ?? 0
+                sharedStats["copy_events"] = sd.report.copyEvents.count + se.report.copyEvents.count
+                sharedStats["output_bytes"] = se.data.count
+
+                rows.append([
+                    "case": c.name,
+                    "direction": dirName,
+                    "width": descriptor.width,
+                    "height": descriptor.height,
+                    "meaningfulBits": descriptor.meaningfulBits,
+                    "inputBytes": srcData.count,
+                    "inMemoryCoefficientPath": coeffStats,
+                    "inMemorySharedSampleBaseline": sharedStats
+                ])
+            }
+        }
+        let payload: [String: Any] = [
+            "warmups": warmups,
+            "iterations": iterations,
+            "max_rss_bytes": maxRSSBytes(),
+            "cases": rows
+        ]
+        let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+        FileHandle.standardOutput.write(data + Data([10]))
     }
 }

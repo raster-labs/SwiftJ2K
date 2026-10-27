@@ -8,6 +8,11 @@ import Synchronization
 /// its children is counted there. Without a recorder nothing is recorded.
 /// Counters hold sizes only, never contents or addresses.
 struct StorageTelemetry: Sendable {
+    struct AllocationEvent: Sendable, Equatable {
+        let stage: String
+        let bytes: Int
+    }
+
     struct Counts: Sendable, Equatable {
         var pixelAllocations = 0
         var pixelBytes = 0
@@ -15,24 +20,44 @@ struct StorageTelemetry: Sendable {
         var workspaceBytes = 0
     }
 
+    fileprivate struct State: Sendable {
+        var counts = Counts()
+        var events: [AllocationEvent] = []
+    }
+
     final class Recorder: Sendable {
-        private let state = Mutex(Counts())
+        private let state = Mutex(State())
         init() {}
-        var counts: Counts { state.withLock { $0 } }
-        func reset() { state.withLock { $0 = Counts() } }
-        fileprivate func add(_ body: (inout Counts) -> Void) { state.withLock { body(&$0) } }
+        var counts: Counts { state.withLock { $0.counts } }
+        var events: [AllocationEvent] { state.withLock { $0.events } }
+        func reset() { state.withLock { $0 = State() } }
+        fileprivate func add(_ body: (inout State) -> Void) { state.withLock { body(&$0) } }
     }
 
     @TaskLocal static var recorder: Recorder?
 
     /// An `OwnedImageStorage` allocation: the only pixel allocation this module makes.
     static func recordPixelAllocation(bytes: Int) {
-        recorder?.add { $0.pixelAllocations += 1; $0.pixelBytes += bytes }
+        recorder?.add {
+            $0.counts.pixelAllocations += 1
+            $0.counts.pixelBytes += bytes
+            $0.events.append(AllocationEvent(stage: "pixel", bytes: bytes))
+        }
     }
 
     /// A codec workspace allocation (coefficient plane, joined tile-part data).
     static func recordWorkspaceAllocation(bytes: Int) {
-        recorder?.add { $0.workspaceAllocations += 1; $0.workspaceBytes += bytes }
+        recorder?.add {
+            $0.counts.workspaceAllocations += 1
+            $0.counts.workspaceBytes += bytes
+        }
+    }
+
+    /// Records a bounded stage allocation after admission passes and before the buffer is created.
+    static func recordStage(_ stage: String, bytes: Int) {
+        recorder?.add {
+            $0.events.append(AllocationEvent(stage: stage, bytes: bytes))
+        }
     }
 }
 

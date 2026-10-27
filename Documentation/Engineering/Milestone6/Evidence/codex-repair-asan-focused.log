@@ -1,0 +1,73 @@
+Building for debugging...
+[0/13] $AUDIT_WORK/repair-asan-build/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[1/13] Write swiftj2k-cli-entitlement.plist
+[1/13] Write sources
+[6/13] Copying Fixtures
+[7/13] Write swift-version--58304C5D6DBC2206.txt
+[9/24] Compiling SwiftJ2K BitIO.swift
+[10/24] Compiling SwiftJ2K BitPlaneCoder.swift
+[11/24] Compiling SwiftJ2K BoundedByteWriter.swift
+[12/24] Compiling SwiftJ2K Codestream.swift
+[13/24] Compiling SwiftJ2K ContextModeling.swift
+[14/24] Compiling SwiftJ2K HTBlockCoder.swift
+[15/24] Compiling SwiftJ2K HTTables.swift
+[16/24] Compiling SwiftJ2K LosslessPipeline.swift
+[17/24] Compiling SwiftJ2K MQCoder.swift
+[18/24] Compiling SwiftJ2K TagTree.swift
+[19/24] Emitting module SwiftJ2K
+[20/34] Compiling SwiftJ2K Tier2.swift
+[21/34] Compiling SwiftJ2K Wavelet53.swift
+[22/34] Compiling SwiftJ2K CodecAPI.swift
+[23/34] Compiling SwiftJ2K Errors.swift
+[24/34] Compiling SwiftJ2K Image.swift
+[25/34] Compiling SwiftJ2K ImageDescriptor.swift
+[26/34] Compiling SwiftJ2K ImageStorage.swift
+[27/34] Compiling SwiftJ2K Options.swift
+[28/34] Compiling SwiftJ2K Telemetry.swift
+[29/34] Compiling SwiftJ2K Transcoding.swift
+[30/43] Compiling SwiftJ2KCLI main.swift
+[31/43] Emitting module SwiftJ2KCLI
+[31/43] Write Objects.LinkFileList
+[32/43] Linking swiftj2k-cli
+[33/43] Applying swiftj2k-cli
+[35/43] Emitting module SwiftJ2KTests
+[36/49] Compiling SwiftJ2KTests LimitTests.swift
+[37/49] Compiling SwiftJ2KTests LosslessCodecTests.swift
+[38/49] Compiling SwiftJ2KTests OwnershipTests.swift
+[39/49] Compiling SwiftJ2KTests SampleAccessTests.swift
+[40/49] Compiling SwiftJ2KTests SharedStorageTests.swift
+[41/49] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+[42/49] Compiling SwiftJ2KTests BehaviourTests.swift
+[43/49] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[44/49] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[45/49] Compiling SwiftJ2KTests ContractTests.swift
+[46/49] Compiling SwiftJ2KTests DescriptorTests.swift
+[47/49] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+[48/51] Compiling SwiftJ2KPackageTests runner.swift
+[49/51] Emitting module SwiftJ2KPackageTests
+[49/51] Write Objects.LinkFileList
+[50/51] Linking SwiftJ2KPackageTests
+Build complete! (15.34s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test boundedWriterRejectsInvalidReservationsWithoutAllocating() started.
+◇ Test transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits() started.
+◇ Test boundedWriterGrowthAndDirectCopiesPublishIndependentBytes() started.
+◇ Test transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput() started.
+◇ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() started.
+◇ Test boundedWriterRejectsGrowthBeforeAllocationAndPreservesPrefix() started.
+◇ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test boundedWriterRejectsInvalidReservationsWithoutAllocating() passed after 0.001 seconds.
+✔ Test boundedWriterRejectsGrowthBeforeAllocationAndPreservesPrefix() passed after 0.001 seconds.
+✔ Test boundedWriterGrowthAndDirectCopiesPublishIndependentBytes() passed after 0.013 seconds.
+✔ Test transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits() passed after 0.606 seconds.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput() passed after 0.868 seconds.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) with 4 test cases passed after 1.261 seconds.
+✔ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() passed after 1.869 seconds.
+✔ Test run with 7 tests in 0 suites passed after 1.869 seconds.

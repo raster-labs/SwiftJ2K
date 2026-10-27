@@ -19,7 +19,7 @@ private let tool = "swiftj2k-cli"
 private let version = "12.1.0"
 private let codecCommands = ["encode", "decode", "inspect", "validate", "transcode"]
 private let valueOptions: Set<String> = ["--input", "-i", "--output", "-o", "--input-format", "--output-format",
-    "--mode", "--max-error", "--backend", "--copy-policy", "--threads", "--max-memory", "--timeout",
+    "--mode", "--max-error", "--backend", "--copy-policy", "--metadata-policy", "--threads", "--max-memory", "--timeout",
     "--levels", "--code-block", "--precision"]
 
 private struct UsageError: Error { let message: String }
@@ -145,6 +145,7 @@ private func help(_ command: String?) -> String {
       --mode lossless           The only mode; near-lossless and lossy are unsupported (exit 4).
       --backend NAME            scalar (default); accelerated backends are unavailable (exit 4).
       --copy-policy POLICY      require-sharing (default) or allow-copy; neither copies here.
+      --metadata-policy POLICY  preserve (default) or discard-ancillary (COM marker segments).
       --threads N               Worker limit (1..8; the scalar path uses one).
       --max-memory BYTES        Admission budget for input, output and workspace.
       --timeout SECONDS         Operation deadline (exit 5 when exceeded).
@@ -452,12 +453,28 @@ private func detectFormat(_ data: Data, declared: String?) throws -> String {
     let isNRRD = data.count >= 4 && data.prefix(4) == Data("NRRD".utf8)
     let detected: String?
     if isCodestream {
-        if data.count >= 8 && data[data.startIndex + 2] == 0xFF && data[data.startIndex + 3] == 0x51 {
-            let rsiz = (UInt16(data[data.startIndex + 6]) << 8) | UInt16(data[data.startIndex + 7])
-            detected = (rsiz & 0x4000) != 0 ? "htj2k" : "j2k"
-        } else {
-            detected = "j2k"
+        var foundHT = false
+        var pos = data.startIndex + 2
+        while pos + 2 <= data.endIndex {
+            let marker = (UInt16(data[pos]) << 8) | UInt16(data[pos + 1])
+            pos += 2
+            if marker == 0xFF90 || marker == 0xFFD9 { break }
+            if (0xFF30...0xFF3F).contains(marker) { continue }
+            guard pos + 2 <= data.endIndex else { break }
+            let segLen = Int((UInt16(data[pos]) << 8) | UInt16(data[pos + 1]))
+            guard segLen >= 2, pos + segLen <= data.endIndex else { break }
+            if marker == 0xFF51 && segLen >= 4 {
+                let rsiz = (UInt16(data[pos + 2]) << 8) | UInt16(data[pos + 3])
+                if (rsiz & 0x4000) != 0 { foundHT = true }
+            } else if marker == 0xFF50 {
+                foundHT = true
+            } else if marker == 0xFF52 && segLen >= 12 {
+                let cstyle = data[pos + 11]
+                if (cstyle & 0x40) != 0 { foundHT = true }
+            }
+            pos += segLen
         }
+        detected = foundHT ? "htj2k" : "j2k"
     } else if isNRRD {
         detected = "nrrd"
     } else {
@@ -503,6 +520,9 @@ private func limits(from options: Options) throws -> ResourceLimits {
     }
     if let policy = options.values["--copy-policy"] {
         guard ["require-sharing", "allow-copy"].contains(policy) else { throw UsageError(message: "--copy-policy must be require-sharing or allow-copy.") }
+    }
+    if let meta = options.values["--metadata-policy"] {
+        guard ["preserve", "discard-ancillary"].contains(meta) else { throw UsageError(message: "--metadata-policy must be preserve or discard-ancillary.") }
     }
     if options.values["--max-error"] != nil {
         throw ExitFailure(status: 4, message: "unsupported: --max-error applies to near-lossless modes, which are not implemented.")
@@ -557,6 +577,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         throw UsageError(message: "\(command) requires --output.")
     }
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
+    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     let started = ContinuousClock.now
     try context.diagnostic(2, "reading input")
     let input = try readInput(inputPath)
@@ -601,7 +622,10 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
             throw ExitFailure(status: 4, message: "unsupported format: decode writes nrrd.")
         }
         try context.diagnostic(2, "decoding")
-        let decoded = try await Decoder().decode(input, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
+        let decoded = try await Decoder().decode(
+            input,
+            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+        )
         let descriptor = decoded.image.descriptor
         var output = NRRD.header(width: descriptor.width, height: descriptor.height, meaningfulBits: descriptor.meaningfulBits)
         output.reserveCapacity(output.count + descriptor.width * descriptor.height * 2)
@@ -625,6 +649,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
                     "backend": "scalar", "fidelity": "exactSamples", "copyEvents": decoded.report.copyEvents.count,
                     "pixelAllocations": decoded.report.pixelAllocationCount ?? -1,
                     "peakWorkspaceBytes": decoded.report.peakWorkspaceBytes ?? -1,
+                    "discardedMetadataCount": decoded.report.discardedMetadataCount ?? 0,
+                    "discardedMetadataBytes": decoded.report.discardedMetadataBytes ?? 0,
+                    "discardedMetadataKinds": decoded.report.discardedMetadataKinds,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
     case "encode":
         guard format == "nrrd" else { throw ExitFailure(status: 4, message: "unsupported format: encode reads NRRD images.") }
@@ -683,7 +710,11 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         let target: TranscodeTarget = (targetFormat == "htj2k") ? .htj2k : .jpeg2000
         try context.diagnostic(2, "transcoding \(format) -> \(targetFormat)")
         let transcoder = try Transcoder(configuration: TranscoderConfiguration(mode: .lossless, codecOptions: codecOptions))
-        let transcoded = try await transcoder.transcode(input, to: target, options: .init(resourceLimits: limits, copyPolicy: copyPolicy))
+        let transcoded = try await transcoder.transcode(
+            input,
+            to: target,
+            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+        )
         try context.diagnostic(2, "publishing output")
         try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
         let elapsed = ContinuousClock.now - started
@@ -694,6 +725,9 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
                     "copyEvents": transcoded.report.copyEvents.count,
                     "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
                     "peakWorkspaceBytes": transcoded.report.peakWorkspaceBytes ?? -1,
+                    "discardedMetadataCount": transcoded.report.discardedMetadataCount ?? 0,
+                    "discardedMetadataBytes": transcoded.report.discardedMetadataBytes ?? 0,
+                    "discardedMetadataKinds": transcoded.report.discardedMetadataKinds,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
     default:
         throw UsageError(message: "Unknown command.")

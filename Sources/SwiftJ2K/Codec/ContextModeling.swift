@@ -43,6 +43,7 @@ enum ContextLabel {
 struct ContextSet: Sendable {
     var contexts: [MQContext]
 
+    @inline(__always)
     init() {
         contexts = [MQContext](repeating: MQContext(), count: ContextLabel.count)
         contexts[0] = MQContext(stateIndex: 4)
@@ -56,7 +57,20 @@ struct ContextTables: Sendable {
     /// Indexed by `h * 15 + v * 5 + d` with h, v ∈ 0...2 and d ∈ 0...4.
     let significance: [UInt8]
 
+    private static let llAndLH = ContextTables(make: .lh)
+    private static let hl = ContextTables(make: .hl)
+    private static let hh = ContextTables(make: .hh)
+
+    @inline(__always)
     init(orientation: BandOrientation) {
+        switch orientation {
+        case .ll, .lh: self = Self.llAndLH
+        case .hl: self = Self.hl
+        case .hh: self = Self.hh
+        }
+    }
+
+    private init(make orientation: BandOrientation) {
         var table = [UInt8](repeating: 0, count: 45)
         for h in 0...2 {
             for v in 0...2 {
@@ -184,6 +198,7 @@ struct StatePlane: Sendable {
     }
 
     /// Clears the per-bit-plane visited flag on every coefficient.
+    @inline(__always)
     mutating func clearVisited() {
         let mask = ~CoefficientFlag.visited
         for i in flags.indices { flags[i] &= mask }

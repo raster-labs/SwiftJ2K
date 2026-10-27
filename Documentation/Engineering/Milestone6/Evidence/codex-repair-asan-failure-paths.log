@@ -1,0 +1,10 @@
+[0/1] Planning build
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() started.
+◇ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() started.
+✔ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() passed after 0.103 seconds.
+➜ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() was cancelled after 0.176 seconds.
+✔ Test run with 2 tests in 0 suites passed after 0.176 seconds.

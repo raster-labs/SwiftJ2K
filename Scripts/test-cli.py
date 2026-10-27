@@ -123,12 +123,27 @@ def main():
                 report['commands'].append({'argv':['sh','-c','transcode | transcode | decode'],'exit_code':t_piped.returncode,'expected_exit_code':0,'stderr':t_piped.stderr.decode(errors='replace')});save()
                 assert t_piped.returncode==0 and nrrd_samples(t_piped.stdout)[3]==samples
                 assert not [f for f in temp.iterdir() if f.name.endswith('.tmp')]
+            # COM metadata preservation and discard-ancillary policy (M6-AUD-004).
+            first_stream=(fixtures/manifest['fixtures'][0]['codestreams'][0]['file']).read_bytes()
+            com_text=b'Codex-M6-ancillary-metadata-audit'
+            com_payload=b'\x00\x01'+com_text
+            com_seg=b'\xff\x64'+(2+len(com_payload)).to_bytes(2,'big')+com_payload
+            com_in=temp/'com_input.j2k';com_in.write_bytes(first_stream[:2]+com_seg+first_stream[2:])
+            com_ht=temp/'com_out.j2c';com_j2k=temp/'com_restored.j2k';com_disc=temp/'com_discarded.j2c'
+            r_pres=cli('transcode','-i',com_in,'-o',com_ht,'--output-format','htj2k','--json')
+            pres_rep=json.loads(r_pres.stderr)
+            assert com_text in com_ht.read_bytes() and pres_rep['discardedMetadataCount']==0 and pres_rep['discardedMetadataBytes']==0 and pres_rep['discardedMetadataKinds']==[]
+            cli('transcode','-i',com_ht,'-o',com_j2k,'--output-format','j2k','--json')
+            assert com_text in com_j2k.read_bytes()
+            r_disc=cli('transcode','-i',com_in,'-o',com_disc,'--output-format','htj2k','--metadata-policy','discard-ancillary','--json')
+            disc_rep=json.loads(r_disc.stderr)
+            assert com_text not in com_disc.read_bytes() and disc_rep['discardedMetadataCount']>=1 and disc_rep['discardedMetadataBytes']>=len(com_payload) and disc_rep['discardedMetadataKinds']==['COM']
             # Exit statuses: 2 usage, 3 malformed, 4 unsupported format/feature, 5 limit/deadline, 6 I/O.
             good=fixtures/'g16_64x64_random.opj.j2k';nine=fixtures/'g16_64x64_random.irreversible97.j2k'
             for form in [['encode'],['decode','-i',good],['transcode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
                          ['decode','-i',good,'-o','x','--input-format','tiff'],['encode','-i',good,'-o','x','--precision','17'],
                          ['encode','-i',good,'-o','x','--code-block','3x3'],['encode','-i',good,'-o','x','--levels','40'],
-                         ['transcode','-i',good,'-o','x','--precision','12'],
+                         ['transcode','-i',good,'-o','x','--precision','12'],['transcode','-i',good,'-o','x','--metadata-policy','bogus'],
                          ['validate','-i',good,'--threads','9'],['validate','-i',good,'--timeout','-1'],['validate','-i',good,'-i',good]]:
                 r=cli(*form,expected=2);assert not r.stdout and r.stderr
             truncated=temp/'truncated.j2k';truncated.write_bytes(good.read_bytes()[:100])

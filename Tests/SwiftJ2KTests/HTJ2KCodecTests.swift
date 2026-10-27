@@ -712,7 +712,12 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     )
     #expect(transcoded.report.copyEvents.isEmpty)
     #expect(transcoded.report.pixelAllocationCount == 0 && transcoded.report.peakPixelBytes == 0)
-    let newSwiftJ2KTempFiles = midFilesBox.withLock { $0 }.filter { $0.contains("swiftj2k") || $0.contains("j2k") || $0.contains("htj2k") }
+    let newSwiftJ2KTempFiles = midFilesBox.withLock { $0 }.filter {
+        !$0.hasPrefix("swiftj2k-oracle-")
+            && !$0.hasPrefix("swiftj2k-ht-oracle-")
+            && !$0.hasPrefix("swiftj2k-transcode-oracle-")
+            && ($0.contains("swiftj2k") || $0.contains("j2k") || $0.contains("htj2k"))
+    }
     #expect(newSwiftJ2KTempFiles.isEmpty, "Unexpected temporary files created during in-memory transcode: \(newSwiftJ2KTempFiles)")
 }
 
@@ -794,10 +799,17 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
         guard update.phase == .processing, update.completedUnits > 0 else { return }
         withUnsafeCurrentTask { $0?.cancel() }
     }
-    do {
-        _ = try await transcoder.transcode(data, to: .jpeg2000, options: .init(progress: cancelProgress))
-        Issue.record("cancelled transcode succeeded")
-    } catch is CancellationError {}
+    // Cancel a child operation, not Swift Testing's test task. The test must
+    // complete normally after checking the cancellation result and cleanup.
+    let cancelledOperation = Task {
+        do {
+            _ = try await transcoder.transcode(data, to: .jpeg2000, options: .init(progress: cancelProgress))
+            return false
+        } catch is CancellationError {
+            return true
+        }
+    }
+    #expect(try await cancelledOperation.value)
 }
 
 @Test func boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() async throws {
@@ -888,5 +900,320 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
                 #expect(error.category != .internalFailure, "Transcode(\(target)) fuzz iter \(iter): \(error.message)")
             }
         }
+    }
+}
+
+// MARK: - M6-AUD-004 COM metadata policy and M6-AUD-006 pre-allocation resource accounting regressions
+
+@Test func transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits() async throws {
+    let commentASCII = Array("Codex-M6-ancillary-metadata-audit".utf8)
+    let comPayload: [UInt8] = [0x00, 0x01] + commentASCII // Rcom = 1 (Latin-1 text)
+    let comLen = UInt16(2 + comPayload.count)
+    let comSegment: [UInt8] = [
+        0xFF, 0x64,
+        UInt8(comLen >> 8), UInt8(comLen & 0xFF)
+    ] + comPayload
+
+    // 1. Exact M6-AUD-004 reproducer: first Lossless fixture with FF64 COM immediately after SOC.
+    let firstEntry = Fixtures.manifest.fixtures[0]
+    let baseJ2K = [UInt8](try Fixtures.bytes(firstEntry.codestreams[0].file))
+    let baseParsed = try CodestreamSyntax.parse(baseJ2K, limits: try ResourceLimits())
+    let expectedMainComments = [comPayload] + baseParsed.mainHeaderComments
+    let expectedMainDiscardCount = 1 + baseParsed.commentCount
+    let expectedMainDiscardBytes = comPayload.count + baseParsed.commentPayloadBytes
+    let expectedSamples = try Fixtures.samples(firstEntry)
+    var j2kWithCOMAfterSOC: [UInt8] = Array(baseJ2K[0..<2])
+    j2kWithCOMAfterSOC.append(contentsOf: comSegment)
+    j2kWithCOMAfterSOC.append(contentsOf: baseJ2K[2...])
+
+    let transcoder = try Transcoder()
+    let decoder = try Decoder()
+
+    // Default metadataPolicy (.preserve): J2K -> HTJ2K -> J2K retains COM payload in both directions and reports 0 discarded.
+    let htPreserved = try await transcoder.transcode(Data(j2kWithCOMAfterSOC), to: .htj2k)
+    #expect(htPreserved.data.range(of: Data(commentASCII)) != nil, "HT output dropped main-header COM under .preserve")
+    #expect(htPreserved.report.discardedMetadataCount == 0)
+    #expect(htPreserved.report.discardedMetadataBytes == 0)
+    #expect(htPreserved.report.discardedMetadataKinds.isEmpty)
+    let parsedHT = try CodestreamSyntax.parse([UInt8](htPreserved.data), limits: try ResourceLimits())
+    #expect(parsedHT.mainHeaderComments == expectedMainComments)
+
+    let j2kRestored = try await transcoder.transcode(htPreserved.data, to: .jpeg2000)
+    #expect(j2kRestored.data.range(of: Data(commentASCII)) != nil, "Restored J2K dropped main-header COM under .preserve")
+    #expect(j2kRestored.report.discardedMetadataCount == 0)
+    #expect(j2kRestored.report.discardedMetadataBytes == 0)
+    #expect(j2kRestored.report.discardedMetadataKinds.isEmpty)
+    let parsedRestored = try CodestreamSyntax.parse([UInt8](j2kRestored.data), limits: try ResourceLimits())
+    #expect(parsedRestored.mainHeaderComments == expectedMainComments)
+    let decodedPreserved = try await decoder.decode(j2kRestored.data)
+    #expect(decodedPreserved.report.discardedMetadataCount == 0)
+    try expectSamples(decodedPreserved.image, equal: expectedSamples, width: firstEntry.width, height: firstEntry.height)
+
+    // Explicit .discardAncillary: J2K -> HTJ2K and HTJ2K -> J2K strip COM segments cleanly and report API-07 discard summary.
+    let htDiscarded = try await transcoder.transcode(
+        Data(j2kWithCOMAfterSOC),
+        to: .htj2k,
+        options: .init(metadataPolicy: .discardAncillary)
+    )
+    #expect(htDiscarded.data.range(of: Data(commentASCII)) == nil, "HT output retained COM under .discardAncillary")
+    #expect(htDiscarded.report.discardedMetadataCount == expectedMainDiscardCount)
+    #expect(htDiscarded.report.discardedMetadataBytes == expectedMainDiscardBytes)
+    #expect(htDiscarded.report.discardedMetadataKinds == ["COM"])
+    let j2kDiscarded = try await transcoder.transcode(
+        htPreserved.data,
+        to: .jpeg2000,
+        options: .init(metadataPolicy: .discardAncillary)
+    )
+    #expect(j2kDiscarded.data.range(of: Data(commentASCII)) == nil, "J2K output retained COM under .discardAncillary")
+    #expect(j2kDiscarded.report.discardedMetadataCount == expectedMainDiscardCount)
+    #expect(j2kDiscarded.report.discardedMetadataBytes == expectedMainDiscardBytes)
+    #expect(j2kDiscarded.report.discardedMetadataKinds == ["COM"])
+    let decodedDiscarded = try await decoder.decode(
+        Data(j2kWithCOMAfterSOC),
+        options: .init(metadataPolicy: .discardAncillary)
+    )
+    #expect(decodedDiscarded.report.discardedMetadataCount == expectedMainDiscardCount)
+    #expect(decodedDiscarded.report.discardedMetadataBytes == expectedMainDiscardBytes)
+    #expect(decodedDiscarded.report.discardedMetadataKinds == ["COM"])
+
+    // 2. Tile-part header COM + main-header COM in HTJ2K -> J2K -> HTJ2K.
+    let tileCommentASCII = Array("Tile-0-COM-annotation".utf8)
+    let tileCOMPayload: [UInt8] = [0x00, 0x01] + tileCommentASCII
+    let tileCOMLen = UInt16(2 + tileCOMPayload.count)
+    let tileCOMSegment: [UInt8] = [
+        0xFF, 0x64,
+        UInt8(tileCOMLen >> 8), UInt8(tileCOMLen & 0xFF)
+    ] + tileCOMPayload
+
+    // Insert tileCOMSegment immediately before SOD (0xFF93) in htPreserved and update Psot.
+    var htWithTileCOM = [UInt8](htPreserved.data)
+    var sotPos: Int?
+    var sodPos: Int?
+    var scan = 2
+    while scan + 2 <= htWithTileCOM.count {
+        let m = (UInt16(htWithTileCOM[scan]) << 8) | UInt16(htWithTileCOM[scan + 1])
+        if m == 0xFF90 {
+            sotPos = scan
+            scan += 12
+            while scan + 2 <= htWithTileCOM.count {
+                let tm = (UInt16(htWithTileCOM[scan]) << 8) | UInt16(htWithTileCOM[scan + 1])
+                if tm == 0xFF93 {
+                    sodPos = scan
+                    break
+                }
+                let tlen = Int((UInt16(htWithTileCOM[scan + 2]) << 8) | UInt16(htWithTileCOM[scan + 3]))
+                scan += 2 + tlen
+            }
+            break
+        }
+        let slen = Int((UInt16(htWithTileCOM[scan + 2]) << 8) | UInt16(htWithTileCOM[scan + 3]))
+        scan += 2 + slen
+    }
+    let foundSOT = try #require(sotPos)
+    let foundSOD = try #require(sodPos)
+    let oldPsot = (UInt32(htWithTileCOM[foundSOT + 6]) << 24)
+        | (UInt32(htWithTileCOM[foundSOT + 7]) << 16)
+        | (UInt32(htWithTileCOM[foundSOT + 8]) << 8)
+        | UInt32(htWithTileCOM[foundSOT + 9])
+    let newPsot = oldPsot + UInt32(tileCOMSegment.count)
+    htWithTileCOM[foundSOT + 6] = UInt8((newPsot >> 24) & 0xFF)
+    htWithTileCOM[foundSOT + 7] = UInt8((newPsot >> 16) & 0xFF)
+    htWithTileCOM[foundSOT + 8] = UInt8((newPsot >> 8) & 0xFF)
+    htWithTileCOM[foundSOT + 9] = UInt8(newPsot & 0xFF)
+    htWithTileCOM.insert(contentsOf: tileCOMSegment, at: foundSOD)
+
+    let j2kWithBothCOMs = try await transcoder.transcode(Data(htWithTileCOM), to: .jpeg2000)
+    let parsedBoth = try CodestreamSyntax.parse([UInt8](j2kWithBothCOMs.data), limits: try ResourceLimits())
+    #expect(parsedBoth.mainHeaderComments == expectedMainComments)
+    #expect(parsedBoth.tileParts.first?.comments == [tileCOMPayload])
+    #expect(j2kWithBothCOMs.report.discardedMetadataCount == 0)
+
+    let j2kDiscardedBoth = try await transcoder.transcode(
+        Data(htWithTileCOM),
+        to: .jpeg2000,
+        options: .init(metadataPolicy: .discardAncillary)
+    )
+    let parsedDiscardedBoth = try CodestreamSyntax.parse([UInt8](j2kDiscardedBoth.data), limits: try ResourceLimits())
+    #expect(parsedDiscardedBoth.mainHeaderComments.isEmpty)
+    #expect(parsedDiscardedBoth.tileParts.first?.comments.isEmpty == true)
+    #expect(j2kDiscardedBoth.report.discardedMetadataCount == expectedMainDiscardCount + 1)
+    #expect(j2kDiscardedBoth.report.discardedMetadataBytes == expectedMainDiscardBytes + tileCOMPayload.count)
+    #expect(j2kDiscardedBoth.report.discardedMetadataKinds == ["COM"])
+
+    // 3. Metadata byte limit enforcement (maximumMetadataBytes) and malformed COM (Lcom < 4).
+    let tightMetaLimits = try ResourceLimits(maximumMetadataBytes: comPayload.count - 1)
+    do {
+        _ = try await transcoder.transcode(Data(j2kWithCOMAfterSOC), to: .htj2k, options: .init(resourceLimits: tightMetaLimits))
+        Issue.record("transcode accepted COM exceeding maximumMetadataBytes")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+
+    var malformedCOM: [UInt8] = Array(baseJ2K[0..<2])
+    malformedCOM.append(contentsOf: [0xFF, 0x64, 0x00, 0x03, 0x00]) // Lcom = 3 (< 4)
+    malformedCOM.append(contentsOf: baseJ2K[2...])
+    do {
+        _ = try await transcoder.transcode(Data(malformedCOM), to: .htj2k)
+        Issue.record("transcode accepted malformed COM with Lcom < 4")
+    } catch let error as CodecError {
+        #expect(error.category == .malformedInput)
+    }
+}
+
+@Test func transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput() async throws {
+    let width = 64, height = 64
+    var samples = [UInt16](repeating: 0, count: width * height)
+    for i in 0..<samples.count {
+        samples[i] = UInt16((i &* 4099 + 17) & 0xFFFF)
+    }
+    let image = try makeImage(samples, width: width, height: height, bits: 16)
+    let sourceOpts = try CodecOptions(decompositionLevels: 0, codeBlockWidth: 64, codeBlockHeight: 64, blockCoding: .part1)
+    let sourceEncoded = try await Encoder(configuration: .init(mode: .lossless, codecOptions: sourceOpts)).encode(image)
+
+    let reblockOpts = try CodecOptions(decompositionLevels: 0, codeBlockWidth: 4, codeBlockHeight: 4)
+    let reblockTranscoder = try Transcoder(configuration: .init(mode: .lossless, codecOptions: reblockOpts))
+
+    let recorder = StorageTelemetry.Recorder()
+    let transcoded = try await StorageTelemetry.$recorder.withValue(recorder) {
+        try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k)
+    }
+    let counts = recorder.counts
+    let events = recorder.events
+    let stages = events.map(\.stage)
+    #expect(counts.pixelAllocations == 0 && counts.pixelBytes == 0)
+    // Stage telemetry proves every major workspace stage was admitted:
+    #expect(stages.contains("input-copy"))
+    #expect(stages.contains("source-geometry"))
+    #expect(stages.contains("target-geometry"))
+    #expect(stages.contains("output-writer"))
+    #expect(stages.contains("decode-state"))
+    #expect(stages.contains("coefficient-plane"))
+    #expect(stages.filter { $0 == "block-encoding" }.count == 256)
+    #expect(stages.contains("packet-writer"))
+    #expect(stages.contains("output-data"))
+    let peakWorkspace = try #require(transcoded.report.peakWorkspaceBytes)
+
+    // 1. Pre-allocation denial of duplicate input copy ([UInt8](data)):
+    // Admitting `data` + `[UInt8](data)` (32 + data.count) requires 2 * data.count + 32 bytes.
+    let denyInputCopyRecorder = StorageTelemetry.Recorder()
+    let denyInputCopyLimits = try ResourceLimits(maximumMemoryBytes: sourceEncoded.data.count * 2)
+    do {
+        _ = try await StorageTelemetry.$recorder.withValue(denyInputCopyRecorder) {
+            try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: denyInputCopyLimits))
+        }
+        Issue.record("transcode should reject duplicate input buffer before allocating [UInt8](data)")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+    #expect(denyInputCopyRecorder.events.isEmpty, "input-copy was allocated despite admission denial: \(denyInputCopyRecorder.events)")
+
+    // 2. Pre-allocation denial of target 4x4 geometry (256 code-blocks + nested precinct/tag-tree state):
+    let inputCopyBytes = events.first { $0.stage == "input-copy" }!.bytes
+    let sourceGeoBytes = events.first { $0.stage == "source-geometry" }!.bytes
+    let targetGeoBytes = events.first { $0.stage == "target-geometry" }!.bytes
+    #expect(targetGeoBytes == sourceGeoBytes + 255 * MemoryLayout<CodeBlockGeometry>.stride)
+
+    let denyTargetGeoRecorder = StorageTelemetry.Recorder()
+    let denyTargetGeoLimits = try ResourceLimits(maximumWorkspaceBytes: inputCopyBytes + sourceGeoBytes + targetGeoBytes - 1)
+    do {
+        _ = try await StorageTelemetry.$recorder.withValue(denyTargetGeoRecorder) {
+            try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: denyTargetGeoLimits))
+        }
+        Issue.record("transcode should reject 4x4 target geometry before allocating target TileGeometry arrays")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+    let deniedTargetGeoStages = denyTargetGeoRecorder.events.map(\.stage)
+    #expect(deniedTargetGeoStages == ["input-copy", "source-geometry"], "target-geometry or later stages allocated before denial: \(deniedTargetGeoStages)")
+
+    // 3. Incremental pre-retention denial of encoded code-block payloads:
+    // Allow live workspace before block payloads plus only half of the 256 encoded block payloads.
+    let totalBlockEncodingBytes = events.filter { $0.stage == "block-encoding" }.reduce(0) { $0 + $1.bytes }
+    let denyMidBlockRecorder = StorageTelemetry.Recorder()
+    let denyMidBlockLimits = try ResourceLimits(
+        maximumWorkspaceBytes: peakWorkspace - totalBlockEncodingBytes / 2
+    )
+    do {
+        _ = try await StorageTelemetry.$recorder.withValue(denyMidBlockRecorder) {
+            try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: denyMidBlockLimits))
+        }
+        Issue.record("transcode should reject retained block encodings partway through tile before all 256 blocks are retained")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+    let midBlockStages = denyMidBlockRecorder.events.map(\.stage)
+    let retainedBlockCount = midBlockStages.filter { $0 == "block-encoding" }.count
+    #expect(retainedBlockCount > 0 && retainedBlockCount < 256, "Expected incremental denial partway through 256 blocks, got \(retainedBlockCount)")
+    #expect(!midBlockStages.contains("packet-writer") && !midBlockStages.contains("output-data"))
+
+    // 4. Pre-growth denial of packet/codestream output when maximumCompressedBytes is exceeded:
+    if sourceEncoded.data.count < transcoded.data.count {
+        let denyCompressedRecorder = StorageTelemetry.Recorder()
+        let tightCompressedLimits = try ResourceLimits(maximumCompressedBytes: transcoded.data.count - 1)
+        do {
+            _ = try await StorageTelemetry.$recorder.withValue(denyCompressedRecorder) {
+                try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: tightCompressedLimits))
+            }
+            Issue.record("transcode should fail before publishing output when growing codestream exceeds maximumCompressedBytes")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(!denyCompressedRecorder.events.map(\.stage).contains("output-data"))
+    }
+
+    // 5. The successful operation must stay inside its own admission budget.
+    // A prior run's peak is not a minimum: bounded writers may choose a smaller
+    // growth capacity under a tighter limit. Either denial or a lower measured
+    // bound is valid; accepting the same excessive bound is not. The writer tests
+    // separately check the exact unavoidable old+new allocation boundary.
+    let tightMemoryLimits = try ResourceLimits(maximumMemoryBytes: sourceEncoded.data.count + peakWorkspace - 1)
+    do {
+        let bounded = try await reblockTranscoder.transcode(sourceEncoded.data, to: .htj2k, options: .init(resourceLimits: tightMemoryLimits))
+        let boundedWorkspace = try #require(bounded.report.peakWorkspaceBytes)
+        #expect(sourceEncoded.data.count + boundedWorkspace <= tightMemoryLimits.maximumMemoryBytes)
+        #expect(bounded.data == transcoded.data)
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+
+    // 6. Pre-allocation denial of COM metadata ("comment-metadata" stage is never recorded when denied):
+    let comPayload: [UInt8] = [0x00, 0x01] + Array(repeating: 0x41, count: 64)
+    let comLen = UInt16(2 + comPayload.count)
+    var sourceWithCOM = [UInt8](sourceEncoded.data[0..<2])
+    sourceWithCOM.append(contentsOf: [0xFF, 0x64, UInt8(comLen >> 8), UInt8(comLen & 0xFF)])
+    sourceWithCOM.append(contentsOf: comPayload)
+    sourceWithCOM.append(contentsOf: sourceEncoded.data[2...])
+    let denyCOMRecorder = StorageTelemetry.Recorder()
+    let denyCOMLimits = try ResourceLimits(maximumMetadataBytes: comPayload.count - 1)
+    do {
+        _ = try await StorageTelemetry.$recorder.withValue(denyCOMRecorder) {
+            try await reblockTranscoder.transcode(Data(sourceWithCOM), to: .htj2k, options: .init(resourceLimits: denyCOMLimits))
+        }
+        Issue.record("transcode should reject oversized COM segment before slicing comment-metadata")
+    } catch let error as CodecError {
+        #expect(error.category == .resourceLimitExceeded)
+    }
+    #expect(!denyCOMRecorder.events.map(\.stage).contains("comment-metadata"))
+
+    // 7. Single-block encoder output budget (`maximumOutputBytes`) aborts before retaining an oversized 64x64 block:
+    let coeffs64 = samples.map { Int32($0) - 32768 }
+    #expect(throws: CodecError.self) {
+        _ = try BitPlaneCoder.encode(
+            coefficients: coeffs64,
+            width: 64,
+            height: 64,
+            orientation: .ll,
+            magnitudeBitPlanes: 16,
+            maximumOutputBytes: 64
+        )
+    }
+    #expect(throws: CodecError.self) {
+        _ = try HTBlockEncoder.encodeCleanup(
+            coefficients: coeffs64,
+            width: 64,
+            height: 64,
+            bandShift: 0,
+            maximumOutputBytes: 64
+        )
     }
 }

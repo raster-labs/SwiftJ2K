@@ -105,15 +105,168 @@ struct CodeBlockContribution: Sendable {
 enum Tier2 {
     // MARK: - Geometry (Annex B.3 – B.7)
 
+    struct TileGeometryFootprint: Sendable {
+        let resolutionCount: Int
+        let bandCount: Int
+        let precinctCount: Int
+        let precinctBandCount: Int
+        let codeBlockCount: Int
+        let tagTreeNodeCount: Int
+        let geometryBytes: Int
+        let decodeStateBytes: Int
+        let encodeStateStructBytes: Int
+    }
+
+    /// Preflights exact resolution, band, precinct, code-block and tag-tree node
+    /// counts and nested array/struct memory footprints using checked scalar
+    /// arithmetic without allocating geometry arrays.
+    static func preflightTileGeometry(
+        x0 tcx0: Int, x1 tcx1: Int, y0 tcy0: Int, y1 tcy1: Int,
+        codingStyle cod: CodingStyleSegment
+    ) throws -> TileGeometryFootprint {
+        let levels = cod.decompositionLevels
+        let resolutionCount = levels + 1
+        var bandCount = 0
+        var precinctCount = 0
+        var precinctBandCount = 0
+        var codeBlockCount = 0
+        var tagTreeNodeCount = 0
+
+        func bandRange(_ c0: Int, _ c1: Int, level nb: Int, high: Bool) -> (Int, Int) {
+            let denominator = 1 << nb
+            let offset = high ? 1 << (nb - 1) : 0
+            return (Wavelet53.ceilDiv(c0 - offset, denominator), Wavelet53.ceilDiv(c1 - offset, denominator))
+        }
+
+        for r in 0...levels {
+            let shift = levels - r
+            let trx0 = Wavelet53.ceilDivPowerOfTwo(tcx0, shift), trx1 = Wavelet53.ceilDivPowerOfTwo(tcx1, shift)
+            let try0 = Wavelet53.ceilDivPowerOfTwo(tcy0, shift), try1 = Wavelet53.ceilDivPowerOfTwo(tcy1, shift)
+            let bandRects: [(x0: Int, x1: Int, y0: Int, y1: Int)]
+            if r == 0 {
+                let (bx0, bx1) = bandRange(tcx0, tcx1, level: levels, high: false)
+                let (by0, by1) = bandRange(tcy0, tcy1, level: levels, high: false)
+                guard bx0 == trx0, bx1 == trx1, by0 == try0, by1 == try1 else {
+                    throw CodecError(.internalFailure, "LL band and resolution 0 geometry disagree.")
+                }
+                bandRects = [(bx0, bx1, by0, by1)]
+            } else {
+                let nb = levels - r + 1
+                let lowW = Wavelet53.lowCount(trx0, trx1), lowH = Wavelet53.lowCount(try0, try1)
+                let (hx0, hx1) = bandRange(tcx0, tcx1, level: nb, high: true)
+                let (lx0, lx1) = bandRange(tcx0, tcx1, level: nb, high: false)
+                let (hy0, hy1) = bandRange(tcy0, tcy1, level: nb, high: true)
+                let (ly0, ly1) = bandRange(tcy0, tcy1, level: nb, high: false)
+                guard lx1 - lx0 == lowW, hx1 - hx0 == (trx1 - trx0) - lowW,
+                      ly1 - ly0 == lowH, hy1 - hy0 == (try1 - try0) - lowH else {
+                    throw CodecError(.internalFailure, "Subband and resolution geometry disagree.")
+                }
+                bandRects = [(hx0, hx1, ly0, ly1), (lx0, lx1, hy0, hy1), (hx0, hx1, hy0, hy1)]
+            }
+            bandCount = try checkedAdd(bandCount, bandRects.count)
+
+            let (ppx, ppy) = cod.precinctExponents(resolution: r)
+            let bandPPX = r == 0 ? ppx : ppx - 1, bandPPY = r == 0 ? ppy : ppy - 1
+            let xcb = min(cod.codeBlockWidthExponent, bandPPX), ycb = min(cod.codeBlockHeightExponent, bandPPY)
+            let precinctsWide = trx1 > trx0 ? Wavelet53.ceilDiv(trx1, 1 << ppx) - Wavelet53.floorDiv(trx0, 1 << ppx) : 0
+            let precinctsHigh = try1 > try0 ? Wavelet53.ceilDiv(try1, 1 << ppy) - Wavelet53.floorDiv(try0, 1 << ppy) : 0
+            let resPrecincts = try checkedMultiply(precinctsWide, precinctsHigh)
+            guard resPrecincts <= 1 << 24 else {
+                throw CodecError(.resourceLimitExceeded, "Precinct count exceeds the parser budget.")
+            }
+            precinctCount = try checkedAdd(precinctCount, resPrecincts)
+            precinctBandCount = try checkedAdd(precinctBandCount, try checkedMultiply(resPrecincts, bandRects.count))
+
+            let firstPrecinctX = Wavelet53.floorDiv(trx0, 1 << ppx), firstPrecinctY = Wavelet53.floorDiv(try0, 1 << ppy)
+            for py in 0..<precinctsHigh {
+                for px in 0..<precinctsWide {
+                    for rect in bandRects {
+                        let bx0 = max(rect.x0, (firstPrecinctX + px) << bandPPX)
+                        let bx1 = min(rect.x1, (firstPrecinctX + px + 1) << bandPPX)
+                        let by0 = max(rect.y0, (firstPrecinctY + py) << bandPPY)
+                        let by1 = min(rect.y1, (firstPrecinctY + py + 1) << bandPPY)
+                        if bx0 < bx1, by0 < by1 {
+                            let firstColumn = Wavelet53.floorDiv(bx0, 1 << xcb), lastColumn = Wavelet53.floorDiv(bx1 - 1, 1 << xcb)
+                            let firstRow = Wavelet53.floorDiv(by0, 1 << ycb), lastRow = Wavelet53.floorDiv(by1 - 1, 1 << ycb)
+                            let blocksWide = lastColumn - firstColumn + 1
+                            let blocksHigh = lastRow - firstRow + 1
+                            let pbBlocks = try checkedMultiply(blocksWide, blocksHigh)
+                            codeBlockCount = try checkedAdd(codeBlockCount, pbBlocks)
+                            let nodes = try TagTree.nodeCount(width: blocksWide, height: blocksHigh)
+                            tagTreeNodeCount = try checkedAdd(tagTreeNodeCount, try checkedMultiply(nodes, 2))
+                        }
+                    }
+                }
+            }
+        }
+
+        let arrayHeader = 32
+        let resBytes = try checkedMultiply(resolutionCount, MemoryLayout<ResolutionGeometry>.stride + 2 * arrayHeader)
+        let bandBytes = try checkedMultiply(bandCount, MemoryLayout<BandGeometry>.stride)
+        let precBytes = try checkedMultiply(precinctCount, MemoryLayout<PrecinctGeometry>.stride + arrayHeader)
+        let pbBytes = try checkedMultiply(precinctBandCount, MemoryLayout<PrecinctBandGeometry>.stride + arrayHeader)
+        let cbBytes = try checkedMultiply(codeBlockCount, MemoryLayout<CodeBlockGeometry>.stride)
+        let geometryBytes = try checkedAdd(
+            MemoryLayout<TileGeometry>.stride + arrayHeader,
+            try checkedAdd(
+                try checkedAdd(resBytes, bandBytes),
+                try checkedAdd(try checkedAdd(precBytes, pbBytes), cbBytes)
+            )
+        )
+
+        let nestedGridHeaders = try checkedAdd(
+            arrayHeader,
+            try checkedAdd(
+                try checkedMultiply(resolutionCount, arrayHeader),
+                try checkedAdd(
+                    try checkedMultiply(precinctCount, arrayHeader),
+                    try checkedMultiply(precinctBandCount, arrayHeader)
+                )
+            )
+        )
+        let contributionStructBytes = try checkedMultiply(codeBlockCount, MemoryLayout<CodeBlockContribution>.stride)
+        let treeStructBytes = try checkedAdd(
+            try checkedMultiply(precinctCount, MemoryLayout<PrecinctTrees>.stride + 2 * arrayHeader),
+            try checkedAdd(
+                try checkedMultiply(precinctBandCount, 2 * (MemoryLayout<TagTree>.stride + 2 * arrayHeader)),
+                try checkedMultiply(tagTreeNodeCount, TagTree.nodeStride)
+            )
+        )
+        let decodeStateBytes = try checkedAdd(
+            nestedGridHeaders,
+            try checkedAdd(contributionStructBytes, treeStructBytes)
+        )
+
+        let encodingStructBytes = try checkedMultiply(codeBlockCount, MemoryLayout<CodeBlockEncoding>.stride)
+        let encodeStateStructBytes = try checkedAdd(
+            nestedGridHeaders,
+            try checkedAdd(encodingStructBytes, try checkedMultiply(tagTreeNodeCount, TagTree.nodeStride))
+        )
+
+        return TileGeometryFootprint(
+            resolutionCount: resolutionCount,
+            bandCount: bandCount,
+            precinctCount: precinctCount,
+            precinctBandCount: precinctBandCount,
+            codeBlockCount: codeBlockCount,
+            tagTreeNodeCount: tagTreeNodeCount,
+            geometryBytes: geometryBytes,
+            decodeStateBytes: decodeStateBytes,
+            encodeStateStructBytes: encodeStateStructBytes
+        )
+    }
+
     static func makeTileGeometry(x0 tcx0: Int, x1 tcx1: Int, y0 tcy0: Int, y1 tcy1: Int,
                                  codingStyle cod: CodingStyleSegment) throws -> TileGeometry {
         let levels = cod.decompositionLevels
         var resolutions: [ResolutionGeometry] = []
+        resolutions.reserveCapacity(levels + 1)
         for r in 0...levels {
             let shift = levels - r
             let trx0 = Wavelet53.ceilDivPowerOfTwo(tcx0, shift), trx1 = Wavelet53.ceilDivPowerOfTwo(tcx1, shift)
             let try0 = Wavelet53.ceilDivPowerOfTwo(tcy0, shift), try1 = Wavelet53.ceilDivPowerOfTwo(tcy1, shift)
             var bands: [BandGeometry] = []
+            bands.reserveCapacity(r == 0 ? 1 : 3)
             func bandRange(_ c0: Int, _ c1: Int, level nb: Int, high: Bool) -> (Int, Int) {
                 let denominator = 1 << nb
                 let offset = high ? 1 << (nb - 1) : 0
@@ -156,9 +309,11 @@ enum Tier2 {
             }
             let firstPrecinctX = Wavelet53.floorDiv(trx0, 1 << ppx), firstPrecinctY = Wavelet53.floorDiv(try0, 1 << ppy)
             var precincts: [PrecinctGeometry] = []
+            precincts.reserveCapacity(precinctsWide * precinctsHigh)
             for py in 0..<precinctsHigh {
                 for px in 0..<precinctsWide {
                     var precinctBands: [PrecinctBandGeometry] = []
+                    precinctBands.reserveCapacity(bands.count)
                     for (bandIndex, band) in bands.enumerated() {
                         // Precinct rectangle in band coordinates, clipped to the band.
                         let bx0 = max(band.x0, (firstPrecinctX + px) << bandPPX)
@@ -172,6 +327,7 @@ enum Tier2 {
                             let firstRow = Wavelet53.floorDiv(by0, 1 << ycb), lastRow = Wavelet53.floorDiv(by1 - 1, 1 << ycb)
                             blocksWide = lastColumn - firstColumn + 1
                             blocksHigh = lastRow - firstRow + 1
+                            blocks.reserveCapacity(blocksWide * blocksHigh)
                             for row in firstRow...lastRow {
                                 for column in firstColumn...lastColumn {
                                     let x0 = max(bx0, column << xcb), x1 = min(bx1, (column + 1) << xcb)
@@ -414,13 +570,12 @@ enum Tier2 {
     // MARK: - Encoding (single layer, LRCP, default style)
 
     /// `encodings` is indexed `[resolution][precinct][band][block]`.
-    static func encodePackets(geometry: TileGeometry, encodings: [[[[CodeBlockEncoding]]]],
-                              into out: inout ByteWriter, cancellation: () throws -> Void) throws {
+    static func encodePackets<Output: CodestreamByteSink & ~Copyable>(geometry: TileGeometry, encodings: [[[[CodeBlockEncoding]]]],
+                              into out: inout Output, cancellation: () throws -> Void) throws {
         for resolution in geometry.resolutions {
             for (p, precinct) in resolution.precincts.enumerated() {
                 try cancellation()
                 var header = PacketBitWriter()
-                var bodies: [[UInt8]] = []
                 let anyIncluded = precinct.bands.enumerated().contains { b, band in
                     band.blocks.indices.contains { encodings[resolution.index][p][b][$0].passCount > 0 }
                 }
@@ -448,12 +603,20 @@ enum Tier2 {
                             }
                             header.writeBit(false)
                             header.writeBits(encoding.data.count, count: lblock + floorLog2(encoding.passCount))
-                            bodies.append(encoding.data)
                         }
                     }
                 }
-                out.writeBytes(header.finish())
-                for body in bodies { out.writeBytes(body) }
+                try out.writeBytesChecked(header.finish())
+                if anyIncluded {
+                    for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                        for k in 0..<precinctBand.blocks.count {
+                            let encoding = encodings[resolution.index][p][b][k]
+                            if encoding.passCount > 0 {
+                                try out.writeBytesChecked(encoding.data)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

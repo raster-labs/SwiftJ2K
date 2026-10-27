@@ -17,8 +17,10 @@ struct TileProfile: Sendable {
     let codingStyle: CodingStyleSegment
     let quantization: QuantizationSegment
     let magnitudeBitPlanes: [Int]         // per QCD band index
+    let footprint: Tier2.TileGeometryFootprint
     let geometry: TileGeometry
     let dataRanges: [Range<Int>]          // tile-part data ranges in part order
+    let comments: [[UInt8]]               // COM payloads in tile-part order
     var width: Int { x1 - x0 }
     var height: Int { y1 - y0 }
 }
@@ -33,10 +35,20 @@ struct LosslessProfile: Sendable {
     let precision: Int
     let isHTJ2K: Bool
     let tiles: [TileProfile]
+    let mainHeaderComments: [[UInt8]]
+    let componentRegistration: [UInt8]?
+    let commentCount: Int
+    let commentPayloadBytes: Int
     var format: String { isHTJ2K ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format }
     var codeBlockCount: Int { tiles.reduce(0) { $0 + $1.geometry.codeBlockCount } }
     var largestTilePixels: Int { tiles.map { $0.width * $0.height }.max() ?? 0 }
     var largestTileBytes: Int { tiles.map { $0.dataRanges.reduce(0) { $0 + $1.count } }.max() ?? 0 }
+    var totalSourceGeometryBytes: Int { tiles.reduce(0) { $0 + $1.footprint.geometryBytes } }
+    var largestDecodeStateBytes: Int { tiles.map(\.footprint.decodeStateBytes).max() ?? 0 }
+    var totalCommentSegmentBytes: Int {
+        mainHeaderComments.reduce(0) { $0 + 4 + $1.count }
+            + tiles.reduce(0) { $0 + $1.comments.reduce(0) { $0 + 4 + $1.count } }
+    }
 }
 
 /// Cooperative cancellation plus the operation deadline from `ResourceLimits`.
@@ -60,8 +72,12 @@ enum ScalarLosslessCodec {
 
     // MARK: - Inspection
 
-    static func inspect(_ bytes: [UInt8], limits: ResourceLimits) throws -> LosslessProfile {
-        let parsed = try CodestreamSyntax.parse(bytes, limits: limits)
+    static func inspect(
+        _ bytes: [UInt8],
+        limits: ResourceLimits,
+        metadataPolicy: MetadataPolicy = .preserve
+    ) throws -> LosslessProfile {
+        let parsed = try CodestreamSyntax.parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
         let size = parsed.size
         guard size.capabilities & 0x8000 == 0 else {
             throw CodecError(.unsupportedFeature, "Rsiz signals Part 2 extensions (0x8000), which are not supported.")
@@ -98,6 +114,7 @@ enum ScalarLosslessCodec {
         var partsByTile: [Int: [TilePartRecord]] = [:]
         for part in parsed.tileParts { partsByTile[part.tileIndex, default: []].append(part) }
         var tiles: [TileProfile] = []
+        var runningSourceGeometryBytes = 0
         for (tileIndex, parts) in partsByTile.sorted(by: { $0.key < $1.key }) {
             guard tileIndex < tilesWide * tilesHigh else {
                 throw CodecError(.malformedInput, "Tile-parts reference a tile the SIZ grid does not contain.")
@@ -128,10 +145,20 @@ enum ScalarLosslessCodec {
                 }
                 magnitudeBitPlanes.append(mb)
             }
+            // Preflight exact geometry footprint before allocating TileGeometry arrays.
+            let footprint = try Tier2.preflightTileGeometry(x0: tx0, x1: tx1, y0: ty0, y1: ty1, codingStyle: cod)
+            runningSourceGeometryBytes = try checkedAdd(runningSourceGeometryBytes, footprint.geometryBytes)
+            guard runningSourceGeometryBytes <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, runningSourceGeometryBytes) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Source tile geometry exceeds workspace or memory limits.")
+            }
+            StorageTelemetry.recordStage("source-geometry", bytes: footprint.geometryBytes)
             let geometry = try Tier2.makeTileGeometry(x0: tx0, x1: tx1, y0: ty0, y1: ty1, codingStyle: cod)
             tiles.append(TileProfile(index: tileIndex, x0: tx0, x1: tx1, y0: ty0, y1: ty1, codingStyle: cod,
-                                     quantization: qcd, magnitudeBitPlanes: magnitudeBitPlanes, geometry: geometry,
-                                     dataRanges: ordered.map(\.dataRange)))
+                                     quantization: qcd, magnitudeBitPlanes: magnitudeBitPlanes,
+                                     footprint: footprint, geometry: geometry,
+                                     dataRanges: ordered.map(\.dataRange),
+                                     comments: ordered.flatMap(\.comments)))
         }
         guard tiles.count == tilesWide * tilesHigh else {
             throw CodecError(.malformedInput, "Codestream lacks tile-parts for \(tilesWide * tilesHigh - tiles.count) of its tiles.")
@@ -140,7 +167,11 @@ enum ScalarLosslessCodec {
                                originX: size.originX, originY: size.originY,
                                tileWidth: size.tileWidth, tileHeight: size.tileHeight,
                                tileOriginX: size.tileOriginX, tileOriginY: size.tileOriginY,
-                               precision: component.precision, isHTJ2K: parsed.isHTJ2K, tiles: tiles)
+                               precision: component.precision, isHTJ2K: parsed.isHTJ2K, tiles: tiles,
+                               mainHeaderComments: parsed.mainHeaderComments,
+                               componentRegistration: parsed.componentRegistration,
+                               commentCount: parsed.commentCount,
+                               commentPayloadBytes: parsed.commentPayloadBytes)
     }
 
     private static func validateCodingStyle(_ cod: CodingStyleSegment, quantization qcd: QuantizationSegment) throws {
@@ -182,14 +213,17 @@ enum ScalarLosslessCodec {
         if tile.dataRanges.count == 1 {
             tileBytes = bytes; tileRange = tile.dataRanges[0]
         } else {
+            let joinedCount = tile.dataRanges.reduce(0) { $0 + $1.count }
+            StorageTelemetry.recordStage("joined-tile-parts", bytes: 32 + joinedCount)
+            StorageTelemetry.recordWorkspaceAllocation(bytes: joinedCount)
             var joined: [UInt8] = []
-            joined.reserveCapacity(tile.dataRanges.reduce(0) { $0 + $1.count })
+            joined.reserveCapacity(joinedCount)
             for range in tile.dataRanges { joined.append(contentsOf: bytes[range]) }
             tileBytes = joined; tileRange = 0..<joined.count
-            StorageTelemetry.recordWorkspaceAllocation(bytes: joined.count)
         }
         let geometry = tile.geometry
         let style = CodeBlockStyle(bits: tile.codingStyle.codeBlockStyle)
+        StorageTelemetry.recordStage("decode-state", bytes: tile.footprint.decodeStateBytes)
         let contributions = try Tier2.decodePackets(
             geometry: geometry,
             codingStyle: tile.codingStyle,
@@ -198,8 +232,10 @@ enum ScalarLosslessCodec {
             cancellation: work.check
         )
         let stride = tile.width
-        var plane = [Int32](repeating: 0, count: tile.width * tile.height)
-        StorageTelemetry.recordWorkspaceAllocation(bytes: plane.count * 4)
+        let planeCount = tile.width * tile.height
+        StorageTelemetry.recordStage("coefficient-plane", bytes: planeCount * 4)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 4)
+        var plane = [Int32](repeating: 0, count: planeCount)
         for resolution in geometry.resolutions {
             for (p, precinct) in resolution.precincts.enumerated() {
                 for (b, precinctBand) in precinct.bands.enumerated() {
@@ -345,22 +381,40 @@ enum ScalarLosslessCodec {
         qcd: QuantizationSegment,
         blockCoding: CodecOptions.BlockCoding,
         work: WorkGuard,
+        maxRetainedEncodedBytes: Int = Int.max,
+        runningEncodedBytes: inout Int,
+        recordBlockStages: Bool = false,
         completed: inout Int,
         total: Int,
         progress: (@Sendable (ProgressUpdate) -> Void)?
     ) throws -> [[[[CodeBlockEncoding]]]] {
         var encodings: [[[[CodeBlockEncoding]]]] = []
+        encodings.reserveCapacity(geometry.resolutions.count)
         var coefficients: [Int32] = []
+        coefficients.reserveCapacity(BitPlaneCoder.maximumCoefficients)
+        let shouldRecordBlockStage = recordBlockStages && StorageTelemetry.recorder != nil
         for resolution in geometry.resolutions {
             var perPrecinct: [[[CodeBlockEncoding]]] = []
+            perPrecinct.reserveCapacity(resolution.precincts.count)
             for precinct in resolution.precincts {
                 var perBand: [[CodeBlockEncoding]] = []
+                perBand.reserveCapacity(precinct.bands.count)
                 for precinctBand in precinct.bands {
                     let band = resolution.bands[precinctBand.bandIndex]
                     let mb = qcd.guardBits + qcd.exponents[band.quantizationIndex] - 1
                     var perBlock: [CodeBlockEncoding] = []
+                    perBlock.reserveCapacity(precinctBand.blocks.count)
                     for block in precinctBand.blocks {
                         try work.check()
+                        guard runningEncodedBytes <= maxRetainedEncodedBytes else {
+                            throw CodecError(.resourceLimitExceeded, "Encoded code-block payloads exceed the workspace or memory admission budget.")
+                        }
+                        let blockMaxOutputBytes: Int
+                        if maxRetainedEncodedBytes == Int.max {
+                            blockMaxOutputBytes = Int.max
+                        } else {
+                            blockMaxOutputBytes = max(0, maxRetainedEncodedBytes - runningEncodedBytes - 32)
+                        }
                         coefficients.removeAll(keepingCapacity: true)
                         for row in 0..<block.height {
                             let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
@@ -374,20 +428,31 @@ enum ScalarLosslessCodec {
                                 width: block.width,
                                 height: block.height,
                                 orientation: band.orientation,
-                                magnitudeBitPlanes: mb
+                                magnitudeBitPlanes: mb,
+                                maximumOutputBytes: blockMaxOutputBytes
                             )
                         case .htj2k:
                             let coded = try HTBlockEncoder.encodeCleanup(
                                 coefficients: coefficients,
                                 width: block.width,
                                 height: block.height,
-                                bandShift: 0
+                                bandShift: 0,
+                                maximumOutputBytes: blockMaxOutputBytes
                             )
                             encoding = CodeBlockEncoding(
                                 data: coded,
                                 passCount: coded.isEmpty ? 0 : 1,
                                 zeroBitPlanes: coded.isEmpty ? mb : (mb - 1)
                             )
+                        }
+                        let blockRetainedBytes = encoding.data.isEmpty ? 0 : (32 + max(encoding.data.count, encoding.data.capacity))
+                        let nextEncodedBytes = try checkedAdd(runningEncodedBytes, blockRetainedBytes)
+                        guard nextEncodedBytes <= maxRetainedEncodedBytes else {
+                            throw CodecError(.resourceLimitExceeded, "Retained code-block encodings exceed the workspace or memory admission budget.")
+                        }
+                        runningEncodedBytes = nextEncodedBytes
+                        if shouldRecordBlockStage && blockRetainedBytes > 0 {
+                            StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
                         }
                         perBlock.append(encoding)
                         completed += 1
@@ -470,6 +535,7 @@ enum ScalarLosslessCodec {
 
         let total = geometry.codeBlockCount
         var completed = 0
+        var encodeRunningBytes = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
         let encodings = try encodeTileBlocks(
             plane: plane,
@@ -478,6 +544,7 @@ enum ScalarLosslessCodec {
             qcd: qcd,
             blockCoding: parameters.blockCoding,
             work: work,
+            runningEncodedBytes: &encodeRunningBytes,
             completed: &completed,
             total: total,
             progress: progress
@@ -545,16 +612,10 @@ enum ScalarLosslessCodec {
         profile: LosslessProfile,
         to target: TranscodeTarget,
         codecOptions: CodecOptions,
+        metadataPolicy: MetadataPolicy = .preserve,
         limits: ResourceLimits,
         progress: (@Sendable (ProgressUpdate) -> Void)?
-    ) throws -> ([UInt8], Int) {
-        let workspace = try workspaceBytes(profile: profile)
-        guard workspace <= limits.maximumWorkspaceBytes else {
-            throw CodecError(.resourceLimitExceeded, "Transcoder workspace exceeds the operation limit.")
-        }
-        guard try checkedAdd(bytes.count, workspace) <= limits.maximumMemoryBytes else {
-            throw CodecError(.resourceLimitExceeded, "Compressed input and workspace exceed the memory budget.")
-        }
+    ) throws -> (Data, Int) {
         let work = WorkGuard(limits: limits)
         try work.check()
 
@@ -608,12 +669,44 @@ enum ScalarLosslessCodec {
             return QuantizationSegment(style: .none, guardBits: guardBits, exponents: exponents, mantissas: [])
         }
 
+        // 1. Preflight target tile geometry footprints using checked scalar arithmetic
+        // BEFORE allocating any target TileGeometry arrays.
+        let targetFootprints: [Tier2.TileGeometryFootprint] = try profile.tiles.map { tile in
+            let tileCOD = makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
+            return try Tier2.preflightTileGeometry(
+                x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1, codingStyle: tileCOD
+            )
+        }
+        let totalTargetBlocks = targetFootprints.reduce(0) { $0 + $1.codeBlockCount }
+        let sourceGeometryBytes = profile.totalSourceGeometryBytes
+        let targetGeometryBytes = try targetFootprints.reduce(0) { try checkedAdd($0, $1.geometryBytes) }
+        let metadataCopyBytes = try checkedAdd(
+            (metadataPolicy == .preserve) ? profile.totalCommentSegmentBytes : 0,
+            profile.componentRegistration?.count ?? 0
+        )
+        let inputCopyBytes = try checkedAdd(32, bytes.count)
+        let persistentStructureBytes = try checkedAdd(
+            try checkedAdd(sourceGeometryBytes, targetGeometryBytes),
+            try checkedAdd(inputCopyBytes, metadataCopyBytes)
+        )
+        var peakWorkspace = persistentStructureBytes
+        guard peakWorkspace <= limits.maximumWorkspaceBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoder preflight target geometry exceeds the workspace limit.")
+        }
+        guard try checkedAdd(bytes.count, peakWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input, target geometry and metadata exceed the memory budget.")
+        }
+
+        // Now that target geometry has been admitted, allocate targetTileGeometries.
+        StorageTelemetry.recordStage("target-geometry", bytes: targetGeometryBytes)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: targetGeometryBytes)
         let targetTileGeometries: [TileGeometry] = try profile.tiles.map { tile in
             let tileCOD = makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
             return try Tier2.makeTileGeometry(
                 x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1, codingStyle: tileCOD
             )
         }
+
         let mainCOD = makeTargetCOD(levels: firstTile.codingStyle.decompositionLevels)
         let sameLevelsTiles = profile.tiles.filter {
             $0.codingStyle.decompositionLevels == firstTile.codingStyle.decompositionLevels
@@ -625,8 +718,31 @@ enum ScalarLosslessCodec {
                 : makeTargetQCD(for: targetTileGeometries[idx], tiles: [tile])
         }
 
-        var out = ByteWriter(capacity: max(bytes.count, 256))
-        out.writeUInt16(Marker.soc)
+        // 2. Preflight exact main-header byte count and admit `out` before reserving capacity.
+        let mainCommentBytes = (metadataPolicy == .preserve)
+            ? profile.mainHeaderComments.reduce(0) { $0 + 4 + $1.count }
+            : 0
+        let crgSegmentBytes = profile.componentRegistration.map { 4 + $0.count } ?? 0
+        let exactMainHeaderBytes = try checkedAdd(
+            2 + (4 + 38 + 3) + (isHT ? 10 : 0) + (4 + 12) + (4 + 2 + mainQCD.exponents.count),
+            try checkedAdd(crgSegmentBytes, mainCommentBytes)
+        )
+        guard exactMainHeaderBytes <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded main header exceeds the compressed-size limit.")
+        }
+        let headerOutAllocBytes = exactMainHeaderBytes
+        let headerWorkspace = try checkedAdd(persistentStructureBytes, headerOutAllocBytes)
+        peakWorkspace = max(peakWorkspace, headerWorkspace)
+        guard peakWorkspace <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, peakWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input, workspace and header output exceed the admission budget.")
+        }
+        StorageTelemetry.recordStage("output-writer", bytes: headerOutAllocBytes)
+        var out = try BoundedByteWriter(
+            reserving: exactMainHeaderBytes, maximumBytes: exactMainHeaderBytes,
+            maximumAllocationBytes: headerOutAllocBytes
+        )
+        try out.writeUInt16Checked(Marker.soc)
         let size = ImageSizeSegment(
             capabilities: isHT ? 0x4000 : 0,
             width: profile.originX + profile.width,
@@ -649,15 +765,39 @@ enum ScalarLosslessCodec {
         }
         try CodestreamSyntax.writeCOD(mainCOD, into: &out)
         try CodestreamSyntax.writeQCD(mainQCD, into: &out)
+        if let crg = profile.componentRegistration {
+            try out.writeSegment(marker: Marker.crg, payload: crg)
+        }
+        if metadataPolicy == .preserve {
+            for comment in profile.mainHeaderComments {
+                try out.writeSegment(marker: Marker.com, payload: comment)
+            }
+        }
 
-        let totalTargetBlocks = targetTileGeometries.reduce(0) { $0 + $1.codeBlockCount }
         let total = profile.codeBlockCount + totalTargetBlocks
         var completed = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        let blockScratch = BitPlaneCoder.maximumCoefficients * (4 + 4 + 1) + 66 * 66 + 4096
 
         for (tileIndex, tile) in profile.tiles.enumerated() {
             try work.check()
-            let plane = try decodeTileCoefficients(
+            let tileDataBytes = tile.dataRanges.reduce(0) { $0 + $1.count }
+            let tileJoinedExtra = tile.dataRanges.count > 1 ? (32 + tileDataBytes) : 0
+            let planeBytes = try checkedMultiply(tile.width * tile.height, 4)
+            let tileDecodeLive = try checkedAdd(
+                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
+                try checkedAdd(
+                    try checkedAdd(tile.footprint.decodeStateBytes, tileDataBytes + tileJoinedExtra),
+                    try checkedAdd(planeBytes, blockScratch)
+                )
+            )
+            peakWorkspace = max(peakWorkspace, tileDecodeLive)
+            guard peakWorkspace <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, tileDecodeLive) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Tile decode workspace exceeds workspace or memory limits.")
+            }
+
+            var plane = try decodeTileCoefficients(
                 bytes: bytes,
                 tile: tile,
                 work: work,
@@ -667,39 +807,191 @@ enum ScalarLosslessCodec {
             )
             let stride = tile.width
             let tileCOD = makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
+            let targetFootprint = targetFootprints[tileIndex]
             let targetTileGeometry = targetTileGeometries[tileIndex]
             let tileQCD = tileQCDs[tileIndex]
-            let encodings = try encodeTileBlocks(
+
+            // 3. Admit target block-encoding struct state before encoding blocks, and compute
+            // the remaining byte budget for retained encoded block payloads.
+            let liveBeforeBlockPayloads = try checkedAdd(
+                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
+                try checkedAdd(
+                    targetFootprint.encodeStateStructBytes,
+                    try checkedAdd(planeBytes, blockScratch)
+                )
+            )
+            guard liveBeforeBlockPayloads <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, liveBeforeBlockPayloads) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Target block encoding state exceeds workspace or memory limits.")
+            }
+            let wsRemainingForBlocks = limits.maximumWorkspaceBytes - liveBeforeBlockPayloads
+            let memRemainingForBlocks = limits.maximumMemoryBytes - (bytes.count + liveBeforeBlockPayloads)
+            let compRemainingForBlocks = max(0, limits.maximumCompressedBytes - out.count)
+            // Each non-empty block adds a 32-byte array header in `encodings` on top of payload bytes.
+            let maxHeaderOverhead = try checkedMultiply(targetFootprint.codeBlockCount, 32)
+            let maxRetainedEncodedBytes = min(
+                min(wsRemainingForBlocks, memRemainingForBlocks),
+                try checkedAdd(compRemainingForBlocks, maxHeaderOverhead)
+            )
+
+            var tileEncodedRetainedBytes = 0
+            var encodings = try encodeTileBlocks(
                 plane: plane,
                 stride: stride,
                 geometry: targetTileGeometry,
                 qcd: tileQCD,
                 blockCoding: targetBlockCoding,
                 work: work,
+                maxRetainedEncodedBytes: maxRetainedEncodedBytes,
+                runningEncodedBytes: &tileEncodedRetainedBytes,
+                recordBlockStages: true,
                 completed: &completed,
                 total: total,
                 progress: progress
             )
-            var tileHeaderWriter = ByteWriter(capacity: 32)
+            // Release the coefficient plane before packet assembly so `plane` and
+            // `tileWriter` are never simultaneously live.
+            plane = []
+
+            var tileEncodedPayloadBytes = 0
+            for res in encodings {
+                for prec in res {
+                    for band in prec {
+                        for enc in band {
+                            tileEncodedPayloadBytes = try checkedAdd(tileEncodedPayloadBytes, enc.data.count)
+                        }
+                    }
+                }
+            }
+            StorageTelemetry.recordWorkspaceAllocation(bytes: tileEncodedPayloadBytes)
+            let tileEncodeWorkspace = try checkedAdd(
+                liveBeforeBlockPayloads,
+                tileEncodedRetainedBytes
+            )
+            peakWorkspace = max(peakWorkspace, tileEncodeWorkspace)
+
+            // 4. Preflight exact tileHeaderWriter size and bounded tileWriter capacity
+            // BEFORE allocating tileHeaderWriter or tileWriter.
+            let overrideHeaderBytes = (tile.codingStyle.decompositionLevels != firstTile.codingStyle.decompositionLevels)
+                ? (16 + (6 + tileQCD.exponents.count))
+                : 0
+            let tileCommentBytes = (metadataPolicy == .preserve)
+                ? tile.comments.reduce(0) { $0 + 4 + $1.count }
+                : 0
+            let exactTileHeaderBytes = try checkedAdd(overrideHeaderBytes, tileCommentBytes)
+            let estimatedPacketHeaders = try checkedAdd(
+                try checkedMultiply(targetFootprint.precinctCount, 8),
+                try checkedMultiply(targetFootprint.codeBlockCount, 6)
+            )
+            let initialTileWriterCap = try checkedAdd(tileEncodedPayloadBytes, max(32, estimatedPacketHeaders))
+
+            // While `Tier2.encodePackets` runs, `encodings` (struct + retained payloads) and
+            // `tileHeaderWriter` + `tileWriter` are live alongside `out` (before appending).
+            let liveDuringPacketEncode = try checkedAdd(
+                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
+                try checkedAdd(targetFootprint.encodeStateStructBytes, tileEncodedRetainedBytes)
+            )
+            let headerWriterAlloc = exactTileHeaderBytes
+            let minPacketWriterNeeded = try checkedAdd(headerWriterAlloc, tileEncodedPayloadBytes)
+            guard try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded) <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded)) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Packet assembly workspace exceeds workspace or memory limits.")
+            }
+            let wsAvailForTileWriter = limits.maximumWorkspaceBytes - liveDuringPacketEncode - headerWriterAlloc
+            let memAvailForTileWriter = limits.maximumMemoryBytes - bytes.count - liveDuringPacketEncode - headerWriterAlloc
+            // Final codestream adds SOT (12) + tileHeader + SOD (2) + tileWriter + EOC (2) = 16 + tileHeader + tileWriter.
+            let compAvailForTileWriter = limits.maximumCompressedBytes - out.count - 16 - exactTileHeaderBytes
+            let maxTileWriterBytes = min(min(wsAvailForTileWriter, memAvailForTileWriter), compAvailForTileWriter)
+            guard maxTileWriterBytes >= tileEncodedPayloadBytes else {
+                throw CodecError(.resourceLimitExceeded, "Transcoded packet stream exceeds the compressed-size or memory limit.")
+            }
+            let reservedTileWriterCap = min(initialTileWriterCap, maxTileWriterBytes)
+            StorageTelemetry.recordStage("packet-writer", bytes: headerWriterAlloc + reservedTileWriterCap)
+
+            var tileHeaderWriter = try BoundedByteWriter(
+                reserving: exactTileHeaderBytes, maximumBytes: exactTileHeaderBytes,
+                maximumAllocationBytes: headerWriterAlloc
+            )
             if tile.codingStyle.decompositionLevels != firstTile.codingStyle.decompositionLevels {
                 try CodestreamSyntax.writeCOD(tileCOD, into: &tileHeaderWriter)
                 try CodestreamSyntax.writeQCD(tileQCD, into: &tileHeaderWriter)
             }
-            var tileWriter = ByteWriter(capacity: max(64, tile.width * tile.height / 2))
+            if metadataPolicy == .preserve {
+                for comment in tile.comments {
+                    try tileHeaderWriter.writeSegment(marker: Marker.com, payload: comment)
+                }
+            }
+            var tileWriter = try BoundedByteWriter(
+                reserving: reservedTileWriterCap, maximumBytes: maxTileWriterBytes,
+                maximumAllocationBytes: min(wsAvailForTileWriter, memAvailForTileWriter)
+            )
             try Tier2.encodePackets(geometry: targetTileGeometry, encodings: encodings, into: &tileWriter, cancellation: work.check)
+            // Release retained block encodings before copying assembled packets into `out`.
+            encodings = []
+
+            let packetAssemblyBytes = try checkedAdd(tileHeaderWriter.count, tileWriter.count)
+            StorageTelemetry.recordWorkspaceAllocation(bytes: packetAssemblyBytes)
+            let packetAssemblyAlloc = try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.allocatedBytes)
+            let tilePacketWorkspace = try checkedAdd(
+                liveDuringPacketEncode,
+                try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.peakAllocationBytes)
+            )
+            peakWorkspace = max(peakWorkspace, tilePacketWorkspace)
+            guard peakWorkspace <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, tilePacketWorkspace) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Transcoder packet assembly workspace exceeds the operation limit.")
+            }
+
             let psot = 12 + tileHeaderWriter.count + 2 + tileWriter.count
             guard psot <= Int(UInt32.max) else { throw CodecError(.resourceLimitExceeded, "Tile-part exceeds the Psot field.") }
-            out.writeUInt16(Marker.sot)
-            out.writeUInt16(10)
-            out.writeUInt16(UInt16(tile.index))
-            out.writeUInt32(UInt32(psot))
-            out.writeUInt8(0)
-            out.writeUInt8(1)
-            out.writeBytes(tileHeaderWriter.bytes)
-            out.writeUInt16(Marker.sod)
-            out.writeBytes(tileWriter.bytes)
+            let projectedOutputBytes = try checkedAdd(out.count, psot + 2)
+            guard projectedOutputBytes <= limits.maximumCompressedBytes else {
+                throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
+            }
+            // Encodings have been released. Admission includes both the old and
+            // replacement output buffers during growth, before either is allocated.
+            let appendOtherWorkspace = try checkedAdd(persistentStructureBytes, packetAssemblyAlloc)
+            let appendOtherResident = try checkedAdd(bytes.count, appendOtherWorkspace)
+            guard appendOtherWorkspace <= limits.maximumWorkspaceBytes,
+                  appendOtherResident <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Packet workspace exceeds the output admission budget.")
+            }
+            let outputAllocationBudget = min(
+                limits.maximumWorkspaceBytes - appendOtherWorkspace,
+                limits.maximumMemoryBytes - appendOtherResident
+            )
+            try out.updateBudget(maximumBytes: projectedOutputBytes, maximumAllocationBytes: outputAllocationBudget)
+            // Include EOC in the one reservation, avoiding a second whole-output
+            // reallocation just to append its last two bytes.
+            try out.reserveCapacity(projectedOutputBytes)
+            peakWorkspace = max(peakWorkspace, try checkedAdd(appendOtherWorkspace, out.peakAllocationBytes))
+            try out.writeUInt16Checked(Marker.sot)
+            try out.writeUInt16Checked(10)
+            try out.writeUInt16Checked(UInt16(tile.index))
+            try out.writeUInt32Checked(UInt32(psot))
+            try out.writeUInt8Checked(0)
+            try out.writeUInt8Checked(1)
+            try out.writeBytesChecked(from: tileHeaderWriter)
+            try out.writeUInt16Checked(Marker.sod)
+            try out.writeBytesChecked(from: tileWriter)
         }
-        out.writeUInt16(Marker.eoc)
-        return (out.bytes, workspace)
+        try out.writeUInt16Checked(Marker.eoc)
+        guard out.count <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
+        }
+        // The input/profile and owned output are still live while Data copies the
+        // final bytes. Admit that overlap here, not after returning another Array.
+        let publicationWorkspace = try checkedAdd(
+            persistentStructureBytes, try checkedAdd(out.allocatedBytes, out.count)
+        )
+        guard publicationWorkspace <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, publicationWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Publishing transcoded Data exceeds the admission budget.")
+        }
+        try work.check()
+        StorageTelemetry.recordStage("output-data", bytes: out.count)
+        let output = try out.copyData()
+        peakWorkspace = max(peakWorkspace, publicationWorkspace)
+        return (output, peakWorkspace)
     }
 }

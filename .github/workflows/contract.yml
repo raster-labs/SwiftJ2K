@@ -56,7 +56,11 @@ jobs:
       - run: swift test -c release
 
   macos:
-    name: macOS 26 / Swift 6.2
+    # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`);
+    # Swift 6.2 and 6.4 are qualified in the `linux` and `independent-consumer` jobs.
+    # External-oracle tests (`ojph_expand`, `kdu_expand`, `opj_decompress`) skip via
+    # `withKnownIssue(isIntermittent: true)` when those third-party binaries are absent.
+    name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -81,13 +85,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          path: package
+          path: SwiftJ2K
       # POL-01/POL-02: a consumer must build against this package alone, with no
       # sibling checkout and no suite dependency, on the declared manifest floor.
       - name: Build a fresh consumer against the checkout
         run: |
           set -eux
-          NAME="$(grep -m1 -oE 'name: "Swift[A-Z0-9]+"' "$GITHUB_WORKSPACE/package/Package.swift" \
+          NAME="$(grep -m1 -oE 'name: "Swift[A-Z0-9]+"' "$GITHUB_WORKSPACE/SwiftJ2K/Package.swift" \
                   | grep -oE 'Swift[A-Z0-9]+')"
           mkdir -p /tmp/consumer/Sources/Consumer
           cd /tmp/consumer
@@ -96,7 +100,7 @@ jobs:
             echo 'import PackageDescription'
             echo 'let package = Package('
             echo '    name: "Consumer",'
-            echo "    dependencies: [.package(path: \"$GITHUB_WORKSPACE/package\")],"
+            echo "    dependencies: [.package(path: \"$GITHUB_WORKSPACE/$NAME\")],"
             echo '    targets: [.executableTarget(name: "Consumer", dependencies: ['
             echo "        .product(name: \"$NAME\", package: \"$NAME\")])]"
             echo ')'

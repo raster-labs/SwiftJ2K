@@ -18,6 +18,22 @@ struct TagTree: Sendable {
         var parent = -1
     }
 
+    static var nodeStride: Int { MemoryLayout<Node>.stride }
+
+    static func nodeCount(width: Int, height: Int) throws -> Int {
+        guard width > 0, height > 0 else { return 0 }
+        var total = 0
+        var w = width, h = height
+        while true {
+            let levelNodes = try checkedMultiply(w, h)
+            total = try checkedAdd(total, levelNodes)
+            if levelNodes <= 1 { break }
+            w = (w + 1) / 2
+            h = (h + 1) / 2
+        }
+        return total
+    }
+
     private var nodes: [Node]
     private let leafCount: Int
     private var path: [Int] = []

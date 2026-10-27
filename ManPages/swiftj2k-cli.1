@@ -90,6 +90,11 @@ The only backend; any other name returns 4.
 .B \-\-copy-policy require-sharing|allow-copy
 Accepted; neither policy copies on this path.
 .TP
+.B \-\-metadata-policy preserve|discard-ancillary
+Controls ancillary metadata handling during transcoding: preserve (default)
+retains main-header and tile-part COM marker segments within the metadata byte
+limit; discard-ancillary omits them.
+.TP
 .B \-\-threads N, \-\-max-memory BYTES, \-\-timeout SECONDS
 Worker limit 1..8, admission budget in bytes for input, output and workspace,
 and the operation deadline (exit 5 when exceeded).

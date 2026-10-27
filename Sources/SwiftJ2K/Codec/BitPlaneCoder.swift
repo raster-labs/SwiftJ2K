@@ -68,50 +68,59 @@ enum BitPlaneCoder {
     // MARK: - Encoder (default style)
 
     static func encode(coefficients: [Int32], width: Int, height: Int,
-                       orientation: BandOrientation, magnitudeBitPlanes mb: Int) throws -> CodeBlockEncoding {
+                       orientation: BandOrientation, magnitudeBitPlanes mb: Int,
+                       maximumOutputBytes: Int = Int.max) throws -> CodeBlockEncoding {
         let count = width * height
         guard width > 0, height > 0, count <= maximumCoefficients, coefficients.count == count,
               mb >= 1, mb <= maximumMagnitudeBitPlanes else {
             throw CodecError(.internalFailure, "Code-block geometry or bit-plane count is outside the coder's range.")
         }
         var magnitudes = [UInt32](repeating: 0, count: count)
-        var negatives = [Bool](repeating: false, count: count)
         var maximum: UInt32 = 0
         for i in 0..<count {
             let value = coefficients[i]
             let magnitude = value < 0 ? UInt32(bitPattern: 0 &- value) : UInt32(value)
-            magnitudes[i] = magnitude
-            negatives[i] = value < 0
             if magnitude > maximum { maximum = magnitude }
+            magnitudes[i] = magnitude | (value < 0 ? 0x8000_0000 : 0)
         }
         let bitPlanes = maximum == 0 ? 0 : UInt32.bitWidth - maximum.leadingZeroBitCount
         guard bitPlanes <= mb else {
             throw CodecError(.invalidArgument, "A coefficient exceeds the precision the band can represent.")
         }
         if bitPlanes == 0 { return CodeBlockEncoding(data: [], passCount: 0, zeroBitPlanes: mb) }
+        guard maximumOutputBytes > 0 else {
+            throw CodecError(.resourceLimitExceeded, "Encoded code-block exceeds the output byte budget.")
+        }
 
         let tables = ContextTables(orientation: orientation)
         var states = StatePlane(width: width, height: height)
         var contexts = ContextSet()
-        var encoder = MQEncoder(capacityHint: count / 2)
+        var encoder = MQEncoder(capacityHint: count / 2, maximumOutputBytes: maximumOutputBytes)
         var passCount = 0
         for plane in stride(from: bitPlanes - 1, through: 0, by: -1) {
             let mask = UInt32(1) << UInt32(plane)
             if plane != bitPlanes - 1 {
-                encodeSignificancePass(mask: mask, magnitudes: magnitudes, negatives: negatives,
+                encodeSignificancePass(mask: mask, magnitudes: magnitudes,
                                        states: &states, tables: tables, contexts: &contexts, encoder: &encoder)
                 encodeRefinementPass(mask: mask, magnitudes: magnitudes, states: &states, contexts: &contexts, encoder: &encoder)
                 passCount += 2
             }
-            encodeCleanupPass(mask: mask, magnitudes: magnitudes, negatives: negatives,
+            encodeCleanupPass(mask: mask, magnitudes: magnitudes,
                               states: &states, tables: tables, contexts: &contexts, encoder: &encoder)
             passCount += 1
+            if encoder.overflowed {
+                throw CodecError(.resourceLimitExceeded, "Encoded code-block exceeds the output byte budget.")
+            }
             states.clearVisited()
         }
-        return CodeBlockEncoding(data: encoder.finish(), passCount: passCount, zeroBitPlanes: mb - bitPlanes)
+        let encodedBytes = encoder.finish()
+        if encoder.overflowed {
+            throw CodecError(.resourceLimitExceeded, "Encoded code-block exceeds the output byte budget.")
+        }
+        return CodeBlockEncoding(data: encodedBytes, passCount: passCount, zeroBitPlanes: mb - bitPlanes)
     }
 
-    private static func encodeSignificancePass(mask: UInt32, magnitudes: [UInt32], negatives: [Bool],
+    private static func encodeSignificancePass(mask: UInt32, magnitudes: borrowing [UInt32],
                                                states: inout StatePlane, tables: ContextTables,
                                                contexts: inout ContextSet, encoder: inout MQEncoder) {
         let w = states.width, h = states.height
@@ -123,11 +132,11 @@ enum BitPlaneCoder {
                     if flags & (CoefficientFlag.significant | CoefficientFlag.visited) != 0 { continue }
                     let key = states.significanceKey(at: i, ignoreBelow: false)
                     if key == 0 { continue }
-                    let j = y * w + x
-                    let becomesSignificant = magnitudes[j] & mask != 0
+                    let m = magnitudes[y * w + x]
+                    let becomesSignificant = m & mask != 0
                     encoder.encode(becomesSignificant, context: &contexts.contexts[Int(tables.significance[key])])
                     if becomesSignificant {
-                        encodeSign(negative: negatives[j], at: i, states: &states, contexts: &contexts, encoder: &encoder)
+                        encodeSign(negative: m >= 0x8000_0000, at: i, states: &states, contexts: &contexts, encoder: &encoder)
                     } else {
                         states.flags[i] = flags | CoefficientFlag.visited
                     }
@@ -136,7 +145,7 @@ enum BitPlaneCoder {
         }
     }
 
-    private static func encodeRefinementPass(mask: UInt32, magnitudes: [UInt32], states: inout StatePlane,
+    private static func encodeRefinementPass(mask: UInt32, magnitudes: borrowing [UInt32], states: inout StatePlane,
                                              contexts: inout ContextSet, encoder: inout MQEncoder) {
         let w = states.width, h = states.height
         for stripe in stride(from: 0, to: h, by: 4) {
@@ -153,7 +162,7 @@ enum BitPlaneCoder {
         }
     }
 
-    private static func encodeCleanupPass(mask: UInt32, magnitudes: [UInt32], negatives: [Bool],
+    private static func encodeCleanupPass(mask: UInt32, magnitudes: borrowing [UInt32],
                                           states: inout StatePlane, tables: ContextTables,
                                           contexts: inout ContextSet, encoder: inout MQEncoder) {
         let w = states.width, h = states.height
@@ -168,7 +177,7 @@ enum BitPlaneCoder {
                     if first < 0 { continue }
                     encoder.encode(first & 2 != 0, context: &contexts.contexts[Int(ContextLabel.uniform)])
                     encoder.encode(first & 1 != 0, context: &contexts.contexts[Int(ContextLabel.uniform)])
-                    encodeSign(negative: negatives[(stripe + first) * w + x], at: states.index(x: x, y: stripe + first),
+                    encodeSign(negative: magnitudes[(stripe + first) * w + x] >= 0x8000_0000, at: states.index(x: x, y: stripe + first),
                                states: &states, contexts: &contexts, encoder: &encoder)
                     y = stripe + first + 1
                 }
@@ -176,11 +185,11 @@ enum BitPlaneCoder {
                     let i = states.index(x: x, y: y)
                     if states.flags[i] & (CoefficientFlag.significant | CoefficientFlag.visited) == 0 {
                         let key = states.significanceKey(at: i, ignoreBelow: false)
-                        let j = y * w + x
-                        let becomesSignificant = magnitudes[j] & mask != 0
+                        let m = magnitudes[y * w + x]
+                        let becomesSignificant = m & mask != 0
                         encoder.encode(becomesSignificant, context: &contexts.contexts[Int(tables.significance[key])])
                         if becomesSignificant {
-                            encodeSign(negative: negatives[j], at: i, states: &states, contexts: &contexts, encoder: &encoder)
+                            encodeSign(negative: m >= 0x8000_0000, at: i, states: &states, contexts: &contexts, encoder: &encoder)
                         }
                     }
                     y += 1
@@ -400,7 +409,7 @@ enum BitPlaneCoder {
     // MARK: - Shared rules
 
     @inline(__always)
-    private static func refinementLabel(flags: UInt8, at i: Int, states: StatePlane, ignoreBelow: Bool) -> UInt8 {
+    private static func refinementLabel(flags: UInt8, at i: Int, states: borrowing StatePlane, ignoreBelow: Bool) -> UInt8 {
         if flags & CoefficientFlag.refined != 0 { return ContextLabel.refinementSubsequent }
         return states.hasSignificantNeighbour(at: i, ignoreBelow: ignoreBelow)
             ? ContextLabel.refinementFirstWithNeighbours : ContextLabel.refinementFirstNoNeighbours
@@ -409,7 +418,7 @@ enum BitPlaneCoder {
     /// D.3.4: a full four-row column enters run-length mode when every
     /// coefficient is insignificant, unvisited and has an all-zero context.
     @inline(__always)
-    private static func runLengthEligible(x: Int, stripe: Int, states: StatePlane, causal: Bool) -> Bool {
+    private static func runLengthEligible(x: Int, stripe: Int, states: borrowing StatePlane, causal: Bool) -> Bool {
         for k in 0..<4 {
             let i = states.index(x: x, y: stripe + k)
             if states.flags[i] & (CoefficientFlag.significant | CoefficientFlag.visited) != 0 { return false }

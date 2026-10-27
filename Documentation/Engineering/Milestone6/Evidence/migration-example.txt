@@ -1,0 +1,20 @@
+Building for production...
+[Planning deferred tasks]
+[14 / 26]
+[15 / 27] SwiftJ2K
+[26 / 62]
+[33 / 62]
+[35 / 62]
+[39 / 62]
+[42 / 62]
+[47 / 62]
+[48 / 62]
+[49 / 62]
+[50 / 62]
+[51 / 62] SwiftJ2K
+[58 / 63] MigrationExample-product
+[60 / 64] MigrationExample-product
+[62 / 64] MigrationExample-product
+[64 / 64] MigrationExample-product
+Build complete! (16.44 sec)
+Migration example passed: 115-byte lossless codestream; decode into caller storage with 0 pixel allocations and 0 copy events.

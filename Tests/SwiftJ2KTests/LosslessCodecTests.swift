@@ -351,10 +351,18 @@ func degenerateGeometriesRoundTrip(width: Int, height: Int) async throws {
         guard update.phase == .processing, update.completedUnits > 0 else { return }
         withUnsafeCurrentTask { $0?.cancel() }
     }
-    do {
-        _ = try await Decoder().decode(data, into: destination, options: .init(progress: progress))
-        Issue.record("cancelled decode published an image")
-    } catch is CancellationError {}
+    // Cancel a child operation rather than Swift Testing's test task so the test
+    // declaration itself completes normally after checking cancellation and cleanup.
+    let cancelledOperation = Task {
+        do {
+            _ = try await Decoder().decode(data, into: destination, options: .init(progress: progress))
+            Issue.record("cancelled decode published an image")
+            return false
+        } catch is CancellationError {
+            return true
+        }
+    }
+    #expect(try await cancelledOperation.value)
     #expect(throws: CodecError.self) { try destination.writeUInt16 { _, _ in 0 } }
 }
 

@@ -105,22 +105,37 @@ public struct Transcoder: Sendable {
         if case .required(.accelerated) = options.executionPolicy {
             throw CodecError(.backendUnavailable, "No accelerated backend is implemented.")
         }
-        let bytes = [UInt8](data)
+        let inputCopyBytes = try checkedAdd(32, data.count)
+        let inputResidentBytes = try checkedAdd(data.count, inputCopyBytes)
+        guard data.count <= options.resourceLimits.maximumCompressedBytes,
+              inputCopyBytes <= options.resourceLimits.maximumWorkspaceBytes,
+              inputResidentBytes <= options.resourceLimits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input and working copy exceed the admission budget.")
+        }
+        StorageTelemetry.recordStage("input-copy", bytes: inputCopyBytes)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: data.count)
+        var bytes = [UInt8](data)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-        let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits)
-        let (outputBytes, workspace) = try ScalarLosslessCodec.transcode(
+        let profile = try ScalarLosslessCodec.inspect(
+            bytes,
+            limits: options.resourceLimits,
+            metadataPolicy: options.metadataPolicy
+        )
+        let (publishedData, workspace) = try ScalarLosslessCodec.transcode(
             bytes: bytes,
             profile: profile,
             to: target,
             codecOptions: configuration.codecOptions,
+            metadataPolicy: options.metadataPolicy,
             limits: options.resourceLimits,
             progress: options.progress
         )
-        guard outputBytes.count <= options.resourceLimits.maximumCompressedBytes else {
-            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
-        }
+        bytes = []
         try Task.checkCancellation()
         let elapsed = clock.now - started
+        let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
+        let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
+        let discardedKinds = (discardedCount > 0) ? ["COM"] : []
         let report = OperationReport(
             backend: .scalarCPU,
             fidelity: .exactSamples,
@@ -128,12 +143,15 @@ public struct Transcoder: Sendable {
             pixelAllocationCount: 0,
             peakPixelBytes: 0,
             peakWorkspaceBytes: workspace,
-            elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+            elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
+            discardedMetadataCount: discardedCount,
+            discardedMetadataBytes: discardedBytes,
+            discardedMetadataKinds: discardedKinds
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
         let outputFormat = (target == .htj2k) ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format
         return EncodedImage(
-            data: Data(outputBytes),
+            data: publishedData,
             encoding: EncodingDescription(format: outputFormat, mode: .lossless),
             report: report
         )
