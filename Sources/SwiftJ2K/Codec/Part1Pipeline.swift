@@ -304,23 +304,47 @@ enum Part1Pipeline {
         profile: Part1Profile,
         into destination: ImageDestination,
         limits: ResourceLimits,
-        progress: (@Sendable (ProgressUpdate) -> Void)?
+        progress: (@Sendable (ProgressUpdate) -> Void)?,
+        paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)? = nil,
+        channelPermutation: [Int]? = nil
     ) throws -> (Image, Int) {
         let descriptor = destination.descriptor
-        let expectedSampleType: SampleType = profile.signed ? .signedInteger : .unsignedInteger
-        let validStorageBits = descriptor.storageBits == 16 || (descriptor.storageBits == 8 && profile.precision <= 8)
-        let validComponents: Bool
-        if profile.componentCount == 1 {
-            validComponents = descriptor.components == [.grey]
+        let outputComponentCount = paletteMapping?.cmap.entries.count ?? profile.componentCount
+        let outputPrecision: Int
+        let outputSigned: Bool
+        if let (pclr, cmap) = paletteMapping {
+            var maxPrec = 1
+            var anySigned = false
+            for entry in cmap.entries {
+                if entry.mappingType == 1 {
+                    let col = Int(entry.paletteColumn)
+                    maxPrec = max(maxPrec, pclr.columns[col].bitDepth)
+                    if pclr.columns[col].isSigned { anySigned = true }
+                } else {
+                    maxPrec = max(maxPrec, profile.precision)
+                    if profile.signed { anySigned = true }
+                }
+            }
+            outputPrecision = maxPrec
+            outputSigned = anySigned
         } else {
-            validComponents = descriptor.components.count == profile.componentCount
+            outputPrecision = profile.precision
+            outputSigned = profile.signed
+        }
+        let expectedSampleType: SampleType = outputSigned ? .signedInteger : .unsignedInteger
+        let validStorageBits = descriptor.storageBits == 16 || (descriptor.storageBits == 8 && outputPrecision <= 8)
+        let validComponents: Bool
+        if outputComponentCount == 1 && paletteMapping == nil && channelPermutation == nil {
+            validComponents = descriptor.components.count == 1
+        } else {
+            validComponents = descriptor.components.count == outputComponentCount
         }
         guard descriptor.width == profile.width,
               descriptor.height == profile.height,
               descriptor.sampleType == expectedSampleType,
               validStorageBits,
               validComponents,
-              descriptor.meaningfulBits == profile.precision else {
+              descriptor.meaningfulBits == outputPrecision else {
             throw CodecError(.incompatibleImageLayout, "Destination descriptor does not match the codestream geometry, components, signedness, or precision.")
         }
 
@@ -343,7 +367,11 @@ enum Part1Pipeline {
         do {
             return try decodeAdmitted(
                 bytes: bytes, profile: profile, into: destination,
-                workspace: workspace, work: work, progress: progress
+                workspace: workspace, work: work, progress: progress,
+                paletteMapping: paletteMapping,
+                channelPermutation: channelPermutation,
+                outputComponentCount: outputComponentCount,
+                outputSigned: outputSigned
             )
         } catch {
             destination.invalidateAfterFailure()
@@ -357,7 +385,11 @@ enum Part1Pipeline {
         into destination: ImageDestination,
         workspace: Int,
         work: WorkGuard,
-        progress: (@Sendable (ProgressUpdate) -> Void)?
+        progress: (@Sendable (ProgressUpdate) -> Void)?,
+        paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)?,
+        channelPermutation: [Int]?,
+        outputComponentCount: Int,
+        outputSigned: Bool
     ) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         let mutation = SharedPathMutation.active
@@ -366,10 +398,10 @@ enum Part1Pipeline {
         let minVal = profile.signed ? -(1 << (profile.precision - 1)) : 0
         let maxVal = profile.signed ? ((1 << (profile.precision - 1)) - 1) : ((1 << profile.precision) - 1)
 
-        // Pre-locate plane and sample offset for each component index.
+        // Pre-locate plane and sample offset for each output component index.
         var compLocations: [(plane: PlaneDescriptor, sampleOffset: Int, rowBytes: Int)] = []
-        compLocations.reserveCapacity(profile.componentCount)
-        for c in 0..<profile.componentCount {
+        compLocations.reserveCapacity(outputComponentCount)
+        for c in 0..<outputComponentCount {
             guard let plane = descriptor.planes.first(where: { $0.components.contains(c) }),
                   let idxInPlane = plane.components.firstIndex(of: c) else {
                 throw CodecError(.incompatibleImageLayout, "Component \(c) is not mapped in destination planes.")
@@ -495,19 +527,31 @@ enum Part1Pipeline {
                         ColourTransform.inverseRCT(planes: &intPlanes)
                     }
 
-                    for c in 0..<profile.componentCount {
-                        let loc = compLocations[c]
-                        let planeData = intPlanes[c]
+                    for outC in 0..<outputComponentCount {
+                        let loc = compLocations[outC]
+                        let mappedCh = channelPermutation?[outC] ?? outC
+                        let cmapEntry = paletteMapping?.cmap.entries[mappedCh]
+                        let srcComp = Int(cmapEntry?.componentIndex ?? UInt16(mappedCh))
+                        let planeData = intPlanes[srcComp]
+                        let usePalette = (cmapEntry?.mappingType == 1)
+                        let pcol = Int(cmapEntry?.paletteColumn ?? 0)
                         for row in 0..<tile.height {
                             try work.check()
                             let y = tile.y0 - profile.originY + row
                             let rowBase = loc.plane.offset + y * loc.rowBytes + loc.sampleOffset
                             for col in 0..<tile.width {
                                 let x = tile.x0 - profile.originX + col
-                                let value = min(max(Int(planeData[row * stride + col]) + shift, minVal), maxVal)
+                                let csValue = min(max(Int(planeData[row * stride + col]) + shift, minVal), maxVal)
+                                let value: Int
+                                if usePalette, let (pclr, _) = paletteMapping {
+                                    let idx = max(0, min(pclr.numEntries - 1, csValue))
+                                    value = Int(pclr.values[idx][pcol])
+                                } else {
+                                    value = csValue
+                                }
                                 try storeSampleInt(
                                     value, into: output, at: rowBase + x * loc.plane.pixelStride,
-                                    storageBits: descriptor.storageBits, signed: profile.signed, order: order
+                                    storageBits: descriptor.storageBits, signed: outputSigned, order: order
                                 )
                             }
                         }
@@ -612,9 +656,14 @@ enum Part1Pipeline {
                         }
                     }
 
-                    for c in 0..<profile.componentCount {
-                        let loc = compLocations[c]
-                        let planeData = doublePlanes[c]
+                    for outC in 0..<outputComponentCount {
+                        let loc = compLocations[outC]
+                        let mappedCh = channelPermutation?[outC] ?? outC
+                        let cmapEntry = paletteMapping?.cmap.entries[mappedCh]
+                        let srcComp = Int(cmapEntry?.componentIndex ?? UInt16(mappedCh))
+                        let planeData = doublePlanes[srcComp]
+                        let usePalette = (cmapEntry?.mappingType == 1)
+                        let pcol = Int(cmapEntry?.paletteColumn ?? 0)
                         for row in 0..<tile.height {
                             try work.check()
                             let y = tile.y0 - profile.originY + row
@@ -622,10 +671,17 @@ enum Part1Pipeline {
                             for col in 0..<tile.width {
                                 let x = tile.x0 - profile.originX + col
                                 let rounded = Int(planeData[row * stride + col].rounded())
-                                let value = min(max(rounded + shift, minVal), maxVal)
+                                let csValue = min(max(rounded + shift, minVal), maxVal)
+                                let value: Int
+                                if usePalette, let (pclr, _) = paletteMapping {
+                                    let idx = max(0, min(pclr.numEntries - 1, csValue))
+                                    value = Int(pclr.values[idx][pcol])
+                                } else {
+                                    value = csValue
+                                }
                                 try storeSampleInt(
                                     value, into: output, at: rowBase + x * loc.plane.pixelStride,
-                                    storageBits: descriptor.storageBits, signed: profile.signed, order: order
+                                    storageBits: descriptor.storageBits, signed: outputSigned, order: order
                                 )
                             }
                         }
@@ -651,8 +707,10 @@ enum Part1Pipeline {
         guard descriptor.storageBits == 8 || descriptor.storageBits == 16 else {
             throw CodecError(.unsupportedFeature, "Only 8-bit and 16-bit integer storage are supported.")
         }
-        guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
-            throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
+        if configuration.codecOptions.containerFormat == .codestream {
+            guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
+                throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
+            }
         }
 
         let width = descriptor.width

@@ -116,13 +116,28 @@ public struct Transcoder: Sendable {
         StorageTelemetry.recordWorkspaceAllocation(bytes: data.count)
         var bytes = [UInt8](data)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+
+        let codestreamInput: [UInt8]
+        var reconciledContainer: JP2Container.ReconciledContainerProfile?
+        if JP2Container.isContainer(bytes) {
+            let rec = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            reconciledContainer = rec
+            codestreamInput = rec.codestreamBytes
+        } else {
+            codestreamInput = bytes
+        }
+
         let profile = try ScalarLosslessCodec.inspect(
-            bytes,
+            codestreamInput,
             limits: options.resourceLimits,
             metadataPolicy: options.metadataPolicy
         )
-        let (publishedData, workspace) = try ScalarLosslessCodec.transcode(
-            bytes: bytes,
+        let (transcodedData, workspace) = try ScalarLosslessCodec.transcode(
+            bytes: codestreamInput,
             profile: profile,
             to: target,
             codecOptions: configuration.codecOptions,
@@ -131,11 +146,51 @@ public struct Transcoder: Sendable {
             progress: options.progress
         )
         bytes = []
+
+        var publishedData = transcodedData
+        var outputFormat = (target == .htj2k) ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format
+        var discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
+        var discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
+        var discardedKinds = (discardedCount > 0) ? ["COM"] : []
+        if let rec = reconciledContainer, options.metadataPolicy == .discardAncillary {
+            discardedCount = rec.discardedMetadataCount
+            discardedBytes = rec.discardedMetadataBytes
+            discardedKinds = rec.discardedMetadataKinds
+        }
+
+        if configuration.codecOptions.containerFormat != .codestream {
+            if target == .htj2k && configuration.codecOptions.containerFormat == .jp2 {
+                throw CodecError(.invalidArgument, "JP2 container ('jp2 ') requires Part 1 block coding; use .jph or .jpx for HTJ2K.")
+            }
+            let desc: ImageDescriptor
+            if let rec = reconciledContainer {
+                desc = rec.outputDescriptor
+            } else {
+                desc = try ImageDescriptor.greyscale16(
+                    width: profile.width,
+                    height: profile.height,
+                    meaningfulBits: profile.precision,
+                    limits: options.resourceLimits
+                )
+            }
+            let wrapped = try JP2Container.wrap(
+                codestream: [UInt8](transcodedData),
+                descriptor: desc,
+                metadata: reconciledContainer?.combinedMetadata ?? .empty,
+                containerFormat: configuration.codecOptions.containerFormat,
+                isLossless: true,
+                isHTJ2K: target == .htj2k,
+                captureResolution: configuration.codecOptions.captureResolution,
+                displayResolution: configuration.codecOptions.displayResolution,
+                metadataPolicy: options.metadataPolicy,
+                limits: options.resourceLimits
+            )
+            publishedData = Data(wrapped.bytes)
+            outputFormat = wrapped.format
+        }
+
         try Task.checkCancellation()
         let elapsed = clock.now - started
-        let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
-        let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
-        let discardedKinds = (discardedCount > 0) ? ["COM"] : []
         let report = OperationReport(
             backend: .scalarCPU,
             fidelity: .exactSamples,
@@ -149,7 +204,6 @@ public struct Transcoder: Sendable {
             discardedMetadataKinds: discardedKinds
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
-        let outputFormat = (target == .htj2k) ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format
         return EncodedImage(
             data: publishedData,
             encoding: EncodingDescription(format: outputFormat, mode: .lossless),

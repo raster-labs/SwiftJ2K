@@ -41,6 +41,14 @@ public struct CodecOptions: Sendable, Equatable {
         case scalarExpounded
     }
 
+    /// Output container format (raw codestream or ISO/IEC 15444-1/2/15 box container).
+    public enum ContainerFormat: String, Sendable, Equatable, CaseIterable {
+        case codestream
+        case jp2
+        case jph
+        case jpx
+    }
+
     /// Explicit precinct dimensions in power-of-two subband samples (`1...32768`).
     public struct PrecinctSize: Sendable, Equatable {
         public let width: Int
@@ -164,6 +172,12 @@ public struct CodecOptions: Sendable, Equatable {
     public let usesEPH: Bool
     /// Optional rectangular Region of Interest encoded via MaxShift (`RGN` `0xFF5E`).
     public let regionOfInterest: RegionOfInterest?
+    /// Output container format (`.codestream` default, `.jp2`, `.jph`, or `.jpx`).
+    public let containerFormat: ContainerFormat
+    /// Optional capture grid resolution (`'resc'` box inside `'res '`, ISO/IEC 15444-1 I.5.3.7.1).
+    public let captureResolution: JP2GridResolution?
+    /// Optional default display grid resolution (`'resd'` box inside `'res '`, ISO/IEC 15444-1 I.5.3.7.2).
+    public let displayResolution: JP2GridResolution?
 
     public init() {
         decompositionLevels = nil
@@ -188,6 +202,9 @@ public struct CodecOptions: Sendable, Equatable {
         usesSOP = false
         usesEPH = false
         regionOfInterest = nil
+        containerFormat = .codestream
+        captureResolution = nil
+        displayResolution = nil
     }
 
     public init(
@@ -212,7 +229,10 @@ public struct CodecOptions: Sendable, Equatable {
         codeBlockStyleBits: UInt8 = 0,
         usesSOP: Bool = false,
         usesEPH: Bool = false,
-        regionOfInterest: RegionOfInterest? = nil
+        regionOfInterest: RegionOfInterest? = nil,
+        containerFormat: ContainerFormat = .codestream,
+        captureResolution: JP2GridResolution? = nil,
+        displayResolution: JP2GridResolution? = nil
     ) throws {
         if let levels = decompositionLevels {
             guard levels >= 0, levels <= 32 else {
@@ -281,6 +301,12 @@ public struct CodecOptions: Sendable, Equatable {
             guard codeBlockStyleBits == 0, regionOfInterest == nil else {
                 throw CodecError(.unsupportedFeature, "HTJ2K (Part 15) does not support Part 1 code-block style overrides or RGN ROI in the lossless profile.")
             }
+            guard containerFormat != .jp2 else {
+                throw CodecError(.invalidArgument, "JP2 container ('jp2 ') requires Part 1 block coding; use .jph or .jpx for HTJ2K.")
+            }
+        }
+        if containerFormat == .codestream && (captureResolution != nil || displayResolution != nil) {
+            throw CodecError(.invalidArgument, "Resolution metadata boxes ('resc'/'resd') require a container format (.jp2, .jph, or .jpx).")
         }
 
         self.decompositionLevels = decompositionLevels
@@ -305,6 +331,9 @@ public struct CodecOptions: Sendable, Equatable {
         self.usesSOP = usesSOP
         self.usesEPH = usesEPH
         self.regionOfInterest = regionOfInterest
+        self.containerFormat = containerFormat
+        self.captureResolution = captureResolution
+        self.displayResolution = displayResolution
     }
 
     internal var usesDefaultLosslessProfile: Bool {
@@ -462,7 +491,13 @@ public struct DecodedImage: Sendable {
 public struct Encoder: Sendable {
     public let configuration: EncoderConfiguration
     public static let capabilities = CodecCapabilities(
-        formats: [ScalarLosslessCodec.format, ScalarLosslessCodec.htj2kFormat],
+        formats: [
+            ScalarLosslessCodec.format,
+            ScalarLosslessCodec.htj2kFormat,
+            JP2Container.jp2Format,
+            JP2Container.jphFormat,
+            JP2Container.jpxFormat
+        ],
         compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
         sampleTypes: [.unsignedInteger, .signedInteger],
         meaningfulPrecision: 1...16,
@@ -484,6 +519,15 @@ public struct Encoder: Sendable {
             throw CodecError(.resourceLimitExceeded, "Image exceeds operation limits.")
         }
         let descriptor = image.descriptor
+        _ = try image.metadata.validate(
+            limits: options.resourceLimits,
+            additionalBytes: descriptor.iccProfile?.count ?? 0
+        )
+        if configuration.codecOptions.containerFormat == .codestream {
+            guard descriptor.iccProfile == nil, image.metadata.entries.isEmpty else {
+                throw CodecError(.unsupportedFeature, "Raw codestream output cannot carry ICC or metadata; none is silently dropped.")
+            }
+        }
         let isDefaultGreyscale16 = descriptor.sampleType == .unsignedInteger &&
             descriptor.storageBits == 16 &&
             descriptor.components == [.grey] &&
@@ -491,7 +535,7 @@ public struct Encoder: Sendable {
             descriptor.alpha == .absent
 
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-        let bytes: [UInt8]
+        let codestreamBytes: [UInt8]
         let workspace: Int
 
         if configuration.mode == .lossless && isDefaultGreyscale16 && configuration.codecOptions.usesDefaultLosslessProfile {
@@ -511,18 +555,65 @@ public struct Encoder: Sendable {
                 codeBlockWidthExponent: configuration.codecOptions.codeBlockWidth.trailingZeroBitCount,
                 codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount,
                 blockCoding: configuration.codecOptions.blockCoding)
-            (bytes, workspace) = try ScalarLosslessCodec.encode(
+            (codestreamBytes, workspace) = try ScalarLosslessCodec.encode(
                 image: image, parameters: parameters,
                 limits: options.resourceLimits, progress: options.progress
             )
         } else {
-            (bytes, workspace) = try Part1Pipeline.encode(
+            (codestreamBytes, workspace) = try Part1Pipeline.encode(
                 image: image, configuration: configuration,
                 limits: options.resourceLimits, progress: options.progress
             )
         }
 
-        guard bytes.count <= options.resourceLimits.maximumCompressedBytes else {
+        let finalBytes: [UInt8]
+        let outputFormat: String
+        var discardedCount: Int?
+        var discardedBytes: Int?
+        var discardedKinds: [String] = []
+
+        if configuration.codecOptions.containerFormat == .codestream {
+            finalBytes = codestreamBytes
+            outputFormat = configuration.codecOptions.blockCoding == .htj2k
+                ? ScalarLosslessCodec.htj2kFormat
+                : ScalarLosslessCodec.format
+            if options.metadataPolicy == .discardAncillary {
+                var count = 0
+                var totalBytes = 0
+                var kinds: [String] = []
+                for (k, v) in image.metadata.entries {
+                    count += 1
+                    totalBytes += v.count
+                    let base = k.split(separator: ".").first.map(String.init) ?? k
+                    if !kinds.contains(base) { kinds.append(base) }
+                }
+                discardedCount = count
+                discardedBytes = totalBytes
+                discardedKinds = kinds
+            }
+        } else {
+            let wrapped = try JP2Container.wrap(
+                codestream: codestreamBytes,
+                descriptor: descriptor,
+                metadata: image.metadata,
+                containerFormat: configuration.codecOptions.containerFormat,
+                isLossless: configuration.mode == .lossless,
+                isHTJ2K: configuration.codecOptions.blockCoding == .htj2k,
+                captureResolution: configuration.codecOptions.captureResolution,
+                displayResolution: configuration.codecOptions.displayResolution,
+                metadataPolicy: options.metadataPolicy,
+                limits: options.resourceLimits
+            )
+            finalBytes = wrapped.bytes
+            outputFormat = wrapped.format
+            if options.metadataPolicy == .discardAncillary {
+                discardedCount = wrapped.discardedMetadataCount
+                discardedBytes = wrapped.discardedMetadataBytes
+                discardedKinds = wrapped.discardedMetadataKinds
+            }
+        }
+
+        guard finalBytes.count <= options.resourceLimits.maximumCompressedBytes else {
             throw CodecError(.resourceLimitExceeded, "Encoded output exceeds the compressed-size limit.")
         }
         try Task.checkCancellation()
@@ -539,12 +630,12 @@ public struct Encoder: Sendable {
         let report = OperationReport(backend: .scalarCPU, fidelity: fidelity, copyEvents: [],
                                      pixelAllocationCount: 0, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
-                                     elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
+                                     elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
+                                     discardedMetadataCount: discardedCount,
+                                     discardedMetadataBytes: discardedBytes,
+                                     discardedMetadataKinds: discardedKinds)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
-        let outputFormat = configuration.codecOptions.blockCoding == .htj2k
-            ? ScalarLosslessCodec.htj2kFormat
-            : ScalarLosslessCodec.format
-        return EncodedImage(data: Data(bytes), encoding: EncodingDescription(format: outputFormat, mode: configuration.mode),
+        return EncodedImage(data: Data(finalBytes), encoding: EncodingDescription(format: outputFormat, mode: configuration.mode),
                             report: report)
     }
 }
@@ -553,7 +644,13 @@ public struct Encoder: Sendable {
 public struct Decoder: Sendable {
     public let configuration: DecoderConfiguration
     public static let capabilities = CodecCapabilities(
-        formats: [ScalarLosslessCodec.format, ScalarLosslessCodec.htj2kFormat],
+        formats: [
+            ScalarLosslessCodec.format,
+            ScalarLosslessCodec.htj2kFormat,
+            JP2Container.jp2Format,
+            JP2Container.jphFormat,
+            JP2Container.jpxFormat
+        ],
         compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
         sampleTypes: [.unsignedInteger, .signedInteger],
         meaningfulPrecision: 1...16,
@@ -563,10 +660,23 @@ public struct Decoder: Sendable {
     public var capabilities: CodecCapabilities { Self.capabilities }
     public init(configuration: DecoderConfiguration = .init()) throws { self.configuration = configuration }
 
-    /// Bounded structural inspection: parses the main and tile-part headers only.
+    /// Bounded structural inspection: parses the container boxes and main/tile-part headers only.
     public func inspect(_ data: Data, options: DecodeOptions = .init()) throws -> ImageInfo {
         try validateInput(data, options)
         let bytes = [UInt8](data)
+        if JP2Container.isContainer(bytes) {
+            let reconciled = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            return ImageInfo(
+                format: reconciled.container.format,
+                descriptor: reconciled.outputDescriptor,
+                frameCount: 1,
+                metadata: reconciled.combinedMetadata
+            )
+        }
         do {
             let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
                                                           metadataPolicy: options.metadataPolicy)
@@ -588,6 +698,23 @@ public struct Decoder: Sendable {
         try Task.checkCancellation()
         try validateInput(data, options)
         let bytes = [UInt8](data)
+        if JP2Container.isContainer(bytes) {
+            let reconciled = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            let destination = try ImageDestination.allocate(
+                descriptor: reconciled.outputDescriptor,
+                limits: options.resourceLimits
+            )
+            return try JP2Container.decode(
+                reconciled: reconciled,
+                into: destination,
+                options: options,
+                allocations: 1
+            )
+        }
         do {
             let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
                                                           metadataPolicy: options.metadataPolicy)
@@ -612,6 +739,19 @@ public struct Decoder: Sendable {
         try Task.checkCancellation()
         try validateInput(data, options)
         let bytes = [UInt8](data)
+        if JP2Container.isContainer(bytes) {
+            let reconciled = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            return try JP2Container.decode(
+                reconciled: reconciled,
+                into: destination,
+                options: options,
+                allocations: 0
+            )
+        }
         let destDesc = destination.descriptor
         let isDefaultGreyscale16 = destDesc.sampleType == .unsignedInteger &&
             destDesc.storageBits == 16 &&

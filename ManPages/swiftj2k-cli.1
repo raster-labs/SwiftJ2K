@@ -7,14 +7,18 @@ swiftj2k-cli \- JPEG 2000 Part 1 and HTJ2K Part 15 encode, decode, transcode, in
 .SH DESCRIPTION
 The standalone executable of the SwiftJ2K library. It encodes unsigned and
 signed 1 to 16-bit greyscale, RGB, RGBA and multi-component images (in 8-bit or
-16-bit NRRD storage) to raw JPEG 2000 Part 1 (j2k) codestreams in lossless,
-near-lossless or lossy mode, or to lossless HTJ2K Part 15 (htj2k) codestreams;
-decodes Part 1 and Part 15 codestreams (5/3 reversible or 9/7 irreversible
-wavelets, RCT or ICT colour transforms, unsigned or signed samples, scalar
-derived or expounded quantisation, RGN MaxShift ROI, multi-tile, multi-layer,
-precincts, POC progression changes, SOP/EPH and code-block styles); transcodes
-losslessly between Part 1 and Part 15 in the wavelet coefficient domain without
-materialising an intermediate pixel image; inspects and validates codestreams;
+16-bit NRRD storage) to JPEG 2000 Part 1 (j2k) codestreams in lossless,
+near-lossless or lossy mode, or to lossless HTJ2K Part 15 (htj2k) codestreams,
+or wrapped in JP2 (jp2), JPH (jph) or JPX (jpx) box containers;
+decodes Part 1 and Part 15 codestreams and JP2/JPH/JPX containers (5/3 reversible
+or 9/7 irreversible wavelets, RCT or ICT colour transforms, unsigned or signed
+samples, scalar derived or expounded quantisation, RGN MaxShift ROI, multi-tile,
+multi-layer, precincts, POC progression changes, SOP/EPH, code-block styles,
+colour specification colr, palette pclr/cmap, channel definition cdef, resolution
+res/resc/resd, reader requirements rreq, and XML/UUID/UINF/IPR/ASOC metadata);
+transcodes losslessly between Part 1 and Part 15 codestreams and containers in
+the wavelet coefficient domain without materialising an intermediate pixel image;
+inspects and validates codestreams and containers;
 and reports the library's capabilities. Images enter and leave through the NRRD
 interchange profile below; a shell pipe carries bytes, never shared storage.
 Build with Swift 6.2 or later (6.4 qualified) in Swift 6 language mode. Apple OS
@@ -22,9 +26,10 @@ minimum is 26.0. CLI hosts are macOS and Linux; consult the qualification
 records for executed coverage.
 .SH COMMANDS
 .TP
-.B encode \-i IMAGE.nrrd \-o OUT.j2k [\-\-output-format j2k|htj2k] [CODEC OPTIONS]
-Encode an NRRD image to a raw Part 1 (j2k, default) or Part 15 (htj2k)
-codestream. Supported codec options include \-\-mode lossless|near-lossless|lossy
+.B encode \-i IMAGE.nrrd \-o OUT.j2k [\-\-output-format j2k|htj2k|jp2|jph|jpx] [\-\-container codestream|jp2|jph|jpx] [CODEC OPTIONS]
+Encode an NRRD image to a Part 1 (j2k, default) or Part 15 (htj2k) codestream
+or JP2 (jp2), JPH (jph) or JPX (jpx) container. Supported codec options include
+\-\-container codestream|jp2|jph|jpx, \-\-mode lossless|near-lossless|lossy
 (\-\-lossy shorthand), \-\-max-error E (\-\-near-lossless E), \-\-quality Q
 (0.0..1.0), \-\-bpp RATE, \-\-layers N (1..255), \-\-wavelet auto|53|97,
 \-\-mct auto|none|rct|ict, \-\-progression lrcp|rlcp|rpcl|pcrl|cprl,
@@ -35,18 +40,20 @@ codestream. Supported codec options include \-\-mode lossless|near-lossless|loss
 swiftj2k.meaningfulbits key).
 .TP
 .B decode \-i IN.j2k \-o IMAGE.nrrd
-Decode a Part 1 or HTJ2K codestream to the NRRD profile with little-endian
-samples and the codestream's meaningful bits recorded in the header key.
+Decode a Part 1 or HTJ2K codestream or JP2/JPH/JPX container to the NRRD profile
+with little-endian samples and the codestream's meaningful bits recorded in the
+header key.
 .TP
-.B transcode \-i IN.j2k \-o OUT.j2c [\-\-input-format j2k|htj2k] [\-\-output-format j2k|htj2k] [\-\-levels N] [\-\-code-block WxH]
-Losslessly transcode between Part 1 (j2k) and Part 15 (htj2k) codestreams in
-the wavelet coefficient domain without allocating an intermediate pixel image
-or writing temporary image files. Source decomposition levels are preserved by
-default; requesting a different \-\-levels count is rejected with exit 4.
+.B transcode \-i IN.j2k \-o OUT.j2c [\-\-input-format j2k|htj2k|jp2|jph|jpx] [\-\-output-format j2k|htj2k|jp2|jph|jpx] [\-\-container codestream|jp2|jph|jpx] [\-\-levels N] [\-\-code-block WxH]
+Losslessly transcode between Part 1 (j2k/jp2/jpx) and Part 15 (htj2k/jph/jpx)
+codestreams and containers in the wavelet coefficient domain without allocating
+an intermediate pixel image or writing temporary image files. Source
+decomposition levels are preserved by default; requesting a different
+\-\-levels count is rejected with exit 4.
 .TP
 .B inspect \-i IN.j2k [\-\-json]
-Report geometry, precision and format from the headers without decoding
-samples; output on stdout as text or one JSON document.
+Report geometry, precision and format from the container and codestream headers
+without decoding samples; output on stdout as text or one JSON document.
 .TP
 .B validate \-i IN.j2k [\-\-json]
 Fully decode in memory and report success or the defined failure; no output
@@ -73,10 +80,13 @@ sibling temporary file and renamed into place; an existing file is refused
 failure. Binary standard output cannot be rolled back and a closed pipe is
 reported as exit 6.
 .TP
-.B \-\-input-format j2k|htj2k|nrrd, \-\-output-format j2k|htj2k|nrrd
+.B \-\-input-format j2k|htj2k|jp2|jph|jpx|nrrd, \-\-output-format j2k|htj2k|jp2|jph|jpx|nrrd
 Declare formats; the declaration is checked against the bytes and a mismatch
 is exit 4. Without a declaration the format is detected from the bytes only,
 never from a filename.
+.TP
+.B \-\-container codestream|jp2|jph|jpx
+Selects the output container wrapper on encode and transcode.
 .TP
 .B \-\-overwrite
 Permit replacing an existing output file.
@@ -97,13 +107,14 @@ The only backend; any other name returns 4.
 Accepted; neither policy copies on this path.
 .TP
 .B \-\-metadata-policy preserve|discard-ancillary
-Controls ancillary metadata handling during transcoding: preserve (default)
-retains main-header and tile-part COM marker segments within the metadata byte
-limit; discard-ancillary omits them.
+Controls ancillary metadata handling during decode and transcoding: preserve
+(default) retains COM marker segments and ancillary container boxes (xml, uuid,
+uinf, jp2i, asoc) within the metadata byte limit; discard-ancillary omits them.
 .TP
-.B \-\-threads N, \-\-max-memory BYTES, \-\-timeout SECONDS
+.B \-\-threads N, \-\-max-memory BYTES, \-\-max-metadata BYTES, \-\-timeout SECONDS
 Worker limit 1..8, admission budget in bytes for input, output and workspace,
-and the operation deadline (exit 5 when exceeded).
+admission budget in bytes for container and codestream metadata, and the
+operation deadline (exit 5 when exceeded).
 .SH NRRD PROFILE
 Attached header ending in an empty line, magic NRRD0001 to NRRD0005, fields
 type: uint8|int8|uint16|int16, dimension: 2 (sizes: W H) or dimension: 3

@@ -28,7 +28,7 @@ def main():
     def document(r):
         d=json.loads(r.stdout);assert d['version']==version and d['minimumAppleOS']=='26.0'
         assert d['canEncode'] is True and d['canDecode'] is True and d['canInspect'] is True and d['canTranscode'] is True
-        assert d['formats']==['htj2k-codestream','jpeg2000-codestream']
+        assert d['formats']==['htj2k-codestream','jp2','jpeg2000-codestream','jph','jpx']
         return d
     try:
         root=cli('--help');assert 'USAGE:' in root.stdout and 'unavailable' in root.stdout and not root.stderr
@@ -158,6 +158,29 @@ def main():
             s16_nrrd.write_bytes(b'NRRD0004\ntype: int16\ndimension: 2\nsizes: 16 12\nencoding: raw\nendian: little\n\n'+b'\x00\x80\xff\x7f'*(16*6))
             r_nl=cli('encode','-i',s16_nrrd,'-o',s16_j2k,'--mode','near-lossless','--max-error','2','--roi','2,2,8,6','--json')
             assert json.loads(r_nl.stderr)['fidelity']=='boundedError(2)'
+            # Milestone 8 CLI container formats: JP2, JPH, JPX, --container, and --max-metadata.
+            c_fixtures=repo/'Tests/SwiftJ2KTests/Fixtures/Containers'
+            rgb_jp2=temp/'rgb8.jp2';rgb_jph=temp/'rgb8.jph';rgb_jpx=temp/'rgb8.jpx';rgb_jp2_dec=temp/'rgb_jp2_dec.nrrd'
+            r_jp2=cli('encode','-i',rgb_nrrd,'-o',rgb_jp2,'--output-format','jp2','--json')
+            assert json.loads(r_jp2.stderr)['format']=='jp2'
+            assert json.loads(cli('inspect','-i',rgb_jp2,'--input-format','jp2','--json').stdout)['format']=='jp2'
+            cli('decode','-i',rgb_jp2,'-o',rgb_jp2_dec,'--json')
+            assert rgb_jp2_dec.read_bytes().endswith(rgb_payload)
+            r_jph=cli('encode','-i',rgb_nrrd,'-o',rgb_jph,'--output-format','jph','--json')
+            assert json.loads(r_jph.stderr)['format']=='jph'
+            r_jpx=cli('encode','-i',rgb_nrrd,'-o',rgb_jpx,'--container','jpx','--json')
+            assert json.loads(r_jpx.stderr)['format']=='jpx'
+            assert json.loads(cli('validate','-i',rgb_jpx,'--input-format','jpx','--json').stdout)['valid'] is True
+            # Transcode JP2 <-> JPH container round-trip on greyscale fixture.
+            g12_jp2=c_fixtures/'jp2_g16_lossless.kdu.jp2'
+            g12_jph=temp/'g12_trans.jph';g12_back=temp/'g12_back.jp2'
+            r_tjp=cli('transcode','-i',g12_jp2,'-o',g12_jph,'--json')
+            assert json.loads(r_tjp.stderr)['format']=='jph' and json.loads(r_tjp.stderr)['sourceFormat']=='jp2'
+            r_tbk=cli('transcode','-i',g12_jph,'-o',g12_back,'--json')
+            assert json.loads(r_tbk.stderr)['format']=='jp2' and json.loads(r_tbk.stderr)['sourceFormat']=='jph'
+            # Enforce --max-metadata on container with ICC + XML + UUID metadata.
+            meta_jp2=c_fixtures/'jp2_rgb8_icc_res_meta.kdu.jp2'
+            cli('validate','-i',meta_jp2,'--max-metadata','64',expected=5)
             for form in [['encode'],['decode','-i',good],['transcode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
                          ['decode','-i',good,'-o','x','--input-format','tiff'],['encode','-i',good,'-o','x','--precision','17'],
                          ['encode','-i',good,'-o','x','--code-block','3x3'],['encode','-i',good,'-o','x','--levels','40'],
