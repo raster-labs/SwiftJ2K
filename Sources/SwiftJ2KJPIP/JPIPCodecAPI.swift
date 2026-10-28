@@ -1,0 +1,497 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Raster-Lab
+//
+// Contract API-13 Interactive Streaming Extension Surface for SwiftJ2KJPIP
+// Predecessor reference: 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca
+
+import Foundation
+import SwiftJ2K
+import SwiftJ2K3D
+
+// MARK: - API-13 Interactive Streaming Extension Rationale
+
+/// Contract **API-13** Interactive Streaming Extension Surface (`SwiftJ2KJPIP`).
+///
+/// The common single-image contract (`SwiftJ2K.Encoder` / `SwiftJ2K.Decoder`) models stateless,
+/// single-shot in-memory encode and decode operations over complete codestreams or containers.
+/// ISO/IEC 15444-9 (JPIP — JPEG 2000 Interactive Protocol) is a stateful, session-oriented
+/// progressive streaming protocol that manages:
+/// - persistent sessions and channels (`cid`, `cnew`, `cclose`);
+/// - spatial view-window and resolution queries (`fsiz`, `roff`, `rsiz`, `layers`, `comps`);
+/// - incremental header, tile-header, precinct, and metadata data-bin framing (`JPIPDataBin`);
+/// - client-side cache modelling (`model`) and server-side cache state deduplication;
+/// - bandwidth estimation, priority queues, predictive prefetching, and server push;
+/// - on-the-fly Part 1 (EBCOT) ↔ Part 15 (HTJ2K) transcoding negotiation (`JPIPCodingPreference`); and
+/// - 3D volumetric viewport streaming (`JP3DViewport`, `JP3DStreamingRegion`, `JP3DDataBin`).
+///
+/// Because interactive protocol state machines, incremental data-bin caches, and network sessions
+/// cannot be expressed as stateless single-shot `Encoder`/`Decoder` calls, **API-13** defines
+/// ``JPIPSessionConfiguration``, ``JPIPStreamingOptions``, ``JPIPViewWindow``,
+/// ``JPIPDeliveredImage``, ``JPIPDeliveredVolumeSliceBins``, and ``JPIPStreamingSession`` to bridge
+/// JPIP streaming with the common contract's owning ``Image``, ``ResourceLimits``,
+/// ``ExecutionPolicy``, ``CopyPolicy``, ``MetadataPolicy``, ``ProgressUpdate``, and
+/// ``OperationReport`` telemetry, alongside the retained `JPIPClient` / `JPIPServer` actors
+/// required by `DICOMKit` (`DICOMJPIPClient` and `dicom-jpip`).
+
+// MARK: - JPIPSessionConfiguration & JPIPStreamingOptions
+
+/// Delivery mode for a ``JPIPStreamingSession``.
+public enum JPIPDeliveryMode: String, Sendable, Equatable, CaseIterable {
+    /// Incremental data-bin delivery (header, tile-header, precinct, and metadata bins).
+    case incremental
+    /// Full codestream or reassembled image delivery.
+    case full
+}
+
+/// Validated, immutable configuration for ``JPIPStreamingSession``.
+public struct JPIPSessionConfiguration: Sendable, Equatable {
+    /// Preferred coding format (`none`, `htj2k`, or `standard`) for JPIP capability negotiation.
+    public let codingPreference: JPIPCodingPreference
+    /// Delivery mode (`full` or `incremental` precinct/tile data-bin streaming).
+    public let deliveryMode: JPIPDeliveryMode
+    /// Maximum number of data bins retained in the session cache.
+    public let maxCachedDataBins: Int
+    /// Maximum byte capacity of the session data-bin cache.
+    public let maxCacheSizeBytes: Int
+
+    /// Creates and validates a JPIP streaming session configuration.
+    public init(
+        codingPreference: JPIPCodingPreference = .none,
+        deliveryMode: JPIPDeliveryMode = .incremental,
+        maxCachedDataBins: Int = 10_000,
+        maxCacheSizeBytes: Int = 100 * 1024 * 1024
+    ) throws {
+        guard maxCachedDataBins >= 1 else {
+            throw CodecError(
+                .invalidArgument,
+                "JPIPSessionConfiguration: maxCachedDataBins must be >= 1"
+            )
+        }
+        guard maxCacheSizeBytes >= 1024 else {
+            throw CodecError(
+                .invalidArgument,
+                "JPIPSessionConfiguration: maxCacheSizeBytes must be >= 1024"
+            )
+        }
+        self.codingPreference = codingPreference
+        self.deliveryMode = deliveryMode
+        self.maxCachedDataBins = maxCachedDataBins
+        self.maxCacheSizeBytes = maxCacheSizeBytes
+    }
+}
+
+/// Per-operation options for ``JPIPStreamingSession`` requests.
+public struct JPIPStreamingOptions: Sendable {
+    /// Resource limits enforced on delivered images, codestreams, and metadata.
+    public var resourceLimits: ResourceLimits
+    /// Execution policy for acceleration vs. scalar CPU reference during reconstruction.
+    public var executionPolicy: ExecutionPolicy
+    /// Copy policy for reconstructed image buffers.
+    public var copyPolicy: CopyPolicy
+    /// Metadata preservation policy.
+    public var metadataPolicy: MetadataPolicy
+    /// Optional progress callback.
+    public var progress: (@Sendable (ProgressUpdate) -> Void)?
+
+    public init(
+        resourceLimits: ResourceLimits = .default,
+        executionPolicy: ExecutionPolicy = .automatic,
+        copyPolicy: CopyPolicy = .allowCopy,
+        metadataPolicy: MetadataPolicy = .preserve,
+        progress: (@Sendable (ProgressUpdate) -> Void)? = nil
+    ) {
+        self.resourceLimits = resourceLimits
+        self.executionPolicy = executionPolicy
+        self.copyPolicy = copyPolicy
+        self.metadataPolicy = metadataPolicy
+        self.progress = progress
+    }
+}
+
+// MARK: - JPIPViewWindow
+
+/// Validated 2D spatial, resolution, quality, and component view window for JPIP requests.
+public struct JPIPViewWindow: Sendable, Equatable {
+    /// Optional spatial sub-region `(x, y, width, height)` in full-resolution reference grid coordinates.
+    public let regionOriginX: Int?
+    public let regionOriginY: Int?
+    public let regionWidth: Int?
+    public let regionHeight: Int?
+    /// Optional resolution reduction level (`0` = full resolution, `1` = half, `2` = quarter, etc.).
+    public let resolutionLevel: Int?
+    /// Optional maximum number of quality layers to decode (`>= 1`).
+    public let maxQualityLayers: Int?
+    /// Optional subset of component indices (`>= 0`).
+    public let components: [Int]?
+
+    /// Creates and validates a 2D JPIP view window.
+    public init(
+        region: (x: Int, y: Int, width: Int, height: Int)? = nil,
+        resolutionLevel: Int? = nil,
+        maxQualityLayers: Int? = nil,
+        components: [Int]? = nil
+    ) throws {
+        if let region = region {
+            guard region.x >= 0, region.y >= 0, region.width > 0, region.height > 0 else {
+                throw CodecError(
+                    .invalidArgument,
+                    "JPIPViewWindow: region must have non-negative origin and positive dimensions"
+                )
+            }
+            self.regionOriginX = region.x
+            self.regionOriginY = region.y
+            self.regionWidth = region.width
+            self.regionHeight = region.height
+        } else {
+            self.regionOriginX = nil
+            self.regionOriginY = nil
+            self.regionWidth = nil
+            self.regionHeight = nil
+        }
+
+        if let level = resolutionLevel {
+            guard level >= 0, level < 31 else {
+                throw CodecError(
+                    .invalidArgument,
+                    "JPIPViewWindow: resolutionLevel must be in 0..<31"
+                )
+            }
+        }
+        self.resolutionLevel = resolutionLevel
+
+        if let layers = maxQualityLayers {
+            guard layers >= 1 else {
+                throw CodecError(
+                    .invalidArgument,
+                    "JPIPViewWindow: maxQualityLayers must be >= 1"
+                )
+            }
+        }
+        self.maxQualityLayers = maxQualityLayers
+
+        if let comps = components {
+            guard !comps.isEmpty, comps.allSatisfy({ $0 >= 0 }) else {
+                throw CodecError(
+                    .invalidArgument,
+                    "JPIPViewWindow: components must be non-empty and non-negative"
+                )
+            }
+        }
+        self.components = components
+    }
+}
+
+// MARK: - Delivered Results
+
+/// Result of a contract-aligned 2D JPIP image or view-window delivery.
+public struct JPIPDeliveredImage: Sendable {
+    /// Contract-aligned owning `Image` reconstructed from the JPIP response and session cache.
+    public let image: Image
+    /// Legacy `J2KImage` representation for compatibility with existing `JPIP` consumers.
+    public let legacyImage: J2KImage
+    /// Active JPIP channel identifier (`cid`), if a stateful session channel was established.
+    public let channelID: String?
+    /// Total number of data bins currently stored in the client session cache.
+    public let cachedDataBins: Int
+    /// Total byte size currently stored in the client session cache.
+    public let cachedBytes: Int
+    /// Operation report detailing execution backend, fidelity, and memory usage.
+    public let report: OperationReport
+
+    public init(
+        image: Image,
+        legacyImage: J2KImage,
+        channelID: String?,
+        cachedDataBins: Int,
+        cachedBytes: Int,
+        report: OperationReport
+    ) {
+        self.image = image
+        self.legacyImage = legacyImage
+        self.channelID = channelID
+        self.cachedDataBins = cachedDataBins
+        self.cachedBytes = cachedBytes
+        self.report = report
+    }
+}
+
+/// Result of a contract-aligned 3D JP3D JPIP volumetric region delivery.
+public struct JPIPDeliveredVolumeSliceBins: Sendable {
+    /// Requested 3D streaming region.
+    public let region: JP3DStreamingRegion
+    /// Delivered 3D precinct/tile/header data bins (`JP3DDataBin`).
+    public let bins: [JP3DDataBin]
+    /// Operation report detailing execution backend, fidelity, and memory usage.
+    public let report: OperationReport
+
+    public init(
+        region: JP3DStreamingRegion,
+        bins: [JP3DDataBin],
+        report: OperationReport
+    ) {
+        self.region = region
+        self.bins = bins
+        self.report = report
+    }
+}
+
+// MARK: - JPIPStreamingSession
+
+/// Contract **API-13** actor for interactive 2D and 3D JPIP streaming sessions.
+public actor JPIPStreamingSession {
+    /// Immutable streaming configuration.
+    public nonisolated let configuration: JPIPSessionConfiguration
+    /// Target server URL.
+    public nonisolated let serverURL: URL
+
+    private let client: JPIPClient
+    private let jp3dClient: JP3DJPIPClient
+
+    /// Creates a JPIP streaming session connected to a remote or loopback URL.
+    public init(
+        serverURL: URL,
+        configuration: JPIPSessionConfiguration = try! JPIPSessionConfiguration()
+    ) {
+        self.serverURL = serverURL
+        self.configuration = configuration
+        self.client = JPIPClient(
+            serverURL: serverURL,
+            codingPreference: configuration.codingPreference
+        )
+        self.jp3dClient = JP3DJPIPClient(serverURL: serverURL)
+    }
+
+    /// Creates a JPIP streaming session bound directly to an in-process ``JPIPServer``.
+    public init(
+        server: JPIPServer,
+        port: Int = 8080,
+        configuration: JPIPSessionConfiguration = try! JPIPSessionConfiguration()
+    ) {
+        let url = URL(string: "http://localhost:\(port)")!
+        self.serverURL = url
+        self.configuration = configuration
+        self.client = JPIPClient(
+            server: server,
+            serverURL: url,
+            codingPreference: configuration.codingPreference
+        )
+        self.jp3dClient = JP3DJPIPClient(serverURL: url)
+    }
+
+    /// Delivers a full 2D image or a constrained ``JPIPViewWindow`` from the JPIP server.
+    public func deliverImage(
+        imageID: String,
+        viewWindow: JPIPViewWindow? = nil,
+        options: JPIPStreamingOptions = JPIPStreamingOptions()
+    ) async throws -> JPIPDeliveredImage {
+        try Task.checkCancellation()
+        let (backend, fallbackReason) = try resolveJPIPBackend(options.executionPolicy)
+
+        if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
+            options.progress?(p)
+        }
+
+        if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
+            options.progress?(p)
+        }
+
+        let legacyImage: J2KImage
+        do {
+            if let window = viewWindow {
+                if let rx = window.regionOriginX,
+                   let ry = window.regionOriginY,
+                   let rw = window.regionWidth,
+                   let rh = window.regionHeight {
+                    legacyImage = try await client.requestRegion(
+                        imageID: imageID,
+                        region: (x: rx, y: ry, width: rw, height: rh),
+                        layers: window.maxQualityLayers
+                    )
+                } else if let comps = window.components {
+                    legacyImage = try await client.requestComponents(
+                        imageID: imageID,
+                        components: comps,
+                        layers: window.maxQualityLayers
+                    )
+                } else if let level = window.resolutionLevel {
+                    legacyImage = try await client.requestResolutionLevel(
+                        imageID: imageID,
+                        level: level,
+                        layers: window.maxQualityLayers
+                    )
+                } else if let layers = window.maxQualityLayers {
+                    legacyImage = try await client.requestProgressiveQuality(
+                        imageID: imageID,
+                        upToLayers: layers
+                    )
+                } else {
+                    legacyImage = try await client.requestImage(imageID: imageID)
+                }
+            } else {
+                legacyImage = try await client.requestImage(imageID: imageID)
+            }
+        } catch let error as J2KError {
+            throw error.asCodecError
+        }
+
+        try Task.checkCancellation()
+        try validateDeliveredLegacyImage(legacyImage, limits: options.resourceLimits)
+
+        let contractImage = try legacyImage.toContractImage(limits: options.resourceLimits)
+        let stats = await client.getSessionStats()
+
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+
+        let pixelBytes = legacyImage.components.reduce(0) { $0 + $1.data.count }
+        let isReduced = (viewWindow?.maxQualityLayers != nil) || ((viewWindow?.resolutionLevel ?? 0) > 0)
+        let report = OperationReport(
+            backend: backend,
+            fallbackReason: fallbackReason,
+            fidelity: isReduced ? .lossy : .exactSamples,
+            copyEvents: [],
+            pixelAllocationCount: legacyImage.components.count,
+            peakPixelBytes: pixelBytes,
+            peakWorkspaceBytes: stats?.cacheSize ?? pixelBytes,
+            discardedMetadataCount: options.metadataPolicy == .discardAncillary ? 1 : 0,
+            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? ["jpipAncillaryMetadata"] : []
+        )
+
+        return JPIPDeliveredImage(
+            image: contractImage,
+            legacyImage: legacyImage,
+            channelID: stats?.channelID,
+            cachedDataBins: stats?.cachedBins ?? 0,
+            cachedBytes: stats?.cacheSize ?? 0,
+            report: report
+        )
+    }
+
+    /// Delivers a 3D volumetric streaming region (`JP3DStreamingRegion`) as `JP3DDataBin` packets.
+    public func deliverVolumeRegion(
+        volumeID: String,
+        region: JP3DStreamingRegion,
+        options: JPIPStreamingOptions = JPIPStreamingOptions()
+    ) async throws -> JPIPDeliveredVolumeSliceBins {
+        try Task.checkCancellation()
+        let (backend, fallbackReason) = try resolveJPIPBackend(options.executionPolicy)
+
+        let width = region.xRange.count
+        let height = region.yRange.count
+        let depth = region.zRange.count
+        let maxDim = options.resourceLimits.maximumDimension
+        guard width > 0, height > 0, depth > 0,
+              width <= maxDim, height <= maxDim, depth <= maxDim else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "3D streaming region dimensions (\(width)x\(height)x\(depth)) exceed resource limits"
+            )
+        }
+
+        if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 2) {
+            options.progress?(p)
+        }
+
+        let bins: [JP3DDataBin]
+        do {
+            try await jp3dClient.connect()
+            try await jp3dClient.createSession(volumeID: volumeID)
+            bins = try await jp3dClient.requestRegion(region)
+        } catch let error as J2KError {
+            throw error.asCodecError
+        }
+
+        try Task.checkCancellation()
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 2, totalUnits: 2) {
+            options.progress?(p)
+        }
+
+        let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
+        let report = OperationReport(
+            backend: backend,
+            fallbackReason: fallbackReason,
+            fidelity: region.resolutionLevel > 0 ? .lossy : .exactSamples,
+            copyEvents: [],
+            pixelAllocationCount: 0,
+            peakPixelBytes: 0,
+            peakWorkspaceBytes: totalBinBytes
+        )
+
+        return JPIPDeliveredVolumeSliceBins(
+            region: region,
+            bins: bins,
+            report: report
+        )
+    }
+
+    /// Closes the underlying 2D and 3D JPIP sessions and releases transport resources.
+    public func close() async throws {
+        do {
+            try await client.close()
+        } catch let error as J2KError {
+            throw error.asCodecError
+        }
+        await jp3dClient.disconnect()
+    }
+
+    private func validateDeliveredLegacyImage(
+        _ image: J2KImage,
+        limits: ResourceLimits
+    ) throws {
+        let maxDim = limits.maximumDimension
+        guard image.width <= maxDim, image.height <= maxDim else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Delivered JPIP image dimensions (\(image.width)x\(image.height)) exceed limit \(maxDim)"
+            )
+        }
+        let (pixels, ov) = image.width.multipliedReportingOverflow(by: image.height)
+        guard !ov, pixels <= limits.maximumPixels else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Delivered JPIP image pixel count exceeds limit \(limits.maximumPixels)"
+            )
+        }
+        let totalBytes = image.components.reduce(0) { $0 + $1.data.count }
+        guard totalBytes <= limits.maximumDecodedBytes,
+              totalBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Delivered JPIP image byte size \(totalBytes) exceeds memory limit"
+            )
+        }
+    }
+}
+
+// MARK: - Private Backend Resolution
+
+private func resolveJPIPBackend(
+    _ policy: ExecutionPolicy
+) throws -> (Backend, String?) {
+    switch policy {
+    case .scalarCPU, .required(.scalarCPU), .preferred(.scalarCPU):
+        return (.scalarCPU, nil)
+    case .automatic:
+        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
+        return (.accelerated, nil)
+        #else
+        return (.scalarCPU, nil)
+        #endif
+    case .preferred(.accelerated):
+        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
+        return (.accelerated, nil)
+        #else
+        return (.scalarCPU, "Hardware acceleration unavailable; fell back to scalar CPU")
+        #endif
+    case .required(.accelerated):
+        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
+        return (.accelerated, nil)
+        #else
+        throw CodecError(
+            .backendUnavailable,
+            "Hardware acceleration is not available on this platform"
+        )
+        #endif
+    }
+}

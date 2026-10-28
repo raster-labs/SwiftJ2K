@@ -29,6 +29,8 @@ public enum J2KError: Error, Sendable, Equatable, CustomStringConvertible, Local
     case invalidComponentConfiguration(String)
     case invalidTileConfiguration(String)
     case invalidConfiguration(String)
+    case invalidState(String)
+    case invalidData(String)
     case encodingError(String)
     case decodingError(String)
     case ioError(String)
@@ -46,6 +48,8 @@ public enum J2KError: Error, Sendable, Equatable, CustomStringConvertible, Local
         case .invalidComponentConfiguration(let msg): return "Invalid component configuration: \(msg)"
         case .invalidTileConfiguration(let msg): return "Invalid tile configuration: \(msg)"
         case .invalidConfiguration(let msg): return "Invalid configuration: \(msg)"
+        case .invalidState(let msg): return "Invalid state: \(msg)"
+        case .invalidData(let msg): return "Invalid data: \(msg)"
         case .encodingError(let msg): return "Encoding error: \(msg)"
         case .decodingError(let msg): return "Decoding error: \(msg)"
         case .ioError(let msg): return "I/O error: \(msg)"
@@ -67,13 +71,15 @@ public enum J2KError: Error, Sendable, Equatable, CustomStringConvertible, Local
              .invalidComponentCount(let msg),
              .invalidComponentConfiguration(let msg),
              .invalidTileConfiguration(let msg),
-             .invalidConfiguration(let msg):
+             .invalidConfiguration(let msg),
+             .invalidState(let msg):
             return CodecError(.invalidArgument, msg)
         case .encodingError(let msg),
              .internalError(let msg):
             return CodecError(.internalFailure, msg)
         case .decodingError(let msg),
-             .fileFormatError(let msg):
+             .fileFormatError(let msg),
+             .invalidData(let msg):
             return CodecError(.malformedInput, msg)
         case .ioError(let msg):
             return CodecError(.ioFailure, msg)

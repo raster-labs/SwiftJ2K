@@ -11,13 +11,16 @@ let package = Package(
     platforms: [.macOS(.v26), .iOS(.v26), .tvOS(.v26), .visionOS(.v26), .watchOS(.v26)],
     products: [.library(name: "SwiftJ2K", targets: ["SwiftJ2K"]),
                .library(name: "SwiftJ2K3D", targets: ["SwiftJ2K3D"]),
+               .library(name: "SwiftJ2KJPIP", targets: ["SwiftJ2KJPIP"]),
                .executable(name: "swiftj2k-cli", targets: ["SwiftJ2KCLI"])],
     targets: [
         .target(name: "SwiftJ2K"),
         .target(name: "SwiftJ2K3D", dependencies: ["SwiftJ2K"]),
+        .target(name: "SwiftJ2KJPIP", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
         .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
         .testTarget(name: "SwiftJ2KTests", dependencies: ["SwiftJ2K"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "SwiftJ2K3DTests", dependencies: ["SwiftJ2K3D", "SwiftJ2K"])
+        .testTarget(name: "SwiftJ2K3DTests", dependencies: ["SwiftJ2K3D", "SwiftJ2K"]),
+        .testTarget(name: "SwiftJ2KJPIPTests", dependencies: ["SwiftJ2KJPIP", "SwiftJ2K3D", "SwiftJ2K"])
     ],
     swiftLanguageModes: [.v6]
 )

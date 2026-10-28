@@ -22,7 +22,8 @@ Executed evidence per milestone: [MILESTONE2.md](Documentation/MILESTONE2.md), [
 | Application dependency | Predecessor | Successor and action |
 | --- | --- | --- |
 | Repository | `Raster-Lab/J2KSwift` | `Raster-Lab/SwiftJ2K` |
-| Principal SwiftPM products/imports | `J2KCore`, `J2KCodec` | one product and module, `SwiftJ2K`; `import SwiftJ2K` in a new adapter target |
+| Principal SwiftPM products/imports | `J2KCore`, `J2KCodec`, `J2KFileFormat`, `J2KMetal` | one principal product and module, `SwiftJ2K`; `import SwiftJ2K` in a new adapter target |
+| Volumetric & JPIP SwiftPM products/imports | `J2K3D`, `JPIP` | retained products `SwiftJ2K3D` (`import SwiftJ2K3D`) and `SwiftJ2KJPIP` (`import SwiftJ2KJPIP`) per Decision M2 and Contract `API-13` |
 | Shared protocol dependency | `CompressionFamily` conformances (now in J2KSwift's separate `Adapters/J2KCompressionFamily` package) | none; adapt local concrete types explicitly |
 | Package dependencies | none | none; `swift package show-dependencies` on a consumer lists this repository alone |
 | Minimum tools | consult the application pin; the pinned predecessor uses Swift 6.2 | Swift 6.2 tools minimum, Swift 6 language mode; Swift 6.4 is the qualified primary toolchain |
