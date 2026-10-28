@@ -17,7 +17,7 @@ let package = Package(
         .target(name: "SwiftJ2K"),
         .target(name: "SwiftJ2K3D", dependencies: ["SwiftJ2K"]),
         .target(name: "SwiftJ2KJPIP", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
-        .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
+        .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D", "SwiftJ2KJPIP"]),
         .testTarget(name: "SwiftJ2KTests", dependencies: ["SwiftJ2K"], resources: [.copy("Fixtures")]),
         .testTarget(name: "SwiftJ2K3DTests", dependencies: ["SwiftJ2K3D", "SwiftJ2K"]),
         .testTarget(name: "SwiftJ2KJPIPTests", dependencies: ["SwiftJ2KJPIP", "SwiftJ2K3D", "SwiftJ2K"])

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
 import SwiftJ2K
+import SwiftJ2K3D
+import SwiftJ2KJPIP
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -52,7 +54,38 @@ import Glibc
                 throw SwiftJ2K.CodecError(.internalFailure, "HTJ2K/transcode round trip changed a sample.")
             }
         }
-        print("Independent SwiftJ2K consumer passed; \(encoded.data.count)-byte Part 1 and \(htEncoded.data.count)-byte HTJ2K codestreams round-tripped and transcoded.")
+
+        // Verify SwiftJ2K3D (Part 10 volumetric codec)
+        let volComp = J2KVolumeComponent(
+            index: 0, bitDepth: 8, signed: false,
+            width: 4, height: 4, depth: 2,
+            data: Data((0..<32).map { UInt8($0 * 7) })
+        )
+        let vol = J2KVolume(width: 4, height: 4, depth: 2, components: [volComp])
+        let jp3dEnc = try await JP3DEncoder(configuration: .lossless).encode(vol)
+        let jp3dDec = try await JP3DDecoder().decode(jp3dEnc.data)
+        guard jp3dDec.volume.width == 4, jp3dDec.volume.height == 4, jp3dDec.volume.depth == 2,
+              jp3dDec.volume.components[0].data == volComp.data else {
+            throw SwiftJ2K.CodecError(.internalFailure, "SwiftJ2K3D volumetric round trip failed.")
+        }
+
+        // Verify SwiftJ2KJPIP (Part 9 interactive streaming)
+        let tmpURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("consumer-jpip-\(UUID().uuidString).j2k")
+        try encoded.data.write(to: tmpURL)
+        defer { try? FileManager.default.removeItem(at: tmpURL) }
+        let server = JPIPServer(port: 18599)
+        try await server.registerImage(name: "sample.j2k", at: tmpURL)
+        try await server.start()
+        let client = JPIPClient(server: server)
+        let jpipImg = try await client.requestImage(imageID: "sample.j2k")
+        try await client.close()
+        try await server.stop()
+        guard jpipImg.width == 3, jpipImg.height == 2 else {
+            throw SwiftJ2K.CodecError(.internalFailure, "SwiftJ2KJPIP streaming round trip failed.")
+        }
+
+        print("Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; \(encoded.data.count)-byte Part 1, \(htEncoded.data.count)-byte HTJ2K, \(jp3dEnc.data.count)-byte JP3D codestreams and JPIP session round-tripped.")
     }
 
     private static func maxRSSBytes() -> Int {

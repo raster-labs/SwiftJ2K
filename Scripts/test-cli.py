@@ -220,6 +220,99 @@ def main():
             cli('encode','-i',gzipped,'-o',temp/'x.j2k',expected=4)
             short=temp/'short.nrrd';short.write_bytes(b'NRRD0004\ntype: uint16\ndimension: 2\nsizes: 2 2\nencoding: raw\nendian: little\n\n'+bytes(6))
             cli('encode','-i',short,'-o',temp/'x.j2k',expected=3)
+            # Milestone 12 CLI & consumer breadth: multi-format I/O (PGM/PPM/PNM/PNG/TIFF/RAW),
+            # convert, compare, batch, encode3d, decode3d, jpip, benchmark, and completions.
+            for m12_verb in ['convert','compare','batch','encode3d','decode3d','jpip','benchmark','completions']:
+                vh=cli(m12_verb,'--help').stdout
+                assert 'USAGE:' in vh and 'EXIT STATUS' in vh
+            # Multi-format encode/decode/convert/compare (PGM, PPM, PNG, TIFF, RAW, NRRD).
+            pgm_src=fixtures/'g12_129x67_gradient.pgm'
+            pgm_j2k=temp/'from_pgm.j2k';dec_png=temp/'dec_12.png';dec_tiff=temp/'dec_12.tiff';dec_raw=temp/'dec_12.raw';dec_pgm=temp/'dec_12.pgm'
+            r_pgm_enc=cli('encode','-i',pgm_src,'-o',pgm_j2k,'--json')
+            assert json.loads(r_pgm_enc.stderr)['meaningfulBits']==12
+            cli('decode','-i',pgm_j2k,'-o',dec_png,'--json')
+            cli('decode','-i',pgm_j2k,'-o',dec_tiff,'--json')
+            cli('decode','-i',pgm_j2k,'-o',dec_raw,'--json')
+            cli('decode','-i',pgm_j2k,'-o',dec_pgm,'--json')
+            assert pgm_samples(dec_pgm)==pgm_samples(pgm_src)
+            # Encode from PNG, TIFF, and RAW (with explicit dimensions/bit-depth) and verify bit-exactness via compare.
+            png_j2k=temp/'from_png.j2k';tiff_j2k=temp/'from_tiff.j2k';raw_j2k=temp/'from_raw.j2k'
+            cli('encode','-i',dec_png,'-o',png_j2k,'--json')
+            cli('encode','-i',dec_tiff,'-o',tiff_j2k,'--json')
+            cli('encode','-i',dec_raw,'--input-format','raw','--dimensions','129x67','--bit-depth','12','-o',raw_j2k,'--json')
+            for cand in [dec_png,dec_tiff,png_j2k,tiff_j2k,raw_j2k]:
+                cmp_res=json.loads(cli('compare','-i',pgm_src,'-r',cand,'--bit-exact','--json').stdout)
+                assert cmp_res['passed'] is True and cmp_res['bitExact'] is True and cmp_res['maxError']==0
+            # Compare lossy image with thresholds and verify failure exit 3 when bit-exact is requested on lossy.
+            cmp_lossy=json.loads(cli('compare','-i',rgb_nrrd,'-r',rgb_ict,'--max-error','80','--min-psnr','20','--json').stdout)
+            assert cmp_lossy['passed'] is True and len(cmp_lossy['components'])==3
+            cli('compare','-i',rgb_nrrd,'-r',rgb_ict,'--bit-exact','--json',expected=3)
+            # Convert across uncompressed formats (NRRD -> PPM -> PNG -> TIFF -> NRRD) and --bit-depth scaling.
+            conv_ppm=temp/'conv_rgb.ppm';conv_png=temp/'conv_rgb.png';conv_tiff=temp/'conv_rgb.tiff';conv_png16=temp/'conv_rgb16.png'
+            r_c1=cli('convert','-i',rgb_nrrd,'-o',conv_ppm,'--json')
+            assert json.loads(r_c1.stderr)['outputFormat']=='ppm'
+            cli('convert','-i',conv_ppm,'-o',conv_png,'--json')
+            cli('convert','-i',conv_png,'-o',conv_tiff,'--json')
+            assert json.loads(cli('compare','-i',rgb_nrrd,'-r',conv_tiff,'--bit-exact','--json').stdout)['bitExact'] is True
+            r_c16=cli('convert','-i',conv_png,'-o',conv_png16,'--bit-depth','16','--json')
+            assert json.loads(r_c16.stderr)['bitDepth']==16
+            cli('convert','-i',conv_png,'-o',temp/'same.png',expected=4)
+            cli('convert','-i',rgb_jp2,'-o',temp/'bad.png',expected=4)
+            # Batch encode, transcode, and decode with bounded worker pool (--threads 2).
+            batch_in=temp/'batch_in';batch_j2k=temp/'batch_j2k';batch_jph=temp/'batch_jph';batch_dec=temp/'batch_dec'
+            batch_in.mkdir()
+            shutil.copy(fixtures/'g08_37x23_random.pgm',batch_in/'img1.pgm')
+            shutil.copy(fixtures/'g16_17x9_alternating.pgm',batch_in/'img2.pgm')
+            r_be=cli('batch','encode','-i',batch_in,'-o',batch_j2k,'--filter','*.pgm','--threads','2','--json')
+            be_rep=json.loads(r_be.stdout)
+            assert be_rep['succeeded']==2 and be_rep['failed']==0 and be_rep['threads']==2
+            r_bt=cli('batch','transcode','-i',batch_j2k,'-o',batch_jph,'--output-format','jph','--threads','2','--json')
+            assert json.loads(r_bt.stdout)['succeeded']==2
+            r_bd=cli('batch','decode','-i',batch_jph,'-o',batch_dec,'--output-suffix','.png','--threads','2','--json')
+            assert json.loads(r_bd.stdout)['succeeded']==2 and (batch_dec/'img1.png').is_file() and (batch_dec/'img2.png').is_file()
+            # 3D volumetric encode3d, decode3d, and 3D compare.
+            slices_in=temp/'slices_in';slices_in.mkdir()
+            for z in range(4):
+                s_bytes=bytes(((x+y+z*11)&255) for y in range(12) for x in range(16))
+                (slices_in/f'slice_{z:04d}.pgm').write_bytes(f'P5\n16 12\n255\n'.encode()+s_bytes)
+            vol_j3d=temp/'vol.j3d';vol_nrrd=temp/'vol.nrrd';vol_ht_j3d=temp/'vol_ht.j3d';slices_out=temp/'slices_out';vol_roi=temp/'vol_roi.nrrd'
+            r_e3d=cli('encode3d','-i',slices_in,'-o',vol_j3d,'--codec','j2k-lossless','--tile-size','16x12x4','--levels','1,1,1','--spacing','0.5,0.5,1.5','--origin','0,0,0','--json')
+            e3d_rep=json.loads(r_e3d.stderr)
+            assert e3d_rep['width']==16 and e3d_rep['height']==12 and e3d_rep['depth']==4 and e3d_rep['lossless'] is True
+            r_d3d=cli('decode3d','-i',vol_j3d,'-o',vol_nrrd,'--json')
+            assert json.loads(r_d3d.stderr)['depth']==4 and vol_nrrd.is_file()
+            r_e3d_ht=cli('encode3d','-i',vol_nrrd,'-o',vol_ht_j3d,'--codec','htj2k-lossless','--levels','1,1,1','--json')
+            assert json.loads(r_e3d_ht.stderr)['lossless'] is True
+            cmp3d=json.loads(cli('compare','-i',vol_nrrd,'-r',vol_ht_j3d,'--mode','3d','--bit-exact','--json').stdout)
+            assert cmp3d['passed'] is True and cmp3d['bitExact'] is True and cmp3d['depth']==4
+            cli('decode3d','-i',vol_ht_j3d,'-o',slices_out,'--output-format','pgm','--slice-naming','slice_%04d.pgm','--json')
+            assert len(list(slices_out.glob('slice_*.pgm')))==4
+            r_d3d_roi=cli('decode3d','-i',vol_j3d,'-o',vol_roi,'--region','2,2,1,8,6,2','--json')
+            d3d_roi_rep=json.loads(r_d3d_roi.stderr)
+            assert d3d_roi_rep['width']==8 and d3d_roi_rep['height']==6 and d3d_roi_rep['depth']==2
+            # JPIP client & server (loopback single-file session, ROI request, and --once server).
+            jpip_full=temp/'jpip_full.nrrd';jpip_roi=temp/'jpip_roi.png'
+            r_jc=cli('jpip','client','--single-file',rgb_jp2,'--port','18493','-o',jpip_full,'--json')
+            jc_rep=json.loads(r_jc.stdout)
+            assert jc_rep['width']==16 and jc_rep['height']==12 and jc_rep['components']==3
+            assert json.loads(cli('compare','-i',rgb_nrrd,'-r',jpip_full,'--bit-exact','--json').stdout)['bitExact'] is True
+            r_jroi=cli('jpip','client','--single-file',rgb_jp2,'--port','18494','--region','2,2,8,6','--resolution-level','0','--quality-layers','1','-o',jpip_roi,'--json')
+            jroi_rep=json.loads(r_jroi.stdout)
+            assert jroi_rep['width']==8 and jroi_rep['height']==6 and jpip_roi.is_file()
+            r_jsrv=cli('jpip','server','--single-file',rgb_jp2,'--port','18495','--once','--json')
+            assert json.loads(r_jsrv.stdout)['status']=='stopped'
+            # In-process benchmark (zero external process invocations, text/json/csv).
+            bench_csv=temp/'bench.csv'
+            r_bm=cli('benchmark','-i',rgb_nrrd,'--runs','2','--warmup','1','--compare-all','--json')
+            bm_rep=json.loads(r_bm.stdout)
+            assert bm_rep['runs']==2 and len(bm_rep['presets'])==3
+            cli('benchmark','-i',rgb_nrrd,'--runs','1','--warmup','0','--format','csv','-o',bench_csv)
+            assert 'preset,operation,runs,median_ms' in bench_csv.read_text()
+            # Shell completions (bash, zsh, fish, and invalid shell error).
+            for sh in ['bash','zsh','fish']:
+                comp_out=cli('completions',sh).stdout
+                assert 'encode3d' in comp_out and 'jpip' in comp_out and 'benchmark' in comp_out
+            cli('completions','powershell',expected=2)
             # SIGINT before the payload arrives: the interrupt is remembered and the
             # operation cancels cooperatively before decoding starts (exit 130, no output).
             import signal,time
