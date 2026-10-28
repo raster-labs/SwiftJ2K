@@ -211,6 +211,7 @@ enum ScalarLosslessCodec {
         bytes: [UInt8],
         tile: TileProfile,
         work: WorkGuard,
+        backend: Backend = .scalarCPU,
         completed: inout Int,
         total: Int,
         progress: (@Sendable (ProgressUpdate) -> Void)?
@@ -267,12 +268,13 @@ enum ScalarLosslessCodec {
                             let placeholderSets = (contribution.passes - 1) / 3
                             let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
                             let rawBlock = contribution.segments.first?.data ?? []
-                            coefficients = try HTBlockDecoder.decodeCleanup(
+                            coefficients = try AcceleratedCodec.decodeHTCleanup(
                                 block: rawBlock,
                                 width: block.width,
                                 height: block.height,
                                 kMax: mb,
-                                missingMSBs: effectiveMissingMSBs
+                                missingMSBs: effectiveMissingMSBs,
+                                backend: backend
                             )
                         } else {
                             coefficients = try BitPlaneCoder.decode(
@@ -300,7 +302,8 @@ enum ScalarLosslessCodec {
     // MARK: - Decoding
 
     static func decode(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
-                       limits: ResourceLimits, progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
+                       limits: ResourceLimits, backend: Backend = .scalarCPU,
+                       progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         guard descriptor.width == profile.width, descriptor.height == profile.height,
               descriptor.sampleType == .unsignedInteger, descriptor.storageBits == 16,
@@ -319,7 +322,7 @@ enum ScalarLosslessCodec {
         try work.check()
         do {
             return try decodeAdmitted(bytes: bytes, profile: profile, into: destination, workspace: workspace,
-                                      work: work, progress: progress)
+                                      work: work, backend: backend, progress: progress)
         } catch {
             destination.invalidateAfterFailure()
             throw error
@@ -327,7 +330,7 @@ enum ScalarLosslessCodec {
     }
 
     private static func decodeAdmitted(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
-                                       workspace: Int, work: WorkGuard,
+                                       workspace: Int, work: WorkGuard, backend: Backend,
                                        progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         let layout = descriptor.planes[0]
@@ -350,12 +353,22 @@ enum ScalarLosslessCodec {
                     bytes: bytes,
                     tile: tile,
                     work: work,
+                    backend: backend,
                     completed: &completed,
                     total: total,
                     progress: progress
                 )
-                try Wavelet53.inverse(plane: &plane, stride: stride, x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1,
-                                      levels: tile.codingStyle.decompositionLevels, cancellation: work.check)
+                try AcceleratedCodec.inverseWavelet53(
+                    plane: &plane,
+                    stride: stride,
+                    x0: tile.x0,
+                    x1: tile.x1,
+                    y0: tile.y0,
+                    y1: tile.y1,
+                    levels: tile.codingStyle.decompositionLevels,
+                    backend: backend,
+                    cancellation: work.check
+                )
                 // Final-output stage: DC shift, clamp, write into the caller's plane.
                 for row in 0..<tile.height {
                     try work.check()
@@ -379,6 +392,21 @@ enum ScalarLosslessCodec {
         let codeBlockWidthExponent: Int
         let codeBlockHeightExponent: Int
         let blockCoding: CodecOptions.BlockCoding
+        let backend: Backend
+
+        init(
+            decompositionLevels: Int,
+            codeBlockWidthExponent: Int,
+            codeBlockHeightExponent: Int,
+            blockCoding: CodecOptions.BlockCoding,
+            backend: Backend = .scalarCPU
+        ) {
+            self.decompositionLevels = decompositionLevels
+            self.codeBlockWidthExponent = codeBlockWidthExponent
+            self.codeBlockHeightExponent = codeBlockHeightExponent
+            self.blockCoding = blockCoding
+            self.backend = backend
+        }
     }
 
     private static func encodeTileBlocks(
@@ -387,6 +415,7 @@ enum ScalarLosslessCodec {
         geometry: TileGeometry,
         qcd: QuantizationSegment,
         blockCoding: CodecOptions.BlockCoding,
+        backend: Backend = .scalarCPU,
         work: WorkGuard,
         maxRetainedEncodedBytes: Int = Int.max,
         runningEncodedBytes: inout Int,
@@ -439,12 +468,13 @@ enum ScalarLosslessCodec {
                                 maximumOutputBytes: blockMaxOutputBytes
                             )
                         case .htj2k:
-                            let coded = try HTBlockEncoder.encodeCleanup(
+                            let coded = try AcceleratedCodec.encodeHTCleanup(
                                 coefficients: coefficients,
                                 width: block.width,
                                 height: block.height,
                                 bandShift: 0,
-                                maximumOutputBytes: blockMaxOutputBytes
+                                maximumOutputBytes: blockMaxOutputBytes,
+                                backend: backend
                             )
                             encoding = CodeBlockEncoding(
                                 data: coded,
@@ -534,8 +564,17 @@ enum ScalarLosslessCodec {
                 }
             }
         }
-        try Wavelet53.forward(plane: &plane, stride: stride, x0: 0, x1: width, y0: 0, y1: height,
-                              levels: cod.decompositionLevels, cancellation: work.check)
+        try AcceleratedCodec.forwardWavelet53(
+            plane: &plane,
+            stride: stride,
+            x0: 0,
+            x1: width,
+            y0: 0,
+            y1: height,
+            levels: cod.decompositionLevels,
+            backend: parameters.backend,
+            cancellation: work.check
+        )
 
         let total = geometry.codeBlockCount
         var completed = 0
@@ -547,6 +586,7 @@ enum ScalarLosslessCodec {
             geometry: geometry,
             qcd: qcd,
             blockCoding: parameters.blockCoding,
+            backend: parameters.backend,
             work: work,
             runningEncodedBytes: &encodeRunningBytes,
             completed: &completed,
@@ -618,6 +658,7 @@ enum ScalarLosslessCodec {
         codecOptions: CodecOptions,
         metadataPolicy: MetadataPolicy = .preserve,
         limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
         progress: (@Sendable (ProgressUpdate) -> Void)?
     ) throws -> (Data, Int) {
         let work = WorkGuard(limits: limits)
@@ -805,6 +846,7 @@ enum ScalarLosslessCodec {
                 bytes: bytes,
                 tile: tile,
                 work: work,
+                backend: backend,
                 completed: &completed,
                 total: total,
                 progress: progress
@@ -845,6 +887,7 @@ enum ScalarLosslessCodec {
                 geometry: targetTileGeometry,
                 qcd: tileQCD,
                 blockCoding: targetBlockCoding,
+                backend: backend,
                 work: work,
                 maxRetainedEncodedBytes: maxRetainedEncodedBytes,
                 runningEncodedBytes: &tileEncodedRetainedBytes,

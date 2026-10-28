@@ -102,7 +102,7 @@ func independentContainerFixturesInspectAndDecode(file: String) async throws {
     }
 
     let decoded = try await decoder.decode(data)
-    #expect(decoded.report.backend == .scalarCPU)
+    #expect(decoded.report.backend == .accelerated)
     #expect(decoded.report.copyEvents.isEmpty && decoded.report.pixelAllocationCount == 1)
 
     let actualPlanes = try extractPlanes(decoded.image)

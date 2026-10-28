@@ -154,7 +154,7 @@ func independentPart1BreadthFixturesDecodeCorrectly(name: String) async throws {
     #expect(info.descriptor.sampleType == (entry.signed ? .signedInteger : .unsignedInteger))
 
     let decoded = try await decoder.decode(data)
-    #expect(decoded.report.backend == .scalarCPU)
+    #expect(decoded.report.backend == .accelerated)
     #expect(decoded.report.copyEvents.isEmpty && decoded.report.pixelAllocationCount == 1)
 
     let expectedPlanes = try Part1BreadthFixtures.referencePlanes(entry)

@@ -11,7 +11,7 @@ import SwiftJ2K
     #expect(encoder.capabilities.canEncode && !encoder.capabilities.canDecode)
     #expect(decoder.capabilities.canDecode && decoder.capabilities.canInspect && !decoder.capabilities.canEncode)
     #expect(encoder.capabilities.formats == decoder.capabilities.formats)
-    #expect(encoder.capabilities.availableBackends == [.scalarCPU])
+    #expect(encoder.capabilities.availableBackends == [.scalarCPU, .accelerated])
     #expect(encoder.capabilities.layouts.contains(CodecCapabilities.sharedGreyscaleLayout))
     let descriptor = try ImageDescriptor.greyscale16(width: 1, height: 1)
     let destination = try ImageDestination.allocate(descriptor: descriptor)
@@ -41,8 +41,8 @@ import SwiftJ2K
     _ = try EncoderConfiguration(mode: .lossy)
     do {
         _ = try SwiftJ2K.Decoder().inspect(Data(), options: .init(executionPolicy: .required(.accelerated)))
-        Issue.record("Required acceleration is unavailable.")
-    } catch let error as CodecError { #expect(error.category == .backendUnavailable) }
+        Issue.record("Empty input inspected under required(.accelerated).")
+    } catch let error as CodecError { #expect(error.category == .malformedInput) }
     let limits = try ResourceLimits(maximumCompressedBytes: 1)
     do {
         _ = try SwiftJ2K.Decoder().inspect(Data([0, 1]), options: .init(resourceLimits: limits))

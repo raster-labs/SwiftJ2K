@@ -493,6 +493,7 @@ enum JP2Container {
     ) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
 
         let destDesc = destination.descriptor
@@ -527,6 +528,7 @@ enum JP2Container {
                 profile: losslessProfile,
                 into: destination,
                 limits: options.resourceLimits,
+                backend: resolvedBackend.backend,
                 progress: options.progress
             )
         } else {
@@ -535,6 +537,7 @@ enum JP2Container {
                 profile: reconciled.part1Profile,
                 into: destination,
                 limits: options.resourceLimits,
+                backend: resolvedBackend.backend,
                 progress: options.progress,
                 paletteMapping: reconciled.paletteMapping,
                 channelPermutation: reconciled.channelPermutation
@@ -552,7 +555,8 @@ enum JP2Container {
         let elapsed = clock.now - started
         let fidelity: Fidelity = reconciled.part1Profile.isReversibleLossless ? .exactSamples : .lossy
         let report = OperationReport(
-            backend: .scalarCPU,
+            backend: resolvedBackend.backend,
+            fallbackReason: resolvedBackend.fallbackReason,
             fidelity: fidelity,
             copyEvents: [],
             pixelAllocationCount: allocations,
