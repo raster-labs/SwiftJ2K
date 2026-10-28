@@ -10,11 +10,14 @@ let package = Package(
     name: "SwiftJ2K",
     platforms: [.macOS(.v26), .iOS(.v26), .tvOS(.v26), .visionOS(.v26), .watchOS(.v26)],
     products: [.library(name: "SwiftJ2K", targets: ["SwiftJ2K"]),
+               .library(name: "SwiftJ2K3D", targets: ["SwiftJ2K3D"]),
                .executable(name: "swiftj2k-cli", targets: ["SwiftJ2KCLI"])],
     targets: [
         .target(name: "SwiftJ2K"),
-        .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K"]),
-        .testTarget(name: "SwiftJ2KTests", dependencies: ["SwiftJ2K"], resources: [.copy("Fixtures")])
+        .target(name: "SwiftJ2K3D", dependencies: ["SwiftJ2K"]),
+        .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
+        .testTarget(name: "SwiftJ2KTests", dependencies: ["SwiftJ2K"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "SwiftJ2K3DTests", dependencies: ["SwiftJ2K3D", "SwiftJ2K"])
     ],
     swiftLanguageModes: [.v6]
 )

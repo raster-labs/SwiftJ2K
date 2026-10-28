@@ -804,6 +804,7 @@ enum Tier2 {
         geometries: [TileGeometry],
         codingStyles: [CodingStyleSegment],
         progressionChanges: [ProgressionOrderChangeEntry] = [],
+        maxQualityLayers: Int? = nil,
         bytes: [UInt8],
         range: Range<Int>,
         cancellation: () throws -> Void
@@ -818,6 +819,7 @@ enum Tier2 {
                 }
             }
         }
+        var wireState = result
         var trees: [[[PrecinctTrees]]] = geometries.map { geom in
             geom.resolutions.map { resolution in
                 resolution.precincts.map { precinct in
@@ -840,6 +842,10 @@ enum Tier2 {
         for address in sequence {
             try cancellation()
             if cursor >= end { break }
+            let keepLayer = maxQualityLayers.map { address.layer < max(1, $0) } ?? true
+            if !keepLayer && baseCOD.progression == 0 && progressionChanges.isEmpty {
+                break
+            }
             let c = address.component
             let r = address.resolution
             let p = address.precinct
@@ -854,7 +860,7 @@ enum Tier2 {
             if try reader.readBit() {
                 for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
                     for k in 0..<precinctBand.blocks.count {
-                        var state = result[c][r][p][b][k]
+                        var state = wireState[c][r][p][b][k]
                         let included: Bool
                         if state.included {
                             included = try reader.readBit()
@@ -896,7 +902,17 @@ enum Tier2 {
                             lengths.append(length)
                         }
                         order.append((b, k, chunks, lengths))
-                        result[c][r][p][b][k] = state
+                        wireState[c][r][p][b][k] = state
+                        if keepLayer {
+                            var outState = result[c][r][p][b][k]
+                            if !outState.included {
+                                outState.included = true
+                                outState.zeroBitPlanes = state.zeroBitPlanes
+                                outState.isHT = state.isHT
+                            }
+                            outState.lblock = state.lblock
+                            result[c][r][p][b][k] = outState
+                        }
                     }
                 }
             }
@@ -909,25 +925,32 @@ enum Tier2 {
                 cursor += 2
             }
             for entry in order {
+                var wState = wireState[c][r][p][entry.band][entry.block]
                 var state = result[c][r][p][entry.band][entry.block]
                 for (chunk, length) in zip(entry.chunks, entry.lengths) {
                     guard cursor + length <= end else {
                         throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
                     }
-                    if state.isHT {
-                        if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
-                            state.segments.append(CodewordSegment())
+                    if keepLayer {
+                        if state.isHT {
+                            if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
+                                state.segments.append(CodewordSegment())
+                            }
+                        } else {
+                            let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
+                            if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
                         }
-                    } else {
-                        let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
-                        if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
+                        state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
+                        state.segments[state.segments.count - 1].passes += chunk
+                        state.passes += chunk
                     }
-                    state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
-                    state.segments[state.segments.count - 1].passes += chunk
-                    state.passes += chunk
+                    wState.passes += chunk
                     cursor += length
                 }
-                result[c][r][p][entry.band][entry.block] = state
+                wireState[c][r][p][entry.band][entry.block] = wState
+                if keepLayer {
+                    result[c][r][p][entry.band][entry.block] = state
+                }
             }
         }
         return result

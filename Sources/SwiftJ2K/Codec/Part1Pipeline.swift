@@ -307,7 +307,8 @@ enum Part1Pipeline {
         backend: Backend = .scalarCPU,
         progress: (@Sendable (ProgressUpdate) -> Void)?,
         paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)? = nil,
-        channelPermutation: [Int]? = nil
+        channelPermutation: [Int]? = nil,
+        maxQualityLayers: Int? = nil
     ) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         let outputComponentCount = paletteMapping?.cmap.entries.count ?? profile.componentCount
@@ -372,7 +373,8 @@ enum Part1Pipeline {
                 paletteMapping: paletteMapping,
                 channelPermutation: channelPermutation,
                 outputComponentCount: outputComponentCount,
-                outputSigned: outputSigned
+                outputSigned: outputSigned,
+                maxQualityLayers: maxQualityLayers
             )
         } catch {
             destination.invalidateAfterFailure()
@@ -391,7 +393,8 @@ enum Part1Pipeline {
         paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)?,
         channelPermutation: [Int]?,
         outputComponentCount: Int,
-        outputSigned: Bool
+        outputSigned: Bool,
+        maxQualityLayers: Int?
     ) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         let mutation = SharedPathMutation.active
@@ -440,6 +443,7 @@ enum Part1Pipeline {
                     geometries: geometries,
                     codingStyles: codingStyles,
                     progressionChanges: tile.progressionChanges,
+                    maxQualityLayers: maxQualityLayers,
                     bytes: tileBytes,
                     range: tileRange,
                     cancellation: work.check
