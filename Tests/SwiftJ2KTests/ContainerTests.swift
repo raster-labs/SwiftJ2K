@@ -427,6 +427,26 @@ func independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() async throws {
             }
         }
     }
+
+    // Verify shared-storage decode into caller-owned destination has 0 pixel allocations even with palette LUT expansion.
+    let callerDest = try ImageDestination.allocate(descriptor: info.descriptor)
+    let recorder = StorageTelemetry.Recorder()
+    let decodedInto = try await StorageTelemetry.$recorder.withValue(recorder) {
+        try await decoder.decode(containerData, into: callerDest)
+    }
+    #expect(decodedInto.report.pixelAllocationCount == 0)
+    #expect(decodedInto.report.copyEvents.isEmpty)
+    #expect(recorder.counts.pixelAllocations == 0)
+    #expect(decodedInto.image.storage.allocationID == callerDest.storage.allocationID)
+    for y in 0..<h {
+        for x in 0..<w {
+            let idx = indices[y * w + x]
+            for c in 0..<3 {
+                let sample = try decodedInto.image.sampleInt(component: c, x: x, y: y)
+                #expect(sample == Int(entries[idx][c]))
+            }
+        }
+    }
 }
 
 // MARK: - 5. Reader Requirements ('rreq') Box Round-Trip and Feature Queries

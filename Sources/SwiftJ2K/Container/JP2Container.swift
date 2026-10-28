@@ -508,113 +508,45 @@ enum JP2Container {
         let sealedImage: Image
         let peakWorkspace: Int
 
-        if reconciled.paletteMapping == nil && reconciled.channelPermutation == nil {
-            // Fast shared-storage path: decode codestream directly into the caller's destination.
-            let isDefaultGreyscale16 = destDesc.sampleType == .unsignedInteger &&
-                destDesc.storageBits == 16 &&
-                destDesc.components == [.grey] &&
-                destDesc.planes.count == 1 &&
-                destDesc.alpha == .absent
-            let rawImage: Image
-            if isDefaultGreyscale16,
-               let losslessProfile = try? ScalarLosslessCodec.inspect(
-                   reconciled.codestreamBytes,
-                   limits: options.resourceLimits,
-                   metadataPolicy: options.metadataPolicy
-               ) {
-                (rawImage, peakWorkspace) = try ScalarLosslessCodec.decode(
-                    bytes: reconciled.codestreamBytes,
-                    profile: losslessProfile,
-                    into: destination,
-                    limits: options.resourceLimits,
-                    progress: options.progress
-                )
-            } else {
-                (rawImage, peakWorkspace) = try Part1Pipeline.decode(
-                    bytes: reconciled.codestreamBytes,
-                    profile: reconciled.part1Profile,
-                    into: destination,
-                    limits: options.resourceLimits,
-                    progress: options.progress
-                )
-            }
-            // Attach container metadata to the sealed Image view (same underlying storage & allocationID).
-            sealedImage = try Image(
-                descriptor: rawImage.descriptor,
-                storage: rawImage.storage,
-                metadata: reconciled.combinedMetadata,
-                limits: options.resourceLimits
-            )
-        } else {
-            // Palette expansion ('pclr' + 'cmap') or 'cdef' channel permutation path.
-            let csDescriptor = try reconciled.part1Profile.defaultDescriptor(limits: options.resourceLimits)
-            let csDestination = try ImageDestination.allocate(descriptor: csDescriptor, limits: options.resourceLimits)
-            StorageTelemetry.recordWorkspaceAllocation(bytes: csDescriptor.requiredByteCount)
-            let (csImage, csWorkspace) = try Part1Pipeline.decode(
+        let isDefaultGreyscale16 = reconciled.paletteMapping == nil &&
+            reconciled.channelPermutation == nil &&
+            destDesc.sampleType == .unsignedInteger &&
+            destDesc.storageBits == 16 &&
+            destDesc.components == [.grey] &&
+            destDesc.planes.count == 1 &&
+            destDesc.alpha == .absent
+        let rawImage: Image
+        if isDefaultGreyscale16,
+           let losslessProfile = try? ScalarLosslessCodec.inspect(
+               reconciled.codestreamBytes,
+               limits: options.resourceLimits,
+               metadataPolicy: options.metadataPolicy
+           ) {
+            (rawImage, peakWorkspace) = try ScalarLosslessCodec.decode(
                 bytes: reconciled.codestreamBytes,
-                profile: reconciled.part1Profile,
-                into: csDestination,
+                profile: losslessProfile,
+                into: destination,
                 limits: options.resourceLimits,
                 progress: options.progress
             )
-            peakWorkspace = try checkedAdd(csWorkspace, csDescriptor.requiredByteCount)
-
-            let width = destDesc.width
-            let height = destDesc.height
-            let outChannels = destDesc.components.count
-
-            // Extract codestream component samples.
-            let csComponents = csDescriptor.components.count
-            var csPlanes = [[Int]](repeating: [Int](repeating: 0, count: width * height), count: csComponents)
-            for c in 0..<csComponents {
-                for y in 0..<height {
-                    for x in 0..<width {
-                        csPlanes[c][y * width + x] = try csImage.sampleInt(component: c, x: x, y: y)
-                    }
-                }
-            }
-
-            // Map through palette + cmap if present.
-            var mappedPlanes: [[Int]]
-            if let (pclr, cmap) = reconciled.paletteMapping {
-                mappedPlanes = [[Int]](repeating: [Int](repeating: 0, count: width * height), count: cmap.entries.count)
-                for (chIdx, entry) in cmap.entries.enumerated() {
-                    let srcComp = csPlanes[Int(entry.componentIndex)]
-                    if entry.mappingType == 1 {
-                        let pcol = Int(entry.paletteColumn)
-                        let maxIdx = pclr.numEntries - 1
-                        for i in 0..<(width * height) {
-                            let idx = max(0, min(maxIdx, srcComp[i]))
-                            mappedPlanes[chIdx][i] = Int(pclr.values[idx][pcol])
-                        }
-                    } else {
-                        mappedPlanes[chIdx] = srcComp
-                    }
-                }
-            } else {
-                mappedPlanes = csPlanes
-            }
-
-            // Apply 'cdef' channel permutation if present.
-            if let perm = reconciled.channelPermutation {
-                var permuted = [[Int]](repeating: [], count: outChannels)
-                for outC in 0..<outChannels {
-                    permuted[outC] = mappedPlanes[perm[outC]]
-                }
-                mappedPlanes = permuted
-            }
-
-            // Write final samples into caller's destination.
-            let rawImage = try destination.writeSamples { c, x, y in
-                mappedPlanes[c][y * width + x]
-            }
-            sealedImage = try Image(
-                descriptor: rawImage.descriptor,
-                storage: rawImage.storage,
-                metadata: reconciled.combinedMetadata,
-                limits: options.resourceLimits
+        } else {
+            (rawImage, peakWorkspace) = try Part1Pipeline.decode(
+                bytes: reconciled.codestreamBytes,
+                profile: reconciled.part1Profile,
+                into: destination,
+                limits: options.resourceLimits,
+                progress: options.progress,
+                paletteMapping: reconciled.paletteMapping,
+                channelPermutation: reconciled.channelPermutation
             )
         }
+        // Attach container metadata to the sealed Image view (same underlying storage & allocationID).
+        sealedImage = try Image(
+            descriptor: rawImage.descriptor,
+            storage: rawImage.storage,
+            metadata: reconciled.combinedMetadata,
+            limits: options.resourceLimits
+        )
 
         try Task.checkCancellation()
         let elapsed = clock.now - started
