@@ -169,7 +169,7 @@ private func help(_ command: String?) -> String {
     LIMITS AND POLICIES
       --mode MODE               lossless (default), near-lossless or lossy (encode only).
       --max-error E             Maximum absolute sample error E >= 1 for near-lossless mode.
-      --backend NAME            scalar (default); accelerated backends are unavailable (exit 4).
+      --backend NAME            auto (default), scalar or accelerated; unavailable backends exit 4.
       --copy-policy POLICY      require-sharing (default) or allow-copy; neither copies here.
       --metadata-policy POLICY  preserve (default) or discard-ancillary (COM and ancillary boxes).
       --threads N               Worker limit (1..8; the scalar path uses one).
@@ -319,11 +319,11 @@ private func help(_ command: String?) -> String {
       inspect                    Report codestream or container geometry without decoding.
       validate                   Fully decode in memory and report the result.
       transcode                  Lossless JPEG 2000 <-> HTJ2K compressed-domain transcoding.
-      capabilities [--json]      Report actual library support (scalar JPEG 2000 Part 1 and HTJ2K Part 15).
+      capabilities [--json]      Report actual library support (JPEG 2000 Part 1, HTJ2K Part 15, containers, backends).
       help [command]             Show global or command-specific help.
       version                    Show the development version.
 
-    Accelerated backends are unavailable (exit 4).
+    Backends: auto (default), scalar or accelerated (unavailable backends exit 4).
     Swift 6.2 minimum, Swift 6.4 qualified; Apple OS baseline 26.0. CLI hosts: macOS/Linux.
 
     \(common)
@@ -732,8 +732,9 @@ private func limits(from options: Options, command: String) throws -> ResourceLi
             throw ExitFailure(status: 4, message: "unsupported: \(mode) mode applies to encode only.")
         }
     }
-    if let backend = options.values["--backend"], backend != "scalar" {
-        throw ExitFailure(status: 4, message: "unsupported: backend '\(backend)' is not available; only scalar exists.")
+    if let backend = options.values["--backend"]?.lowercased(),
+       !["auto", "automatic", "scalar", "scalarcpu", "accelerated", "preferred-accelerated"].contains(backend) {
+        throw ExitFailure(status: 4, message: "unsupported: backend '\(backend)' is not available; use auto, scalar or accelerated.")
     }
     if let policy = options.values["--copy-policy"] {
         guard ["require-sharing", "allow-copy"].contains(policy) else { throw UsageError(message: "--copy-policy must be require-sharing or allow-copy.") }
@@ -750,6 +751,25 @@ private func limits(from options: Options, command: String) throws -> ResourceLi
         deadlineSeconds: deadline,
         maximumMemoryBytes: memory
     )
+}
+
+private func parseExecutionPolicy(_ raw: String?) throws -> ExecutionPolicy {
+    guard let raw = raw?.lowercased() else { return .automatic }
+    switch raw {
+    case "auto", "automatic": return .automatic
+    case "scalar", "scalarcpu": return .scalarCPU
+    case "accelerated": return .required(.accelerated)
+    case "preferred-accelerated": return .preferred(.accelerated)
+    default:
+        throw ExitFailure(status: 4, message: "unsupported: backend '\(raw)' is not available; use auto, scalar or accelerated.")
+    }
+}
+
+private func backendString(_ backend: Backend) -> String {
+    switch backend {
+    case .scalarCPU: return "scalar"
+    case .accelerated: return "accelerated"
+    }
 }
 
 private func fidelityString(_ fidelity: Fidelity) -> String {
@@ -1046,6 +1066,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
     if ["encode", "decode", "transcode"].contains(command), options.values["--output"] == nil {
         throw UsageError(message: "\(command) requires --output.")
     }
+    let executionPolicy = try parseExecutionPolicy(options.values["--backend"])
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
     let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     let started = ContinuousClock.now
@@ -1084,14 +1105,14 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try context.diagnostic(2, "decoding in memory")
         let decoded = try await Decoder().decode(
             input,
-            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
         )
         let elapsed = ContinuousClock.now - started
         let fields: [String: Any] = [
             "valid": true, "width": decoded.image.descriptor.width, "height": decoded.image.descriptor.height,
             "meaningfulBits": decoded.image.descriptor.meaningfulBits,
             "components": decoded.image.descriptor.components.count,
-            "backend": "scalar",
+            "backend": backendString(decoded.report.backend),
             "fidelity": fidelityString(decoded.report.fidelity),
             "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
         ]
@@ -1108,7 +1129,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try context.diagnostic(2, "decoding")
         let decoded = try await Decoder().decode(
             input,
-            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
         )
         let descriptor = decoded.image.descriptor
         let compCount = descriptor.components.count
@@ -1161,7 +1182,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try report(["command": "decode", "inputBytes": input.count, "outputBytes": output.count,
                     "width": descriptor.width, "height": descriptor.height,
                     "components": compCount, "meaningfulBits": descriptor.meaningfulBits,
-                    "backend": "scalar", "fidelity": fidelityString(decoded.report.fidelity),
+                    "backend": backendString(decoded.report.backend), "fidelity": fidelityString(decoded.report.fidelity),
                     "copyEvents": decoded.report.copyEvents.count,
                     "pixelAllocations": decoded.report.pixelAllocationCount ?? -1,
                     "peakWorkspaceBytes": decoded.report.peakWorkspaceBytes ?? -1,
@@ -1280,7 +1301,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         let encoder = try Encoder(configuration: encoderConfig)
         let encoded = try await encoder.encode(
             image,
-            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
         )
         try context.diagnostic(2, "publishing output")
         try publish(encoded.data, to: outputPath, overwrite: options.overwrite)
@@ -1289,7 +1310,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         try report(["command": "encode", "inputBytes": input.count, "outputBytes": encoded.data.count,
                     "width": nrrd.width, "height": nrrd.height, "components": nrrd.components,
                     "meaningfulBits": nrrd.meaningfulBits,
-                    "format": encoded.encoding.format, "mode": modeStr, "backend": "scalar",
+                    "format": encoded.encoding.format, "mode": modeStr, "backend": backendString(encoded.report.backend),
                     "fidelity": fidelityString(encoded.report.fidelity),
                     "copyEvents": encoded.report.copyEvents.count, "peakWorkspaceBytes": encoded.report.peakWorkspaceBytes ?? -1,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
@@ -1373,7 +1394,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         let transcoded = try await transcoder.transcode(
             input,
             to: target,
-            options: .init(resourceLimits: limits, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
         )
         try context.diagnostic(2, "publishing output")
         try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
@@ -1386,7 +1407,7 @@ private func runCodecCommand(_ command: String, _ context: CodecContext) async t
         }
         try report(["command": "transcode", "inputBytes": input.count, "outputBytes": transcoded.data.count,
                     "sourceFormat": sourceFormatCanonical,
-                    "format": transcoded.encoding.format, "mode": "lossless", "backend": "scalar",
+                    "format": transcoded.encoding.format, "mode": "lossless", "backend": backendString(transcoded.report.backend),
                     "fidelity": "exactSamples", "processingPath": "coefficients",
                     "copyEvents": transcoded.report.copyEvents.count,
                     "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
@@ -1433,14 +1454,16 @@ private func run() async throws -> Int32 {
         let decoder = SwiftJ2K.Decoder.capabilities
         let canTranscode = !SwiftJ2K.Transcoder.capabilities.isEmpty
         let formats = Array(Set(encoder.formats + decoder.formats)).sorted()
+        let backends = encoder.availableBackends.map(backendString)
         if options.json {
             let payload: [String: Any] = ["tool": tool, "version": version, "minimumAppleOS": "26.0",
                 "canEncode": encoder.canEncode, "canDecode": decoder.canDecode,
-                "canInspect": decoder.canInspect, "canTranscode": canTranscode, "formats": formats]
+                "canInspect": decoder.canInspect, "canTranscode": canTranscode,
+                "formats": formats, "availableBackends": backends]
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             try FileHandle.standardOutput.write(contentsOf: data + Data([10]))
         } else {
-            try write("\(tool) \(version)\nencode: \(encoder.canEncode)\ndecode: \(decoder.canDecode)\ninspect: \(decoder.canInspect)\ntranscode: \(canTranscode)\nformats: \(formats.isEmpty ? "none" : formats.joined(separator: ", "))\n", to: .standardOutput)
+            try write("\(tool) \(version)\nencode: \(encoder.canEncode)\ndecode: \(decoder.canDecode)\ninspect: \(decoder.canInspect)\ntranscode: \(canTranscode)\nformats: \(formats.isEmpty ? "none" : formats.joined(separator: ", "))\nbackends: \(backends.isEmpty ? "none" : backends.joined(separator: ", "))\n", to: .standardOutput)
         }
         try diagnostic(3, "advertised formats: \(formats.count); capability values read from the library")
         try diagnostic(4, "elapsed seconds: \(elapsedSeconds(ContinuousClock.now - start))")

@@ -89,7 +89,7 @@ func independentCodestreamsDecodeToTheGeneratedSamples(key: String) async throws
     #expect(info.descriptor.width == entry.width && info.descriptor.height == entry.height)
     #expect(info.descriptor.meaningfulBits == entry.meaningfulBits && info.frameCount == 1)
     let decoded = try await decoder.decode(data)
-    #expect(decoded.report.backend == .scalarCPU && decoded.report.fidelity == .exactSamples)
+    #expect(decoded.report.backend == .accelerated && decoded.report.fidelity == .exactSamples)
     #expect(decoded.report.copyEvents.isEmpty && decoded.report.pixelAllocationCount == 1)
     #expect(decoded.report.peakPixelBytes == entry.width * entry.height * 2)
     try expectSamples(decoded.image, equal: try Fixtures.samples(entry), width: entry.width, height: entry.height)

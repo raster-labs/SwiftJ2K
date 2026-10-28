@@ -487,23 +487,25 @@ public struct DecodedImage: Sendable {
     public let report: OperationReport
 }
 
-/// Scalar JPEG 2000 Part 1 and Part 15 (HTJ2K) encoder.
+/// JPEG 2000 Part 1 and Part 15 (HTJ2K) encoder.
 public struct Encoder: Sendable {
     public let configuration: EncoderConfiguration
-    public static let capabilities = CodecCapabilities(
-        formats: [
-            ScalarLosslessCodec.format,
-            ScalarLosslessCodec.htj2kFormat,
-            JP2Container.jp2Format,
-            JP2Container.jphFormat,
-            JP2Container.jpxFormat
-        ],
-        compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
-        sampleTypes: [.unsignedInteger, .signedInteger],
-        meaningfulPrecision: 1...16,
-        layouts: CodecCapabilities.supportedLayouts,
-        availableBackends: [.scalarCPU],
-        canInspect: false, canEncode: true, canDecode: false)
+    public static var capabilities: CodecCapabilities {
+        CodecCapabilities(
+            formats: [
+                ScalarLosslessCodec.format,
+                ScalarLosslessCodec.htj2kFormat,
+                JP2Container.jp2Format,
+                JP2Container.jphFormat,
+                JP2Container.jpxFormat
+            ],
+            compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
+            sampleTypes: [.unsignedInteger, .signedInteger],
+            meaningfulPrecision: 1...16,
+            layouts: CodecCapabilities.supportedLayouts,
+            availableBackends: AccelerationRuntime.availableBackends,
+            canInspect: false, canEncode: true, canDecode: false)
+    }
     public var capabilities: CodecCapabilities { Self.capabilities }
     public init(configuration: EncoderConfiguration = .default) throws { self.configuration = configuration }
 
@@ -513,7 +515,7 @@ public struct Encoder: Sendable {
         let clock = ContinuousClock()
         let started = clock.now
         try Task.checkCancellation()
-        try validateOperation(options.resourceLimits, options.executionPolicy)
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
         guard image.storage.byteCount <= options.resourceLimits.maximumDecodedBytes,
               image.storage.byteCount <= options.resourceLimits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Image exceeds operation limits.")
@@ -554,7 +556,8 @@ public struct Encoder: Sendable {
                 decompositionLevels: levels,
                 codeBlockWidthExponent: configuration.codecOptions.codeBlockWidth.trailingZeroBitCount,
                 codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount,
-                blockCoding: configuration.codecOptions.blockCoding)
+                blockCoding: configuration.codecOptions.blockCoding,
+                backend: resolvedBackend.backend)
             (codestreamBytes, workspace) = try ScalarLosslessCodec.encode(
                 image: image, parameters: parameters,
                 limits: options.resourceLimits, progress: options.progress
@@ -562,7 +565,8 @@ public struct Encoder: Sendable {
         } else {
             (codestreamBytes, workspace) = try Part1Pipeline.encode(
                 image: image, configuration: configuration,
-                limits: options.resourceLimits, progress: options.progress
+                limits: options.resourceLimits, backend: resolvedBackend.backend,
+                progress: options.progress
             )
         }
 
@@ -627,7 +631,9 @@ public struct Encoder: Sendable {
         case .lossy:
             fidelity = .lossy
         }
-        let report = OperationReport(backend: .scalarCPU, fidelity: fidelity, copyEvents: [],
+        let report = OperationReport(backend: resolvedBackend.backend,
+                                     fallbackReason: resolvedBackend.fallbackReason,
+                                     fidelity: fidelity, copyEvents: [],
                                      pixelAllocationCount: 0, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
                                      elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
@@ -640,23 +646,25 @@ public struct Encoder: Sendable {
     }
 }
 
-/// Scalar JPEG 2000 Part 1 and Part 15 (HTJ2K) decoder.
+/// JPEG 2000 Part 1 and Part 15 (HTJ2K) decoder.
 public struct Decoder: Sendable {
     public let configuration: DecoderConfiguration
-    public static let capabilities = CodecCapabilities(
-        formats: [
-            ScalarLosslessCodec.format,
-            ScalarLosslessCodec.htj2kFormat,
-            JP2Container.jp2Format,
-            JP2Container.jphFormat,
-            JP2Container.jpxFormat
-        ],
-        compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
-        sampleTypes: [.unsignedInteger, .signedInteger],
-        meaningfulPrecision: 1...16,
-        layouts: CodecCapabilities.supportedLayouts,
-        availableBackends: [.scalarCPU],
-        canInspect: true, canEncode: false, canDecode: true)
+    public static var capabilities: CodecCapabilities {
+        CodecCapabilities(
+            formats: [
+                ScalarLosslessCodec.format,
+                ScalarLosslessCodec.htj2kFormat,
+                JP2Container.jp2Format,
+                JP2Container.jphFormat,
+                JP2Container.jpxFormat
+            ],
+            compressionModes: [.lossless, .nearLossless(maximumAbsoluteError: 1), .lossy],
+            sampleTypes: [.unsignedInteger, .signedInteger],
+            meaningfulPrecision: 1...16,
+            layouts: CodecCapabilities.supportedLayouts,
+            availableBackends: AccelerationRuntime.availableBackends,
+            canInspect: true, canEncode: false, canDecode: true)
+    }
     public var capabilities: CodecCapabilities { Self.capabilities }
     public init(configuration: DecoderConfiguration = .init()) throws { self.configuration = configuration }
 
@@ -778,15 +786,21 @@ public struct Decoder: Sendable {
                      options: DecodeOptions, allocations: Int) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-        let (image, workspace) = try ScalarLosslessCodec.decode(bytes: bytes, profile: profile, into: destination,
-                                                                limits: options.resourceLimits, progress: options.progress)
+        let (image, workspace) = try ScalarLosslessCodec.decode(
+            bytes: bytes, profile: profile, into: destination,
+            limits: options.resourceLimits, backend: resolvedBackend.backend,
+            progress: options.progress
+        )
         try Task.checkCancellation()
         let elapsed = clock.now - started
         let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
         let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
         let discardedKinds = (discardedCount > 0) ? ["COM"] : []
-        let report = OperationReport(backend: .scalarCPU, fidelity: .exactSamples, copyEvents: [],
+        let report = OperationReport(backend: resolvedBackend.backend,
+                                     fallbackReason: resolvedBackend.fallbackReason,
+                                     fidelity: .exactSamples, copyEvents: [],
                                      pixelAllocationCount: allocations, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
                                      elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
@@ -801,16 +815,22 @@ public struct Decoder: Sendable {
                           options: DecodeOptions, allocations: Int) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-        let (image, workspace) = try Part1Pipeline.decode(bytes: bytes, profile: profile, into: destination,
-                                                          limits: options.resourceLimits, progress: options.progress)
+        let (image, workspace) = try Part1Pipeline.decode(
+            bytes: bytes, profile: profile, into: destination,
+            limits: options.resourceLimits, backend: resolvedBackend.backend,
+            progress: options.progress
+        )
         try Task.checkCancellation()
         let elapsed = clock.now - started
         let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
         let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
         let discardedKinds = (discardedCount > 0) ? ["COM"] : []
         let fidelity: Fidelity = profile.isReversibleLossless ? .exactSamples : .lossy
-        let report = OperationReport(backend: .scalarCPU, fidelity: fidelity, copyEvents: [],
+        let report = OperationReport(backend: resolvedBackend.backend,
+                                     fallbackReason: resolvedBackend.fallbackReason,
+                                     fidelity: fidelity, copyEvents: [],
                                      pixelAllocationCount: allocations, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
                                      elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
@@ -823,9 +843,7 @@ public struct Decoder: Sendable {
 }
 
 private func validateOperation(_ limits: ResourceLimits, _ policy: ExecutionPolicy) throws {
-    if case .required(.accelerated) = policy {
-        throw CodecError(.backendUnavailable, "No accelerated backend is implemented.")
-    }
+    _ = try AccelerationRuntime.resolve(policy)
 }
 private func validateInput(_ data: Data, _ options: DecodeOptions) throws {
     try validateOperation(options.resourceLimits, options.executionPolicy)

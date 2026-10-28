@@ -105,7 +105,7 @@ func allHTJ2KFixturesDecodeToExactSamples(key: String) async throws {
     #expect(info.descriptor.width == entry.width && info.descriptor.height == entry.height)
     #expect(info.descriptor.meaningfulBits == entry.meaningfulBits && info.frameCount == 1)
     let decoded = try await decoder.decode(data)
-    #expect(decoded.report.backend == .scalarCPU && decoded.report.fidelity == .exactSamples)
+    #expect(decoded.report.backend == .accelerated && decoded.report.fidelity == .exactSamples)
     #expect(decoded.report.copyEvents.isEmpty && decoded.report.pixelAllocationCount == 1)
     #expect(decoded.report.peakPixelBytes == entry.width * entry.height * 2)
     try expectSamples(decoded.image, equal: try Fixtures.samples(losslessEntry), width: entry.width, height: entry.height)
@@ -290,7 +290,7 @@ func nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name: String) asy
 
     let toHT = try await transcoder.transcode(part1Source, to: .htj2k)
     #expect(toHT.encoding.format == "htj2k-codestream" && toHT.encoding.mode == .lossless)
-    #expect(toHT.report.backend == .scalarCPU && toHT.report.fidelity == .exactSamples)
+    #expect(toHT.report.backend == .accelerated && toHT.report.fidelity == .exactSamples)
     #expect(toHT.report.copyEvents.isEmpty)
     #expect(toHT.report.pixelAllocationCount == 0 && toHT.report.peakPixelBytes == 0)
     #expect((toHT.report.peakWorkspaceBytes ?? 0) > 0)
@@ -653,11 +653,13 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     } catch let error as CodecError { #expect(error.category == .unsupportedFormat) }
 
     #expect(throws: CodecError.self) { try Transcoder(configuration: .init(mode: .lossy)) }
-    do {
-        _ = try await transcoder.transcode(Data(validPart1), to: .htj2k,
-                                           options: .init(executionPolicy: .required(.accelerated)))
-        Issue.record("Unavailable backend accepted")
-    } catch let error as CodecError { #expect(error.category == .backendUnavailable) }
+    try await AccelerationRuntime.withSimulatedUnavailable {
+        do {
+            _ = try await transcoder.transcode(Data(validPart1), to: .htj2k,
+                                               options: .init(executionPolicy: .required(.accelerated)))
+            Issue.record("Unavailable backend accepted")
+        } catch let error as CodecError { #expect(error.category == .backendUnavailable) }
+    }
 }
 
 @Test func htj2kSharedStorageAndZeroIntermediateFilesProof() async throws {

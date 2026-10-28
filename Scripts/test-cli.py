@@ -29,6 +29,7 @@ def main():
         d=json.loads(r.stdout);assert d['version']==version and d['minimumAppleOS']=='26.0'
         assert d['canEncode'] is True and d['canDecode'] is True and d['canInspect'] is True and d['canTranscode'] is True
         assert d['formats']==['htj2k-codestream','jp2','jpeg2000-codestream','jph','jpx']
+        assert d['availableBackends']==['scalar','accelerated']
         return d
     try:
         root=cli('--help');assert 'USAGE:' in root.stdout and 'unavailable' in root.stdout and not root.stderr
@@ -181,6 +182,15 @@ def main():
             # Enforce --max-metadata on container with ICC + XML + UUID metadata.
             meta_jp2=c_fixtures/'jp2_rgb8_icc_res_meta.kdu.jp2'
             cli('validate','-i',meta_jp2,'--max-metadata','64',expected=5)
+            # Milestone 9 CLI backend selection: scalar vs accelerated byte-identity.
+            acc_j2k=temp/'rgb8_acc.j2k';sca_j2k=temp/'rgb8_sca.j2k'
+            r_acc=cli('encode','-i',rgb_nrrd,'-o',acc_j2k,'--backend','accelerated','--json')
+            r_sca=cli('encode','-i',rgb_nrrd,'-o',sca_j2k,'--backend','scalar','--json')
+            assert json.loads(r_acc.stderr)['backend']=='accelerated' and json.loads(r_sca.stderr)['backend']=='scalar'
+            assert acc_j2k.read_bytes()==sca_j2k.read_bytes()
+            v_acc=json.loads(cli('validate','-i',acc_j2k,'--backend','accelerated','--json').stdout)
+            v_sca=json.loads(cli('validate','-i',acc_j2k,'--backend','scalar','--json').stdout)
+            assert v_acc['backend']=='accelerated' and v_sca['backend']=='scalar'
             for form in [['encode'],['decode','-i',good],['transcode','-i',good],['inspect','-i',good,'-o','x'],['validate','-i',good,'--output','x'],
                          ['decode','-i',good,'-o','x','--input-format','tiff'],['encode','-i',good,'-o','x','--precision','17'],
                          ['encode','-i',good,'-o','x','--code-block','3x3'],['encode','-i',good,'-o','x','--levels','40'],

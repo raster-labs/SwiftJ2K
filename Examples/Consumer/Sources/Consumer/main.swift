@@ -14,6 +14,10 @@ import Glibc
             try await runInMemoryBenchmark(repoRoot: URL(fileURLWithPath: args[1]))
             return
         }
+        if args.count == 2, args[0] == "--benchmark-acceleration" {
+            try await runAccelerationBenchmark(repoRoot: URL(fileURLWithPath: args[1]))
+            return
+        }
         let descriptor = try SwiftJ2K.ImageDescriptor.greyscale16(width: 3, height: 2,
             meaningfulBits: 12, rowBytes: 8)
         let destination = try SwiftJ2K.ImageDestination.allocate(descriptor: descriptor)
@@ -186,5 +190,174 @@ import Glibc
         ]
         let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
         FileHandle.standardOutput.write(data + Data([10]))
+    }
+
+    private static func runAccelerationBenchmark(repoRoot: URL) async throws {
+        let clock = ContinuousClock()
+        let warmups = 3
+        let iterations = 15
+
+        // 1. Measure Cold Start (first-ever accelerated encode & decode on a 256x256x3 RGB 16-bit image,
+        //    which exceeds the 65,536-sample Metal threshold and triggers MSL compilation + PSO creation):
+        let coldDesc = try SwiftJ2K.ImageDescriptor.rgbPlanar(
+            width: 256, height: 256, storageBits: 16, meaningfulBits: 12, signed: false
+        )
+        let coldImg = try SwiftJ2K.ImageDestination.allocate(descriptor: coldDesc).writeSamples { c, x, y in
+            (x * 17 + y * 31 + c * 53) & 4095
+        }
+        let rgbPart1Enc = try SwiftJ2K.Encoder(configuration: .init(
+            mode: .lossless,
+            codecOptions: try .init(blockCoding: .part1, wavelet: .reversible53, colourTransform: .rct)
+        ))
+        let rgbHTEnc = try SwiftJ2K.Encoder(configuration: .init(
+            mode: .lossless,
+            codecOptions: try .init(blockCoding: .htj2k, wavelet: .reversible53, colourTransform: .rct)
+        ))
+        let rgb97Enc = try SwiftJ2K.Encoder(configuration: .init(
+            mode: .lossy,
+            codecOptions: try .init(blockCoding: .part1, wavelet: .irreversible97, colourTransform: .ict, quality: 0.85)
+        ))
+        let decoder = try SwiftJ2K.Decoder()
+        let transcoder = try SwiftJ2K.Transcoder()
+
+        let tCold0 = clock.now
+        let coldOut = try await rgbPart1Enc.encode(coldImg, options: .init(executionPolicy: .required(.accelerated)))
+        let coldEncodeMs = ms(clock.now - tCold0)
+
+        let tColdDec0 = clock.now
+        let coldDec = try await decoder.decode(coldOut.data, options: .init(executionPolicy: .required(.accelerated)))
+        let coldDecodeMs = ms(clock.now - tColdDec0)
+        _ = coldDec
+
+        // 2. Warm steady-state comparisons (.scalarCPU vs .required(.accelerated)):
+        struct Workload {
+            let name: String
+            let description: String
+            let runScalar: () async throws -> Data
+            let runAccelerated: () async throws -> Data
+        }
+
+        let losslessDir = repoRoot.appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/Lossless")
+        let g256Data = try Data(contentsOf: losslessDir.appendingPathComponent("g16_256x256_smooth.opj.j2k"))
+        let g300Data = try Data(contentsOf: losslessDir.appendingPathComponent("g10_300x200_gradient.opj.j2k"))
+
+        let workloads: [Workload] = [
+            Workload(
+                name: "encode_rgb16_256x256_part1_53_rct",
+                description: "256x256x3 12-bit RGB lossless Part 1 encode (5/3 DWT + RCT, Metal GPU + SIMD)",
+                runScalar: {
+                    try await rgbPart1Enc.encode(coldImg, options: .init(executionPolicy: .scalarCPU)).data
+                },
+                runAccelerated: {
+                    try await rgbPart1Enc.encode(coldImg, options: .init(executionPolicy: .required(.accelerated))).data
+                }
+            ),
+            Workload(
+                name: "decode_rgb16_256x256_part1_53_rct",
+                description: "256x256x3 12-bit RGB lossless Part 1 decode (5/3 IDWT + Inverse RCT, Metal GPU + SIMD)",
+                runScalar: {
+                    let d = try await decoder.decode(coldOut.data, options: .init(executionPolicy: .scalarCPU))
+                    return try d.image.storage.withUnsafeBytes { Data($0) }
+                },
+                runAccelerated: {
+                    let d = try await decoder.decode(coldOut.data, options: .init(executionPolicy: .required(.accelerated)))
+                    return try d.image.storage.withUnsafeBytes { Data($0) }
+                }
+            ),
+            Workload(
+                name: "encode_rgb16_256x256_htj2k_53_rct",
+                description: "256x256x3 12-bit RGB lossless HTJ2K encode (5/3 DWT + RCT + FBCOT, Metal GPU + SIMD)",
+                runScalar: {
+                    try await rgbHTEnc.encode(coldImg, options: .init(executionPolicy: .scalarCPU)).data
+                },
+                runAccelerated: {
+                    try await rgbHTEnc.encode(coldImg, options: .init(executionPolicy: .required(.accelerated))).data
+                }
+            ),
+            Workload(
+                name: "encode_rgb16_256x256_lossy_97_ict",
+                description: "256x256x3 12-bit RGB lossy Part 1 encode (9/7 DWT + ICT + Quantisation, SIMD4<Double>)",
+                runScalar: {
+                    try await rgb97Enc.encode(coldImg, options: .init(executionPolicy: .scalarCPU)).data
+                },
+                runAccelerated: {
+                    try await rgb97Enc.encode(coldImg, options: .init(executionPolicy: .required(.accelerated))).data
+                }
+            ),
+            Workload(
+                name: "decode_g16_256x256_smooth",
+                description: "256x256 16-bit greyscale lossless Part 1 fixture decode (Metal GPU 5/3 IDWT)",
+                runScalar: {
+                    let d = try await decoder.decode(g256Data, options: .init(executionPolicy: .scalarCPU))
+                    return try d.image.storage.withUnsafeBytes { Data($0) }
+                },
+                runAccelerated: {
+                    let d = try await decoder.decode(g256Data, options: .init(executionPolicy: .required(.accelerated)))
+                    return try d.image.storage.withUnsafeBytes { Data($0) }
+                }
+            ),
+            Workload(
+                name: "transcode_g10_300x200_j2k_to_htj2k",
+                description: "300x200 10-bit greyscale J2K -> HTJ2K compressed-domain transcode (SIMD FBCOT)",
+                runScalar: {
+                    try await transcoder.transcode(g300Data, to: .htj2k, options: .init(executionPolicy: .scalarCPU)).data
+                },
+                runAccelerated: {
+                    try await transcoder.transcode(g300Data, to: .htj2k, options: .init(executionPolicy: .required(.accelerated))).data
+                }
+            )
+        ]
+
+        var results: [[String: Any]] = []
+        for w in workloads {
+            for _ in 0..<warmups {
+                _ = try await w.runScalar()
+                _ = try await w.runAccelerated()
+            }
+            var scalarSamples: [Double] = []
+            var accelSamples: [Double] = []
+            var byteIdentical = true
+            for i in 0..<iterations {
+                let sOut: Data
+                let aOut: Data
+                if i % 2 == 0 {
+                    let t0 = clock.now
+                    sOut = try await w.runScalar()
+                    scalarSamples.append(ms(clock.now - t0))
+                    let t1 = clock.now
+                    aOut = try await w.runAccelerated()
+                    accelSamples.append(ms(clock.now - t1))
+                } else {
+                    let t1 = clock.now
+                    aOut = try await w.runAccelerated()
+                    accelSamples.append(ms(clock.now - t1))
+                    let t0 = clock.now
+                    sOut = try await w.runScalar()
+                    scalarSamples.append(ms(clock.now - t0))
+                }
+                if sOut != aOut { byteIdentical = false }
+            }
+            let sStats = stats(scalarSamples)
+            let aStats = stats(accelSamples)
+            results.append([
+                "workload": w.name,
+                "description": w.description,
+                "byte_identical": byteIdentical,
+                "scalar_cpu": sStats,
+                "accelerated": aStats
+            ])
+        }
+
+        let payload: [String: Any] = [
+            "available_backends": SwiftJ2K.Encoder.capabilities.availableBackends.map { "\($0)" },
+            "cold_start_rgb16_256x256_encode_ms": coldEncodeMs,
+            "cold_start_rgb16_256x256_decode_ms": coldDecodeMs,
+            "warmups": warmups,
+            "iterations": iterations,
+            "max_rss_bytes": maxRSSBytes(),
+            "workloads": results
+        ]
+        let outData = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+        FileHandle.standardOutput.write(outData + Data([10]))
     }
 }

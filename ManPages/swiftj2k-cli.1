@@ -100,8 +100,8 @@ transcode, a JSON report on stderr so that binary stdout stays clean.
 Selects the compression mode for encode (default lossless). Decode, validate and
 transcode accept lossless only; near-lossless or lossy on those verbs returns 4.
 .TP
-.B \-\-backend scalar
-The only backend; any other name returns 4.
+.B \-\-backend auto|scalar|accelerated
+Selects the execution backend (default auto). Unavailable or unknown backends return 4.
 .TP
 .B \-\-copy-policy require-sharing|allow-copy
 Accepted; neither policy copies on this path.
@@ -181,4 +181,4 @@ No index refresh is needed for direct lookup; no sudo runs automatically.
 .SH SEE ALSO
 .BR man (1)
 .PP
-CLI.md, TRANSCODING.md and Documentation/MILESTONE7.md in the SwiftJ2K repository.
+CLI.md, TRANSCODING.md, Documentation/MILESTONE8.md and Documentation/MILESTONE9.md in the SwiftJ2K repository.

@@ -102,9 +102,7 @@ public struct Transcoder: Sendable {
               data.count <= options.resourceLimits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Compressed input exceeds the admission budget.")
         }
-        if case .required(.accelerated) = options.executionPolicy {
-            throw CodecError(.backendUnavailable, "No accelerated backend is implemented.")
-        }
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
         let inputCopyBytes = try checkedAdd(32, data.count)
         let inputResidentBytes = try checkedAdd(data.count, inputCopyBytes)
         guard data.count <= options.resourceLimits.maximumCompressedBytes,
@@ -143,6 +141,7 @@ public struct Transcoder: Sendable {
             codecOptions: configuration.codecOptions,
             metadataPolicy: options.metadataPolicy,
             limits: options.resourceLimits,
+            backend: resolvedBackend.backend,
             progress: options.progress
         )
         bytes = []
@@ -192,7 +191,8 @@ public struct Transcoder: Sendable {
         try Task.checkCancellation()
         let elapsed = clock.now - started
         let report = OperationReport(
-            backend: .scalarCPU,
+            backend: resolvedBackend.backend,
+            fallbackReason: resolvedBackend.fallbackReason,
             fidelity: .exactSamples,
             copyEvents: [],
             pixelAllocationCount: 0,

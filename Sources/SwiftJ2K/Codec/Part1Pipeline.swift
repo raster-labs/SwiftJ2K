@@ -304,6 +304,7 @@ enum Part1Pipeline {
         profile: Part1Profile,
         into destination: ImageDestination,
         limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
         progress: (@Sendable (ProgressUpdate) -> Void)?,
         paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)? = nil,
         channelPermutation: [Int]? = nil
@@ -367,7 +368,7 @@ enum Part1Pipeline {
         do {
             return try decodeAdmitted(
                 bytes: bytes, profile: profile, into: destination,
-                workspace: workspace, work: work, progress: progress,
+                workspace: workspace, work: work, backend: backend, progress: progress,
                 paletteMapping: paletteMapping,
                 channelPermutation: channelPermutation,
                 outputComponentCount: outputComponentCount,
@@ -385,6 +386,7 @@ enum Part1Pipeline {
         into destination: ImageDestination,
         workspace: Int,
         work: WorkGuard,
+        backend: Backend,
         progress: (@Sendable (ProgressUpdate) -> Void)?,
         paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)?,
         channelPermutation: [Int]?,
@@ -476,9 +478,10 @@ enum Part1Pipeline {
                                             let placeholderSets = (contribution.passes - 1) / 3
                                             let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
                                             let rawBlock = contribution.segments.first?.data ?? []
-                                            let coeffs = try HTBlockDecoder.decodeCleanup(
+                                            let coeffs = try AcceleratedCodec.decodeHTCleanup(
                                                 block: rawBlock, width: block.width, height: block.height,
-                                                kMax: mb, missingMSBs: effectiveMissingMSBs
+                                                kMax: mb, missingMSBs: effectiveMissingMSBs,
+                                                backend: backend
                                             )
                                             for row in 0..<block.height {
                                                 let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
@@ -487,7 +490,7 @@ enum Part1Pipeline {
                                                 }
                                             }
                                         } else {
-                                            let (coeffs64, _) = try BitPlaneCoder.decodeRich(
+                                            var (coeffs64, _) = try BitPlaneCoder.decodeRich(
                                                 segments: contribution.segments,
                                                 width: block.width, height: block.height,
                                                 orientation: band.orientation,
@@ -496,14 +499,17 @@ enum Part1Pipeline {
                                                 magnitudeBitPlanes: effectiveMB,
                                                 style: style
                                             )
+                                            if comp.roiShift > 0 {
+                                                try AcceleratedCodec.descaleROICoefficients(
+                                                    coefficients: &coeffs64,
+                                                    shift: comp.roiShift,
+                                                    backend: backend
+                                                )
+                                            }
                                             for row in 0..<block.height {
                                                 let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
                                                 for col in 0..<block.width {
-                                                    let rawVal = coeffs64[row * block.width + col]
-                                                    let descaled = comp.roiShift > 0
-                                                        ? ROICoding.descaleCoefficient(rawVal, shift: comp.roiShift)
-                                                        : rawVal
-                                                    plane[planeRow + col] = Int32(clamping: descaled)
+                                                    plane[planeRow + col] = Int32(clamping: coeffs64[row * block.width + col])
                                                 }
                                             }
                                         }
@@ -514,17 +520,18 @@ enum Part1Pipeline {
                                 }
                             }
                         }
-                        try Wavelet53.inverse(
+                        try AcceleratedCodec.inverseWavelet53(
                             plane: &plane, stride: stride,
                             x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1,
                             levels: comp.codingStyle.decompositionLevels,
+                            backend: backend,
                             cancellation: work.check
                         )
                         intPlanes.append(plane)
                     }
 
                     if tile.defaultCodingStyle.componentTransform == 1 && intPlanes.count >= 3 {
-                        ColourTransform.inverseRCT(planes: &intPlanes)
+                        try AcceleratedCodec.inverseRCT(planes: &intPlanes, backend: backend)
                     }
 
                     for outC in 0..<outputComponentCount {
@@ -622,18 +629,20 @@ enum Part1Pipeline {
 
                         if comp.codingStyle.reversible {
                             var intPlane = plane.map { Int32($0.rounded()) }
-                            try Wavelet53.inverse(
+                            try AcceleratedCodec.inverseWavelet53(
                                 plane: &intPlane, stride: stride,
                                 x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1,
                                 levels: comp.codingStyle.decompositionLevels,
+                                backend: backend,
                                 cancellation: work.check
                             )
                             plane = intPlane.map { Double($0) }
                         } else {
-                            try Wavelet97.inverse(
+                            try AcceleratedCodec.inverseWavelet97(
                                 plane: &plane, stride: stride,
                                 x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: tile.y1,
                                 levels: comp.codingStyle.decompositionLevels,
+                                backend: backend,
                                 cancellation: work.check
                             )
                         }
@@ -647,12 +656,12 @@ enum Part1Pipeline {
                                 doublePlanes[1].map { Int32($0.rounded()) },
                                 doublePlanes[2].map { Int32($0.rounded()) }
                             ]
-                            ColourTransform.inverseRCT(planes: &rctPlanes)
+                            try AcceleratedCodec.inverseRCT(planes: &rctPlanes, backend: backend)
                             doublePlanes[0] = rctPlanes[0].map { Double($0) }
                             doublePlanes[1] = rctPlanes[1].map { Double($0) }
                             doublePlanes[2] = rctPlanes[2].map { Double($0) }
                         } else {
-                            ColourTransform.inverseICT(planes: &doublePlanes)
+                            AcceleratedCodec.inverseICT(planes: &doublePlanes, backend: backend)
                         }
                     }
 
@@ -698,6 +707,7 @@ enum Part1Pipeline {
         image: Image,
         configuration: EncoderConfiguration,
         limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
         progress: (@Sendable (ProgressUpdate) -> Void)?
     ) throws -> ([UInt8], Int) {
         let descriptor = image.descriptor
@@ -1007,13 +1017,13 @@ enum Part1Pipeline {
                 if useReversibleWavelet && expandedQCD.style == .none {
                     var workingPlanes = originalIntTile
                     if componentTransform == 1 && componentCount >= 3 {
-                        ColourTransform.forwardRCT(planes: &workingPlanes)
+                        try AcceleratedCodec.forwardRCT(planes: &workingPlanes, backend: backend)
                     }
                     for c in 0..<componentCount {
-                        try Wavelet53.forward(
+                        try AcceleratedCodec.forwardWavelet53(
                             plane: &workingPlanes[c], stride: tw,
                             x0: tx0, x1: tx1, y0: ty0, y1: ty1,
-                            levels: levels, cancellation: work.check
+                            levels: levels, backend: backend, cancellation: work.check
                         )
                     }
 
@@ -1050,14 +1060,14 @@ enum Part1Pipeline {
                             // Verify reconstruction error bound on this tile:
                             var reconPlanes = trialPlanes
                             for c in 0..<componentCount {
-                                try Wavelet53.inverse(
+                                try AcceleratedCodec.inverseWavelet53(
                                     plane: &reconPlanes[c], stride: tw,
                                     x0: tx0, x1: tx1, y0: ty0, y1: ty1,
-                                    levels: levels, cancellation: work.check
+                                    levels: levels, backend: backend, cancellation: work.check
                                 )
                             }
                             if componentTransform == 1 && componentCount >= 3 {
-                                ColourTransform.inverseRCT(planes: &reconPlanes)
+                                try AcceleratedCodec.inverseRCT(planes: &reconPlanes, backend: backend)
                             }
                             var worstError = 0
                             outerCheck: for c in 0..<componentCount {
@@ -1092,28 +1102,28 @@ enum Part1Pipeline {
                     if componentTransform == 1 && componentCount >= 3 {
                         if useReversibleWavelet {
                             var rctPlanes = [originalIntTile[0], originalIntTile[1], originalIntTile[2]]
-                            ColourTransform.forwardRCT(planes: &rctPlanes)
+                            try AcceleratedCodec.forwardRCT(planes: &rctPlanes, backend: backend)
                             doublePlanes[0] = rctPlanes[0].map { Double($0) }
                             doublePlanes[1] = rctPlanes[1].map { Double($0) }
                             doublePlanes[2] = rctPlanes[2].map { Double($0) }
                         } else {
-                            ColourTransform.forwardICT(planes: &doublePlanes)
+                            AcceleratedCodec.forwardICT(planes: &doublePlanes, backend: backend)
                         }
                     }
                     for c in 0..<componentCount {
                         if useReversibleWavelet {
                             var intP = doublePlanes[c].map { Int32($0.rounded()) }
-                            try Wavelet53.forward(
+                            try AcceleratedCodec.forwardWavelet53(
                                 plane: &intP, stride: tw,
                                 x0: tx0, x1: tx1, y0: ty0, y1: ty1,
-                                levels: levels, cancellation: work.check
+                                levels: levels, backend: backend, cancellation: work.check
                             )
                             doublePlanes[c] = intP.map { Double($0) }
                         } else {
-                            try Wavelet97.forward(
+                            try AcceleratedCodec.forwardWavelet97(
                                 plane: &doublePlanes[c], stride: tw,
                                 x0: tx0, x1: tx1, y0: ty0, y1: ty1,
-                                levels: levels, cancellation: work.check
+                                levels: levels, backend: backend, cancellation: work.check
                             )
                         }
                     }
@@ -1130,17 +1140,16 @@ enum Part1Pipeline {
                                 let step = expandedQCD.style == .none
                                     ? 1.0
                                     : Quantization.stepSize(exponent: eps, mantissa: mu, precision: compRangePrecision, gain: band.gain)
-                                let invStep = 1.0 / step
                                 let mb = max(1, expandedQCD.guardBits + eps - 1)
-                                let maxMag = (Int64(1) << mb) - 1
-                                for row in 0..<band.height {
-                                    let rBase = (band.planeY + row) * tw + band.planeX
-                                    for col in 0..<band.width {
-                                        let val = doublePlanes[c][rBase + col]
-                                        let qMag = min(maxMag, Int64(floor(abs(val) * invStep)))
-                                        quantisedPlanes[c][rBase + col] = val < 0 ? -qMag : qMag
-                                    }
-                                }
+                                AcceleratedCodec.quantizeSubband(
+                                    doublePlane: doublePlanes[c],
+                                    quantisedPlane: &quantisedPlanes[c],
+                                    stride: tw,
+                                    band: band,
+                                    step: step,
+                                    mb: mb,
+                                    backend: backend
+                                )
                             }
                         }
                     }
@@ -1163,17 +1172,15 @@ enum Part1Pipeline {
                                     )
                                     guard bounds.x1 > bounds.x0 && bounds.y1 > bounds.y0 else { continue }
                                     let mb = max(1, expandedQCD.guardBits + expandedQCD.exponents[band.quantizationIndex] - 1)
-                                    let maxShiftedMag = (Int64(1) << min(61, mb + roiShift)) - 1
-                                    for sy in bounds.y0..<bounds.y1 {
-                                        let rowIdx = (band.planeY + (sy - band.y0)) * tw + band.planeX + (bounds.x0 - band.x0)
-                                        for offset in 0..<(bounds.x1 - bounds.x0) {
-                                            let v = quantisedPlanes[c][rowIdx + offset]
-                                            guard v != 0 else { continue }
-                                            let mag = v < 0 ? -v : v
-                                            let shifted = min(maxShiftedMag, mag << roiShift)
-                                            quantisedPlanes[c][rowIdx + offset] = v < 0 ? -shifted : shifted
-                                        }
-                                    }
+                                    AcceleratedCodec.scaleROISubband(
+                                        quantisedPlane: &quantisedPlanes[c],
+                                        stride: tw,
+                                        band: band,
+                                        bounds: bounds,
+                                        roiShift: roiShift,
+                                        mb: mb,
+                                        backend: backend
+                                    )
                                 }
                             }
                         }
@@ -1231,11 +1238,12 @@ enum Part1Pipeline {
                                     var enc: CodeBlockEncoding
                                     if isHT {
                                         let coeffs32 = blockCoeffs.map { Int32(clamping: $0) }
-                                        let coded = try HTBlockEncoder.encodeCleanup(
+                                        let coded = try AcceleratedCodec.encodeHTCleanup(
                                             coefficients: coeffs32,
                                             width: block.width,
                                             height: block.height,
-                                            bandShift: 0
+                                            bandShift: 0,
+                                            backend: backend
                                         )
                                         enc = CodeBlockEncoding(
                                             data: coded,
