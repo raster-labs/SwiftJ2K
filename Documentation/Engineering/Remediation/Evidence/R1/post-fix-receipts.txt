@@ -235,7 +235,10 @@ Audit state: Developer submission evidence ONLY (`submitted`); Codex independent
 - Preserved Codex Independent Audit Receipt for `64c980e670c0d7f9cfed64fb2a3fe2b741b33f30` (`/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/remediation-20261029T093409Z`: `independent-audit-result.json`, `independent-focused-tests.log`, `f05-test-static-review.json`, `volume-growth-static-review.json`, `independent-identities.json`):
   - Verified Code Fixes (`24/24` passed; zero runtime allocation failures at `64c980e`):
     - Executed `24` focused checks (`19` submitted Phase R1 `@Test` declarations + `5` independent checks): `24/24` passed, including the prior `GrowthLease` copy-overlap and exact `22`-byte `J3DS` header failures (`volume-growth-static-review.json`).
-    - Prior `M12-CX-01` TIFF (`CLIImageIO.swift`), `M6-AUD-006` / `R1-CODE-02` parser (`Codestream.swift`), `JP3DEncoder.swift`, `R1RemediationTests.swift`, and `R1JPIPRemediationTests.swift` identities remained unchanged by SHA-256 (`independent-identities.json`) and continue to pass untouched. No new production allocation failure occurred or is claimed.
+    - Commit-to-commit file SHA-256 lineage vs per-run frozen-input integrity:
+      * Unchanged across `4585919 -> 64c980e -> 347b783`: `CLIImageIO.swift` (`32b72558...`), `Codestream.swift` (`b5f13fc2...`), `R1RemediationTests.swift` (`8aa1bd4a...`), and `R1JPIPRemediationTests.swift` (`65f5cc73...`).
+      * Changed between `4585919` and `64c980e`, then unchanged from `64c980e` into `347b783`: `JP3DEncoder.swift` (`3af722f0efaca1776619489300da8e9584e90c37a9118a0da7be5aff24e2fdca` at `4585919` -> `3587987344e65efd578acd1d2f9b2c03da4f875a7f95d0bbfefbb594afd9679a` at `64c980e` and `347b783`, updated in `64c980e` for lossy `withGrowth` / in-place `appendEncodedQuantizedCoefficients`).
+      * Per-run frozen-snapshot check (`independent-identities.json`): `"frozen_tracked_files_unchanged": true` records that all frozen tracked repository inputs in the audited snapshot remained unchanged throughout the audit run itself. No new production allocation failure occurred or is claimed.
   - Static `F05` Qualification/Verification Risks Identified at `64c980e` (`R1` unaccepted; `R2` CLOSED):
     1. `R1VolumeRemediationTests.swift` around `823–917` (`f05-test-static-review.json`): `onWorkerExit` runs in a `defer` inside `encodeTileStatic` (and `onChildTaskReturned` inside the child closure) before Swift's runtime enqueues child completions into `ThrowingTaskGroup`, so asserting exact `2` `"jp3d-retained-tile"` promotions assumed both successful results reached `ThrowingTaskGroup` before Worker 2's thrown error.
     2. `JP3DSliceStackCodec.swift` lines `520–563` and `625/645/660`: `JP3DLiveBudgetTracker` snapshotted state under its mutex and called `notifyBudgetUpdate` after unlocking, allowing concurrent snapshots to arrive out of order and overwrite newer live counters or final zeros in `VolumeConcurrencyTelemetry.Recorder`.
@@ -265,14 +268,14 @@ Audit state: Developer submission evidence ONLY (`submitted`); Codex independent
      - `(cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt)` -> Exit `0` (`7/7 OK`)
      - `git status --short -- Documentation/Engineering/Swift64/` -> Exit `0` (empty; byte-identical)
      - `git diff 24b18814c29362f3726321d6618d460da3606e8d -- Sources/ | grep -E "^\+.*(@unchecked|fatalError|precondition\(|try!|as!)"` -> `0` matches (`CLEAN_DIFF_NO_UNSAFE_OR_TRAPS`)
-  4. SHA-256 digests of tracked Phase R1 source and test files at post-`64c980e` checkpoint:
-     - `Sources/SwiftJ2KCLI/CLIImageIO.swift`: `32b725582bb01ddbd5c5363aeb4f13cf747b03c7cd0a7ab967991786dfb2b45d` (unchanged from `4585919` / `64c980e`)
-     - `Sources/SwiftJ2K/Codec/Codestream.swift`: `b5f13fc2392fae3bf466a9df24c176e077272208966d851c9135ac1b681b74ca` (unchanged from `4585919` / `64c980e`)
-     - `Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift`: `e2d18cb8c593c18750586adc3103e1513e7ffcd53433b3677a30afecf072b0e5`
-     - `Sources/SwiftJ2K3D/JP3DEncoder.swift`: `3587987344e65efd578acd1d2f9b2c03da4f875a7f95d0bbfefbb594afd9679a` (unchanged from `64c980e`)
-     - `Tests/SwiftJ2KTests/R1RemediationTests.swift`: `8aa1bd4a396e41880a84e194f6a5331bb7d9c69a04a050ba74e5a7e3c0146547` (unchanged from `4585919` / `64c980e`)
-     - `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift`: `d832e6e4dd86ddfb841a6c97bb9a709906d301f3ffd5eda30c84a7fbd795c338`
-     - `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift`: `65f5cc7340e15e121def561da39b4fdfc782cbd66fedef613dd37c6ca92fd3fc` (unchanged from `4585919` / `64c980e`)
-  5. Remaining blocked/unexecuted gate and Phase R2 handoff boundary:
-     - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED locally** (no waiver; never inferred from macOS).
-     - Phase R2 remains **CLOSED** in this conversation and is authorised to start in **new** Antigravity and Codex chats via Codex-arranged handoff **only after** full Phase R1 acceptance.
+  4. SHA-256 digests of tracked Phase R1 source and test files at post-`64c980e` checkpoint (`347b783a4239ac485f67741b42c4dd8f1f565063`):
+     - `Sources/SwiftJ2KCLI/CLIImageIO.swift`: `32b725582bb01ddbd5c5363aeb4f13cf747b03c7cd0a7ab967991786dfb2b45d` (unchanged across `4585919 -> 64c980e -> 347b783`)
+     - `Sources/SwiftJ2K/Codec/Codestream.swift`: `b5f13fc2392fae3bf466a9df24c176e077272208966d851c9135ac1b681b74ca` (unchanged across `4585919 -> 64c980e -> 347b783`)
+     - `Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift`: `e2d18cb8c593c18750586adc3103e1513e7ffcd53433b3677a30afecf072b0e5` (updated from `b9cfd0e6...` at `64c980e` in `347b783`)
+     - `Sources/SwiftJ2K3D/JP3DEncoder.swift`: `3587987344e65efd578acd1d2f9b2c03da4f875a7f95d0bbfefbb594afd9679a` (changed from `3af722f0efaca1776619489300da8e9584e90c37a9118a0da7be5aff24e2fdca` at `4585919` to `3587987344...` at `64c980e`; unchanged from `64c980e` into `347b783`)
+     - `Tests/SwiftJ2KTests/R1RemediationTests.swift`: `8aa1bd4a396e41880a84e194f6a5331bb7d9c69a04a050ba74e5a7e3c0146547` (unchanged across `4585919 -> 64c980e -> 347b783`)
+     - `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift`: `d832e6e4dd86ddfb841a6c97bb9a709906d301f3ffd5eda30c84a7fbd795c338` (updated from `09d0b489...` at `64c980e` in `347b783`)
+     - `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift`: `65f5cc7340e15e121def561da39b4fdfc782cbd66fedef613dd37c6ca92fd3fc` (unchanged across `4585919 -> 64c980e -> 347b783`)
+  5. Remaining unexecuted gate and Phase R2 handoff boundary:
+     - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED** (no local Linux setup per owner direction; owner directed Linux verification to GitHub Actions CI via Codex-arranged minimal branch publication / draft PR once local independent audit passes; no push performed yet, and never inferred from macOS).
+     - Phase R2 remains **CLOSED** in this conversation pending all Phase R1 gates (including exact-head GitHub CI Linux verification) and is authorised to start in **new** Antigravity and Codex chats via Codex-arranged handoff **only after** full Phase R1 acceptance.
