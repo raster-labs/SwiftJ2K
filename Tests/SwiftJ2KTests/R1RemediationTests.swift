@@ -250,7 +250,7 @@ private func makeSyntheticMultiStripLittleEndianTIFF(
 }
 
 /// Generates `count` deterministic bytes `UInt8((i * multiplier + addend) & 255)` for `i in 0..<count`
-/// using explicitly typed scalar statements so Swift 6.2 / 6.3 / 6.4 type-check in O(1) time.
+/// using explicitly typed scalar statements without nested generic range/closure expressions.
 private func makeLinearTestBytes(count: Int, multiplier: Int, addend: Int) -> [UInt8] {
     var result: [UInt8] = []
     result.reserveCapacity(count)
