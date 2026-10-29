@@ -723,6 +723,7 @@ public actor JP3DEncoder {
                 let tile = tiles[idx]
                 nextIndex += 1
                 group.addTask {
+                    defer { VolumeConcurrencyTelemetry.recorder?.recordChildTaskReturned(tileIndex: idx) }
                     let output = try await Self.encodeTileStatic(
                         tileIndex: idx,
                         tile: tile,
@@ -771,6 +772,7 @@ public actor JP3DEncoder {
                     let tile = tiles[spawnIdx]
                     nextIndex += 1
                     group.addTask {
+                        defer { VolumeConcurrencyTelemetry.recorder?.recordChildTaskReturned(tileIndex: spawnIdx) }
                         let output = try await Self.encodeTileStatic(
                             tileIndex: spawnIdx,
                             tile: tile,
@@ -805,7 +807,7 @@ public actor JP3DEncoder {
     ) async throws -> JP3DEncodedTileOutput {
         try work.check()
         try await VolumeConcurrencyTelemetry.recorder?.enter(tileIndex: tileIndex)
-        defer { VolumeConcurrencyTelemetry.recorder?.exit() }
+        defer { VolumeConcurrencyTelemetry.recorder?.exit(tileIndex: tileIndex) }
 
         let primaryComp = volume.components[0]
         let effectiveLimits = limits ?? .default
@@ -971,50 +973,64 @@ public actor JP3DEncoder {
         )
         var tileBytes = Data()
 
-        for comp in 0..<volume.componentCount {
-            try work.check()
-            let extracted = try decomposer.extractTileData(
-                from: volume, tile: tile, componentIndex: comp
-            )
+        do {
+            for comp in 0..<volume.componentCount {
+                try work.check()
+                let extracted = try decomposer.extractTileData(
+                    from: volume, tile: tile, componentIndex: comp
+                )
 
-            let decomposition = try await wavelet.forward(
-                data: extracted.data,
-                width: tile.width,
-                height: tile.height,
-                depth: tile.depth
-            )
+                let decomposition = try await wavelet.forward(
+                    data: extracted.data,
+                    width: tile.width,
+                    height: tile.height,
+                    depth: tile.depth
+                )
 
-            let maxLevel = max(
-                decomposition.levelsX,
-                max(decomposition.levelsY, decomposition.levelsZ)
-            )
-            let quantized = rateController.quantize(
-                coefficients: decomposition.coefficients.data,
-                tile: tile,
-                componentIndex: comp,
-                bitDepth: volume.components[comp].bitDepth,
-                decompositionLevels: maxLevel
-            )
+                let maxLevel = max(
+                    decomposition.levelsX,
+                    max(decomposition.levelsY, decomposition.levelsZ)
+                )
+                let quantized = rateController.quantize(
+                    coefficients: decomposition.coefficients.data,
+                    tile: tile,
+                    componentIndex: comp,
+                    bitDepth: volume.components[comp].bitDepth,
+                    decompositionLevels: maxLevel
+                )
 
-            let compPayloadBytes = 4 + max(0, quantized.coefficients.count) * 4
-            try outReservation.grow(
-                by: compPayloadBytes,
-                extraTransientBytes: tileBytes.count,
-                checkCompressedLimit: true,
-                stage: "jp3d-lossy-tile-output",
-                message: "Volumetric lossy encoded tile payload exceeds operation resource limits."
-            )
-            tileBytes.append(Self.encodeQuantizedCoefficients(quantized))
+                let compPayloadBytes = 4 + max(0, quantized.coefficients.count) * 4
+                let oldCount = tileBytes.count
+                try outReservation.withGrowth(
+                    by: compPayloadBytes,
+                    extraTransientBytes: oldCount,
+                    checkCompressedLimit: true,
+                    stage: "jp3d-lossy-tile-output",
+                    message: "Volumetric lossy encoded tile payload exceeds operation resource limits."
+                ) {
+                    var grown = Data(capacity: oldCount + compPayloadBytes)
+                    if oldCount > 0 {
+                        grown.append(tileBytes)
+                    }
+                    Self.appendEncodedQuantizedCoefficients(quantized, into: &grown)
+                    tileBytes = grown
+                }
+            }
+        } catch {
+            outReservation.release()
+            throw error
         }
 
         return JP3DEncodedTileOutput(data: tileBytes, reservation: outReservation)
     }
 
-    private static func encodeQuantizedCoefficients(_ quantized: JP3DQuantizedTile) -> Data {
+    private static func appendEncodedQuantizedCoefficients(_ quantized: JP3DQuantizedTile, into output: inout Data) {
         let coeffs = quantized.coefficients
         let count = coeffs.count
+        let startOffset = output.count
         guard count > 0 else {
-            return Data(repeating: 0, count: 4)
+            output.count = startOffset + 4
+            return
         }
 
         var maxMag: UInt32 = 0
@@ -1036,23 +1052,23 @@ public actor JP3DEncoder {
             nonZeroCount = nonZeroCount &+ 1
         }
 
-        var output = Data(capacity: 4 + count * 4)
-        output.append(zeroBitPlanes)
-        output.append(activeBitPlanes)
-        output.append(UInt8(truncatingIfNeeded: nonZeroCount >> 8))
-        output.append(UInt8(truncatingIfNeeded: nonZeroCount))
-
-        let baseOffset = output.count
-        output.append(Data(count: count * 4))
+        output.count = startOffset + 4 + count * 4
         output.withUnsafeMutableBytes { rawBuf in
-            guard let base = rawBuf.baseAddress else { return }
-            let dst = (base + baseOffset).assumingMemoryBound(to: Int32.self)
+            guard let base = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+            base[startOffset] = zeroBitPlanes
+            base[startOffset + 1] = activeBitPlanes
+            base[startOffset + 2] = UInt8(truncatingIfNeeded: nonZeroCount >> 8)
+            base[startOffset + 3] = UInt8(truncatingIfNeeded: nonZeroCount)
+            var bytePos = startOffset + 4
             for i in 0..<count {
-                dst[i] = coeffs[i].bigEndian
+                let u = UInt32(bitPattern: coeffs[i])
+                base[bytePos] = UInt8(truncatingIfNeeded: u >> 24)
+                base[bytePos + 1] = UInt8(truncatingIfNeeded: u >> 16)
+                base[bytePos + 2] = UInt8(truncatingIfNeeded: u >> 8)
+                base[bytePos + 3] = UInt8(truncatingIfNeeded: u)
+                bytePos += 4
             }
         }
-
-        return output
     }
 
     internal static func serialiseFloatSamples(

@@ -14,6 +14,7 @@
 // - F13 (post-.completed cancellation across VolumeEncoder, VolumeDecoder, and VolumeTranscoder)
 
 import Foundation
+import Synchronization
 import Testing
 @testable import SwiftJ2K
 @testable import SwiftJ2K3D
@@ -440,7 +441,34 @@ struct R1VolumeRemediationTests {
             maximumWorkers: 2
         )
         let runtimeFailStorage = StorageTelemetry.Recorder()
-        let runtimeFailConcurrency = VolumeConcurrencyTelemetry.Recorder(artificialDelayMilliseconds: 15)
+        let waveBarriers = (0..<8).map { _ in VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2) }
+        let waveParentGates = (0..<8).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
+        let waveExitCounts = Mutex(Array(repeating: 0, count: 8))
+        let runtimeFailConcurrency = VolumeConcurrencyTelemetry.Recorder(
+            onWorkerEnter: { tileIdx, _ in
+                if let idx = tileIdx, idx / 2 < waveBarriers.count {
+                    await waveBarriers[idx / 2].arriveAndWait()
+                }
+            },
+            onWorkerExit: { tileIdx in
+                if let idx = tileIdx, idx / 2 < waveParentGates.count {
+                    let wave = idx / 2
+                    let done = waveExitCounts.withLock { counts -> Int in
+                        counts[wave] += 1
+                        return counts[wave]
+                    }
+                    if done >= 2 {
+                        waveParentGates[wave].open()
+                    }
+                }
+            },
+            onBeforeParentConsume: { step, _ in
+                let wave = step / 2
+                if step % 2 == 0, wave < waveParentGates.count {
+                    await waveParentGates[wave].wait()
+                }
+            }
+        )
         do {
             _ = try await StorageTelemetry.$recorder.withValue(runtimeFailStorage) {
                 try await VolumeConcurrencyTelemetry.$recorder.withValue(runtimeFailConcurrency) {
@@ -467,7 +495,20 @@ struct R1VolumeRemediationTests {
             maximumWorkspaceBytes: 8192,
             maximumWorkers: 2
         )
-        let encConcurrency = VolumeConcurrencyTelemetry.Recorder(artificialDelayMilliseconds: 15)
+        let encFirstTwo = VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2)
+        let encStarted = Mutex(0)
+        let encConcurrency = VolumeConcurrencyTelemetry.Recorder(
+            onWorkerEnter: { _, _ in
+                let order = encStarted.withLock { c -> Int in
+                    let cur = c
+                    c += 1
+                    return cur
+                }
+                if order < 2 {
+                    await encFirstTwo.arriveAndWait()
+                }
+            }
+        )
         let encoded16 = try await VolumeConcurrencyTelemetry.$recorder.withValue(encConcurrency) {
             try await multiTileEncoder.encode(
                 vol32,
@@ -480,7 +521,20 @@ struct R1VolumeRemediationTests {
         #expect(encConcurrency.liveTransientBytes == 0)
         #expect(encConcurrency.retainedBytes == 16 * 89)
 
-        let decConcurrency = VolumeConcurrencyTelemetry.Recorder(artificialDelayMilliseconds: 15)
+        let decFirstTwo = VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2)
+        let decStarted = Mutex(0)
+        let decConcurrency = VolumeConcurrencyTelemetry.Recorder(
+            onWorkerEnter: { _, _ in
+                let order = decStarted.withLock { c -> Int in
+                    let cur = c
+                    c += 1
+                    return cur
+                }
+                if order < 2 {
+                    await decFirstTwo.arriveAndWait()
+                }
+            }
+        )
         let decoded16 = try await VolumeConcurrencyTelemetry.$recorder.withValue(decConcurrency) {
             try await decoder.decode(
                 encoded16.data,
@@ -765,8 +819,8 @@ struct R1VolumeRemediationTests {
     @Test("F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths")
     func childTileOutputReservationTransferAndDelayedParentConsumption() async throws {
         // --- 1. 3-tile 32-bit J3DI (6x2x2 with 2x2x2 tiling -> 3 tiles of 89 B each, maximumWorkers = 3) ---
-        // Workers 0 and 1 (0 ms delay) complete immediately and sit unconsumed inside ThrowingTaskGroup while the parent
-        // delays before group.next() (45 ms). Worker 2 wakes at 18 ms while Workers 0 and 1 have ALREADY returned.
+        // Workers 0 and 1 complete and open `firstTwoExited` while the parent waits on `thirdExited` before `group.next()`.
+        // Worker 2 wakes on `firstTwoExited` only after Workers 0 and 1 have returned into `ThrowingTaskGroup`.
         let samples24: [Int64] = (0..<24).map { ($0 % 2 == 0) ? 0 : Int64(UInt32.max) }
         let vol3TilesJ3DI = J2KVolume(
             width: 6,
@@ -795,10 +849,39 @@ struct R1VolumeRemediationTests {
         )
 
         // 1a. maximumCompressedBytes = 220 (> 171 B preflight floor; admits 2 * 89 = 178 B queued unconsumed outputs,
-        // then rejects Worker 2's 89 B at 267 > 220 BEFORE parent consumes anything from group.next()):
+        // then rejects Worker 2's 89 B at 267 > 220 BEFORE parent consumes anything from group.next()).
+        // Explicit phase barriers (zero timing sleeps):
+        //   - Workers 0 & 1 complete and open `tiles0And1Exited` in `onWorkerExit`.
+        //   - Worker 2 waits on `tiles0And1Exited` in `onWorkerEnter`, captures `snapTile2`, attempts its 89 B output
+        //     reservation (denied at 267 > 220), and opens `tile2Exited` in `onWorkerExit`.
+        //   - Parent waits on `tile2Exited` in `onBeforeParentConsume(step: 0)` before calling `group.next()`.
+        let tiles0And1Exited = VolumeConcurrencyTelemetry.PhaseGate()
+        let tile2Exited = VolumeConcurrencyTelemetry.PhaseGate()
+        let firstTwoExitCount = Mutex(0)
         let denyQueuedCompressedRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { $0 < 2 ? 0 : 18 },
-            parentConsumeDelayMilliseconds: 45
+            onWorkerEnter: { tileIdx, _ in
+                if tileIdx == 2 {
+                    await tiles0And1Exited.wait()
+                }
+            },
+            onWorkerExit: { tileIdx in
+                if tileIdx == 0 || tileIdx == 1 {
+                    let done = firstTwoExitCount.withLock { c -> Int in
+                        c += 1
+                        return c
+                    }
+                    if done >= 2 {
+                        tiles0And1Exited.open()
+                    }
+                } else if tileIdx == 2 {
+                    tile2Exited.open()
+                }
+            },
+            onBeforeParentConsume: { step, _ in
+                if step == 0 {
+                    await tile2Exited.wait()
+                }
+            }
         )
         let denyQueuedStorageRec = StorageTelemetry.Recorder()
         do {
@@ -819,49 +902,69 @@ struct R1VolumeRemediationTests {
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
         }
-        // Snapshot inside Worker 2 right after its 18 ms sleep proves Workers 0 & 1 had already returned
-        // (currentInFlight == 1), parent had consumed 0 tiles (retainedBytes == 0), yet BOTH unconsumed child Data
-        // outputs remained actively charged in liveOutputBytes (2 * 89 = 178 B):
+        // Snapshot inside Worker 2 right after `tiles0And1Exited.wait()` proves Workers 0 & 1 had already exited
+        // (`currentInFlight == 1`), parent had consumed 0 tiles (`retainedBytes == 0`), yet BOTH unconsumed child Data
+        // outputs remained actively charged in `liveOutputBytes` (`2 * 89 = 178 B`):
         let snapTile2 = try #require(denyQueuedCompressedRec.snapshotAfterEnterDelay(forTile: 2))
         #expect(snapTile2.currentInFlight == 1)
         #expect(snapTile2.retainedBytes == 0)
         #expect(snapTile2.liveOutputBytes == 2 * 89)
         #expect(snapTile2.liveTransientBytes == 2 * 89)
         #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 2)
-        // Workers 0 & 1 completed at 0 ms before Worker 2 failed at 18 ms; when parent later woke at 45 ms,
+        // Workers 0 & 1 completed before Worker 2 failed; once `tile2Exited` unblocked the parent,
         // ThrowingTaskGroup yielded the 2 earlier completions before rethrowing Worker 2's pre-allocation denial:
         #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.count == 2)
         #expect(denyQueuedCompressedRec.currentInFlight == 0)
         #expect(denyQueuedCompressedRec.liveOutputBytes == 0)
         #expect(denyQueuedCompressedRec.liveTransientBytes == 0)
 
-        // 1b. Unconsumed-result deinit path: all 3 workers complete within ~8 ms (queuing 3 * 89 = 267 B in
-        // ThrowingTaskGroup), then parent wakes at 50 ms after the 25 ms deadline has elapsed, aborting inside
-        // the first iteration before any tile is promoted to retained ("jp3d-retained-tile" count == 0) so the
-        // remaining queued child results are cleaned up solely via OutputReservation.deinit:
+        // 1b. Unconsumed-result deinit path (deterministic barrier + task cancellation, zero timing sleeps):
+        // All 3 workers complete and return into ThrowingTaskGroup (`allThreeReturned` barrier, queuing 3 * 89 = 267 B
+        // with `retainedBytes == 0`), then parent cancels the child Task inside `onBeforeParentConsume(step: 0)` so
+        // the first iteration throws `CancellationError` at `work.check()` before any tile is promoted to retained
+        // (`"jp3d-retained-tile"` count == 0), leaving the remaining 2 unconsumed child results to clean up solely via
+        // `OutputReservation.deinit`:
+        let allThreeReturned = VolumeConcurrencyTelemetry.PhaseGate()
+        let returnedCount = Mutex(0)
+        let preCancelSnap = Mutex<VolumeConcurrencyTelemetry.Snapshot?>(nil)
         let unconsumedDeinitRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { $0 < 2 ? 0 : 8 },
-            parentConsumeDelayMilliseconds: 50
+            onChildTaskReturned: { _ in
+                let done = returnedCount.withLock { c -> Int in
+                    c += 1
+                    return c
+                }
+                if done >= 3 {
+                    allThreeReturned.open()
+                }
+            },
+            onBeforeParentConsume: { step, rec in
+                if step == 0 {
+                    await allThreeReturned.wait()
+                    preCancelSnap.withLock { $0 = rec.currentSnapshot() }
+                    withUnsafeCurrentTask { $0?.cancel() }
+                }
+            }
         )
         let unconsumedDeinitStorageRec = StorageTelemetry.Recorder()
-        do {
-            _ = try await StorageTelemetry.$recorder.withValue(unconsumedDeinitStorageRec) {
+        let cancelChild = Task {
+            try await StorageTelemetry.$recorder.withValue(unconsumedDeinitStorageRec) {
                 try await VolumeConcurrencyTelemetry.$recorder.withValue(unconsumedDeinitRec) {
                     try await j3diEncoder.encode(
                         vol3TilesJ3DI,
                         options: VolumeEncodeOptions(
-                            resourceLimits: try ResourceLimits(
-                                maximumWorkers: 3,
-                                deadlineSeconds: 0.025
-                            )
+                            resourceLimits: try ResourceLimits(maximumWorkers: 3)
                         )
                     )
                 }
             }
-            Issue.record("Expected elapsed 25 ms deadline to abort parent consumption with unconsumed child outputs queued")
-        } catch let error as CodecError {
-            #expect(error.category == .resourceLimitExceeded)
         }
+        await #expect(throws: CancellationError.self) {
+            _ = try await cancelChild.value
+        }
+        let queuedAll3Snap = try #require(preCancelSnap.withLock { $0 })
+        #expect(queuedAll3Snap.currentInFlight == 0)
+        #expect(queuedAll3Snap.retainedBytes == 0)
+        #expect(queuedAll3Snap.liveOutputBytes == 3 * 89)
         #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 3)
         #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.isEmpty)
         #expect(unconsumedDeinitRec.currentInFlight == 0)
@@ -870,11 +973,13 @@ struct R1VolumeRemediationTests {
 
         // --- 2. maximumWorkspaceBytes boundary on 10-tile 32-bit J3DI (20x2x2, 2x2x2 tiling -> 10 tiles, maximumWorkers = 2) ---
         // Preflight floor = 2 * 473 + 64 * 4 = 1202 B.
-        // Wave-staggered delays (even tile 0 ms, odd tile 15 ms; parent consumes pairs every 30 ms) avoid dual-scratch
-        // overlap during Waves 0..3. After 8 tiles are retained (8 * 89 = 712 B), Tile 8 completes (1185 <= 1230 B)
-        // and sits unconsumed in ThrowingTaskGroup (89 B) while parent delays 45 ms at step 8. Tile 9 wakes at 15 ms:
-        //   - Without unconsumed-output reservation transfer: 712 + 473 = 1185 <= 1230 B (would pass!).
-        //   - With unconsumed-output reservation transfer: 712 + 89 + 473 = 1274 > 1230 B (denied before Tile 9 output!).
+        // Explicit per-tile exit barriers (zero timing sleeps):
+        //   - Odd tile `2k + 1` waits on `tileExited[2k]` before entering, avoiding dual-scratch overlap in Waves 0..3.
+        //   - At even consume step `2k`, parent waits on `tileExited[2k + 1]` and then consumes both `2k` and `2k + 1`.
+        //   - In Wave 4 (`retainedBytes == 8 * 89 = 712 B`), Tile 8 completes (`1185 <= 1230 B`) and sits unconsumed
+        //     (`89 B`) while parent waits on `tileExited[9]`; Tile 9 wakes after `tileExited[8]`:
+        //       * Without unconsumed-output reservation transfer: 712 + 473 = 1185 <= 1230 B (would pass!).
+        //       * With unconsumed-output reservation transfer: 712 + 89 + 473 = 1274 > 1230 B (denied before Tile 9 output!).
         let samples80: [Int64] = (0..<80).map { ($0 % 2 == 0) ? 0 : Int64(UInt32.max) }
         let vol10TilesJ3DI = J2KVolume(
             width: 20,
@@ -892,10 +997,28 @@ struct R1VolumeRemediationTests {
                 )
             ]
         )
-        let denyQueuedWSRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { ($0 % 2 == 1) ? 15 : 0 },
-            parentConsumeDelayForStep: { $0 == 8 ? 45 : (($0 % 2 == 0) ? 30 : 0) }
-        )
+        func makeTenTileWaveRecorder() -> VolumeConcurrencyTelemetry.Recorder {
+            let tileExited = (0..<10).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
+            return VolumeConcurrencyTelemetry.Recorder(
+                onWorkerEnter: { tileIdx, _ in
+                    if let idx = tileIdx, idx % 2 == 1, idx - 1 < tileExited.count {
+                        await tileExited[idx - 1].wait()
+                    }
+                },
+                onWorkerExit: { tileIdx in
+                    if let idx = tileIdx, idx < tileExited.count {
+                        tileExited[idx].open()
+                    }
+                },
+                onBeforeParentConsume: { step, _ in
+                    if step % 2 == 0, step + 1 < tileExited.count {
+                        await tileExited[step + 1].wait()
+                    }
+                }
+            )
+        }
+
+        let denyQueuedWSRec = makeTenTileWaveRecorder()
         do {
             _ = try await VolumeConcurrencyTelemetry.$recorder.withValue(denyQueuedWSRec) {
                 try await j3diEncoder.encode(
@@ -920,11 +1043,8 @@ struct R1VolumeRemediationTests {
         #expect(denyQueuedWSRec.liveOutputBytes == 0)
         #expect(denyQueuedWSRec.liveTransientBytes == 0)
 
-        // Larger-budget control (4096 B) with the exact same delayed-parent-consumption schedule succeeds cleanly:
-        let passQueuedWSRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { ($0 % 2 == 1) ? 15 : 0 },
-            parentConsumeDelayForStep: { $0 == 8 ? 45 : (($0 % 2 == 0) ? 30 : 0) }
-        )
+        // Larger-budget control (4096 B) with the exact same barrier schedule succeeds cleanly:
+        let passQueuedWSRec = makeTenTileWaveRecorder()
         let encoded10 = try await VolumeConcurrencyTelemetry.$recorder.withValue(passQueuedWSRec) {
             try await j3diEncoder.encode(
                 vol10TilesJ3DI,
@@ -943,7 +1063,38 @@ struct R1VolumeRemediationTests {
         #expect(decoded10.volume.components[0].data == vol10TilesJ3DI.components[0].data)
 
         // --- 3. Equivalent J3DS slice-stack (12x4x2 16-bit lossless, 4x4x2 tiling -> 3 tiles)
-        //     and lossy 3D wavelet (6x2x2 8-bit lossy, 2x2x2 tiling -> 3 tiles) reservation transfer ---
+        //     and lossy 3D wavelet (6x2x2 8-bit lossy, 2x2x2 tiling -> 3 tiles) reservation transfer via explicit barriers ---
+        func makeThreeTileQueuedRecorder() -> VolumeConcurrencyTelemetry.Recorder {
+            let firstTwoDone = VolumeConcurrencyTelemetry.PhaseGate()
+            let thirdDone = VolumeConcurrencyTelemetry.PhaseGate()
+            let count = Mutex(0)
+            return VolumeConcurrencyTelemetry.Recorder(
+                onWorkerEnter: { tileIdx, _ in
+                    if tileIdx == 2 {
+                        await firstTwoDone.wait()
+                    }
+                },
+                onWorkerExit: { tileIdx in
+                    if tileIdx == 0 || tileIdx == 1 {
+                        let done = count.withLock { c -> Int in
+                            c += 1
+                            return c
+                        }
+                        if done >= 2 {
+                            firstTwoDone.open()
+                        }
+                    } else if tileIdx == 2 {
+                        thirdDone.open()
+                    }
+                },
+                onBeforeParentConsume: { step, _ in
+                    if step == 0 {
+                        await thirdDone.wait()
+                    }
+                }
+            )
+        }
+
         let j3dsVoxelCount = 96
         let j3dsSamples: [Int64] = (0..<j3dsVoxelCount).map { (idx: Int) -> Int64 in
             let v = (idx * 257 + 19) & 0xFFFF
@@ -974,10 +1125,7 @@ struct R1VolumeRemediationTests {
                 levelsZ: 1
             )
         )
-        let j3dsRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { $0 < 2 ? 0 : 25 },
-            parentConsumeDelayMilliseconds: 55
-        )
+        let j3dsRec = makeThreeTileQueuedRecorder()
         let encodedJ3DS = try await VolumeConcurrencyTelemetry.$recorder.withValue(j3dsRec) {
             try await j3dsEncoder.encode(
                 vol3TilesJ3DS,
@@ -1021,10 +1169,7 @@ struct R1VolumeRemediationTests {
                 levelsZ: 1
             )
         )
-        let lossyRec = VolumeConcurrencyTelemetry.Recorder(
-            workerDelayForTile: { $0 < 2 ? 0 : 25 },
-            parentConsumeDelayMilliseconds: 55
-        )
+        let lossyRec = makeThreeTileQueuedRecorder()
         let encodedLossy3D = try await VolumeConcurrencyTelemetry.$recorder.withValue(lossyRec) {
             try await lossy3DEncoder.encode(
                 lossy3DVol,
@@ -1039,5 +1184,356 @@ struct R1VolumeRemediationTests {
         #expect(lossyRec.retainedBytes > lossySnap2.liveOutputBytes)
         #expect(lossyRec.liveOutputBytes == 0)
         #expect(lossyRec.liveTransientBytes == 0)
+    }
+
+    @Test("F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs")
+    func outputGrowthOverlapAndExactJ3DSHeaderBoundaries() async throws {
+        // --- 1. Concurrent shared-budget output growth overlap with explicit phase barriers ---
+        // Two workers each hold a 20-byte initial output reservation and live 20-byte buffer (`20 + 20 = 40 B`).
+        // Each worker grows its output by 20 B while its old 20-byte buffer remains live (`40 + 40` output + `20 + 20`
+        // simultaneous copy overlap = `120 B`). Must deny under `100 B` and succeed under `120 B`.
+        func runConcurrentGrowthModel(workspaceLimit: Int) async throws -> (
+            workerBDenied: Bool,
+            midOverlapScratchBytes: Int,
+            midOverlapOutputBytes: Int,
+            peakWorkspaceBytes: Int
+        ) {
+            let rec = VolumeConcurrencyTelemetry.Recorder()
+            return try await VolumeConcurrencyTelemetry.$recorder.withValue(rec) {
+                let budget = JP3DLiveBudgetTracker(
+                    baseBytes: 0,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: workspaceLimit)
+                )
+                let resA = try budget.makeOutputReservation(initialBytes: 20, stage: "grow-init-a", message: "init a")
+                let resB = try budget.makeOutputReservation(initialBytes: 20, stage: "grow-init-b", message: "init b")
+                defer {
+                    resA.release()
+                    resB.release()
+                }
+                #expect(budget.currentOutputBytes == 40)
+                #expect(budget.currentScratchBytes == 0)
+
+                let workerAEnteredGrowth = VolumeConcurrencyTelemetry.PhaseGate()
+                let workerBFinishedAttempt = VolumeConcurrencyTelemetry.PhaseGate()
+                let midScratchObserved = Mutex(0)
+                let midOutputObserved = Mutex(0)
+                let bDenied = Mutex(false)
+
+                let taskA = Task {
+                    var bufA = Data(repeating: 0xAA, count: 20)
+                    try await resA.withGrowth(
+                        by: 20,
+                        extraTransientBytes: bufA.count,
+                        stage: "grow-step-a",
+                        message: "a growth"
+                    ) {
+                        var grownA = Data(capacity: 40)
+                        grownA.append(bufA)
+                        grownA.append(Data(repeating: 0xAB, count: 20))
+                        // Signal Worker B while `bufA` (old 20 B) and `grownA` (new 40 B) coexist inside `withGrowth`:
+                        workerAEnteredGrowth.open()
+                        await workerBFinishedAttempt.wait()
+                        bufA = grownA
+                    }
+                    #expect(bufA.count == 40)
+                }
+
+                let taskB = Task {
+                    await workerAEnteredGrowth.wait()
+                    // Worker A's 20 B copy-overlap MUST be actively held in shared `liveScratchBytes` right now:
+                    #expect(budget.currentOutputBytes == 60)
+                    #expect(budget.currentScratchBytes == 20)
+                    var bufB = Data(repeating: 0xBB, count: 20)
+                    do {
+                        try resB.withGrowth(
+                            by: 20,
+                            extraTransientBytes: bufB.count,
+                            stage: "grow-step-b",
+                            message: "b growth"
+                        ) {
+                            var grownB = Data(capacity: 40)
+                            grownB.append(bufB)
+                            grownB.append(Data(repeating: 0xBC, count: 20))
+                            midScratchObserved.withLock { $0 = budget.currentScratchBytes }
+                            midOutputObserved.withLock { $0 = budget.currentOutputBytes }
+                            bufB = grownB
+                        }
+                        #expect(bufB.count == 40)
+                    } catch let error as CodecError {
+                        #expect(error.category == .resourceLimitExceeded)
+                        bDenied.withLock { $0 = true }
+                        midScratchObserved.withLock { $0 = budget.currentScratchBytes }
+                        midOutputObserved.withLock { $0 = budget.currentOutputBytes }
+                    }
+                    workerBFinishedAttempt.open()
+                }
+
+                try await taskA.value
+                try await taskB.value
+                // After both `withGrowth` scopes complete, temporary copy-overlap scratch is 0 while committed outputs remain reserved:
+                #expect(budget.currentScratchBytes == 0)
+                let wasDenied = bDenied.withLock { $0 }
+                #expect(budget.currentOutputBytes == (wasDenied ? 60 : 80))
+                #expect(resA.reservedBytes == 40)
+                #expect(resB.reservedBytes == (wasDenied ? 20 : 40))
+
+                resA.release()
+                resB.release()
+                #expect(budget.currentOutputBytes == 0)
+                #expect(budget.currentScratchBytes == 0)
+                #expect(budget.currentTransientBytes == 0)
+                return (
+                    workerBDenied: wasDenied,
+                    midOverlapScratchBytes: midScratchObserved.withLock { $0 },
+                    midOverlapOutputBytes: midOutputObserved.withLock { $0 },
+                    peakWorkspaceBytes: rec.peakLiveWorkspaceBytes
+                )
+            }
+        }
+
+        let denied100 = try await runConcurrentGrowthModel(workspaceLimit: 100)
+        #expect(denied100.workerBDenied)
+        #expect(denied100.midOverlapScratchBytes == 20)
+        #expect(denied100.midOverlapOutputBytes == 60)
+        #expect(denied100.peakWorkspaceBytes == 80)
+
+        let passed120 = try await runConcurrentGrowthModel(workspaceLimit: 120)
+        #expect(!passed120.workerBDenied)
+        #expect(passed120.midOverlapScratchBytes == 40)
+        #expect(passed120.midOverlapOutputBytes == 80)
+        #expect(passed120.peakWorkspaceBytes == 120)
+
+        // Error/cancellation rollback mid-growth releases BOTH uncommitted output bytes and copy-overlap scratch bytes:
+        let rollbackBudget = JP3DLiveBudgetTracker(
+            baseBytes: 0,
+            limits: try ResourceLimits(maximumWorkspaceBytes: 120)
+        )
+        let rollbackRes = try rollbackBudget.makeOutputReservation(
+            initialBytes: 20,
+            stage: "rollback-init",
+            message: "rollback init"
+        )
+        do {
+            try rollbackRes.withGrowth(
+                by: 20,
+                extraTransientBytes: 20,
+                stage: "rollback-grow",
+                message: "rollback grow"
+            ) {
+                #expect(rollbackBudget.currentOutputBytes == 40)
+                #expect(rollbackBudget.currentScratchBytes == 20)
+                throw CancellationError()
+            }
+            Issue.record("Expected thrown CancellationError inside withGrowth")
+        } catch is CancellationError {
+            // Expected.
+        }
+        #expect(rollbackRes.reservedBytes == 20)
+        #expect(rollbackBudget.currentOutputBytes == 20)
+        #expect(rollbackBudget.currentScratchBytes == 0)
+        rollbackRes.release()
+        #expect(rollbackBudget.currentOutputBytes == 0)
+
+        // --- 2. Exact 22-byte J3DS header and output byte-identity across single, queued, and multiple retained outputs ---
+        #expect(JP3DSliceStackCodec.v1HeaderSize == 21)
+        #expect(JP3DSliceStackCodec.v2HeaderSize == 22)
+
+        let constant32Samples = [[Int64](repeating: 7, count: 32)]
+        func encodeSingleJ3DSTile(
+            budget: JP3DLiveBudgetTracker,
+            limits: ResourceLimits
+        ) throws -> JP3DEncodedTileOutput {
+            try JP3DSliceStackCodec().encodeTileInteger(
+                componentSamples: constant32Samples,
+                tileWidth: 4,
+                tileHeight: 4,
+                tileDepth: 2,
+                bitDepth: 8,
+                signed: false,
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1,
+                compressionMode: .lossless,
+                qualityLayers: 1,
+                zDeltaPolicy: .never,
+                budget: budget,
+                limits: limits
+            )
+        }
+
+        // 2a. Control establishes exact `reservedBytes == data.count` (216 B, including all 22 v2 header bytes):
+        let controlBudget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+        let controlTile = try encodeSingleJ3DSTile(budget: controlBudget, limits: .default)
+        let exactTileBytes = controlTile.data.count
+        #expect(exactTileBytes == 216)
+        #expect(controlTile.reservation.reservedBytes == exactTileBytes)
+        #expect(controlBudget.currentOutputBytes == exactTileBytes)
+        #expect(controlBudget.currentScratchBytes == 0)
+        controlTile.reservation.release()
+        #expect(controlBudget.currentOutputBytes == 0)
+
+        // 2b. Pre-header compressed limit (`v2HeaderSize - 1 = 21 B`) rejects BEFORE header allocation (`0` events):
+        let preHeaderLimits = try ResourceLimits(maximumCompressedBytes: JP3DSliceStackCodec.v2HeaderSize - 1)
+        let preHeaderBudget = JP3DLiveBudgetTracker(baseBytes: 0, limits: preHeaderLimits)
+        let preHeaderStorage = StorageTelemetry.Recorder()
+        do {
+            _ = try StorageTelemetry.$recorder.withValue(preHeaderStorage) {
+                try encodeSingleJ3DSTile(budget: preHeaderBudget, limits: preHeaderLimits)
+            }
+            Issue.record("Expected 22-byte J3DS v2 header to fail 21-byte compressed limit before allocation")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(preHeaderStorage.parserEvents.filter { $0.stage == "jp3d-j3ds-tile-output" }.isEmpty)
+        #expect(preHeaderBudget.currentOutputBytes == 0)
+        #expect(preHeaderBudget.currentScratchBytes == 0)
+
+        // 2c. Exact single-tile boundary: `exactTileBytes - 1` (215 B) denies before final output construction and cleans up;
+        // exact `exactTileBytes` (216 B) succeeds with `reservedBytes == data.count == 216`:
+        let deny215Limits = try ResourceLimits(maximumCompressedBytes: exactTileBytes - 1)
+        let deny215Budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: deny215Limits)
+        do {
+            let over = try encodeSingleJ3DSTile(budget: deny215Budget, limits: deny215Limits)
+            Issue.record("J3DS emitted \(over.data.count) B under \(exactTileBytes - 1) B limit (reserved \(over.reservation.reservedBytes) B)")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(deny215Budget.currentOutputBytes == 0)
+        #expect(deny215Budget.currentScratchBytes == 0)
+
+        let pass216Limits = try ResourceLimits(maximumCompressedBytes: exactTileBytes)
+        let pass216Budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: pass216Limits)
+        let pass216Tile = try encodeSingleJ3DSTile(budget: pass216Budget, limits: pass216Limits)
+        #expect(pass216Tile.data.count == exactTileBytes)
+        #expect(pass216Tile.reservation.reservedBytes == exactTileBytes)
+        pass216Tile.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+        #expect(pass216Budget.currentOutputBytes == 0)
+        #expect(pass216Budget.currentRetainedBytes == exactTileBytes)
+
+        // 2d. Multiple retained J3DS outputs (`3 * 216 = 648 B`):
+        // With the prior 2-byte header undercharge (`3 * 214 = 642 B`), `maximumCompressedBytes = 647` wrongly admitted 3 tiles!
+        // Now `647 B` (`3 * exactTileBytes - 1`) rejects Tile 2 before final output allocation, while exact `648 B` admits all 3:
+        let threeTilesTotal = 3 * exactTileBytes
+        let deny3Limits = try ResourceLimits(maximumCompressedBytes: threeTilesTotal - 1)
+        let deny3Budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: deny3Limits)
+        let t0 = try encodeSingleJ3DSTile(budget: deny3Budget, limits: deny3Limits)
+        t0.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+        let t1 = try encodeSingleJ3DSTile(budget: deny3Budget, limits: deny3Limits)
+        t1.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+        #expect(deny3Budget.currentRetainedBytes == 2 * exactTileBytes)
+        do {
+            _ = try encodeSingleJ3DSTile(budget: deny3Budget, limits: deny3Limits)
+            Issue.record("Expected 3rd 216 B J3DS tile (648 B cumulative) to fail \(threeTilesTotal - 1) B compressed limit")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(deny3Budget.currentRetainedBytes == 2 * exactTileBytes)
+        #expect(deny3Budget.currentOutputBytes == 0)
+        #expect(deny3Budget.currentScratchBytes == 0)
+
+        let pass3Limits = try ResourceLimits(maximumCompressedBytes: threeTilesTotal)
+        let pass3Budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: pass3Limits)
+        for _ in 0..<3 {
+            let t = try encodeSingleJ3DSTile(budget: pass3Budget, limits: pass3Limits)
+            #expect(t.data.count == exactTileBytes)
+            #expect(t.reservation.reservedBytes == exactTileBytes)
+            t.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+        }
+        #expect(pass3Budget.currentRetainedBytes == threeTilesTotal)
+        #expect(pass3Budget.currentOutputBytes == 0)
+        #expect(pass3Budget.currentScratchBytes == 0)
+
+        // 2e. End-to-end 3-tile J3DS `VolumeEncoder` (`12x4x2` constant `7` 8-bit lossless, `4x4x2` tiling -> 3 x 216 B tiles)
+        // with explicit barriers verifies queued `2 * 216 = 432 B` and denial of Tile 2 under `647 B` before parent consumes:
+        let vol3Const8 = J2KVolume(
+            width: 12,
+            height: 4,
+            depth: 2,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 8,
+                    signed: false,
+                    width: 12,
+                    height: 4,
+                    depth: 2,
+                    data: Data(repeating: 7, count: 12 * 4 * 2)
+                )
+            ]
+        )
+        let enc3J3DS = try VolumeEncoder(
+            configuration: try VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                tiling: JP3DTilingConfiguration(tileSizeX: 4, tileSizeY: 4, tileSizeZ: 2),
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        )
+        let qFirstTwo = VolumeConcurrencyTelemetry.PhaseGate()
+        let qThirdDone = VolumeConcurrencyTelemetry.PhaseGate()
+        let qCount = Mutex(0)
+        let qRec = VolumeConcurrencyTelemetry.Recorder(
+            onWorkerEnter: { tileIdx, _ in
+                if tileIdx == 2 {
+                    await qFirstTwo.wait()
+                }
+            },
+            onWorkerExit: { tileIdx in
+                if tileIdx == 0 || tileIdx == 1 {
+                    let done = qCount.withLock { c -> Int in
+                        c += 1
+                        return c
+                    }
+                    if done >= 2 {
+                        qFirstTwo.open()
+                    }
+                } else if tileIdx == 2 {
+                    qThirdDone.open()
+                }
+            },
+            onBeforeParentConsume: { step, _ in
+                if step == 0 {
+                    await qThirdDone.wait()
+                }
+            }
+        )
+        do {
+            _ = try await VolumeConcurrencyTelemetry.$recorder.withValue(qRec) {
+                try await enc3J3DS.encode(
+                    vol3Const8,
+                    options: VolumeEncodeOptions(
+                        resourceLimits: try ResourceLimits(
+                            maximumCompressedBytes: threeTilesTotal - 1,
+                            maximumWorkers: 3
+                        )
+                    )
+                )
+            }
+            Issue.record("Expected 3 x 216 B J3DS tiles (648 B) to fail 647 B compressed limit during Worker 2")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        let qSnap2 = try #require(qRec.snapshotAfterEnterDelay(forTile: 2))
+        #expect(qSnap2.currentInFlight == 1)
+        #expect(qSnap2.retainedBytes == 0)
+        #expect(qSnap2.liveOutputBytes == 2 * exactTileBytes)
+        #expect(qRec.currentInFlight == 0)
+        #expect(qRec.liveOutputBytes == 0)
+        #expect(qRec.liveTransientBytes == 0)
+
+        // Truncated 21-byte J3DS v2 header rejects cleanly without out-of-bounds read:
+        var truncatedV2Header = Data([0x4A, 0x33, 0x44, 0x53, 0x02])
+        truncatedV2Header.append(Data(repeating: 0, count: 16))
+        #expect(truncatedV2Header.count == 21)
+        #expect(throws: J2KError.self) {
+            _ = try JP3DSliceStackCodec().decodeTileInteger(
+                truncatedV2Header,
+                expectedComponents: 1,
+                expectedWidth: 4,
+                expectedHeight: 4,
+                expectedDepth: 2
+            )
+        }
     }
 }
