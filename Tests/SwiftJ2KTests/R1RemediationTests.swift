@@ -249,6 +249,87 @@ private func makeSyntheticMultiStripLittleEndianTIFF(
     return Data(bytes)
 }
 
+/// Generates `count` deterministic bytes `UInt8((i * multiplier + addend) & 255)` for `i in 0..<count`
+/// using explicitly typed scalar statements so Swift 6.2 / 6.3 / 6.4 type-check in O(1) time.
+private func makeLinearTestBytes(count: Int, multiplier: Int, addend: Int) -> [UInt8] {
+    var result: [UInt8] = []
+    result.reserveCapacity(count)
+    var i: Int = 0
+    while i < count {
+        let product: Int = i * multiplier
+        let sum: Int = product + addend
+        let masked: Int = sum & 255
+        result.append(UInt8(truncatingIfNeeded: masked))
+        i += 1
+    }
+    return result
+}
+
+/// Counts sample mismatches between a 1-component decoded `Image` and an expected row-major 8-bit raster.
+private func countGrayscaleSampleMismatches(_ image: Image, expectedPixels: [UInt8]) throws -> Int {
+    let width: Int = image.descriptor.width
+    let height: Int = image.descriptor.height
+    guard width * height == expectedPixels.count else { return expectedPixels.count + 1 }
+    return try image.storage.withUnsafeBytes { raw -> Int in
+        var mismatches: Int = 0
+        var y: Int = 0
+        while y < height {
+            let rowBase: Int = y * width
+            var x: Int = 0
+            while x < width {
+                let actual: Int = readLogicalSample(raw, descriptor: image.descriptor, component: 0, x: x, y: y)
+                let expected: Int = Int(expectedPixels[rowBase + x])
+                if actual != expected {
+                    mismatches += 1
+                }
+                x += 1
+            }
+            y += 1
+        }
+        return mismatches
+    }
+}
+
+/// Evaluates the intended 7-event partial-order lifetime contract for multi-strip TIFF decoding:
+/// exact multiplicity 1 for all 7 expected events, both tag enters before strip enter, strip enter before
+/// both tag exits (either mutual tag-exit order allowed), both tag exits before destination enter, and
+/// destination enter before strip exit.
+private func isValidTwoStripTIFFActionOrder(_ actionTrace: [String]) -> Bool {
+    let expected: [String] = [
+        "tiff-strip-offsets:enter",
+        "tiff-strip-byte-counts:enter",
+        "tiff-strip-workspace:enter",
+        "tiff-strip-offsets:exit",
+        "tiff-strip-byte-counts:exit",
+        "image-destination:enter",
+        "tiff-strip-workspace:exit"
+    ]
+    guard actionTrace.count == expected.count else { return false }
+    for item in expected {
+        if actionTrace.filter({ $0 == item }).count != 1 {
+            return false
+        }
+    }
+    guard let offsetsEnterIdx = actionTrace.firstIndex(of: "tiff-strip-offsets:enter"),
+          let countsEnterIdx = actionTrace.firstIndex(of: "tiff-strip-byte-counts:enter"),
+          let stripEnterIdx = actionTrace.firstIndex(of: "tiff-strip-workspace:enter"),
+          let offsetsExitIdx = actionTrace.firstIndex(of: "tiff-strip-offsets:exit"),
+          let countsExitIdx = actionTrace.firstIndex(of: "tiff-strip-byte-counts:exit"),
+          let destEnterIdx = actionTrace.firstIndex(of: "image-destination:enter"),
+          let stripExitIdx = actionTrace.firstIndex(of: "tiff-strip-workspace:exit") else {
+        return false
+    }
+    return offsetsEnterIdx < stripEnterIdx
+        && countsEnterIdx < stripEnterIdx
+        && offsetsEnterIdx < offsetsExitIdx
+        && countsEnterIdx < countsExitIdx
+        && stripEnterIdx < offsetsExitIdx
+        && stripEnterIdx < countsExitIdx
+        && offsetsExitIdx < destEnterIdx
+        && countsExitIdx < destEnterIdx
+        && destEnterIdx < stripExitIdx
+}
+
 @Suite("Phase R1 — Core & CLI Audit Remediation Regressions")
 struct R1RemediationTests {
 
@@ -613,18 +694,21 @@ struct R1RemediationTests {
 
     @Test("M12-CX-01 + follow-up: 64x64 8-bit single-strip & multi-strip TIFF combined live-memory, 16-bit contract storage pre-strip check, and lifetime telemetry")
     func tiffCombinedLiveMemoryAndPreStripStorageAdmission() throws {
-        let pixels64 = (0..<(64 * 64)).map { UInt8(($0 * 13 + 7) & 0xFF) }
+        let pixels64: [UInt8] = makeLinearTestBytes(count: 4096, multiplier: 13, addend: 7)
+        #expect(pixels64.count == 4096)
         let singleStrip64 = makeSyntheticLittleEndianTIFF(
             width: 64,
             height: 64,
             bitsPerSample: 8,
             stripPayload: pixels64
         )
+        let firstHalfStrip: [UInt8] = Array(pixels64[0..<2048])
+        let secondHalfStrip: [UInt8] = Array(pixels64[2048..<4096])
         let twoStrip64 = makeSyntheticMultiStripLittleEndianTIFF(
             width: 64,
             height: 64,
             bitsPerSample: 8,
-            strips: [Array(pixels64[0..<2048]), Array(pixels64[2048..<4096])]
+            strips: [firstHalfStrip, secondHalfStrip]
         )
 
         // 1. Valid 64x64 8-bit single-strip TIFF with maximumWorkspaceBytes == file.count and generous other budgets:
@@ -640,11 +724,13 @@ struct R1RemediationTests {
         #expect(singleImg.descriptor.meaningfulBits == 8)
         #expect(singleImg.descriptor.storageBits == 16)
         #expect(singleImg.descriptor.requiredByteCount == 8192)
+        #expect(try countGrayscaleSampleMismatches(singleImg, expectedPixels: pixels64) == 0)
         // Single-strip TIFF performs zero workspace copies (no [UInt8] input copy, no tag arrays, no stripBytes copy):
         #expect(singleRec.peakWorkspaceBytes == 0)
         #expect(singleRec.peakDecodedBytes == 8192)
         #expect(singleRec.peakTotalBytes == singleStrip64.count + 8192)
         #expect(singleRec.liveWorkspaceBytes == 0)
+        #expect(singleRec.liveTagOwners == 0)
 
         // 2. Decoded-byte budget between 4096 and 8192 (e.g. 6000 B) MUST reject BEFORE strip allocation
         // because 1-component 8-bit greyscale uses 16-bit contract storage (8192 B):
@@ -693,8 +779,11 @@ struct R1RemediationTests {
         #expect(denySimultaneousStRec.counts.pixelAllocations == 0)
         #expect(denySimultaneousMemRec.liveWorkspaceBytes == 0)
 
-        // 4. Exact simultaneous peak control (workspace == twoStrip64.count, memory == simultaneousPeak) succeeds
-        // and lifetime trace proves tag arrays exit before destination enters and strip workspace exits before return:
+        // 4. Exact simultaneous peak control (workspace == twoStrip64.count, memory == simultaneousPeak) succeeds;
+        // ARC deinit trace proves both tag owners exit after strip workspace allocation and before ImageDestination
+        // allocation (without constraining the mutual destruction order of the two independent tag owners), while
+        // decodeTIFFFromStripWorkspace retains the strip workspace owner across the synchronous writeSamples fill so
+        // strip exit follows destination entry:
         let passTwoStripRec = CLIImageIOTelemetry.Recorder()
         let twoStripImg = try CLIImageIOTelemetry.$recorder.withValue(passTwoStripRec) {
             try parseTIFF(
@@ -707,12 +796,15 @@ struct R1RemediationTests {
             )
         }
         #expect(twoStripImg.storage.byteCount == 8192)
+        #expect(try countGrayscaleSampleMismatches(twoStripImg, expectedPixels: pixels64) == 0)
         #expect(passTwoStripRec.peakWorkspaceBytes == 32 + 4096)
         #expect(passTwoStripRec.peakWorkspaceBytes <= twoStrip64.count)
         #expect(passTwoStripRec.peakTotalBytes == simultaneousPeak)
+        #expect(passTwoStripRec.peakTotalBytes <= simultaneousPeak)
         #expect(passTwoStripRec.liveWorkspaceBytes == 0)
-        let actionTrace = passTwoStripRec.events.map { "\($0.stage):\($0.action.rawValue)" }
-        #expect(actionTrace == [
+        #expect(passTwoStripRec.liveTagOwners == 0)
+        let actionTrace: [String] = passTwoStripRec.events.map { "\($0.stage):\($0.action.rawValue)" }
+        let expectedTwoStripEvents: [String] = [
             "tiff-strip-offsets:enter",
             "tiff-strip-byte-counts:enter",
             "tiff-strip-workspace:enter",
@@ -720,7 +812,70 @@ struct R1RemediationTests {
             "tiff-strip-byte-counts:exit",
             "image-destination:enter",
             "tiff-strip-workspace:exit"
-        ])
+        ]
+        #expect(actionTrace.count == expectedTwoStripEvents.count)
+        for expectedEvent in expectedTwoStripEvents {
+            #expect(actionTrace.filter { $0 == expectedEvent }.count == 1)
+        }
+        let offsetsEnterIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-offsets:enter"))
+        let countsEnterIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-byte-counts:enter"))
+        let stripEnterIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-workspace:enter"))
+        let offsetsExitIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-offsets:exit"))
+        let countsExitIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-byte-counts:exit"))
+        let destEnterIdx = try #require(actionTrace.firstIndex(of: "image-destination:enter"))
+        let stripExitIdx = try #require(actionTrace.firstIndex(of: "tiff-strip-workspace:exit"))
+        #expect(offsetsEnterIdx < stripEnterIdx)
+        #expect(countsEnterIdx < stripEnterIdx)
+        #expect(offsetsEnterIdx < offsetsExitIdx)
+        #expect(countsEnterIdx < countsExitIdx)
+        #expect(stripEnterIdx < offsetsExitIdx)
+        #expect(stripEnterIdx < countsExitIdx)
+        #expect(offsetsExitIdx < destEnterIdx)
+        #expect(countsExitIdx < destEnterIdx)
+        #expect(destEnterIdx < stripExitIdx)
+        let twoStripDestEnter = passTwoStripRec.events[destEnterIdx]
+        #expect(twoStripDestEnter.liveTagOwners == 0)
+        #expect(twoStripDestEnter.liveWorkspaceBytes == 4096)
+        #expect(twoStripDestEnter.liveTotalBytes == simultaneousPeak)
+        #expect(isValidTwoStripTIFFActionOrder(actionTrace))
+        // Verify the partial-order contract accepts the optimized Linux release LIFO tag-exit order
+        // while rejecting duplicate events, post-destination tag exits, and premature strip exits:
+        #expect(isValidTwoStripTIFFActionOrder([
+            "tiff-strip-offsets:enter",
+            "tiff-strip-byte-counts:enter",
+            "tiff-strip-workspace:enter",
+            "tiff-strip-byte-counts:exit",
+            "tiff-strip-offsets:exit",
+            "image-destination:enter",
+            "tiff-strip-workspace:exit"
+        ]))
+        #expect(!isValidTwoStripTIFFActionOrder([
+            "tiff-strip-offsets:enter",
+            "tiff-strip-offsets:enter",
+            "tiff-strip-workspace:enter",
+            "tiff-strip-offsets:exit",
+            "tiff-strip-byte-counts:exit",
+            "image-destination:enter",
+            "tiff-strip-workspace:exit"
+        ]))
+        #expect(!isValidTwoStripTIFFActionOrder([
+            "tiff-strip-offsets:enter",
+            "tiff-strip-byte-counts:enter",
+            "tiff-strip-workspace:enter",
+            "tiff-strip-offsets:exit",
+            "image-destination:enter",
+            "tiff-strip-byte-counts:exit",
+            "tiff-strip-workspace:exit"
+        ]))
+        #expect(!isValidTwoStripTIFFActionOrder([
+            "tiff-strip-offsets:enter",
+            "tiff-strip-byte-counts:enter",
+            "tiff-strip-workspace:enter",
+            "tiff-strip-offsets:exit",
+            "tiff-strip-byte-counts:exit",
+            "tiff-strip-workspace:exit",
+            "image-destination:enter"
+        ]))
 
         // 5. Cumulative multi-strip tag array admission: 64 strips -> 512 B StripOffsets + 512 B StripByteCounts = 1024 B.
         // Under maximumMetadataBytes = 768 B (each 512 B tag fits individually!), StripByteCounts is denied before allocation:
@@ -977,8 +1132,15 @@ struct R1RemediationTests {
 
         // 3. Multi-strip tag arrays (1024 B) + strip workspace (4096 B) = 5120 B crossing workspace boundary
         // + ARC deinit proof that liveTagOwners == 0 before ImageDestination allocates:
-        let pixels64 = (0..<(64 * 64)).map { UInt8(($0 * 17 + 5) & 0xFF) }
-        let strips64 = (0..<64).map { s in Array(pixels64[(s * 64)..<((s + 1) * 64)]) }
+        let pixels64: [UInt8] = makeLinearTestBytes(count: 4096, multiplier: 17, addend: 5)
+        #expect(pixels64.count == 4096)
+        var strips64: [[UInt8]] = []
+        strips64.reserveCapacity(64)
+        for s: Int in 0..<64 {
+            let start: Int = s * 64
+            let end: Int = start + 64
+            strips64.append(Array(pixels64[start..<end]))
+        }
         let tiff64Strips = makeSyntheticMultiStripLittleEndianTIFF(
             width: 64,
             height: 64,
@@ -1015,6 +1177,7 @@ struct R1RemediationTests {
             )
         }
         #expect(img64.storage.byteCount == 8192)
+        #expect(try countGrayscaleSampleMismatches(img64, expectedPixels: pixels64) == 0)
         #expect(passAssemblyWSRec.peakWorkspaceBytes == 5120)
         #expect(passAssemblyWSRec.peakTagOwners == 2)
         let destEnter = try #require(

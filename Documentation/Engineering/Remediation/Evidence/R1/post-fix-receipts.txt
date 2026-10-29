@@ -279,3 +279,53 @@ Audit state: Developer submission evidence ONLY (`submitted`); Codex independent
   5. Remaining unexecuted gate and Phase R2 handoff boundary:
      - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED** (no local Linux setup per owner direction; owner directed Linux verification to GitHub Actions CI via Codex-arranged minimal branch publication / draft PR once local independent audit passes; no push performed yet, and never inferred from macOS).
      - Phase R2 remains **CLOSED** in this conversation pending all Phase R1 gates (including exact-head GitHub CI Linux verification) and is authorised to start in **new** Antigravity and Codex chats via Codex-arranged handoff **only after** full Phase R1 acceptance.
+
+7. Independent Local Audit of `347b783` / `6ecc5b1`, Draft PR #28 Provider CI Audit (`run 40858098392`), and Local `R1-CI-01` / `R1-CI-02` Test-Portability Verification Receipts (29 October 2026)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+- Preserved Codex Local Audit Receipt for `347b783a4239ac485f67741b42c4dd8f1f565063` and Documentation-Only `6ecc5b1bc76520a533c1f16a0dfb1c10765849c9`:
+  - `347b783a4239ac485f67741b42c4dd8f1f565063`: Passed `12/12` independent focused checks (`9` submitted `R1VolumeRemediationTests` + `3` independent growth/header checks); static tracker and test review found no remaining blocking production code issue; prior TIFF/parser/core/JPIP receipts reused after exact SHA-256 comparison.
+  - `6ecc5b1bc76520a533c1f16a0dfb1c10765849c9`: Documentation-only (`STATUS.md` and `post-fix-receipts.txt`); all `Sources/`, `Tests/`, and `Package.swift` files verified byte-identical to `347b783`. Published via normal non-force push to `origin/antigravity/m1-m12-remediation` under explicit owner direction for GitHub Actions CI inspection.
+
+- Preserved Failed GitHub Actions CI Audit Receipt for Draft PR #28 (`https://github.com/raster-labs/SwiftJ2K/pull/28`, workflow `Contract and Package Gates`, Run ID `40858098392` at exact PR head `6ecc5b1bc76520a533c1f16a0dfb1c10765849c9`, checkout merge commit `2db0e59786d805d017a2cb61481a00a915da9314`; preserved under `/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/ci-review-20261029T104029Z`: `ci-audit-result.json`, `jobs-final.json`, `tiff-ci-review.json`, `antigravity-handback.txt`, and raw failed job logs `job-123394098739.log`, `job-123394099075.log`, `job-123394099112.log`, `job-123394099246.log`, `job-123394099259.log`):
+  - Overall provider CI verdict: **`FAILED` (`5` failed jobs, `2` passed jobs)** — **Phase R1 NOT ACCEPTED; Phase R2 CLOSED**.
+  - Verified in provider CI (`run 40858098392`, distinct from earlier local macOS-only receipts):
+    * Production `swift build` **passed in all `4` Linux jobs** (`Swift 6.2.4` & `Swift 6.4` on `ubuntu-24.04` x86_64 and `ubuntu-24.04-arm` arm64) and on macOS (`macOS 26 / Xcode 26.6 (Swift 6.3.3)`): confirms `CZlibShim` resolves the original `M12-CI` Linux `zlib` compilation/linkage failure in production builds.
+    * `Independent consumer resolves at tools 6.2` (job `123394099042`): **PASSED**.
+    * `Shared contract byte-identity` (job `123394099188`): **PASSED**.
+    * Both `Swift 6.4` Linux jobs (`123394099075` `ubuntu-24.04-arm`, `123394099246` `ubuntu-24.04`) also **passed debug `swift test` (`100%` of debug tests) and `swift build -c release`**.
+  - Failed provider CI jobs and exact test-only findings (`0` production code defects):
+    1. `R1-CI-01` (`P2`, `Tests/SwiftJ2KTests/R1RemediationTests.swift` former lines `616` and `980`):
+       - Failed jobs: `123394098739` (`macOS 26 / Xcode 26.6 (Swift 6.3.3)`, step 6 `swift test`), `123394099112` (`Swift 6.2 / ubuntu-24.04`, step 6 `swift test`), `123394099259` (`Swift 6.2 / ubuntu-24.04-arm`, step 6 `swift test`).
+       - Failure: `error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions` on `(0..<(64 * 64)).map { UInt8(($0 * 13 + 7) & 0xFF) }` and `(0..<(64 * 64)).map { UInt8(($0 * 17 + 5) & 0xFF) }`.
+    2. `R1-CI-02` (`P2`, `Tests/SwiftJ2KTests/R1RemediationTests.swift` former line `715` in `tiffCombinedLiveMemoryAndPreStripStorageAdmission`):
+       - Failed jobs: `123394099075` (`Swift 6.4 / ubuntu-24.04-arm`, step 8 `swift test -c release`), `123394099246` (`Swift 6.4 / ubuntu-24.04`, step 8 `swift test -c release`).
+       - Failure: total-order array equality expected `"tiff-strip-offsets:exit"` before `"tiff-strip-byte-counts:exit"`, whereas optimized Linux `-c release` emitted `["tiff-strip-offsets:enter", "tiff-strip-byte-counts:enter", "tiff-strip-workspace:enter", "tiff-strip-byte-counts:exit", "tiff-strip-offsets:exit", "image-destination:enter", "tiff-strip-workspace:exit"]`.
+       - Independent Codex static & memory analysis (`tiff-ci-review.json`): `TEST_ORDER_ASSERTION_OVERCONSTRAINED_NO_IMPLEMENTATION_FAILURE_SHOWN` — both independent `TIFFOwnedTagList` instances still exited after `tiff-strip-workspace:enter` and before `image-destination:enter` (`liveTagOwners == 0` at `image-destination:enter`); no production memory or ownership defect is indicated.
+  - Skipped / unexecuted provider CI steps in `run 40858098392` (explicitly recorded as unexecuted until re-run on repaired head):
+    * `macOS 26` job `123394098739`: step 7 `AddressSanitizer` and step 8 `ThreadSanitizer` — **`SKIPPED / UNEXECUTED`** (after step 6 `swift test` compile failure).
+    * `Swift 6.2 / ubuntu-24.04` job `123394099112` and `Swift 6.2 / ubuntu-24.04-arm` job `123394099259`: step 7 `swift build -c release` and step 8 `swift test -c release` — **`SKIPPED / UNEXECUTED`** (after step 6 debug `swift test` compile failure).
+
+- Local `R1-CI-01` & `R1-CI-02` Test-Portability Repair and Focused Verification Receipts (atop `6ecc5b1bc76520a533c1f16a0dfb1c10765849c9`, `4.7 GiB` free disk; **test-only change — `0` `Sources/` files modified**):
+  1. `R1-CI-01` fixture simplification & exact byte-identity proof (`Tests/SwiftJ2KTests/R1RemediationTests.swift:247-266,697-712,1135-1144`):
+     - Replaced both generic `(0..<(64 * 64)).map { ... }` closures with explicitly typed scalar loop helper `makeLinearTestBytes(count: Int, multiplier: Int, addend: Int) -> [UInt8]` (`product: Int`, `sum: Int`, `masked: Int`, `UInt8(truncatingIfNeeded: masked)`) and explicit `for s: Int in 0..<64` strip slicing while preserving `swift-tools-version: 6.2` and full test scope.
+     - Exact SHA-256 fixture byte-equality verification against the original formulas (`swift -e` + `python3` digest verification -> Exit `0`):
+       * `4096`-byte fixture 1 (`multiplier: 13, addend: 7`): `orig1 == new1` (`true`, `4096` bytes), SHA-256 `6c0294b06b53f1e89f9978a127bf9ee4182239125570f700aa47f39d79a6d278`
+       * Two-strip halves `0..<2048` and `2048..<4096`: `origFirstHalf == newFirstHalf` (`true`, `2048` bytes) and `origSecondHalf == newSecondHalf` (`true`, `2048` bytes), SHA-256 `6228ae9897dbc6790f79823e9f8fc92dd3f07ade353de87fbb7e0cbe485be3f1`
+       * `4096`-byte fixture 2 (`multiplier: 17, addend: 5`) and `64 x 64` strip slices: `orig2 == new2` (`true`, `4096` bytes) and `origStrips64 == newStrips64` (`true`), SHA-256 `4f6762cc8e80587854905592899bef3a3f782f4fdc9f53e02bdd3db69411ce09`
+  2. `R1-CI-02` partial-order lifetime & pixel-fidelity assertion repair (`Tests/SwiftJ2KTests/R1RemediationTests.swift:269-331,727,799-879,1180`):
+     - Replaced the total-order array equality in `tiffCombinedLiveMemoryAndPreStripStorageAdmission` with:
+       * Exact `7`-event length and exact multiplicity `== 1` for each of the `7` expected `stage:action` strings;
+       * All `9` partial-order index inequalities (`offsetsEnterIdx < stripEnterIdx`, `countsEnterIdx < stripEnterIdx`, `offsetsEnterIdx < offsetsExitIdx`, `countsEnterIdx < countsExitIdx`, `stripEnterIdx < offsetsExitIdx`, `stripEnterIdx < countsExitIdx`, `offsetsExitIdx < destEnterIdx`, `countsExitIdx < destEnterIdx`, `destEnterIdx < stripExitIdx`);
+       * Exact `image-destination:enter` state checks (`liveTagOwners == 0`, `liveWorkspaceBytes == 4096`, `liveTotalBytes == simultaneousPeak`) plus unchanged peak/pre-strip budget and final zero-owner/workspace checks;
+       * Direct `isValidTwoStripTIFFActionOrder` predicate verification accepting the Linux `-c release` reversed tag-exit order and rejecting duplicate events, post-destination tag exits, and premature strip exits;
+       * Full `4,096`-sample decoded pixel-fidelity checks (`countGrayscaleSampleMismatches == 0`) on `singleImg`, `twoStripImg`, and `img64`.
+  3. Focused debug (`-warn-long-expression-type-checking=20`) and `-c release` execution on local macOS Swift 6.4 toolchain:
+     - `swift test -Xswiftc -Xfrontend -Xswiftc -warn-long-expression-type-checking=20 --filter "R1RemediationTests"` -> Exit `0` (`7/7` `@Test` declarations passed in `0.805 s`; `0` warnings on `makeLinearTestBytes` or either repaired fixture line `697` / `1135`, proving `< 20 ms` expression type-checking).
+     - `swift test -c release --filter "R1RemediationTests"` -> Exit `0` (`7/7` `@Test` declarations passed in `0.338 s`).
+  4. Production source, contract, and file digest verification:
+     - `git diff 6ecc5b1bc76520a533c1f16a0dfb1c10765849c9 -- Sources/ Package.swift` -> empty (`0` production source or manifest changes; all `Sources/` SHA-256 digests unchanged from §6).
+     - `Tests/SwiftJ2KTests/R1RemediationTests.swift` SHA-256: `ced36d24e8934585f5db9d1bfb62d834a0a6868d43dcfdba3019593d5c94dc73` (updated from `8aa1bd4a...`).
+     - `(cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt)` -> Exit `0` (`7/7 OK`).
+     - `git status --short -- Documentation/Engineering/Swift64/` -> Exit `0` (empty; byte-identical).
+  5. Remaining qualification gate before Phase R1 acceptance:
+     - Local commit is **held unpushed** for Codex independent review; after Codex review and exact-branch push to `origin/antigravity/m1-m12-remediation`, all `7` jobs in GitHub Actions workflow `Contract and Package Gates` (including previously skipped macOS ASan/TSan and Linux `Swift 6.2` release build/test, plus Linux `Swift 6.4` release tests) must pass on the exact head commit before Phase R1 can be accepted or Phase R2 opened.
