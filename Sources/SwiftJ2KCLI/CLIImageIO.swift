@@ -128,6 +128,23 @@ enum CLIImageIOTelemetry {
         let deltaBytes: Int
         let liveWorkspaceBytes: Int
         let liveTotalBytes: Int
+        let liveTagOwners: Int
+
+        init(
+            stage: String,
+            action: Action,
+            deltaBytes: Int,
+            liveWorkspaceBytes: Int,
+            liveTotalBytes: Int,
+            liveTagOwners: Int = 0
+        ) {
+            self.stage = stage
+            self.action = action
+            self.deltaBytes = deltaBytes
+            self.liveWorkspaceBytes = liveWorkspaceBytes
+            self.liveTotalBytes = liveTotalBytes
+            self.liveTagOwners = liveTagOwners
+        }
     }
 
     fileprivate struct State: Sendable {
@@ -135,9 +152,11 @@ enum CLIImageIOTelemetry {
         var inputBytes: Int = 0
         var liveWorkspaceBytes: Int = 0
         var liveDecodedBytes: Int = 0
+        var liveTagOwners: Int = 0
         var peakWorkspaceBytes: Int = 0
         var peakDecodedBytes: Int = 0
         var peakTotalBytes: Int = 0
+        var peakTagOwners: Int = 0
     }
 
     final class Recorder: Sendable {
@@ -148,9 +167,11 @@ enum CLIImageIOTelemetry {
         var events: [Event] { state.withLock { $0.events } }
         var liveWorkspaceBytes: Int { state.withLock { $0.liveWorkspaceBytes } }
         var liveDecodedBytes: Int { state.withLock { $0.liveDecodedBytes } }
+        var liveTagOwners: Int { state.withLock { $0.liveTagOwners } }
         var peakWorkspaceBytes: Int { state.withLock { $0.peakWorkspaceBytes } }
         var peakDecodedBytes: Int { state.withLock { $0.peakDecodedBytes } }
         var peakTotalBytes: Int { state.withLock { $0.peakTotalBytes } }
+        var peakTagOwners: Int { state.withLock { $0.peakTagOwners } }
 
         func setInputBytes(_ bytes: Int) {
             state.withLock { s in
@@ -162,11 +183,22 @@ enum CLIImageIOTelemetry {
             }
         }
 
-        func enter(stage: String, workspaceBytes: Int, basePlusOtherLiveBytes: Int) {
+        func enter(
+            stage: String,
+            workspaceBytes: Int,
+            basePlusOtherLiveBytes: Int,
+            tagOwnerDelta: Int = 0
+        ) {
             state.withLock { s in
                 s.liveWorkspaceBytes += workspaceBytes
                 if s.liveWorkspaceBytes > s.peakWorkspaceBytes {
                     s.peakWorkspaceBytes = s.liveWorkspaceBytes
+                }
+                if tagOwnerDelta > 0 {
+                    s.liveTagOwners += tagOwnerDelta
+                    if s.liveTagOwners > s.peakTagOwners {
+                        s.peakTagOwners = s.liveTagOwners
+                    }
                 }
                 let nonWorkspace = max(basePlusOtherLiveBytes, s.inputBytes + s.liveDecodedBytes)
                 let total = nonWorkspace + s.liveWorkspaceBytes
@@ -178,7 +210,8 @@ enum CLIImageIOTelemetry {
                     action: .enter,
                     deltaBytes: workspaceBytes,
                     liveWorkspaceBytes: s.liveWorkspaceBytes,
-                    liveTotalBytes: total
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
                 ))
             }
             #if SWIFT_PACKAGE
@@ -203,14 +236,23 @@ enum CLIImageIOTelemetry {
                     action: .enter,
                     deltaBytes: decodedBytes,
                     liveWorkspaceBytes: s.liveWorkspaceBytes,
-                    liveTotalBytes: total
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
                 ))
             }
         }
 
-        func exit(stage: String, workspaceBytes: Int, basePlusOtherLiveBytes: Int) {
+        func exit(
+            stage: String,
+            workspaceBytes: Int,
+            basePlusOtherLiveBytes: Int,
+            tagOwnerDelta: Int = 0
+        ) {
             state.withLock { s in
                 s.liveWorkspaceBytes = max(0, s.liveWorkspaceBytes - workspaceBytes)
+                if tagOwnerDelta > 0 {
+                    s.liveTagOwners = max(0, s.liveTagOwners - tagOwnerDelta)
+                }
                 let nonWorkspace = max(basePlusOtherLiveBytes, s.inputBytes + s.liveDecodedBytes)
                 let total = nonWorkspace + s.liveWorkspaceBytes
                 if total > s.peakTotalBytes {
@@ -221,7 +263,8 @@ enum CLIImageIOTelemetry {
                     action: .exit,
                     deltaBytes: workspaceBytes,
                     liveWorkspaceBytes: s.liveWorkspaceBytes,
-                    liveTotalBytes: total
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
                 ))
             }
         }
@@ -235,9 +278,19 @@ enum CLIImageIOTelemetry {
     }
 
     @inline(__always)
-    static func enter(stage: String, workspaceBytes: Int, basePlusOtherLiveBytes: Int) {
+    static func enter(
+        stage: String,
+        workspaceBytes: Int,
+        basePlusOtherLiveBytes: Int,
+        tagOwnerDelta: Int = 0
+    ) {
         if let recorder {
-            recorder.enter(stage: stage, workspaceBytes: workspaceBytes, basePlusOtherLiveBytes: basePlusOtherLiveBytes)
+            recorder.enter(
+                stage: stage,
+                workspaceBytes: workspaceBytes,
+                basePlusOtherLiveBytes: basePlusOtherLiveBytes,
+                tagOwnerDelta: tagOwnerDelta
+            )
         } else {
             #if SWIFT_PACKAGE
             if workspaceBytes > 0 {
@@ -253,8 +306,18 @@ enum CLIImageIOTelemetry {
     }
 
     @inline(__always)
-    static func exit(stage: String, workspaceBytes: Int, basePlusOtherLiveBytes: Int) {
-        recorder?.exit(stage: stage, workspaceBytes: workspaceBytes, basePlusOtherLiveBytes: basePlusOtherLiveBytes)
+    static func exit(
+        stage: String,
+        workspaceBytes: Int,
+        basePlusOtherLiveBytes: Int,
+        tagOwnerDelta: Int = 0
+    ) {
+        recorder?.exit(
+            stage: stage,
+            workspaceBytes: workspaceBytes,
+            basePlusOtherLiveBytes: basePlusOtherLiveBytes,
+            tagOwnerDelta: tagOwnerDelta
+        )
     }
 }
 
@@ -979,6 +1042,247 @@ private func zlibDeflate(_ raw: Data) throws -> Data {
 
 // MARK: - TIFF Reader & Writer (Baseline Uncompressed TIFF 6.0)
 
+private final class TIFFOwnedTagList {
+    private(set) var values: [Int]
+    let byteCount: Int
+    private let stage: String
+    private let baseInputBytes: Int
+    private weak var capturedRecorder: CLIImageIOTelemetry.Recorder?
+
+    init(
+        count: Int,
+        byteCount: Int,
+        stage: String,
+        baseInputBytes: Int,
+        readElement: (Int) throws -> Int
+    ) throws {
+        self.values = []
+        self.byteCount = byteCount
+        self.stage = stage
+        self.baseInputBytes = baseInputBytes
+        self.capturedRecorder = CLIImageIOTelemetry.recorder
+        CLIImageIOTelemetry.enter(
+            stage: stage,
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes,
+            tagOwnerDelta: 1
+        )
+        self.values.reserveCapacity(count)
+        for idx in 0..<count {
+            self.values.append(try readElement(idx))
+        }
+    }
+
+    deinit {
+        (CLIImageIOTelemetry.recorder ?? capturedRecorder)?.exit(
+            stage: stage,
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes,
+            tagOwnerDelta: 1
+        )
+    }
+}
+
+private final class TIFFOwnedStripBuffer {
+    var bytes: [UInt8]
+    let byteCount: Int
+    private let baseInputBytes: Int
+    var exitExtraLiveBytes: Int = 0
+    private weak var capturedRecorder: CLIImageIOTelemetry.Recorder?
+
+    init(byteCount: Int, baseInputBytes: Int) {
+        self.bytes = []
+        self.byteCount = byteCount
+        self.baseInputBytes = baseInputBytes
+        self.capturedRecorder = CLIImageIOTelemetry.recorder
+        CLIImageIOTelemetry.enter(
+            stage: "tiff-strip-workspace",
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes
+        )
+        self.bytes = [UInt8](repeating: 0, count: byteCount)
+    }
+
+    deinit {
+        (CLIImageIOTelemetry.recorder ?? capturedRecorder)?.exit(
+            stage: "tiff-strip-workspace",
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes + exitExtraLiveBytes
+        )
+    }
+}
+
+private enum TIFFStripList {
+    case empty
+    case single(Int)
+    case many(TIFFOwnedTagList)
+
+    var count: Int {
+        switch self {
+        case .empty: return 0
+        case .single: return 1
+        case .many(let owned): return owned.values.count
+        }
+    }
+
+    var heapBytes: Int {
+        switch self {
+        case .empty, .single: return 0
+        case .many(let owned): return owned.byteCount
+        }
+    }
+
+    var isMany: Bool {
+        if case .many = self { return true }
+        return false
+    }
+}
+
+private func decodeTIFFSampleFromBuffer(
+    _ src: UnsafePointer<UInt8>,
+    baseOffset: Int,
+    sampleIdx: Int,
+    bps: Int,
+    isLE: Bool,
+    signed: Bool
+) -> Int {
+    if bps == 8 {
+        let b = src[baseOffset + sampleIdx]
+        return signed ? Int(Int8(bitPattern: b)) : Int(b)
+    } else if bps == 16 {
+        let p = baseOffset + sampleIdx * 2
+        let word: UInt16 = isLE
+            ? (UInt16(src[p]) | (UInt16(src[p + 1]) << 8))
+            : ((UInt16(src[p]) << 8) | UInt16(src[p + 1]))
+        return signed ? Int(Int16(bitPattern: word)) : Int(word)
+    } else {
+        let pairIdx = sampleIdx / 2
+        let base = baseOffset + pairIdx * 3
+        var s: Int
+        if sampleIdx % 2 == 0 {
+            let b0 = Int(src[base])
+            let b1 = Int(src[base + 1])
+            s = (b0 << 4) | (b1 >> 4)
+        } else {
+            let b1 = Int(src[base + 1])
+            let b2 = Int(src[base + 2])
+            s = ((b1 & 0x0F) << 8) | b2
+        }
+        if signed && s >= 2048 {
+            s -= 4096
+        }
+        return s
+    }
+}
+
+@inline(never)
+private func assembleTIFFMultiStripWorkspace(
+    stripOffsets: inout TIFFStripList,
+    stripByteCounts: inout TIFFStripList,
+    retainedTagBytes: inout Int,
+    bytes: UnsafePointer<UInt8>,
+    byteCount: Int,
+    inputByteCount: Int,
+    neededBytes: Int,
+    destBytes: Int,
+    limits: ResourceLimits
+) throws -> TIFFOwnedStripBuffer {
+    // Admit combined live buffers:
+    // Phase A (strip assembly): input Data + retained tag arrays + strip workspace
+    // Phase B (destination fill after tag owners deinit): input Data + strip workspace + ImageDestination
+    let assemblyWorkspace = try checkedAdd(retainedTagBytes, neededBytes, label: "TIFF multi-strip workspace")
+    let assemblyMemory = try checkedAdd(inputByteCount, assemblyWorkspace, label: "TIFF strip assembly memory")
+    let stripPlusDest = try checkedAdd(neededBytes, destBytes, label: "TIFF strip and destination bytes")
+    let decodeMemory = try checkedAdd(inputByteCount, stripPlusDest, label: "TIFF multi-strip decode memory")
+    guard assemblyWorkspace <= limits.maximumWorkspaceBytes,
+          assemblyMemory <= limits.maximumMemoryBytes,
+          decodeMemory <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "TIFF multi-strip workspace or simultaneous live memory exceeds resource limits.")
+    }
+
+    let stripWorkspace: TIFFOwnedStripBuffer = try {
+        guard case .many(let offsetsOwner) = stripOffsets,
+              case .many(let countsOwner) = stripByteCounts else {
+            throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
+        }
+
+        var totalStripBytes = 0
+        for (off, cnt) in zip(offsetsOwner.values, countsOwner.values) {
+            guard off >= 0, cnt >= 0 else {
+                throw CodecError(.malformedInput, "Negative TIFF strip offset or byte count.")
+            }
+            let end = try checkedAdd(off, cnt, label: "TIFF strip end")
+            guard end <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF strip extends past end of file.")
+            }
+            totalStripBytes = try checkedAdd(totalStripBytes, cnt, label: "TIFF strip total")
+        }
+        guard totalStripBytes >= neededBytes else {
+            throw CodecError(.malformedInput, "TIFF strip data (\(totalStripBytes) B) is shorter than required sample bytes (\(neededBytes) B).")
+        }
+
+        let ws = TIFFOwnedStripBuffer(byteCount: neededBytes, baseInputBytes: inputByteCount)
+        ws.bytes.withUnsafeMutableBufferPointer { dstBuf in
+            guard let dstBase = dstBuf.baseAddress else { return }
+            var written = 0
+            for (off, cnt) in zip(offsetsOwner.values, countsOwner.values) where written < neededBytes {
+                let take = min(cnt, neededBytes - written)
+                if take > 0 {
+                    dstBase.advanced(by: written).update(from: bytes + off, count: take)
+                    written += take
+                }
+            }
+        }
+        return ws
+    }()
+
+    // Clear caller tag references in deterministic order so offsetsOwner and countsOwner lose
+    // their final strong references and deinit prior to returning to decodeTIFFFromStripWorkspace.
+    stripOffsets = .empty
+    stripByteCounts = .empty
+    retainedTagBytes = 0
+    return stripWorkspace
+}
+
+@inline(never)
+private func decodeTIFFFromStripWorkspace(
+    _ stripWorkspace: TIFFOwnedStripBuffer,
+    descriptor: ImageDescriptor,
+    limits: ResourceLimits,
+    width w: Int,
+    pixelCount: Int,
+    samplesPerPixel: Int,
+    planarConfig: Int,
+    bps: Int,
+    isLE: Bool,
+    signed: Bool
+) throws -> Image {
+    let image = try stripWorkspace.bytes.withUnsafeBufferPointer { stripBuf -> Image in
+        guard let stripPtr = stripBuf.baseAddress else {
+            throw CodecError(.internalFailure, "Empty TIFF strip workspace buffer.")
+        }
+        return try makeContractImage(
+            descriptor: descriptor,
+            limits: limits
+        ) { c, x, y in
+            let pixelIdx = y * w + x
+            let sampleIdx = (planarConfig == 2)
+                ? (c * pixelCount + pixelIdx)
+                : (pixelIdx * samplesPerPixel + c)
+            return decodeTIFFSampleFromBuffer(
+                stripPtr,
+                baseOffset: 0,
+                sampleIdx: sampleIdx,
+                bps: bps,
+                isLE: isLE,
+                signed: signed
+            )
+        }
+    }
+    stripWorkspace.exitExtraLiveBytes = descriptor.requiredByteCount
+    return image
+}
+
 func parseTIFF(
     _ data: Data,
     declaredPrecision: Int?,
@@ -989,64 +1293,6 @@ func parseTIFF(
     }
     CLIImageIOTelemetry.setInputBytes(data.count)
     defer { CLIImageIOTelemetry.setInputBytes(0) }
-
-    enum TIFFStripList {
-        case empty
-        case single(Int)
-        case many([Int])
-
-        var count: Int {
-            switch self {
-            case .empty: return 0
-            case .single: return 1
-            case .many(let arr): return arr.count
-            }
-        }
-
-        var heapBytes: Int {
-            switch self {
-            case .empty, .single: return 0
-            case .many(let arr): return arr.count * MemoryLayout<Int>.stride
-            }
-        }
-    }
-
-    func decodeSampleFromBuffer(
-        _ src: UnsafePointer<UInt8>,
-        baseOffset: Int,
-        sampleIdx: Int,
-        bps: Int,
-        isLE: Bool,
-        signed: Bool
-    ) -> Int {
-        if bps == 8 {
-            let b = src[baseOffset + sampleIdx]
-            return signed ? Int(Int8(bitPattern: b)) : Int(b)
-        } else if bps == 16 {
-            let p = baseOffset + sampleIdx * 2
-            let word: UInt16 = isLE
-                ? (UInt16(src[p]) | (UInt16(src[p + 1]) << 8))
-                : ((UInt16(src[p]) << 8) | UInt16(src[p + 1]))
-            return signed ? Int(Int16(bitPattern: word)) : Int(word)
-        } else {
-            let pairIdx = sampleIdx / 2
-            let base = baseOffset + pairIdx * 3
-            var s: Int
-            if sampleIdx % 2 == 0 {
-                let b0 = Int(src[base])
-                let b1 = Int(src[base + 1])
-                s = (b0 << 4) | (b1 >> 4)
-            } else {
-                let b1 = Int(src[base + 1])
-                let b2 = Int(src[base + 2])
-                s = ((b1 & 0x0F) << 8) | b2
-            }
-            if signed && s >= 2048 {
-                s -= 4096
-            }
-            return s
-        }
-    }
 
     return try data.withUnsafeBytes { rawBuf -> Image in
         guard rawBuf.count >= 8,
@@ -1153,58 +1399,45 @@ func parseTIFF(
         }
 
         var retainedTagBytes = 0
-        var offsetsLiveBytes = 0
-        var countsLiveBytes = 0
-        defer {
-            if offsetsLiveBytes > 0 {
-                CLIImageIOTelemetry.exit(stage: "tiff-strip-offsets", workspaceBytes: offsetsLiveBytes, basePlusOtherLiveBytes: data.count)
-            }
-            if countsLiveBytes > 0 {
-                CLIImageIOTelemetry.exit(stage: "tiff-strip-byte-counts", workspaceBytes: countsLiveBytes, basePlusOtherLiveBytes: data.count)
-            }
-        }
 
         func readStripTagList(
             entryOffset: Int,
             fieldType: UInt16,
             count: Int,
             stage: String,
-            currentLiveBytes: inout Int
+            existingBytes: Int
         ) throws -> TIFFStripList {
             guard let span = try resolveTagSpan(entryOffset: entryOffset, fieldType: fieldType, count: count) else {
+                retainedTagBytes = max(0, retainedTagBytes - existingBytes)
                 return .empty
             }
             if count == 1 {
-                if currentLiveBytes > 0 {
-                    retainedTagBytes -= currentLiveBytes
-                    CLIImageIOTelemetry.exit(stage: stage, workspaceBytes: currentLiveBytes, basePlusOtherLiveBytes: data.count)
-                    currentLiveBytes = 0
-                }
                 let singleVal = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
+                retainedTagBytes = max(0, retainedTagBytes - existingBytes)
                 return .single(singleVal)
             }
             let arrayMem = try checkedMultiply(count, MemoryLayout<Int>.stride, label: "TIFF tag array memory")
-            let baseRetained = retainedTagBytes - currentLiveBytes
-            let nextRetained = try checkedAdd(baseRetained, arrayMem, label: "TIFF cumulative tag memory")
-            let liveWithTags = try checkedAdd(data.count, nextRetained, label: "TIFF input and tag memory")
-            guard nextRetained <= limits.maximumMetadataBytes,
-                  nextRetained <= limits.maximumWorkspaceBytes,
-                  liveWithTags <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "TIFF tag arrays (\(nextRetained) B) exceed metadata, workspace, or memory limit.")
+            // While constructing the replacement tag list, the caller still owns any previous tag list
+            // (`existingBytes` included in `retainedTagBytes`) until assignment completes.
+            // Admit simultaneous `retainedTagBytes + arrayMem` before allocating `[Int]`.
+            let overlapRetained = try checkedAdd(retainedTagBytes, arrayMem, label: "TIFF simultaneous tag memory")
+            let liveWithOverlap = try checkedAdd(data.count, overlapRetained, label: "TIFF input and simultaneous tag memory")
+            guard overlapRetained <= limits.maximumMetadataBytes,
+                  overlapRetained <= limits.maximumWorkspaceBytes,
+                  liveWithOverlap <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "TIFF tag arrays (\(overlapRetained) B) exceed metadata, workspace, or memory limit.")
             }
-            if currentLiveBytes > 0 {
-                CLIImageIOTelemetry.exit(stage: stage, workspaceBytes: currentLiveBytes, basePlusOtherLiveBytes: data.count)
-            }
-            CLIImageIOTelemetry.enter(stage: stage, workspaceBytes: arrayMem, basePlusOtherLiveBytes: data.count)
-            currentLiveBytes = arrayMem
-            retainedTagBytes = nextRetained
 
-            var result: [Int] = []
-            result.reserveCapacity(count)
-            for idx in 0..<count {
-                result.append(try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: idx))
+            let owned = try TIFFOwnedTagList(
+                count: count,
+                byteCount: arrayMem,
+                stage: stage,
+                baseInputBytes: data.count
+            ) { idx in
+                try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: idx)
             }
-            return .many(result)
+            retainedTagBytes = max(0, retainedTagBytes - existingBytes) + arrayMem
+            return .many(owned)
         }
 
         var width: Int?
@@ -1249,7 +1482,7 @@ func parseTIFF(
                     fieldType: fieldType,
                     count: count,
                     stage: "tiff-strip-offsets",
-                    currentLiveBytes: &offsetsLiveBytes
+                    existingBytes: stripOffsets.heapBytes
                 )
             case 277:
                 if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
@@ -1261,7 +1494,7 @@ func parseTIFF(
                     fieldType: fieldType,
                     count: count,
                     stage: "tiff-strip-byte-counts",
-                    currentLiveBytes: &countsLiveBytes
+                    existingBytes: stripByteCounts.heapBytes
                 )
             case 284:
                 if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
@@ -1351,8 +1584,7 @@ func parseTIFF(
             neededBytes = try checkedAdd(pairBytes, rem == 1 ? 2 : 0, label: "TIFF 12-bit byte count")
         }
 
-        switch (stripOffsets, stripByteCounts) {
-        case (.single(let off), .single(let cnt)):
+        if case .single(let off) = stripOffsets, case .single(let cnt) = stripByteCounts {
             // Zero strip workspace copy on single-strip TIFF: only input Data + destination Image are simultaneously live.
             let totalLiveMemory = try checkedAdd(data.count, destBytes, label: "TIFF single-strip total live memory")
             guard totalLiveMemory <= limits.maximumMemoryBytes else {
@@ -1376,7 +1608,7 @@ func parseTIFF(
                 let sampleIdx = (planarConfig == 2)
                     ? (c * pixelCount + pixelIdx)
                     : (pixelIdx * samplesPerPixel + c)
-                return decodeSampleFromBuffer(
+                return decodeTIFFSampleFromBuffer(
                     bytes,
                     baseOffset: off,
                     sampleIdx: sampleIdx,
@@ -1385,96 +1617,30 @@ func parseTIFF(
                     signed: signed
                 )
             }
-
-        case (.many(let offsets), .many(let counts)):
-            // Admit combined live buffers:
-            // Phase A (strip assembly): input Data + retained tag arrays + stripBytes workspace
-            // Phase B (destination fill after releasing tag arrays): input Data + stripBytes workspace + ImageDestination
-            let assemblyWorkspace = try checkedAdd(retainedTagBytes, neededBytes, label: "TIFF multi-strip workspace")
-            let assemblyMemory = try checkedAdd(data.count, assemblyWorkspace, label: "TIFF strip assembly memory")
-            let stripPlusDest = try checkedAdd(neededBytes, destBytes, label: "TIFF strip and destination bytes")
-            let decodeMemory = try checkedAdd(data.count, stripPlusDest, label: "TIFF multi-strip decode memory")
-            guard assemblyWorkspace <= limits.maximumWorkspaceBytes,
-                  assemblyMemory <= limits.maximumMemoryBytes,
-                  decodeMemory <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "TIFF multi-strip workspace or simultaneous live memory exceeds resource limits.")
-            }
-
-            var totalStripBytes = 0
-            for (off, cnt) in zip(offsets, counts) {
-                guard off >= 0, cnt >= 0 else {
-                    throw CodecError(.malformedInput, "Negative TIFF strip offset or byte count.")
-                }
-                let end = try checkedAdd(off, cnt, label: "TIFF strip end")
-                guard end <= byteCount else {
-                    throw CodecError(.malformedInput, "TIFF strip extends past end of file.")
-                }
-                totalStripBytes = try checkedAdd(totalStripBytes, cnt, label: "TIFF strip total")
-            }
-            guard totalStripBytes >= neededBytes else {
-                throw CodecError(.malformedInput, "TIFF strip data (\(totalStripBytes) B) is shorter than required sample bytes (\(neededBytes) B).")
-            }
-
-            CLIImageIOTelemetry.enter(stage: "tiff-strip-workspace", workspaceBytes: neededBytes, basePlusOtherLiveBytes: data.count)
-            var stripExited = false
-            defer {
-                if !stripExited {
-                    CLIImageIOTelemetry.exit(stage: "tiff-strip-workspace", workspaceBytes: neededBytes, basePlusOtherLiveBytes: data.count)
-                }
-            }
-
-            var stripBytes = [UInt8](repeating: 0, count: neededBytes)
-            stripBytes.withUnsafeMutableBufferPointer { dstBuf in
-                guard let dstBase = dstBuf.baseAddress else { return }
-                var written = 0
-                for (off, cnt) in zip(offsets, counts) where written < neededBytes {
-                    let take = min(cnt, neededBytes - written)
-                    if take > 0 {
-                        dstBase.advanced(by: written).update(from: bytes + off, count: take)
-                        written += take
-                    }
-                }
-            }
-
-            // Release multi-strip tag arrays before allocating ImageDestination.
-            stripOffsets = .empty
-            stripByteCounts = .empty
-            if offsetsLiveBytes > 0 {
-                CLIImageIOTelemetry.exit(stage: "tiff-strip-offsets", workspaceBytes: offsetsLiveBytes, basePlusOtherLiveBytes: data.count)
-                offsetsLiveBytes = 0
-            }
-            if countsLiveBytes > 0 {
-                CLIImageIOTelemetry.exit(stage: "tiff-strip-byte-counts", workspaceBytes: countsLiveBytes, basePlusOtherLiveBytes: data.count)
-                countsLiveBytes = 0
-            }
-            retainedTagBytes = 0
-
-            let image = try stripBytes.withUnsafeBufferPointer { stripBuf -> Image in
-                let stripPtr = stripBuf.baseAddress!
-                return try makeContractImage(
-                    descriptor: descriptor,
+        } else if stripOffsets.isMany && stripByteCounts.isMany {
+            return try decodeTIFFFromStripWorkspace(
+                try assembleTIFFMultiStripWorkspace(
+                    stripOffsets: &stripOffsets,
+                    stripByteCounts: &stripByteCounts,
+                    retainedTagBytes: &retainedTagBytes,
+                    bytes: bytes,
+                    byteCount: byteCount,
+                    inputByteCount: data.count,
+                    neededBytes: neededBytes,
+                    destBytes: destBytes,
                     limits: limits
-                ) { c, x, y in
-                    let pixelIdx = y * w + x
-                    let sampleIdx = (planarConfig == 2)
-                        ? (c * pixelCount + pixelIdx)
-                        : (pixelIdx * samplesPerPixel + c)
-                    return decodeSampleFromBuffer(
-                        stripPtr,
-                        baseOffset: 0,
-                        sampleIdx: sampleIdx,
-                        bps: bps,
-                        isLE: isLE,
-                        signed: signed
-                    )
-                }
-            }
-            stripBytes = []
-            CLIImageIOTelemetry.exit(stage: "tiff-strip-workspace", workspaceBytes: neededBytes, basePlusOtherLiveBytes: data.count + destBytes)
-            stripExited = true
-            return image
-
-        default:
+                ),
+                descriptor: descriptor,
+                limits: limits,
+                width: w,
+                pixelCount: pixelCount,
+                samplesPerPixel: samplesPerPixel,
+                planarConfig: planarConfig,
+                bps: bps,
+                isLE: isLE,
+                signed: signed
+            )
+        } else {
             throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
         }
     }

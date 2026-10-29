@@ -607,18 +607,15 @@ enum CodestreamSyntax {
                 rgn[segment.component] = segment
             case Marker.poc:
                 guard let size else { throw CodecError(.malformedInput, "POC precedes SIZ.") }
-                let entries = try parsePOC(payload, componentCount: size.components.count) { entryCount in
-                    let expandedBytes = try checkedAdd(
-                        32,
-                        try checkedMultiply(entryCount, MemoryLayout<ProgressionOrderChangeEntry>.stride)
-                    )
+                try parsePOC(payload, componentCount: size.components.count, into: &poc) { addedRetained, reallocOverlap in
+                    let totalTransient = try checkedAdd(payloadTransientBytes, reallocOverlap)
                     try admitRetained(
-                        expandedBytes,
-                        liveTransientBytes: payloadTransientBytes,
+                        addedRetained,
+                        liveTransientBytes: totalTransient,
+                        parserStage: "poc-entries",
                         message: "Retained POC metadata exceeds workspace or memory limits."
                     )
                 }
-                poc.append(contentsOf: entries)
             case Marker.crg:
                 guard let size else { throw CodecError(.malformedInput, "CRG precedes SIZ.") }
                 guard crg == nil else { throw CodecError(.malformedInput, "Duplicate CRG marker segment.") }
@@ -664,8 +661,8 @@ enum CodestreamSyntax {
             let partIndex = Int(try reader.readUInt8())
             let partCount = Int(try reader.readUInt8())
             // Tile-part header markers until SOD.
-            var overrides = tileOverrides[tileIndex] ?? TileHeaderOverrides()
             var hasOverrides = tileOverrides[tileIndex] != nil
+            var overrides = tileOverrides.removeValue(forKey: tileIndex) ?? TileHeaderOverrides()
             var partComments: [[UInt8]] = []
             while true {
                 let tileMarker = try reader.readUInt16()
@@ -773,22 +770,20 @@ enum CodestreamSyntax {
                         try admitRetained(
                             128,
                             liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-overrides",
                             message: "Retained tile-header overrides exceed workspace or memory limits."
                         )
                         hasOverrides = true
                     }
-                    let entries = try parsePOC(payload, componentCount: size.components.count) { entryCount in
-                        let expandedBytes = try checkedAdd(
-                            32,
-                            try checkedMultiply(entryCount, MemoryLayout<ProgressionOrderChangeEntry>.stride)
-                        )
+                    try parsePOC(payload, componentCount: size.components.count, into: &overrides.progressionChanges) { addedRetained, reallocOverlap in
+                        let totalTransient = try checkedAdd(payloadTransientBytes, reallocOverlap)
                         try admitRetained(
-                            expandedBytes,
-                            liveTransientBytes: payloadTransientBytes,
+                            addedRetained,
+                            liveTransientBytes: totalTransient,
+                            parserStage: "tile-poc-entries",
                             message: "Retained tile POC metadata exceeds workspace or memory limits."
                         )
                     }
-                    overrides.progressionChanges.append(contentsOf: entries)
                 case Marker.ppt:
                     _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Packed packet headers (PPT) are not supported.")
@@ -867,33 +862,39 @@ enum CodestreamSyntax {
             throw CodecError(.malformedInput, "CAP marker segment is present without SIZ Rsiz bit 14 (0x4000).")
         }
 
-        // Collect all effective CodingStyleSegments (main header and any tile overrides).
-        var styles: [CodingStyleSegment] = [parsed.codingStyle]
-        for tileIndex in parsed.tileOverrides.keys.sorted() {
-            styles.append(parsed.effectiveParameters(tile: tileIndex).0)
-        }
+        let cap = parsed.extendedCapabilities
 
-        for style in styles {
-            let htBit = (style.codeBlockStyle & 0x40) != 0
-            let mixedBit = (style.codeBlockStyle & 0x80) != 0
+        func validateCodeBlockStyle(_ codeBlockStyle: UInt8) throws {
+            let htBit = (codeBlockStyle & 0x40) != 0
+            let mixedBit = (codeBlockStyle & 0x80) != 0
             if mixedBit && !htBit {
                 throw CodecError(.malformedInput, "COD/COC sets HT mixed bit (0x80) without HT coding bit (0x40).")
             }
             if htBit {
-                guard let cap = parsed.extendedCapabilities else {
+                guard let cap else {
                     throw CodecError(.malformedInput, "COD/COC enables HTJ2K block coding (0x40) without a Part 15 CAP marker segment.")
                 }
                 if mixedBit && cap.mode != .mixed {
                     throw CodecError(.malformedInput, "COD/COC enables mixed HT/Part 1 coding (0xC0) when CAP Ccap15 is not HTMIXED.")
                 }
+            } else if let cap, cap.mode == .htOnly {
+                throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
             }
         }
 
-        if let cap = parsed.extendedCapabilities {
-            if cap.mode == .htOnly {
-                for style in styles where (style.codeBlockStyle & 0x40) == 0 {
-                    throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
-                }
+        // Validate main-header and tile-override code-block style flags directly without allocating
+        // intermediate CodingStyleSegment arrays or sorted dictionary-key lists after parser admission.
+        try validateCodeBlockStyle(parsed.codingStyle.codeBlockStyle)
+        for (comp, coc) in parsed.componentCodingStyles where comp != 0 {
+            try validateCodeBlockStyle(coc.codeBlockStyle)
+        }
+        for overrides in parsed.tileOverrides.values {
+            let tileComp0Style = overrides.componentCodingStyle?.codeBlockStyle
+                ?? overrides.codingStyle?.codeBlockStyle
+                ?? parsed.codingStyle.codeBlockStyle
+            try validateCodeBlockStyle(tileComp0Style)
+            for (comp, tileCOC) in overrides.componentCodingStyles where comp != 0 {
+                try validateCodeBlockStyle(tileCOC.codeBlockStyle)
             }
         }
     }
@@ -1192,34 +1193,74 @@ enum CodestreamSyntax {
     static func parsePOC(
         _ payload: [UInt8],
         componentCount: Int,
-        admitEntries: (Int) throws -> Void = { _ in }
-    ) throws -> [ProgressionOrderChangeEntry] {
+        into destination: inout [ProgressionOrderChangeEntry],
+        admitGrowth: (_ addedRetainedBytes: Int, _ transientReallocOverlapBytes: Int) throws -> Void = { _, _ in }
+    ) throws {
         let entrySize = componentCount < 257 ? 7 : 9
         guard !payload.isEmpty, payload.count % entrySize == 0 else {
             throw CodecError(.malformedInput, "POC marker segment length is not a multiple of entry size \(entrySize).")
         }
         let entryCount = payload.count / entrySize
-        try admitEntries(entryCount)
-        var r = ByteReader(payload)
-        var entries: [ProgressionOrderChangeEntry] = []
-        entries.reserveCapacity(entryCount)
-        while !r.isAtEnd {
-            let rs = Int(try r.readUInt8())
-            let cs = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
-            let lye = Int(try r.readUInt16())
-            let re = Int(try r.readUInt8())
-            let rawCE = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
+
+        // Validate every POC entry directly from the byte slice before admitting or allocating.
+        var validator = ByteReader(payload)
+        while !validator.isAtEnd {
+            let rs = Int(try validator.readUInt8())
+            let cs = componentCount < 257 ? Int(try validator.readUInt8()) : Int(try validator.readUInt16())
+            let lye = Int(try validator.readUInt16())
+            let re = Int(try validator.readUInt8())
+            let rawCE = componentCount < 257 ? Int(try validator.readUInt8()) : Int(try validator.readUInt16())
             let ce = (componentCount < 257 && rawCE == 0) ? 256 : rawCE
-            let prog = try r.readUInt8()
+            let prog = try validator.readUInt8()
             guard rs < re, re <= 33, cs < ce, lye >= 1, prog <= 4 else {
                 throw CodecError(.malformedInput, "POC entry bounds or progression order are invalid.")
             }
-            entries.append(ProgressionOrderChangeEntry(
+        }
+
+        let stride = MemoryLayout<ProgressionOrderChangeEntry>.stride
+        let oldCount = destination.count
+        let newCount = try checkedAdd(oldCount, entryCount)
+        let addedEntriesBytes = try checkedMultiply(entryCount, stride)
+        let addedRetainedBytes: Int
+        let transientReallocOverlapBytes: Int
+        if oldCount == 0 {
+            addedRetainedBytes = try checkedAdd(32, addedEntriesBytes)
+            transientReallocOverlapBytes = 0
+        } else {
+            // While building the exact-capacity grown buffer (`32 + newCount * stride`),
+            // `destination`'s old buffer (`32 + oldCount * stride`, already in retainedMetadataBytes)
+            // remains live until `destination = grown` replaces it.
+            let oldBufferBytes = try checkedAdd(32, try checkedMultiply(oldCount, stride))
+            addedRetainedBytes = addedEntriesBytes
+            transientReallocOverlapBytes = oldBufferBytes
+        }
+        try admitGrowth(addedRetainedBytes, transientReallocOverlapBytes)
+
+        var grown: [ProgressionOrderChangeEntry] = []
+        grown.reserveCapacity(newCount)
+        if oldCount > 0 {
+            grown.append(contentsOf: destination)
+        }
+        var r = ByteReader(payload)
+        while !r.isAtEnd {
+            let rs = Int(try r.readUInt8())
+            let cs = componentCount < 257 ? Int(try r.readUInt8()) : Int(try validatorCheckedReadUInt(from: &r, twoBytes: componentCount >= 257))
+            let lye = Int(try r.readUInt16())
+            let re = Int(try r.readUInt8())
+            let rawCE = componentCount < 257 ? Int(try r.readUInt8()) : Int(try validatorCheckedReadUInt(from: &r, twoBytes: componentCount >= 257))
+            let ce = (componentCount < 257 && rawCE == 0) ? 256 : rawCE
+            let prog = try r.readUInt8()
+            grown.append(ProgressionOrderChangeEntry(
                 resolutionStart: rs, componentStart: cs, layerEnd: lye,
                 resolutionEnd: re, componentEnd: ce, progression: prog
             ))
         }
-        return entries
+        destination = grown
+    }
+
+    @inline(__always)
+    private static func validatorCheckedReadUInt(from reader: inout ByteReader, twoBytes: Bool) throws -> UInt16 {
+        twoBytes ? try reader.readUInt16() : UInt16(try reader.readUInt8())
     }
 
     // MARK: - Writing

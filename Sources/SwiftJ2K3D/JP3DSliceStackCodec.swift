@@ -42,6 +42,13 @@ internal struct VolumeWorkGuard: Sendable {
 
 /// Package-scoped concurrency and live-budget telemetry used by tests to observe peak in-flight worker tasks and simultaneous memory reservations.
 package enum VolumeConcurrencyTelemetry {
+    package struct Snapshot: Sendable, Equatable {
+        package let currentInFlight: Int
+        package let liveTransientBytes: Int
+        package let liveOutputBytes: Int
+        package let retainedBytes: Int
+    }
+
     package final class Recorder: Sendable {
         private struct State: Sendable {
             var current = 0
@@ -49,14 +56,28 @@ package enum VolumeConcurrencyTelemetry {
             var totalStarted = 0
             var liveTransientBytes = 0
             var peakTransientBytes = 0
+            var liveOutputBytes = 0
+            var peakOutputBytes = 0
             var retainedBytes = 0
             var peakLiveWorkspaceBytes = 0
+            var postDelaySnapshots: [Int: Snapshot] = [:]
         }
         private let state = Mutex(State())
         private let artificialDelayMilliseconds: Int
+        private let workerDelayForTile: (@Sendable (Int) -> Int)?
+        private let parentConsumeDelayMilliseconds: Int
+        private let parentConsumeDelayForStep: (@Sendable (Int) -> Int)?
 
-        package init(artificialDelayMilliseconds: Int = 0) {
+        package init(
+            artificialDelayMilliseconds: Int = 0,
+            workerDelayForTile: (@Sendable (Int) -> Int)? = nil,
+            parentConsumeDelayMilliseconds: Int = 0,
+            parentConsumeDelayForStep: (@Sendable (Int) -> Int)? = nil
+        ) {
             self.artificialDelayMilliseconds = max(0, artificialDelayMilliseconds)
+            self.workerDelayForTile = workerDelayForTile
+            self.parentConsumeDelayMilliseconds = max(0, parentConsumeDelayMilliseconds)
+            self.parentConsumeDelayForStep = parentConsumeDelayForStep
         }
 
         package var currentInFlight: Int { state.withLock { $0.current } }
@@ -64,10 +85,16 @@ package enum VolumeConcurrencyTelemetry {
         package var totalTasksStarted: Int { state.withLock { $0.totalStarted } }
         package var liveTransientBytes: Int { state.withLock { $0.liveTransientBytes } }
         package var peakTransientBytes: Int { state.withLock { $0.peakTransientBytes } }
+        package var liveOutputBytes: Int { state.withLock { $0.liveOutputBytes } }
+        package var peakOutputBytes: Int { state.withLock { $0.peakOutputBytes } }
         package var retainedBytes: Int { state.withLock { $0.retainedBytes } }
         package var peakLiveWorkspaceBytes: Int { state.withLock { $0.peakLiveWorkspaceBytes } }
 
-        internal func enter() async throws {
+        package func snapshotAfterEnterDelay(forTile tileIndex: Int) -> Snapshot? {
+            state.withLock { $0.postDelaySnapshots[tileIndex] }
+        }
+
+        internal func enter(tileIndex: Int? = nil) async throws {
             state.withLock {
                 $0.current += 1
                 $0.totalStarted += 1
@@ -75,8 +102,31 @@ package enum VolumeConcurrencyTelemetry {
                     $0.peak = $0.current
                 }
             }
-            if artificialDelayMilliseconds > 0 {
-                try await Task.sleep(for: .milliseconds(artificialDelayMilliseconds))
+            let delayMs: Int
+            if let tileIndex, let workerDelayForTile {
+                delayMs = max(0, workerDelayForTile(tileIndex))
+            } else {
+                delayMs = artificialDelayMilliseconds
+            }
+            if delayMs > 0 {
+                try await Task.sleep(for: .milliseconds(delayMs))
+            }
+            if let tileIndex {
+                state.withLock { s in
+                    s.postDelaySnapshots[tileIndex] = Snapshot(
+                        currentInFlight: s.current,
+                        liveTransientBytes: s.liveTransientBytes,
+                        liveOutputBytes: s.liveOutputBytes,
+                        retainedBytes: s.retainedBytes
+                    )
+                }
+            }
+        }
+
+        internal func beforeParentConsume(step: Int) async throws {
+            let delayMs = max(0, parentConsumeDelayForStep?(step) ?? parentConsumeDelayMilliseconds)
+            if delayMs > 0 {
+                try await Task.sleep(for: .milliseconds(delayMs))
             }
         }
 
@@ -86,12 +136,16 @@ package enum VolumeConcurrencyTelemetry {
             }
         }
 
-        internal func recordBudgetUpdate(liveTransient: Int, retained: Int) {
+        internal func recordBudgetUpdate(liveTransient: Int, liveOutput: Int = 0, retained: Int) {
             state.withLock {
                 $0.liveTransientBytes = liveTransient
+                $0.liveOutputBytes = liveOutput
                 $0.retainedBytes = retained
                 if liveTransient > $0.peakTransientBytes {
                     $0.peakTransientBytes = liveTransient
+                }
+                if liveOutput > $0.peakOutputBytes {
+                    $0.peakOutputBytes = liveOutput
                 }
                 let combined = liveTransient + retained
                 if combined > $0.peakLiveWorkspaceBytes {
@@ -104,10 +158,11 @@ package enum VolumeConcurrencyTelemetry {
     @TaskLocal package static var recorder: Recorder?
 }
 
-/// Thread-safe live workspace and retained-output admission tracker across sequential or concurrent JP3D workers.
+/// Thread-safe live workspace, in-flight/queued child-output, and retained-output admission tracker across sequential or concurrent JP3D workers.
 internal final class JP3DLiveBudgetTracker: Sendable {
     private struct State: Sendable {
-        var liveTransientBytes = 0
+        var liveScratchBytes = 0
+        var liveOutputBytes = 0
         var retainedBytes = 0
     }
 
@@ -116,17 +171,77 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         fileprivate let bytes: Int
 
         internal func release() {
-            owner?.releaseTransient(bytes)
+            owner?.releaseScratch(bytes)
+        }
+    }
+
+    /// RAII reservation accompanying an encoded tile `Data` payload across child-task return
+    /// until the parent task atomically promotes it to `retainedBytes` or discards it on error/cancellation.
+    internal final class OutputReservation: Sendable {
+        private let owner: JP3DLiveBudgetTracker?
+        private let bytesMutex: Mutex<Int>
+
+        fileprivate init(owner: JP3DLiveBudgetTracker?, initialBytes: Int) {
+            self.owner = owner
+            self.bytesMutex = Mutex(max(0, initialBytes))
+        }
+
+        internal var reservedBytes: Int {
+            bytesMutex.withLock { $0 }
+        }
+
+        internal func grow(
+            by additionalBytes: Int,
+            extraTransientBytes: Int = 0,
+            checkCompressedLimit: Bool = true,
+            stage: String,
+            message: String
+        ) throws {
+            guard additionalBytes > 0, let owner else { return }
+            try owner.growOutput(
+                additionalBytes,
+                extraTransientBytes: extraTransientBytes,
+                checkCompressedLimit: checkCompressedLimit,
+                stage: stage,
+                message: message
+            )
+            bytesMutex.withLock { $0 += additionalBytes }
+        }
+
+        internal func promoteToRetained(stage: String) {
+            let toPromote = bytesMutex.withLock { current -> Int in
+                let taken = current
+                current = 0
+                return taken
+            }
+            guard toPromote > 0 else { return }
+            owner?.promoteOutputToRetained(toPromote, stage: stage)
+        }
+
+        internal func release() {
+            let toRelease = bytesMutex.withLock { current -> Int in
+                let taken = current
+                current = 0
+                return taken
+            }
+            guard toRelease > 0 else { return }
+            owner?.releaseOutput(toRelease)
+        }
+
+        deinit {
+            release()
         }
     }
 
     private let baseBytes: Int
     private let limits: ResourceLimits?
+    private let telemetryRecorder: VolumeConcurrencyTelemetry.Recorder?
     private let state = Mutex(State())
 
     internal init(baseBytes: Int, limits: ResourceLimits?) {
         self.baseBytes = max(0, baseBytes)
         self.limits = limits
+        self.telemetryRecorder = VolumeConcurrencyTelemetry.recorder
     }
 
     internal var currentRetainedBytes: Int {
@@ -134,7 +249,19 @@ internal final class JP3DLiveBudgetTracker: Sendable {
     }
 
     internal var currentTransientBytes: Int {
-        state.withLock { $0.liveTransientBytes }
+        state.withLock { $0.liveScratchBytes + $0.liveOutputBytes }
+    }
+
+    internal var currentOutputBytes: Int {
+        state.withLock { $0.liveOutputBytes }
+    }
+
+    private func notifyBudgetUpdate(scratch: Int, output: Int, retained: Int) {
+        (VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder)?.recordBudgetUpdate(
+            liveTransient: scratch + output,
+            liveOutput: output,
+            retained: retained
+        )
     }
 
     internal func reserveTransient(
@@ -144,14 +271,17 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         message: String
     ) throws -> TransientLease {
         guard bytes > 0 else { return TransientLease(owner: nil, bytes: 0) }
-        var snapTransient = 0
+        var snapScratch = 0
+        var snapOutput = 0
         var snapRetained = 0
         try state.withLock { st in
-            let (nextTransient, ov1) = st.liveTransientBytes.addingReportingOverflow(bytes)
-            let (liveWorkspace, ov2) = nextTransient.addingReportingOverflow(st.retainedBytes)
-            let (liveTotal, ov3) = baseBytes.addingReportingOverflow(liveWorkspace)
-            let (projectedCompressed, ov4) = st.retainedBytes.addingReportingOverflow(bytes)
-            guard !ov1, !ov2, !ov3, !ov4 else {
+            let (nextScratch, ov1) = st.liveScratchBytes.addingReportingOverflow(bytes)
+            let (nextTransient, ov2) = nextScratch.addingReportingOverflow(st.liveOutputBytes)
+            let (liveWorkspace, ov3) = nextTransient.addingReportingOverflow(st.retainedBytes)
+            let (liveTotal, ov4) = baseBytes.addingReportingOverflow(liveWorkspace)
+            let (committedOut, ov5) = st.retainedBytes.addingReportingOverflow(st.liveOutputBytes)
+            let (projectedCompressed, ov6) = committedOut.addingReportingOverflow(bytes)
+            guard !ov1, !ov2, !ov3, !ov4, !ov5, !ov6 else {
                 throw CodecError(.resourceLimitExceeded, message)
             }
             if let limits {
@@ -163,68 +293,122 @@ internal final class JP3DLiveBudgetTracker: Sendable {
                     throw CodecError(.resourceLimitExceeded, message)
                 }
             }
-            st.liveTransientBytes = nextTransient
-            snapTransient = st.liveTransientBytes
+            st.liveScratchBytes = nextScratch
+            snapScratch = st.liveScratchBytes
+            snapOutput = st.liveOutputBytes
             snapRetained = st.retainedBytes
         }
-        VolumeConcurrencyTelemetry.recorder?.recordBudgetUpdate(
-            liveTransient: snapTransient,
-            retained: snapRetained
-        )
+        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
         StorageTelemetry.recordParserAllocation(stage: stage, bytes: bytes)
         return TransientLease(owner: self, bytes: bytes)
     }
 
-    internal func admitRetained(
-        _ bytes: Int,
-        checkCompressedLimit: Bool = false,
+    internal func makeOutputReservation(
+        initialBytes: Int,
+        checkCompressedLimit: Bool = true,
+        stage: String,
+        message: String
+    ) throws -> OutputReservation {
+        if initialBytes > 0 {
+            try growOutput(
+                initialBytes,
+                extraTransientBytes: 0,
+                checkCompressedLimit: checkCompressedLimit,
+                stage: stage,
+                message: message
+            )
+        }
+        return OutputReservation(owner: self, initialBytes: initialBytes)
+    }
+
+    fileprivate func growOutput(
+        _ additionalBytes: Int,
+        extraTransientBytes: Int,
+        checkCompressedLimit: Bool,
         stage: String,
         message: String
     ) throws {
-        guard bytes > 0 else { return }
-        var snapTransient = 0
+        guard additionalBytes > 0 else { return }
+        var snapScratch = 0
+        var snapOutput = 0
         var snapRetained = 0
         try state.withLock { st in
-            let (nextRetained, ov1) = st.retainedBytes.addingReportingOverflow(bytes)
-            let (liveWorkspace, ov2) = st.liveTransientBytes.addingReportingOverflow(nextRetained)
-            let (liveTotal, ov3) = baseBytes.addingReportingOverflow(liveWorkspace)
-            guard !ov1, !ov2, !ov3 else {
+            let (nextOutput, ov1) = st.liveOutputBytes.addingReportingOverflow(additionalBytes)
+            let (nextTransient, ov2) = st.liveScratchBytes.addingReportingOverflow(nextOutput)
+            let (steadyWorkspace, ov3) = nextTransient.addingReportingOverflow(st.retainedBytes)
+            let (peakWorkspace, ov4) = steadyWorkspace.addingReportingOverflow(max(0, extraTransientBytes))
+            let (peakTotal, ov5) = baseBytes.addingReportingOverflow(peakWorkspace)
+            let (projectedCompressed, ov6) = st.retainedBytes.addingReportingOverflow(nextOutput)
+            guard !ov1, !ov2, !ov3, !ov4, !ov5, !ov6 else {
                 throw CodecError(.resourceLimitExceeded, message)
             }
             if let limits {
-                if checkCompressedLimit && nextRetained > limits.maximumCompressedBytes {
+                if checkCompressedLimit && projectedCompressed > limits.maximumCompressedBytes {
                     throw CodecError(.resourceLimitExceeded, message)
                 }
-                guard liveWorkspace <= limits.maximumWorkspaceBytes,
-                      liveTotal <= limits.maximumMemoryBytes else {
+                guard peakWorkspace <= limits.maximumWorkspaceBytes,
+                      peakTotal <= limits.maximumMemoryBytes else {
                     throw CodecError(.resourceLimitExceeded, message)
                 }
             }
-            st.retainedBytes = nextRetained
-            snapTransient = st.liveTransientBytes
+            st.liveOutputBytes = nextOutput
+            snapScratch = st.liveScratchBytes
+            snapOutput = st.liveOutputBytes
             snapRetained = st.retainedBytes
         }
-        VolumeConcurrencyTelemetry.recorder?.recordBudgetUpdate(
-            liveTransient: snapTransient,
-            retained: snapRetained
-        )
+        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        StorageTelemetry.recordParserAllocation(stage: stage, bytes: additionalBytes)
+    }
+
+    fileprivate func promoteOutputToRetained(_ bytes: Int, stage: String) {
+        guard bytes > 0 else { return }
+        var snapScratch = 0
+        var snapOutput = 0
+        var snapRetained = 0
+        state.withLock { st in
+            st.liveOutputBytes = max(0, st.liveOutputBytes - bytes)
+            st.retainedBytes += bytes
+            snapScratch = st.liveScratchBytes
+            snapOutput = st.liveOutputBytes
+            snapRetained = st.retainedBytes
+        }
+        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
         StorageTelemetry.recordParserAllocation(stage: stage, bytes: bytes)
     }
 
-    private func releaseTransient(_ bytes: Int) {
+    fileprivate func releaseOutput(_ bytes: Int) {
         guard bytes > 0 else { return }
-        var snapTransient = 0
+        var snapScratch = 0
+        var snapOutput = 0
         var snapRetained = 0
         state.withLock { st in
-            st.liveTransientBytes = max(0, st.liveTransientBytes - bytes)
-            snapTransient = st.liveTransientBytes
+            st.liveOutputBytes = max(0, st.liveOutputBytes - bytes)
+            snapScratch = st.liveScratchBytes
+            snapOutput = st.liveOutputBytes
             snapRetained = st.retainedBytes
         }
-        VolumeConcurrencyTelemetry.recorder?.recordBudgetUpdate(
-            liveTransient: snapTransient,
-            retained: snapRetained
-        )
+        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
     }
+
+    private func releaseScratch(_ bytes: Int) {
+        guard bytes > 0 else { return }
+        var snapScratch = 0
+        var snapOutput = 0
+        var snapRetained = 0
+        state.withLock { st in
+            st.liveScratchBytes = max(0, st.liveScratchBytes - bytes)
+            snapScratch = st.liveScratchBytes
+            snapOutput = st.liveOutputBytes
+            snapRetained = st.retainedBytes
+        }
+        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+    }
+}
+
+/// Encoded volumetric tile payload paired with its active live-budget reservation across child-task return.
+internal struct JP3DEncodedTileOutput: Sendable {
+    internal let data: Data
+    internal let reservation: JP3DLiveBudgetTracker.OutputReservation
 }
 
 @inline(__always)
@@ -371,9 +555,10 @@ internal struct JP3DSliceStackCodec: Sendable {
         compressionMode: JP3DCompressionMode,
         qualityLayers: Int,
         zDeltaPolicy: JP3DZDeltaMode = .auto,
+        budget: JP3DLiveBudgetTracker? = nil,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) throws -> Data {
+    ) throws -> JP3DEncodedTileOutput {
         let componentCount = componentSamples.count
         let slicePixelCount = tileWidth * tileHeight
         let clampedBitDepth = max(1, min(16, bitDepth))
@@ -411,6 +596,7 @@ internal struct JP3DSliceStackCodec: Sendable {
             compressionMode: compressionMode,
             qualityLayers: qualityLayers,
             zDeltaPolicy: zDeltaPolicy,
+            budget: budget,
             limits: limits,
             executionPolicy: executionPolicy
         )
@@ -430,9 +616,10 @@ internal struct JP3DSliceStackCodec: Sendable {
         compressionMode: JP3DCompressionMode,
         qualityLayers: Int,
         zDeltaPolicy: JP3DZDeltaMode = .auto,
+        budget: JP3DLiveBudgetTracker? = nil,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) throws -> Data {
+    ) throws -> JP3DEncodedTileOutput {
         let componentCount = componentSamples.count
         let slicePixelCount = tileWidth * tileHeight
         let clampedBitDepth = max(1, min(16, bitDepth))
@@ -470,6 +657,7 @@ internal struct JP3DSliceStackCodec: Sendable {
             compressionMode: compressionMode,
             qualityLayers: qualityLayers,
             zDeltaPolicy: zDeltaPolicy,
+            budget: budget,
             limits: limits,
             executionPolicy: executionPolicy
         )
@@ -488,9 +676,10 @@ internal struct JP3DSliceStackCodec: Sendable {
         compressionMode: JP3DCompressionMode,
         qualityLayers: Int,
         zDeltaPolicy: JP3DZDeltaMode,
+        budget: JP3DLiveBudgetTracker?,
         limits: ResourceLimits,
         executionPolicy: ExecutionPolicy
-    ) throws -> Data {
+    ) throws -> JP3DEncodedTileOutput {
         let componentCount = intSlicesPerComp.count
         let slicePixelCount = tileWidth * tileHeight
 
@@ -515,8 +704,16 @@ internal struct JP3DSliceStackCodec: Sendable {
             useZDelta = 0
         }
 
-        var out = Data()
-        out.reserveCapacity(20 + componentCount * tileDepth * 64)
+        let tracker = budget ?? JP3DLiveBudgetTracker(baseBytes: 0, limits: limits)
+        let headerBytes = 20
+        let outReservation = try tracker.makeOutputReservation(
+            initialBytes: headerBytes,
+            checkCompressedLimit: true,
+            stage: "jp3d-j3ds-tile-output",
+            message: "Volumetric J3DS encoded tile payload exceeds operation resource limits."
+        )
+
+        var out = Data(capacity: headerBytes)
         out.append(contentsOf: Self.magic)
         out.append(Self.formatVersion)
         let zDeltaFlags: UInt8 = useZDelta | (compressionMode.isHTJ2K ? 0x80 : 0x00)
@@ -565,12 +762,19 @@ internal struct JP3DSliceStackCodec: Sendable {
                     limits: limits,
                     executionPolicy: executionPolicy
                 )
+                try outReservation.grow(
+                    by: 4 + sliceCodestream.count,
+                    extraTransientBytes: out.count,
+                    checkCompressedLimit: true,
+                    stage: "jp3d-j3ds-tile-output",
+                    message: "Volumetric J3DS encoded tile payload exceeds operation resource limits."
+                )
                 appendUInt32BE(&out, UInt32(sliceCodestream.count))
                 out.append(sliceCodestream)
             }
         }
 
-        return out
+        return JP3DEncodedTileOutput(data: out, reservation: outReservation)
     }
 
     // MARK: - Decode
@@ -1186,7 +1390,7 @@ internal enum JP3DLosslessIntegerTileCodec {
         isHTJ2K: Bool,
         budget: JP3DLiveBudgetTracker? = nil,
         work: VolumeWorkGuard? = nil
-    ) throws -> Data {
+    ) throws -> JP3DEncodedTileOutput {
         try work?.check()
         let componentCount = componentSamples.count
         guard componentCount > 0, tileWidth > 0, tileHeight > 0, tileDepth > 0 else {
@@ -1253,13 +1457,13 @@ internal enum JP3DLosslessIntegerTileCodec {
         guard !ov4, !ov5 else {
             throw J2KError.invalidDimensions("J3DI tile byte count overflows Int")
         }
-        let outLease = try budget?.reserveTransient(
-            totalBytes,
+        let tracker = budget ?? JP3DLiveBudgetTracker(baseBytes: 0, limits: nil)
+        let outReservation = try tracker.makeOutputReservation(
+            initialBytes: totalBytes,
             checkCompressedLimit: true,
             stage: "jp3d-j3di-tile-output",
             message: "Volumetric J3DI encoded tile payload exceeds operation resource limits."
         )
-        defer { outLease?.release() }
 
         var out = Data(capacity: totalBytes)
         out.append(contentsOf: magic)
@@ -1310,7 +1514,7 @@ internal enum JP3DLosslessIntegerTileCodec {
             }
         }
 
-        return out
+        return JP3DEncodedTileOutput(data: out, reservation: outReservation)
     }
 
     static func decodeTileInteger(

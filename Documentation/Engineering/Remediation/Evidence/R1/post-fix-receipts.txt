@@ -121,3 +121,56 @@ Audit state: Developer submission evidence ONLY (`submitted`); Codex independent
   **Blocked / unexecuted locally.** Neither `docker`, `podman`, nor a Linux Swift cross-compilation SDK is installed on this macOS host (`which docker podman` -> not found), and pushing to remote CI is prohibited during the local-only Phase R1 review protocol. Portable C-target wiring (`Sources/CZlibShim` re-exporting `<zlib.h>` with `.linkedLibrary("z")`) is implemented and verified on macOS, but Linux compilation cannot be claimed passed from macOS execution alone.
 - Multi-repository `Integration/ContractHarness`:
   **Unexecuted locally** (requires sibling `../SwiftJLS`, `../SwiftJXL`, `../SwiftJLI` checkouts not present in this single-repository workspace).
+
+4. Independent Audit of `e51058879eaf88a10d5a0a1c704e6d22d0a952f7` and Phase R1 Rework Verification Receipts (29 October 2026)
+------------------------------------------------------------------------------------------------------------------------------
+- Preserved Codex Independent Audit Receipt for `e51058879eaf88a10d5a0a1c704e6d22d0a952f7` (`/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/remediation-20261029T075623Z`):
+  - Decision: `R1 REWORK; R2 CLOSED`
+  - Submitted Phase R1 tests (`15` declarations at `e510588`): `15/15` passed in normal-access execution (`independent-focused-normal-access.log`), after an initial restricted-sandbox run stalled in Metal availability probing (`independent-focused-tests.log` / `testing-helper-sample.txt`).
+  - Failed independent adversarial test at `e510588` (`CodexR1AuditTests.duplicateStripOffsetsAdmission` on `duplicate-strip-offsets-64.tiff`, `independent-adversarial.log`):
+    - Under `ResourceLimits(maximumWorkspaceBytes: 768)`, duplicate 64-entry `StripOffsets` (tag 273) subtracted `currentLiveBytes` (`512 B`) before allocating the replacement `[Int]` (`512 B`) while the caller still retained the old owner (`512 + 512 = 1024 B > 768 B` workspace; `"tiff-strip-offsets"` `.enter` count was `2`, expected `<= 1`).
+    - Larger-budget control (`maximumWorkspaceBytes: 2048`) passed (`8x8`, `storage.byteCount == 128`).
+  - Three additional source-traced lifetime residuals recorded for `e510588`:
+    1. `M12-CX-01` (`CLIImageIO.swift`): multi-strip `offsets`/`counts` local aliases remained in scope across `makeContractImage` (`ImageDestination.allocate`), so manual `.exit` events did not prove backing array release.
+    2. `M6-AUD-006` (`Codestream.swift`): `parsePOC` allocated intermediate `entries` before destination append (missing simultaneous `old + new` growth on repeated `POC`), and `validateHTSignalling` allocated `styles` and sorted tile-override keys after retained admission.
+    3. `F05` (`JP3DSliceStackCodec.swift` / `JP3DEncoder.swift`): child `outLease` released on worker return before parent `group.next()` / `admitRetained`, leaving completed unconsumed child `Data` in `ThrowingTaskGroup` uncharged while sibling workers allocated.
+
+- Phase R1 Rework Focused & Affected Suite Verification (atop `e51058879eaf88a10d5a0a1c704e6d22d0a952f7`, `2.6 GiB` free disk):
+  1. All 18 Phase R1 `@Test` declarations:
+     Command: `swift test --filter "R1RemediationTests|R1VolumeRemediationTests|R1JPIPRemediationTests"`
+     Exit code: `0`
+     Summary:
+       - `SwiftJ2KTests` (`R1RemediationTests`): `7/7` `@Test` declarations passed (`0.259 s`), including `M12-CX-01 rework` (duplicate `StripOffsets`/`StripByteCounts` `768 B`, `1100 B`, and `1280 B` replacement boundaries, `4500 B` vs `5120 B` tag+strip workspace boundary, and ARC `deinit` `liveTagOwners == 0` proof before `"image-destination:enter"`) and `M6-AUD-006 rework` (repeated main-header and tile-part `POC` simultaneous growth admission and zero-allocation `validateHTSignalling` at exact `retainedMetadataBytes`).
+       - `SwiftJ2KJPIPTests` (`R1JPIPRemediationTests`): `4/4` `@Test` declarations passed (`0.066 s`).
+       - `SwiftJ2K3DTests` (`R1VolumeRemediationTests`): `7/7` `@Test` declarations passed (`0.908 s`), including `F05 rework` (unconsumed child tile output `OutputReservation` transfer, `unconsumedDeinit` task-group discard cleanup, `10`-tile `1230 B` workspace boundary, `J3DS` slice-stack reservation transfer, and lossy 3D wavelet reservation transfer).
+  2. Affected core codec, HTJ2K, lossless, and shared-storage suites:
+     Command: `swift test --filter "R1RemediationTests|R1VolumeRemediationTests|R1JPIPRemediationTests|HTJ2KCodecTests|LosslessCodecTests|SharedStorageTests"`
+     Exit code: `0`
+     Summary: `58/58` `@Test` declarations in `SwiftJ2KTests` + `4/4` in `SwiftJ2KJPIPTests` + `7/7` in `SwiftJ2K3DTests` = `69/69` passed (`0` failures).
+  3. Affected 3D encoder and contract suites:
+     Command: `swift test --filter "JP3DEncoderTests|VolumeContractTests|R1VolumeRemediationTests"`
+     Exit code: `0`
+     Summary: `76/76` XCTest methods (`JP3DEncoderTests`: 66, `VolumeContractTests`: 10) + `7/7` Swift Testing `@Test` declarations = `83/83` passed (`0` failures).
+  4. Updated package test declaration totals at Phase R1 rework checkpoint:
+     - `SwiftJ2KTests`: `132` Swift Testing `@Test` declarations (`+2` new rework declarations over `e510588`).
+     - `SwiftJ2K3DTests`: `490` XCTest methods + `7` Swift Testing `@Test` declarations = `497` declarations (`+1` new rework declaration over `e510588`).
+     - `SwiftJ2KJPIPTests`: `544` XCTest methods + `4` Swift Testing `@Test` declarations = `548` declarations.
+     - Total package test declarations: `1,177` (`1,034` XCTest + `143` Swift Testing `@Test`).
+  5. Release CLI build, black-box CLI conformance, independent consumer, and contract/safety gates:
+     - `swift build -c release --product swiftj2k-cli` -> Exit `0`
+     - `python3 Scripts/test-cli.py --binary .build/out/Products/Release/swiftj2k-cli --output /tmp/r1-rework-cli` -> Exit `0` (`swiftj2k-cli: 246 process checks passed`)
+     - `swift run --package-path Examples/Consumer` -> Exit `0` (`Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; 106-byte Part 1, 126-byte HTJ2K, 353-byte JP3D codestreams and JPIP session round-tripped.`)
+     - `(cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt)` -> Exit `0` (`7/7 OK`)
+     - `git status --short -- Documentation/Engineering/Swift64/` -> Exit `0` (empty; byte-identical)
+     - `git diff 24b18814c29362f3726321d6618d460da3606e8d -- Sources/ | grep -E "^\+.*(@unchecked|fatalError|precondition\(|try!|as!)"` -> `0` matches (`CLEAN_DIFF_NO_UNSAFE_OR_TRAPS`)
+  6. SHA-256 digests of reworked source, test, and release CLI artefacts:
+     - `Sources/SwiftJ2KCLI/CLIImageIO.swift`: `32b725582bb01ddbd5c5363aeb4f13cf747b03c7cd0a7ab967991786dfb2b45d`
+     - `Sources/SwiftJ2K/Codec/Codestream.swift`: `b5f13fc2392fae3bf466a9df24c176e077272208966d851c9135ac1b681b74ca`
+     - `Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift`: `1048fe0bbca0f5551b97aeaef5672ec78951f66f89b0170027182ecca09e27fc`
+     - `Sources/SwiftJ2K3D/JP3DEncoder.swift`: `3af722f0efaca1776619489300da8e9584e90c37a9118a0da7be5aff24e2fdca`
+     - `Tests/SwiftJ2KTests/R1RemediationTests.swift`: `8aa1bd4a396e41880a84e194f6a5331bb7d9c69a04a050ba74e5a7e3c0146547`
+     - `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift`: `0cea0caf9df48e1e91dc667680ceb9cd614757b0b23b06bcb076e725d7970db3`
+     - `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift`: `65f5cc7340e15e121def561da39b4fdfc782cbd66fedef613dd37c6ca92fd3fc`
+     - `.build/out/Products/Release/swiftj2k-cli`: `fe00604b0dc95c0d7a785c75e41341fb730e42252e2fa186bb21717039f742e0`
+  7. Remaining blocked/unexecuted gate:
+     - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED locally** (no waiver; never inferred from macOS).

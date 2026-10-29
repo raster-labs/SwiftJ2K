@@ -747,11 +747,499 @@ struct R1RemediationTests {
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
         }
-        #expect(denyTagRec.events.map { "\($0.stage):\($0.action.rawValue)" } == [
-            "tiff-strip-offsets:enter",
-            "tiff-strip-offsets:exit"
-        ])
-        #expect(denyTagRec.liveWorkspaceBytes == 0)
+            #expect(denyTagRec.events.map { "\($0.stage):\($0.action.rawValue)" } == [
+                "tiff-strip-offsets:enter",
+                "tiff-strip-offsets:exit"
+            ])
+            #expect(denyTagRec.liveWorkspaceBytes == 0)
+            #expect(denyTagRec.liveTagOwners == 0)
+        }
+
+    @Test("M12-CX-01 rework: duplicate StripOffsets/StripByteCounts replacement overlap, ARC deinit multi-strip ownership proof, and tag+strip workspace boundary")
+    func tiffDuplicateTagReplacementAndARCDeinitOwnershipBoundaries() throws {
+        func makeDuplicateStripTagTIFF(
+            width: UInt32,
+            height: UInt32,
+            strips: [[UInt8]],
+            duplicateOffsets: Bool,
+            duplicateByteCounts: Bool,
+            byteCountsBeforeOffsets: Bool = false
+        ) -> Data {
+            var bytes: [UInt8] = []
+            func putU16(_ v: UInt16) {
+                bytes.append(UInt8(truncatingIfNeeded: v))
+                bytes.append(UInt8(truncatingIfNeeded: v >> 8))
+            }
+            func putU32(_ v: UInt32) {
+                bytes.append(UInt8(truncatingIfNeeded: v))
+                bytes.append(UInt8(truncatingIfNeeded: v >> 8))
+                bytes.append(UInt8(truncatingIfNeeded: v >> 16))
+                bytes.append(UInt8(truncatingIfNeeded: v >> 24))
+            }
+            func putIFDEntry(tag: UInt16, type: UInt16, count: UInt32, valueOrOffset: UInt32) {
+                putU16(tag)
+                putU16(type)
+                putU32(count)
+                putU32(valueOrOffset)
+            }
+
+            bytes.append(contentsOf: [0x49, 0x49])
+            putU16(42)
+            putU32(8)
+
+            let offsetsOccurrences = duplicateOffsets ? 2 : 1
+            let countsOccurrences = duplicateByteCounts ? 2 : 1
+            let entryCount = UInt16(6 + offsetsOccurrences + countsOccurrences)
+            let offsetsTablePos: UInt32 = 8 + 2 + UInt32(entryCount) * 12 + 4
+            let countsTablePos: UInt32 = offsetsTablePos + UInt32(strips.count * 4)
+            let firstStripPos: UInt32 = countsTablePos + UInt32(strips.count * 4)
+
+            putU16(entryCount)
+            putIFDEntry(tag: 256, type: 4, count: 1, valueOrOffset: width)
+            putIFDEntry(tag: 257, type: 4, count: 1, valueOrOffset: height)
+            putIFDEntry(tag: 258, type: 3, count: 1, valueOrOffset: 8)
+            putIFDEntry(tag: 259, type: 3, count: 1, valueOrOffset: 1)
+
+            if byteCountsBeforeOffsets {
+                for _ in 0..<countsOccurrences {
+                    putIFDEntry(tag: 279, type: 4, count: UInt32(strips.count), valueOrOffset: countsTablePos)
+                }
+                putIFDEntry(tag: 277, type: 3, count: 1, valueOrOffset: 1)
+                for _ in 0..<offsetsOccurrences {
+                    putIFDEntry(tag: 273, type: 4, count: UInt32(strips.count), valueOrOffset: offsetsTablePos)
+                }
+            } else {
+                for _ in 0..<offsetsOccurrences {
+                    putIFDEntry(tag: 273, type: 4, count: UInt32(strips.count), valueOrOffset: offsetsTablePos)
+                }
+                putIFDEntry(tag: 277, type: 3, count: 1, valueOrOffset: 1)
+                for _ in 0..<countsOccurrences {
+                    putIFDEntry(tag: 279, type: 4, count: UInt32(strips.count), valueOrOffset: countsTablePos)
+                }
+            }
+            putIFDEntry(tag: 284, type: 3, count: 1, valueOrOffset: 1)
+            putU32(0)
+
+            var runningOffset = firstStripPos
+            for s in strips {
+                putU32(runningOffset)
+                runningOffset += UInt32(s.count)
+            }
+            for s in strips {
+                putU32(UInt32(s.count))
+            }
+            for s in strips {
+                bytes.append(contentsOf: s)
+            }
+            return Data(bytes)
+        }
+
+        // 1. Duplicate 64-entry StripOffsets (tag 273): old 512 B owner remains live while replacement 512 B array is built (1024 B peak).
+        let strips8x8 = (0..<64).map { [UInt8(($0 * 3 + 11) & 0xFF)] }
+        let dupOffsetsTIFF = makeDuplicateStripTagTIFF(
+            width: 8,
+            height: 8,
+            strips: strips8x8,
+            duplicateOffsets: true,
+            duplicateByteCounts: false
+        )
+        let dupOffsetsDenyRec = CLIImageIOTelemetry.Recorder()
+        do {
+            _ = try CLIImageIOTelemetry.$recorder.withValue(dupOffsetsDenyRec) {
+                try parseTIFF(
+                    dupOffsetsTIFF,
+                    declaredPrecision: nil,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: 768)
+                )
+            }
+            Issue.record("Expected duplicate 64-entry StripOffsets to deny replacement before 2nd 512 B array allocation under 768 B workspace")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        let offsetEnters = dupOffsetsDenyRec.events.filter { $0.stage == "tiff-strip-offsets" && $0.action == .enter }
+        #expect(offsetEnters.count == 1)
+        #expect(dupOffsetsDenyRec.liveWorkspaceBytes == 0)
+        #expect(dupOffsetsDenyRec.liveTagOwners == 0)
+
+        let dupOffsetsControlRec = CLIImageIOTelemetry.Recorder()
+        let dupOffsetsImg = try CLIImageIOTelemetry.$recorder.withValue(dupOffsetsControlRec) {
+            try parseTIFF(
+                dupOffsetsTIFF,
+                declaredPrecision: nil,
+                limits: try ResourceLimits(maximumWorkspaceBytes: 2048)
+            )
+        }
+        #expect(dupOffsetsImg.descriptor.width == 8 && dupOffsetsImg.descriptor.height == 8)
+        #expect(dupOffsetsImg.storage.byteCount == 128)
+        #expect(dupOffsetsControlRec.liveWorkspaceBytes == 0)
+        #expect(dupOffsetsControlRec.liveTagOwners == 0)
+
+        // 1b. 1100 B workspace fits steady-state 1024 B retained tag pair + 64 B strip raster (1088 B),
+        // so non-duplicate 64-strip 8x8 TIFF passes at 1100 B, whereas repeating StripOffsets after both 512 B
+        // lists exist requires 1536 B during replacement and is denied before the 2nd StripOffsets allocation:
+        let nonDup64Strip8x8TIFF = makeDuplicateStripTagTIFF(
+            width: 8,
+            height: 8,
+            strips: strips8x8,
+            duplicateOffsets: false,
+            duplicateByteCounts: false
+        )
+        let nonDup1100Img = try parseTIFF(
+            nonDup64Strip8x8TIFF,
+            declaredPrecision: nil,
+            limits: try ResourceLimits(maximumWorkspaceBytes: 1100)
+        )
+        #expect(nonDup1100Img.descriptor.width == 8 && nonDup1100Img.descriptor.height == 8)
+
+        let dupOffsetsAfterCountsTIFF = makeDuplicateStripTagTIFF(
+            width: 8,
+            height: 8,
+            strips: strips8x8,
+            duplicateOffsets: true,
+            duplicateByteCounts: false,
+            byteCountsBeforeOffsets: true
+        )
+        let dupOffsets1100Rec = CLIImageIOTelemetry.Recorder()
+        do {
+            _ = try CLIImageIOTelemetry.$recorder.withValue(dupOffsets1100Rec) {
+                try parseTIFF(
+                    dupOffsetsAfterCountsTIFF,
+                    declaredPrecision: nil,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: 1100)
+                )
+            }
+            Issue.record("Expected 1024 B retained pair + 512 B replacement StripOffsets (1536 B) to fail 1100 B workspace")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(dupOffsets1100Rec.events.filter { $0.stage == "tiff-strip-offsets" && $0.action == .enter }.count == 1)
+        #expect(dupOffsets1100Rec.liveWorkspaceBytes == 0)
+        #expect(dupOffsets1100Rec.liveTagOwners == 0)
+
+        // 2. Duplicate 64-entry StripByteCounts (tag 279) — both before StripOffsets (512 + 512 = 1024 > 768)
+        // and after StripOffsets (512 retained offsets + 512 old counts + 512 new counts = 1536 > 1280):
+        let dupCountsFirstTIFF = makeDuplicateStripTagTIFF(
+            width: 8,
+            height: 8,
+            strips: strips8x8,
+            duplicateOffsets: false,
+            duplicateByteCounts: true,
+            byteCountsBeforeOffsets: true
+        )
+        let dupCountsFirstDenyRec = CLIImageIOTelemetry.Recorder()
+        do {
+            _ = try CLIImageIOTelemetry.$recorder.withValue(dupCountsFirstDenyRec) {
+                try parseTIFF(
+                    dupCountsFirstTIFF,
+                    declaredPrecision: nil,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: 768)
+                )
+            }
+            Issue.record("Expected duplicate 64-entry StripByteCounts to deny replacement before 2nd 512 B allocation under 768 B workspace")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(dupCountsFirstDenyRec.events.filter { $0.stage == "tiff-strip-byte-counts" && $0.action == .enter }.count == 1)
+        #expect(dupCountsFirstDenyRec.liveWorkspaceBytes == 0)
+        #expect(dupCountsFirstDenyRec.liveTagOwners == 0)
+
+        let dupCountsAfterOffsetsTIFF = makeDuplicateStripTagTIFF(
+            width: 8,
+            height: 8,
+            strips: strips8x8,
+            duplicateOffsets: false,
+            duplicateByteCounts: true,
+            byteCountsBeforeOffsets: false
+        )
+        let dupCountsAfterDenyRec = CLIImageIOTelemetry.Recorder()
+        do {
+            _ = try CLIImageIOTelemetry.$recorder.withValue(dupCountsAfterDenyRec) {
+                try parseTIFF(
+                    dupCountsAfterOffsetsTIFF,
+                    declaredPrecision: nil,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: 1280)
+                )
+            }
+            Issue.record("Expected StripOffsets (512 B) + duplicate StripByteCounts (512 + 512 B) = 1536 B to fail 1280 B workspace before 2nd counts allocation")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(dupCountsAfterDenyRec.events.filter { $0.stage == "tiff-strip-byte-counts" && $0.action == .enter }.count == 1)
+        #expect(dupCountsAfterDenyRec.liveWorkspaceBytes == 0)
+        #expect(dupCountsAfterDenyRec.liveTagOwners == 0)
+
+        let dupCountsControlImg = try parseTIFF(
+            dupCountsAfterOffsetsTIFF,
+            declaredPrecision: nil,
+            limits: try ResourceLimits(maximumWorkspaceBytes: 2048)
+        )
+        #expect(dupCountsControlImg.descriptor.width == 8 && dupCountsControlImg.storage.byteCount == 128)
+
+        // 3. Multi-strip tag arrays (1024 B) + strip workspace (4096 B) = 5120 B crossing workspace boundary
+        // + ARC deinit proof that liveTagOwners == 0 before ImageDestination allocates:
+        let pixels64 = (0..<(64 * 64)).map { UInt8(($0 * 17 + 5) & 0xFF) }
+        let strips64 = (0..<64).map { s in Array(pixels64[(s * 64)..<((s + 1) * 64)]) }
+        let tiff64Strips = makeSyntheticMultiStripLittleEndianTIFF(
+            width: 64,
+            height: 64,
+            bitsPerSample: 8,
+            strips: strips64
+        )
+
+        // Both 1024 B tag arrays and 4096 B stripBytes fit 4500 B individually, but simultaneous 5120 B > 4500 B must reject before strip workspace:
+        let denyAssemblyWSRec = CLIImageIOTelemetry.Recorder()
+        do {
+            _ = try CLIImageIOTelemetry.$recorder.withValue(denyAssemblyWSRec) {
+                try parseTIFF(
+                    tiff64Strips,
+                    declaredPrecision: nil,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: 4500)
+                )
+            }
+            Issue.record("Expected 1024 B retained tags + 4096 B strip workspace (5120 B) to reject 4500 B workspace before strip allocation")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(!denyAssemblyWSRec.events.map(\.stage).contains("tiff-strip-workspace"))
+        #expect(!denyAssemblyWSRec.events.map(\.stage).contains("image-destination"))
+        #expect(denyAssemblyWSRec.liveWorkspaceBytes == 0)
+        #expect(denyAssemblyWSRec.liveTagOwners == 0)
+
+        // Exact 5120 B workspace control succeeds, and ARC deinit drops liveTagOwners from 2 -> 0 before image-destination enters:
+        let passAssemblyWSRec = CLIImageIOTelemetry.Recorder()
+        let img64 = try CLIImageIOTelemetry.$recorder.withValue(passAssemblyWSRec) {
+            try parseTIFF(
+                tiff64Strips,
+                declaredPrecision: nil,
+                limits: try ResourceLimits(maximumWorkspaceBytes: 5120)
+            )
+        }
+        #expect(img64.storage.byteCount == 8192)
+        #expect(passAssemblyWSRec.peakWorkspaceBytes == 5120)
+        #expect(passAssemblyWSRec.peakTagOwners == 2)
+        let destEnter = try #require(
+            passAssemblyWSRec.events.first { $0.stage == "image-destination" && $0.action == .enter }
+        )
+        #expect(destEnter.liveTagOwners == 0)
+        #expect(destEnter.liveWorkspaceBytes == 4096)
+        #expect(passAssemblyWSRec.liveTagOwners == 0)
+        #expect(passAssemblyWSRec.liveWorkspaceBytes == 0)
+    }
+
+    @Test("M6-AUD-006 rework: repeated main-header and tile-part POC simultaneous growth admission and zero-allocation validateHTSignalling")
+    func parserRepeatedPOCAndZeroAllocHTSignallingBoundaries() async throws {
+        // Build a 4-entry POC marker segment (0xFF5F) for Csiz < 257 (7 bytes/entry -> 28 B payload, Lpoc = 30):
+        func makeFourEntryPOCMarker() -> [UInt8] {
+            var seg: [UInt8] = [0xFF, 0x5F, 0x00, 0x1E]
+            for r in 0..<4 {
+                seg.append(UInt8(r))     // RSpoc
+                seg.append(0x00)         // CSpoc = 0
+                seg.append(0x00)         // LYEpoc hi
+                seg.append(0x01)         // LYEpoc lo = 1
+                seg.append(UInt8(r + 1)) // REpoc = r + 1 (> RSpoc, <= 33)
+                seg.append(0x01)         // CEpoc = 1 (> CSpoc)
+                seg.append(UInt8(r % 5)) // Ppoc in 0...4
+            }
+            return seg
+        }
+
+        let baseImg = try makeGray16Image(width: 8, height: 8)
+        let baseEncoded = try await SwiftJ2K.Encoder(
+            configuration: try EncoderConfiguration(
+                codecOptions: try CodecOptions(decompositionLevels: 2)
+            )
+        ).encode(baseImg)
+        let sotPos = try #require(firstSOTOffset(in: baseEncoded.data))
+        let pocSeg = makeFourEntryPOCMarker()
+        let pocPayloadTransient = 32 + 28
+        let entryStride = MemoryLayout<ProgressionOrderChangeEntry>.stride
+
+        // --- 1. Repeated main-header POC (two 4-entry POC segments -> 8 entries total) ---
+        var repeatedMainPOC = Data(baseEncoded.data.prefix(sotPos))
+        repeatedMainPOC.append(contentsOf: pocSeg)
+        repeatedMainPOC.append(contentsOf: pocSeg)
+        repeatedMainPOC.append(contentsOf: baseEncoded.data.suffix(from: sotPos))
+        let repeatedMainBytes = [UInt8](repeatedMainPOC)
+
+        let mainBaselineRec = StorageTelemetry.Recorder()
+        let parsedMainBaseline = try StorageTelemetry.$recorder.withValue(mainBaselineRec) {
+            try CodestreamSyntax.parse(repeatedMainBytes, limits: .default)
+        }
+        #expect(parsedMainBaseline.progressionChanges.count == 8)
+        let mainPOCEvents = mainBaselineRec.parserEvents.filter { $0.stage == "poc-entries" }
+        #expect(mainPOCEvents.count == 2)
+        #expect(mainPOCEvents[0].bytes == 32 + 4 * entryStride)
+        #expect(mainPOCEvents[1].bytes == 4 * entryStride)
+
+        // Compute exact simultaneous peak during 2nd POC growth:
+        // retainedAfterSecondPOC + live payloadTransient (60 B) + live old 4-entry poc buffer (32 + 4 * stride = 224 B):
+        let preTileRetained = mainBaselineRec.parserEvents
+            .filter { $0.stage != "tile-part-record" }
+            .reduce(0) { $0 + $1.bytes }
+        let oldFourEntryBuffer = 32 + 4 * entryStride
+        let peakDuringSecondMainPOC = preTileRetained + pocPayloadTransient + oldFourEntryBuffer
+        // Notice peakDuringSecondMainPOC exceeds steady-state parsedMainBaseline.retainedMetadataBytes!
+        #expect(peakDuringSecondMainPOC > parsedMainBaseline.retainedMetadataBytes)
+
+        // 1 byte below simultaneous old + new + payload overlap must admit 1st POC and reject 2nd POC before allocation:
+        let denySecondMainPOCRec = StorageTelemetry.Recorder()
+        do {
+            _ = try StorageTelemetry.$recorder.withValue(denySecondMainPOCRec) {
+                try CodestreamSyntax.parse(
+                    repeatedMainBytes,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: peakDuringSecondMainPOC - 1)
+                )
+            }
+            Issue.record("Expected 2nd main-header POC simultaneous old+new+payload overlap to fail at \(peakDuringSecondMainPOC - 1) B")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(denySecondMainPOCRec.parserEvents.filter { $0.stage == "poc-entries" }.count == 1)
+
+        // Exact simultaneous peak control succeeds:
+        let passMainPOC = try CodestreamSyntax.parse(
+            repeatedMainBytes,
+            limits: try ResourceLimits(
+                maximumWorkspaceBytes: peakDuringSecondMainPOC,
+                maximumMemoryBytes: repeatedMainBytes.count + peakDuringSecondMainPOC
+            )
+        )
+        #expect(passMainPOC.progressionChanges.count == 8)
+
+        // --- 2. Repeated tile-part POC (two 4-entry POC segments inside Tile 0 header) ---
+        var tileBytes = [UInt8](baseEncoded.data)
+        // SOT is 12 bytes (FF90, L=000A, Isot(2), Psot(4), TPsot(1), TNsot(1)); update Psot by +2 * pocSeg.count:
+        let oldPsot = (UInt32(tileBytes[sotPos + 6]) << 24)
+            | (UInt32(tileBytes[sotPos + 7]) << 16)
+            | (UInt32(tileBytes[sotPos + 8]) << 8)
+            | UInt32(tileBytes[sotPos + 9])
+        if oldPsot > 0 {
+            let newPsot = oldPsot + UInt32(2 * pocSeg.count)
+            tileBytes[sotPos + 6] = UInt8((newPsot >> 24) & 0xFF)
+            tileBytes[sotPos + 7] = UInt8((newPsot >> 16) & 0xFF)
+            tileBytes[sotPos + 8] = UInt8((newPsot >> 8) & 0xFF)
+            tileBytes[sotPos + 9] = UInt8(newPsot & 0xFF)
+        }
+        var repeatedTilePOCBytes = Array(tileBytes[0..<(sotPos + 12)])
+        repeatedTilePOCBytes.append(contentsOf: pocSeg)
+        repeatedTilePOCBytes.append(contentsOf: pocSeg)
+        repeatedTilePOCBytes.append(contentsOf: tileBytes[(sotPos + 12)...])
+
+        let tileBaselineRec = StorageTelemetry.Recorder()
+        let parsedTileBaseline = try StorageTelemetry.$recorder.withValue(tileBaselineRec) {
+            try CodestreamSyntax.parse(repeatedTilePOCBytes, limits: .default)
+        }
+        #expect(parsedTileBaseline.effectiveProgressionChanges(tile: 0).count == 8)
+        let tilePOCEvents = tileBaselineRec.parserEvents.filter { $0.stage == "tile-poc-entries" }
+        #expect(tilePOCEvents.count == 2)
+
+        let preTileRecordRetained = tileBaselineRec.parserEvents
+            .filter { $0.stage != "tile-part-record" }
+            .reduce(0) { $0 + $1.bytes }
+        let peakDuringSecondTilePOC = preTileRecordRetained + pocPayloadTransient + oldFourEntryBuffer
+        #expect(peakDuringSecondTilePOC > parsedTileBaseline.retainedMetadataBytes)
+
+        let denySecondTilePOCRec = StorageTelemetry.Recorder()
+        do {
+            _ = try StorageTelemetry.$recorder.withValue(denySecondTilePOCRec) {
+                try CodestreamSyntax.parse(
+                    repeatedTilePOCBytes,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: peakDuringSecondTilePOC - 1)
+                )
+            }
+            Issue.record("Expected 2nd tile-part POC simultaneous old+new+payload overlap to fail at \(peakDuringSecondTilePOC - 1) B")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(denySecondTilePOCRec.parserEvents.filter { $0.stage == "tile-poc-entries" }.count == 1)
+
+        let passTilePOC = try CodestreamSyntax.parse(
+            repeatedTilePOCBytes,
+            limits: try ResourceLimits(
+                maximumWorkspaceBytes: peakDuringSecondTilePOC,
+                maximumMemoryBytes: repeatedTilePOCBytes.count + peakDuringSecondTilePOC
+            )
+        )
+        #expect(passTilePOC.effectiveProgressionChanges(tile: 0).count == 8)
+
+        // --- 3. Multi-tile HTJ2K codestream with tile-header COC overrides: validateHTSignalling uses zero extra budget ---
+        let htImg = try makeGray16Image(width: 16, height: 16)
+        let htConfig = try EncoderConfiguration(
+            codecOptions: try CodecOptions(
+                decompositionLevels: 1,
+                blockCoding: .htj2k,
+                tileWidth: 4,
+                tileHeight: 4
+            )
+        )
+        let htEncoded = try await SwiftJ2K.Encoder(configuration: htConfig).encode(htImg)
+        let firstHTSOT = try #require(firstSOTOffset(in: htEncoded.data))
+
+        // Valid HT COC for component 0 (Lcoc = 9, comp=0, Scoc=0, levels=1, xcb=4, ycb=4, style=0x40 HT, rev=1):
+        let validHTCOC: [UInt8] = [0xFF, 0x53, 0x00, 0x09, 0x00, 0x00, 0x01, 0x04, 0x04, 0x40, 0x01]
+        var htWithTileCOCs = [UInt8](htEncoded.data[0..<firstHTSOT])
+        let htSrc = [UInt8](htEncoded.data)
+        var cursor = firstHTSOT
+        var injectedTiles = 0
+        while cursor + 2 <= htSrc.count {
+            let m = (UInt16(htSrc[cursor]) << 8) | UInt16(htSrc[cursor + 1])
+            if m == 0xFFD9 {
+                htWithTileCOCs.append(contentsOf: htSrc[cursor..<(cursor + 2)])
+                break
+            }
+            #expect(m == 0xFF90)
+            let p0 = UInt32(htSrc[cursor + 6]) << 24
+            let p1 = UInt32(htSrc[cursor + 7]) << 16
+            let p2 = UInt32(htSrc[cursor + 8]) << 8
+            let p3 = UInt32(htSrc[cursor + 9])
+            let psot = Int(p0 | p1 | p2 | p3)
+            var sotHeader = Array(htSrc[cursor..<(cursor + 12)])
+            if injectedTiles < 4 {
+                let updatedPsot = UInt32(psot + validHTCOC.count)
+                sotHeader[6] = UInt8((updatedPsot >> 24) & 0xFF)
+                sotHeader[7] = UInt8((updatedPsot >> 16) & 0xFF)
+                sotHeader[8] = UInt8((updatedPsot >> 8) & 0xFF)
+                sotHeader[9] = UInt8(updatedPsot & 0xFF)
+                htWithTileCOCs.append(contentsOf: sotHeader)
+                htWithTileCOCs.append(contentsOf: validHTCOC)
+                injectedTiles += 1
+            } else {
+                htWithTileCOCs.append(contentsOf: sotHeader)
+            }
+            htWithTileCOCs.append(contentsOf: htSrc[(cursor + 12)..<(cursor + psot)])
+            cursor += psot
+        }
+        #expect(injectedTiles == 4)
+
+        let htRec = StorageTelemetry.Recorder()
+        let parsedHT = try StorageTelemetry.$recorder.withValue(htRec) {
+            try CodestreamSyntax.parse(htWithTileCOCs, limits: .default)
+        }
+        #expect(parsedHT.tileOverrides.count == 4)
+        let exactHTBudget = parsedHT.retainedMetadataBytes
+        #expect(htRec.parserEvents.reduce(0) { $0 + $1.bytes } == exactHTBudget)
+
+        // Parse succeeds at exact retainedMetadataBytes budget (validateHTSignalling requires zero post-admission workspace):
+        let tightHTParsed = try CodestreamSyntax.parse(
+            htWithTileCOCs,
+            limits: try ResourceLimits(
+                maximumWorkspaceBytes: exactHTBudget,
+                maximumMemoryBytes: htWithTileCOCs.count + exactHTBudget
+            )
+        )
+        #expect(tightHTParsed.isHTJ2K)
+
+        // Corrupting a tile override COC in an HTONLY stream to Part 1 (style = 0x00) still fails validateHTSignalling:
+        var invalidHTTileOverride = htWithTileCOCs
+        let firstTileCOCStyleIdx = firstHTSOT + 12 + 9
+        #expect(invalidHTTileOverride[firstTileCOCStyleIdx] == 0x40)
+        invalidHTTileOverride[firstTileCOCStyleIdx] = 0x00
+        do {
+            _ = try CodestreamSyntax.parse(invalidHTTileOverride, limits: .default)
+            Issue.record("Expected HTONLY codestream with Part 1 tile COC override to fail validateHTSignalling")
+        } catch let error as CodecError {
+            #expect(error.category == .malformedInput)
+        }
     }
 
     @Test("M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions")

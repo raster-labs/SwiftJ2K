@@ -761,4 +761,283 @@ struct R1VolumeRemediationTests {
             _ = try await transTask.value
         }
     }
+
+    @Test("F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths")
+    func childTileOutputReservationTransferAndDelayedParentConsumption() async throws {
+        // --- 1. 3-tile 32-bit J3DI (6x2x2 with 2x2x2 tiling -> 3 tiles of 89 B each, maximumWorkers = 3) ---
+        // Workers 0 and 1 (0 ms delay) complete immediately and sit unconsumed inside ThrowingTaskGroup while the parent
+        // delays before group.next() (45 ms). Worker 2 wakes at 18 ms while Workers 0 and 1 have ALREADY returned.
+        let samples24: [Int64] = (0..<24).map { ($0 % 2 == 0) ? 0 : Int64(UInt32.max) }
+        let vol3TilesJ3DI = J2KVolume(
+            width: 6,
+            height: 2,
+            depth: 2,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 32,
+                    signed: false,
+                    width: 6,
+                    height: 2,
+                    depth: 2,
+                    data: packLittleEndianSamples(samples24, bitDepth: 32, signed: false)
+                )
+            ]
+        )
+        let j3diEncoder = try VolumeEncoder(
+            configuration: try VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                tiling: JP3DTilingConfiguration(tileSizeX: 2, tileSizeY: 2, tileSizeZ: 2),
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        )
+
+        // 1a. maximumCompressedBytes = 220 (> 171 B preflight floor; admits 2 * 89 = 178 B queued unconsumed outputs,
+        // then rejects Worker 2's 89 B at 267 > 220 BEFORE parent consumes anything from group.next()):
+        let denyQueuedCompressedRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { $0 < 2 ? 0 : 18 },
+            parentConsumeDelayMilliseconds: 45
+        )
+        let denyQueuedStorageRec = StorageTelemetry.Recorder()
+        do {
+            _ = try await StorageTelemetry.$recorder.withValue(denyQueuedStorageRec) {
+                try await VolumeConcurrencyTelemetry.$recorder.withValue(denyQueuedCompressedRec) {
+                    try await j3diEncoder.encode(
+                        vol3TilesJ3DI,
+                        options: VolumeEncodeOptions(
+                            resourceLimits: try ResourceLimits(
+                                maximumCompressedBytes: 220,
+                                maximumWorkers: 3
+                            )
+                        )
+                    )
+                }
+            }
+            Issue.record("Expected 2 unconsumed 89 B child outputs + Worker 2's 89 B output (267 B) to fail 220 B compressed limit before parent consumption")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        // Snapshot inside Worker 2 right after its 18 ms sleep proves Workers 0 & 1 had already returned
+        // (currentInFlight == 1), parent had consumed 0 tiles (retainedBytes == 0), yet BOTH unconsumed child Data
+        // outputs remained actively charged in liveOutputBytes (2 * 89 = 178 B):
+        let snapTile2 = try #require(denyQueuedCompressedRec.snapshotAfterEnterDelay(forTile: 2))
+        #expect(snapTile2.currentInFlight == 1)
+        #expect(snapTile2.retainedBytes == 0)
+        #expect(snapTile2.liveOutputBytes == 2 * 89)
+        #expect(snapTile2.liveTransientBytes == 2 * 89)
+        #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 2)
+        // Workers 0 & 1 completed at 0 ms before Worker 2 failed at 18 ms; when parent later woke at 45 ms,
+        // ThrowingTaskGroup yielded the 2 earlier completions before rethrowing Worker 2's pre-allocation denial:
+        #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.count == 2)
+        #expect(denyQueuedCompressedRec.currentInFlight == 0)
+        #expect(denyQueuedCompressedRec.liveOutputBytes == 0)
+        #expect(denyQueuedCompressedRec.liveTransientBytes == 0)
+
+        // 1b. Unconsumed-result deinit path: all 3 workers complete within ~8 ms (queuing 3 * 89 = 267 B in
+        // ThrowingTaskGroup), then parent wakes at 50 ms after the 25 ms deadline has elapsed, aborting inside
+        // the first iteration before any tile is promoted to retained ("jp3d-retained-tile" count == 0) so the
+        // remaining queued child results are cleaned up solely via OutputReservation.deinit:
+        let unconsumedDeinitRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { $0 < 2 ? 0 : 8 },
+            parentConsumeDelayMilliseconds: 50
+        )
+        let unconsumedDeinitStorageRec = StorageTelemetry.Recorder()
+        do {
+            _ = try await StorageTelemetry.$recorder.withValue(unconsumedDeinitStorageRec) {
+                try await VolumeConcurrencyTelemetry.$recorder.withValue(unconsumedDeinitRec) {
+                    try await j3diEncoder.encode(
+                        vol3TilesJ3DI,
+                        options: VolumeEncodeOptions(
+                            resourceLimits: try ResourceLimits(
+                                maximumWorkers: 3,
+                                deadlineSeconds: 0.025
+                            )
+                        )
+                    )
+                }
+            }
+            Issue.record("Expected elapsed 25 ms deadline to abort parent consumption with unconsumed child outputs queued")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 3)
+        #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.isEmpty)
+        #expect(unconsumedDeinitRec.currentInFlight == 0)
+        #expect(unconsumedDeinitRec.liveOutputBytes == 0)
+        #expect(unconsumedDeinitRec.liveTransientBytes == 0)
+
+        // --- 2. maximumWorkspaceBytes boundary on 10-tile 32-bit J3DI (20x2x2, 2x2x2 tiling -> 10 tiles, maximumWorkers = 2) ---
+        // Preflight floor = 2 * 473 + 64 * 4 = 1202 B.
+        // Wave-staggered delays (even tile 0 ms, odd tile 15 ms; parent consumes pairs every 30 ms) avoid dual-scratch
+        // overlap during Waves 0..3. After 8 tiles are retained (8 * 89 = 712 B), Tile 8 completes (1185 <= 1230 B)
+        // and sits unconsumed in ThrowingTaskGroup (89 B) while parent delays 45 ms at step 8. Tile 9 wakes at 15 ms:
+        //   - Without unconsumed-output reservation transfer: 712 + 473 = 1185 <= 1230 B (would pass!).
+        //   - With unconsumed-output reservation transfer: 712 + 89 + 473 = 1274 > 1230 B (denied before Tile 9 output!).
+        let samples80: [Int64] = (0..<80).map { ($0 % 2 == 0) ? 0 : Int64(UInt32.max) }
+        let vol10TilesJ3DI = J2KVolume(
+            width: 20,
+            height: 2,
+            depth: 2,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 32,
+                    signed: false,
+                    width: 20,
+                    height: 2,
+                    depth: 2,
+                    data: packLittleEndianSamples(samples80, bitDepth: 32, signed: false)
+                )
+            ]
+        )
+        let denyQueuedWSRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { ($0 % 2 == 1) ? 15 : 0 },
+            parentConsumeDelayForStep: { $0 == 8 ? 45 : (($0 % 2 == 0) ? 30 : 0) }
+        )
+        do {
+            _ = try await VolumeConcurrencyTelemetry.$recorder.withValue(denyQueuedWSRec) {
+                try await j3diEncoder.encode(
+                    vol10TilesJ3DI,
+                    options: VolumeEncodeOptions(
+                        resourceLimits: try ResourceLimits(
+                            maximumWorkspaceBytes: 1230,
+                            maximumWorkers: 2
+                        )
+                    )
+                )
+            }
+            Issue.record("Expected 712 B retained + 89 B unconsumed Tile 8 + 473 B active Tile 9 (1274 B) to fail 1230 B workspace")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        let snapTile9 = try #require(denyQueuedWSRec.snapshotAfterEnterDelay(forTile: 9))
+        #expect(snapTile9.currentInFlight == 1)
+        #expect(snapTile9.retainedBytes == 8 * 89)
+        #expect(snapTile9.liveOutputBytes == 89)
+        #expect(denyQueuedWSRec.currentInFlight == 0)
+        #expect(denyQueuedWSRec.liveOutputBytes == 0)
+        #expect(denyQueuedWSRec.liveTransientBytes == 0)
+
+        // Larger-budget control (4096 B) with the exact same delayed-parent-consumption schedule succeeds cleanly:
+        let passQueuedWSRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { ($0 % 2 == 1) ? 15 : 0 },
+            parentConsumeDelayForStep: { $0 == 8 ? 45 : (($0 % 2 == 0) ? 30 : 0) }
+        )
+        let encoded10 = try await VolumeConcurrencyTelemetry.$recorder.withValue(passQueuedWSRec) {
+            try await j3diEncoder.encode(
+                vol10TilesJ3DI,
+                options: VolumeEncodeOptions(
+                    resourceLimits: try ResourceLimits(
+                        maximumWorkspaceBytes: 4096,
+                        maximumWorkers: 2
+                    )
+                )
+            )
+        }
+        #expect(passQueuedWSRec.retainedBytes == 10 * 89)
+        #expect(passQueuedWSRec.liveOutputBytes == 0)
+        #expect(passQueuedWSRec.liveTransientBytes == 0)
+        let decoded10 = try await VolumeDecoder().decode(encoded10.data)
+        #expect(decoded10.volume.components[0].data == vol10TilesJ3DI.components[0].data)
+
+        // --- 3. Equivalent J3DS slice-stack (12x4x2 16-bit lossless, 4x4x2 tiling -> 3 tiles)
+        //     and lossy 3D wavelet (6x2x2 8-bit lossy, 2x2x2 tiling -> 3 tiles) reservation transfer ---
+        let j3dsVoxelCount = 96
+        let j3dsSamples: [Int64] = (0..<j3dsVoxelCount).map { (idx: Int) -> Int64 in
+            let v = (idx * 257 + 19) & 0xFFFF
+            return Int64(v)
+        }
+        let vol3TilesJ3DS = J2KVolume(
+            width: 12,
+            height: 4,
+            depth: 2,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 16,
+                    signed: false,
+                    width: 12,
+                    height: 4,
+                    depth: 2,
+                    data: packLittleEndianSamples(j3dsSamples, bitDepth: 16, signed: false)
+                )
+            ]
+        )
+        let j3dsEncoder = try VolumeEncoder(
+            configuration: try VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                tiling: JP3DTilingConfiguration(tileSizeX: 4, tileSizeY: 4, tileSizeZ: 2),
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        )
+        let j3dsRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { $0 < 2 ? 0 : 25 },
+            parentConsumeDelayMilliseconds: 55
+        )
+        let encodedJ3DS = try await VolumeConcurrencyTelemetry.$recorder.withValue(j3dsRec) {
+            try await j3dsEncoder.encode(
+                vol3TilesJ3DS,
+                options: VolumeEncodeOptions(resourceLimits: ResourceLimits(maximumWorkers: 3))
+            )
+        }
+        #expect(!encodedJ3DS.data.isEmpty)
+        let j3dsSnap2 = try #require(j3dsRec.snapshotAfterEnterDelay(forTile: 2))
+        #expect(j3dsSnap2.currentInFlight == 1)
+        #expect(j3dsSnap2.retainedBytes == 0)
+        #expect(j3dsSnap2.liveOutputBytes > 0)
+        #expect(j3dsRec.retainedBytes > j3dsSnap2.liveOutputBytes)
+        #expect(j3dsRec.liveOutputBytes == 0)
+        #expect(j3dsRec.liveTransientBytes == 0)
+
+        let lossyRawBytes: [UInt8] = (0..<24).map { (idx: Int) -> UInt8 in
+            UInt8((idx * 29 + 7) & 0xFF)
+        }
+        let lossy3DVol = J2KVolume(
+            width: 6,
+            height: 2,
+            depth: 2,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 8,
+                    signed: false,
+                    width: 6,
+                    height: 2,
+                    depth: 2,
+                    data: Data(lossyRawBytes)
+                )
+            ]
+        )
+        let lossy3DEncoder = try VolumeEncoder(
+            configuration: try VolumeEncoderConfiguration(
+                compressionMode: .lossy(psnr: 35.0),
+                tiling: JP3DTilingConfiguration(tileSizeX: 2, tileSizeY: 2, tileSizeZ: 2),
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        )
+        let lossyRec = VolumeConcurrencyTelemetry.Recorder(
+            workerDelayForTile: { $0 < 2 ? 0 : 25 },
+            parentConsumeDelayMilliseconds: 55
+        )
+        let encodedLossy3D = try await VolumeConcurrencyTelemetry.$recorder.withValue(lossyRec) {
+            try await lossy3DEncoder.encode(
+                lossy3DVol,
+                options: VolumeEncodeOptions(resourceLimits: ResourceLimits(maximumWorkers: 3))
+            )
+        }
+        #expect(encodedLossy3D.report.fidelity == .lossy)
+        let lossySnap2 = try #require(lossyRec.snapshotAfterEnterDelay(forTile: 2))
+        #expect(lossySnap2.currentInFlight == 1)
+        #expect(lossySnap2.retainedBytes == 0)
+        #expect(lossySnap2.liveOutputBytes > 0)
+        #expect(lossyRec.retainedBytes > lossySnap2.liveOutputBytes)
+        #expect(lossyRec.liveOutputBytes == 0)
+        #expect(lossyRec.liveTransientBytes == 0)
+    }
 }

@@ -676,7 +676,8 @@ public actor JP3DEncoder {
             try work.check()
             let frac = Double(index) / Double(max(1, tiles.count))
             reportProgress(.waveletTransform, stageProgress: frac, tile: index, total: tiles.count)
-            let tileData = try await Self.encodeTileStatic(
+            let tileOutput = try await Self.encodeTileStatic(
+                tileIndex: index,
                 tile: tile,
                 volume: volume,
                 decomposer: decomposer,
@@ -686,15 +687,16 @@ public actor JP3DEncoder {
                 executionPolicy: executionPolicy,
                 work: work
             )
-            try budget.admitRetained(
-                tileData.count,
-                checkCompressedLimit: true,
-                stage: "jp3d-retained-tile",
-                message: "Cumulative encoded tile bytes exceed operation resource limits."
-            )
-            StorageTelemetry.recordStage("volume-encode-tile", bytes: tileData.count)
+            do {
+                try work.check()
+            } catch {
+                tileOutput.reservation.release()
+                throw error
+            }
+            tileOutput.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+            StorageTelemetry.recordStage("volume-encode-tile", bytes: tileOutput.data.count)
             reportProgress(.entropyCoding, stageProgress: frac, tile: index + 1, total: tiles.count)
-            encodedTiles.append(tileData)
+            encodedTiles.append(tileOutput.data)
         }
 
         return encodedTiles
@@ -713,7 +715,7 @@ public actor JP3DEncoder {
     ) async throws -> [Data] {
         let config = configuration
         let workerCap = max(1, min(maximumWorkers, tiles.count))
-        return try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+        return try await withThrowingTaskGroup(of: (Int, JP3DEncodedTileOutput).self) { group in
             var nextIndex = 0
             while nextIndex < workerCap {
                 try work.check()
@@ -721,7 +723,8 @@ public actor JP3DEncoder {
                 let tile = tiles[idx]
                 nextIndex += 1
                 group.addTask {
-                    let data = try await Self.encodeTileStatic(
+                    let output = try await Self.encodeTileStatic(
+                        tileIndex: idx,
                         tile: tile,
                         volume: volume,
                         decomposer: decomposer,
@@ -731,28 +734,30 @@ public actor JP3DEncoder {
                         executionPolicy: executionPolicy,
                         work: work
                     )
-                    return (idx, data)
+                    return (idx, output)
                 }
             }
 
             var results = [(Int, Data)]()
             results.reserveCapacity(tiles.count)
+            var consumeStep = 0
 
-            while let result = try await group.next() {
-                try work.check()
+            while consumeStep < tiles.count {
+                try await VolumeConcurrencyTelemetry.recorder?.beforeParentConsume(step: consumeStep)
+                guard let (idx, tileOutput) = try await group.next() else {
+                    break
+                }
+                consumeStep += 1
                 do {
-                    try budget.admitRetained(
-                        result.1.count,
-                        checkCompressedLimit: true,
-                        stage: "jp3d-retained-tile",
-                        message: "Cumulative encoded tile bytes exceed operation resource limits."
-                    )
+                    try work.check()
                 } catch {
+                    tileOutput.reservation.release()
                     group.cancelAll()
                     throw error
                 }
-                StorageTelemetry.recordStage("volume-encode-tile", bytes: result.1.count)
-                results.append(result)
+                tileOutput.reservation.promoteToRetained(stage: "jp3d-retained-tile")
+                StorageTelemetry.recordStage("volume-encode-tile", bytes: tileOutput.data.count)
+                results.append((idx, tileOutput.data))
                 let done = results.count
                 reportProgress(
                     .entropyCoding,
@@ -762,11 +767,12 @@ public actor JP3DEncoder {
                 )
 
                 if nextIndex < tiles.count {
-                    let idx = nextIndex
-                    let tile = tiles[idx]
+                    let spawnIdx = nextIndex
+                    let tile = tiles[spawnIdx]
                     nextIndex += 1
                     group.addTask {
-                        let data = try await Self.encodeTileStatic(
+                        let output = try await Self.encodeTileStatic(
+                            tileIndex: spawnIdx,
                             tile: tile,
                             volume: volume,
                             decomposer: decomposer,
@@ -776,7 +782,7 @@ public actor JP3DEncoder {
                             executionPolicy: executionPolicy,
                             work: work
                         )
-                        return (idx, data)
+                        return (spawnIdx, output)
                     }
                 }
             }
@@ -787,6 +793,7 @@ public actor JP3DEncoder {
     }
 
     private static func encodeTileStatic(
+        tileIndex: Int,
         tile: JP3DTile,
         volume: J2KVolume,
         decomposer: JP3DTileDecomposer,
@@ -795,9 +802,9 @@ public actor JP3DEncoder {
         limits: ResourceLimits?,
         executionPolicy: ExecutionPolicy,
         work: VolumeWorkGuard
-    ) async throws -> Data {
+    ) async throws -> JP3DEncodedTileOutput {
         try work.check()
-        try await VolumeConcurrencyTelemetry.recorder?.enter()
+        try await VolumeConcurrencyTelemetry.recorder?.enter(tileIndex: tileIndex)
         defer { VolumeConcurrencyTelemetry.recorder?.exit() }
 
         let primaryComp = volume.components[0]
@@ -854,6 +861,7 @@ public actor JP3DEncoder {
                         compressionMode: configuration.compressionMode,
                         qualityLayers: configuration.qualityLayers,
                         zDeltaPolicy: configuration.zDeltaMode,
+                        budget: budget,
                         limits: effectiveLimits,
                         executionPolicy: executionPolicy
                     )
@@ -895,6 +903,14 @@ public actor JP3DEncoder {
             tileHeight: tile.height,
             bitDepth: primaryComp.bitDepth
         ) {
+            let lossySliceWorkspace = tileVoxels * volume.componentCount * MemoryLayout<Int32>.stride + tile.width * tile.height * 16 + 4096
+            let lossySliceLease = try budget.reserveTransient(
+                lossySliceWorkspace,
+                stage: "jp3d-worker-lossy-slice-workspace",
+                message: "Volumetric lossy slice-stack workspace exceeds operation resource limits."
+            )
+            defer { lossySliceLease.release() }
+
             var compSamples: [[Float]] = []
             compSamples.reserveCapacity(volume.componentCount)
             for comp in 0..<volume.componentCount {
@@ -919,6 +935,7 @@ public actor JP3DEncoder {
                     compressionMode: configuration.compressionMode,
                     qualityLayers: configuration.qualityLayers,
                     zDeltaPolicy: configuration.zDeltaMode,
+                    budget: budget,
                     limits: effectiveLimits,
                     executionPolicy: executionPolicy
                 )
@@ -931,6 +948,14 @@ public actor JP3DEncoder {
             }
         }
 
+        let lossyDwtWorkspace = tileVoxels * MemoryLayout<Double>.stride + tileVoxels * MemoryLayout<Int32>.stride + 4096
+        let lossyDwtLease = try budget.reserveTransient(
+            lossyDwtWorkspace,
+            stage: "jp3d-lossy-dwt-workspace",
+            message: "Volumetric lossy 3D wavelet workspace exceeds operation resource limits."
+        )
+        defer { lossyDwtLease.release() }
+
         let rateController = JP3DRateController(
             mode: configuration.compressionMode,
             qualityLayers: configuration.qualityLayers
@@ -938,6 +963,12 @@ public actor JP3DEncoder {
         let transformConfig = configuration.transformConfiguration
         let wavelet = JP3DWaveletTransform(configuration: transformConfig)
 
+        let outReservation = try budget.makeOutputReservation(
+            initialBytes: 0,
+            checkCompressedLimit: true,
+            stage: "jp3d-lossy-tile-output",
+            message: "Volumetric lossy encoded tile payload exceeds operation resource limits."
+        )
         var tileBytes = Data()
 
         for comp in 0..<volume.componentCount {
@@ -965,10 +996,18 @@ public actor JP3DEncoder {
                 decompositionLevels: maxLevel
             )
 
+            let compPayloadBytes = 4 + max(0, quantized.coefficients.count) * 4
+            try outReservation.grow(
+                by: compPayloadBytes,
+                extraTransientBytes: tileBytes.count,
+                checkCompressedLimit: true,
+                stage: "jp3d-lossy-tile-output",
+                message: "Volumetric lossy encoded tile payload exceeds operation resource limits."
+            )
             tileBytes.append(Self.encodeQuantizedCoefficients(quantized))
         }
 
-        return tileBytes
+        return JP3DEncodedTileOutput(data: tileBytes, reservation: outReservation)
     }
 
     private static func encodeQuantizedCoefficients(_ quantized: JP3DQuantizedTile) -> Data {
