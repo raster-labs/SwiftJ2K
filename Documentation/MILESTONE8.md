@@ -134,3 +134,15 @@ In accordance with `IMPLEMENTATION.md` line 67 and `AGENTS.md`, all 9 files (`7,
   - `ContainerTests.swift` covers all 16 OpenJPEG and Kakadu fixtures (`inspect`, `validate`, `decode`), `.jp2`/`.jph`/`.jpx` encoding round-trips, palette (`pclr` + `cmap`) expansion (including zero-pixel-allocation `Decoder.decode(_:into:)` into caller-owned `ImageDestination`), channel definitions (`cdef` straight/premultiplied alpha & association reordering), ICC and resolution (`resc`/`resd`) preservation, ancillary boxes (`xml `, `uuid`, `uinf`/`ulst`/`url `, `jp2i`, `asoc`/`lbl `), `MetadataPolicy.preserve` vs `.discardAncillary`, `ResourceLimits` (`maximumMetadataBytes`, `maximumICCBytes`, `maximumNestingDepth`), malformed container rejection (`LBox == 1` with `XLBox < 16`, mismatched `ihdr`/`SIZ`), and container-to-container/codestream transcoding (`jp2 ↔ jph ↔ jpx ↔ j2k ↔ htj2k`) with zero pixel allocations (`pixelAllocations == 0`, `copyEvents == 0`).
 - **CLI Conformance Suite (`Scripts/test-cli.py`)**:
   - `193` of `193` black-box process checks passed, including `encode --format jp2|jph|jpx`, `inspect --json`, `validate --json`, `decode`, and `transcode --from jp2 --to jph` / `--from jph --to jpx-htj2k` / `--from jpx-htj2k --to j2k`.
+
+---
+
+## 6. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Accepted at `c4706d58`; Phase R2 Open)
+
+Independent audit review at `b76e60a` / `24b1881` established that Milestone 8 requires container and legacy-bridge corrections before full acceptance. Canonical tracking lives in [Engineering/Remediation/STATUS.md](Engineering/Remediation/STATUS.md).
+
+- **Phase R1 (`R1_ACCEPTED` by Codex at `c4706d58cc5dde4828ea71f324817590f0671e78`, PR #28 GitHub Actions run `40864296519` all `7/7` jobs passed)**:
+  - **`F13` (`R1_ACCEPTED`)**: Container-aware `Encoder.encode`, `Decoder.decode`, `Decoder.decode(_:into:)`, and `Transcoder.transcode` re-check cancellation and deadlines after `.completed` progress callbacks.
+- **Remaining Open Milestone 8 & Bridge Gaps (Phases R2 & R4 — Not Claimed Closed)**:
+  - **`F07`, `F08`, `F12` (Phase R2 — `in_progress` on `antigravity/r2-semantics-remediation`)**: Legacy/JPIP container palette and channel (`pclr`/`cmap`/`cdef`/`colr`) reconciliation (`F07`), ISO/IEC 15444-2 Table M.14 JPX `rreq` standard feature codes/masks and reader support evaluation (`F08`), and deterministic rejection of duplicate `jp2c` boxes in JP2/JPH validation (`F12`).
+  - **Hosted-CI Container External-Oracle Boundary (Phase R4)**: `independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()` remains explicitly `SKIPPED / UNEXECUTED` on hosted Linux and macOS CI runners where `opj_decompress`, `ojph_expand`, and `kdu_expand` are not installed.

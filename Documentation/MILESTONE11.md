@@ -129,15 +129,15 @@ Measured on Apple M3 Max (`arm64-apple-macosx26.0`, Swift `6.4-dev`, `-c release
 
 ---
 
-## 7. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Submitted)
+## 7. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Accepted at `c4706d58`; Phases R2 & R3 Open)
 
 Independent audit review at `b76e60a` / `24b1881` established that Milestone 11 is **not yet accepted as complete** for full ISO/IEC 15444-9 network/data-bin/3D/WebSocket conformance. Canonical tracking lives in [Engineering/Remediation/STATUS.md](Engineering/Remediation/STATUS.md) (`Evidence/R1/{pre,post}-fix-receipts.txt`).
 
-- **Phase R1 (`submitted` — `Codex acceptance: pending independent audit`)**:
-  - **`F03` & `M12-CX-02`**: Bounded `JPIPViewWindow.resolutionLevel` to `0...32` and validated spatial region coordinates with checked addition (`addingReportingOverflow`) across `JPIPViewWindow` and `JPIPClient`.
-  - **`F05`**: Enforced pre-allocation `ResourceLimits` (`maximumCompressedBytes`, `maximumDecodedBytes`, `maximumWorkspaceBytes`, `maximumMemoryBytes`) and monotonic `deadlineSeconds` across `JPIPStreamingSession.deliverImage` and `deliverVolumeRegion`, preserving `CodecError(.resourceLimitExceeded, ...)` through `J2KDecoder.decodeWithInfo`.
-  - **`F06` & `F13`**: `JPIPStreamingSession.deliverImage` reports `.lossy` whenever the codestream uses irreversible transforms or the view window requests reduced resolution, truncated quality layers, or a component subset; both `deliverImage` and `deliverVolumeRegion` re-check cancellation and deadlines after `.completed` callbacks.
-  - **Updated `SwiftJ2KJPIPTests` count at Phase R1**: `544` XCTest methods + `4` Swift Testing `@Test` declarations (`R1JPIPRemediationTests.swift`) = **`548` tests passing** (`0` failures).
-- **Remaining Open Milestone 11 Gaps (Scheduled for Phases R2 & R3 — Not Claimed Closed)**:
-  - **`F07`, `F09`, `F10` (Phase R2 — `open`)**: Container palette/channel (`pclr`/`cmap`/`cdef`) application in `J2KDecoder` (`F07`), `CopyPolicy`/`ExecutionPolicy` and report accounting (`F09`), and combined `JPIPViewWindow` constraint + session/cache enforcement (`F10`).
+- **Phase R1 (`R1_ACCEPTED` by Codex at `c4706d58cc5dde4828ea71f324817590f0671e78`, PR #28 GitHub Actions run `40864296519` all `7/7` jobs passed)**:
+  - **`F03` & `M12-CX-02` (`R1_ACCEPTED`)**: Bounded `JPIPViewWindow.resolutionLevel` to `0...32` and validated spatial region coordinates with checked addition (`addingReportingOverflow`) across `JPIPViewWindow` and `JPIPClient`.
+  - **`F05` (`R1_ACCEPTED`)**: Enforced pre-allocation `ResourceLimits` (`maximumCompressedBytes`, `maximumDecodedBytes`, `maximumWorkspaceBytes`, `maximumMemoryBytes`) and monotonic `deadlineSeconds` across `JPIPStreamingSession.deliverImage` and `deliverVolumeRegion`, preserving `CodecError(.resourceLimitExceeded, ...)` through `J2KDecoder.decodeWithInfo`.
+  - **`F06` & `F13` (`R1_ACCEPTED`)**: `JPIPStreamingSession.deliverImage` reports `.lossy` whenever the codestream uses irreversible transforms or the view window requests reduced resolution, truncated quality layers, or a component subset; both `deliverImage` and `deliverVolumeRegion` re-check cancellation and deadlines after `.completed` callbacks.
+  - **Accepted `SwiftJ2KJPIPTests` count at Phase R1 (`c4706d58`)**: `544` XCTest methods + `4` Swift Testing `@Test` declarations (`R1JPIPRemediationTests.swift`) = **`548` tests passing** across Linux debug/release and macOS debug/ASan/TSan in PR #28 run `40864296519`.
+- **Remaining Open Milestone 11 Gaps (Phases R2 & R3 — Not Claimed Closed)**:
+  - **`F07`, `F09`, `F10` (Phase R2 — `in_progress` on `antigravity/r2-semantics-remediation`)**: Container palette/channel (`pclr`/`cmap`/`cdef`) application in `J2KDecoder` and JPIP container/metadata paths (`F07`), `CopyPolicy`/`ExecutionPolicy` and report accounting (`F09`), and combined `JPIPViewWindow` constraint + session/cache enforcement (`F10`).
   - **`F04` (Phase R3 — `open`)**: Real ISO/IEC 15444-9 HTTP/socket and WebSocket network/data-bin exchange and non-simulated 3D JPIP delivery.
