@@ -126,9 +126,27 @@ package enum VolumeConcurrencyTelemetry {
         package let liveTransientBytes: Int
         package let liveOutputBytes: Int
         package let retainedBytes: Int
+        package let releasedOutputBytes: Int
+
+        package init(
+            currentInFlight: Int,
+            liveScratchBytes: Int,
+            liveTransientBytes: Int,
+            liveOutputBytes: Int,
+            retainedBytes: Int,
+            releasedOutputBytes: Int = 0
+        ) {
+            self.currentInFlight = currentInFlight
+            self.liveScratchBytes = liveScratchBytes
+            self.liveTransientBytes = liveTransientBytes
+            self.liveOutputBytes = liveOutputBytes
+            self.retainedBytes = retainedBytes
+            self.releasedOutputBytes = releasedOutputBytes
+        }
     }
 
     package final class Recorder: Sendable {
+        /// Pure value-only leaf state (`Recorder.state` never holds object references or invokes external closures/locks).
         private struct State: Sendable {
             var current = 0
             var peak = 0
@@ -140,10 +158,15 @@ package enum VolumeConcurrencyTelemetry {
             var liveOutputBytes = 0
             var peakOutputBytes = 0
             var retainedBytes = 0
+            var releasedOutputBytes = 0
             var peakLiveWorkspaceBytes = 0
+            var lastBudgetRevision: UInt64 = 0
+            var staleBudgetUpdatesIgnored = 0
             var postDelaySnapshots: [Int: Snapshot] = [:]
         }
         private let state = Mutex(State())
+        /// Cycle-free value-only authoritative state box (`StateStorage` holds only primitive counters and never retains `JP3DLiveBudgetTracker` or `Recorder`).
+        private let attachedStateStorage = Mutex<JP3DLiveBudgetTracker.StateStorage?>(nil)
         private let artificialDelayMilliseconds: Int
         private let workerDelayForTile: (@Sendable (Int) -> Int)?
         private let parentConsumeDelayMilliseconds: Int
@@ -183,7 +206,26 @@ package enum VolumeConcurrencyTelemetry {
         package var liveOutputBytes: Int { state.withLock { $0.liveOutputBytes } }
         package var peakOutputBytes: Int { state.withLock { $0.peakOutputBytes } }
         package var retainedBytes: Int { state.withLock { $0.retainedBytes } }
+        package var releasedOutputBytes: Int { state.withLock { $0.releasedOutputBytes } }
         package var peakLiveWorkspaceBytes: Int { state.withLock { $0.peakLiveWorkspaceBytes } }
+        package var lastBudgetRevision: UInt64 { state.withLock { $0.lastBudgetRevision } }
+        package var staleBudgetUpdatesIgnored: Int { state.withLock { $0.staleBudgetUpdatesIgnored } }
+
+        package var authoritativeLiveScratchBytes: Int? {
+            attachedStateStorage.withLock { $0 }?.currentScratchBytes
+        }
+        package var authoritativeLiveOutputBytes: Int? {
+            attachedStateStorage.withLock { $0 }?.currentOutputBytes
+        }
+        package var authoritativeLiveTransientBytes: Int? {
+            attachedStateStorage.withLock { $0 }?.currentTransientBytes
+        }
+        package var authoritativeRetainedBytes: Int? {
+            attachedStateStorage.withLock { $0 }?.currentRetainedBytes
+        }
+        package var authoritativeReleasedOutputBytes: Int? {
+            attachedStateStorage.withLock { $0 }?.currentReleasedOutputBytes
+        }
 
         package func currentSnapshot() -> Snapshot {
             state.withLock { s in
@@ -192,13 +234,22 @@ package enum VolumeConcurrencyTelemetry {
                     liveScratchBytes: s.liveScratchBytes,
                     liveTransientBytes: s.liveTransientBytes,
                     liveOutputBytes: s.liveOutputBytes,
-                    retainedBytes: s.retainedBytes
+                    retainedBytes: s.retainedBytes,
+                    releasedOutputBytes: s.releasedOutputBytes
                 )
             }
         }
 
         package func snapshotAfterEnterDelay(forTile tileIndex: Int) -> Snapshot? {
             state.withLock { $0.postDelaySnapshots[tileIndex] }
+        }
+
+        internal func attachBudgetStateStorage(_ storage: JP3DLiveBudgetTracker.StateStorage) {
+            attachedStateStorage.withLock { $0 = storage }
+        }
+
+        package func allocateBudgetRevision() -> UInt64 {
+            JP3DLiveBudgetTracker.allocateRevision()
         }
 
         internal func enter(tileIndex: Int? = nil) async throws {
@@ -228,7 +279,8 @@ package enum VolumeConcurrencyTelemetry {
                         liveScratchBytes: s.liveScratchBytes,
                         liveTransientBytes: s.liveTransientBytes,
                         liveOutputBytes: s.liveOutputBytes,
-                        retainedBytes: s.retainedBytes
+                        retainedBytes: s.retainedBytes,
+                        releasedOutputBytes: s.releasedOutputBytes
                     )
                 }
             }
@@ -255,12 +307,15 @@ package enum VolumeConcurrencyTelemetry {
             onChildTaskReturned?(tileIndex)
         }
 
-        internal func recordBudgetUpdate(liveScratch: Int = 0, liveTransient: Int, liveOutput: Int = 0, retained: Int) {
+        package func recordBudgetUpdate(
+            revision: UInt64,
+            liveScratch: Int = 0,
+            liveTransient: Int,
+            liveOutput: Int = 0,
+            retained: Int,
+            releasedOutput: Int = 0
+        ) {
             state.withLock {
-                $0.liveScratchBytes = liveScratch
-                $0.liveTransientBytes = liveTransient
-                $0.liveOutputBytes = liveOutput
-                $0.retainedBytes = retained
                 if liveScratch > $0.peakScratchBytes {
                     $0.peakScratchBytes = liveScratch
                 }
@@ -274,6 +329,16 @@ package enum VolumeConcurrencyTelemetry {
                 if combined > $0.peakLiveWorkspaceBytes {
                     $0.peakLiveWorkspaceBytes = combined
                 }
+                if revision >= $0.lastBudgetRevision {
+                    $0.lastBudgetRevision = revision
+                    $0.liveScratchBytes = liveScratch
+                    $0.liveTransientBytes = liveTransient
+                    $0.liveOutputBytes = liveOutput
+                    $0.retainedBytes = retained
+                    $0.releasedOutputBytes = releasedOutput
+                } else {
+                    $0.staleBudgetUpdatesIgnored += 1
+                }
             }
         }
     }
@@ -283,10 +348,40 @@ package enum VolumeConcurrencyTelemetry {
 
 /// Thread-safe live workspace, in-flight/queued child-output, and retained-output admission tracker across sequential or concurrent JP3D workers.
 internal final class JP3DLiveBudgetTracker: Sendable {
-    private struct State: Sendable {
+    internal typealias PublishInterceptor = @Sendable (_ revision: UInt64, _ publish: @escaping @Sendable () -> Void) -> Void
+
+    private static let revisionGenerator = Atomic<UInt64>(0)
+
+    internal static func allocateRevision() -> UInt64 {
+        revisionGenerator.wrappingAdd(1, ordering: .relaxed).newValue
+    }
+
+    fileprivate struct State: Sendable {
         var liveScratchBytes = 0
         var liveOutputBytes = 0
         var retainedBytes = 0
+        var releasedOutputBytes = 0
+        var revision: UInt64 = 0
+    }
+
+    /// Cycle-free value-only authoritative state container shared with `VolumeConcurrencyTelemetry.Recorder`.
+    /// Holds only primitive integer counters (`State`), never retaining `JP3DLiveBudgetTracker` or `Recorder`.
+    internal final class StateStorage: Sendable {
+        fileprivate let state = Mutex(State())
+
+        internal var currentScratchBytes: Int { state.withLock { $0.liveScratchBytes } }
+        internal var currentOutputBytes: Int { state.withLock { $0.liveOutputBytes } }
+        internal var currentTransientBytes: Int { state.withLock { $0.liveScratchBytes + $0.liveOutputBytes } }
+        internal var currentRetainedBytes: Int { state.withLock { $0.retainedBytes } }
+        internal var currentReleasedOutputBytes: Int { state.withLock { $0.releasedOutputBytes } }
+    }
+
+    private struct PublishedSnapshot: Sendable {
+        let revision: UInt64
+        let scratch: Int
+        let output: Int
+        let retained: Int
+        let releasedOutput: Int
     }
 
     internal struct TransientLease: Sendable {
@@ -493,37 +588,103 @@ internal final class JP3DLiveBudgetTracker: Sendable {
     private let baseBytes: Int
     private let limits: ResourceLimits?
     private let telemetryRecorder: VolumeConcurrencyTelemetry.Recorder?
-    private let state = Mutex(State())
+    internal let stateStorage = StateStorage()
+    private let publishInterceptor = Mutex<PublishInterceptor?>(nil)
 
     internal init(baseBytes: Int, limits: ResourceLimits?) {
         self.baseBytes = max(0, baseBytes)
         self.limits = limits
-        self.telemetryRecorder = VolumeConcurrencyTelemetry.recorder
+        let rec = VolumeConcurrencyTelemetry.recorder
+        self.telemetryRecorder = rec
+        if let rec {
+            rec.attachBudgetStateStorage(self.stateStorage)
+            let initialRev = Self.allocateRevision()
+            stateStorage.state.withLock { $0.revision = initialRev }
+            rec.recordBudgetUpdate(
+                revision: initialRev,
+                liveScratch: 0,
+                liveTransient: 0,
+                liveOutput: 0,
+                retained: 0,
+                releasedOutput: 0
+            )
+        }
+    }
+
+    internal func setTestPublishInterceptor(_ interceptor: PublishInterceptor?) {
+        publishInterceptor.withLock { $0 = interceptor }
     }
 
     internal var currentRetainedBytes: Int {
-        state.withLock { $0.retainedBytes }
+        stateStorage.currentRetainedBytes
+    }
+
+    internal var currentReleasedOutputBytes: Int {
+        stateStorage.currentReleasedOutputBytes
     }
 
     internal var currentScratchBytes: Int {
-        state.withLock { $0.liveScratchBytes }
+        stateStorage.currentScratchBytes
     }
 
     internal var currentTransientBytes: Int {
-        state.withLock { $0.liveScratchBytes + $0.liveOutputBytes }
+        stateStorage.currentTransientBytes
     }
 
     internal var currentOutputBytes: Int {
-        state.withLock { $0.liveOutputBytes }
+        stateStorage.currentOutputBytes
     }
 
-    private func notifyBudgetUpdate(scratch: Int, output: Int, retained: Int) {
-        (VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder)?.recordBudgetUpdate(
-            liveScratch: scratch,
-            liveTransient: scratch + output,
-            liveOutput: output,
-            retained: retained
+    internal var currentRevision: UInt64 {
+        stateStorage.state.withLock { $0.revision }
+    }
+
+    /// Assigns a strictly increasing revision under `JP3DLiveBudgetTracker.state` and, in normal execution
+    /// (`interceptor == nil`), publishes directly to the pure-value leaf `Recorder.state` lock (`Tracker.state -> Recorder.state`
+    /// 2-node DAG, zero external callbacks or reentrancy) so telemetry observation order matches state mutation order.
+    private func commitSnapshot(
+        _ st: inout State,
+        recorder: VolumeConcurrencyTelemetry.Recorder?,
+        interceptor: PublishInterceptor?
+    ) -> PublishedSnapshot {
+        let rev = Self.allocateRevision()
+        st.revision = rev
+        let snap = PublishedSnapshot(
+            revision: rev,
+            scratch: st.liveScratchBytes,
+            output: st.liveOutputBytes,
+            retained: st.retainedBytes,
+            releasedOutput: st.releasedOutputBytes
         )
+        if interceptor == nil {
+            recorder?.recordBudgetUpdate(
+                revision: snap.revision,
+                liveScratch: snap.scratch,
+                liveTransient: snap.scratch + snap.output,
+                liveOutput: snap.output,
+                retained: snap.retained,
+                releasedOutput: snap.releasedOutput
+            )
+        }
+        return snap
+    }
+
+    private func completeInterceptedPublish(
+        _ snap: PublishedSnapshot,
+        recorder: VolumeConcurrencyTelemetry.Recorder?,
+        interceptor: PublishInterceptor?
+    ) {
+        guard let interceptor, let recorder else { return }
+        interceptor(snap.revision) {
+            recorder.recordBudgetUpdate(
+                revision: snap.revision,
+                liveScratch: snap.scratch,
+                liveTransient: snap.scratch + snap.output,
+                liveOutput: snap.output,
+                retained: snap.retained,
+                releasedOutput: snap.releasedOutput
+            )
+        }
     }
 
     internal func reserveTransient(
@@ -533,10 +694,9 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         message: String
     ) throws -> TransientLease {
         guard bytes > 0 else { return TransientLease(owner: nil, bytes: 0) }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        try state.withLock { st in
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = try stateStorage.state.withLock { st -> PublishedSnapshot in
             let (nextScratch, ov1) = st.liveScratchBytes.addingReportingOverflow(bytes)
             let (nextTransient, ov2) = nextScratch.addingReportingOverflow(st.liveOutputBytes)
             let (liveWorkspace, ov3) = nextTransient.addingReportingOverflow(st.retainedBytes)
@@ -556,11 +716,9 @@ internal final class JP3DLiveBudgetTracker: Sendable {
                 }
             }
             st.liveScratchBytes = nextScratch
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
         StorageTelemetry.recordParserAllocation(stage: stage, bytes: bytes)
         return TransientLease(owner: self, bytes: bytes)
     }
@@ -594,10 +752,9 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         let clampedAdded = max(0, additionalBytes)
         let clampedExtra = max(0, extraTransientBytes)
         guard clampedAdded > 0 || clampedExtra > 0 else { return }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        try state.withLock { st in
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = try stateStorage.state.withLock { st -> PublishedSnapshot in
             let (nextOutput, ov1) = st.liveOutputBytes.addingReportingOverflow(clampedAdded)
             let (nextScratch, ov2) = st.liveScratchBytes.addingReportingOverflow(clampedExtra)
             let (nextTransient, ov3) = nextScratch.addingReportingOverflow(nextOutput)
@@ -618,11 +775,9 @@ internal final class JP3DLiveBudgetTracker: Sendable {
             }
             st.liveOutputBytes = nextOutput
             st.liveScratchBytes = nextScratch
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
         if clampedAdded > 0 {
             StorageTelemetry.recordParserAllocation(stage: stage, bytes: clampedAdded)
         }
@@ -632,61 +787,52 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         let clampedOut = max(0, outputBytes)
         let clampedScratch = max(0, scratchBytes)
         guard clampedOut > 0 || clampedScratch > 0 else { return }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        state.withLock { st in
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = stateStorage.state.withLock { st -> PublishedSnapshot in
             st.liveOutputBytes = max(0, st.liveOutputBytes - clampedOut)
             st.liveScratchBytes = max(0, st.liveScratchBytes - clampedScratch)
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
     }
 
     fileprivate func promoteOutputToRetained(_ bytes: Int, stage: String) {
         guard bytes > 0 else { return }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        state.withLock { st in
-            st.liveOutputBytes = max(0, st.liveOutputBytes - bytes)
-            st.retainedBytes += bytes
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = stateStorage.state.withLock { st -> PublishedSnapshot in
+            let promoted = min(bytes, st.liveOutputBytes)
+            st.liveOutputBytes -= promoted
+            st.retainedBytes += promoted
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
         StorageTelemetry.recordParserAllocation(stage: stage, bytes: bytes)
     }
 
     fileprivate func releaseOutput(_ bytes: Int) {
         guard bytes > 0 else { return }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        state.withLock { st in
-            st.liveOutputBytes = max(0, st.liveOutputBytes - bytes)
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = stateStorage.state.withLock { st -> PublishedSnapshot in
+            let released = min(bytes, st.liveOutputBytes)
+            st.liveOutputBytes -= released
+            st.releasedOutputBytes += released
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
     }
 
     private func releaseScratch(_ bytes: Int) {
         guard bytes > 0 else { return }
-        var snapScratch = 0
-        var snapOutput = 0
-        var snapRetained = 0
-        state.withLock { st in
+        let recorder = VolumeConcurrencyTelemetry.recorder ?? telemetryRecorder
+        let interceptor = publishInterceptor.withLock { $0 }
+        let snap = stateStorage.state.withLock { st -> PublishedSnapshot in
             st.liveScratchBytes = max(0, st.liveScratchBytes - bytes)
-            snapScratch = st.liveScratchBytes
-            snapOutput = st.liveOutputBytes
-            snapRetained = st.retainedBytes
+            return commitSnapshot(&st, recorder: recorder, interceptor: interceptor)
         }
-        notifyBudgetUpdate(scratch: snapScratch, output: snapOutput, retained: snapRetained)
+        completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
     }
 }
 

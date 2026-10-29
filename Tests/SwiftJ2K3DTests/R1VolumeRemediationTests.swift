@@ -818,9 +818,12 @@ struct R1VolumeRemediationTests {
 
     @Test("F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths")
     func childTileOutputReservationTransferAndDelayedParentConsumption() async throws {
-        // --- 1. 3-tile 32-bit J3DI (6x2x2 with 2x2x2 tiling -> 3 tiles of 89 B each, maximumWorkers = 3) ---
-        // Workers 0 and 1 complete and open `firstTwoExited` while the parent waits on `thirdExited` before `group.next()`.
-        // Worker 2 wakes on `firstTwoExited` only after Workers 0 and 1 have returned into `ThrowingTaskGroup`.
+        // --- 1. 3-tile 32-bit J3DI (6x2x2 with 2x2x2 tiling -> 3 tiles of 89 B each) ---
+        // Workers 0 and 1 finish their `encodeTileStatic` bodies (releasing worker scratch while keeping their 89 B
+        // `OutputReservation`s alive in the returned `JP3DEncodedTileOutput` values) and open `tiles0And1Exited` while
+        // the parent waits on `tile2Exited` before calling `group.next()`. Note that `onWorkerExit` / `onChildTaskReturned`
+        // fire inside the child task before Swift's runtime enqueues the result into `ThrowingTaskGroup`, so task-group
+        // result queue order relative to a sibling error is never assumed without a parent-consumption synchronization point.
         let samples24: [Int64] = (0..<24).map { ($0 % 2 == 0) ? 0 : Int64(UInt32.max) }
         let vol3TilesJ3DI = J2KVolume(
             width: 6,
@@ -848,16 +851,18 @@ struct R1VolumeRemediationTests {
             )
         )
 
-        // 1a. maximumCompressedBytes = 220 (> 171 B preflight floor; admits 2 * 89 = 178 B queued unconsumed outputs,
+        // 1a. maximumCompressedBytes = 220 (> 171 B preflight floor; admits 2 * 89 = 178 B unconsumed child outputs,
         // then rejects Worker 2's 89 B at 267 > 220 BEFORE parent consumes anything from group.next()).
         // Explicit phase barriers (zero timing sleeps):
-        //   - Workers 0 & 1 complete and open `tiles0And1Exited` in `onWorkerExit`.
+        //   - Workers 0 & 1 finish `encodeTileStatic` and open `tiles0And1Exited` in `onWorkerExit`.
         //   - Worker 2 waits on `tiles0And1Exited` in `onWorkerEnter`, captures `snapTile2`, attempts its 89 B output
-        //     reservation (denied at 267 > 220), and opens `tile2Exited` in `onWorkerExit`.
-        //   - Parent waits on `tile2Exited` in `onBeforeParentConsume(step: 0)` before calling `group.next()`.
+        //     reservation (denied pre-allocation at 267 > 220), and opens `tile2Exited` in `onWorkerExit`.
+        //   - Parent waits on `tile2Exited` in `onBeforeParentConsume(step: 0)` and captures `preConsumeSnap` before
+        //     making its first `group.next()` call.
         let tiles0And1Exited = VolumeConcurrencyTelemetry.PhaseGate()
         let tile2Exited = VolumeConcurrencyTelemetry.PhaseGate()
         let firstTwoExitCount = Mutex(0)
+        let preConsumeSnap1a = Mutex<VolumeConcurrencyTelemetry.Snapshot?>(nil)
         let denyQueuedCompressedRec = VolumeConcurrencyTelemetry.Recorder(
             onWorkerEnter: { tileIdx, _ in
                 if tileIdx == 2 {
@@ -877,9 +882,10 @@ struct R1VolumeRemediationTests {
                     tile2Exited.open()
                 }
             },
-            onBeforeParentConsume: { step, _ in
+            onBeforeParentConsume: { step, rec in
                 if step == 0 {
                     await tile2Exited.wait()
+                    preConsumeSnap1a.withLock { $0 = rec.currentSnapshot() }
                 }
             }
         )
@@ -902,28 +908,100 @@ struct R1VolumeRemediationTests {
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
         }
-        // Snapshot inside Worker 2 right after `tiles0And1Exited.wait()` proves Workers 0 & 1 had already exited
-        // (`currentInFlight == 1`), parent had consumed 0 tiles (`retainedBytes == 0`), yet BOTH unconsumed child Data
+        // Snapshot inside Worker 2 right after `tiles0And1Exited.wait()` AND `preConsumeSnap` right before step-0
+        // `group.next()` both prove parent had consumed 0 tiles (`retainedBytes == 0`) while BOTH completed child Data
         // outputs remained actively charged in `liveOutputBytes` (`2 * 89 = 178 B`):
         let snapTile2 = try #require(denyQueuedCompressedRec.snapshotAfterEnterDelay(forTile: 2))
         #expect(snapTile2.currentInFlight == 1)
         #expect(snapTile2.retainedBytes == 0)
         #expect(snapTile2.liveOutputBytes == 2 * 89)
         #expect(snapTile2.liveTransientBytes == 2 * 89)
-        #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 2)
-        // Workers 0 & 1 completed before Worker 2 failed; once `tile2Exited` unblocked the parent,
-        // ThrowingTaskGroup yielded the 2 earlier completions before rethrowing Worker 2's pre-allocation denial:
-        #expect(denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.count == 2)
+        let preParentSnap = try #require(preConsumeSnap1a.withLock { $0 })
+        #expect(preParentSnap.currentInFlight == 0)
+        #expect(preParentSnap.retainedBytes == 0)
+        #expect(preParentSnap.liveOutputBytes == 2 * 89)
+        #expect(preParentSnap.liveScratchBytes == 0)
+        let admittedTileOutputs = denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }
+        #expect(admittedTileOutputs.count == 2)
+        #expect(admittedTileOutputs.allSatisfy { $0.bytes == 89 })
+        // Queue-order-independent conservation-of-bytes invariant:
+        // Depending on Swift Concurrency's internal `ThrowingTaskGroup` completion-queue ordering relative to Worker 2's
+        // error, `group.next()` pops `k` (`0...2`) completed 89 B tiles (promoting `k * 89 B` to `retainedBytes`) before
+        // rethrowing `.resourceLimitExceeded`, while the remaining `(2 - k)` unpopped child outputs are released
+        // (`(2 - k) * 89 B`) via `OutputReservation.deinit` during task-group unwind:
+        let promotedTileEvents = denyQueuedStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }
+        #expect((0...2).contains(promotedTileEvents.count))
+        #expect(promotedTileEvents.allSatisfy { $0.bytes == 89 })
+        #expect(denyQueuedCompressedRec.retainedBytes == promotedTileEvents.count * 89)
+        #expect(denyQueuedCompressedRec.releasedOutputBytes == (2 - promotedTileEvents.count) * 89)
+        #expect(denyQueuedCompressedRec.retainedBytes + denyQueuedCompressedRec.releasedOutputBytes == 2 * 89)
         #expect(denyQueuedCompressedRec.currentInFlight == 0)
         #expect(denyQueuedCompressedRec.liveOutputBytes == 0)
+        #expect(denyQueuedCompressedRec.liveScratchBytes == 0)
         #expect(denyQueuedCompressedRec.liveTransientBytes == 0)
+        #expect(denyQueuedCompressedRec.authoritativeLiveOutputBytes == 0)
+        #expect(denyQueuedCompressedRec.authoritativeLiveScratchBytes == 0)
+        #expect(denyQueuedCompressedRec.authoritativeLiveTransientBytes == 0)
+        #expect(denyQueuedCompressedRec.authoritativeRetainedBytes == promotedTileEvents.count * 89)
+        #expect(denyQueuedCompressedRec.authoritativeReleasedOutputBytes == (2 - promotedTileEvents.count) * 89)
+
+        // 1a-sync. Parent-consumption-synchronized promotion proof (`maximumWorkers: 2`, `maximumCompressedBytes: 220`):
+        // With `maximumWorkers: 2`, Worker 2 is spawned only after `group.next()` consumes the 1st tile, and waits on
+        // `bothTilesPromoted` opened inside `onBeforeParentConsume(step: 2)` AFTER the parent loop has actually consumed
+        // and promoted BOTH initial tiles (`retainedBytes == 2 * 89`, `liveOutputBytes == 0`), establishing exact 2
+        // promotions via an actual parent-side synchronization point before Worker 2 fails at `178 + 89 = 267 > 220`:
+        let bothTilesPromoted = VolumeConcurrencyTelemetry.PhaseGate()
+        let syncPromotedRec = VolumeConcurrencyTelemetry.Recorder(
+            onWorkerEnter: { tileIdx, _ in
+                if tileIdx == 2 {
+                    await bothTilesPromoted.wait()
+                }
+            },
+            onBeforeParentConsume: { step, _ in
+                if step == 2 {
+                    bothTilesPromoted.open()
+                }
+            }
+        )
+        let syncPromotedStorage = StorageTelemetry.Recorder()
+        do {
+            _ = try await StorageTelemetry.$recorder.withValue(syncPromotedStorage) {
+                try await VolumeConcurrencyTelemetry.$recorder.withValue(syncPromotedRec) {
+                    try await j3diEncoder.encode(
+                        vol3TilesJ3DI,
+                        options: VolumeEncodeOptions(
+                            resourceLimits: try ResourceLimits(
+                                maximumCompressedBytes: 220,
+                                maximumWorkers: 2
+                            )
+                        )
+                    )
+                }
+            }
+            Issue.record("Expected Worker 2's 89 B output after 2 synchronized 89 B promotions (267 B) to fail 220 B limit")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+        }
+        let syncSnapTile2 = try #require(syncPromotedRec.snapshotAfterEnterDelay(forTile: 2))
+        #expect(syncSnapTile2.retainedBytes == 2 * 89)
+        #expect(syncSnapTile2.liveOutputBytes == 0)
+        #expect(syncPromotedStorage.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 2)
+        #expect(syncPromotedStorage.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.count == 2)
+        #expect(syncPromotedRec.retainedBytes == 2 * 89)
+        #expect(syncPromotedRec.releasedOutputBytes == 0)
+        #expect(syncPromotedRec.liveOutputBytes == 0)
+        #expect(syncPromotedRec.liveScratchBytes == 0)
+        #expect(syncPromotedRec.authoritativeLiveOutputBytes == 0)
+        #expect(syncPromotedRec.authoritativeLiveScratchBytes == 0)
+        #expect(syncPromotedRec.authoritativeRetainedBytes == 2 * 89)
+        #expect(syncPromotedRec.authoritativeReleasedOutputBytes == 0)
 
         // 1b. Unconsumed-result deinit path (deterministic barrier + task cancellation, zero timing sleeps):
-        // All 3 workers complete and return into ThrowingTaskGroup (`allThreeReturned` barrier, queuing 3 * 89 = 267 B
-        // with `retainedBytes == 0`), then parent cancels the child Task inside `onBeforeParentConsume(step: 0)` so
-        // the first iteration throws `CancellationError` at `work.check()` before any tile is promoted to retained
-        // (`"jp3d-retained-tile"` count == 0), leaving the remaining 2 unconsumed child results to clean up solely via
-        // `OutputReservation.deinit`:
+        // All 3 worker child closures finish executing (`allThreeReturned` barrier, holding 3 * 89 = 267 B in
+        // `liveOutputBytes` with `retainedBytes == 0`), then parent cancels the child Task inside
+        // `onBeforeParentConsume(step: 0)` so the first iteration throws `CancellationError` at `work.check()` before
+        // any tile is promoted to retained (`"jp3d-retained-tile"` count == 0), releasing the 1st popped reservation in
+        // `catch` and leaving the remaining 2 unconsumed child results to clean up via `OutputReservation.deinit`:
         let allThreeReturned = VolumeConcurrencyTelemetry.PhaseGate()
         let returnedCount = Mutex(0)
         let preCancelSnap = Mutex<VolumeConcurrencyTelemetry.Snapshot?>(nil)
@@ -967,9 +1045,16 @@ struct R1VolumeRemediationTests {
         #expect(queuedAll3Snap.liveOutputBytes == 3 * 89)
         #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-j3di-tile-output" }.count == 3)
         #expect(unconsumedDeinitStorageRec.parserEvents.filter { $0.stage == "jp3d-retained-tile" }.isEmpty)
+        #expect(unconsumedDeinitRec.retainedBytes == 0)
+        #expect(unconsumedDeinitRec.releasedOutputBytes == 3 * 89)
         #expect(unconsumedDeinitRec.currentInFlight == 0)
         #expect(unconsumedDeinitRec.liveOutputBytes == 0)
+        #expect(unconsumedDeinitRec.liveScratchBytes == 0)
         #expect(unconsumedDeinitRec.liveTransientBytes == 0)
+        #expect(unconsumedDeinitRec.authoritativeLiveOutputBytes == 0)
+        #expect(unconsumedDeinitRec.authoritativeLiveScratchBytes == 0)
+        #expect(unconsumedDeinitRec.authoritativeRetainedBytes == 0)
+        #expect(unconsumedDeinitRec.authoritativeReleasedOutputBytes == 3 * 89)
 
         // --- 2. maximumWorkspaceBytes boundary on 10-tile 32-bit J3DI (20x2x2, 2x2x2 tiling -> 10 tiles, maximumWorkers = 2) ---
         // Preflight floor = 2 * 473 + 64 * 4 = 1202 B.
@@ -1039,9 +1124,14 @@ struct R1VolumeRemediationTests {
         #expect(snapTile9.currentInFlight == 1)
         #expect(snapTile9.retainedBytes == 8 * 89)
         #expect(snapTile9.liveOutputBytes == 89)
+        #expect(denyQueuedWSRec.retainedBytes + denyQueuedWSRec.releasedOutputBytes == 9 * 89)
         #expect(denyQueuedWSRec.currentInFlight == 0)
         #expect(denyQueuedWSRec.liveOutputBytes == 0)
+        #expect(denyQueuedWSRec.liveScratchBytes == 0)
         #expect(denyQueuedWSRec.liveTransientBytes == 0)
+        #expect(denyQueuedWSRec.authoritativeLiveOutputBytes == 0)
+        #expect(denyQueuedWSRec.authoritativeLiveScratchBytes == 0)
+        #expect((denyQueuedWSRec.authoritativeRetainedBytes ?? 0) + (denyQueuedWSRec.authoritativeReleasedOutputBytes ?? 0) == 9 * 89)
 
         // Larger-budget control (4096 B) with the exact same barrier schedule succeeds cleanly:
         let passQueuedWSRec = makeTenTileWaveRecorder()
@@ -1520,7 +1610,10 @@ struct R1VolumeRemediationTests {
         #expect(qSnap2.liveOutputBytes == 2 * exactTileBytes)
         #expect(qRec.currentInFlight == 0)
         #expect(qRec.liveOutputBytes == 0)
+        #expect(qRec.liveScratchBytes == 0)
         #expect(qRec.liveTransientBytes == 0)
+        #expect(qRec.authoritativeLiveOutputBytes == 0)
+        #expect(qRec.authoritativeLiveScratchBytes == 0)
 
         // Truncated 21-byte J3DS v2 header rejects cleanly without out-of-bounds read:
         var truncatedV2Header = Data([0x4A, 0x33, 0x44, 0x53, 0x02])
@@ -1535,5 +1628,356 @@ struct R1VolumeRemediationTests {
                 expectedDepth: 2
             )
         }
+    }
+
+    @Test("F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros")
+    func monotonicBudgetTelemetryOrderingAndStaleSnapshotRejection() async throws {
+        // --- 1. Direct out-of-order revision delivery to VolumeConcurrencyTelemetry.Recorder ---
+        let directRec = VolumeConcurrencyTelemetry.Recorder()
+        let r1 = directRec.allocateBudgetRevision()
+        let r2 = directRec.allocateBudgetRevision()
+        let r3 = directRec.allocateBudgetRevision()
+        let r4 = directRec.allocateBudgetRevision()
+        #expect(r1 < r2 && r2 < r3 && r3 < r4)
+
+        // Newer snapshot `r2` arrives before older snapshot `r1`:
+        directRec.recordBudgetUpdate(
+            revision: r2,
+            liveScratch: 160,
+            liveTransient: 240,
+            liveOutput: 80,
+            retained: 0,
+            releasedOutput: 0
+        )
+        directRec.recordBudgetUpdate(
+            revision: r1,
+            liveScratch: 96,
+            liveTransient: 136,
+            liveOutput: 40,
+            retained: 0,
+            releasedOutput: 0
+        )
+        #expect(directRec.staleBudgetUpdatesIgnored == 1)
+        #expect(directRec.lastBudgetRevision == r2)
+        #expect(directRec.liveScratchBytes == 160)
+        #expect(directRec.liveOutputBytes == 80)
+
+        // Final-zero cleanup snapshot `r4` arrives BEFORE delayed high-water intermediate snapshot `r3`:
+        // Current counters MUST remain at `r4`'s final zeros, while commutative `peak*` counters still capture `r3`:
+        directRec.recordBudgetUpdate(
+            revision: r4,
+            liveScratch: 0,
+            liveTransient: 0,
+            liveOutput: 0,
+            retained: 80,
+            releasedOutput: 40
+        )
+        directRec.recordBudgetUpdate(
+            revision: r3,
+            liveScratch: 320,
+            liveTransient: 440,
+            liveOutput: 120,
+            retained: 0,
+            releasedOutput: 0
+        )
+        #expect(directRec.staleBudgetUpdatesIgnored == 2)
+        #expect(directRec.lastBudgetRevision == r4)
+        #expect(directRec.liveScratchBytes == 0)
+        #expect(directRec.liveOutputBytes == 0)
+        #expect(directRec.liveTransientBytes == 0)
+        #expect(directRec.retainedBytes == 80)
+        #expect(directRec.releasedOutputBytes == 40)
+        #expect(directRec.peakScratchBytes == 320)
+        #expect(directRec.peakOutputBytes == 120)
+        #expect(directRec.peakTransientBytes == 440)
+        #expect(directRec.peakLiveWorkspaceBytes == 440)
+
+        // --- 2. End-to-end JP3DLiveBudgetTracker delayed-publication reordering ---
+        // Acquire two scratch leases (64 + 128 = 192 B) and two output reservations (50 + 70 = 120 B), then hold the
+        // publication of the 1st release (`scratch = 128, output = 120`) while the remaining releases/promotions drive
+        // authoritative tracker state to final `scratch = 0, output = 0, retained = 50, releasedOutput = 70` and publish
+        // first; flushing the held older publication afterwards must NOT overwrite the final zeros:
+        let trackerRec = VolumeConcurrencyTelemetry.Recorder()
+        try VolumeConcurrencyTelemetry.$recorder.withValue(trackerRec) {
+            let budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+            let leaseA = try budget.reserveTransient(64, stage: "rev-scratch-a", message: "a")
+            let leaseB = try budget.reserveTransient(128, stage: "rev-scratch-b", message: "b")
+            let outA = try budget.makeOutputReservation(initialBytes: 50, stage: "rev-out-a", message: "oa")
+            let outB = try budget.makeOutputReservation(initialBytes: 70, stage: "rev-out-b", message: "ob")
+            #expect(trackerRec.liveScratchBytes == 192)
+            #expect(trackerRec.liveOutputBytes == 120)
+
+            let deferredOlderPublish = Mutex<(@Sendable () -> Void)?>(nil)
+            let interceptedFirst = Mutex(false)
+            budget.setTestPublishInterceptor { _, publish in
+                let holdThisOne = interceptedFirst.withLock { held -> Bool in
+                    if !held {
+                        held = true
+                        return true
+                    }
+                    return false
+                }
+                if holdThisOne {
+                    deferredOlderPublish.withLock { $0 = publish }
+                } else {
+                    publish()
+                }
+            }
+
+            // Mutates `budget` to `scratch = 128, output = 120` at an older revision, holding its Recorder publication:
+            leaseA.release()
+            #expect(budget.currentScratchBytes == 128)
+            // Subsequent mutations advance `budget` to final zero scratch/output and publish newer revisions immediately:
+            leaseB.release()
+            outA.promoteToRetained(stage: "jp3d-retained-tile")
+            outB.release()
+            #expect(budget.currentScratchBytes == 0)
+            #expect(budget.currentOutputBytes == 0)
+            #expect(budget.currentRetainedBytes == 50)
+            #expect(budget.currentReleasedOutputBytes == 70)
+            #expect(trackerRec.liveScratchBytes == 0)
+            #expect(trackerRec.liveOutputBytes == 0)
+            #expect(trackerRec.retainedBytes == 50)
+            #expect(trackerRec.releasedOutputBytes == 70)
+
+            // Flush the delayed older publication (`scratch = 128, output = 120, retained = 0, releasedOutput = 0`):
+            let stalePublish = try #require(deferredOlderPublish.withLock { $0 })
+            stalePublish()
+
+            #expect(trackerRec.staleBudgetUpdatesIgnored == 1)
+            #expect(trackerRec.lastBudgetRevision == budget.currentRevision)
+            #expect(trackerRec.liveScratchBytes == 0)
+            #expect(trackerRec.liveOutputBytes == 0)
+            #expect(trackerRec.liveTransientBytes == 0)
+            #expect(trackerRec.retainedBytes == 50)
+            #expect(trackerRec.releasedOutputBytes == 70)
+            #expect(trackerRec.authoritativeLiveScratchBytes == 0)
+            #expect(trackerRec.authoritativeLiveOutputBytes == 0)
+            #expect(trackerRec.authoritativeLiveTransientBytes == 0)
+            #expect(trackerRec.authoritativeRetainedBytes == 50)
+            #expect(trackerRec.authoritativeReleasedOutputBytes == 70)
+            #expect(trackerRec.peakScratchBytes == 192)
+            #expect(trackerRec.peakOutputBytes == 120)
+            budget.setTestPublishInterceptor(nil)
+        }
+
+        // --- 3. Multi-task concurrent reordering & final-zero cleanup check ---
+        let concurrentRec = VolumeConcurrencyTelemetry.Recorder()
+        try await VolumeConcurrencyTelemetry.$recorder.withValue(concurrentRec) {
+            let budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+            let delayedQueue = Mutex<[@Sendable () -> Void]>([])
+            let toggle = Mutex(0)
+            budget.setTestPublishInterceptor { _, publish in
+                let delay = toggle.withLock { c -> Bool in
+                    c += 1
+                    return (c % 2) == 1
+                }
+                if delay {
+                    delayedQueue.withLock { $0.append(publish) }
+                } else {
+                    publish()
+                }
+            }
+
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for i in 0..<12 {
+                    group.addTask {
+                        let lease = try budget.reserveTransient(32 + i, stage: "conc-sc", message: "sc")
+                        let out = try budget.makeOutputReservation(initialBytes: 24, stage: "conc-out", message: "out")
+                        if i % 2 == 0 {
+                            out.promoteToRetained(stage: "jp3d-retained-tile")
+                        } else {
+                            out.release()
+                        }
+                        lease.release()
+                    }
+                }
+                try await group.waitForAll()
+            }
+
+            // Ensure the final authoritative state publishes cleanly, then replay all delayed older publications in reverse:
+            budget.setTestPublishInterceptor(nil)
+            let finalAnchor = try budget.reserveTransient(16, stage: "conc-anchor", message: "anchor")
+            finalAnchor.release()
+
+            let ignoredDuringConcurrentPhase = concurrentRec.staleBudgetUpdatesIgnored
+            let queuedStale = delayedQueue.withLock { q -> [@Sendable () -> Void] in
+                let copy = Array(q.reversed())
+                q.removeAll()
+                return copy
+            }
+            #expect(queuedStale.count == 24)
+            for publish in queuedStale {
+                publish()
+            }
+
+            // Every replayed stale snapshot after `finalAnchor` is deterministically rejected on top of any
+            // natural thread-reordered unlocked publications caught during the concurrent phase:
+            #expect(concurrentRec.staleBudgetUpdatesIgnored == ignoredDuringConcurrentPhase + queuedStale.count)
+            #expect(concurrentRec.lastBudgetRevision == budget.currentRevision)
+            #expect(concurrentRec.liveScratchBytes == 0)
+            #expect(concurrentRec.liveOutputBytes == 0)
+            #expect(concurrentRec.liveTransientBytes == 0)
+            #expect(concurrentRec.retainedBytes == 6 * 24)
+            #expect(concurrentRec.releasedOutputBytes == 6 * 24)
+            #expect(concurrentRec.authoritativeLiveScratchBytes == 0)
+            #expect(concurrentRec.authoritativeLiveOutputBytes == 0)
+            #expect(concurrentRec.authoritativeLiveTransientBytes == 0)
+            #expect(concurrentRec.authoritativeRetainedBytes == 6 * 24)
+            #expect(concurrentRec.authoritativeReleasedOutputBytes == 6 * 24)
+            #expect(concurrentRec.peakScratchBytes >= 32)
+            #expect(concurrentRec.peakOutputBytes >= 24)
+            #expect(concurrentRec.peakLiveWorkspaceBytes >= 6 * 24)
+        }
+
+        // --- 4. Production ordered-publication path (`interceptor == nil`) across 12 concurrent tasks ---
+        // Because `commitSnapshot` publishes under `Tracker.state -> leaf Recorder.state` when no test interceptor is set,
+        // concurrent tasks observe zero out-of-order deliveries (`staleBudgetUpdatesIgnored == 0`) and exact final zeros:
+        let orderedRec = VolumeConcurrencyTelemetry.Recorder()
+        try await VolumeConcurrencyTelemetry.$recorder.withValue(orderedRec) {
+            let budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for i in 0..<12 {
+                    group.addTask {
+                        let lease = try budget.reserveTransient(32 + i, stage: "ord-sc", message: "sc")
+                        let out = try budget.makeOutputReservation(initialBytes: 24, stage: "ord-out", message: "out")
+                        if i % 2 == 0 {
+                            out.promoteToRetained(stage: "jp3d-retained-tile")
+                        } else {
+                            out.release()
+                        }
+                        lease.release()
+                    }
+                }
+                try await group.waitForAll()
+            }
+            #expect(orderedRec.staleBudgetUpdatesIgnored == 0)
+            #expect(orderedRec.lastBudgetRevision == budget.currentRevision)
+            #expect(orderedRec.liveScratchBytes == 0)
+            #expect(orderedRec.liveOutputBytes == 0)
+            #expect(orderedRec.liveTransientBytes == 0)
+            #expect(orderedRec.retainedBytes == 6 * 24)
+            #expect(orderedRec.releasedOutputBytes == 6 * 24)
+            #expect(orderedRec.authoritativeLiveScratchBytes == 0)
+            #expect(orderedRec.authoritativeLiveOutputBytes == 0)
+            #expect(orderedRec.peakScratchBytes >= 32)
+            #expect(orderedRec.peakOutputBytes >= 24)
+            #expect(orderedRec.peakLiveWorkspaceBytes >= 6 * 24)
+        }
+
+        // --- 5. Weak-sentinel ARC deallocation proof for Recorder <-> JP3DLiveBudgetTracker <-> StateStorage ---
+        // Verifies there is no retain cycle between `VolumeConcurrencyTelemetry.Recorder` and `JP3DLiveBudgetTracker`:
+        //   (a) `JP3DLiveBudgetTracker` deallocates as soon as its owner leaves scope even while `Recorder` remains alive,
+        //       AND `Recorder.authoritative*` still preserves the final authoritative counters via `StateStorage`;
+        //   (b) once `Recorder` and the `$recorder.withValue` task-local scope end, `Recorder`, `JP3DLiveBudgetTracker`,
+        //       and `StateStorage` are all deallocated (`nil`), both in direct tracker usage and full `VolumeEncoder.encode`.
+        struct WeakSentinel<Object: AnyObject> {
+            weak var object: Object?
+        }
+
+        @inline(never)
+        func runScopedTrackerUnderRecorder(
+            _ rec: VolumeConcurrencyTelemetry.Recorder
+        ) throws -> (
+            tracker: WeakSentinel<JP3DLiveBudgetTracker>,
+            storage: WeakSentinel<JP3DLiveBudgetTracker.StateStorage>
+        ) {
+            try VolumeConcurrencyTelemetry.$recorder.withValue(rec) {
+                let budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+                let scratch = try budget.reserveTransient(48, stage: "arc-sc", message: "sc")
+                let outPromoted = try budget.makeOutputReservation(initialBytes: 40, stage: "arc-out1", message: "o1")
+                try outPromoted.withGrowth(
+                    by: 24,
+                    extraTransientBytes: 40,
+                    stage: "arc-grow1",
+                    message: "g1"
+                ) {
+                    #expect(budget.currentScratchBytes == 88)
+                    #expect(budget.currentOutputBytes == 64)
+                }
+                let outReleased = try budget.makeOutputReservation(initialBytes: 32, stage: "arc-out2", message: "o2")
+                outPromoted.promoteToRetained(stage: "jp3d-retained-tile")
+                outReleased.release()
+                scratch.release()
+                return (WeakSentinel(object: budget), WeakSentinel(object: budget.stateStorage))
+            }
+        }
+
+        @inline(never)
+        func runFullRecorderAndTrackerScope() throws -> (
+            recorder: WeakSentinel<VolumeConcurrencyTelemetry.Recorder>,
+            tracker: WeakSentinel<JP3DLiveBudgetTracker>,
+            storage: WeakSentinel<JP3DLiveBudgetTracker.StateStorage>
+        ) {
+            let rec = VolumeConcurrencyTelemetry.Recorder()
+            let sentinels = try runScopedTrackerUnderRecorder(rec)
+            // While `rec` is still alive, `JP3DLiveBudgetTracker` has ALREADY deallocated (`Recorder` does not retain it),
+            // yet `rec.authoritative*` still reads the exact final counters from `StateStorage`:
+            #expect(sentinels.tracker.object == nil)
+            #expect(rec.liveScratchBytes == 0)
+            #expect(rec.liveOutputBytes == 0)
+            #expect(rec.retainedBytes == 64)
+            #expect(rec.releasedOutputBytes == 32)
+            #expect(rec.peakScratchBytes == 88)
+            #expect(rec.peakOutputBytes == 96)
+            #expect(rec.authoritativeLiveScratchBytes == 0)
+            #expect(rec.authoritativeLiveOutputBytes == 0)
+            #expect(rec.authoritativeLiveTransientBytes == 0)
+            #expect(rec.authoritativeRetainedBytes == 64)
+            #expect(rec.authoritativeReleasedOutputBytes == 32)
+            return (WeakSentinel(object: rec), sentinels.tracker, sentinels.storage)
+        }
+
+        let directSentinels = try runFullRecorderAndTrackerScope()
+        #expect(directSentinels.recorder.object == nil)
+        #expect(directSentinels.tracker.object == nil)
+        #expect(directSentinels.storage.object == nil)
+
+        @inline(never)
+        func runInstrumentedVolumeEncodeScope() async throws -> WeakSentinel<VolumeConcurrencyTelemetry.Recorder> {
+            let vol = J2KVolume(
+                width: 4,
+                height: 2,
+                depth: 2,
+                components: [
+                    J2KVolumeComponent(
+                        index: 0,
+                        bitDepth: 16,
+                        signed: false,
+                        width: 4,
+                        height: 2,
+                        depth: 2,
+                        data: Data(repeating: 11, count: 4 * 2 * 2 * 2)
+                    )
+                ]
+            )
+            let encoder = try VolumeEncoder(
+                configuration: try VolumeEncoderConfiguration(
+                    compressionMode: .lossless,
+                    tiling: JP3DTilingConfiguration(tileSizeX: 2, tileSizeY: 2, tileSizeZ: 2),
+                    levelsX: 1,
+                    levelsY: 1,
+                    levelsZ: 1
+                )
+            )
+            let rec = VolumeConcurrencyTelemetry.Recorder()
+            let encoded = try await VolumeConcurrencyTelemetry.$recorder.withValue(rec) {
+                try await encoder.encode(
+                    vol,
+                    options: VolumeEncodeOptions(resourceLimits: try ResourceLimits(maximumWorkers: 2))
+                )
+            }
+            #expect(!encoded.data.isEmpty)
+            #expect(rec.retainedBytes > 0)
+            #expect(rec.liveScratchBytes == 0)
+            #expect(rec.liveOutputBytes == 0)
+            #expect(rec.authoritativeLiveScratchBytes == 0)
+            #expect(rec.authoritativeLiveOutputBytes == 0)
+            #expect(rec.authoritativeRetainedBytes == rec.retainedBytes)
+            return WeakSentinel(object: rec)
+        }
+
+        let encodeRecSentinel = try await runInstrumentedVolumeEncodeScope()
+        #expect(encodeRecSentinel.object == nil)
     }
 }

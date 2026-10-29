@@ -229,3 +229,50 @@ Audit state: Developer submission evidence ONLY (`submitted`); Codex independent
      - `.build/out/Products/Release/swiftj2k-cli`: `759b765ae209153a6c2d946d6d44c65cfb47222f32b80d790ec0b113ee38b23d`
   7. Remaining blocked/unexecuted gate:
      - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED locally** (no waiver; never inferred from macOS).
+
+6. Independent Audit of `64c980e670c0d7f9cfed64fb2a3fe2b741b33f30`, Provisional Review `remediation-20261029T100140Z`, and Phase R1 `F05` Qualification/Telemetry Verification Receipts (29 October 2026)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+- Preserved Codex Independent Audit Receipt for `64c980e670c0d7f9cfed64fb2a3fe2b741b33f30` (`/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/remediation-20261029T093409Z`: `independent-audit-result.json`, `independent-focused-tests.log`, `f05-test-static-review.json`, `volume-growth-static-review.json`, `independent-identities.json`):
+  - Verified Code Fixes (`24/24` passed; zero runtime allocation failures at `64c980e`):
+    - Executed `24` focused checks (`19` submitted Phase R1 `@Test` declarations + `5` independent checks): `24/24` passed, including the prior `GrowthLease` copy-overlap and exact `22`-byte `J3DS` header failures (`volume-growth-static-review.json`).
+    - Prior `M12-CX-01` TIFF (`CLIImageIO.swift`), `M6-AUD-006` / `R1-CODE-02` parser (`Codestream.swift`), `JP3DEncoder.swift`, `R1RemediationTests.swift`, and `R1JPIPRemediationTests.swift` identities remained unchanged by SHA-256 (`independent-identities.json`) and continue to pass untouched. No new production allocation failure occurred or is claimed.
+  - Static `F05` Qualification/Verification Risks Identified at `64c980e` (`R1` unaccepted; `R2` CLOSED):
+    1. `R1VolumeRemediationTests.swift` around `823–917` (`f05-test-static-review.json`): `onWorkerExit` runs in a `defer` inside `encodeTileStatic` (and `onChildTaskReturned` inside the child closure) before Swift's runtime enqueues child completions into `ThrowingTaskGroup`, so asserting exact `2` `"jp3d-retained-tile"` promotions assumed both successful results reached `ThrowingTaskGroup` before Worker 2's thrown error.
+    2. `JP3DSliceStackCodec.swift` lines `520–563` and `625/645/660`: `JP3DLiveBudgetTracker` snapshotted state under its mutex and called `notifyBudgetUpdate` after unlocking, allowing concurrent snapshots to arrive out of order and overwrite newer live counters or final zeros in `VolumeConcurrencyTelemetry.Recorder`.
+- Preserved Codex Provisional In-Progress Source Review Receipt (`/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/remediation-20261029T100140Z`: `provisional-manifest.json`, `working.diff`, `test-provisional-review.json`, `tracker-provisional-review.json`; source-only review while developer active, zero native Codex campaigns run):
+  - Confirmed the revised child-result conservation accounting (`178 B` unconsumed-output proof, `220 B` strict denial, complete promotion+release conservation, final cleanup) and separate parent-synchronized exact-two-promotion check (`1a-sync`) address the `64c980e` queue-order assumption in source.
+  - Identified two bounded static items in the in-progress snapshot, both folded into the current commit before submission:
+    1. P2 instrumented telemetry ARC retain cycle (`JP3DSliceStackCodec.swift`): `Recorder.attachedTracker` strongly retained `JP3DLiveBudgetTracker` while `JP3DLiveBudgetTracker.telemetryRecorder` strongly retained `Recorder`. Repaired by extracting primitive counters into value-only `JP3DLiveBudgetTracker.StateStorage` (`Tracker -> {Recorder, StateStorage}`, `Recorder -> StateStorage`, `StateStorage -> ∅` strict 3-node DAG, zero object references in `StateStorage`), preserving `Recorder.authoritative*` final-counter reads even after `JP3DLiveBudgetTracker` deallocates, with `@inline(never)` `WeakSentinel` ARC deallocation checks.
+    2. P2 concurrent replay-delta baseline (`R1VolumeRemediationTests.swift`): in the 12-task concurrent interceptor test, immediate unlocked `publish()` calls can naturally reorder before replay (empirically observed on `1` of `10` pre-fix runs as `27` vs `24` while final counters stayed `0`). Repaired by capturing `ignoredDuringConcurrentPhase = concurrentRec.staleBudgetUpdatesIgnored` after workers and the final anchor finish and asserting exact replay delta `concurrentRec.staleBudgetUpdatesIgnored == ignoredDuringConcurrentPhase + queuedStale.count`, plus adding a 12-task production ordered-publication (`interceptor == nil`) check asserting `staleBudgetUpdatesIgnored == 0`.
+
+- Phase R1 Post-`64c980e` Focused Deterministic Verification (atop `64c980e670c0d7f9cfed64fb2a3fe2b741b33f30`, `3.4 GiB` free disk):
+  1. All 20 Phase R1 `@Test` declarations (`10/10` consecutive concurrent runs = `200/200` executions):
+     Command: `for i in 1 2 3 4 5 6 7 8 9 10; do swift test --skip-build --filter "R1RemediationTests|R1VolumeRemediationTests|R1JPIPRemediationTests" || exit 1; done`
+     Exit code: `0` (`10/10` runs passed with `0` failures)
+     Summary per run:
+       - `SwiftJ2KTests` (`R1RemediationTests`): `7/7` `@Test` declarations passed (`0.332–0.388 s`).
+       - `SwiftJ2KJPIPTests` (`R1JPIPRemediationTests`): `4/4` `@Test` declarations passed (`0.056–0.057 s`).
+       - `SwiftJ2K3DTests` (`R1VolumeRemediationTests`): `9/9` `@Test` declarations passed (`0.043–0.048 s`), including:
+         * `R1VolumeRemediationTests.swift:819` (`F05 rework`): `1a` queue-order-independent `retainedBytes + releasedOutputBytes == 2 * 89` conservation invariant with `preConsumeSnap` (`178 B` unconsumed output, `0 B` retained) + `220 B` strict denial + final zero cleanup, and `1a-sync` parent-synchronized (`onBeforeParentConsume(step: 2)`) exact `2` `"jp3d-retained-tile"` promotions (`retainedBytes == 2 * 89`, `releasedOutputBytes == 0`).
+         * `R1VolumeRemediationTests.swift:1279` (`F05 re-audit`): barrier-synchronized `GrowthLease` copy-overlap and exact `22`-byte `J3DS` header checks.
+         * `R1VolumeRemediationTests.swift:1633` (`F05 qualification`): direct out-of-order `Recorder.recordBudgetUpdate` revision gating, single-deferred `JP3DLiveBudgetTracker` stale-snapshot replay preserving final zeros and `50 B` retained / `70 B` released counters, 12-task concurrent interceptor replay delta (`ignoredDuringConcurrentPhase + queuedStale.count`) with final zeros and `lastBudgetRevision == budget.currentRevision`, 12-task production locked-publication (`interceptor == nil`) proving `staleBudgetUpdatesIgnored == 0`, and `@inline(never)` `WeakSentinel` ARC deallocation proofs (`tracker.object == nil`, `recorder.object == nil`, `storage.object == nil`, and full instrumented `VolumeEncoder.encode`).
+  2. Updated package test declaration totals at Phase R1 post-`64c980e` checkpoint:
+     - `SwiftJ2KTests`: `132` Swift Testing `@Test` declarations (`7` Phase R1 declarations in `R1RemediationTests.swift`).
+     - `SwiftJ2K3DTests`: `490` XCTest methods + `9` Swift Testing `@Test` declarations (`R1VolumeRemediationTests.swift`) = `499` declarations (`+1` new `F05 qualification` declaration over `64c980e`).
+     - `SwiftJ2KJPIPTests`: `544` XCTest methods + `4` Swift Testing `@Test` declarations (`R1JPIPRemediationTests.swift`) = `548` declarations.
+     - Total package test declarations: `1,179` (`1,034` XCTest + `145` Swift Testing `@Test`; `20` Phase R1 `@Test` declarations total).
+  3. Contract byte-identity, `Swift64` archive preservation, and safety/concurrency diff gates:
+     - `(cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt)` -> Exit `0` (`7/7 OK`)
+     - `git status --short -- Documentation/Engineering/Swift64/` -> Exit `0` (empty; byte-identical)
+     - `git diff 24b18814c29362f3726321d6618d460da3606e8d -- Sources/ | grep -E "^\+.*(@unchecked|fatalError|precondition\(|try!|as!)"` -> `0` matches (`CLEAN_DIFF_NO_UNSAFE_OR_TRAPS`)
+  4. SHA-256 digests of tracked Phase R1 source and test files at post-`64c980e` checkpoint:
+     - `Sources/SwiftJ2KCLI/CLIImageIO.swift`: `32b725582bb01ddbd5c5363aeb4f13cf747b03c7cd0a7ab967991786dfb2b45d` (unchanged from `4585919` / `64c980e`)
+     - `Sources/SwiftJ2K/Codec/Codestream.swift`: `b5f13fc2392fae3bf466a9df24c176e077272208966d851c9135ac1b681b74ca` (unchanged from `4585919` / `64c980e`)
+     - `Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift`: `e2d18cb8c593c18750586adc3103e1513e7ffcd53433b3677a30afecf072b0e5`
+     - `Sources/SwiftJ2K3D/JP3DEncoder.swift`: `3587987344e65efd578acd1d2f9b2c03da4f875a7f95d0bbfefbb594afd9679a` (unchanged from `64c980e`)
+     - `Tests/SwiftJ2KTests/R1RemediationTests.swift`: `8aa1bd4a396e41880a84e194f6a5331bb7d9c69a04a050ba74e5a7e3c0146547` (unchanged from `4585919` / `64c980e`)
+     - `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift`: `d832e6e4dd86ddfb841a6c97bb9a709906d301f3ffd5eda30c84a7fbd795c338`
+     - `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift`: `65f5cc7340e15e121def561da39b4fdfc782cbd66fedef613dd37c6ca92fd3fc` (unchanged from `4585919` / `64c980e`)
+  5. Remaining blocked/unexecuted gate and Phase R2 handoff boundary:
+     - `M12-CI` Linux compilation (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`): **UNEXECUTED / BLOCKED locally** (no waiver; never inferred from macOS).
+     - Phase R2 remains **CLOSED** in this conversation and is authorised to start in **new** Antigravity and Codex chats via Codex-arranged handoff **only after** full Phase R1 acceptance.
