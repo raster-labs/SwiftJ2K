@@ -111,6 +111,8 @@ public struct JP3DParsedCodestream: Sendable {
     public let tiles: [JP3DParsedTile]
     /// Whether a main-header CAP (`0xFF50`) marker with Part 15 HTJ2K signalling was present.
     public let hasCAPMarker: Bool
+    /// Total bytes retained across parsed tile subdata buffers.
+    internal let retainedTileBytes: Int
 
     public init(
         siz: JP3DSIZInfo,
@@ -124,6 +126,23 @@ public struct JP3DParsedCodestream: Sendable {
         self.isLosslessQuantization = isLosslessQuantization
         self.tiles = tiles
         self.hasCAPMarker = hasCAPMarker
+        self.retainedTileBytes = tiles.reduce(0) { $0 + 32 + $1.data.count + MemoryLayout<JP3DParsedTile>.stride }
+    }
+
+    internal init(
+        siz: JP3DSIZInfo,
+        cod: JP3DCODInfo,
+        isLosslessQuantization: Bool,
+        tiles: [JP3DParsedTile],
+        hasCAPMarker: Bool,
+        retainedTileBytes: Int
+    ) {
+        self.siz = siz
+        self.cod = cod
+        self.isLosslessQuantization = isLosslessQuantization
+        self.tiles = tiles
+        self.hasCAPMarker = hasCAPMarker
+        self.retainedTileBytes = retainedTileBytes
     }
 
     /// Compute the tile grid for this codestream.
@@ -144,6 +163,27 @@ public struct JP3DCodestreamParser: Sendable {
 
     /// Parses a JP3D codestream from raw data.
     public func parse(_ data: Data) throws -> JP3DParsedCodestream {
+        try parse(data, limits: nil, work: nil, copyTilePayloads: true)
+    }
+
+    /// Parses a JP3D codestream under bounded `ResourceLimits` and deadline checks before copying tile payloads.
+    internal func parse(
+        _ data: Data,
+        limits: ResourceLimits?,
+        work: VolumeWorkGuard? = nil,
+        copyTilePayloads: Bool = true
+    ) throws -> JP3DParsedCodestream {
+        try work?.check()
+        if let limits {
+            guard data.count <= limits.maximumCompressedBytes,
+                  data.count <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Codestream size \(data.count) exceeds compressed or memory limit"
+                )
+            }
+        }
+
         var offset = 0
 
         let socMarker = try readUInt16BE(data, at: &offset)
@@ -158,15 +198,46 @@ public struct JP3DCodestreamParser: Sendable {
         var isLosslessQuan = true
         var hasCAP = false
         var parsedTiles: [JP3DParsedTile] = []
+        var retainedTileBytes = 0
         var foundEOC = false
 
         while offset < data.count {
+            try work?.check()
             guard offset + 2 <= data.count else { break }
             let marker = try readUInt16BE(data, at: &offset)
 
             switch marker {
             case 0xFF51: // SIZ
-                sizInfo = try parseSIZ(data, at: &offset)
+                let parsedSIZ = try parseSIZ(data, at: &offset)
+                if let limits {
+                    let maxDim = limits.maximumDimension
+                    guard parsedSIZ.width <= maxDim,
+                          parsedSIZ.height <= maxDim,
+                          parsedSIZ.depth <= maxDim else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "Codestream dimensions (\(parsedSIZ.width)x\(parsedSIZ.height)x\(parsedSIZ.depth)) exceed limit \(maxDim)"
+                        )
+                    }
+                    guard parsedSIZ.depth <= limits.maximumFrames else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "Codestream depth \(parsedSIZ.depth) exceeds frame limit \(limits.maximumFrames)"
+                        )
+                    }
+                    let (wh, ov1) = parsedSIZ.width.multipliedReportingOverflow(by: parsedSIZ.height)
+                    let (voxels, ov2) = wh.multipliedReportingOverflow(by: parsedSIZ.depth)
+                    guard !ov1, !ov2 else {
+                        throw J2KError.decodingError("Volumetric dimensions overflow integer arithmetic")
+                    }
+                    guard voxels <= limits.maximumPixels else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "Volumetric voxel count \(voxels) exceeds limit \(limits.maximumPixels)"
+                        )
+                    }
+                }
+                sizInfo = parsedSIZ
             case 0xFF52: // COD
                 codInfo = try parseCOD(data, at: &offset)
             case 0xFF5C: // QCD
@@ -185,7 +256,13 @@ public struct JP3DCodestreamParser: Sendable {
                 }
                 offset += len - 2
             case 0xFF90: // SOT
-                let tile = try parseSOTAndData(data, at: &offset)
+                let tile = try parseSOTAndData(
+                    data,
+                    at: &offset,
+                    limits: limits,
+                    retainedTileBytes: &retainedTileBytes,
+                    copyTilePayloads: copyTilePayloads
+                )
                 parsedTiles.append(tile)
             case 0xFFD9: // EOC
                 foundEOC = true
@@ -220,7 +297,8 @@ public struct JP3DCodestreamParser: Sendable {
             cod: cod,
             isLosslessQuantization: isLosslessQuan,
             tiles: parsedTiles.sorted { $0.tileIndex < $1.tileIndex },
-            hasCAPMarker: hasCAP
+            hasCAPMarker: hasCAP,
+            retainedTileBytes: retainedTileBytes
         )
     }
 
@@ -374,7 +452,13 @@ public struct JP3DCodestreamParser: Sendable {
         return (style & 0x1F) == 0
     }
 
-    private func parseSOTAndData(_ data: Data, at offset: inout Int) throws -> JP3DParsedTile {
+    private func parseSOTAndData(
+        _ data: Data,
+        at offset: inout Int,
+        limits: ResourceLimits?,
+        retainedTileBytes: inout Int,
+        copyTilePayloads: Bool
+    ) throws -> JP3DParsedTile {
         let len = Int(try readUInt16BE(data, at: &offset))
         guard len >= 10 else {
             throw J2KError.decodingError("SOT segment length \(len) too small (min 10)")
@@ -414,7 +498,27 @@ public struct JP3DCodestreamParser: Sendable {
             )
         }
 
-        let tileData = data.subdata(in: (data.startIndex + offset)..<(data.startIndex + endOffset))
+        let copyLength = copyTilePayloads ? dataLength : min(dataLength, 32)
+        let recordOverhead = 32 + MemoryLayout<JP3DParsedTile>.stride
+        let (tileEntryBytes, ov1) = copyLength.addingReportingOverflow(recordOverhead)
+        let (nextRetained, ov2) = retainedTileBytes.addingReportingOverflow(tileEntryBytes)
+        let (liveTotal, ov3) = data.count.addingReportingOverflow(nextRetained)
+        guard !ov1, !ov2, !ov3 else {
+            throw CodecError(.resourceLimitExceeded, "Volumetric codestream tile buffers overflow memory limits.")
+        }
+        if let limits {
+            guard nextRetained <= limits.maximumWorkspaceBytes,
+                  liveTotal <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volumetric codestream tile buffer copies (\(nextRetained) B) exceed workspace or memory limits."
+                )
+            }
+        }
+        retainedTileBytes = nextRetained
+        StorageTelemetry.recordParserAllocation(stage: "jp3d-tile-subdata", bytes: tileEntryBytes)
+
+        let tileData = data.subdata(in: (data.startIndex + offset)..<(data.startIndex + offset + copyLength))
         offset = endOffset
 
         return JP3DParsedTile(tileIndex: tileIndex, data: tileData)

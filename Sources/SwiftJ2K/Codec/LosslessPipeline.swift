@@ -39,6 +39,7 @@ struct LosslessProfile: Sendable {
     let componentRegistration: [UInt8]?
     let commentCount: Int
     let commentPayloadBytes: Int
+    let retainedMetadataBytes: Int
     var format: String { isHTJ2K ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format }
     var codeBlockCount: Int { tiles.reduce(0) { $0 + $1.geometry.codeBlockCount } }
     var largestTilePixels: Int { tiles.map { $0.width * $0.height }.max() ?? 0 }
@@ -121,7 +122,7 @@ enum ScalarLosslessCodec {
         var partsByTile: [Int: [TilePartRecord]] = [:]
         for part in parsed.tileParts { partsByTile[part.tileIndex, default: []].append(part) }
         var tiles: [TileProfile] = []
-        var runningSourceGeometryBytes = 0
+        var runningSourceGeometryBytes = parsed.retainedMetadataBytes
         for (tileIndex, parts) in partsByTile.sorted(by: { $0.key < $1.key }) {
             guard tileIndex < tilesWide * tilesHigh else {
                 throw CodecError(.malformedInput, "Tile-parts reference a tile the SIZ grid does not contain.")
@@ -178,7 +179,8 @@ enum ScalarLosslessCodec {
                                mainHeaderComments: parsed.mainHeaderComments,
                                componentRegistration: parsed.componentRegistration,
                                commentCount: parsed.commentCount,
-                               commentPayloadBytes: parsed.commentPayloadBytes)
+                               commentPayloadBytes: parsed.commentPayloadBytes,
+                               retainedMetadataBytes: parsed.retainedMetadataBytes)
     }
 
     private static func validateCodingStyle(_ cod: CodingStyleSegment, quantization qcd: QuantizationSegment) throws {
@@ -195,9 +197,13 @@ enum ScalarLosslessCodec {
     }
 
     /// Bound on algorithm workspace (MEM-10): one `Int32` coefficient plane of
-    /// the largest tile, the largest joined tile data, and per-block scratch.
+    /// the largest tile, the largest joined tile data, per-block scratch, plus
+    /// any retained ancillary/header parser metadata live on `profile`.
     static func workspaceBytes(profile: LosslessProfile) throws -> Int {
-        try workspaceBytes(planePixels: profile.largestTilePixels, joinedBytes: profile.largestTileBytes)
+        try checkedAdd(
+            try workspaceBytes(planePixels: profile.largestTilePixels, joinedBytes: profile.largestTileBytes),
+            profile.retainedMetadataBytes
+        )
     }
     static func workspaceBytes(planePixels: Int, joinedBytes: Int) throws -> Int {
         let plane = try checkedMultiply(planePixels, 4)
@@ -291,6 +297,7 @@ enum ScalarLosslessCodec {
                         }
                         if completed & 7 == 0 {
                             progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
+                            try work.check()
                         }
                     }
                 }
@@ -342,6 +349,7 @@ enum ScalarLosslessCodec {
         let total = profile.codeBlockCount
         var completed = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try work.check()
 
         // All tiles are decoded inside the one exclusive write borrow of the
         // destination; each tile's workspace is released before the next.
@@ -495,6 +503,7 @@ enum ScalarLosslessCodec {
                         completed += 1
                         if completed & 7 == 0 {
                             progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
+                            try work.check()
                         }
                     }
                     perBand.append(perBlock)
@@ -580,6 +589,7 @@ enum ScalarLosslessCodec {
         var completed = 0
         var encodeRunningBytes = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try work.check()
         let encodings = try encodeTileBlocks(
             plane: plane,
             stride: stride,
@@ -725,10 +735,11 @@ enum ScalarLosslessCodec {
         let totalTargetBlocks = targetFootprints.reduce(0) { $0 + $1.codeBlockCount }
         let sourceGeometryBytes = profile.totalSourceGeometryBytes
         let targetGeometryBytes = try targetFootprints.reduce(0) { try checkedAdd($0, $1.geometryBytes) }
-        let metadataCopyBytes = try checkedAdd(
+        let rawMetadataCopyBytes = try checkedAdd(
             (metadataPolicy == .preserve) ? profile.totalCommentSegmentBytes : 0,
             profile.componentRegistration?.count ?? 0
         )
+        let metadataCopyBytes = max(rawMetadataCopyBytes, profile.retainedMetadataBytes)
         let inputCopyBytes = try checkedAdd(32, bytes.count)
         let persistentStructureBytes = try checkedAdd(
             try checkedAdd(sourceGeometryBytes, targetGeometryBytes),
@@ -822,6 +833,7 @@ enum ScalarLosslessCodec {
         let total = profile.codeBlockCount + totalTargetBlocks
         var completed = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try work.check()
         let blockScratch = BitPlaneCoder.maximumCoefficients * (4 + 4 + 1) + 66 * 66 + 4096
 
         for (tileIndex, tile) in profile.tiles.enumerated() {

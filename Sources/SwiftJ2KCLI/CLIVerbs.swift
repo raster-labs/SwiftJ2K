@@ -34,6 +34,25 @@ import SwiftJ2KJPIP
 
 // MARK: - Option Parsing Helpers for Milestone 12 Verbs
 
+func admitRegularFileSize(_ path: String, maxCategoryBytes: Int, memoryLimit: Int) throws {
+    guard path != "-" else { return }
+    var isDir: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue else {
+        return
+    }
+    if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+       let sizeNum = attrs[.size] as? NSNumber {
+        let byteSize = sizeNum.int64Value
+        let cap = Int64(min(maxCategoryBytes, memoryLimit))
+        if byteSize > cap {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Input size (\(byteSize) B) exceeds resource admission limit (\(cap) B)."
+            )
+        }
+    }
+}
+
 func isCompressedJ2KStream(_ data: Data) -> Bool {
     if data.count >= 2 && data[data.startIndex] == 0xFF && data[data.startIndex + 1] == 0x4F {
         return true
@@ -84,8 +103,12 @@ func parseRawGeometry(from options: Options) throws -> CLIRawGeometry? {
     }
     var bits = 8
     if let bStr = options.values["--bit-depth"] ?? options.values["--precision"] {
-        guard let b = Int(bStr), (1...16).contains(b) else {
-            throw UsageError(message: "--bit-depth/--precision must be 1..16.")
+        let is3DCommand = ["encode3d", "decode3d", "compare"].contains(options.command ?? "")
+            || depth > 1
+            || options.values["--mode"]?.lowercased() == "3d"
+        let maxBits = is3DCommand ? 38 : 16
+        guard let b = Int(bStr), (1...maxBits).contains(b) else {
+            throw UsageError(message: "--bit-depth/--precision must be 1..\(maxBits).")
         }
         bits = b
     }
@@ -171,8 +194,9 @@ func runConvertCommand(_ context: CodecContext, started: ContinuousClock.Instant
     let declaredOutFmt = options.values["--output-format"].flatMap { CLIUncompressedFormat(cliName: $0) }
 
     try context.diagnostic(2, "reading input")
+    try admitRegularFileSize(inPath, maxCategoryBytes: lim.maximumDecodedBytes, memoryLimit: lim.maximumMemoryBytes)
     let rawData = try readInput(inPath)
-    guard rawData.count <= lim.maximumDecodedBytes else {
+    guard rawData.count <= lim.maximumDecodedBytes, rawData.count <= lim.maximumMemoryBytes else {
         throw ExitFailure(status: 5, message: "resource limit: input exceeds maximum memory limit.")
     }
     if isCompressedJ2KStream(rawData) {
@@ -286,7 +310,6 @@ func runCompareCommand(_ context: CodecContext, started: ContinuousClock.Instant
     let lim = try limits(from: limitOpts, command: "compare")
     let execPolicy = try parseExecutionPolicy(options.values["--backend"])
     let rawGeom = try parseRawGeometry(from: options)
-    let precision = try parseOptionalPrecision(from: options)
 
     let ext1 = URL(fileURLWithPath: inPath).pathExtension.lowercased()
     let ext2 = URL(fileURLWithPath: refPath).pathExtension.lowercased()
@@ -301,12 +324,15 @@ func runCompareCommand(_ context: CodecContext, started: ContinuousClock.Instant
             refPath: refPath,
             context: context,
             limits: lim,
+            executionPolicy: execPolicy,
             rawGeom: rawGeom,
             maxAllowedErr: maxAllowedErr,
             minAllowedPSNR: minAllowedPSNR,
             started: started
         )
     }
+
+    let precision = try parseOptionalPrecision(from: options)
 
     try context.diagnostic(2, "loading images for 2D comparison")
     let imgA = try await load2DImageForAnalysis(
@@ -453,6 +479,7 @@ private func runCompare3D(
     refPath: String,
     context: CodecContext,
     limits: ResourceLimits,
+    executionPolicy: ExecutionPolicy,
     rawGeom: CLIRawGeometry?,
     maxAllowedErr: Int?,
     minAllowedPSNR: Double?,
@@ -460,8 +487,20 @@ private func runCompare3D(
 ) async throws -> Int32 {
     let options = context.options
     try context.diagnostic(2, "loading volumes for 3D comparison")
-    let volA = try await load3DVolumeForAnalysis(path: inPath, options: options, limits: limits, rawGeom: rawGeom)
-    let volB = try await load3DVolumeForAnalysis(path: refPath, options: options, limits: limits, rawGeom: rawGeom)
+    let volA = try await load3DVolumeForAnalysis(
+        path: inPath,
+        options: options,
+        limits: limits,
+        executionPolicy: executionPolicy,
+        rawGeom: rawGeom
+    )
+    let volB = try await load3DVolumeForAnalysis(
+        path: refPath,
+        options: options,
+        limits: limits,
+        executionPolicy: executionPolicy,
+        rawGeom: rawGeom
+    )
 
     guard volA.width == volB.width,
           volA.height == volB.height,
@@ -477,28 +516,36 @@ private func runCompare3D(
     let voxelCount = try checkedMultiply(try checkedMultiply(w, h), d)
     let firstA = volA.components[0]
     let bitDepth = max(firstA.bitDepth, volB.components[0].bitDepth)
-    let peak = Double(max(1, (1 << bitDepth) - 1))
+    let clampedPeakShift = UInt64(min(62, max(1, bitDepth)))
+    let peak = Double((UInt64(1) << clampedPeakShift) - 1)
     let totalVoxelsDouble = Double(max(1, voxelCount))
 
     var compMetrics: [ComponentComparisonMetrics] = []
     for c in 0..<cCount {
         let compA = volA.components[c]
         let compB = volB.components[c]
-        let bpsA = (compA.bitDepth <= 8) ? 1 : 2
-        let bpsB = (compB.bitDepth <= 8) ? 1 : 2
-        let bytesA = [UInt8](compA.data)
-        let bytesB = [UInt8](compB.data)
+        let bpsA = compA.bytesPerSample
+        let bpsB = compB.bytesPerSample
         var sumSq = 0.0
         var sumAbs = 0.0
         var maxErr = 0
-        for vIdx in 0..<voxelCount {
-            let sA = readVolumeComponentSample(bytesA, vIdx: vIdx, bps: bpsA, signed: compA.signed)
-            let sB = readVolumeComponentSample(bytesB, vIdx: vIdx, bps: bpsB, signed: compB.signed)
-            let diff = abs(sA - sB)
-            if diff > maxErr { maxErr = diff }
-            let dVal = Double(diff)
-            sumAbs += dVal
-            sumSq += dVal * dVal
+        compA.data.withUnsafeBytes { rawA in
+            compB.data.withUnsafeBytes { rawB in
+                let ptrA = rawA.bindMemory(to: UInt8.self)
+                let ptrB = rawB.bindMemory(to: UInt8.self)
+                for vIdx in 0..<voxelCount {
+                    let sA = readVolumeComponentSample64(ptrA, vIdx: vIdx, bps: bpsA, bitDepth: compA.bitDepth, signed: compA.signed)
+                    let sB = readVolumeComponentSample64(ptrB, vIdx: vIdx, bps: bpsB, bitDepth: compB.bitDepth, signed: compB.signed)
+                    let diffU64: UInt64 = sA >= sB
+                        ? UInt64(bitPattern: sA &- sB)
+                        : UInt64(bitPattern: sB &- sA)
+                    let clampedErr = diffU64 > UInt64(Int.max) ? Int.max : Int(diffU64)
+                    if clampedErr > maxErr { maxErr = clampedErr }
+                    let dVal = Double(diffU64)
+                    sumAbs += dVal
+                    sumSq += dVal * dVal
+                }
+            }
         }
         let mse = sumSq / totalVoxelsDouble
         let mae = sumAbs / totalVoxelsDouble
@@ -572,15 +619,38 @@ private func runCompare3D(
     return 0
 }
 
-private func readVolumeComponentSample(_ bytes: [UInt8], vIdx: Int, bps: Int, signed: Bool) -> Int {
-    if bps == 1 {
-        guard vIdx < bytes.count else { return 0 }
-        return signed ? Int(Int8(bitPattern: bytes[vIdx])) : Int(bytes[vIdx])
+private func readVolumeComponentSample64(
+    _ bytes: UnsafeBufferPointer<UInt8>,
+    vIdx: Int,
+    bps: Int,
+    bitDepth: Int,
+    signed: Bool
+) -> Int64 {
+    let off = vIdx * bps
+    guard bps > 0, off + bps <= bytes.count else { return 0 }
+    var rawWord: UInt64 = 0
+    for b in 0..<bps {
+        rawWord |= UInt64(bytes[off + b]) << (b * 8)
+    }
+    let storageBitWidth = bps * 8
+    if signed {
+        let storageSignMask = UInt64(1) << (storageBitWidth - 1)
+        let bitDepthSignMask = UInt64(1) << (max(1, bitDepth) - 1)
+        if (rawWord & storageSignMask) != 0 {
+            let extended = storageBitWidth < 64
+                ? (rawWord | (~UInt64(0) << storageBitWidth))
+                : rawWord
+            return Int64(bitPattern: extended)
+        } else if bitDepth < storageBitWidth
+            && (rawWord >> bitDepth) == 0
+            && (rawWord & bitDepthSignMask) != 0 {
+            let extended = rawWord | (~UInt64(0) << bitDepth)
+            return Int64(bitPattern: extended)
+        }
+        return Int64(bitPattern: rawWord)
     } else {
-        let off = vIdx * 2
-        guard off + 1 < bytes.count else { return 0 }
-        let word = UInt16(bytes[off]) | (UInt16(bytes[off + 1]) << 8)
-        return signed ? Int(Int16(bitPattern: word)) : Int(word)
+        let mask: UInt64 = bitDepth < 64 ? ((UInt64(1) << bitDepth) - 1) : ~UInt64(0)
+        return Int64(bitPattern: rawWord & mask)
     }
 }
 
@@ -611,8 +681,14 @@ func load2DImageForAnalysis(
     precision: Int?,
     rawGeometry: CLIRawGeometry?
 ) async throws -> Image {
+    try admitRegularFileSize(
+        path,
+        maxCategoryBytes: max(limits.maximumCompressedBytes, limits.maximumDecodedBytes),
+        memoryLimit: limits.maximumMemoryBytes
+    )
     let data = try readInput(path)
-    guard data.count <= max(limits.maximumCompressedBytes, limits.maximumDecodedBytes) else {
+    guard data.count <= max(limits.maximumCompressedBytes, limits.maximumDecodedBytes),
+          data.count <= limits.maximumMemoryBytes else {
         throw ExitFailure(status: 5, message: "resource limit: input exceeds memory admission limit.")
     }
     if isCompressedJ2KStream(data) {
@@ -637,6 +713,7 @@ private func load3DVolumeForAnalysis(
     path: String,
     options: Options,
     limits: ResourceLimits,
+    executionPolicy: ExecutionPolicy,
     rawGeom: CLIRawGeometry?
 ) async throws -> J2KVolume {
     let sliceRange = try parseSliceRange(from: options)
@@ -653,18 +730,22 @@ private func load3DVolumeForAnalysis(
             limits: limits
         )
     }
+    try admitRegularFileSize(
+        path,
+        maxCategoryBytes: max(limits.maximumCompressedBytes, limits.maximumDecodedBytes),
+        memoryLimit: limits.maximumMemoryBytes
+    )
     let data = try readInput(path)
     if detectUncompressedFormat(data) == .nrrd {
         return try parseNRRDVolume(data, limits: limits)
     }
     if data.count >= 4, data[data.startIndex] == 0xFF, data[data.startIndex + 1] == 0x4F {
-        do {
-            let decoder = JP3DDecoder(configuration: .default)
-            let result = try await decoder.decode(data)
-            return result.volume
-        } catch let error as J2KError {
-            throw error.asCodecError
-        }
+        let dec = try VolumeDecoder()
+        let result = try await dec.decode(
+            data,
+            options: VolumeDecodeOptions(resourceLimits: limits, executionPolicy: executionPolicy)
+        )
+        return result.volume
     }
     if let geom = rawGeom, geom.depth >= 1 {
         return try parseRAWVolume(
@@ -675,13 +756,12 @@ private func load3DVolumeForAnalysis(
             limits: limits
         )
     }
-    do {
-        let decoder = JP3DDecoder(configuration: .default)
-        let result = try await decoder.decode(data)
-        return result.volume
-    } catch let error as J2KError {
-        throw error.asCodecError
-    }
+    let dec = try VolumeDecoder()
+    let result = try await dec.decode(
+        data,
+        options: VolumeDecodeOptions(resourceLimits: limits, executionPolicy: executionPolicy)
+    )
+    return result.volume
 }
 
 // MARK: - Encode3D & Decode3D Commands (`swiftj2k-cli encode3d` / `decode3d`)
@@ -785,6 +865,9 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
     }
 
     try context.diagnostic(2, "loading 3D volume")
+    let execPolicy = try parseExecutionPolicy(options.values["--backend"])
+    let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
+    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     let volume: J2KVolume
     var isDir: ObjCBool = false
     if FileManager.default.fileExists(atPath: inPath, isDirectory: &isDir), isDir.boolValue {
@@ -796,8 +879,9 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
             limits: lim
         )
     } else {
+        try admitRegularFileSize(inPath, maxCategoryBytes: lim.maximumDecodedBytes, memoryLimit: lim.maximumMemoryBytes)
         let data = try readInput(inPath)
-        guard data.count <= lim.maximumDecodedBytes else {
+        guard data.count <= lim.maximumDecodedBytes, data.count <= lim.maximumMemoryBytes else {
             throw ExitFailure(status: 5, message: "resource limit: volume input exceeds memory limit.")
         }
         if detectUncompressedFormat(data) == .nrrd {
@@ -815,25 +899,27 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
         }
     }
 
-    let config = JP3DEncoderConfiguration(
+    let volEncConfig = try VolumeEncoderConfiguration(
         compressionMode: compressionMode,
         tiling: tiling,
         progressionOrder: progression,
         qualityLayers: qualityLayers,
         levelsX: levelsX,
         levelsY: levelsY,
-        levelsZ: levelsZ,
-        parallelEncoding: lim.maximumWorkers > 1
+        levelsZ: levelsZ
     )
 
     try context.diagnostic(2, "encoding 3D volume")
-    let encoder = JP3DEncoder(configuration: config)
-    let result: JP3DEncoderResult
-    do {
-        result = try await encoder.encode(volume)
-    } catch let error as J2KError {
-        throw error.asCodecError
-    }
+    let encoder = try VolumeEncoder(configuration: volEncConfig)
+    let result = try await encoder.encode(
+        volume,
+        options: VolumeEncodeOptions(
+            resourceLimits: lim,
+            executionPolicy: execPolicy,
+            copyPolicy: copyPolicy,
+            metadataPolicy: metadataPolicy
+        )
+    )
 
     try context.diagnostic(2, "publishing output")
     try publish(result.data, to: outPath, overwrite: options.overwrite)
@@ -864,23 +950,42 @@ func runDecode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
         throw UsageError(message: "decode3d requires --input and --output.")
     }
     let lim = try limits(from: options, command: "decode3d")
+    let execPolicy = try parseExecutionPolicy(options.values["--backend"])
+    let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
+    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     let sliceRange = try parseSliceRange(from: options)
 
-    var roiRegion: (x: Int, y: Int, z: Int, w: Int, h: Int, d: Int)? = nil
+    var roiRegion: (x: Int, y: Int, z: Int, w: Int, h: Int, d: Int, xEnd: Int, yEnd: Int, zEnd: Int)? = nil
     if let regText = options.values["--region"] {
-        let parts = regText.split(separator: ",").compactMap { Int($0) }
-        guard parts.count == 6,
-              parts[0] >= 0, parts[1] >= 0, parts[2] >= 0,
+        let rawParts = regText.split(separator: ",", omittingEmptySubsequences: false)
+        guard rawParts.count == 6 else {
+            throw UsageError(message: "--region for decode3d must be X,Y,Z,W,H,D with non-negative origin and positive dimensions.")
+        }
+        var parts: [Int] = []
+        parts.reserveCapacity(6)
+        for token in rawParts {
+            guard let v = Int(token) else {
+                throw UsageError(message: "--region for decode3d contains an invalid or out-of-range integer.")
+            }
+            parts.append(v)
+        }
+        guard parts[0] >= 0, parts[1] >= 0, parts[2] >= 0,
               parts[3] > 0, parts[4] > 0, parts[5] > 0 else {
             throw UsageError(message: "--region for decode3d must be X,Y,Z,W,H,D with non-negative origin and positive dimensions.")
         }
-        roiRegion = (parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+        let (xEnd, ovX) = parts[0].addingReportingOverflow(parts[3])
+        let (yEnd, ovY) = parts[1].addingReportingOverflow(parts[4])
+        let (zEnd, ovZ) = parts[2].addingReportingOverflow(parts[5])
+        guard !ovX, !ovY, !ovZ else {
+            throw UsageError(message: "--region for decode3d overflows integer coordinate bounds.")
+        }
+        roiRegion = (parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], xEnd, yEnd, zEnd)
     }
 
     var resolutionLevel = 0
     if let rText = options.values["--resolution-level"] {
-        guard let r = Int(rText), (0...16).contains(r) else {
-            throw UsageError(message: "--resolution-level/--scale must be 0..16.")
+        guard let r = Int(rText), (0...32).contains(r) else {
+            throw UsageError(message: "--resolution-level/--scale must be 0..32.")
         }
         resolutionLevel = r
     }
@@ -904,55 +1009,81 @@ func runDecode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
     }
 
     try context.diagnostic(2, "reading 3D codestream")
+    try admitRegularFileSize(inPath, maxCategoryBytes: lim.maximumCompressedBytes, memoryLimit: lim.maximumMemoryBytes)
     let inputData = try readInput(inPath)
-    guard inputData.count <= lim.maximumCompressedBytes else {
+    guard inputData.count <= lim.maximumCompressedBytes, inputData.count <= lim.maximumMemoryBytes else {
         throw ExitFailure(status: 5, message: "resource limit: input exceeds compressed byte limit.")
     }
 
-    let decConfig = JP3DDecoderConfiguration(
+    let volDecConfig = try VolumeDecoderConfiguration(
         maxQualityLayers: maxLayers,
         resolutionLevel: resolutionLevel,
-        tolerateErrors: false,
-        parallelTileDecoding: lim.maximumWorkers > 1
+        tolerateTruncation: false
     )
+    let volDecoder = try VolumeDecoder(configuration: volDecConfig)
+    let baseDecOpts = VolumeDecodeOptions(
+        resourceLimits: lim,
+        executionPolicy: execPolicy,
+        copyPolicy: copyPolicy,
+        metadataPolicy: metadataPolicy
+    )
+    let volInfo = try volDecoder.inspect(inputData, options: baseDecOpts)
+
+    var requestedRegion: JP3DRegion? = nil
+    if let roi = roiRegion {
+        guard roi.xEnd <= volInfo.width,
+              roi.yEnd <= volInfo.height,
+              roi.zEnd <= volInfo.depth else {
+            throw UsageError(
+                message: "--region (\(roi.x),\(roi.y),\(roi.z),\(roi.w),\(roi.h),\(roi.d)) exceeds volume dimensions (\(volInfo.width)x\(volInfo.height)x\(volInfo.depth))."
+            )
+        }
+        requestedRegion = JP3DRegion(
+            x: roi.x..<roi.xEnd,
+            y: roi.y..<roi.yEnd,
+            z: roi.z..<roi.zEnd
+        )
+    } else if let zRange = sliceRange {
+        let (zUpperExclusive, ovZ) = zRange.upperBound.addingReportingOverflow(1)
+        guard !ovZ, zRange.lowerBound >= 0, zRange.upperBound < volInfo.depth else {
+            throw UsageError(
+                message: "--slice-range is out of bounds for volume depth (\(volInfo.depth))."
+            )
+        }
+        requestedRegion = JP3DRegion(
+            x: 0..<volInfo.width,
+            y: 0..<volInfo.height,
+            z: zRange.lowerBound..<zUpperExclusive
+        )
+    }
 
     try context.diagnostic(2, "decoding 3D volume")
-    let decodedVolume: J2KVolume
+    let decoded = try await volDecoder.decode(
+        inputData,
+        options: VolumeDecodeOptions(
+            resourceLimits: lim,
+            executionPolicy: execPolicy,
+            copyPolicy: copyPolicy,
+            metadataPolicy: metadataPolicy,
+            regionOfInterest: requestedRegion
+        )
+    )
+    let decodedVolume = decoded.volume
     let tilesDecoded: Int
-    do {
-        if let roi = roiRegion {
-            let region = JP3DRegion(
-                x: roi.x..<(roi.x + roi.w),
-                y: roi.y..<(roi.y + roi.h),
-                z: roi.z..<(roi.z + roi.d)
-            )
-            let roiDecoder = JP3DROIDecoder(configuration: decConfig)
-            let res = try await roiDecoder.decode(inputData, region: region)
-            decodedVolume = res.volume
-            tilesDecoded = res.tilesDecoded
-        } else if let zRange = sliceRange {
-            let fullDecoder = JP3DDecoder(configuration: decConfig)
-            let fullRes = try await fullDecoder.decode(inputData)
-            guard zRange.lowerBound >= 0, zRange.upperBound < fullRes.volume.depth else {
-                throw ExitFailure(status: 2, message: "invalid argument: --slice-range is out of bounds for volume depth (\(fullRes.volume.depth)).")
-            }
-            let region = JP3DRegion(
-                x: 0..<fullRes.volume.width,
-                y: 0..<fullRes.volume.height,
-                z: zRange.lowerBound..<(zRange.upperBound + 1)
-            )
-            let roiDecoder = JP3DROIDecoder(configuration: decConfig)
-            let res = try await roiDecoder.decode(inputData, region: region)
-            decodedVolume = res.volume
-            tilesDecoded = res.tilesDecoded
-        } else {
-            let decoder = JP3DDecoder(configuration: decConfig)
-            let res = try await decoder.decode(inputData)
-            decodedVolume = res.volume
-            tilesDecoded = res.tilesDecoded
-        }
-    } catch let error as J2KError {
-        throw error.asCodecError
+    if let r = requestedRegion {
+        let tilingCfg = JP3DTilingConfiguration(
+            tileSizeX: volInfo.tileSizeX,
+            tileSizeY: volInfo.tileSizeY,
+            tileSizeZ: volInfo.tileSizeZ
+        )
+        tilesDecoded = tilingCfg.tilesIntersecting(
+            region: r,
+            volumeWidth: volInfo.width,
+            volumeHeight: volInfo.height,
+            volumeDepth: volInfo.depth
+        ).count
+    } else {
+        tilesDecoded = volInfo.tileCount
     }
 
     let outExt = (outPath == "-") ? "" : URL(fileURLWithPath: outPath).pathExtension.lowercased()
@@ -1063,17 +1194,33 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
 
     var regionTuple: (x: Int, y: Int, width: Int, height: Int)? = nil
     if let regText = options.values["--region"] ?? options.values["--roi"] {
-        let parts = regText.split(separator: ",").compactMap { Int($0) }
-        guard parts.count == 4, parts[0] >= 0, parts[1] >= 0, parts[2] > 0, parts[3] > 0 else {
+        let rawParts = regText.split(separator: ",", omittingEmptySubsequences: false)
+        guard rawParts.count == 4 else {
             throw UsageError(message: "--region must be X,Y,W,H with non-negative origin and positive dimensions.")
+        }
+        var parts: [Int] = []
+        parts.reserveCapacity(4)
+        for token in rawParts {
+            guard let v = Int(token) else {
+                throw UsageError(message: "--region contains an invalid or out-of-range integer.")
+            }
+            parts.append(v)
+        }
+        guard parts[0] >= 0, parts[1] >= 0, parts[2] > 0, parts[3] > 0 else {
+            throw UsageError(message: "--region must be X,Y,W,H with non-negative origin and positive dimensions.")
+        }
+        let (_, ovX) = parts[0].addingReportingOverflow(parts[2])
+        let (_, ovY) = parts[1].addingReportingOverflow(parts[3])
+        guard !ovX, !ovY else {
+            throw UsageError(message: "--region overflows integer coordinate bounds.")
         }
         regionTuple = (parts[0], parts[1], parts[2], parts[3])
     }
 
     var resLevel: Int? = nil
     if let rText = options.values["--resolution-level"] {
-        guard let r = Int(rText), (0...30).contains(r) else {
-            throw UsageError(message: "--resolution-level must be in 0..30.")
+        guard let r = Int(rText), (0...32).contains(r) else {
+            throw UsageError(message: "--resolution-level must be in 0..32.")
         }
         resLevel = r
     }
@@ -1123,7 +1270,7 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
     var ephemeralServer: JPIPServer? = nil
     if singleFile != nil || dataDir != nil {
         let srv = JPIPServer(port: ephemeralPort)
-        let registered = try await registerJPIPTargets(server: srv, singleFile: singleFile, dataDir: dataDir)
+        let registered = try await registerJPIPTargets(server: srv, singleFile: singleFile, dataDir: dataDir, limits: lim)
         guard !registered.isEmpty else {
             throw ExitFailure(status: 3, message: "malformed input: no JPEG 2000 targets found to register for JPIP.")
         }
@@ -1246,13 +1393,17 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
         sessionTimeout = st
     }
 
+    var limitOpts = options
+    limitOpts.values.removeValue(forKey: "--mode")
+    let lim = try limits(from: limitOpts, command: "jpip")
+
     let host = options.values["--host"] ?? "127.0.0.1"
     let config = JPIPServer.Configuration(
         maxClients: maxClients,
         sessionTimeout: sessionTimeout
     )
     let server = JPIPServer(port: port, configuration: config)
-    let registered = try await registerJPIPTargets(server: server, singleFile: singleFile, dataDir: dataDir)
+    let registered = try await registerJPIPTargets(server: server, singleFile: singleFile, dataDir: dataDir, limits: lim)
     guard !registered.isEmpty else {
         throw ExitFailure(status: 3, message: "malformed input: no JPEG 2000 targets found to register on JPIP server.")
     }
@@ -1317,7 +1468,8 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
 private func registerJPIPTargets(
     server: JPIPServer,
     singleFile: String?,
-    dataDir: String?
+    dataDir: String?,
+    limits: ResourceLimits
 ) async throws -> [String] {
     let validExts: Set<String> = ["j2k", "j2c", "jhc", "htj2k", "jp2", "jph", "jpx"]
     var names: [String] = []
@@ -1326,6 +1478,11 @@ private func registerJPIPTargets(
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw ExitFailure(status: 6, message: "I/O failure: JPIP target file could not be read.")
         }
+        try admitRegularFileSize(
+            url.path,
+            maxCategoryBytes: limits.maximumCompressedBytes,
+            memoryLimit: limits.maximumMemoryBytes
+        )
         let name = url.lastPathComponent
         do {
             try await server.registerImage(name: name, at: url)
@@ -1348,6 +1505,11 @@ private func registerJPIPTargets(
         }
         for url in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
             if validExts.contains(url.pathExtension.lowercased()) {
+                try admitRegularFileSize(
+                    url.path,
+                    maxCategoryBytes: limits.maximumCompressedBytes,
+                    memoryLimit: limits.maximumMemoryBytes
+                )
                 let name = url.lastPathComponent
                 do {
                     try await server.registerImage(name: name, at: url)

@@ -20,11 +20,10 @@
 //     without implicit display scaling.
 
 import Foundation
+import Synchronization
 import SwiftJ2K
 import SwiftJ2K3D
-#if canImport(zlib)
-import zlib
-#endif
+import CZlibShim
 
 /// Uncompressed image interchange formats supported by `swiftj2k-cli`.
 enum CLIUncompressedFormat: String, CaseIterable {
@@ -118,15 +117,218 @@ func readLogicalSample(
     }
 }
 
-func makeContractImage(
+enum CLIImageIOTelemetry {
+    struct Event: Sendable, Equatable {
+        enum Action: String, Sendable, Equatable {
+            case enter
+            case exit
+        }
+        let stage: String
+        let action: Action
+        let deltaBytes: Int
+        let liveWorkspaceBytes: Int
+        let liveTotalBytes: Int
+        let liveTagOwners: Int
+
+        init(
+            stage: String,
+            action: Action,
+            deltaBytes: Int,
+            liveWorkspaceBytes: Int,
+            liveTotalBytes: Int,
+            liveTagOwners: Int = 0
+        ) {
+            self.stage = stage
+            self.action = action
+            self.deltaBytes = deltaBytes
+            self.liveWorkspaceBytes = liveWorkspaceBytes
+            self.liveTotalBytes = liveTotalBytes
+            self.liveTagOwners = liveTagOwners
+        }
+    }
+
+    fileprivate struct State: Sendable {
+        var events: [Event] = []
+        var inputBytes: Int = 0
+        var liveWorkspaceBytes: Int = 0
+        var liveDecodedBytes: Int = 0
+        var liveTagOwners: Int = 0
+        var peakWorkspaceBytes: Int = 0
+        var peakDecodedBytes: Int = 0
+        var peakTotalBytes: Int = 0
+        var peakTagOwners: Int = 0
+    }
+
+    final class Recorder: Sendable {
+        private let state = Mutex(State())
+
+        init() {}
+
+        var events: [Event] { state.withLock { $0.events } }
+        var liveWorkspaceBytes: Int { state.withLock { $0.liveWorkspaceBytes } }
+        var liveDecodedBytes: Int { state.withLock { $0.liveDecodedBytes } }
+        var liveTagOwners: Int { state.withLock { $0.liveTagOwners } }
+        var peakWorkspaceBytes: Int { state.withLock { $0.peakWorkspaceBytes } }
+        var peakDecodedBytes: Int { state.withLock { $0.peakDecodedBytes } }
+        var peakTotalBytes: Int { state.withLock { $0.peakTotalBytes } }
+        var peakTagOwners: Int { state.withLock { $0.peakTagOwners } }
+
+        func setInputBytes(_ bytes: Int) {
+            state.withLock { s in
+                s.inputBytes = max(0, bytes)
+                let total = s.inputBytes + s.liveWorkspaceBytes + s.liveDecodedBytes
+                if total > s.peakTotalBytes {
+                    s.peakTotalBytes = total
+                }
+            }
+        }
+
+        func enter(
+            stage: String,
+            workspaceBytes: Int,
+            basePlusOtherLiveBytes: Int,
+            tagOwnerDelta: Int = 0
+        ) {
+            state.withLock { s in
+                s.liveWorkspaceBytes += workspaceBytes
+                if s.liveWorkspaceBytes > s.peakWorkspaceBytes {
+                    s.peakWorkspaceBytes = s.liveWorkspaceBytes
+                }
+                if tagOwnerDelta > 0 {
+                    s.liveTagOwners += tagOwnerDelta
+                    if s.liveTagOwners > s.peakTagOwners {
+                        s.peakTagOwners = s.liveTagOwners
+                    }
+                }
+                let nonWorkspace = max(basePlusOtherLiveBytes, s.inputBytes + s.liveDecodedBytes)
+                let total = nonWorkspace + s.liveWorkspaceBytes
+                if total > s.peakTotalBytes {
+                    s.peakTotalBytes = total
+                }
+                s.events.append(Event(
+                    stage: stage,
+                    action: .enter,
+                    deltaBytes: workspaceBytes,
+                    liveWorkspaceBytes: s.liveWorkspaceBytes,
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
+                ))
+            }
+            #if SWIFT_PACKAGE
+            if workspaceBytes > 0 {
+                StorageTelemetry.recordParserAllocation(stage: stage, bytes: workspaceBytes)
+            }
+            #endif
+        }
+
+        func enterDecoded(stage: String, decodedBytes: Int) {
+            state.withLock { s in
+                s.liveDecodedBytes += decodedBytes
+                if s.liveDecodedBytes > s.peakDecodedBytes {
+                    s.peakDecodedBytes = s.liveDecodedBytes
+                }
+                let total = s.inputBytes + s.liveWorkspaceBytes + s.liveDecodedBytes
+                if total > s.peakTotalBytes {
+                    s.peakTotalBytes = total
+                }
+                s.events.append(Event(
+                    stage: stage,
+                    action: .enter,
+                    deltaBytes: decodedBytes,
+                    liveWorkspaceBytes: s.liveWorkspaceBytes,
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
+                ))
+            }
+        }
+
+        func exit(
+            stage: String,
+            workspaceBytes: Int,
+            basePlusOtherLiveBytes: Int,
+            tagOwnerDelta: Int = 0
+        ) {
+            state.withLock { s in
+                s.liveWorkspaceBytes = max(0, s.liveWorkspaceBytes - workspaceBytes)
+                if tagOwnerDelta > 0 {
+                    s.liveTagOwners = max(0, s.liveTagOwners - tagOwnerDelta)
+                }
+                let nonWorkspace = max(basePlusOtherLiveBytes, s.inputBytes + s.liveDecodedBytes)
+                let total = nonWorkspace + s.liveWorkspaceBytes
+                if total > s.peakTotalBytes {
+                    s.peakTotalBytes = total
+                }
+                s.events.append(Event(
+                    stage: stage,
+                    action: .exit,
+                    deltaBytes: workspaceBytes,
+                    liveWorkspaceBytes: s.liveWorkspaceBytes,
+                    liveTotalBytes: total,
+                    liveTagOwners: s.liveTagOwners
+                ))
+            }
+        }
+    }
+
+    @TaskLocal static var recorder: Recorder?
+
+    @inline(__always)
+    static func setInputBytes(_ bytes: Int) {
+        recorder?.setInputBytes(bytes)
+    }
+
+    @inline(__always)
+    static func enter(
+        stage: String,
+        workspaceBytes: Int,
+        basePlusOtherLiveBytes: Int,
+        tagOwnerDelta: Int = 0
+    ) {
+        if let recorder {
+            recorder.enter(
+                stage: stage,
+                workspaceBytes: workspaceBytes,
+                basePlusOtherLiveBytes: basePlusOtherLiveBytes,
+                tagOwnerDelta: tagOwnerDelta
+            )
+        } else {
+            #if SWIFT_PACKAGE
+            if workspaceBytes > 0 {
+                StorageTelemetry.recordParserAllocation(stage: stage, bytes: workspaceBytes)
+            }
+            #endif
+        }
+    }
+
+    @inline(__always)
+    static func enterDecoded(stage: String, decodedBytes: Int) {
+        recorder?.enterDecoded(stage: stage, decodedBytes: decodedBytes)
+    }
+
+    @inline(__always)
+    static func exit(
+        stage: String,
+        workspaceBytes: Int,
+        basePlusOtherLiveBytes: Int,
+        tagOwnerDelta: Int = 0
+    ) {
+        recorder?.exit(
+            stage: stage,
+            workspaceBytes: workspaceBytes,
+            basePlusOtherLiveBytes: basePlusOtherLiveBytes,
+            tagOwnerDelta: tagOwnerDelta
+        )
+    }
+}
+
+func makeContractImageDescriptor(
     width: Int,
     height: Int,
     componentCount: Int,
     meaningfulBits: Int,
     signed: Bool,
-    limits: ResourceLimits,
-    sampleAt: (_ component: Int, _ x: Int, _ y: Int) -> Int
-) throws -> Image {
+    limits: ResourceLimits
+) throws -> ImageDescriptor {
     guard width > 0, height > 0 else {
         throw CodecError(.unsupportedFeature, "Image dimensions must be positive.")
     }
@@ -138,27 +340,54 @@ func makeContractImage(
     }
     let storageBits = (componentCount == 1) ? 16 : (meaningfulBits <= 8 ? 8 : 16)
     let sampleType: SampleType = signed ? .signedInteger : .unsignedInteger
-    let descriptor: ImageDescriptor
     if componentCount == 1 {
-        descriptor = signed
+        return signed
             ? try ImageDescriptor.signedGreyscale16(width: width, height: height, meaningfulBits: meaningfulBits, limits: limits)
             : try ImageDescriptor.greyscale16(width: width, height: height, meaningfulBits: meaningfulBits, limits: limits)
     } else if componentCount == 3 {
-        descriptor = try ImageDescriptor.rgbPlanar(
+        return try ImageDescriptor.rgbPlanar(
             width: width, height: height, storageBits: storageBits,
             meaningfulBits: meaningfulBits, signed: signed, limits: limits
         )
     } else {
-        descriptor = try ImageDescriptor.multiComponentPlanar(
+        return try ImageDescriptor.multiComponentPlanar(
             width: width, height: height, componentCount: componentCount,
             storageBits: storageBits, meaningfulBits: meaningfulBits,
             sampleType: sampleType, limits: limits
         )
     }
+}
+
+func makeContractImage(
+    descriptor: ImageDescriptor,
+    limits: ResourceLimits,
+    sampleAt: (_ component: Int, _ x: Int, _ y: Int) -> Int
+) throws -> Image {
     let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
+    CLIImageIOTelemetry.enterDecoded(stage: "image-destination", decodedBytes: descriptor.requiredByteCount)
     return try destination.writeSamples { c, x, y in
         sampleAt(c, x, y)
     }
+}
+
+func makeContractImage(
+    width: Int,
+    height: Int,
+    componentCount: Int,
+    meaningfulBits: Int,
+    signed: Bool,
+    limits: ResourceLimits,
+    sampleAt: (_ component: Int, _ x: Int, _ y: Int) -> Int
+) throws -> Image {
+    let descriptor = try makeContractImageDescriptor(
+        width: width,
+        height: height,
+        componentCount: componentCount,
+        meaningfulBits: meaningfulBits,
+        signed: signed,
+        limits: limits
+    )
+    return try makeContractImage(descriptor: descriptor, limits: limits, sampleAt: sampleAt)
 }
 
 func checkedMultiply(_ a: Int, _ b: Int, label: String = "Image dimension") throws -> Int {
@@ -184,111 +413,126 @@ func parsePGMOrPPM(
     declaredPrecision: Int?,
     limits: ResourceLimits
 ) throws -> (Image, CLIUncompressedFormat) {
-    let bytes = [UInt8](data)
-    guard bytes.count >= 7 else {
-        throw CodecError(.malformedInput, "PNM input is too short.")
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "PNM input size (\(data.count) B) exceeds memory limit.")
     }
-    var idx = 0
-    func isWS(_ b: UInt8) -> Bool {
-        b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D
-    }
-    func nextToken() throws -> String {
-        while idx < bytes.count {
-            if isWS(bytes[idx]) {
-                idx += 1
-            } else if bytes[idx] == 0x23 { // '#' comment
-                while idx < bytes.count && bytes[idx] != 0x0A {
+    return try data.withUnsafeBytes { rawBuf -> (Image, CLIUncompressedFormat) in
+        guard rawBuf.count >= 7,
+              let bytes = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+            throw CodecError(.malformedInput, "PNM input is too short.")
+        }
+        let byteCount = rawBuf.count
+        var idx = 0
+        func isWS(_ b: UInt8) -> Bool {
+            b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D
+        }
+        func nextToken() throws -> String {
+            while idx < byteCount {
+                if isWS(bytes[idx]) {
                     idx += 1
+                } else if bytes[idx] == 0x23 { // '#' comment
+                    while idx < byteCount && bytes[idx] != 0x0A {
+                        idx += 1
+                    }
+                } else {
+                    break
                 }
-            } else {
-                break
             }
+            guard idx < byteCount else {
+                throw CodecError(.malformedInput, "Unexpected end of PNM header.")
+            }
+            let start = idx
+            while idx < byteCount && !isWS(bytes[idx]) && bytes[idx] != 0x23 {
+                idx += 1
+            }
+            let slice = UnsafeBufferPointer(start: bytes + start, count: idx - start)
+            guard let token = String(bytes: slice, encoding: .ascii) else {
+                throw CodecError(.malformedInput, "Invalid ASCII in PNM header.")
+            }
+            return token
         }
-        guard idx < bytes.count else {
-            throw CodecError(.malformedInput, "Unexpected end of PNM header.")
+
+        let magic = try nextToken()
+        let components: Int
+        let detectedFormat: CLIUncompressedFormat
+        switch magic {
+        case "P5":
+            components = 1
+            detectedFormat = .pgm
+        case "P6":
+            components = 3
+            detectedFormat = .ppm
+        default:
+            throw CodecError(.unsupportedFormat, "Only binary P5 (PGM) and P6 (PPM) Netpbm formats are supported.")
         }
-        let start = idx
-        while idx < bytes.count && !isWS(bytes[idx]) && bytes[idx] != 0x23 {
+
+        guard let width = Int(try nextToken()),
+              let height = Int(try nextToken()),
+              let maxVal = Int(try nextToken()),
+              width > 0, height > 0 else {
+            throw CodecError(.malformedInput, "Invalid width, height, or maxval in PNM header.")
+        }
+        guard maxVal >= 1 && maxVal <= 65535 else {
+            throw CodecError(.malformedInput, "PNM maxval must be in 1...65535.")
+        }
+        if idx < byteCount && bytes[idx] == 0x23 {
+            while idx < byteCount && bytes[idx] != 0x0A { idx += 1 }
+        }
+        guard idx < byteCount && isWS(bytes[idx]) else {
+            throw CodecError(.malformedInput, "Missing whitespace separator after PNM maxval.")
+        }
+        if bytes[idx] == 0x0D && idx + 1 < byteCount && bytes[idx + 1] == 0x0A {
+            idx += 2
+        } else {
             idx += 1
         }
-        guard let token = String(bytes: bytes[start..<idx], encoding: .ascii) else {
-            throw CodecError(.malformedInput, "Invalid ASCII in PNM header.")
+
+        let inferredBits = max(1, min(16, Int.bitWidth - maxVal.leadingZeroBitCount))
+        let meaningfulBits = declaredPrecision ?? inferredBits
+        let bytesPerSample = (maxVal <= 255) ? 1 : 2
+        if bytesPerSample == 1 && meaningfulBits > 8 {
+            throw CodecError(.unsupportedFeature, "Declared precision exceeds 8-bit PNM storage.")
         }
-        return token
-    }
 
-    let magic = try nextToken()
-    let components: Int
-    let detectedFormat: CLIUncompressedFormat
-    switch magic {
-    case "P5":
-        components = 1
-        detectedFormat = .pgm
-    case "P6":
-        components = 3
-        detectedFormat = .ppm
-    default:
-        throw CodecError(.unsupportedFormat, "Only binary P5 (PGM) and P6 (PPM) Netpbm formats are supported.")
-    }
-
-    guard let width = Int(try nextToken()),
-          let height = Int(try nextToken()),
-          let maxVal = Int(try nextToken()),
-          width > 0, height > 0 else {
-        throw CodecError(.malformedInput, "Invalid width, height, or maxval in PNM header.")
-    }
-    guard maxVal >= 1 && maxVal <= 65535 else {
-        throw CodecError(.malformedInput, "PNM maxval must be in 1...65535.")
-    }
-    // Exactly one whitespace byte separates maxval from raster data (skip any trailing comment before newline).
-    if idx < bytes.count && bytes[idx] == 0x23 {
-        while idx < bytes.count && bytes[idx] != 0x0A { idx += 1 }
-    }
-    guard idx < bytes.count && isWS(bytes[idx]) else {
-        throw CodecError(.malformedInput, "Missing whitespace separator after PNM maxval.")
-    }
-    if bytes[idx] == 0x0D && idx + 1 < bytes.count && bytes[idx + 1] == 0x0A {
-        idx += 2
-    } else {
-        idx += 1
-    }
-
-    let inferredBits = max(1, min(16, Int.bitWidth - maxVal.leadingZeroBitCount))
-    let meaningfulBits = declaredPrecision ?? inferredBits
-    let bytesPerSample = (maxVal <= 255) ? 1 : 2
-    if bytesPerSample == 1 && meaningfulBits > 8 {
-        throw CodecError(.unsupportedFeature, "Declared precision exceeds 8-bit PNM storage.")
-    }
-
-    let pixelCount = try checkedMultiply(width, height, label: "PNM pixel count")
-    let sampleCount = try checkedMultiply(pixelCount, components, label: "PNM sample count")
-    let expectedBytes = try checkedMultiply(sampleCount, bytesPerSample, label: "PNM byte count")
-    let remaining = bytes.count - idx
-    guard remaining == expectedBytes else {
-        throw CodecError(.malformedInput, "PNM raster byte length does not match header geometry.")
-    }
-
-    let maxAllowedSample = (1 << meaningfulBits) - 1
-    let rasterStart = idx
-    let image = try makeContractImage(
-        width: width,
-        height: height,
-        componentCount: components,
-        meaningfulBits: meaningfulBits,
-        signed: false,
-        limits: limits
-    ) { c, x, y in
-        let sampleIndex = (y * width + x) * components + c
-        let v: Int
-        if bytesPerSample == 1 {
-            v = Int(bytes[rasterStart + sampleIndex])
-        } else {
-            let off = rasterStart + sampleIndex * 2
-            v = (Int(bytes[off]) << 8) | Int(bytes[off + 1])
+        let descriptor = try makeContractImageDescriptor(
+            width: width,
+            height: height,
+            componentCount: components,
+            meaningfulBits: meaningfulBits,
+            signed: false,
+            limits: limits
+        )
+        let totalLiveBytes = try checkedAdd(data.count, descriptor.requiredByteCount, label: "PNM live memory")
+        guard totalLiveBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "PNM live memory (\(totalLiveBytes) B) exceeds memory limit.")
         }
-        return min(maxAllowedSample, max(0, v))
+
+        let pixelCount = try checkedMultiply(width, height, label: "PNM pixel count")
+        let sampleCount = try checkedMultiply(pixelCount, components, label: "PNM sample count")
+        let expectedBytes = try checkedMultiply(sampleCount, bytesPerSample, label: "PNM byte count")
+        let remaining = byteCount - idx
+        guard remaining == expectedBytes else {
+            throw CodecError(.malformedInput, "PNM raster byte length does not match header geometry.")
+        }
+
+        let maxAllowedSample = (1 << meaningfulBits) - 1
+        let rasterStart = idx
+        let image = try makeContractImage(
+            descriptor: descriptor,
+            limits: limits
+        ) { c, x, y in
+            let sampleIndex = (y * width + x) * components + c
+            let v: Int
+            if bytesPerSample == 1 {
+                v = Int(bytes[rasterStart + sampleIndex])
+            } else {
+                let off = rasterStart + sampleIndex * 2
+                v = (Int(bytes[off]) << 8) | Int(bytes[off + 1])
+            }
+            return min(maxAllowedSample, max(0, v))
+        }
+        return (image, detectedFormat)
     }
-    return (image, detectedFormat)
 }
 
 func formatPGM(_ image: Image) throws -> Data {
@@ -372,13 +616,12 @@ func parsePNG(
     declaredPrecision: Int?,
     limits: ResourceLimits
 ) throws -> Image {
-    let bytes = [UInt8](data)
-    let signature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-    guard bytes.count >= 8, Array(bytes[0..<8]) == signature else {
-        throw CodecError(.malformedInput, "Invalid PNG signature.")
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "PNG input size (\(data.count) B) exceeds memory limit.")
     }
+    CLIImageIOTelemetry.setInputBytes(data.count)
+    defer { CLIImageIOTelemetry.setInputBytes(0) }
 
-    var offset = 8
     var width = 0
     var height = 0
     var bitDepth = 0
@@ -386,96 +629,123 @@ func parsePNG(
     var headerParsed = false
     var sbitDepth: Int?
     var idatCompressed = Data()
-    var iendSeen = false
-
-    func readBE32(at pos: Int) throws -> Int {
-        let end = try checkedAdd(pos, 4, label: "PNG uint32")
-        guard end <= bytes.count else {
-            throw CodecError(.malformedInput, "Truncated PNG chunk header.")
+    var idatAdmittedBytes = 0
+    defer {
+        if idatAdmittedBytes > 0 {
+            CLIImageIOTelemetry.exit(stage: "png-idat-buffer", workspaceBytes: idatAdmittedBytes, basePlusOtherLiveBytes: data.count)
         }
-        let u = (UInt32(bytes[pos]) << 24) |
-                (UInt32(bytes[pos + 1]) << 16) |
-                (UInt32(bytes[pos + 2]) << 8) |
-                UInt32(bytes[pos + 3])
-        return Int(u)
     }
 
-    while offset < bytes.count {
-        let chunkHeaderEnd = try checkedAdd(offset, 8, label: "PNG chunk header")
-        guard chunkHeaderEnd <= bytes.count else {
-            throw CodecError(.malformedInput, "Truncated PNG chunk header.")
+    try data.withUnsafeBytes { rawBuf in
+        let signature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        guard rawBuf.count >= 8,
+              let bytes = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+            throw CodecError(.malformedInput, "Invalid PNG signature.")
         }
-        let chunkLen = try readBE32(at: offset)
-        guard chunkLen >= 0, chunkLen <= limits.maximumCompressedBytes else {
-            throw CodecError(.resourceLimitExceeded, "PNG chunk length exceeds compressed byte limit.")
+        for i in 0..<8 where bytes[i] != signature[i] {
+            throw CodecError(.malformedInput, "Invalid PNG signature.")
         }
-        let chunkType = String(bytes: bytes[(offset + 4)..<(offset + 8)], encoding: .ascii) ?? ""
-        let dataStart = chunkHeaderEnd
-        let dataEnd = try checkedAdd(dataStart, chunkLen, label: "PNG chunk data")
-        let chunkEnd = try checkedAdd(dataEnd, 4, label: "PNG chunk CRC")
-        guard chunkEnd <= bytes.count else {
-            throw CodecError(.malformedInput, "Truncated PNG chunk payload.")
+        let byteCount = rawBuf.count
+
+        func readBE32(at pos: Int) throws -> Int {
+            let end = try checkedAdd(pos, 4, label: "PNG uint32")
+            guard end <= byteCount else {
+                throw CodecError(.malformedInput, "Truncated PNG chunk header.")
+            }
+            let u = (UInt32(bytes[pos]) << 24) |
+                    (UInt32(bytes[pos + 1]) << 16) |
+                    (UInt32(bytes[pos + 2]) << 8) |
+                    UInt32(bytes[pos + 3])
+            return Int(u)
         }
 
-        switch chunkType {
-        case "IHDR":
-            guard !headerParsed, chunkLen == 13 else {
-                throw CodecError(.malformedInput, "Invalid PNG IHDR chunk.")
+        var offset = 8
+        var iendSeen = false
+        while offset < byteCount {
+            let chunkHeaderEnd = try checkedAdd(offset, 8, label: "PNG chunk header")
+            guard chunkHeaderEnd <= byteCount else {
+                throw CodecError(.malformedInput, "Truncated PNG chunk header.")
             }
-            width = try readBE32(at: dataStart)
-            height = try readBE32(at: dataStart + 4)
-            bitDepth = Int(bytes[dataStart + 8])
-            colorType = Int(bytes[dataStart + 9])
-            let compression = bytes[dataStart + 10]
-            let filter = bytes[dataStart + 11]
-            let interlace = bytes[dataStart + 12]
+            let chunkLen = try readBE32(at: offset)
+            guard chunkLen >= 0, chunkLen <= limits.maximumCompressedBytes else {
+                throw CodecError(.resourceLimitExceeded, "PNG chunk length exceeds compressed byte limit.")
+            }
+            let typeSlice = UnsafeBufferPointer(start: bytes + offset + 4, count: 4)
+            let chunkType = String(bytes: typeSlice, encoding: .ascii) ?? ""
+            let dataStart = chunkHeaderEnd
+            let dataEnd = try checkedAdd(dataStart, chunkLen, label: "PNG chunk data")
+            let chunkEnd = try checkedAdd(dataEnd, 4, label: "PNG chunk CRC")
+            guard chunkEnd <= byteCount else {
+                throw CodecError(.malformedInput, "Truncated PNG chunk payload.")
+            }
 
-            guard width > 0, height > 0 else {
-                throw CodecError(.malformedInput, "PNG dimensions must be positive.")
-            }
-            guard width <= limits.maximumDimension, height <= limits.maximumDimension else {
-                throw CodecError(.resourceLimitExceeded, "PNG dimensions exceed resource limit.")
-            }
-            guard compression == 0, filter == 0 else {
-                throw CodecError(.malformedInput, "Invalid PNG compression or filter method.")
-            }
-            guard interlace == 0 else {
-                throw CodecError(.unsupportedFormat, "Interlaced (Adam7) PNG files are not supported.")
-            }
-            guard bitDepth == 8 || bitDepth == 16 else {
-                throw CodecError(.unsupportedFeature, "Only 8-bit and 16-bit PNG files are supported.")
-            }
-            guard [0, 2, 4, 6].contains(colorType) else {
-                throw CodecError(.unsupportedFormat, "Indexed-colour (palette) PNG files are not supported.")
-            }
-            headerParsed = true
-
-        case "sBIT":
-            if headerParsed && chunkLen >= 1 {
-                let sb = Int(bytes[dataStart])
-                if sb >= 1 && sb <= bitDepth {
-                    sbitDepth = sb
+            switch chunkType {
+            case "IHDR":
+                guard !headerParsed, chunkLen == 13 else {
+                    throw CodecError(.malformedInput, "Invalid PNG IHDR chunk.")
                 }
-            }
+                width = try readBE32(at: dataStart)
+                height = try readBE32(at: dataStart + 4)
+                bitDepth = Int(bytes[dataStart + 8])
+                colorType = Int(bytes[dataStart + 9])
+                let compression = bytes[dataStart + 10]
+                let filter = bytes[dataStart + 11]
+                let interlace = bytes[dataStart + 12]
 
-        case "IDAT":
-            guard headerParsed else {
-                throw CodecError(.malformedInput, "PNG IDAT chunk appeared before IHDR.")
-            }
-            let newCount = try checkedAdd(idatCompressed.count, chunkLen, label: "PNG IDAT total")
-            guard newCount <= limits.maximumCompressedBytes else {
-                throw CodecError(.resourceLimitExceeded, "PNG IDAT stream exceeds compressed byte limit.")
-            }
-            idatCompressed.append(contentsOf: bytes[dataStart..<dataEnd])
+                guard width > 0, height > 0 else {
+                    throw CodecError(.malformedInput, "PNG dimensions must be positive.")
+                }
+                guard width <= limits.maximumDimension, height <= limits.maximumDimension else {
+                    throw CodecError(.resourceLimitExceeded, "PNG dimensions exceed resource limit.")
+                }
+                guard compression == 0, filter == 0 else {
+                    throw CodecError(.malformedInput, "Invalid PNG compression or filter method.")
+                }
+                guard interlace == 0 else {
+                    throw CodecError(.unsupportedFormat, "Interlaced (Adam7) PNG files are not supported.")
+                }
+                guard bitDepth == 8 || bitDepth == 16 else {
+                    throw CodecError(.unsupportedFeature, "Only 8-bit and 16-bit PNG files are supported.")
+                }
+                guard [0, 2, 4, 6].contains(colorType) else {
+                    throw CodecError(.unsupportedFormat, "Indexed-colour (palette) PNG files are not supported.")
+                }
+                headerParsed = true
 
-        case "IEND":
-            iendSeen = true
+            case "sBIT":
+                if headerParsed && chunkLen >= 1 {
+                    let sb = Int(bytes[dataStart])
+                    if sb >= 1 && sb <= bitDepth {
+                        sbitDepth = sb
+                    }
+                }
 
-        default:
-            break
+            case "IDAT":
+                guard headerParsed else {
+                    throw CodecError(.malformedInput, "PNG IDAT chunk appeared before IHDR.")
+                }
+                let newCount = try checkedAdd(idatCompressed.count, chunkLen, label: "PNG IDAT total")
+                let liveWithIDAT = try checkedAdd(data.count, newCount, label: "PNG input and IDAT memory")
+                guard newCount <= limits.maximumCompressedBytes,
+                      newCount <= limits.maximumWorkspaceBytes,
+                      liveWithIDAT <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "PNG IDAT stream exceeds compressed, workspace, or memory limit.")
+                }
+                if chunkLen > 0 {
+                    CLIImageIOTelemetry.enter(stage: "png-idat-buffer", workspaceBytes: chunkLen, basePlusOtherLiveBytes: data.count)
+                    idatAdmittedBytes += chunkLen
+                    idatCompressed.append(bytes + dataStart, count: chunkLen)
+                }
+
+            case "IEND":
+                iendSeen = true
+
+            default:
+                break
+            }
+            offset = chunkEnd
+            if iendSeen { break }
         }
-        offset = chunkEnd
-        if iendSeen { break }
     }
 
     guard headerParsed, !idatCompressed.isEmpty else {
@@ -492,75 +762,111 @@ func parsePNG(
         throw CodecError(.unsupportedFormat, "Unsupported PNG colour type.")
     }
 
-    let bytesPerSample = bitDepth / 8
-    let bpp = try checkedMultiply(channels, bytesPerSample, label: "PNG bytes per pixel")
-    let scanlineBytes = try checkedMultiply(width, bpp, label: "PNG scanline bytes")
-    let strideWithFilter = try checkedAdd(scanlineBytes, 1, label: "PNG scanline stride")
-    let expectedDecompressedSize = try checkedMultiply(height, strideWithFilter, label: "PNG decompressed size")
-    let maxDecompressed = try checkedAdd(limits.maximumDecodedBytes, height, label: "PNG decode limit")
-    guard expectedDecompressedSize <= maxDecompressed else {
-        throw CodecError(.resourceLimitExceeded, "PNG decompressed size exceeds decoded byte limit.")
-    }
-
-    let rawScanlines = try zlibInflateBounded(idatCompressed, expectedSize: expectedDecompressedSize)
-    guard rawScanlines.count == expectedDecompressedSize else {
-        throw CodecError(.malformedInput, "Decompressed PNG IDAT size does not match image geometry.")
-    }
-
-    let totalPixelBytes = try checkedMultiply(height, scanlineBytes, label: "PNG pixel buffer")
-    var unfiltered = [UInt8](repeating: 0, count: totalPixelBytes)
-
-    for row in 0..<height {
-        let srcRowStart = row * strideWithFilter
-        let filterType = rawScanlines[srcRowStart]
-        let dstRowStart = row * scanlineBytes
-        let prevRowStart = (row - 1) * scanlineBytes
-
-        for i in 0..<scanlineBytes {
-            let rawByte = Int(rawScanlines[srcRowStart + 1 + i])
-            let a: Int = (i >= bpp) ? Int(unfiltered[dstRowStart + i - bpp]) : 0
-            let b: Int = (row > 0) ? Int(unfiltered[prevRowStart + i]) : 0
-            let c: Int = (row > 0 && i >= bpp) ? Int(unfiltered[prevRowStart + i - bpp]) : 0
-
-            let recon: Int
-            switch filterType {
-            case 0: recon = rawByte
-            case 1: recon = (rawByte + a) & 0xFF
-            case 2: recon = (rawByte + b) & 0xFF
-            case 3: recon = (rawByte + ((a + b) >> 1)) & 0xFF
-            case 4: recon = (rawByte + paethPredictor(a: a, b: b, c: c)) & 0xFF
-            default:
-                throw CodecError(.malformedInput, "Invalid PNG row filter type \(filterType).")
-            }
-            unfiltered[dstRowStart + i] = UInt8(truncatingIfNeeded: recon)
-        }
-    }
-
     let meaningfulBits = declaredPrecision ?? sbitDepth ?? bitDepth
     guard (1...bitDepth).contains(meaningfulBits) else {
         throw CodecError(.unsupportedFeature, "Declared precision exceeds PNG storage bit depth.")
     }
-    let maxAllowedSample = (1 << meaningfulBits) - 1
 
-    return try makeContractImage(
+    let descriptor = try makeContractImageDescriptor(
         width: width,
         height: height,
         componentCount: channels,
         meaningfulBits: meaningfulBits,
         signed: false,
         limits: limits
-    ) { c, x, y in
-        let pixelIndex = y * width + x
-        let sampleIndex = pixelIndex * channels + c
-        let v: Int
-        if bytesPerSample == 1 {
-            v = Int(unfiltered[sampleIndex])
-        } else {
-            let off = sampleIndex * 2
-            v = (Int(unfiltered[off]) << 8) | Int(unfiltered[off + 1])
-        }
-        return min(maxAllowedSample, max(0, v))
+    )
+    let destBytes = descriptor.requiredByteCount
+
+    let bytesPerSample = bitDepth / 8
+    let bpp = try checkedMultiply(channels, bytesPerSample, label: "PNG bytes per pixel")
+    let scanlineBytes = try checkedMultiply(width, bpp, label: "PNG scanline bytes")
+    let strideWithFilter = try checkedAdd(scanlineBytes, 1, label: "PNG scanline stride")
+    let expectedDecompressedSize = try checkedMultiply(height, strideWithFilter, label: "PNG decompressed size")
+
+    let inflateWorkspace = try checkedAdd(idatAdmittedBytes, expectedDecompressedSize, label: "PNG inflate workspace")
+    let inflateMemory = try checkedAdd(data.count, inflateWorkspace, label: "PNG inflate live memory")
+    let decodeWorkspacePlusDest = try checkedAdd(expectedDecompressedSize, destBytes, label: "PNG decode buffers")
+    let decodeMemory = try checkedAdd(data.count, decodeWorkspacePlusDest, label: "PNG decode live memory")
+    guard inflateWorkspace <= limits.maximumWorkspaceBytes,
+          expectedDecompressedSize <= limits.maximumWorkspaceBytes,
+          inflateMemory <= limits.maximumMemoryBytes,
+          decodeMemory <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "PNG decompressed scanlines and destination exceed workspace or memory limit.")
     }
+
+    CLIImageIOTelemetry.enter(stage: "png-scanline-workspace", workspaceBytes: expectedDecompressedSize, basePlusOtherLiveBytes: data.count)
+    var scanlinesExited = false
+    defer {
+        if !scanlinesExited {
+            CLIImageIOTelemetry.exit(stage: "png-scanline-workspace", workspaceBytes: expectedDecompressedSize, basePlusOtherLiveBytes: data.count)
+        }
+    }
+
+    var rawScanlines = try zlibInflateBounded(idatCompressed, expectedSize: expectedDecompressedSize)
+    // Release compressed IDAT stream immediately after inflation before allocating ImageDestination.
+    idatCompressed = Data()
+    if idatAdmittedBytes > 0 {
+        CLIImageIOTelemetry.exit(stage: "png-idat-buffer", workspaceBytes: idatAdmittedBytes, basePlusOtherLiveBytes: data.count)
+        idatAdmittedBytes = 0
+    }
+
+    guard rawScanlines.count == expectedDecompressedSize else {
+        throw CodecError(.malformedInput, "Decompressed PNG IDAT size does not match image geometry.")
+    }
+
+    // Reconstruct PNG scanlines in-place inside rawScanlines (zero duplicate unfiltered buffer).
+    try rawScanlines.withUnsafeMutableBytes { rawBuf in
+        guard let buf = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+        for row in 0..<height {
+            let srcRowStart = row * strideWithFilter
+            let filterType = buf[srcRowStart]
+            let rowPixels = srcRowStart + 1
+            let prevRowPixels = (row - 1) * strideWithFilter + 1
+
+            for i in 0..<scanlineBytes {
+                let rawByte = Int(buf[rowPixels + i])
+                let a: Int = (i >= bpp) ? Int(buf[rowPixels + i - bpp]) : 0
+                let b: Int = (row > 0) ? Int(buf[prevRowPixels + i]) : 0
+                let c: Int = (row > 0 && i >= bpp) ? Int(buf[prevRowPixels + i - bpp]) : 0
+
+                let recon: Int
+                switch filterType {
+                case 0: recon = rawByte
+                case 1: recon = (rawByte + a) & 0xFF
+                case 2: recon = (rawByte + b) & 0xFF
+                case 3: recon = (rawByte + ((a + b) >> 1)) & 0xFF
+                case 4: recon = (rawByte + paethPredictor(a: a, b: b, c: c)) & 0xFF
+                default:
+                    throw CodecError(.malformedInput, "Invalid PNG row filter type \(filterType).")
+                }
+                buf[rowPixels + i] = UInt8(truncatingIfNeeded: recon)
+            }
+        }
+    }
+
+    let maxAllowedSample = (1 << meaningfulBits) - 1
+    let image = try rawScanlines.withUnsafeBytes { rawBuf -> Image in
+        let buf = rawBuf.baseAddress!.assumingMemoryBound(to: UInt8.self)
+        return try makeContractImage(
+            descriptor: descriptor,
+            limits: limits
+        ) { c, x, y in
+            let rowPixels = y * strideWithFilter + 1
+            let sampleInRow = x * channels + c
+            let v: Int
+            if bytesPerSample == 1 {
+                v = Int(buf[rowPixels + sampleInRow])
+            } else {
+                let off = rowPixels + sampleInRow * 2
+                v = (Int(buf[off]) << 8) | Int(buf[off + 1])
+            }
+            return min(maxAllowedSample, max(0, v))
+        }
+    }
+    rawScanlines = Data()
+    CLIImageIOTelemetry.exit(stage: "png-scanline-workspace", workspaceBytes: expectedDecompressedSize, basePlusOtherLiveBytes: data.count + destBytes)
+    scanlinesExited = true
+    return image
 }
 
 func formatPNG(_ image: Image) throws -> Data {
@@ -682,6 +988,9 @@ private func pngCRC32(_ data: Data) -> UInt32 {
 
 private func zlibInflateBounded(_ compressed: Data, expectedSize: Int) throws -> Data {
     guard expectedSize > 0 else { return Data() }
+    guard compressed.count <= Int(uInt.max), expectedSize <= Int(uInt.max) else {
+        throw CodecError(.resourceLimitExceeded, "PNG zlib stream exceeds 32-bit chunk bound.")
+    }
     var output = Data(count: expectedSize)
     var stream = z_stream()
     let initStatus = inflateInit_(&stream, zlibVersion(), Int32(MemoryLayout<z_stream>.size))
@@ -733,260 +1042,606 @@ private func zlibDeflate(_ raw: Data) throws -> Data {
 
 // MARK: - TIFF Reader & Writer (Baseline Uncompressed TIFF 6.0)
 
+private final class TIFFOwnedTagList {
+    private(set) var values: [Int]
+    let byteCount: Int
+    private let stage: String
+    private let baseInputBytes: Int
+    private weak var capturedRecorder: CLIImageIOTelemetry.Recorder?
+
+    init(
+        count: Int,
+        byteCount: Int,
+        stage: String,
+        baseInputBytes: Int,
+        readElement: (Int) throws -> Int
+    ) throws {
+        self.values = []
+        self.byteCount = byteCount
+        self.stage = stage
+        self.baseInputBytes = baseInputBytes
+        self.capturedRecorder = CLIImageIOTelemetry.recorder
+        CLIImageIOTelemetry.enter(
+            stage: stage,
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes,
+            tagOwnerDelta: 1
+        )
+        self.values.reserveCapacity(count)
+        for idx in 0..<count {
+            self.values.append(try readElement(idx))
+        }
+    }
+
+    deinit {
+        (CLIImageIOTelemetry.recorder ?? capturedRecorder)?.exit(
+            stage: stage,
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes,
+            tagOwnerDelta: 1
+        )
+    }
+}
+
+private final class TIFFOwnedStripBuffer {
+    var bytes: [UInt8]
+    let byteCount: Int
+    private let baseInputBytes: Int
+    var exitExtraLiveBytes: Int = 0
+    private weak var capturedRecorder: CLIImageIOTelemetry.Recorder?
+
+    init(byteCount: Int, baseInputBytes: Int) {
+        self.bytes = []
+        self.byteCount = byteCount
+        self.baseInputBytes = baseInputBytes
+        self.capturedRecorder = CLIImageIOTelemetry.recorder
+        CLIImageIOTelemetry.enter(
+            stage: "tiff-strip-workspace",
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes
+        )
+        self.bytes = [UInt8](repeating: 0, count: byteCount)
+    }
+
+    deinit {
+        (CLIImageIOTelemetry.recorder ?? capturedRecorder)?.exit(
+            stage: "tiff-strip-workspace",
+            workspaceBytes: byteCount,
+            basePlusOtherLiveBytes: baseInputBytes + exitExtraLiveBytes
+        )
+    }
+}
+
+private enum TIFFStripList {
+    case empty
+    case single(Int)
+    case many(TIFFOwnedTagList)
+
+    var count: Int {
+        switch self {
+        case .empty: return 0
+        case .single: return 1
+        case .many(let owned): return owned.values.count
+        }
+    }
+
+    var heapBytes: Int {
+        switch self {
+        case .empty, .single: return 0
+        case .many(let owned): return owned.byteCount
+        }
+    }
+
+    var isMany: Bool {
+        if case .many = self { return true }
+        return false
+    }
+}
+
+private func decodeTIFFSampleFromBuffer(
+    _ src: UnsafePointer<UInt8>,
+    baseOffset: Int,
+    sampleIdx: Int,
+    bps: Int,
+    isLE: Bool,
+    signed: Bool
+) -> Int {
+    if bps == 8 {
+        let b = src[baseOffset + sampleIdx]
+        return signed ? Int(Int8(bitPattern: b)) : Int(b)
+    } else if bps == 16 {
+        let p = baseOffset + sampleIdx * 2
+        let word: UInt16 = isLE
+            ? (UInt16(src[p]) | (UInt16(src[p + 1]) << 8))
+            : ((UInt16(src[p]) << 8) | UInt16(src[p + 1]))
+        return signed ? Int(Int16(bitPattern: word)) : Int(word)
+    } else {
+        let pairIdx = sampleIdx / 2
+        let base = baseOffset + pairIdx * 3
+        var s: Int
+        if sampleIdx % 2 == 0 {
+            let b0 = Int(src[base])
+            let b1 = Int(src[base + 1])
+            s = (b0 << 4) | (b1 >> 4)
+        } else {
+            let b1 = Int(src[base + 1])
+            let b2 = Int(src[base + 2])
+            s = ((b1 & 0x0F) << 8) | b2
+        }
+        if signed && s >= 2048 {
+            s -= 4096
+        }
+        return s
+    }
+}
+
+@inline(never)
+private func assembleTIFFMultiStripWorkspace(
+    stripOffsets: inout TIFFStripList,
+    stripByteCounts: inout TIFFStripList,
+    retainedTagBytes: inout Int,
+    bytes: UnsafePointer<UInt8>,
+    byteCount: Int,
+    inputByteCount: Int,
+    neededBytes: Int,
+    destBytes: Int,
+    limits: ResourceLimits
+) throws -> TIFFOwnedStripBuffer {
+    // Admit combined live buffers:
+    // Phase A (strip assembly): input Data + retained tag arrays + strip workspace
+    // Phase B (destination fill after tag owners deinit): input Data + strip workspace + ImageDestination
+    let assemblyWorkspace = try checkedAdd(retainedTagBytes, neededBytes, label: "TIFF multi-strip workspace")
+    let assemblyMemory = try checkedAdd(inputByteCount, assemblyWorkspace, label: "TIFF strip assembly memory")
+    let stripPlusDest = try checkedAdd(neededBytes, destBytes, label: "TIFF strip and destination bytes")
+    let decodeMemory = try checkedAdd(inputByteCount, stripPlusDest, label: "TIFF multi-strip decode memory")
+    guard assemblyWorkspace <= limits.maximumWorkspaceBytes,
+          assemblyMemory <= limits.maximumMemoryBytes,
+          decodeMemory <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "TIFF multi-strip workspace or simultaneous live memory exceeds resource limits.")
+    }
+
+    let stripWorkspace: TIFFOwnedStripBuffer = try {
+        guard case .many(let offsetsOwner) = stripOffsets,
+              case .many(let countsOwner) = stripByteCounts else {
+            throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
+        }
+
+        var totalStripBytes = 0
+        for (off, cnt) in zip(offsetsOwner.values, countsOwner.values) {
+            guard off >= 0, cnt >= 0 else {
+                throw CodecError(.malformedInput, "Negative TIFF strip offset or byte count.")
+            }
+            let end = try checkedAdd(off, cnt, label: "TIFF strip end")
+            guard end <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF strip extends past end of file.")
+            }
+            totalStripBytes = try checkedAdd(totalStripBytes, cnt, label: "TIFF strip total")
+        }
+        guard totalStripBytes >= neededBytes else {
+            throw CodecError(.malformedInput, "TIFF strip data (\(totalStripBytes) B) is shorter than required sample bytes (\(neededBytes) B).")
+        }
+
+        let ws = TIFFOwnedStripBuffer(byteCount: neededBytes, baseInputBytes: inputByteCount)
+        ws.bytes.withUnsafeMutableBufferPointer { dstBuf in
+            guard let dstBase = dstBuf.baseAddress else { return }
+            var written = 0
+            for (off, cnt) in zip(offsetsOwner.values, countsOwner.values) where written < neededBytes {
+                let take = min(cnt, neededBytes - written)
+                if take > 0 {
+                    dstBase.advanced(by: written).update(from: bytes + off, count: take)
+                    written += take
+                }
+            }
+        }
+        return ws
+    }()
+
+    // Clear caller tag references in deterministic order so offsetsOwner and countsOwner lose
+    // their final strong references and deinit prior to returning to decodeTIFFFromStripWorkspace.
+    stripOffsets = .empty
+    stripByteCounts = .empty
+    retainedTagBytes = 0
+    return stripWorkspace
+}
+
+@inline(never)
+private func decodeTIFFFromStripWorkspace(
+    _ stripWorkspace: TIFFOwnedStripBuffer,
+    descriptor: ImageDescriptor,
+    limits: ResourceLimits,
+    width w: Int,
+    pixelCount: Int,
+    samplesPerPixel: Int,
+    planarConfig: Int,
+    bps: Int,
+    isLE: Bool,
+    signed: Bool
+) throws -> Image {
+    let image = try stripWorkspace.bytes.withUnsafeBufferPointer { stripBuf -> Image in
+        guard let stripPtr = stripBuf.baseAddress else {
+            throw CodecError(.internalFailure, "Empty TIFF strip workspace buffer.")
+        }
+        return try makeContractImage(
+            descriptor: descriptor,
+            limits: limits
+        ) { c, x, y in
+            let pixelIdx = y * w + x
+            let sampleIdx = (planarConfig == 2)
+                ? (c * pixelCount + pixelIdx)
+                : (pixelIdx * samplesPerPixel + c)
+            return decodeTIFFSampleFromBuffer(
+                stripPtr,
+                baseOffset: 0,
+                sampleIdx: sampleIdx,
+                bps: bps,
+                isLE: isLE,
+                signed: signed
+            )
+        }
+    }
+    stripWorkspace.exitExtraLiveBytes = descriptor.requiredByteCount
+    return image
+}
+
 func parseTIFF(
     _ data: Data,
     declaredPrecision: Int?,
     limits: ResourceLimits
 ) throws -> Image {
-    let bytes = [UInt8](data)
-    guard bytes.count >= 8 else {
-        throw CodecError(.malformedInput, "TIFF input is too short.")
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "TIFF input size (\(data.count) B) exceeds memory limit (\(limits.maximumMemoryBytes) B).")
     }
-    let isLE: Bool
-    if bytes[0] == 0x49 && bytes[1] == 0x49 {
-        isLE = true
-    } else if bytes[0] == 0x4D && bytes[1] == 0x4D {
-        isLE = false
-    } else {
-        throw CodecError(.malformedInput, "Invalid TIFF byte-order mark.")
-    }
+    CLIImageIOTelemetry.setInputBytes(data.count)
+    defer { CLIImageIOTelemetry.setInputBytes(0) }
 
-    func readU16(_ pos: Int) throws -> UInt16 {
-        let end = try checkedAdd(pos, 2, label: "TIFF uint16")
-        guard pos >= 0, end <= bytes.count else {
-            throw CodecError(.malformedInput, "TIFF read out of bounds.")
+    return try data.withUnsafeBytes { rawBuf -> Image in
+        guard rawBuf.count >= 8,
+              let bytes = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+            throw CodecError(.malformedInput, "TIFF input is too short.")
         }
-        return isLE
-            ? (UInt16(bytes[pos]) | (UInt16(bytes[pos + 1]) << 8))
-            : ((UInt16(bytes[pos]) << 8) | UInt16(bytes[pos + 1]))
-    }
-
-    func readU32(_ pos: Int) throws -> UInt32 {
-        let end = try checkedAdd(pos, 4, label: "TIFF uint32")
-        guard pos >= 0, end <= bytes.count else {
-            throw CodecError(.malformedInput, "TIFF read out of bounds.")
-        }
-        if isLE {
-            return UInt32(bytes[pos]) |
-                   (UInt32(bytes[pos + 1]) << 8) |
-                   (UInt32(bytes[pos + 2]) << 16) |
-                   (UInt32(bytes[pos + 3]) << 24)
+        let byteCount = rawBuf.count
+        let isLE: Bool
+        if bytes[0] == 0x49 && bytes[1] == 0x49 {
+            isLE = true
+        } else if bytes[0] == 0x4D && bytes[1] == 0x4D {
+            isLE = false
         } else {
-            return (UInt32(bytes[pos]) << 24) |
-                   (UInt32(bytes[pos + 1]) << 16) |
-                   (UInt32(bytes[pos + 2]) << 8) |
-                   UInt32(bytes[pos + 3])
+            throw CodecError(.malformedInput, "Invalid TIFF byte-order mark.")
         }
-    }
 
-    guard try readU16(2) == 42 else {
-        throw CodecError(.malformedInput, "Invalid TIFF magic number (expected 42).")
-    }
+        func readU16(_ pos: Int) throws -> UInt16 {
+            let end = try checkedAdd(pos, 2, label: "TIFF uint16")
+            guard pos >= 0, end <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF read out of bounds.")
+            }
+            return isLE
+                ? (UInt16(bytes[pos]) | (UInt16(bytes[pos + 1]) << 8))
+                : ((UInt16(bytes[pos]) << 8) | UInt16(bytes[pos + 1]))
+        }
 
-    let ifdOffset = Int(try readU32(4))
-    let countEnd = try checkedAdd(ifdOffset, 2, label: "TIFF IFD count")
-    guard ifdOffset >= 8, countEnd <= bytes.count else {
-        throw CodecError(.malformedInput, "Invalid TIFF IFD offset.")
-    }
-    let entryCount = Int(try readU16(ifdOffset))
-    let entriesBytes = try checkedMultiply(entryCount, 12, label: "TIFF IFD entries")
-    let entriesEnd = try checkedAdd(countEnd, entriesBytes, label: "TIFF IFD end")
-    guard entriesEnd <= bytes.count else {
-        throw CodecError(.malformedInput, "TIFF IFD entries extend past end of file.")
-    }
+        func readU32(_ pos: Int) throws -> UInt32 {
+            let end = try checkedAdd(pos, 4, label: "TIFF uint32")
+            guard pos >= 0, end <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF read out of bounds.")
+            }
+            if isLE {
+                return UInt32(bytes[pos]) |
+                       (UInt32(bytes[pos + 1]) << 8) |
+                       (UInt32(bytes[pos + 2]) << 16) |
+                       (UInt32(bytes[pos + 3]) << 24)
+            } else {
+                return (UInt32(bytes[pos]) << 24) |
+                       (UInt32(bytes[pos + 1]) << 16) |
+                       (UInt32(bytes[pos + 2]) << 8) |
+                       UInt32(bytes[pos + 3])
+            }
+        }
 
-    func readTagValues(entryOffset: Int, fieldType: UInt16, count: Int) throws -> [Int] {
-        guard count > 0, count <= 65536 else {
-            throw CodecError(.malformedInput, "Invalid TIFF tag value count.")
+        guard try readU16(2) == 42 else {
+            throw CodecError(.malformedInput, "Invalid TIFF magic number (expected 42).")
         }
-        let typeSize: Int
-        switch fieldType {
-        case 1, 6, 7: typeSize = 1
-        case 3, 8: typeSize = 2
-        case 4, 9: typeSize = 4
-        default: return []
+
+        let ifdOffset = Int(try readU32(4))
+        let countEnd = try checkedAdd(ifdOffset, 2, label: "TIFF IFD count")
+        guard ifdOffset >= 8, countEnd <= byteCount else {
+            throw CodecError(.malformedInput, "Invalid TIFF IFD offset.")
         }
-        let totalBytes = try checkedMultiply(count, typeSize, label: "TIFF tag payload")
-        let valPos: Int
-        if totalBytes <= 4 {
-            valPos = entryOffset + 8
-        } else {
-            valPos = Int(try readU32(entryOffset + 8))
+        let entryCount = Int(try readU16(ifdOffset))
+        let entriesBytes = try checkedMultiply(entryCount, 12, label: "TIFF IFD entries")
+        let entriesEnd = try checkedAdd(countEnd, entriesBytes, label: "TIFF IFD end")
+        guard entriesEnd <= byteCount else {
+            throw CodecError(.malformedInput, "TIFF IFD entries extend past end of file.")
         }
-        let valEnd = try checkedAdd(valPos, totalBytes, label: "TIFF tag array end")
-        guard valPos >= 0, valEnd <= bytes.count else {
-            throw CodecError(.malformedInput, "TIFF tag value offset out of bounds.")
-        }
-        var result: [Int] = []
-        result.reserveCapacity(count)
-        for i in 0..<count {
-            let p = valPos + i * typeSize
+
+        func resolveTagSpan(entryOffset: Int, fieldType: UInt16, count: Int) throws -> (valPos: Int, typeSize: Int)? {
+            guard count > 0, count <= 65536 else {
+                throw CodecError(.malformedInput, "Invalid TIFF tag value count.")
+            }
+            let typeSize: Int
             switch fieldType {
-            case 1, 7: result.append(Int(bytes[p]))
-            case 6: result.append(Int(Int8(bitPattern: bytes[p])))
-            case 3: result.append(Int(try readU16(p)))
-            case 8: result.append(Int(Int16(bitPattern: try readU16(p))))
-            case 4: result.append(Int(try readU32(p)))
-            case 9: result.append(Int(Int32(bitPattern: try readU32(p))))
-            default: break
+            case 1, 6, 7: typeSize = 1
+            case 3, 8: typeSize = 2
+            case 4, 9: typeSize = 4
+            default: return nil
+            }
+            let totalBytes = try checkedMultiply(count, typeSize, label: "TIFF tag payload")
+            let valPos: Int
+            if totalBytes <= 4 {
+                valPos = entryOffset + 8
+            } else {
+                valPos = Int(try readU32(entryOffset + 8))
+            }
+            let valEnd = try checkedAdd(valPos, totalBytes, label: "TIFF tag array end")
+            guard valPos >= 0, valEnd <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF tag value offset out of bounds.")
+            }
+            return (valPos, typeSize)
+        }
+
+        func readTagElement(valPos: Int, typeSize: Int, fieldType: UInt16, index: Int) throws -> Int {
+            let p = valPos + index * typeSize
+            switch fieldType {
+            case 1, 7: return Int(bytes[p])
+            case 6: return Int(Int8(bitPattern: bytes[p]))
+            case 3: return Int(try readU16(p))
+            case 8: return Int(Int16(bitPattern: try readU16(p)))
+            case 4: return Int(try readU32(p))
+            case 9: return Int(Int32(bitPattern: try readU32(p)))
+            default: return 0
             }
         }
-        return result
-    }
 
-    var width: Int?
-    var height: Int?
-    var bitsPerSample = [8]
-    var compression = 1
-    var samplesPerPixel = 1
-    var stripOffsets: [Int] = []
-    var stripByteCounts: [Int] = []
-    var planarConfig = 1
-    var sampleFormat = 1
-    var sMaxSampleValue: Int?
-
-    for i in 0..<entryCount {
-        let entryPos = countEnd + i * 12
-        let tag = try readU16(entryPos)
-        let fieldType = try readU16(entryPos + 2)
-        let count = Int(try readU32(entryPos + 4))
-        let vals = try readTagValues(entryOffset: entryPos, fieldType: fieldType, count: count)
-        switch tag {
-        case 256: width = vals.first
-        case 257: height = vals.first
-        case 258: if !vals.isEmpty { bitsPerSample = vals }
-        case 259: if let v = vals.first { compression = v }
-        case 273: stripOffsets = vals
-        case 277: if let v = vals.first { samplesPerPixel = v }
-        case 279: stripByteCounts = vals
-        case 284: if let v = vals.first { planarConfig = v }
-        case 339: if let v = vals.first { sampleFormat = v }
-        case 341: if let v = vals.first, v > 0 { sMaxSampleValue = v }
-        default: break
-        }
-    }
-
-    guard let w = width, let h = height, w > 0, h > 0 else {
-        throw CodecError(.malformedInput, "TIFF missing valid ImageWidth or ImageLength.")
-    }
-    guard w <= limits.maximumDimension, h <= limits.maximumDimension else {
-        throw CodecError(.resourceLimitExceeded, "TIFF dimensions exceed resource limit.")
-    }
-    guard compression == 1 else {
-        throw CodecError(.unsupportedFormat, "Compressed TIFF (compression=\(compression)) is not supported; use uncompressed TIFF.")
-    }
-    guard (1...4).contains(samplesPerPixel) else {
-        throw CodecError(.unsupportedFeature, "TIFF SamplesPerPixel (\(samplesPerPixel)) must be in 1...4.")
-    }
-    guard planarConfig == 1 || planarConfig == 2 else {
-        throw CodecError(.unsupportedFormat, "Unsupported TIFF PlanarConfiguration (\(planarConfig)).")
-    }
-    guard sampleFormat == 1 || sampleFormat == 2 else {
-        throw CodecError(.unsupportedFormat, "Floating-point or unsupported TIFF SampleFormat (\(sampleFormat)).")
-    }
-    let signed = (sampleFormat == 2)
-    let bps = bitsPerSample[0]
-    guard bps == 8 || bps == 12 || bps == 16 else {
-        throw CodecError(.unsupportedFeature, "Unsupported TIFF BitsPerSample (\(bps)); expected 8, 12, or 16.")
-    }
-    guard !stripOffsets.isEmpty, stripOffsets.count == stripByteCounts.count else {
-        throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
-    }
-
-    var rawStripData = Data()
-    for (off, cnt) in zip(stripOffsets, stripByteCounts) {
-        guard off >= 0, cnt >= 0 else {
-            throw CodecError(.malformedInput, "Negative TIFF strip offset or byte count.")
-        }
-        let end = try checkedAdd(off, cnt, label: "TIFF strip end")
-        guard end <= bytes.count else {
-            throw CodecError(.malformedInput, "TIFF strip extends past end of file.")
-        }
-        let newSize = try checkedAdd(rawStripData.count, cnt, label: "TIFF strip total")
-        guard newSize <= limits.maximumDecodedBytes else {
-            throw CodecError(.resourceLimitExceeded, "TIFF strip data exceeds decoded byte limit.")
-        }
-        rawStripData.append(contentsOf: bytes[off..<end])
-    }
-
-    let stripBytes = [UInt8](rawStripData)
-    let pixelCount = try checkedMultiply(w, h, label: "TIFF pixel count")
-    let totalSamples = try checkedMultiply(pixelCount, samplesPerPixel, label: "TIFF sample count")
-    var unpackedSamples = [Int](repeating: 0, count: totalSamples)
-
-    if bps == 8 {
-        guard stripBytes.count >= totalSamples else {
-            throw CodecError(.malformedInput, "TIFF strip data is shorter than 8-bit sample count.")
-        }
-        for i in 0..<totalSamples {
-            unpackedSamples[i] = signed ? Int(Int8(bitPattern: stripBytes[i])) : Int(stripBytes[i])
-        }
-    } else if bps == 16 {
-        let neededBytes = try checkedMultiply(totalSamples, 2, label: "TIFF 16-bit byte count")
-        guard stripBytes.count >= neededBytes else {
-            throw CodecError(.malformedInput, "TIFF strip data is shorter than 16-bit sample count.")
-        }
-        for i in 0..<totalSamples {
-            let p = i * 2
-            let word: UInt16 = isLE
-                ? (UInt16(stripBytes[p]) | (UInt16(stripBytes[p + 1]) << 8))
-                : ((UInt16(stripBytes[p]) << 8) | UInt16(stripBytes[p + 1]))
-            unpackedSamples[i] = signed ? Int(Int16(bitPattern: word)) : Int(word)
-        }
-    } else { // bps == 12 packed (2 samples per 3 bytes)
-        let pairs = totalSamples / 2
-        let rem = totalSamples % 2
-        let neededBytes = pairs * 3 + (rem == 1 ? 2 : 0)
-        guard stripBytes.count >= neededBytes else {
-            throw CodecError(.malformedInput, "TIFF strip data is shorter than packed 12-bit sample count.")
-        }
-        for p in 0..<pairs {
-            let b0 = Int(stripBytes[p * 3])
-            let b1 = Int(stripBytes[p * 3 + 1])
-            let b2 = Int(stripBytes[p * 3 + 2])
-            var s0 = (b0 << 4) | (b1 >> 4)
-            var s1 = ((b1 & 0x0F) << 8) | b2
-            if signed {
-                if s0 >= 2048 { s0 -= 4096 }
-                if s1 >= 2048 { s1 -= 4096 }
+        func readFirstTagScalar(entryOffset: Int, fieldType: UInt16, count: Int) throws -> Int? {
+            guard let span = try resolveTagSpan(entryOffset: entryOffset, fieldType: fieldType, count: count) else {
+                return nil
             }
-            unpackedSamples[p * 2] = s0
-            unpackedSamples[p * 2 + 1] = s1
+            return try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
         }
-        if rem == 1 {
-            let b0 = Int(stripBytes[pairs * 3])
-            let b1 = Int(stripBytes[pairs * 3 + 1])
-            var s0 = (b0 << 4) | (b1 >> 4)
-            if signed && s0 >= 2048 { s0 -= 4096 }
-            unpackedSamples[totalSamples - 1] = s0
+
+        var retainedTagBytes = 0
+
+        func readStripTagList(
+            entryOffset: Int,
+            fieldType: UInt16,
+            count: Int,
+            stage: String,
+            existingBytes: Int
+        ) throws -> TIFFStripList {
+            guard let span = try resolveTagSpan(entryOffset: entryOffset, fieldType: fieldType, count: count) else {
+                retainedTagBytes = max(0, retainedTagBytes - existingBytes)
+                return .empty
+            }
+            if count == 1 {
+                let singleVal = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
+                retainedTagBytes = max(0, retainedTagBytes - existingBytes)
+                return .single(singleVal)
+            }
+            let arrayMem = try checkedMultiply(count, MemoryLayout<Int>.stride, label: "TIFF tag array memory")
+            // While constructing the replacement tag list, the caller still owns any previous tag list
+            // (`existingBytes` included in `retainedTagBytes`) until assignment completes.
+            // Admit simultaneous `retainedTagBytes + arrayMem` before allocating `[Int]`.
+            let overlapRetained = try checkedAdd(retainedTagBytes, arrayMem, label: "TIFF simultaneous tag memory")
+            let liveWithOverlap = try checkedAdd(data.count, overlapRetained, label: "TIFF input and simultaneous tag memory")
+            guard overlapRetained <= limits.maximumMetadataBytes,
+                  overlapRetained <= limits.maximumWorkspaceBytes,
+                  liveWithOverlap <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "TIFF tag arrays (\(overlapRetained) B) exceed metadata, workspace, or memory limit.")
+            }
+
+            let owned = try TIFFOwnedTagList(
+                count: count,
+                byteCount: arrayMem,
+                stage: stage,
+                baseInputBytes: data.count
+            ) { idx in
+                try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: idx)
+            }
+            retainedTagBytes = max(0, retainedTagBytes - existingBytes) + arrayMem
+            return .many(owned)
         }
-    }
 
-    let inferredBits: Int
-    if let smax = sMaxSampleValue, smax > 0, smax < 65535 {
-        let bits = Int.bitWidth - smax.leadingZeroBitCount
-        inferredBits = signed ? min(16, bits + 1) : max(1, min(16, bits))
-    } else {
-        inferredBits = bps
-    }
-    let meaningfulBits = declaredPrecision ?? inferredBits
-    guard (1...16).contains(meaningfulBits) else {
-        throw CodecError(.unsupportedFeature, "Invalid TIFF meaningful bit depth.")
-    }
+        var width: Int?
+        var height: Int?
+        var bps = 8
+        var compression = 1
+        var samplesPerPixel = 1
+        var stripOffsets: TIFFStripList = .empty
+        var stripByteCounts: TIFFStripList = .empty
+        var planarConfig = 1
+        var sampleFormat = 1
+        var sMaxSampleValue: Int?
 
-    return try makeContractImage(
-        width: w,
-        height: h,
-        componentCount: samplesPerPixel,
-        meaningfulBits: meaningfulBits,
-        signed: signed,
-        limits: limits
-    ) { c, x, y in
-        let pixelIdx = y * w + x
-        if planarConfig == 2 {
-            return unpackedSamples[c * pixelCount + pixelIdx]
+        for i in 0..<entryCount {
+            let entryPos = countEnd + i * 12
+            let tag = try readU16(entryPos)
+            let fieldType = try readU16(entryPos + 2)
+            let count = Int(try readU32(entryPos + 4))
+            switch tag {
+            case 256:
+                width = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count)
+            case 257:
+                height = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count)
+            case 258:
+                if let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    let first = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
+                    for cIdx in 1..<count {
+                        let other = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: cIdx)
+                        if other != first {
+                            throw CodecError(.unsupportedFeature, "Mixed per-channel TIFF BitsPerSample (\(first) vs \(other)) is not supported.")
+                        }
+                    }
+                    bps = first
+                }
+            case 259:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    compression = v
+                }
+            case 273:
+                stripOffsets = try readStripTagList(
+                    entryOffset: entryPos,
+                    fieldType: fieldType,
+                    count: count,
+                    stage: "tiff-strip-offsets",
+                    existingBytes: stripOffsets.heapBytes
+                )
+            case 277:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    samplesPerPixel = v
+                }
+            case 279:
+                stripByteCounts = try readStripTagList(
+                    entryOffset: entryPos,
+                    fieldType: fieldType,
+                    count: count,
+                    stage: "tiff-strip-byte-counts",
+                    existingBytes: stripByteCounts.heapBytes
+                )
+            case 284:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    planarConfig = v
+                }
+            case 339:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    sampleFormat = v
+                }
+            case 341:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count), v > 0 {
+                    sMaxSampleValue = v
+                }
+            default:
+                _ = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count)
+            }
+        }
+
+        guard let w = width, let h = height, w > 0, h > 0 else {
+            throw CodecError(.malformedInput, "TIFF missing valid ImageWidth or ImageLength.")
+        }
+        guard w <= limits.maximumDimension, h <= limits.maximumDimension else {
+            throw CodecError(.resourceLimitExceeded, "TIFF dimensions exceed resource limit.")
+        }
+        guard compression == 1 else {
+            throw CodecError(.unsupportedFormat, "Compressed TIFF (compression=\(compression)) is not supported; use uncompressed TIFF.")
+        }
+        guard (1...4).contains(samplesPerPixel) else {
+            throw CodecError(.unsupportedFeature, "TIFF SamplesPerPixel (\(samplesPerPixel)) must be in 1...4.")
+        }
+        guard planarConfig == 1 || planarConfig == 2 else {
+            throw CodecError(.unsupportedFormat, "Unsupported TIFF PlanarConfiguration (\(planarConfig)).")
+        }
+        guard sampleFormat == 1 || sampleFormat == 2 else {
+            throw CodecError(.unsupportedFormat, "Floating-point or unsupported TIFF SampleFormat (\(sampleFormat)).")
+        }
+        let signed = (sampleFormat == 2)
+        guard bps == 8 || bps == 12 || bps == 16 else {
+            throw CodecError(.unsupportedFeature, "Unsupported TIFF BitsPerSample (\(bps)); expected 8, 12, or 16.")
+        }
+        guard stripOffsets.count > 0, stripOffsets.count == stripByteCounts.count else {
+            throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
+        }
+
+        let inferredBits: Int
+        if let smax = sMaxSampleValue, smax > 0, smax < 65535 {
+            let bits = Int.bitWidth - smax.leadingZeroBitCount
+            inferredBits = signed ? min(16, bits + 1) : max(1, min(16, bits))
         } else {
-            return unpackedSamples[pixelIdx * samplesPerPixel + c]
+            inferredBits = bps
+        }
+        let meaningfulBits = declaredPrecision ?? inferredBits
+        guard (1...16).contains(meaningfulBits) else {
+            throw CodecError(.unsupportedFeature, "Invalid TIFF meaningful bit depth.")
+        }
+
+        let pixelCount = try checkedMultiply(w, h, label: "TIFF pixel count")
+        guard pixelCount <= limits.maximumPixels else {
+            throw CodecError(.resourceLimitExceeded, "TIFF pixel count (\(pixelCount)) exceeds pixel limit (\(limits.maximumPixels)).")
+        }
+
+        // Build actual ImageDescriptor BEFORE any strip allocation so 1-component 8-bit greyscale's
+        // 16-bit contract storage (requiredByteCount) is admitted against maximumDecodedBytes upfront.
+        let descriptor = try makeContractImageDescriptor(
+            width: w,
+            height: h,
+            componentCount: samplesPerPixel,
+            meaningfulBits: meaningfulBits,
+            signed: signed,
+            limits: limits
+        )
+        let destBytes = descriptor.requiredByteCount
+        guard destBytes <= limits.maximumDecodedBytes else {
+            throw CodecError(.resourceLimitExceeded, "TIFF decoded image size (\(destBytes) B) exceeds decoded byte limit (\(limits.maximumDecodedBytes) B).")
+        }
+
+        let totalSamples = try checkedMultiply(pixelCount, samplesPerPixel, label: "TIFF sample count")
+        let neededBytes: Int
+        if bps == 8 {
+            neededBytes = totalSamples
+        } else if bps == 16 {
+            neededBytes = try checkedMultiply(totalSamples, 2, label: "TIFF 16-bit byte count")
+        } else {
+            let pairs = totalSamples / 2
+            let rem = totalSamples % 2
+            let pairBytes = try checkedMultiply(pairs, 3, label: "TIFF 12-bit packed pair byte count")
+            neededBytes = try checkedAdd(pairBytes, rem == 1 ? 2 : 0, label: "TIFF 12-bit byte count")
+        }
+
+        if case .single(let off) = stripOffsets, case .single(let cnt) = stripByteCounts {
+            // Zero strip workspace copy on single-strip TIFF: only input Data + destination Image are simultaneously live.
+            let totalLiveMemory = try checkedAdd(data.count, destBytes, label: "TIFF single-strip total live memory")
+            guard totalLiveMemory <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "TIFF decode memory (\(totalLiveMemory) B) exceeds memory limit (\(limits.maximumMemoryBytes) B).")
+            }
+            guard off >= 0, cnt >= 0 else {
+                throw CodecError(.malformedInput, "Negative TIFF strip offset or byte count.")
+            }
+            let end = try checkedAdd(off, cnt, label: "TIFF strip end")
+            guard end <= byteCount else {
+                throw CodecError(.malformedInput, "TIFF strip extends past end of file.")
+            }
+            guard cnt >= neededBytes else {
+                throw CodecError(.malformedInput, "TIFF strip data (\(cnt) B) is shorter than required sample bytes (\(neededBytes) B).")
+            }
+            return try makeContractImage(
+                descriptor: descriptor,
+                limits: limits
+            ) { c, x, y in
+                let pixelIdx = y * w + x
+                let sampleIdx = (planarConfig == 2)
+                    ? (c * pixelCount + pixelIdx)
+                    : (pixelIdx * samplesPerPixel + c)
+                return decodeTIFFSampleFromBuffer(
+                    bytes,
+                    baseOffset: off,
+                    sampleIdx: sampleIdx,
+                    bps: bps,
+                    isLE: isLE,
+                    signed: signed
+                )
+            }
+        } else if stripOffsets.isMany && stripByteCounts.isMany {
+            return try decodeTIFFFromStripWorkspace(
+                try assembleTIFFMultiStripWorkspace(
+                    stripOffsets: &stripOffsets,
+                    stripByteCounts: &stripByteCounts,
+                    retainedTagBytes: &retainedTagBytes,
+                    bytes: bytes,
+                    byteCount: byteCount,
+                    inputByteCount: data.count,
+                    neededBytes: neededBytes,
+                    destBytes: destBytes,
+                    limits: limits
+                ),
+                descriptor: descriptor,
+                limits: limits,
+                width: w,
+                pixelCount: pixelCount,
+                samplesPerPixel: samplesPerPixel,
+                planarConfig: planarConfig,
+                bps: bps,
+                isLE: isLE,
+                signed: signed
+            )
+        } else {
+            throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
         }
     }
 }
@@ -1131,6 +1786,9 @@ func parseRAW(
     bigEndian: Bool = false,
     limits: ResourceLimits
 ) throws -> Image {
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "RAW input size (\(data.count) B) exceeds memory limit.")
+    }
     guard width > 0, height > 0 else {
         throw CodecError(.invalidArgument, "RAW input requires positive --dimensions WxH.")
     }
@@ -1140,6 +1798,18 @@ func parseRAW(
     guard (1...4).contains(components) else {
         throw CodecError(.unsupportedFeature, "RAW components must be in 1...4.")
     }
+    let descriptor = try makeContractImageDescriptor(
+        width: width,
+        height: height,
+        componentCount: components,
+        meaningfulBits: bitDepth,
+        signed: signed,
+        limits: limits
+    )
+    let totalLiveMemory = try checkedAdd(data.count, descriptor.requiredByteCount, label: "RAW live memory")
+    guard totalLiveMemory <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "RAW live memory (\(totalLiveMemory) B) exceeds memory limit.")
+    }
     let bytesPerSample = (bitDepth <= 8) ? 1 : 2
     let pixelCount = try checkedMultiply(width, height, label: "RAW pixel count")
     let sampleCount = try checkedMultiply(pixelCount, components, label: "RAW sample count")
@@ -1147,25 +1817,25 @@ func parseRAW(
     guard data.count == expectedBytes else {
         throw CodecError(.malformedInput, "RAW input byte length does not match declared geometry and bit depth.")
     }
-    let bytes = [UInt8](data)
-    return try makeContractImage(
-        width: width,
-        height: height,
-        componentCount: components,
-        meaningfulBits: bitDepth,
-        signed: signed,
-        limits: limits
-    ) { c, x, y in
-        let sampleIdx = (y * width + x) * components + c
-        if bytesPerSample == 1 {
-            let b = bytes[sampleIdx]
-            return signed ? Int(Int8(bitPattern: b)) : Int(b)
-        } else {
-            let off = sampleIdx * 2
-            let word: UInt16 = bigEndian
-                ? ((UInt16(bytes[off]) << 8) | UInt16(bytes[off + 1]))
-                : (UInt16(bytes[off]) | (UInt16(bytes[off + 1]) << 8))
-            return signed ? Int(Int16(bitPattern: word)) : Int(word)
+    return try data.withUnsafeBytes { rawBuf -> Image in
+        guard let bytes = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+            return try makeContractImage(descriptor: descriptor, limits: limits) { _, _, _ in 0 }
+        }
+        return try makeContractImage(
+            descriptor: descriptor,
+            limits: limits
+        ) { c, x, y in
+            let sampleIdx = (y * width + x) * components + c
+            if bytesPerSample == 1 {
+                let b = bytes[sampleIdx]
+                return signed ? Int(Int8(bitPattern: b)) : Int(b)
+            } else {
+                let off = sampleIdx * 2
+                let word: UInt16 = bigEndian
+                    ? ((UInt16(bytes[off]) << 8) | UInt16(bytes[off + 1]))
+                    : (UInt16(bytes[off]) | (UInt16(bytes[off + 1]) << 8))
+                return signed ? Int(Int16(bitPattern: word)) : Int(word)
+            }
         }
     }
 }
@@ -1245,6 +1915,9 @@ func convertImageBitDepth(
 // MARK: - 3D Volumetric Readers & Writers (for `encode3d`, `decode3d`, `compare --mode 3d`)
 
 func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume input exceeds memory limit.")
+    }
     guard let split = data.range(of: Data([0x0A, 0x0A])) ?? data.range(of: Data([0x0D, 0x0A, 0x0D, 0x0A])) else {
         throw CodecError(.malformedInput, "NRRD volume header terminator was not found.")
     }
@@ -1279,10 +1952,22 @@ func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
     let storageBits: Int
     let signed: Bool
     switch rawType {
-    case "uint8", "uchar", "unsigned char": (storageBits, signed) = (8, false)
-    case "int8", "signed char": (storageBits, signed) = (8, true)
-    case "uint16", "ushort", "unsigned short", "unsigned short int": (storageBits, signed) = (16, false)
-    case "int16", "short", "short int", "signed short", "signed short int": (storageBits, signed) = (16, true)
+    case "uint8", "uchar", "unsigned char", "uint8_t":
+        (storageBits, signed) = (8, false)
+    case "int8", "signed char", "int8_t":
+        (storageBits, signed) = (8, true)
+    case "uint16", "ushort", "unsigned short", "unsigned short int", "uint16_t":
+        (storageBits, signed) = (16, false)
+    case "int16", "short", "short int", "signed short", "signed short int", "int16_t":
+        (storageBits, signed) = (16, true)
+    case "uint32", "uint", "unsigned int", "uint32_t":
+        (storageBits, signed) = (32, false)
+    case "int32", "int", "signed int", "int32_t":
+        (storageBits, signed) = (32, true)
+    case "uint64", "ulonglong", "unsigned long long", "unsigned long long int", "uint64_t":
+        (storageBits, signed) = (64, false)
+    case "int64", "longlong", "long long", "long long int", "signed long long", "signed long long int", "int64_t":
+        (storageBits, signed) = (64, true)
     default:
         throw CodecError(.unsupportedFormat, "Unsupported NRRD volume type.")
     }
@@ -1298,50 +1983,75 @@ func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
     guard w > 0, h > 0, d > 0, compCount >= 1 else {
         throw CodecError(.unsupportedFeature, "NRRD volume dimensions must be positive.")
     }
-    let meaningful = keys["swiftj2k.meaningfulbits"].flatMap(Int.init) ?? storageBits
-    let bps = storageBits / 8
-    let voxelCount = try checkedMultiply(try checkedMultiply(w, h), d)
-    let totalSamples = try checkedMultiply(voxelCount, compCount)
-    let expectedBytes = try checkedMultiply(totalSamples, bps)
+    guard w <= limits.maximumDimension, h <= limits.maximumDimension, d <= limits.maximumDimension else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume dimensions exceed resource limit.")
+    }
+    guard d <= limits.maximumFrames else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume depth exceeds frame limit.")
+    }
+    let defaultMeaningful = min(38, storageBits)
+    let meaningful = keys["swiftj2k.meaningfulbits"].flatMap(Int.init) ?? defaultMeaningful
+    guard (1...min(38, storageBits)).contains(meaningful) else {
+        throw CodecError(.unsupportedFeature, "NRRD volume meaningful bit depth (\(meaningful)) must be in 1..\(min(38, storageBits)).")
+    }
+    let nrrdBps = storageBits / 8
+    let compBps = (meaningful + 7) / 8
+    let slicePixels = try checkedMultiply(w, h, label: "NRRD volume slice pixels")
+    let voxelCount = try checkedMultiply(slicePixels, d, label: "NRRD volume voxel count")
+    guard voxelCount <= limits.maximumPixels else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume voxel count exceeds pixel limit.")
+    }
+    let totalSamples = try checkedMultiply(voxelCount, compCount, label: "NRRD volume sample count")
+    let expectedBytes = try checkedMultiply(totalSamples, nrrdBps, label: "NRRD volume expected bytes")
+    let compBytesEach = try checkedMultiply(voxelCount, compBps, label: "NRRD volume component bytes")
+    let totalCompBytes = try checkedMultiply(compBytesEach, compCount, label: "NRRD volume decoded bytes")
+    guard totalCompBytes <= limits.maximumDecodedBytes else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume decoded size exceeds decoded byte limit.")
+    }
+    let liveBytes = try checkedAdd(data.count, totalCompBytes, label: "NRRD volume live memory")
+    guard liveBytes <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "NRRD volume exceeds memory limit.")
+    }
+
     let body = data[split.upperBound...]
     guard body.count == expectedBytes else {
         throw CodecError(.malformedInput, "NRRD volume data byte length does not match header.")
     }
-    let bodyBytes = [UInt8](body)
     var volComponents: [J2KVolumeComponent] = []
-    for c in 0..<compCount {
-        var compData = Data(count: voxelCount * bps)
-        compData.withUnsafeMutableBytes { dstRaw in
-            guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-            for vIdx in 0..<voxelCount {
-                let srcSampleIdx = (dim == 4) ? (vIdx * compCount + c) : vIdx
-                if bps == 1 {
-                    dst[vIdx] = bodyBytes[srcSampleIdx]
-                } else {
-                    let off = srcSampleIdx * 2
-                    let b0 = bodyBytes[off]
-                    let b1 = bodyBytes[off + 1]
+    volComponents.reserveCapacity(compCount)
+    body.withUnsafeBytes { bodyRaw in
+        guard let src = bodyRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+        for c in 0..<compCount {
+            var compData = Data(count: compBytesEach)
+            compData.withUnsafeMutableBytes { dstRaw in
+                guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                for vIdx in 0..<voxelCount {
+                    let srcSampleIdx = (dim == 4) ? (vIdx * compCount + c) : vIdx
+                    let srcOff = srcSampleIdx * nrrdBps
+                    let dstOff = vIdx * compBps
                     if isLE {
-                        dst[vIdx * 2] = b0
-                        dst[vIdx * 2 + 1] = b1
+                        for b in 0..<compBps {
+                            dst[dstOff + b] = src[srcOff + b]
+                        }
                     } else {
-                        dst[vIdx * 2] = b1
-                        dst[vIdx * 2 + 1] = b0
+                        for b in 0..<compBps {
+                            dst[dstOff + b] = src[srcOff + (nrrdBps - 1 - b)]
+                        }
                     }
                 }
             }
-        }
-        volComponents.append(
-            J2KVolumeComponent(
-                index: c,
-                bitDepth: meaningful,
-                signed: signed,
-                width: w,
-                height: h,
-                depth: d,
-                data: compData
+            volComponents.append(
+                J2KVolumeComponent(
+                    index: c,
+                    bitDepth: meaningful,
+                    signed: signed,
+                    width: w,
+                    height: h,
+                    depth: d,
+                    data: compData
+                )
             )
-        )
+        }
     }
     return J2KVolume(width: w, height: h, depth: d, components: volComponents)
 }
@@ -1354,13 +2064,27 @@ func formatNRRDVolume(_ volume: J2KVolume) throws -> Data {
     let h = volume.height
     let d = volume.depth
     let cCount = volume.components.count
-    let bps = (first.bitDepth <= 8) ? 1 : 2
+    let compBps = (first.bitDepth + 7) / 8
+    let nrrdBps: Int
+    if first.bitDepth <= 8 {
+        nrrdBps = 1
+    } else if first.bitDepth <= 16 {
+        nrrdBps = 2
+    } else if first.bitDepth <= 32 {
+        nrrdBps = 4
+    } else {
+        nrrdBps = 8
+    }
     let typeName: String
-    switch (bps, first.signed) {
+    switch (nrrdBps, first.signed) {
     case (1, false): typeName = "uint8"
-    case (1, true): typeName = "int8"
+    case (1, true):  typeName = "int8"
     case (2, false): typeName = "uint16"
-    default: typeName = "int16"
+    case (2, true):  typeName = "int16"
+    case (4, false): typeName = "uint32"
+    case (4, true):  typeName = "int32"
+    case (_, false): typeName = "uint64"
+    default:         typeName = "int64"
     }
     var header = "NRRD0004\ntype: \(typeName)\n"
     if cCount == 1 {
@@ -1369,26 +2093,44 @@ func formatNRRDVolume(_ volume: J2KVolume) throws -> Data {
         header += "dimension: 4\nsizes: \(cCount) \(w) \(h) \(d)\n"
     }
     header += "encoding: raw\n"
-    if bps > 1 {
+    if nrrdBps > 1 {
         header += "endian: little\n"
     }
     header += "swiftj2k.meaningfulbits:=\(first.bitDepth)\n\n"
     var out = Data(header.utf8)
     let voxelCount = try checkedMultiply(try checkedMultiply(w, h), d)
-    if cCount == 1 {
-        out.append(first.data.prefix(voxelCount * bps))
+    if cCount == 1 && compBps == nrrdBps {
+        out.append(first.data.prefix(try checkedMultiply(voxelCount, nrrdBps)))
     } else {
-        var interleaved = Data(count: voxelCount * cCount * bps)
+        let totalOutBytes = try checkedMultiply(try checkedMultiply(voxelCount, cCount), nrrdBps)
+        var interleaved = Data(count: totalOutBytes)
         interleaved.withUnsafeMutableBytes { dstRaw in
             guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
             for (cIdx, comp) in volume.components.enumerated() {
+                let srcBps = (comp.bitDepth + 7) / 8
+                let srcBitWidth = srcBps * 8
                 comp.data.withUnsafeBytes { srcRaw in
                     guard let src = srcRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
                     for vIdx in 0..<voxelCount {
-                        let dstOff = (vIdx * cCount + cIdx) * bps
-                        let srcOff = vIdx * bps
-                        for b in 0..<bps where srcOff + b < comp.data.count {
-                            dst[dstOff + b] = src[srcOff + b]
+                        let dstOff = (vIdx * cCount + cIdx) * nrrdBps
+                        let srcOff = vIdx * srcBps
+                        var rawWord: UInt64 = 0
+                        for b in 0..<srcBps where srcOff + b < comp.data.count {
+                            rawWord |= UInt64(src[srcOff + b]) << (b * 8)
+                        }
+                        if comp.signed && srcBitWidth < 64 {
+                            let storageSign = UInt64(1) << (srcBitWidth - 1)
+                            let bitSign = UInt64(1) << (comp.bitDepth - 1)
+                            if (rawWord & storageSign) != 0 {
+                                rawWord |= (~UInt64(0) << srcBitWidth)
+                            } else if comp.bitDepth < srcBitWidth
+                                && (rawWord >> comp.bitDepth) == 0
+                                && (rawWord & bitSign) != 0 {
+                                rawWord |= (~UInt64(0) << comp.bitDepth)
+                            }
+                        }
+                        for b in 0..<nrrdBps {
+                            dst[dstOff + b] = UInt8(truncatingIfNeeded: rawWord >> (b * 8))
                         }
                     }
                 }
@@ -1486,49 +2228,72 @@ func parseRAWVolume(
     origin: (Double, Double, Double)? = nil,
     limits: ResourceLimits
 ) throws -> J2KVolume {
+    guard data.count <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume input exceeds memory limit.")
+    }
     let w = geometry.width
     let h = geometry.height
     let d = geometry.depth
     let cCount = geometry.components
     let bits = geometry.bitDepth
     let signed = geometry.signed
-    guard w > 0, h > 0, d > 0, cCount >= 1, (1...16).contains(bits) else {
+    guard w > 0, h > 0, d > 0, cCount >= 1, (1...38).contains(bits) else {
         throw CodecError(.unsupportedFeature, "Invalid 3D volume geometry or bit depth.")
     }
-    let bps = (bits <= 8) ? 1 : 2
+    guard w <= limits.maximumDimension, h <= limits.maximumDimension, d <= limits.maximumDimension else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume dimensions exceed resource limit.")
+    }
+    guard d <= limits.maximumFrames else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume depth exceeds frame limit.")
+    }
+    let bps = (bits + 7) / 8
     let voxelCount = try checkedMultiply(try checkedMultiply(w, h), d)
+    guard voxelCount <= limits.maximumPixels else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume voxel count exceeds pixel limit.")
+    }
     let sampleCount = try checkedMultiply(voxelCount, cCount)
     let expectedBytes = try checkedMultiply(sampleCount, bps)
+    guard expectedBytes <= limits.maximumDecodedBytes else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume exceeds decoded byte limit.")
+    }
+    let liveBytes = try checkedAdd(data.count, expectedBytes, label: "RAW 3D volume live memory")
+    guard liveBytes <= limits.maximumMemoryBytes else {
+        throw CodecError(.resourceLimitExceeded, "RAW 3D volume exceeds memory limit.")
+    }
     guard data.count == expectedBytes else {
         throw CodecError(.malformedInput, "RAW 3D volume byte length does not match declared geometry.")
     }
-    let bytes = [UInt8](data)
     var components: [J2KVolumeComponent] = []
-    for c in 0..<cCount {
-        var compData = Data(count: voxelCount * bps)
-        compData.withUnsafeMutableBytes { dstRaw in
-            guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-            if cCount == 1 {
-                for i in 0..<(voxelCount * bps) { dst[i] = bytes[i] }
-            } else {
-                for vIdx in 0..<voxelCount {
-                    let srcOff = (vIdx * cCount + c) * bps
-                    let dstOff = vIdx * bps
-                    for b in 0..<bps { dst[dstOff + b] = bytes[srcOff + b] }
+    components.reserveCapacity(cCount)
+    let compByteCount = try checkedMultiply(voxelCount, bps)
+    data.withUnsafeBytes { srcRaw in
+        guard let bytes = srcRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+        for c in 0..<cCount {
+            var compData = Data(count: compByteCount)
+            compData.withUnsafeMutableBytes { dstRaw in
+                guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                if cCount == 1 {
+                    for i in 0..<compByteCount { dst[i] = bytes[i] }
+                } else {
+                    for vIdx in 0..<voxelCount {
+                        let srcOff = (vIdx * cCount + c) * bps
+                        let dstOff = vIdx * bps
+                        for b in 0..<bps { dst[dstOff + b] = bytes[srcOff + b] }
+                    }
                 }
             }
-        }
-        components.append(
-            J2KVolumeComponent(
-                index: c,
-                bitDepth: bits,
-                signed: signed,
-                width: w,
-                height: h,
-                depth: d,
-                data: compData
+            components.append(
+                J2KVolumeComponent(
+                    index: c,
+                    bitDepth: bits,
+                    signed: signed,
+                    width: w,
+                    height: h,
+                    depth: d,
+                    data: compData
+                )
             )
-        )
+        }
     }
     return J2KVolume(
         width: w,
@@ -1548,13 +2313,14 @@ func formatRAWVolume(_ volume: J2KVolume) throws -> Data {
     guard let first = volume.components.first else {
         throw CodecError(.malformedInput, "Volume has no components.")
     }
-    let bps = (first.bitDepth <= 8) ? 1 : 2
+    let bps = (first.bitDepth + 7) / 8
     let voxelCount = try checkedMultiply(try checkedMultiply(volume.width, volume.height), volume.depth)
     let cCount = volume.components.count
     if cCount == 1 {
-        return first.data.prefix(voxelCount * bps)
+        return first.data.prefix(try checkedMultiply(voxelCount, bps))
     }
-    var out = Data(count: voxelCount * cCount * bps)
+    let totalBytes = try checkedMultiply(try checkedMultiply(voxelCount, cCount), bps)
+    var out = Data(count: totalBytes)
     out.withUnsafeMutableBytes { dstRaw in
         guard let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
         for (cIdx, comp) in volume.components.enumerated() {

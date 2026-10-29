@@ -1,0 +1,98 @@
+SwiftJ2K Phase R1 Pre-Fix Reproduction & Source-Audit Receipts
+==============================================================
+Remediation base commit: 24b18814c29362f3726321d6618d460da3606e8d (PR #27 head)
+Branch forked from base: antigravity/m1-m12-remediation
+Local toolchain: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1), host macOS 27.0.1 (Build 26A434, Darwin arm64), package Apple OS floor 26.0
+
+1. Executed Codex Independent Probe Receipts (Executed at b76e60a, Reused via Library Byte-Identity at 24b1881)
+---------------------------------------------------------------------------------------------------------------
+Provenance:
+- Probe source: /Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/audit-probe.swift
+- Raw output:  /Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/evidence/probe-results.txt
+- Audit report: /Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/outputs/SwiftJ2K-M1-M11-audit.html
+- Executed source commit: b76e60a84f730cec79febe966564ff747eb0a2ad
+- Reuse validity at 24b18814c29362f3726321d6618d460da3606e8d: `Sources/SwiftJ2K`, `Sources/SwiftJ2K3D`, and
+  `Sources/SwiftJ2KJPIP` are byte-identical between b76e60a84f730cec79febe966564ff747eb0a2ad and
+  24b18814c29362f3726321d6618d460da3606e8d.
+
+Exact executed probe outcomes in probe-results.txt / audit-probe.swift:
+- F02 (32-bit signed lossless volume truncation):
+  `volume(bits: 32, value: 16_777_217)` (`8x8x2`, 1 component, `signed: true` via `signed: bits > 8` at audit-probe.swift:15)
+  encoded with `VolumeEncoder(configuration: VolumeEncoderConfiguration(levelsX: 1, levelsY: 1, levelsZ: 1))` and decoded
+  with `VolumeDecoder().decode(e.data)` emitted:
+  `volume_lossless32 equal=false first=16777216 fidelity=exactSamples`
+- F03 (resolutionLevel: 64 crash path):
+  `audit-probe.swift:35-39` (`bad-resolution` argument):
+  `VolumeDecoder(configuration: VolumeDecoderConfiguration(resolutionLevel: 64)).decode(normal.data)` trapped the process
+  on unchecked shift/downsample arithmetic (recorded in SwiftJ2K-M1-M11-audit.html).
+- F05 (executed tiny-limit probes):
+  1. `VolumeEncoder.encode` with `ResourceLimits(maximumCompressedBytes: 1, maximumWorkspaceBytes: 1, deadlineSeconds: 1e-9)`:
+     `volume_tiny_limits SUCCESS output=324 workspace=Optional(324)`
+  2. `VolumeDecoder.decode` with `ResourceLimits(maximumWorkspaceBytes: 1, deadlineSeconds: 1e-9)`:
+     `volume_decode_tiny_workspace SUCCESS report=Optional(324)`
+  3. `JPIPStreamingSession.deliverImage` with `ResourceLimits(maximumCompressedBytes: 1, maximumWorkspaceBytes: 1, deadlineSeconds: 1e-9)`:
+     `jpip_tiny_limits SUCCESS pixels=256 copies=0 backend=scalarCPU`
+- F06 (executed untruthful fidelity probes):
+  1. Damaged `"J3DS"` tile byte (`damaged[payload.lowerBound + 4] = 255`) decoded with `VolumeDecoder(tolerateTruncation: true)`:
+     `volume_corrupt_tile partial=true fidelity=exactSamples equal=false`
+  2. Lossy Part 1 JP2 (`J2KEncoder(quality: 0.25, lossless: false, decompositionLevels: 2)`) delivered via
+     `JPIPStreamingSession.deliverImage(imageID: "lossy.jp2")`:
+     `jpip_lossy fidelity=exactSamples samples_equal=false`
+- F13 (executed post-.completed cancellation probes):
+  1. `VolumeEncoder.encode` with `.completed` progress callback calling `withUnsafeCurrentTask { $0?.cancel() }`:
+     `volume_cancelled_on_completion returned=true`
+  2. `SwiftJ2K.Encoder.encode` with `.completed` progress callback calling `withUnsafeCurrentTask { $0?.cancel() }`:
+     `core_encode_cancelled_on_completion returned=true`
+
+2. Executed Pre-Fix Local CLI Reproduction Receipts at 24b18814c29362f3726321d6618d460da3606e8d
+-----------------------------------------------------------------------------------------------
+Provenance:
+- Source commit: 24b18814c29362f3726321d6618d460da3606e8d (clean working tree before R1 edits)
+- Binary: /Users/raster/Documents/SwiftJ2K/.build/debug/swiftj2k-cli (built at 24b18814c29362f3726321d6618d460da3606e8d)
+
+- F05 (CLI `encode3d` ignores `--max-memory`):
+  Fixture: 64-byte raw 4x4x4 8-bit 1-component volume (`v.raw`)
+  Command: `.build/debug/swiftj2k-cli encode3d -i v.raw -o v.j3d --dimensions 4x4x4 --bit-depth 8 --components 1 --max-memory 16`
+  Observed outcome: exit code `0` (wrote `v.j3d` despite 64 B input + workspace exceeding `--max-memory 16`; expected exit `5`).
+
+- M12-CX-02 (CLI `decode3d --region` signed integer overflow trap):
+  Command: `.build/debug/swiftj2k-cli decode3d -i v.j3d -o out.raw --output-format raw --region 9223372036854775807,0,0,1,1,1 --overwrite`
+  Observed outcome: terminated by signal `SIGTRAP` (`-5` / shell exit `133`) at unchecked `roi.x + roi.w` in `CLIVerbs.swift` (expected clean exit `2`).
+
+- M12-CX-01 (CLI TIFF pre-allocation admission bypass):
+  Fixture: 103-byte uncompressed little-endian 8-bit TIFF header claiming `256x256` pixels with a 1-byte strip payload (`claim256.tiff`)
+  Command: `.build/debug/swiftj2k-cli encode -i claim256.tiff -o out.j2k --max-memory 512 --overwrite`
+  Observed outcome: exit code `3`, raw stderr:
+  `swiftj2k-cli: malformed input: TIFF strip data is shorter than 8-bit sample count.`
+  Source trace at 24b1881 `Sources/SwiftJ2KCLI/CLIImageIO.swift:915`: `[Int](repeating: 0, count: 65536)` (524,288 B) was
+  allocated before strip sufficiency failed, bypassing `--max-memory 512` (expected pre-allocation exit `5`).
+
+3. Executed PR #27 Exact-Head CI Receipt at 24b18814c29362f3726321d6618d460da3606e8d
+------------------------------------------------------------------------------------
+Provenance:
+- Saved audit evidence: `/Users/raster/Documents/Codex/2026-10-28/check-the-project-in-the-path/work/evidence/m12-*.json`
+- GitHub Actions PR #27 head `24b18814c29362f3726321d6618d460da3606e8d`, Linux job `122803568965` (all 4 Linux jobs failed;
+  macOS hosted runner cancelled due to runner acquisition timeout):
+- Failure (`M12-CI`): `Sources/SwiftJ2KCLI/CLIImageIO.swift:686` onward failed Linux compilation with unresolved symbols
+  `z_stream`, `inflateInit_`, `zlibVersion`, `Z_OK`, `Z_STREAM_END`, `inflate`, `inflateEnd`, and `compress2`.
+
+4. Source-Review Conclusions (Not Claimed as Pre-Fix Executed Probe Runs)
+-------------------------------------------------------------------------
+The following additional R1 paths were identified by static source review at 24b18814c29362f3726321d6618d460da3606e8d
+(and historical M6 audit `/Users/raster/Documents/Codex/2026-10-13/che/outputs/swiftj2k-milestone6-audit.json`), not by
+`audit-probe.swift`:
+- F02 additional paths: unsigned `min(30, bitDepth)` clamping in `JP3DSliceStackCodec.swift` and `Float` voxel conversion across
+  1..38-bit unsigned/signed `JP3DTileDecomposer`, `JP3DWaveletTransform`, `JP3DEncoder`, `JP3DDecoder`, `JP3DROIDecoder`,
+  `VolumeTranscoder`, and CLI 3D NRRD/RAW I/O.
+- F03 additional paths: `JP3DROIDecoder`, `JPIPViewWindow` (`0..<31` inconsistency), and CLI `--resolution-level`.
+- F05 additional paths: `VolumeTranscoder` ignoring `options.resourceLimits`; missing `maximumDecodedBytes`/`maximumMemoryBytes`
+  checks; `JP3DEncoder.encodeTilesParallel` spawning tasks for all tiles without capping in-flight tasks to `maximumWorkers`;
+  simultaneous worker + retained-tile + `J3DI` DWT/output buffers; `JP3DCodestreamParser` tile `subdata` copies before admission;
+  and combined live-memory admission across 2D CLI image readers (`CLIImageIO.swift`).
+- F06 additional paths: reduced `resolutionLevel`, `maxQualityLayers`, and `JPIPViewWindow.components` subsets on lossless streams.
+- F13 additional paths: missing post-`.completed` `Task.checkCancellation()` / deadline re-checks in `Decoder.decode`,
+  `Decoder.decode(_:into:)` (plus destination invalidation on `.inspecting` cancellation), `Transcoder.transcode`,
+  `VolumeDecoder.decode`, `VolumeTranscoder.transcode`, and `JPIPStreamingSession` (`deliverImage`, `deliverVolumeRegion`).
+- M6-AUD-006 / R1-CODE-02: `Codestream.swift` segment and expanded-structure allocations (`SIZ`, `COD`, `COC`, `QCD`, `QCC`,
+  `CPF`, `RGN`, `POC`, `COM`, `CRG`, `TilePartRecord`) checked per-segment without cumulative retained-bytes + transient-payload
+  pre-allocation admission, and decode/transcode workspace admission omitted retained parser metadata.
