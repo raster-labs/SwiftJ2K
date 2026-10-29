@@ -872,22 +872,83 @@ public struct J2KDecoder: Sendable {
         try Self.decodeSync(data)
     }
 
+    /// Decoded codestream metadata alongside the decoded ``J2KImage``.
+    package struct DecodedCodestreamInfo: Sendable {
+        package let image: J2KImage
+        package let isReversibleLossless: Bool
+        package let totalQualityLayers: Int
+        package let totalComponents: Int
+        package let backend: Backend
+        package let fallbackReason: String?
+        package let peakWorkspaceBytes: Int
+    }
+
     /// Synchronous helper for decoding a JPEG 2000 codestream or container with optional JPIP view-window parameters.
     public static func decodeSync(
         _ data: Data,
         maxQualityLayers: Int? = nil,
         resolutionLevel: Int? = nil,
         components: [Int]? = nil,
-        region: (x: Int, y: Int, width: Int, height: Int)? = nil,
-        limits: ResourceLimits = .default
+        region: (x: Int, y: Int, width: Int, height: Int)? = nil
     ) throws -> J2KImage {
-        let rawBytes = [UInt8](data)
-        guard !rawBytes.isEmpty else {
+        do {
+            return try decodeWithInfo(
+                data,
+                maxQualityLayers: maxQualityLayers,
+                resolutionLevel: resolutionLevel,
+                components: components,
+                region: region,
+                limits: .default,
+                executionPolicy: .automatic
+            ).image
+        } catch let error as CodecError {
+            throw J2KError(error)
+        }
+    }
+
+    /// Decodes a JPEG 2000 codestream or container with pre-allocation resource admission and codestream fidelity inspection.
+    package static func decodeWithInfo(
+        _ data: Data,
+        maxQualityLayers: Int? = nil,
+        resolutionLevel: Int? = nil,
+        components: [Int]? = nil,
+        region: (x: Int, y: Int, width: Int, height: Int)? = nil,
+        limits: ResourceLimits = .default,
+        executionPolicy: ExecutionPolicy = .automatic
+    ) throws -> DecodedCodestreamInfo {
+        guard !data.isEmpty else {
             throw J2KError.decodingError("Cannot decode empty data")
         }
 
         let codestreamBytes: [UInt8]
         do {
+            let work = WorkGuard(limits: limits)
+            try work.check()
+            let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
+            guard data.count <= limits.maximumCompressedBytes,
+                  data.count <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Compressed input exceeds operation limits.")
+            }
+            if let resLevel = resolutionLevel {
+                guard (0...32).contains(resLevel) else {
+                    throw CodecError(.invalidArgument, "Resolution level must lie in 0...32.")
+                }
+            }
+            if let reg = region {
+                guard reg.x >= 0, reg.y >= 0, reg.width > 0, reg.height > 0,
+                      !reg.x.addingReportingOverflow(reg.width).overflow,
+                      !reg.y.addingReportingOverflow(reg.height).overflow else {
+                    throw CodecError(.invalidArgument, "Region bounds are negative, non-positive, or overflow Int.")
+                }
+            }
+
+            let inputCopyBytes = try checkedAdd(32, data.count)
+            guard inputCopyBytes <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(data.count, inputCopyBytes) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Compressed input workspace copy exceeds operation limits.")
+            }
+
+            let rawBytes = [UInt8](data)
             if JP2Container.isContainer(rawBytes) {
                 let parsed = try JP2Container.parse(rawBytes, limits: limits, metadataPolicy: .preserve)
                 codestreamBytes = Array(rawBytes[parsed.codestreamRange])
@@ -897,9 +958,24 @@ public struct J2KDecoder: Sendable {
                 throw J2KError.decodingError("No JPEG 2000 SOC marker (0xFF4F) found in input data")
             }
 
-            let resolvedBackend = try AccelerationRuntime.resolve(.automatic)
             let profile = try Part1Pipeline.inspect(codestreamBytes, limits: limits, metadataPolicy: .preserve)
             let descriptor = try profile.defaultDescriptor(limits: limits)
+            let minDecodedBytes = descriptor.requiredByteCount
+            let estWorkspace = try checkedAdd(
+                try Part1Pipeline.workspaceBytes(
+                    planePixels: profile.largestTilePixels,
+                    componentCount: profile.componentCount,
+                    bytesPerCoeff: profile.isReversibleLossless ? 4 : 8,
+                    joinedBytes: profile.largestTileBytes
+                ),
+                profile.retainedMetadataBytes
+            )
+            guard minDecodedBytes <= limits.maximumDecodedBytes,
+                  estWorkspace <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Decoded image and workspace exceed operation limits.")
+            }
+
             let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
             let effectiveLayers: Int?
             if let q = maxQualityLayers, q > 0 {
@@ -907,15 +983,22 @@ public struct J2KDecoder: Sendable {
             } else {
                 effectiveLayers = nil
             }
-            let (contractImage, _) = try Part1Pipeline.decode(
-                bytes: codestreamBytes,
-                profile: profile,
-                into: destination,
-                limits: limits,
-                backend: resolvedBackend.backend,
-                progress: nil,
-                maxQualityLayers: effectiveLayers
-            )
+            let (contractImage, workspace): (Image, Int)
+            do {
+                (contractImage, workspace) = try Part1Pipeline.decode(
+                    bytes: codestreamBytes,
+                    profile: profile,
+                    into: destination,
+                    limits: limits,
+                    backend: resolvedBackend.backend,
+                    progress: nil,
+                    maxQualityLayers: effectiveLayers
+                )
+            } catch {
+                destination.invalidateAfterFailure()
+                throw error
+            }
+            try work.check()
             var image = try J2KImage(contractImage: contractImage)
 
             // Apply component filtering if requested
@@ -953,7 +1036,7 @@ public struct J2KDecoder: Sendable {
             // Convention (per JPIPClient and DICOMJPIPClient):
             // resolutionLevel == 0 is full resolution; higher values halve dimensions by 2^level.
             if let resLevel = resolutionLevel, resLevel > 0 {
-                let factor = 1 << min(10, resLevel)
+                let factor = 1 << min(30, resLevel)
                 image = downsampleImage(image, factor: factor)
             }
 
@@ -962,11 +1045,18 @@ public struct J2KDecoder: Sendable {
                 image = try cropImage(image, region: reg)
             }
 
-            return image
+            let totalLayers = max(1, profile.tiles.map(\.defaultCodingStyle.layers).max() ?? 1)
+            return DecodedCodestreamInfo(
+                image: image,
+                isReversibleLossless: profile.isReversibleLossless,
+                totalQualityLayers: totalLayers,
+                totalComponents: profile.componentCount,
+                backend: resolvedBackend.backend,
+                fallbackReason: resolvedBackend.fallbackReason,
+                peakWorkspaceBytes: workspace
+            )
         } catch let error as J2KError {
             throw error
-        } catch let error as CodecError {
-            throw J2KError(error)
         }
     }
 
@@ -1022,15 +1112,19 @@ public struct J2KDecoder: Sendable {
         _ image: J2KImage,
         region: (x: Int, y: Int, width: Int, height: Int)
     ) throws -> J2KImage {
-        guard region.x >= 0, region.y >= 0, region.width > 0, region.height > 0 else {
+        guard region.x >= 0, region.y >= 0, region.width > 0, region.height > 0,
+              !region.x.addingReportingOverflow(region.width).overflow,
+              !region.y.addingReportingOverflow(region.height).overflow else {
             throw J2KError.invalidDimensions(
                 "Invalid region (\(region.x), \(region.y), \(region.width)x\(region.height))"
             )
         }
         let x0 = min(region.x, image.width - 1)
         let y0 = min(region.y, image.height - 1)
-        let x1 = min(image.width, x0 + region.width)
-        let y1 = min(image.height, y0 + region.height)
+        let (rawX1, ovX1) = x0.addingReportingOverflow(region.width)
+        let (rawY1, ovY1) = y0.addingReportingOverflow(region.height)
+        let x1 = ovX1 ? image.width : min(image.width, rawX1)
+        let y1 = ovY1 ? image.height : min(image.height, rawY1)
         let cropW = max(1, x1 - x0)
         let cropH = max(1, y1 - y0)
 

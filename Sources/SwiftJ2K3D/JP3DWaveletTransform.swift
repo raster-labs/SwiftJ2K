@@ -568,10 +568,261 @@ public actor JP3DWaveletTransform {
     }
 
     private func maxLevels(for dimension: Int) -> Int {
+        Self.maxDecompositionLevels(for: dimension)
+    }
+
+    internal static func maxDecompositionLevels(for dimension: Int) -> Int {
         guard dimension > 1 else { return 0 }
         var lvl = 0
         var d = dimension
         while d > 1 { d = (d + 1) / 2; lvl += 1 }
         return lvl
+    }
+
+    // MARK: - Exact Int64 3D Reversible 5/3 Wavelet Lifting
+
+    /// Exact integer-preserving forward 3D Le Gall 5/3 wavelet transform for `1...38`-bit voxels.
+    internal static func forwardLosslessInt64(
+        data: [Int64],
+        width: Int,
+        height: Int,
+        depth: Int,
+        levelsX: Int,
+        levelsY: Int,
+        levelsZ: Int
+    ) throws -> (coefficients: [Int64], levelsX: Int, levelsY: Int, levelsZ: Int) {
+        guard width > 0, height > 0, depth > 0 else {
+            throw J2KError.invalidParameter("Dimensions must be positive: \(width)x\(height)x\(depth)")
+        }
+        let (wh, ov1) = width.multipliedReportingOverflow(by: height)
+        let (total, ov2) = wh.multipliedReportingOverflow(by: depth)
+        guard !ov1, !ov2, data.count == total else {
+            throw J2KError.invalidParameter("Data count \(data.count) does not match \(width)x\(height)x\(depth)")
+        }
+
+        let lx = max(0, min(levelsX, maxDecompositionLevels(for: width)))
+        let ly = max(0, min(levelsY, maxDecompositionLevels(for: height)))
+        let lz = max(0, min(levelsZ, maxDecompositionLevels(for: depth)))
+
+        var buf = data
+        var curW = width
+        var curH = height
+        var curD = depth
+        let maxL = max(lx, max(ly, lz))
+
+        for lvl in 0..<maxL {
+            let doX = lvl < lx
+            let doY = lvl < ly
+            let doZ = lvl < lz
+
+            if doX && curW > 1 {
+                var line = [Int64](repeating: 0, count: curW)
+                for z in 0..<curD {
+                    let zBase = z * width * height
+                    for y in 0..<curH {
+                        let rowBase = zBase + y * width
+                        for x in 0..<curW { line[x] = buf[rowBase + x] }
+                        try forward53LineInt64(&line)
+                        for x in 0..<curW { buf[rowBase + x] = line[x] }
+                    }
+                }
+            }
+            if doY && curH > 1 {
+                var line = [Int64](repeating: 0, count: curH)
+                for z in 0..<curD {
+                    let zBase = z * width * height
+                    for x in 0..<curW {
+                        for y in 0..<curH { line[y] = buf[zBase + y * width + x] }
+                        try forward53LineInt64(&line)
+                        for y in 0..<curH { buf[zBase + y * width + x] = line[y] }
+                    }
+                }
+            }
+            if doZ && curD > 1 {
+                var line = [Int64](repeating: 0, count: curD)
+                let sliceStride = width * height
+                for y in 0..<curH {
+                    let yBase = y * width
+                    for x in 0..<curW {
+                        let colBase = yBase + x
+                        for z in 0..<curD { line[z] = buf[z * sliceStride + colBase] }
+                        try forward53LineInt64(&line)
+                        for z in 0..<curD { buf[z * sliceStride + colBase] = line[z] }
+                    }
+                }
+            }
+
+            if doX { curW = (curW + 1) / 2 }
+            if doY { curH = (curH + 1) / 2 }
+            if doZ { curD = (curD + 1) / 2 }
+        }
+
+        return (buf, lx, ly, lz)
+    }
+
+    /// Exact integer-preserving inverse 3D Le Gall 5/3 wavelet transform for `1...38`-bit voxels.
+    internal static func inverseLosslessInt64(
+        coefficients: [Int64],
+        width: Int,
+        height: Int,
+        depth: Int,
+        levelsX: Int,
+        levelsY: Int,
+        levelsZ: Int
+    ) throws -> [Int64] {
+        guard width > 0, height > 0, depth > 0 else {
+            throw J2KError.invalidParameter("Dimensions must be positive: \(width)x\(height)x\(depth)")
+        }
+        let (wh, ov1) = width.multipliedReportingOverflow(by: height)
+        let (total, ov2) = wh.multipliedReportingOverflow(by: depth)
+        guard !ov1, !ov2, coefficients.count == total else {
+            throw J2KError.invalidParameter("Coefficient count \(coefficients.count) does not match \(width)x\(height)x\(depth)")
+        }
+
+        let lx = max(0, min(levelsX, maxDecompositionLevels(for: width)))
+        let ly = max(0, min(levelsY, maxDecompositionLevels(for: height)))
+        let lz = max(0, min(levelsZ, maxDecompositionLevels(for: depth)))
+        let maxL = max(lx, max(ly, lz))
+        guard maxL > 0 else { return coefficients }
+
+        var wSizes = [Int](repeating: width, count: maxL + 1)
+        var hSizes = [Int](repeating: height, count: maxL + 1)
+        var dSizes = [Int](repeating: depth, count: maxL + 1)
+        for lvl in 0..<maxL {
+            wSizes[lvl + 1] = (lvl < lx) ? ((wSizes[lvl] + 1) / 2) : wSizes[lvl]
+            hSizes[lvl + 1] = (lvl < ly) ? ((hSizes[lvl] + 1) / 2) : hSizes[lvl]
+            dSizes[lvl + 1] = (lvl < lz) ? ((dSizes[lvl] + 1) / 2) : dSizes[lvl]
+        }
+
+        var buf = coefficients
+        let sliceStride = width * height
+
+        for lvl in stride(from: maxL - 1, through: 0, by: -1) {
+            let curW = wSizes[lvl]
+            let curH = hSizes[lvl]
+            let curD = dSizes[lvl]
+
+            if lvl < lz && curD > 1 {
+                var line = [Int64](repeating: 0, count: curD)
+                for y in 0..<curH {
+                    let yBase = y * width
+                    for x in 0..<curW {
+                        let colBase = yBase + x
+                        for z in 0..<curD { line[z] = buf[z * sliceStride + colBase] }
+                        try inverse53LineInt64(&line)
+                        for z in 0..<curD { buf[z * sliceStride + colBase] = line[z] }
+                    }
+                }
+            }
+            if lvl < ly && curH > 1 {
+                var line = [Int64](repeating: 0, count: curH)
+                for z in 0..<curD {
+                    let zBase = z * sliceStride
+                    for x in 0..<curW {
+                        for y in 0..<curH { line[y] = buf[zBase + y * width + x] }
+                        try inverse53LineInt64(&line)
+                        for y in 0..<curH { buf[zBase + y * width + x] = line[y] }
+                    }
+                }
+            }
+            if lvl < lx && curW > 1 {
+                var line = [Int64](repeating: 0, count: curW)
+                for z in 0..<curD {
+                    let zBase = z * sliceStride
+                    for y in 0..<curH {
+                        let rowBase = zBase + y * width
+                        for x in 0..<curW { line[x] = buf[rowBase + x] }
+                        try inverse53LineInt64(&line)
+                        for x in 0..<curW { buf[rowBase + x] = line[x] }
+                    }
+                }
+            }
+        }
+
+        return buf
+    }
+
+    @inline(__always)
+    private static func checkedAdd64(_ a: Int64, _ b: Int64, decoding: Bool) throws -> Int64 {
+        let (res, ov) = a.addingReportingOverflow(b)
+        if ov {
+            if decoding {
+                throw J2KError.decodingError("3D reversible 5/3 inverse wavelet lifting overflowed Int64 range")
+            } else {
+                throw J2KError.encodingError("3D reversible 5/3 forward wavelet lifting overflowed Int64 range")
+            }
+        }
+        return res
+    }
+
+    @inline(__always)
+    private static func checkedSub64(_ a: Int64, _ b: Int64, decoding: Bool) throws -> Int64 {
+        let (res, ov) = a.subtractingReportingOverflow(b)
+        if ov {
+            if decoding {
+                throw J2KError.decodingError("3D reversible 5/3 inverse wavelet lifting overflowed Int64 range")
+            } else {
+                throw J2KError.encodingError("3D reversible 5/3 forward wavelet lifting overflowed Int64 range")
+            }
+        }
+        return res
+    }
+
+    private static func forward53LineInt64(_ x: inout [Int64]) throws {
+        let n = x.count
+        guard n >= 2 else { return }
+        let nL = (n + 1) / 2
+        let nH = n / 2
+
+        var even = [Int64](repeating: 0, count: nL)
+        var odd = [Int64](repeating: 0, count: nH)
+        for i in 0..<nL { even[i] = x[2 * i] }
+        for i in 0..<nH { odd[i] = x[2 * i + 1] }
+
+        var h = [Int64](repeating: 0, count: nH)
+        for i in 0..<nH {
+            let eNext = (i + 1 < nL) ? even[i + 1] : even[nL - 1]
+            let eSum = try checkedAdd64(even[i], eNext, decoding: false)
+            h[i] = try checkedSub64(odd[i], eSum >> 1, decoding: false)
+        }
+
+        var l = [Int64](repeating: 0, count: nL)
+        for i in 0..<nL {
+            let hPrev = (i == 0) ? h[0] : h[i - 1]
+            let hCurr = (i < nH) ? h[i] : h[nH - 1]
+            let hSum = try checkedAdd64(try checkedAdd64(hPrev, hCurr, decoding: false), 2, decoding: false)
+            l[i] = try checkedAdd64(even[i], hSum >> 2, decoding: false)
+        }
+
+        for i in 0..<nL { x[i] = l[i] }
+        for i in 0..<nH { x[nL + i] = h[i] }
+    }
+
+    private static func inverse53LineInt64(_ x: inout [Int64]) throws {
+        let n = x.count
+        guard n >= 2 else { return }
+        let nL = (n + 1) / 2
+        let nH = n / 2
+
+        let l = Array(x[0..<nL])
+        let h = Array(x[nL..<(nL + nH)])
+
+        var even = [Int64](repeating: 0, count: nL)
+        for i in 0..<nL {
+            let hPrev = (i == 0) ? h[0] : h[i - 1]
+            let hCurr = (i < nH) ? h[i] : h[nH - 1]
+            let hSum = try checkedAdd64(try checkedAdd64(hPrev, hCurr, decoding: true), 2, decoding: true)
+            even[i] = try checkedSub64(l[i], hSum >> 2, decoding: true)
+        }
+
+        var odd = [Int64](repeating: 0, count: nH)
+        for i in 0..<nH {
+            let eNext = (i + 1 < nL) ? even[i + 1] : even[nL - 1]
+            let eSum = try checkedAdd64(even[i], eNext, decoding: true)
+            odd[i] = try checkedAdd64(h[i], eSum >> 1, decoding: true)
+        }
+
+        for i in 0..<nL { x[2 * i] = even[i] }
+        for i in 0..<nH { x[2 * i + 1] = odd[i] }
     }
 }

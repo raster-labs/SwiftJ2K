@@ -126,3 +126,18 @@ Measured on Apple M3 Max (`arm64-apple-macosx26.0`, Swift `6.4-dev`, `-c release
 1. **Continuous-Integration Precondition (`Contract 0.10.0`)**: GitHub Actions billing on `Raster-Lab` remains locked (`steps=0`), so all verification evidence in this milestone is local execution evidence on macOS 26.4 (`arm64`).
 2. **Loopback vs. Remote Socket Server Binding**: `JPIPServer` routes in-process `localhost`/`127.0.0.1` traffic deterministically via `JPIPLoopbackRegistry` (and `JPIPNetworkFramework` provides Apple `Network.framework` `NWListener`/`NWConnection` primitives), while `JPIPTransport` uses `URLSession` for non-loopback remote HTTP/HTTPS servers.
 3. **Downstream `DICOMKit` Repository Cutover**: Per `AGENTS.md` and `IMPLEMENTATION.md` Decision M2, `/Users/raster/Documents/DICOMKit_22Oct/DICOMKit` was not modified during this task; re-pointing `DICOMKit`'s `Package.swift` and removing `@available(*, unavailable)` in `DICOMJPIPClient.swift` belongs to a separately assigned `DICOMKit` migration task.
+
+---
+
+## 7. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Submitted)
+
+Independent audit review at `b76e60a` / `24b1881` established that Milestone 11 is **not yet accepted as complete** for full ISO/IEC 15444-9 network/data-bin/3D/WebSocket conformance. Canonical tracking lives in [Engineering/Remediation/STATUS.md](Engineering/Remediation/STATUS.md) (`Evidence/R1/{pre,post}-fix-receipts.txt`).
+
+- **Phase R1 (`submitted` — `Codex acceptance: pending independent audit`)**:
+  - **`F03` & `M12-CX-02`**: Bounded `JPIPViewWindow.resolutionLevel` to `0...32` and validated spatial region coordinates with checked addition (`addingReportingOverflow`) across `JPIPViewWindow` and `JPIPClient`.
+  - **`F05`**: Enforced pre-allocation `ResourceLimits` (`maximumCompressedBytes`, `maximumDecodedBytes`, `maximumWorkspaceBytes`, `maximumMemoryBytes`) and monotonic `deadlineSeconds` across `JPIPStreamingSession.deliverImage` and `deliverVolumeRegion`, preserving `CodecError(.resourceLimitExceeded, ...)` through `J2KDecoder.decodeWithInfo`.
+  - **`F06` & `F13`**: `JPIPStreamingSession.deliverImage` reports `.lossy` whenever the codestream uses irreversible transforms or the view window requests reduced resolution, truncated quality layers, or a component subset; both `deliverImage` and `deliverVolumeRegion` re-check cancellation and deadlines after `.completed` callbacks.
+  - **Updated `SwiftJ2KJPIPTests` count at Phase R1**: `544` XCTest methods + `4` Swift Testing `@Test` declarations (`R1JPIPRemediationTests.swift`) = **`548` tests passing** (`0` failures).
+- **Remaining Open Milestone 11 Gaps (Scheduled for Phases R2 & R3 — Not Claimed Closed)**:
+  - **`F07`, `F09`, `F10` (Phase R2 — `open`)**: Container palette/channel (`pclr`/`cmap`/`cdef`) application in `J2KDecoder` (`F07`), `CopyPolicy`/`ExecutionPolicy` and report accounting (`F09`), and combined `JPIPViewWindow` constraint + session/cache enforcement (`F10`).
+  - **`F04` (Phase R3 — `open`)**: Real ISO/IEC 15444-9 HTTP/socket and WebSocket network/data-bin exchange and non-simulated 3D JPIP delivery.

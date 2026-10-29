@@ -255,6 +255,7 @@ struct ParsedCodestream: Sendable {
     let componentRegistration: [UInt8]?
     let commentCount: Int
     let commentPayloadBytes: Int
+    let retainedMetadataBytes: Int
 
     init(
         size: ImageSizeSegment,
@@ -275,7 +276,8 @@ struct ParsedCodestream: Sendable {
         mainHeaderComments: [[UInt8]],
         componentRegistration: [UInt8]?,
         commentCount: Int,
-        commentPayloadBytes: Int
+        commentPayloadBytes: Int,
+        retainedMetadataBytes: Int = 0
     ) {
         self.size = size
         self.extendedCapabilities = extendedCapabilities
@@ -296,6 +298,7 @@ struct ParsedCodestream: Sendable {
         self.componentRegistration = componentRegistration
         self.commentCount = commentCount
         self.commentPayloadBytes = commentPayloadBytes
+        self.retainedMetadataBytes = retainedMetadataBytes
     }
 
     /// Whether the codestream signals Part 15 (HTJ2K) extended capabilities or HT block coding.
@@ -382,6 +385,47 @@ enum CodestreamSyntax {
         var crg: [UInt8]?
         var totalCommentBytes = 0
         var totalCommentCount = 0
+        var retainedMetadataBytes = 0
+
+        func admitRetained(
+            _ addedBytes: Int,
+            liveTransientBytes: Int = 0,
+            parserStage: String = "parser-retained-structure",
+            emitMainStage: String? = nil,
+            message: String
+        ) throws {
+            guard addedBytes > 0 else { return }
+            let nextRetained = try checkedAdd(retainedMetadataBytes, addedBytes)
+            let peakLiveWorkspace = try checkedAdd(nextRetained, liveTransientBytes)
+            guard peakLiveWorkspace <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, peakLiveWorkspace) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, message)
+            }
+            retainedMetadataBytes = nextRetained
+            StorageTelemetry.recordParserAllocation(stage: parserStage, bytes: addedBytes)
+            if let emitMainStage {
+                StorageTelemetry.recordStage(emitMainStage, bytes: addedBytes)
+            }
+        }
+
+        func appendMainMarker(_ marker: UInt16, liveTransientBytes: Int = 0) throws {
+            if markers.isEmpty {
+                try admitRetained(
+                    128,
+                    liveTransientBytes: liveTransientBytes,
+                    parserStage: "parser-markers",
+                    message: "Retained header marker list exceeds workspace or memory limits."
+                )
+            } else if markers.count % 32 == 0 {
+                try admitRetained(
+                    64,
+                    liveTransientBytes: liveTransientBytes,
+                    parserStage: "parser-markers",
+                    message: "Retained header marker list exceeds workspace or memory limits."
+                )
+            }
+            markers.append(marker)
+        }
 
         func parseCommentSegment() throws -> [UInt8]? {
             let length = Int(try reader.readUInt16())
@@ -401,12 +445,12 @@ enum CodestreamSyntax {
                 try reader.skip(payloadCount)
                 return nil
             }
-            let retainedBytes = try checkedAdd(totalCommentBytes, try checkedMultiply(totalCommentCount, 36))
-            guard retainedBytes <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(bytes.count, retainedBytes) <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Retained COM metadata exceeds workspace or memory limits.")
-            }
-            StorageTelemetry.recordStage("comment-metadata", bytes: 32 + payloadCount)
+            try admitRetained(
+                try checkedAdd(36, payloadCount),
+                parserStage: "comment-metadata",
+                emitMainStage: "comment-metadata",
+                message: "Retained COM metadata exceeds workspace or memory limits."
+            )
             let slice = Array(bytes[reader.position..<(reader.position + payloadCount)])
             try reader.skip(payloadCount)
             return slice
@@ -417,7 +461,7 @@ enum CodestreamSyntax {
             let marker = try reader.readUInt16()
             if marker == Marker.sot { try reader.seek(to: reader.position - 2); break }
             if marker == Marker.com {
-                markers.append(marker)
+                try appendMainMarker(marker)
                 if let comment = try parseCommentSegment() {
                     mainHeaderComments.append(comment)
                 }
@@ -429,23 +473,42 @@ enum CodestreamSyntax {
                 throw CodecError(.unsupportedFeature, "Packed packet headers (PPM) are not supported.")
             case Marker.tlm, Marker.plm:
                 _ = try skipSegmentPayload(&reader, marker: marker)
-                markers.append(marker)
+                try appendMainMarker(marker)
                 continue
             default:
                 guard marker & 0xFF00 == 0xFF00 else {
                     throw CodecError(.malformedInput, "Expected a marker in the main header.")
                 }
                 if (0xFF30...0xFF3F).contains(marker) {
-                    markers.append(marker)
+                    try appendMainMarker(marker)
                     continue
                 }
             }
-            let payload = try readSegmentPayload(&reader, marker: marker, limits: limits, codestreamBytes: bytes.count)
-            markers.append(marker)
+            let payload = try readSegmentPayload(
+                &reader,
+                marker: marker,
+                limits: limits,
+                codestreamBytes: bytes.count,
+                retainedBytes: retainedMetadataBytes
+            )
+            let payloadTransientBytes = try checkedAdd(32, payload.count)
+            try appendMainMarker(marker, liveTransientBytes: payloadTransientBytes)
             switch marker {
             case Marker.siz:
                 guard size == nil else { throw CodecError(.malformedInput, "Duplicate SIZ marker segment.") }
-                size = try parseSIZ(payload, limits: limits)
+                let parsedSIZ = try parseSIZ(payload, limits: limits) { csiz in
+                    let expandedBytes = try checkedAdd(
+                        32,
+                        try checkedMultiply(csiz, MemoryLayout<ComponentSignalling>.stride)
+                    )
+                    try admitRetained(
+                        expandedBytes,
+                        liveTransientBytes: payloadTransientBytes,
+                        parserStage: "siz-components",
+                        message: "Retained SIZ component metadata exceeds workspace or memory limits."
+                    )
+                }
+                size = parsedSIZ
             case Marker.cap:
                 guard size != nil else { throw CodecError(.malformedInput, "CAP precedes SIZ.") }
                 guard cap == nil else { throw CodecError(.malformedInput, "Duplicate CAP marker segment.") }
@@ -453,35 +516,116 @@ enum CodestreamSyntax {
             case Marker.cpf:
                 guard size != nil else { throw CodecError(.malformedInput, "CPF precedes SIZ.") }
                 guard cpf == nil else { throw CodecError(.malformedInput, "Duplicate CPF marker segment.") }
-                cpf = try parseCPF(payload)
+                let parsedCPF = try parseCPF(payload) { valueCount in
+                    let expandedBytes = try checkedAdd(
+                        32,
+                        try checkedMultiply(valueCount, MemoryLayout<UInt16>.stride)
+                    )
+                    try admitRetained(
+                        expandedBytes,
+                        liveTransientBytes: payloadTransientBytes,
+                        parserStage: "cpf-values",
+                        message: "Retained CPF metadata exceeds workspace or memory limits."
+                    )
+                }
+                cpf = parsedCPF
             case Marker.cod:
                 guard size != nil else { throw CodecError(.malformedInput, "COD precedes SIZ.") }
                 guard cod == nil else { throw CodecError(.malformedInput, "Duplicate COD marker segment.") }
-                cod = try parseCOD(payload)
+                let parsedCOD = try parseCOD(payload) { precinctCount in
+                    if precinctCount > 0 {
+                        let expandedBytes = try checkedAdd(
+                            32,
+                            try checkedMultiply(precinctCount, MemoryLayout<(Int, Int)>.stride)
+                        )
+                        try admitRetained(
+                            expandedBytes,
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "cod-precincts",
+                            message: "Retained COD precinct metadata exceeds workspace or memory limits."
+                        )
+                    }
+                }
+                cod = parsedCOD
             case Marker.coc:
                 guard let size else { throw CodecError(.malformedInput, "COC precedes SIZ.") }
-                let (component, segment) = try parseCOC(payload, componentCount: size.components.count)
+                let (component, segment) = try parseCOC(payload, componentCount: size.components.count) { precinctCount in
+                    let expandedBytes = try checkedAdd(
+                        96,
+                        try checkedMultiply(precinctCount, MemoryLayout<(Int, Int)>.stride)
+                    )
+                    try admitRetained(
+                        expandedBytes,
+                        liveTransientBytes: payloadTransientBytes,
+                        parserStage: "coc-parameters",
+                        message: "Retained COC metadata exceeds workspace or memory limits."
+                    )
+                }
                 coc[component] = segment
             case Marker.qcd:
                 guard qcd == nil else { throw CodecError(.malformedInput, "Duplicate QCD marker segment.") }
-                qcd = try parseQuantization(payload)
+                let parsedQCD = try parseQuantization(payload) { bandCount, hasMantissas in
+                    let totalInts = hasMantissas ? bandCount * 2 : bandCount
+                    if totalInts > 0 {
+                        let expandedBytes = try checkedAdd(
+                            hasMantissas ? 64 : 32,
+                            try checkedMultiply(totalInts, MemoryLayout<Int>.stride)
+                        )
+                        try admitRetained(
+                            expandedBytes,
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "qcd-parameters",
+                            message: "Retained QCD quantisation metadata exceeds workspace or memory limits."
+                        )
+                    }
+                }
+                qcd = parsedQCD
             case Marker.qcc:
                 guard let size else { throw CodecError(.malformedInput, "QCC precedes SIZ.") }
-                let (component, segment) = try parseQCC(payload, componentCount: size.components.count)
+                let (component, segment) = try parseQCC(payload, componentCount: size.components.count) { bandCount, hasMantissas in
+                    let totalInts = hasMantissas ? bandCount * 2 : bandCount
+                    let expandedBytes = try checkedAdd(
+                        hasMantissas ? 128 : 96,
+                        try checkedMultiply(totalInts, MemoryLayout<Int>.stride)
+                    )
+                    try admitRetained(
+                        expandedBytes,
+                        liveTransientBytes: payloadTransientBytes,
+                        parserStage: "qcc-parameters",
+                        message: "Retained QCC metadata exceeds workspace or memory limits."
+                    )
+                }
                 qcc[component] = segment
             case Marker.rgn:
                 guard let size else { throw CodecError(.malformedInput, "RGN precedes SIZ.") }
                 let segment = try parseRGN(payload, componentCount: size.components.count)
+                try admitRetained(
+                    48,
+                    liveTransientBytes: payloadTransientBytes,
+                    message: "Retained RGN metadata exceeds workspace or memory limits."
+                )
                 rgn[segment.component] = segment
             case Marker.poc:
                 guard let size else { throw CodecError(.malformedInput, "POC precedes SIZ.") }
-                poc.append(contentsOf: try parsePOC(payload, componentCount: size.components.count))
+                try parsePOC(payload, componentCount: size.components.count, into: &poc) { addedRetained, reallocOverlap in
+                    let totalTransient = try checkedAdd(payloadTransientBytes, reallocOverlap)
+                    try admitRetained(
+                        addedRetained,
+                        liveTransientBytes: totalTransient,
+                        parserStage: "poc-entries",
+                        message: "Retained POC metadata exceeds workspace or memory limits."
+                    )
+                }
             case Marker.crg:
                 guard let size else { throw CodecError(.malformedInput, "CRG precedes SIZ.") }
                 guard crg == nil else { throw CodecError(.malformedInput, "Duplicate CRG marker segment.") }
                 guard payload.count == 4 * size.components.count else {
                     throw CodecError(.malformedInput, "CRG marker segment length disagrees with component count.")
                 }
+                try admitRetained(
+                    try checkedAdd(32, payload.count),
+                    message: "Retained CRG metadata exceeds workspace or memory limits."
+                )
                 crg = payload
             default:
                 throw CodecError(.unsupportedFeature, "Marker segment \(String(marker, radix: 16)) is not supported.")
@@ -517,7 +661,8 @@ enum CodestreamSyntax {
             let partIndex = Int(try reader.readUInt8())
             let partCount = Int(try reader.readUInt8())
             // Tile-part header markers until SOD.
-            var overrides = tileOverrides[tileIndex] ?? TileHeaderOverrides()
+            var hasOverrides = tileOverrides[tileIndex] != nil
+            var overrides = tileOverrides.removeValue(forKey: tileIndex) ?? TileHeaderOverrides()
             var partComments: [[UInt8]] = []
             while true {
                 let tileMarker = try reader.readUInt16()
@@ -527,25 +672,118 @@ enum CodestreamSyntax {
                     guard partIndex == 0 else {
                         throw CodecError(.malformedInput, "Coding overrides are only allowed in a tile's first tile-part header.")
                     }
-                    let payload = try readSegmentPayload(&reader, marker: tileMarker, limits: limits, codestreamBytes: bytes.count)
+                    let payload = try readSegmentPayload(
+                        &reader,
+                        marker: tileMarker,
+                        limits: limits,
+                        codestreamBytes: bytes.count,
+                        retainedBytes: retainedMetadataBytes
+                    )
+                    let payloadTransientBytes = try checkedAdd(32, payload.count)
+                    if !hasOverrides {
+                        try admitRetained(
+                            128,
+                            liveTransientBytes: payloadTransientBytes,
+                            message: "Retained tile-header overrides exceed workspace or memory limits."
+                        )
+                        hasOverrides = true
+                    }
                     switch tileMarker {
-                    case Marker.cod: overrides.codingStyle = try parseCOD(payload)
+                    case Marker.cod:
+                        overrides.codingStyle = try parseCOD(payload) { precinctCount in
+                            if precinctCount > 0 {
+                                let expandedBytes = try checkedAdd(
+                                    32,
+                                    try checkedMultiply(precinctCount, MemoryLayout<(Int, Int)>.stride)
+                                )
+                                try admitRetained(
+                                    expandedBytes,
+                                    liveTransientBytes: payloadTransientBytes,
+                                    message: "Retained tile COD precinct metadata exceeds workspace or memory limits."
+                                )
+                            }
+                        }
                     case Marker.coc:
-                        let (component, segment) = try parseCOC(payload, componentCount: size.components.count)
+                        let (component, segment) = try parseCOC(payload, componentCount: size.components.count) { precinctCount in
+                            let expandedBytes = try checkedAdd(
+                                96,
+                                try checkedMultiply(precinctCount, MemoryLayout<(Int, Int)>.stride)
+                            )
+                            try admitRetained(
+                                expandedBytes,
+                                liveTransientBytes: payloadTransientBytes,
+                                message: "Retained tile COC metadata exceeds workspace or memory limits."
+                            )
+                        }
                         if component == 0 { overrides.componentCodingStyle = segment }
                         overrides.componentCodingStyles[component] = segment
-                    case Marker.qcd: overrides.quantization = try parseQuantization(payload)
+                    case Marker.qcd:
+                        overrides.quantization = try parseQuantization(payload) { bandCount, hasMantissas in
+                            let totalInts = hasMantissas ? bandCount * 2 : bandCount
+                            if totalInts > 0 {
+                                let expandedBytes = try checkedAdd(
+                                    hasMantissas ? 64 : 32,
+                                    try checkedMultiply(totalInts, MemoryLayout<Int>.stride)
+                                )
+                                try admitRetained(
+                                    expandedBytes,
+                                    liveTransientBytes: payloadTransientBytes,
+                                    parserStage: "tile-qcd-parameters",
+                                    message: "Retained tile QCD metadata exceeds workspace or memory limits."
+                                )
+                            }
+                        }
                     case Marker.qcc:
-                        let (component, segment) = try parseQCC(payload, componentCount: size.components.count)
+                        let (component, segment) = try parseQCC(payload, componentCount: size.components.count) { bandCount, hasMantissas in
+                            let totalInts = hasMantissas ? bandCount * 2 : bandCount
+                            let expandedBytes = try checkedAdd(
+                                hasMantissas ? 128 : 96,
+                                try checkedMultiply(totalInts, MemoryLayout<Int>.stride)
+                            )
+                            try admitRetained(
+                                expandedBytes,
+                                liveTransientBytes: payloadTransientBytes,
+                                message: "Retained tile QCC metadata exceeds workspace or memory limits."
+                            )
+                        }
                         if component == 0 { overrides.componentQuantization = segment }
                         overrides.componentQuantizations[component] = segment
                     default:
                         let segment = try parseRGN(payload, componentCount: size.components.count)
+                        try admitRetained(
+                            48,
+                            liveTransientBytes: payloadTransientBytes,
+                            message: "Retained tile RGN metadata exceeds workspace or memory limits."
+                        )
                         overrides.regionsOfInterest[segment.component] = segment
                     }
                 case Marker.poc:
-                    let payload = try readSegmentPayload(&reader, marker: tileMarker, limits: limits, codestreamBytes: bytes.count)
-                    overrides.progressionChanges.append(contentsOf: try parsePOC(payload, componentCount: size.components.count))
+                    let payload = try readSegmentPayload(
+                        &reader,
+                        marker: tileMarker,
+                        limits: limits,
+                        codestreamBytes: bytes.count,
+                        retainedBytes: retainedMetadataBytes
+                    )
+                    let payloadTransientBytes = try checkedAdd(32, payload.count)
+                    if !hasOverrides {
+                        try admitRetained(
+                            128,
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-overrides",
+                            message: "Retained tile-header overrides exceed workspace or memory limits."
+                        )
+                        hasOverrides = true
+                    }
+                    try parsePOC(payload, componentCount: size.components.count, into: &overrides.progressionChanges) { addedRetained, reallocOverlap in
+                        let totalTransient = try checkedAdd(payloadTransientBytes, reallocOverlap)
+                        try admitRetained(
+                            addedRetained,
+                            liveTransientBytes: totalTransient,
+                            parserStage: "tile-poc-entries",
+                            message: "Retained tile POC metadata exceeds workspace or memory limits."
+                        )
+                    }
                 case Marker.ppt:
                     _ = try skipSegmentPayload(&reader, marker: tileMarker)
                     throw CodecError(.unsupportedFeature, "Packed packet headers (PPT) are not supported.")
@@ -559,7 +797,9 @@ enum CodestreamSyntax {
                     throw CodecError(.malformedInput, "Unexpected marker \(String(tileMarker, radix: 16)) in a tile-part header.")
                 }
             }
-            tileOverrides[tileIndex] = overrides
+            if hasOverrides {
+                tileOverrides[tileIndex] = overrides
+            }
             let dataStart = reader.position
             let dataEnd: Int
             if psot == 0 {
@@ -572,6 +812,11 @@ enum CodestreamSyntax {
                 }
                 dataEnd = sotStart + psot
             }
+            try admitRetained(
+                96,
+                parserStage: "tile-part-record",
+                message: "Retained tile-part records exceed workspace or memory limits."
+            )
             tileParts.append(TilePartRecord(tileIndex: tileIndex, partIndex: partIndex,
                                             partCount: partCount, dataRange: dataStart..<dataEnd,
                                             comments: partComments))
@@ -601,7 +846,8 @@ enum CodestreamSyntax {
             mainHeaderComments: mainHeaderComments,
             componentRegistration: crg,
             commentCount: totalCommentCount,
-            commentPayloadBytes: totalCommentBytes
+            commentPayloadBytes: totalCommentBytes,
+            retainedMetadataBytes: retainedMetadataBytes
         )
         try validateHTSignalling(parsed)
         return parsed
@@ -616,33 +862,39 @@ enum CodestreamSyntax {
             throw CodecError(.malformedInput, "CAP marker segment is present without SIZ Rsiz bit 14 (0x4000).")
         }
 
-        // Collect all effective CodingStyleSegments (main header and any tile overrides).
-        var styles: [CodingStyleSegment] = [parsed.codingStyle]
-        for tileIndex in parsed.tileOverrides.keys.sorted() {
-            styles.append(parsed.effectiveParameters(tile: tileIndex).0)
-        }
+        let cap = parsed.extendedCapabilities
 
-        for style in styles {
-            let htBit = (style.codeBlockStyle & 0x40) != 0
-            let mixedBit = (style.codeBlockStyle & 0x80) != 0
+        func validateCodeBlockStyle(_ codeBlockStyle: UInt8) throws {
+            let htBit = (codeBlockStyle & 0x40) != 0
+            let mixedBit = (codeBlockStyle & 0x80) != 0
             if mixedBit && !htBit {
                 throw CodecError(.malformedInput, "COD/COC sets HT mixed bit (0x80) without HT coding bit (0x40).")
             }
             if htBit {
-                guard let cap = parsed.extendedCapabilities else {
+                guard let cap else {
                     throw CodecError(.malformedInput, "COD/COC enables HTJ2K block coding (0x40) without a Part 15 CAP marker segment.")
                 }
                 if mixedBit && cap.mode != .mixed {
                     throw CodecError(.malformedInput, "COD/COC enables mixed HT/Part 1 coding (0xC0) when CAP Ccap15 is not HTMIXED.")
                 }
+            } else if let cap, cap.mode == .htOnly {
+                throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
             }
         }
 
-        if let cap = parsed.extendedCapabilities {
-            if cap.mode == .htOnly {
-                for style in styles where (style.codeBlockStyle & 0x40) == 0 {
-                    throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
-                }
+        // Validate main-header and tile-override code-block style flags directly without allocating
+        // intermediate CodingStyleSegment arrays or sorted dictionary-key lists after parser admission.
+        try validateCodeBlockStyle(parsed.codingStyle.codeBlockStyle)
+        for (comp, coc) in parsed.componentCodingStyles where comp != 0 {
+            try validateCodeBlockStyle(coc.codeBlockStyle)
+        }
+        for overrides in parsed.tileOverrides.values {
+            let tileComp0Style = overrides.componentCodingStyle?.codeBlockStyle
+                ?? overrides.codingStyle?.codeBlockStyle
+                ?? parsed.codingStyle.codeBlockStyle
+            try validateCodeBlockStyle(tileComp0Style)
+            for (comp, tileCOC) in overrides.componentCodingStyles where comp != 0 {
+                try validateCodeBlockStyle(tileCOC.codeBlockStyle)
             }
         }
     }
@@ -667,13 +919,18 @@ enum CodestreamSyntax {
         return try ExtendedCapabilitiesSegment(ccap15: ccap15, pcap: pcap)
     }
 
-    static func parseCPF(_ payload: [UInt8]) throws -> CorrespondingProfileSegment {
+    static func parseCPF(
+        _ payload: [UInt8],
+        admitValues: (Int) throws -> Void = { _ in }
+    ) throws -> CorrespondingProfileSegment {
         guard payload.count >= 2, payload.count % 2 == 0 else {
             throw CodecError(.malformedInput, "CPF marker segment has an invalid length.")
         }
+        let valueCount = payload.count / 2
+        try admitValues(valueCount)
         var r = ByteReader(payload)
         var values: [UInt16] = []
-        values.reserveCapacity(payload.count / 2)
+        values.reserveCapacity(valueCount)
         while !r.isAtEnd {
             values.append(try r.readUInt16())
         }
@@ -695,7 +952,8 @@ enum CodestreamSyntax {
         _ reader: inout ByteReader,
         marker: UInt16,
         limits: ResourceLimits,
-        codestreamBytes: Int
+        codestreamBytes: Int,
+        retainedBytes: Int = 0
     ) throws -> [UInt8] {
         let length = Int(try reader.readUInt16())
         guard length >= 2 else { throw CodecError(.malformedInput, "Marker segment length below 2.") }
@@ -709,8 +967,9 @@ enum CodestreamSyntax {
             }
         }
         let segmentAllocationBytes = try checkedAdd(32, payloadCount)
-        guard segmentAllocationBytes <= limits.maximumWorkspaceBytes,
-              try checkedAdd(codestreamBytes, segmentAllocationBytes) <= limits.maximumMemoryBytes else {
+        let cumulativeWorkspaceBytes = try checkedAdd(retainedBytes, segmentAllocationBytes)
+        guard cumulativeWorkspaceBytes <= limits.maximumWorkspaceBytes,
+              try checkedAdd(codestreamBytes, cumulativeWorkspaceBytes) <= limits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Marker segment \(String(marker, radix: 16)) payload exceeds workspace or memory limits.")
         }
         let start = reader.position
@@ -720,7 +979,11 @@ enum CodestreamSyntax {
 
     // MARK: - SIZ
 
-    static func parseSIZ(_ payload: [UInt8], limits: ResourceLimits) throws -> ImageSizeSegment {
+    static func parseSIZ(
+        _ payload: [UInt8],
+        limits: ResourceLimits,
+        admitComponents: (Int) throws -> Void = { _ in }
+    ) throws -> ImageSizeSegment {
         var r = ByteReader(payload)
         let rsiz = try r.readUInt16()
         let xsiz = Int(try r.readUInt32()), ysiz = Int(try r.readUInt32())
@@ -742,13 +1005,22 @@ enum CodestreamSyntax {
         guard try checkedMultiply(width, height) <= limits.maximumPixels else {
             throw CodecError(.resourceLimitExceeded, "Declared pixel count exceeds the operation limit.")
         }
-        var components: [ComponentSignalling] = []
+        // Validate every component descriptor in place before admitting and constructing the array.
+        let componentsStart = r.position
         for _ in 0..<csiz {
             let ssiz = try r.readUInt8(), xr = Int(try r.readUInt8()), yr = Int(try r.readUInt8())
             let precision = Int(ssiz & 0x7F) + 1
             guard precision <= 38, xr >= 1, yr >= 1 else {
                 throw CodecError(.malformedInput, "SIZ component precision or sub-sampling is out of range.")
             }
+        }
+        try admitComponents(csiz)
+        try r.seek(to: componentsStart)
+        var components: [ComponentSignalling] = []
+        components.reserveCapacity(csiz)
+        for _ in 0..<csiz {
+            let ssiz = try r.readUInt8(), xr = Int(try r.readUInt8()), yr = Int(try r.readUInt8())
+            let precision = Int(ssiz & 0x7F) + 1
             components.append(ComponentSignalling(precision: precision, signed: ssiz & 0x80 != 0,
                                                   horizontalSeparation: xr, verticalSeparation: yr))
         }
@@ -759,7 +1031,10 @@ enum CodestreamSyntax {
 
     // MARK: - COD / COC
 
-    static func parseCOD(_ payload: [UInt8]) throws -> CodingStyleSegment {
+    static func parseCOD(
+        _ payload: [UInt8],
+        admitPrecincts: (Int) throws -> Void = { _ in }
+    ) throws -> CodingStyleSegment {
         var r = ByteReader(payload)
         let scod = try r.readUInt8()
         let progression = try r.readUInt8()
@@ -767,7 +1042,7 @@ enum CodestreamSyntax {
         let mct = try r.readUInt8()
         guard layers >= 1 else { throw CodecError(.malformedInput, "COD declares zero layers.") }
         guard progression <= 4 else { throw CodecError(.malformedInput, "COD progression order is out of range.") }
-        var segment = try parseCodingParameters(&r, usesPrecincts: scod & 0x01 != 0)
+        var segment = try parseCodingParameters(&r, usesPrecincts: scod & 0x01 != 0, admitPrecincts: admitPrecincts)
         segment.usesSOP = scod & 0x02 != 0
         segment.usesEPH = scod & 0x04 != 0
         segment.progression = progression
@@ -777,17 +1052,25 @@ enum CodestreamSyntax {
         return segment
     }
 
-    static func parseCOC(_ payload: [UInt8], componentCount: Int) throws -> (Int, CodingStyleSegment) {
+    static func parseCOC(
+        _ payload: [UInt8],
+        componentCount: Int,
+        admitPrecincts: (Int) throws -> Void = { _ in }
+    ) throws -> (Int, CodingStyleSegment) {
         var r = ByteReader(payload)
         let component = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
         guard component < componentCount else { throw CodecError(.malformedInput, "COC names a missing component.") }
         let scoc = try r.readUInt8()
-        let segment = try parseCodingParameters(&r, usesPrecincts: scoc & 0x01 != 0)
+        let segment = try parseCodingParameters(&r, usesPrecincts: scoc & 0x01 != 0, admitPrecincts: admitPrecincts)
         guard r.isAtEnd else { throw CodecError(.malformedInput, "COC has trailing bytes.") }
         return (component, segment)
     }
 
-    private static func parseCodingParameters(_ r: inout ByteReader, usesPrecincts: Bool) throws -> CodingStyleSegment {
+    private static func parseCodingParameters(
+        _ r: inout ByteReader,
+        usesPrecincts: Bool,
+        admitPrecincts: (Int) throws -> Void
+    ) throws -> CodingStyleSegment {
         let levels = Int(try r.readUInt8())
         let xcb = Int(try r.readUInt8() & 0x0F) + 2
         let ycb = Int(try r.readUInt8() & 0x0F) + 2
@@ -800,8 +1083,16 @@ enum CodestreamSyntax {
         guard transform == 0 || transform == 1 else {
             throw CodecError(.malformedInput, "Unknown wavelet transform identifier.")
         }
+        let precinctCount = usesPrecincts ? (levels + 1) : 0
+        if usesPrecincts {
+            guard r.remaining >= precinctCount else {
+                throw CodecError(.malformedInput, "COD/COC precinct table is truncated.")
+            }
+        }
+        try admitPrecincts(precinctCount)
         var precincts: [(Int, Int)] = []
         if usesPrecincts {
+            precincts.reserveCapacity(precinctCount)
             for _ in 0...levels {
                 let byte = try r.readUInt8()
                 precincts.append((Int(byte & 0x0F), Int(byte >> 4)))
@@ -818,25 +1109,56 @@ enum CodestreamSyntax {
 
     // MARK: - QCD / QCC
 
-    static func parseQuantization(_ payload: [UInt8]) throws -> QuantizationSegment {
+    static func parseQuantization(
+        _ payload: [UInt8],
+        admitBands: (Int, Bool) throws -> Void = { _, _ in }
+    ) throws -> QuantizationSegment {
         var r = ByteReader(payload)
-        return try parseQuantizationBody(&r)
+        return try parseQuantizationBody(&r, admitBands: admitBands)
     }
 
-    static func parseQCC(_ payload: [UInt8], componentCount: Int) throws -> (Int, QuantizationSegment) {
+    static func parseQCC(
+        _ payload: [UInt8],
+        componentCount: Int,
+        admitBands: (Int, Bool) throws -> Void = { _, _ in }
+    ) throws -> (Int, QuantizationSegment) {
         var r = ByteReader(payload)
         let component = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
         guard component < componentCount else { throw CodecError(.malformedInput, "QCC names a missing component.") }
-        return (component, try parseQuantizationBody(&r))
+        return (component, try parseQuantizationBody(&r, admitBands: admitBands))
     }
 
-    private static func parseQuantizationBody(_ r: inout ByteReader) throws -> QuantizationSegment {
+    private static func parseQuantizationBody(
+        _ r: inout ByteReader,
+        admitBands: (Int, Bool) throws -> Void
+    ) throws -> QuantizationSegment {
         let sqcd = try r.readUInt8()
         let guardBits = Int(sqcd >> 5)
         guard let style = QuantizationSegment.Style(rawValue: sqcd & 0x1F) else {
             throw CodecError(.malformedInput, "Unknown quantization style.")
         }
-        var exponents: [Int] = [], mantissas: [Int] = []
+        let rem = r.remaining
+        let bandCount: Int
+        let hasMantissas: Bool
+        switch style {
+        case .none:
+            bandCount = rem
+            hasMantissas = false
+        case .scalarDerived, .scalarExpounded:
+            guard rem % 2 == 0 else {
+                throw CodecError(.malformedInput, "Quantization segment has an odd byte count for 16-bit band entries.")
+            }
+            bandCount = rem / 2
+            hasMantissas = true
+        }
+        guard bandCount >= 1, bandCount <= 97 else {
+            throw CodecError(.malformedInput, "Quantization segment has no band entries.")
+        }
+        try admitBands(bandCount, hasMantissas)
+        var exponents: [Int] = []
+        exponents.reserveCapacity(bandCount)
+        var mantissas: [Int] = []
+        if hasMantissas { mantissas.reserveCapacity(bandCount) }
         switch style {
         case .none:
             while !r.isAtEnd { exponents.append(Int(try r.readUInt8() >> 3)) }
@@ -845,9 +1167,6 @@ enum CodestreamSyntax {
                 let value = try r.readUInt16()
                 exponents.append(Int(value >> 11)); mantissas.append(Int(value & 0x7FF))
             }
-        }
-        guard !exponents.isEmpty, exponents.count <= 97 else {
-            throw CodecError(.malformedInput, "Quantization segment has no band entries.")
         }
         return QuantizationSegment(style: style, guardBits: guardBits, exponents: exponents, mantissas: mantissas)
     }
@@ -871,31 +1190,77 @@ enum CodestreamSyntax {
         return RegionOfInterestSegment(component: component, style: style, shift: shift)
     }
 
-    static func parsePOC(_ payload: [UInt8], componentCount: Int) throws -> [ProgressionOrderChangeEntry] {
+    static func parsePOC(
+        _ payload: [UInt8],
+        componentCount: Int,
+        into destination: inout [ProgressionOrderChangeEntry],
+        admitGrowth: (_ addedRetainedBytes: Int, _ transientReallocOverlapBytes: Int) throws -> Void = { _, _ in }
+    ) throws {
         let entrySize = componentCount < 257 ? 7 : 9
         guard !payload.isEmpty, payload.count % entrySize == 0 else {
             throw CodecError(.malformedInput, "POC marker segment length is not a multiple of entry size \(entrySize).")
         }
-        var r = ByteReader(payload)
-        var entries: [ProgressionOrderChangeEntry] = []
-        entries.reserveCapacity(payload.count / entrySize)
-        while !r.isAtEnd {
-            let rs = Int(try r.readUInt8())
-            let cs = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
-            let lye = Int(try r.readUInt16())
-            let re = Int(try r.readUInt8())
-            let rawCE = componentCount < 257 ? Int(try r.readUInt8()) : Int(try r.readUInt16())
+        let entryCount = payload.count / entrySize
+
+        // Validate every POC entry directly from the byte slice before admitting or allocating.
+        var validator = ByteReader(payload)
+        while !validator.isAtEnd {
+            let rs = Int(try validator.readUInt8())
+            let cs = componentCount < 257 ? Int(try validator.readUInt8()) : Int(try validator.readUInt16())
+            let lye = Int(try validator.readUInt16())
+            let re = Int(try validator.readUInt8())
+            let rawCE = componentCount < 257 ? Int(try validator.readUInt8()) : Int(try validator.readUInt16())
             let ce = (componentCount < 257 && rawCE == 0) ? 256 : rawCE
-            let prog = try r.readUInt8()
+            let prog = try validator.readUInt8()
             guard rs < re, re <= 33, cs < ce, lye >= 1, prog <= 4 else {
                 throw CodecError(.malformedInput, "POC entry bounds or progression order are invalid.")
             }
-            entries.append(ProgressionOrderChangeEntry(
+        }
+
+        let stride = MemoryLayout<ProgressionOrderChangeEntry>.stride
+        let oldCount = destination.count
+        let newCount = try checkedAdd(oldCount, entryCount)
+        let addedEntriesBytes = try checkedMultiply(entryCount, stride)
+        let addedRetainedBytes: Int
+        let transientReallocOverlapBytes: Int
+        if oldCount == 0 {
+            addedRetainedBytes = try checkedAdd(32, addedEntriesBytes)
+            transientReallocOverlapBytes = 0
+        } else {
+            // While building the exact-capacity grown buffer (`32 + newCount * stride`),
+            // `destination`'s old buffer (`32 + oldCount * stride`, already in retainedMetadataBytes)
+            // remains live until `destination = grown` replaces it.
+            let oldBufferBytes = try checkedAdd(32, try checkedMultiply(oldCount, stride))
+            addedRetainedBytes = addedEntriesBytes
+            transientReallocOverlapBytes = oldBufferBytes
+        }
+        try admitGrowth(addedRetainedBytes, transientReallocOverlapBytes)
+
+        var grown: [ProgressionOrderChangeEntry] = []
+        grown.reserveCapacity(newCount)
+        if oldCount > 0 {
+            grown.append(contentsOf: destination)
+        }
+        var r = ByteReader(payload)
+        while !r.isAtEnd {
+            let rs = Int(try r.readUInt8())
+            let cs = componentCount < 257 ? Int(try r.readUInt8()) : Int(try validatorCheckedReadUInt(from: &r, twoBytes: componentCount >= 257))
+            let lye = Int(try r.readUInt16())
+            let re = Int(try r.readUInt8())
+            let rawCE = componentCount < 257 ? Int(try r.readUInt8()) : Int(try validatorCheckedReadUInt(from: &r, twoBytes: componentCount >= 257))
+            let ce = (componentCount < 257 && rawCE == 0) ? 256 : rawCE
+            let prog = try r.readUInt8()
+            grown.append(ProgressionOrderChangeEntry(
                 resolutionStart: rs, componentStart: cs, layerEnd: lye,
                 resolutionEnd: re, componentEnd: ce, progression: prog
             ))
         }
-        return entries
+        destination = grown
+    }
+
+    @inline(__always)
+    private static func validatorCheckedReadUInt(from reader: inout ByteReader, twoBytes: Bool) throws -> UInt16 {
+        twoBytes ? try reader.readUInt16() : UInt16(try reader.readUInt8())
     }
 
     // MARK: - Writing

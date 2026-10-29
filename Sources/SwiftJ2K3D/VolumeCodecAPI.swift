@@ -260,10 +260,10 @@ public struct VolumeDecoderConfiguration: Sendable, Equatable {
                 "VolumeDecoderConfiguration: maxQualityLayers must be >= 0"
             )
         }
-        guard resolutionLevel >= 0 else {
+        guard (0...32).contains(resolutionLevel) else {
             throw CodecError(
                 .invalidArgument,
-                "VolumeDecoderConfiguration: resolutionLevel must be >= 0"
+                "VolumeDecoderConfiguration: resolutionLevel \(resolutionLevel) must be in 0...32"
             )
         }
         self.maxQualityLayers = maxQualityLayers
@@ -341,7 +341,8 @@ public struct VolumeEncoder: Sendable {
         _ volume: J2KVolume,
         options: VolumeEncodeOptions = VolumeEncodeOptions()
     ) async throws -> EncodedVolume {
-        try Task.checkCancellation()
+        let work = VolumeWorkGuard(limits: options.resourceLimits)
+        try work.check()
         do {
             try volume.validate()
         } catch let error as J2KError {
@@ -386,6 +387,7 @@ public struct VolumeEncoder: Sendable {
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
         }
+        try work.check()
 
         let jp3dConfig = JP3DEncoderConfiguration(
             compressionMode: configuration.compressionMode,
@@ -396,25 +398,33 @@ public struct VolumeEncoder: Sendable {
             levelsY: configuration.levelsY,
             levelsZ: configuration.levelsZ,
             parallelTileEncoding: options.resourceLimits.maximumWorkers > 1,
-            zDelta: configuration.zDelta
+            zDelta: configuration.zDelta,
+            maximumWorkers: options.resourceLimits.maximumWorkers
         )
         let actorEncoder = JP3DEncoder(configuration: jp3dConfig)
 
         if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
             options.progress?(p)
         }
+        try work.check()
 
         let result: JP3DEncoderResult
         do {
-            result = try await actorEncoder.encode(volume)
+            result = try await actorEncoder.encodeAdmitted(
+                volume,
+                limits: options.resourceLimits,
+                executionPolicy: options.executionPolicy,
+                work: work
+            )
         } catch let error as J2KError {
             throw error.asCodecError
         }
 
-        try Task.checkCancellation()
+        try work.check()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
             options.progress?(p)
         }
+        try work.check()
 
         let fidelity: Fidelity = result.isLossless ? .exactSamples : .lossy
         let report = OperationReport(
@@ -459,15 +469,23 @@ public struct VolumeDecoder: Sendable {
         _ data: Data,
         options: VolumeDecodeOptions = VolumeDecodeOptions()
     ) throws -> VolumeInfo {
-        guard data.count <= options.resourceLimits.maximumCompressedBytes else {
+        let work = VolumeWorkGuard(limits: options.resourceLimits)
+        try work.check()
+        guard data.count <= options.resourceLimits.maximumCompressedBytes,
+              data.count <= options.resourceLimits.maximumMemoryBytes else {
             throw CodecError(
                 .resourceLimitExceeded,
-                "Codestream size \(data.count) exceeds limit \(options.resourceLimits.maximumCompressedBytes)"
+                "Codestream size \(data.count) exceeds compressed or memory limit"
             )
         }
         let parsed: JP3DParsedCodestream
         do {
-            parsed = try JP3DCodestreamParser().parse(data)
+            parsed = try JP3DCodestreamParser().parse(
+                data,
+                limits: options.resourceLimits,
+                work: work,
+                copyTilePayloads: false
+            )
         } catch let error as J2KError {
             throw error.asCodecError
         }
@@ -501,6 +519,8 @@ public struct VolumeDecoder: Sendable {
             )
         }
 
+        let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) } ?? 1
+
         return VolumeInfo(
             width: siz.width,
             height: siz.height,
@@ -514,8 +534,8 @@ public struct VolumeDecoder: Sendable {
             levelsX: cod.levelsX,
             levelsY: cod.levelsY,
             levelsZ: cod.levelsZ,
-            qualityLayers: 1,
-            isLossless: cod.isLossless,
+            qualityLayers: detectedLayers,
+            isLossless: cod.isLossless && parsed.isLosslessQuantization,
             isHTJ2K: parsed.containsHTJ2KTiles,
             tileCount: parsed.tiles.count
         )
@@ -526,18 +546,49 @@ public struct VolumeDecoder: Sendable {
         _ data: Data,
         options: VolumeDecodeOptions = VolumeDecodeOptions()
     ) async throws -> DecodedVolume {
-        try Task.checkCancellation()
+        let work = VolumeWorkGuard(limits: options.resourceLimits)
+        try work.check()
         let info = try inspect(data, options: options)
 
+        let outW: Int
+        let outH: Int
+        let outD: Int
+        if let roi = options.regionOfInterest {
+            let cx0 = max(0, roi.x.lowerBound)
+            let cx1 = min(info.width, roi.x.upperBound)
+            let cy0 = max(0, roi.y.lowerBound)
+            let cy1 = min(info.height, roi.y.upperBound)
+            let cz0 = max(0, roi.z.lowerBound)
+            let cz1 = min(info.depth, roi.z.upperBound)
+            if cx0 < cx1 && cy0 < cy1 && cz0 < cz1 {
+                outW = jp3dDownsampleDimension(cx1 - cx0, resolutionLevel: configuration.resolutionLevel)
+                outH = jp3dDownsampleDimension(cy1 - cy0, resolutionLevel: configuration.resolutionLevel)
+                outD = cz1 - cz0
+            } else {
+                outW = info.width
+                outH = info.height
+                outD = info.depth
+            }
+        } else {
+            outW = jp3dDownsampleDimension(info.width, resolutionLevel: configuration.resolutionLevel)
+            outH = jp3dDownsampleDimension(info.height, resolutionLevel: configuration.resolutionLevel)
+            outD = info.depth
+        }
+
         let bytesPerSample = (info.bitDepth + 7) / 8
-        let (voxels, _) = (info.width * info.height).multipliedReportingOverflow(by: info.depth)
-        let (compBytes, _) = voxels.multipliedReportingOverflow(by: bytesPerSample)
-        let (totalBytes, _) = compBytes.multipliedReportingOverflow(by: info.componentCount)
+        let (outWH, o1) = outW.multipliedReportingOverflow(by: outH)
+        let (voxels, o2) = outWH.multipliedReportingOverflow(by: outD)
+        let (compBytes, o3) = voxels.multipliedReportingOverflow(by: bytesPerSample)
+        let (totalBytes, o4) = compBytes.multipliedReportingOverflow(by: info.componentCount)
+        let (liveMemMin, o5) = data.count.addingReportingOverflow(totalBytes)
+        guard !o1, !o2, !o3, !o4, !o5 else {
+            throw CodecError(.malformedInput, "Decoded volume byte count overflows integer arithmetic")
+        }
         guard totalBytes <= options.resourceLimits.maximumDecodedBytes,
-              totalBytes <= options.resourceLimits.maximumMemoryBytes else {
+              liveMemMin <= options.resourceLimits.maximumMemoryBytes else {
             throw CodecError(
                 .resourceLimitExceeded,
-                "Decoded volume byte count \(totalBytes) exceeds memory limit"
+                "Decoded volume byte count \(totalBytes) exceeds decoded or memory limit"
             )
         }
 
@@ -546,47 +597,80 @@ public struct VolumeDecoder: Sendable {
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
         }
+        try work.check()
 
         let volume: J2KVolume
         let isPartial: Bool
+        let resultIsLossless: Bool
         do {
             if let roi = options.regionOfInterest {
-                let roiDecoder = JP3DROIDecoder(
+                let roiConfig = JP3DDecoderConfiguration(
                     maxQualityLayers: configuration.maxQualityLayers,
                     resolutionLevel: configuration.resolutionLevel,
-                    tolerateErrors: configuration.tolerateTruncation
+                    tolerateErrors: configuration.tolerateTruncation,
+                    parallelTileDecoding: options.resourceLimits.maximumWorkers > 1,
+                    maximumWorkers: options.resourceLimits.maximumWorkers
                 )
+                let roiDecoder = JP3DROIDecoder(configuration: roiConfig)
                 if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
                     options.progress?(p)
                 }
-                let roiResult = try await roiDecoder.decode(data, region: roi)
+                try work.check()
+                let roiResult = try await roiDecoder.decodeAdmitted(
+                    data,
+                    region: roi,
+                    maxQualityLayers: configuration.maxQualityLayers > 0 ? configuration.maxQualityLayers : nil,
+                    resolutionLevel: configuration.resolutionLevel,
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    work: work
+                )
                 volume = roiResult.volume
                 isPartial = !roiResult.warnings.isEmpty
+                resultIsLossless = info.isLossless
             } else {
                 let jp3dConfig = JP3DDecoderConfiguration(
                     maxQualityLayers: configuration.maxQualityLayers,
                     resolutionLevel: configuration.resolutionLevel,
                     tolerateTruncation: configuration.tolerateTruncation,
-                    parallelTileDecoding: options.resourceLimits.maximumWorkers > 1
+                    parallelTileDecoding: options.resourceLimits.maximumWorkers > 1,
+                    maximumWorkers: options.resourceLimits.maximumWorkers
                 )
                 let actorDecoder = JP3DDecoder(configuration: jp3dConfig)
                 if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
                     options.progress?(p)
                 }
-                let result = try await actorDecoder.decode(data)
+                try work.check()
+                let result = try await actorDecoder.decodeAdmitted(
+                    data,
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    work: work
+                )
                 volume = result.volume
                 isPartial = result.isPartial
+                resultIsLossless = result.isLossless
             }
         } catch let error as J2KError {
             throw error.asCodecError
         }
 
-        try Task.checkCancellation()
+        try work.check()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
             options.progress?(p)
         }
+        try work.check()
 
-        let fidelity: Fidelity = info.isLossless ? .exactSamples : .lossy
+        let reducedResolution = configuration.resolutionLevel > 0
+        let reducedQualityLayers = configuration.maxQualityLayers > 0
+            && configuration.maxQualityLayers < info.qualityLayers
+        let isExact = info.isLossless
+            && resultIsLossless
+            && !isPartial
+            && !reducedResolution
+            && !reducedQualityLayers
+        let fidelity: Fidelity = isExact ? .exactSamples : .lossy
+
         let report = OperationReport(
             backend: backend,
             fallbackReason: fallbackReason,
@@ -624,7 +708,8 @@ public struct VolumeTranscoder: Sendable {
         to target: TranscodeTarget,
         options: TranscodeOptions = .init()
     ) async throws -> EncodedVolume {
-        try Task.checkCancellation()
+        let work = VolumeWorkGuard(limits: options.resourceLimits)
+        try work.check()
         let info = try VolumeDecoder().inspect(
             data,
             options: VolumeDecodeOptions(
@@ -637,6 +722,11 @@ public struct VolumeTranscoder: Sendable {
 
         let (backend, fallbackReason) = try resolveBackend(options.executionPolicy)
 
+        if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
+
         let direction: JP3DTranscodingDirection
         switch target {
         case .htj2k:
@@ -645,26 +735,39 @@ public struct VolumeTranscoder: Sendable {
             direction = .htj2kToStandard
         }
 
+        if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
+
         let jp3dTranscoder = JP3DTranscoder()
         let result: JP3DTranscoderResult
         do {
-            result = try await jp3dTranscoder.transcode(
+            result = try await jp3dTranscoder.transcodeAdmitted(
                 data,
                 configuration: JP3DTranscoderConfiguration(
                     direction: direction,
-                    verifyRoundTrip: true
-                )
+                    verifyRoundTrip: false
+                ),
+                limits: options.resourceLimits,
+                executionPolicy: options.executionPolicy,
+                work: work
             )
         } catch let error as J2KError {
             throw error.asCodecError
         }
 
-        try Task.checkCancellation()
+        try work.check()
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
+        let isExact = info.isLossless && result.warnings.isEmpty
         let report = OperationReport(
             backend: backend,
             fallbackReason: fallbackReason,
-            fidelity: info.isLossless ? .exactSamples : .lossy,
+            fidelity: isExact ? .exactSamples : .lossy,
             copyEvents: [],
             pixelAllocationCount: 0,
             peakPixelBytes: 0,
@@ -678,7 +781,7 @@ public struct VolumeTranscoder: Sendable {
             depth: info.depth,
             componentCount: info.componentCount,
             tileCount: result.tilesTranscoded,
-            isLossless: info.isLossless,
+            isLossless: isExact,
             report: report
         )
     }

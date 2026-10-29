@@ -329,6 +329,114 @@ public actor JPIPClient {
         return metadata
     }
 
+    /// Requests and decodes a JPIP image with pre-allocation resource admission, deadline enforcement, and codestream fidelity inspection.
+    package func requestDeliveredImage(
+        imageID: String,
+        viewWindow: JPIPViewWindow?,
+        limits: ResourceLimits,
+        executionPolicy: ExecutionPolicy,
+        deadline: ContinuousClock.Instant
+    ) async throws -> J2KDecoder.DecodedCodestreamInfo {
+        @inline(__always)
+        func checkDeadline() throws {
+            try Task.checkCancellation()
+            if ContinuousClock.now > deadline {
+                throw CodecError(.resourceLimitExceeded, "JPIP operation deadline elapsed.")
+            }
+        }
+
+        try checkDeadline()
+        let currentSession = try await getOrCreateSession(target: imageID)
+        try checkDeadline()
+
+        var request: JPIPRequest
+        var regionTuple: (x: Int, y: Int, width: Int, height: Int)? = nil
+        if let window = viewWindow {
+            if let rx = window.regionOriginX,
+               let ry = window.regionOriginY,
+               let rw = window.regionWidth,
+               let rh = window.regionHeight {
+                regionTuple = (x: rx, y: ry, width: rw, height: rh)
+                request = JPIPRequest.regionRequest(
+                    target: imageID,
+                    x: rx,
+                    y: ry,
+                    width: rw,
+                    height: rh,
+                    layers: window.maxQualityLayers
+                )
+            } else if let comps = window.components {
+                request = JPIPRequest.componentRequest(
+                    target: imageID,
+                    components: comps,
+                    layers: window.maxQualityLayers
+                )
+            } else if let level = window.resolutionLevel {
+                request = JPIPRequest.resolutionLevelRequest(
+                    target: imageID,
+                    level: level,
+                    layers: window.maxQualityLayers
+                )
+            } else if let layers = window.maxQualityLayers {
+                request = JPIPRequest.progressiveQualityRequest(
+                    target: imageID,
+                    upToLayers: layers
+                )
+            } else {
+                request = JPIPRequest(target: imageID)
+            }
+        } else {
+            request = JPIPRequest(target: imageID)
+        }
+
+        if codingPreference != .none {
+            request.codingPreference = codingPreference
+        }
+        if let channelID = await currentSession.channelID {
+            request.cid = channelID
+        }
+
+        let response = try await transport.send(request)
+        try checkDeadline()
+
+        guard !response.data.isEmpty else {
+            throw J2KError.decodingError("JPIP response contains no image data")
+        }
+        guard response.data.count <= limits.maximumCompressedBytes,
+              response.data.count <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "JPIP response payload (\(response.data.count) bytes) exceeds compressed or memory limit"
+            )
+        }
+
+        let (binWorkspace, bwOv) = response.data.count.addingReportingOverflow(64)
+        let (liveBinMem, bmOv) = response.data.count.addingReportingOverflow(binWorkspace)
+        if !bwOv, !bmOv,
+           binWorkspace <= limits.maximumWorkspaceBytes,
+           liveBinMem <= limits.maximumMemoryBytes {
+            let generator = JPIPDataBinGenerator()
+            if let bins = try? generator.generateDataBins(from: response.data) {
+                for bin in bins {
+                    await currentSession.recordDataBin(bin)
+                }
+            }
+        }
+
+        try checkDeadline()
+        let decoded = try J2KDecoder.decodeWithInfo(
+            response.data,
+            maxQualityLayers: viewWindow?.maxQualityLayers,
+            resolutionLevel: viewWindow?.resolutionLevel,
+            components: viewWindow?.components,
+            region: regionTuple,
+            limits: limits,
+            executionPolicy: executionPolicy
+        )
+        try checkDeadline()
+        return decoded
+    }
+
     /// Records received data bins in the session cache model and decodes the codestream.
     private func decodeImageResponse(
         _ response: JPIPResponse,

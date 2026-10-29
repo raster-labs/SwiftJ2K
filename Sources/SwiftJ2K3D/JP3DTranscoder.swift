@@ -95,14 +95,151 @@ public actor JP3DTranscoder {
         _ sourceData: Data,
         configuration: JP3DTranscoderConfiguration = .forwardDefault
     ) async throws -> JP3DTranscoderResult {
+        try await transcodeAdmitted(
+            sourceData,
+            configuration: configuration,
+            limits: nil,
+            executionPolicy: .automatic,
+            work: VolumeWorkGuard(limits: nil)
+        )
+    }
+
+    internal func transcodeAdmitted(
+        _ sourceData: Data,
+        configuration: JP3DTranscoderConfiguration = .forwardDefault,
+        limits: ResourceLimits?,
+        executionPolicy: ExecutionPolicy,
+        work: VolumeWorkGuard
+    ) async throws -> JP3DTranscoderResult {
+        try work.check()
+        if let limits {
+            guard sourceData.count <= limits.maximumCompressedBytes,
+                  sourceData.count <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Source codestream size \(sourceData.count) exceeds compressed or memory limit"
+                )
+            }
+        }
+
         let parser = JP3DCodestreamParser()
-        let source = try parser.parse(sourceData)
+        let source = try parser.parse(sourceData, limits: limits, work: work, copyTilePayloads: true)
+
+        let (estimatedWorkspace, eOv) = source.retainedTileBytes.addingReportingOverflow(max(64, sourceData.count))
+        guard !eOv else {
+            throw CodecError(.resourceLimitExceeded, "Volume transcoding workspace overflows Int")
+        }
+        if let limits {
+            let maxDim = limits.maximumDimension
+            guard source.siz.width <= maxDim,
+                  source.siz.height <= maxDim,
+                  source.siz.depth <= maxDim else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volume dimensions exceed maximumDimension \(maxDim)"
+                )
+            }
+            guard source.siz.depth <= limits.maximumFrames else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volume depth \(source.siz.depth) exceeds maximumFrames \(limits.maximumFrames)"
+                )
+            }
+            let (wh, o1) = source.siz.width.multipliedReportingOverflow(by: source.siz.height)
+            let (vox, o2) = wh.multipliedReportingOverflow(by: source.siz.depth)
+            guard !o1, !o2, vox <= limits.maximumPixels else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volume voxel count exceeds maximumPixels \(limits.maximumPixels)"
+                )
+            }
+            let (liveMem, mOv) = sourceData.count.addingReportingOverflow(estimatedWorkspace)
+            guard !mOv,
+                  estimatedWorkspace <= limits.maximumWorkspaceBytes,
+                  liveMem <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volume transcoding workspace exceeds resource limits"
+                )
+            }
+        }
+
+        StorageTelemetry.recordStage("volume-transcode-workspace", bytes: estimatedWorkspace)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: estimatedWorkspace)
+
+        if !source.tiles.isEmpty && source.tiles.allSatisfy({ JP3DLosslessIntegerTileCodec.hasMagic($0.data) }) {
+            let toHTJ2K = configuration.direction == .standardToHTJ2K
+            var transcodedTiles: [Data] = []
+            transcodedTiles.reserveCapacity(source.tiles.count)
+            for parsedTile in source.tiles {
+                try work.check()
+                let tileData = try JP3DLosslessIntegerTileCodec.transcodeTile(
+                    parsedTile.data,
+                    toHTJ2K: toHTJ2K
+                )
+                transcodedTiles.append(tileData)
+            }
+            let builder = JP3DCodestreamBuilder()
+            let codestream = builder.build(
+                tileData: transcodedTiles,
+                width: source.siz.width,
+                height: source.siz.height,
+                depth: source.siz.depth,
+                components: source.siz.componentCount,
+                bitDepth: source.siz.bitDepth,
+                signed: source.siz.signed,
+                levelsX: source.cod.levelsX,
+                levelsY: source.cod.levelsY,
+                levelsZ: source.cod.levelsZ,
+                tileSizeX: source.siz.tileSizeX,
+                tileSizeY: source.siz.tileSizeY,
+                tileSizeZ: source.siz.tileSizeZ,
+                isLossless: source.cod.isLossless,
+                htj2kConfiguration: toHTJ2K ? configuration.htj2kConfiguration : nil
+            )
+            if let limits {
+                let (liveMem, mOv) = sourceData.count.addingReportingOverflow(codestream.count)
+                guard !mOv,
+                      codestream.count <= limits.maximumCompressedBytes,
+                      liveMem <= limits.maximumMemoryBytes else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "Transcoded volume codestream exceeds compressed or memory limit"
+                    )
+                }
+            }
+            if configuration.verifyRoundTrip {
+                let origVol = try await JP3DDecoder().decodeAdmitted(
+                    sourceData, limits: limits, executionPolicy: executionPolicy, work: work
+                ).volume
+                let transVol = try await JP3DDecoder().decodeAdmitted(
+                    codestream, limits: limits, executionPolicy: executionPolicy, work: work
+                ).volume
+                for c in 0..<origVol.componentCount {
+                    if origVol.components[c].data != transVol.components[c].data {
+                        throw J2KError.encodingError(
+                            "Integer lossless tile round-trip verification failed on component \(c)"
+                        )
+                    }
+                }
+            }
+            return JP3DTranscoderResult(
+                data: codestream,
+                tilesTranscoded: transcodedTiles.count,
+                direction: configuration.direction,
+                metadataPreserved: true,
+                warnings: []
+            )
+        }
 
         if source.tiles.contains(where: { JP3DSliceStackCodec.hasMagic($0.data) }) {
             return try await transcodeSliceStack(
                 sourceData: sourceData,
                 source: source,
-                configuration: configuration
+                configuration: configuration,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                work: work
             )
         }
 
@@ -112,7 +249,7 @@ public actor JP3DTranscoder {
         transcodedTiles.reserveCapacity(source.tiles.count)
 
         for parsedTile in source.tiles {
-            try Task.checkCancellation()
+            try work.check()
             let targetTileData: Data
 
             switch configuration.direction {
@@ -170,6 +307,17 @@ public actor JP3DTranscoder {
             isLossless: source.cod.isLossless,
             htj2kConfiguration: outputIsHTJ2K ? configuration.htj2kConfiguration : nil
         )
+        if let limits {
+            let (liveMem, mOv) = sourceData.count.addingReportingOverflow(codestream.count)
+            guard !mOv,
+                  codestream.count <= limits.maximumCompressedBytes,
+                  liveMem <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Transcoded volume codestream exceeds compressed or memory limit"
+                )
+            }
+        }
 
         return JP3DTranscoderResult(
             data: codestream,
@@ -185,7 +333,10 @@ public actor JP3DTranscoder {
     private func transcodeSliceStack(
         sourceData: Data,
         source: JP3DParsedCodestream,
-        configuration: JP3DTranscoderConfiguration
+        configuration: JP3DTranscoderConfiguration,
+        limits: ResourceLimits?,
+        executionPolicy: ExecutionPolicy,
+        work: VolumeWorkGuard
     ) async throws -> JP3DTranscoderResult {
         let toHTJ2K = configuration.direction == .standardToHTJ2K
         if source.cod.isLossless && source.tiles.allSatisfy({ JP3DSliceStackCodec.hasMagic($0.data) }) {
@@ -194,10 +345,12 @@ public actor JP3DTranscoder {
                 transcodedTiles.reserveCapacity(source.tiles.count)
                 let sliceStackCodec = JP3DSliceStackCodec()
                 for parsedTile in source.tiles {
-                    try Task.checkCancellation()
+                    try work.check()
                     let tileData = try await sliceStackCodec.transcodeTile(
                         parsedTile.data,
-                        toHTJ2K: toHTJ2K
+                        toHTJ2K: toHTJ2K,
+                        limits: limits ?? .default,
+                        executionPolicy: executionPolicy
                     )
                     transcodedTiles.append(tileData)
                 }
@@ -220,10 +373,25 @@ public actor JP3DTranscoder {
                     isLossless: source.cod.isLossless,
                     htj2kConfiguration: toHTJ2K ? configuration.htj2kConfiguration : nil
                 )
+                if let limits {
+                    let (liveMem, mOv) = sourceData.count.addingReportingOverflow(codestream.count)
+                    guard !mOv,
+                          codestream.count <= limits.maximumCompressedBytes,
+                          liveMem <= limits.maximumMemoryBytes else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "Transcoded volume codestream exceeds compressed or memory limit"
+                        )
+                    }
+                }
 
                 if configuration.verifyRoundTrip {
-                    let origVol = try await JP3DDecoder().decode(sourceData).volume
-                    let transVol = try await JP3DDecoder().decode(codestream).volume
+                    let origVol = try await JP3DDecoder().decodeAdmitted(
+                        sourceData, limits: limits, executionPolicy: executionPolicy, work: work
+                    ).volume
+                    let transVol = try await JP3DDecoder().decodeAdmitted(
+                        codestream, limits: limits, executionPolicy: executionPolicy, work: work
+                    ).volume
                     for c in 0..<origVol.componentCount {
                         if origVol.components[c].data != transVol.components[c].data {
                             throw J2KError.encodingError(
@@ -241,6 +409,8 @@ public actor JP3DTranscoder {
                     warnings: []
                 )
             } catch {
+                if error is CancellationError { throw error }
+                if let ce = error as? CodecError, ce.category == .resourceLimitExceeded { throw ce }
                 // Fall back to full decode + re-encode when per-slice wavelet transcode is not applicable
                 // (e.g., lossy sources or multi-layer unsupported options).
             }
@@ -249,17 +419,32 @@ public actor JP3DTranscoder {
         return try await transcodeViaFullRoundTrip(
             sourceData: sourceData,
             source: source,
-            configuration: configuration
+            configuration: configuration,
+            limits: limits,
+            executionPolicy: executionPolicy,
+            work: work
         )
     }
 
     private func transcodeViaFullRoundTrip(
         sourceData: Data,
         source: JP3DParsedCodestream,
-        configuration: JP3DTranscoderConfiguration
+        configuration: JP3DTranscoderConfiguration,
+        limits: ResourceLimits?,
+        executionPolicy: ExecutionPolicy,
+        work: VolumeWorkGuard
     ) async throws -> JP3DTranscoderResult {
-        let decoder = JP3DDecoder()
-        let decoded = try await decoder.decode(sourceData)
+        let decoder = JP3DDecoder(configuration: JP3DDecoderConfiguration(
+            tolerateErrors: false,
+            parallelTileDecoding: (limits?.maximumWorkers ?? 8) > 1,
+            maximumWorkers: limits?.maximumWorkers ?? 8
+        ))
+        let decoded = try await decoder.decodeAdmitted(
+            sourceData,
+            limits: limits,
+            executionPolicy: executionPolicy,
+            work: work
+        )
 
         let targetMode: JP3DCompressionMode
         switch configuration.direction {
@@ -280,9 +465,16 @@ public actor JP3DTranscoder {
             qualityLayers: 1,
             levelsX: source.cod.levelsX,
             levelsY: source.cod.levelsY,
-            levelsZ: source.cod.levelsZ
+            levelsZ: source.cod.levelsZ,
+            parallelTileEncoding: (limits?.maximumWorkers ?? 8) > 1,
+            maximumWorkers: limits?.maximumWorkers ?? 8
         ))
-        let result = try await encoder.encode(decoded.volume)
+        let result = try await encoder.encodeAdmitted(
+            decoded.volume,
+            limits: limits,
+            executionPolicy: executionPolicy,
+            work: work
+        )
 
         return JP3DTranscoderResult(
             data: result.data,
@@ -572,7 +764,9 @@ extension JP3DParsedCodestream {
     /// Whether this codestream was encoded with HTJ2K tile coding.
     public var containsHTJ2KTiles: Bool {
         for tile in tiles {
-            if JP3DSliceStackCodec.hasMagic(tile.data) {
+            if JP3DLosslessIntegerTileCodec.hasMagic(tile.data) {
+                if JP3DLosslessIntegerTileCodec.usesHTJ2K(tile.data) { return true }
+            } else if JP3DSliceStackCodec.hasMagic(tile.data) {
                 if Self.sliceStackUsesHTJ2K(tile.data) { return true }
             } else if let info = JP3DHTTileInfo.deserialise(from: tile.data),
                       info.isHT {
@@ -587,7 +781,13 @@ extension JP3DParsedCodestream {
         var hasHT = false
         var hasLegacy = false
         for tile in tiles {
-            if JP3DSliceStackCodec.hasMagic(tile.data) {
+            if JP3DLosslessIntegerTileCodec.hasMagic(tile.data) {
+                if JP3DLosslessIntegerTileCodec.usesHTJ2K(tile.data) {
+                    hasHT = true
+                } else {
+                    hasLegacy = true
+                }
+            } else if JP3DSliceStackCodec.hasMagic(tile.data) {
                 if Self.sliceStackUsesHTJ2K(tile.data) {
                     hasHT = true
                 } else {

@@ -494,8 +494,6 @@ enum JP2Container {
         let clock = ContinuousClock()
         let started = clock.now
         let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
-        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-
         let destDesc = destination.descriptor
         let expectedDesc = reconciled.outputDescriptor
         guard destDesc.width == expectedDesc.width,
@@ -504,6 +502,13 @@ enum JP2Container {
               destDesc.sampleType == expectedDesc.sampleType,
               destDesc.meaningfulBits == expectedDesc.meaningfulBits else {
             throw CodecError(.incompatibleImageLayout, "Destination descriptor does not match container image geometry or sample precision.")
+        }
+        do {
+            options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+            try Task.checkCancellation()
+        } catch {
+            destination.invalidateAfterFailure()
+            throw error
         }
 
         let sealedImage: Image
@@ -568,6 +573,7 @@ enum JP2Container {
             discardedMetadataKinds: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataKinds : []
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
+        try Task.checkCancellation()
         return DecodedImage(image: sealedImage, report: report)
     }
 

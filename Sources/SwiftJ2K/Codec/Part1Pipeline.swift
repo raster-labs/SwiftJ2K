@@ -55,6 +55,7 @@ struct Part1Profile: Sendable {
     let tiles: [Part1TileProfile]
     let commentCount: Int
     let commentPayloadBytes: Int
+    let retainedMetadataBytes: Int
 
     var format: String { isHTJ2K ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format }
     var codeBlockCount: Int {
@@ -144,7 +145,7 @@ enum Part1Pipeline {
         for part in parsed.tileParts { partsByTile[part.tileIndex, default: []].append(part) }
 
         var tiles: [Part1TileProfile] = []
-        var runningGeometryBytes = 0
+        var runningGeometryBytes = parsed.retainedMetadataBytes
         var allReversibleLossless = true
 
         for (tileIndex, parts) in partsByTile.sorted(by: { $0.key < $1.key }) {
@@ -281,7 +282,8 @@ enum Part1Pipeline {
             isReversibleLossless: allReversibleLossless,
             tiles: tiles,
             commentCount: parsed.commentCount,
-            commentPayloadBytes: parsed.commentPayloadBytes
+            commentPayloadBytes: parsed.commentPayloadBytes,
+            retainedMetadataBytes: parsed.retainedMetadataBytes
         )
     }
 
@@ -351,11 +353,14 @@ enum Part1Pipeline {
         }
 
         let bytesPerCoeff = profile.isReversibleLossless ? 4 : 8
-        let workspace = try workspaceBytes(
-            planePixels: profile.largestTilePixels,
-            componentCount: profile.componentCount,
-            bytesPerCoeff: bytesPerCoeff,
-            joinedBytes: profile.largestTileBytes
+        let workspace = try checkedAdd(
+            try workspaceBytes(
+                planePixels: profile.largestTilePixels,
+                componentCount: profile.componentCount,
+                bytesPerCoeff: bytesPerCoeff,
+                joinedBytes: profile.largestTileBytes
+            ),
+            profile.retainedMetadataBytes
         )
         guard workspace <= limits.maximumWorkspaceBytes else {
             throw CodecError(.resourceLimitExceeded, "Decoder workspace exceeds the operation limit.")
@@ -418,6 +423,7 @@ enum Part1Pipeline {
         let total = max(1, profile.codeBlockCount)
         var completed = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try work.check()
 
         let image = try destination.write { output in
             for tile in profile.tiles {
@@ -519,6 +525,7 @@ enum Part1Pipeline {
                                         }
                                         if completed & 7 == 0 {
                                             progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
+                                            try work.check()
                                         }
                                     }
                                 }
@@ -625,6 +632,7 @@ enum Part1Pipeline {
                                         }
                                         if completed & 7 == 0 {
                                             progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
+                                            try work.check()
                                         }
                                     }
                                 }
@@ -969,6 +977,7 @@ enum Part1Pipeline {
         var completedBlocks = 0
         let estimatedTotalBlocks = max(1, totalTiles * componentCount)
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: estimatedTotalBlocks))
+        try work.check()
 
         try image.storage.withUnsafeBytes { rawBytes in
             guard rawBytes.count >= descriptor.requiredByteCount else {
@@ -1281,6 +1290,7 @@ enum Part1Pipeline {
                     encodings.append(compEncodings)
                     completedBlocks += 1
                     progress?(try ProgressUpdate(phase: .processing, completedUnits: completedBlocks, totalUnits: estimatedTotalBlocks))
+                    try work.check()
                 }
 
                 if needsPCRD && !flatCoords.isEmpty {

@@ -119,6 +119,99 @@ public struct JP3DTileDecomposer: Sendable {
         return JP3DTileData(tile: tile, componentIndex: componentIndex, data: data)
     }
 
+    /// Extracts exact integer voxel data (`1...38` bits signed or unsigned) without `Float` truncation.
+    public func extractIntegerTileData(
+        from volume: J2KVolume,
+        tile: JP3DTile,
+        componentIndex: Int
+    ) throws -> [Int64] {
+        guard componentIndex >= 0, componentIndex < volume.components.count else {
+            throw J2KError.invalidParameter(
+                "Component index \(componentIndex) out of range [0, \(volume.components.count))"
+            )
+        }
+
+        let component = volume.components[componentIndex]
+        let tw = tile.width
+        let th = tile.height
+        let td = tile.depth
+        let (wh, ov1) = tw.multipliedReportingOverflow(by: th)
+        let (voxelCount, ov2) = wh.multipliedReportingOverflow(by: td)
+        guard !ov1, !ov2 else {
+            throw J2KError.invalidDimensions("Tile dimensions overflow: \(tw)x\(th)x\(td)")
+        }
+
+        let bytesPerSample = component.bytesPerSample
+        let bitDepth = component.bitDepth
+        let signed = component.signed
+        let minVal: Int64 = signed ? -(Int64(1) << (bitDepth - 1)) : 0
+        let maxVal: Int64 = signed
+            ? ((Int64(1) << (bitDepth - 1)) - 1)
+            : ((Int64(1) << bitDepth) - 1)
+
+        var data = [Int64](repeating: 0, count: voxelCount)
+        let region = tile.region
+        let srcStride = component.width
+        let srcSliceStride = component.width * component.height
+        let dataCount = component.data.count
+        let storageBitWidth = bytesPerSample * 8
+
+        component.data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let bytes = raw.bindMemory(to: UInt8.self)
+            data.withUnsafeMutableBufferPointer { dst in
+                for z in 0..<td {
+                    let srcZ = region.z.lowerBound + z
+                    guard srcZ < component.depth else { continue }
+                    let srcZOffset = srcZ * srcSliceStride
+                    for y in 0..<th {
+                        let srcY = region.y.lowerBound + y
+                        guard srcY < component.height else { continue }
+                        let srcYOffset = srcZOffset + srcY * srcStride
+                        for x in 0..<tw {
+                            let srcX = region.x.lowerBound + x
+                            guard srcX < component.width else { continue }
+                            let srcIdx = srcYOffset + srcX
+                            let byteOffset = srcIdx * bytesPerSample
+                            let dstIdx = z * tw * th + y * tw + x
+                            if byteOffset + bytesPerSample <= dataCount {
+                                var rawWord: UInt64 = 0
+                                for b in 0..<bytesPerSample {
+                                    rawWord |= UInt64(bytes[byteOffset + b]) << (b * 8)
+                                }
+                                let value: Int64
+                                if signed && bytesPerSample > 0 {
+                                    let storageSignMask = UInt64(1) << (storageBitWidth - 1)
+                                    let bitDepthSignMask = UInt64(1) << (bitDepth - 1)
+                                    if (rawWord & storageSignMask) != 0 {
+                                        let extended = storageBitWidth < 64
+                                            ? (rawWord | (~UInt64(0) << storageBitWidth))
+                                            : rawWord
+                                        value = Int64(bitPattern: extended)
+                                    } else if bitDepth < storageBitWidth
+                                        && (rawWord >> bitDepth) == 0
+                                        && (rawWord & bitDepthSignMask) != 0 {
+                                        let extended = rawWord | (~UInt64(0) << bitDepth)
+                                        value = Int64(bitPattern: extended)
+                                    } else {
+                                        value = Int64(bitPattern: rawWord)
+                                    }
+                                } else {
+                                    let mask: UInt64 = bitDepth < 64
+                                        ? ((UInt64(1) << bitDepth) - 1)
+                                        : ~UInt64(0)
+                                    value = Int64(bitPattern: rawWord & mask)
+                                }
+                                dst[dstIdx] = max(minVal, min(maxVal, value))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return data
+    }
+
     /// Returns a tiling configuration clamped to volume dimensions.
     public func clampedConfiguration(for volume: J2KVolume) -> JP3DTilingConfiguration {
         JP3DTilingConfiguration(

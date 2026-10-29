@@ -131,16 +131,65 @@ public actor JP3DROIDecoder {
         maxQualityLayers: Int?,
         resolutionLevel: Int
     ) async throws -> JP3DROIDecoderResult {
+        try await decodeAdmitted(
+            data,
+            region: requestedRegion,
+            maxQualityLayers: maxQualityLayers,
+            resolutionLevel: resolutionLevel,
+            limits: nil,
+            executionPolicy: .automatic,
+            work: VolumeWorkGuard(limits: nil)
+        )
+    }
+
+    internal func decodeAdmitted(
+        _ data: Data,
+        region requestedRegion: JP3DRegion,
+        maxQualityLayers: Int?,
+        resolutionLevel: Int,
+        limits: ResourceLimits?,
+        executionPolicy: ExecutionPolicy,
+        work: VolumeWorkGuard
+    ) async throws -> JP3DROIDecoderResult {
+        try work.check()
+        try jp3dValidateResolutionLevel(resolutionLevel)
+
         guard !data.isEmpty else {
             throw J2KError.decodingError("Cannot decode ROI from empty codestream")
+        }
+
+        if let limits {
+            guard data.count <= limits.maximumCompressedBytes,
+                  data.count <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Codestream size \(data.count) exceeds compressed or memory limit"
+                )
+            }
         }
 
         reportProgress(.parsing, stageProgress: 0.0, tilesDone: 0, tilesTotal: 1)
 
         let parser = JP3DCodestreamParser()
-        let codestream = try parser.parse(data)
+        let codestream = try parser.parse(data, limits: limits, work: work, copyTilePayloads: true)
         let siz = codestream.siz
         let cod = codestream.cod
+
+        if let limits {
+            let maxDim = limits.maximumDimension
+            guard siz.width <= maxDim, siz.height <= maxDim, siz.depth <= maxDim else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Codestream dimensions (\(siz.width)x\(siz.height)x\(siz.depth)) exceed limit \(maxDim)"
+                )
+            }
+            guard siz.depth <= limits.maximumFrames else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Codestream depth \(siz.depth) exceeds frame limit \(limits.maximumFrames)"
+                )
+            }
+        }
 
         reportProgress(.parsing, stageProgress: 1.0, tilesDone: 0, tilesTotal: codestream.tiles.count)
 
@@ -152,6 +201,23 @@ public actor JP3DROIDecoder {
         let clampedZUpper = min(siz.depth, requestedRegion.z.upperBound)
 
         if clampedXLower >= clampedXUpper || clampedYLower >= clampedYUpper || clampedZLower >= clampedZUpper {
+            if let limits {
+                let bytesPerSample = (siz.bitDepth + 7) / 8
+                let (wh, o1) = siz.width.multipliedReportingOverflow(by: siz.height)
+                let (vox, o2) = wh.multipliedReportingOverflow(by: siz.depth)
+                let (cb, o3) = vox.multipliedReportingOverflow(by: bytesPerSample)
+                let (tb, o4) = cb.multipliedReportingOverflow(by: siz.componentCount)
+                let (totMem, o5) = data.count.addingReportingOverflow(tb)
+                guard !o1, !o2, !o3, !o4, !o5,
+                      vox <= limits.maximumPixels,
+                      tb <= limits.maximumDecodedBytes,
+                      totMem <= limits.maximumMemoryBytes else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "Empty-ROI fallback volume exceeds resource limits"
+                    )
+                }
+            }
             let emptyVolume = J2KVolume(
                 width: siz.width, height: siz.height, depth: siz.depth,
                 componentCount: siz.componentCount, bitDepth: siz.bitDepth, signed: siz.signed
@@ -180,10 +246,17 @@ public actor JP3DROIDecoder {
             let effectiveConfig = JP3DDecoderConfiguration(
                 maxQualityLayers: maxQualityLayers ?? 0,
                 resolutionLevel: resolutionLevel,
-                tolerateErrors: configuration.tolerateErrors
+                tolerateErrors: configuration.tolerateErrors,
+                parallelTileDecoding: configuration.parallelTileDecoding,
+                maximumWorkers: configuration.maximumWorkers
             )
             let decoder = JP3DDecoder(configuration: effectiveConfig)
-            let result = try await decoder.decode(data)
+            let result = try await decoder.decodeAdmitted(
+                data,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                work: work
+            )
             return JP3DROIDecoderResult(
                 volume: result.volume,
                 decodedRegion: roiRegion,
@@ -194,8 +267,7 @@ public actor JP3DROIDecoder {
             )
         }
 
-        let K = max(0, resolutionLevel)
-        let f = K > 0 ? (1 << K) : 1
+        let K = resolutionLevel
 
         let tilingConfig = JP3DTilingConfiguration(
             tileSizeX: siz.tileSizeX,
@@ -220,14 +292,73 @@ public actor JP3DROIDecoder {
             )
         })
 
-        let outW = K > 0 ? max(1, (roiW + f - 1) / f) : roiW
-        let outH = K > 0 ? max(1, (roiH + f - 1) / f) : roiH
+        let outW = jp3dDownsampleDimension(roiW, resolutionLevel: K)
+        let outH = jp3dDownsampleDimension(roiH, resolutionLevel: K)
         let outD = roiD
-        let outVoxels = outW * outH * outD
-
-        var componentBuffers = (0..<siz.componentCount).map { _ in
-            [Float](repeating: 0, count: outVoxels)
+        let (outWH, vOv1) = outW.multipliedReportingOverflow(by: outH)
+        let (outVoxels, vOv2) = outWH.multipliedReportingOverflow(by: outD)
+        let bytesPerSample = (siz.bitDepth + 7) / 8
+        let (compOutBytes, bOv1) = outVoxels.multipliedReportingOverflow(by: bytesPerSample)
+        let (outDecodedBytes, bOv2) = compOutBytes.multipliedReportingOverflow(by: siz.componentCount)
+        guard !vOv1, !vOv2, !bOv1, !bOv2 else {
+            throw J2KError.decodingError("ROI output volume dimensions overflow integer arithmetic")
         }
+
+        let isStreamLossless = cod.isLossless && codestream.isLosslessQuantization
+        let useExactIntegerPath = isStreamLossless && !codestream.tiles.isEmpty && codestream.tiles.allSatisfy {
+            JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
+        }
+        let elementStride = useExactIntegerPath ? MemoryLayout<Int64>.stride : MemoryLayout<Float>.stride
+        let (totalSamples, sOv1) = outVoxels.multipliedReportingOverflow(by: siz.componentCount)
+        let (bufferWorkspaceBytes, sOv2) = totalSamples.multipliedReportingOverflow(by: elementStride)
+        guard !sOv1, !sOv2 else {
+            throw J2KError.decodingError("ROI workspace size overflows integer arithmetic")
+        }
+
+        if let limits {
+            guard outVoxels <= limits.maximumPixels else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "ROI voxel count \(outVoxels) exceeds pixel limit \(limits.maximumPixels)"
+                )
+            }
+            guard outDecodedBytes <= limits.maximumDecodedBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "ROI decoded byte count \(outDecodedBytes) exceeds decoded-byte limit \(limits.maximumDecodedBytes)"
+                )
+            }
+            let (tWH, tOv1) = min(siz.width, siz.tileSizeX).multipliedReportingOverflow(by: min(siz.height, siz.tileSizeY))
+            let (maxTileVox, tOv2) = tWH.multipliedReportingOverflow(by: min(siz.depth, siz.tileSizeZ))
+            let (tileSamples, tOv3) = maxTileVox.multipliedReportingOverflow(by: siz.componentCount)
+            let (tileScratch, tOv4) = tileSamples.multipliedReportingOverflow(by: elementStride * 2)
+            let (ws1, wOv1) = codestream.retainedTileBytes.addingReportingOverflow(bufferWorkspaceBytes)
+            let (peakROIWorkspace, wOv2) = ws1.addingReportingOverflow(tileScratch)
+            guard !tOv1, !tOv2, !tOv3, !tOv4, !wOv1, !wOv2, peakROIWorkspace <= limits.maximumWorkspaceBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "ROI workspace \(peakROIWorkspace) exceeds workspace limit \(limits.maximumWorkspaceBytes)"
+                )
+            }
+            let (mem1, mOv1) = data.count.addingReportingOverflow(outDecodedBytes)
+            let (totalLiveMem, mOv2) = mem1.addingReportingOverflow(peakROIWorkspace)
+            guard !mOv1, !mOv2, totalLiveMem <= limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "ROI decode memory \(totalLiveMem) exceeds memory limit \(limits.maximumMemoryBytes)"
+                )
+            }
+        }
+
+        StorageTelemetry.recordStage("volume-roi-decode-buffers", bytes: bufferWorkspaceBytes)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: bufferWorkspaceBytes)
+
+        var intComponentBuffers: [[Int64]] = useExactIntegerPath
+            ? (0..<siz.componentCount).map { _ in [Int64](repeating: 0, count: outVoxels) }
+            : []
+        var componentBuffers: [[Float]] = useExactIntegerPath
+            ? []
+            : (0..<siz.componentCount).map { _ in [Float](repeating: 0, count: outVoxels) }
 
         let filter: JP3DWaveletFilter = cod.isLossless ? .reversible53 : .irreversible97
         let transformConfig = JP3DTransformConfiguration(
@@ -244,6 +375,7 @@ public actor JP3DROIDecoder {
         var warnings: [String] = []
 
         for parsedTile in codestream.tiles {
+            try work.check()
             guard intersectingIndices.contains(parsedTile.tileIndex),
                   parsedTile.tileIndex < allTiles.count else {
                 tilesSkipped += 1
@@ -251,8 +383,8 @@ public actor JP3DROIDecoder {
             }
 
             let tile = allTiles[parsedTile.tileIndex]
-            let tileW = K > 0 ? max(1, (tile.width  + f - 1) / f) : tile.width
-            let tileH = K > 0 ? max(1, (tile.height + f - 1) / f) : tile.height
+            let tileW = jp3dDownsampleDimension(tile.width, resolutionLevel: K)
+            let tileH = jp3dDownsampleDimension(tile.height, resolutionLevel: K)
             let tileD = tile.depth
 
             let overlapZ0 = max(tile.region.z.lowerBound, roiRegion.z.lowerBound)
@@ -269,102 +401,197 @@ public actor JP3DROIDecoder {
             let isSubTileXY = K == 0
                 && (localXRange.count < tile.width || localYRange.count < tile.height)
 
-            let reconstructedPerComp: [[Float]]
             let decodedZOffset: Int
             let decodedXOffset: Int
             let decodedYOffset: Int
             let decodedStrideW: Int
             let decodedStrideH: Int
 
-            do {
-                if K == 0
-                    && JP3DSliceStackCodec.isSliceStackTile(parsedTile.data)
-                    && (localZEnd - localZStart < tile.depth || isSubTileXY) {
-                    let sliceCodec = JP3DSliceStackCodec()
-                    reconstructedPerComp = try sliceCodec.decodeTile(
-                        parsedTile.data,
-                        expectedComponents: siz.componentCount,
-                        expectedWidth: tile.width,
-                        expectedHeight: tile.height,
-                        expectedDepth: tile.depth,
-                        maxQualityLayers: maxQualityLayers,
-                        resolutionLevel: 0,
-                        zRange: localZStart..<localZEnd,
-                        xyROI: isSubTileXY ? (x: localXRange, y: localYRange) : nil
-                    )
-                    decodedZOffset = localZStart
-                    decodedXOffset = isSubTileXY ? localXRange.lowerBound : 0
-                    decodedYOffset = isSubTileXY ? localYRange.lowerBound : 0
-                    decodedStrideW = isSubTileXY ? max(1, localXRange.count) : tileW
-                    decodedStrideH = isSubTileXY ? max(1, localYRange.count) : tileH
-                } else {
-                    reconstructedPerComp = try await JP3DDecoder.decodeTilePayloadStatic(
-                        parsedTile.data,
-                        tile: tile,
-                        componentCount: siz.componentCount,
-                        tileW: tileW,
-                        tileH: tileH,
-                        tileD: tileD,
-                        isLossless: cod.isLossless,
-                        transformConfig: transformConfig,
-                        maxQualityLayers: maxQualityLayers,
-                        resolutionLevel: K
-                    )
-                    decodedZOffset = 0
-                    decodedXOffset = 0
-                    decodedYOffset = 0
-                    decodedStrideW = tileW
-                    decodedStrideH = tileH
+            let tStartX = jp3dDownsampleOrigin(tile.region.x.lowerBound, resolutionLevel: K, roundUp: false)
+            let tStartY = jp3dDownsampleOrigin(tile.region.y.lowerBound, resolutionLevel: K, roundUp: false)
+            let tStartZ = tile.region.z.lowerBound
+
+            let rStartX = jp3dDownsampleOrigin(roiRegion.x.lowerBound, resolutionLevel: K, roundUp: false)
+            let rStartY = jp3dDownsampleOrigin(roiRegion.y.lowerBound, resolutionLevel: K, roundUp: false)
+            let rStartZ = roiRegion.z.lowerBound
+
+            if useExactIntegerPath {
+                let reconstructedPerCompInt: [[Int64]]
+                do {
+                    if K == 0
+                        && JP3DSliceStackCodec.isSliceStackTile(parsedTile.data)
+                        && (localZEnd - localZStart < tile.depth || isSubTileXY) {
+                        let sliceCodec = JP3DSliceStackCodec()
+                        reconstructedPerCompInt = try sliceCodec.decodeTileInteger(
+                            parsedTile.data,
+                            expectedComponents: siz.componentCount,
+                            expectedWidth: tile.width,
+                            expectedHeight: tile.height,
+                            expectedDepth: tile.depth,
+                            maxQualityLayers: maxQualityLayers,
+                            resolutionLevel: 0,
+                            zRange: localZStart..<localZEnd,
+                            xyROI: isSubTileXY ? (x: localXRange, y: localYRange) : nil,
+                            limits: limits ?? .default,
+                            executionPolicy: executionPolicy
+                        )
+                        decodedZOffset = localZStart
+                        decodedXOffset = isSubTileXY ? localXRange.lowerBound : 0
+                        decodedYOffset = isSubTileXY ? localYRange.lowerBound : 0
+                        decodedStrideW = isSubTileXY ? max(1, localXRange.count) : tileW
+                        decodedStrideH = isSubTileXY ? max(1, localYRange.count) : tileH
+                    } else {
+                        reconstructedPerCompInt = try JP3DDecoder.decodeTilePayloadIntegerStatic(
+                            parsedTile.data,
+                            tile: tile,
+                            componentCount: siz.componentCount,
+                            maxQualityLayers: maxQualityLayers,
+                            resolutionLevel: K,
+                            limits: limits,
+                            executionPolicy: executionPolicy
+                        )
+                        decodedZOffset = 0
+                        decodedXOffset = 0
+                        decodedYOffset = 0
+                        decodedStrideW = tileW
+                        decodedStrideH = tileH
+                    }
+                } catch {
+                    if error is CancellationError { throw error }
+                    if let ce = error as? CodecError, ce.category == .resourceLimitExceeded { throw ce }
+                    if configuration.tolerateErrors {
+                        warnings.append("Tile \(parsedTile.tileIndex) decode failed: \(error)")
+                        continue
+                    }
+                    throw error
                 }
-            } catch {
-                if configuration.tolerateErrors {
-                    warnings.append("Tile \(parsedTile.tileIndex) decode failed: \(error)")
-                    continue
-                }
-                throw error
-            }
-
-            for comp in 0..<siz.componentCount {
-                let reconstructed = reconstructedPerComp[comp]
-
-                let tStartX = K > 0 ? tile.region.x.lowerBound / f : tile.region.x.lowerBound
-                let tStartY = K > 0 ? tile.region.y.lowerBound / f : tile.region.y.lowerBound
-                let tStartZ = tile.region.z.lowerBound
-
-                let rStartX = K > 0 ? roiRegion.x.lowerBound / f : roiRegion.x.lowerBound
-                let rStartY = K > 0 ? roiRegion.y.lowerBound / f : roiRegion.y.lowerBound
-                let rStartZ = roiRegion.z.lowerBound
 
                 let zLoopStart = decodedZOffset
                 let zLoopEnd = (decodedZOffset > 0) ? localZEnd : tileD
+                for comp in 0..<siz.componentCount {
+                    guard comp < reconstructedPerCompInt.count else { continue }
+                    let reconstructed = reconstructedPerCompInt[comp]
+                    for z in zLoopStart..<zLoopEnd {
+                        let volZ = tStartZ + z
+                        let roiZ = volZ - rStartZ
+                        guard roiZ >= 0 && roiZ < outD else { continue }
+                        let localBufZ = z - decodedZOffset
 
-                for z in zLoopStart..<zLoopEnd {
-                    let volZ = tStartZ + z
-                    let roiZ = volZ - rStartZ
-                    guard roiZ >= 0 && roiZ < outD else { continue }
-                    let localBufZ = z - decodedZOffset
+                        let yLoopStart = decodedYOffset
+                        let yLoopEnd = decodedYOffset + decodedStrideH
+                        for y in yLoopStart..<yLoopEnd {
+                            let volY = tStartY + y
+                            let roiY = volY - rStartY
+                            guard roiY >= 0 && roiY < outH else { continue }
+                            let localBufY = y - decodedYOffset
 
-                    let yLoopStart = decodedYOffset
-                    let yLoopEnd = decodedYOffset + decodedStrideH
-                    for y in yLoopStart..<yLoopEnd {
-                        let volY = tStartY + y
-                        let roiY = volY - rStartY
-                        guard roiY >= 0 && roiY < outH else { continue }
-                        let localBufY = y - decodedYOffset
+                            let xLoopStart = decodedXOffset
+                            let xLoopEnd = decodedXOffset + decodedStrideW
+                            for x in xLoopStart..<xLoopEnd {
+                                let volX = tStartX + x
+                                let roiX = volX - rStartX
+                                guard roiX >= 0 && roiX < outW else { continue }
+                                let localBufX = x - decodedXOffset
 
-                        let xLoopStart = decodedXOffset
-                        let xLoopEnd = decodedXOffset + decodedStrideW
-                        for x in xLoopStart..<xLoopEnd {
-                            let volX = tStartX + x
-                            let roiX = volX - rStartX
-                            guard roiX >= 0 && roiX < outW else { continue }
-                            let localBufX = x - decodedXOffset
+                                let srcIdx = localBufZ * decodedStrideW * decodedStrideH
+                                    + localBufY * decodedStrideW + localBufX
+                                let dstIdx = roiZ * outW * outH + roiY * outW + roiX
+                                if srcIdx < reconstructed.count && dstIdx < outVoxels {
+                                    intComponentBuffers[comp][dstIdx] = reconstructed[srcIdx]
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                let reconstructedPerComp: [[Float]]
+                do {
+                    if K == 0
+                        && JP3DSliceStackCodec.isSliceStackTile(parsedTile.data)
+                        && (localZEnd - localZStart < tile.depth || isSubTileXY) {
+                        let sliceCodec = JP3DSliceStackCodec()
+                        reconstructedPerComp = try sliceCodec.decodeTile(
+                            parsedTile.data,
+                            expectedComponents: siz.componentCount,
+                            expectedWidth: tile.width,
+                            expectedHeight: tile.height,
+                            expectedDepth: tile.depth,
+                            maxQualityLayers: maxQualityLayers,
+                            resolutionLevel: 0,
+                            zRange: localZStart..<localZEnd,
+                            xyROI: isSubTileXY ? (x: localXRange, y: localYRange) : nil,
+                            limits: limits ?? .default,
+                            executionPolicy: executionPolicy
+                        )
+                        decodedZOffset = localZStart
+                        decodedXOffset = isSubTileXY ? localXRange.lowerBound : 0
+                        decodedYOffset = isSubTileXY ? localYRange.lowerBound : 0
+                        decodedStrideW = isSubTileXY ? max(1, localXRange.count) : tileW
+                        decodedStrideH = isSubTileXY ? max(1, localYRange.count) : tileH
+                    } else {
+                        reconstructedPerComp = try await JP3DDecoder.decodeTilePayloadStatic(
+                            parsedTile.data,
+                            tile: tile,
+                            componentCount: siz.componentCount,
+                            tileW: tileW,
+                            tileH: tileH,
+                            tileD: tileD,
+                            isLossless: cod.isLossless,
+                            transformConfig: transformConfig,
+                            maxQualityLayers: maxQualityLayers,
+                            resolutionLevel: K,
+                            limits: limits,
+                            executionPolicy: executionPolicy
+                        )
+                        decodedZOffset = 0
+                        decodedXOffset = 0
+                        decodedYOffset = 0
+                        decodedStrideW = tileW
+                        decodedStrideH = tileH
+                    }
+                } catch {
+                    if error is CancellationError { throw error }
+                    if let ce = error as? CodecError, ce.category == .resourceLimitExceeded { throw ce }
+                    if configuration.tolerateErrors {
+                        warnings.append("Tile \(parsedTile.tileIndex) decode failed: \(error)")
+                        continue
+                    }
+                    throw error
+                }
 
-                            let srcIdx = localBufZ * decodedStrideW * decodedStrideH
-                                + localBufY * decodedStrideW + localBufX
-                            let dstIdx = roiZ * outW * outH + roiY * outW + roiX
-                            if srcIdx < reconstructed.count && dstIdx < outVoxels {
-                                componentBuffers[comp][dstIdx] = reconstructed[srcIdx]
+                let zLoopStart = decodedZOffset
+                let zLoopEnd = (decodedZOffset > 0) ? localZEnd : tileD
+                for comp in 0..<siz.componentCount {
+                    guard comp < reconstructedPerComp.count else { continue }
+                    let reconstructed = reconstructedPerComp[comp]
+                    for z in zLoopStart..<zLoopEnd {
+                        let volZ = tStartZ + z
+                        let roiZ = volZ - rStartZ
+                        guard roiZ >= 0 && roiZ < outD else { continue }
+                        let localBufZ = z - decodedZOffset
+
+                        let yLoopStart = decodedYOffset
+                        let yLoopEnd = decodedYOffset + decodedStrideH
+                        for y in yLoopStart..<yLoopEnd {
+                            let volY = tStartY + y
+                            let roiY = volY - rStartY
+                            guard roiY >= 0 && roiY < outH else { continue }
+                            let localBufY = y - decodedYOffset
+
+                            let xLoopStart = decodedXOffset
+                            let xLoopEnd = decodedXOffset + decodedStrideW
+                            for x in xLoopStart..<xLoopEnd {
+                                let volX = tStartX + x
+                                let roiX = volX - rStartX
+                                guard roiX >= 0 && roiX < outW else { continue }
+                                let localBufX = x - decodedXOffset
+
+                                let srcIdx = localBufZ * decodedStrideW * decodedStrideH
+                                    + localBufY * decodedStrideW + localBufX
+                                let dstIdx = roiZ * outW * outH + roiY * outW + roiX
+                                if srcIdx < reconstructed.count && dstIdx < outVoxels {
+                                    componentBuffers[comp][dstIdx] = reconstructed[srcIdx]
+                                }
                             }
                         }
                     }
@@ -381,18 +608,30 @@ public actor JP3DROIDecoder {
             )
         }
 
+        try work.check()
         reportProgress(.volumeAssembly, stageProgress: 0.5, tilesDone: tilesDecoded, tilesTotal: intersectingIndices.count)
 
-        let components = assembleROIComponents(
-            buffers: componentBuffers,
-            width: outW, height: outH, depth: outD,
-            bitDepth: siz.bitDepth, signed: siz.signed
-        )
+        StorageTelemetry.recordPixelAllocation(bytes: outDecodedBytes)
+        let components: [J2KVolumeComponent]
+        if useExactIntegerPath {
+            components = jp3dAssembleVolumeComponentsInteger(
+                buffers: intComponentBuffers,
+                width: outW, height: outH, depth: outD,
+                bitDepth: siz.bitDepth, signed: siz.signed
+            )
+        } else {
+            components = assembleROIComponents(
+                buffers: componentBuffers,
+                width: outW, height: outH, depth: outD,
+                bitDepth: siz.bitDepth, signed: siz.signed
+            )
+        }
         let roiVolume = J2KVolume(
             width: outW, height: outH, depth: outD,
             components: components
         )
 
+        try work.check()
         reportProgress(.volumeAssembly, stageProgress: 1.0, tilesDone: tilesDecoded, tilesTotal: intersectingIndices.count)
 
         return JP3DROIDecoderResult(
@@ -412,78 +651,11 @@ public actor JP3DROIDecoder {
         width: Int, height: Int, depth: Int,
         bitDepth: Int, signed: Bool
     ) -> [J2KVolumeComponent] {
-        let bytesPerSample = (bitDepth + 7) / 8
-        let minVal: Float = signed ? -Float(1 << (bitDepth - 1)) : 0
-        let maxVal: Float = signed
-            ? Float((1 << (bitDepth - 1)) - 1)
-            : Float((1 << min(30, bitDepth)) - 1)
-
-        return buffers.enumerated().map { index, buffer in
-            let count = buffer.count
-            var data = Data(count: count * bytesPerSample)
-            data.withUnsafeMutableBytes { rawBuf in
-                guard let base = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-                switch bytesPerSample {
-                case 1:
-                    if signed {
-                        for i in 0..<count {
-                            let clamped = max(minVal, min(maxVal, buffer[i]))
-                            let intVal = Int8(clamping: Int(clamped.rounded()))
-                            base[i] = UInt8(bitPattern: intVal)
-                        }
-                    } else {
-                        for i in 0..<count {
-                            let clamped = max(0, min(maxVal, buffer[i]))
-                            base[i] = UInt8(truncatingIfNeeded: Int(clamped.rounded()))
-                        }
-                    }
-                case 2:
-                    if signed {
-                        for i in 0..<count {
-                            let clamped = max(minVal, min(maxVal, buffer[i]))
-                            let intVal = Int16(clamping: Int(clamped.rounded()))
-                            let u = UInt16(bitPattern: intVal)
-                            base[i * 2] = UInt8(truncatingIfNeeded: u)
-                            base[i * 2 + 1] = UInt8(truncatingIfNeeded: u >> 8)
-                        }
-                    } else {
-                        for i in 0..<count {
-                            let clamped = max(0, min(maxVal, buffer[i]))
-                            let intVal = UInt16(clamping: Int(clamped.rounded()))
-                            base[i * 2] = UInt8(truncatingIfNeeded: intVal)
-                            base[i * 2 + 1] = UInt8(truncatingIfNeeded: intVal >> 8)
-                        }
-                    }
-                case 4:
-                    for i in 0..<count {
-                        let clamped = max(minVal, min(maxVal, buffer[i]))
-                        let intVal = Int32(clamped.rounded())
-                        let u = UInt32(bitPattern: intVal)
-                        base[i * 4] = UInt8(truncatingIfNeeded: u)
-                        base[i * 4 + 1] = UInt8(truncatingIfNeeded: u >> 8)
-                        base[i * 4 + 2] = UInt8(truncatingIfNeeded: u >> 16)
-                        base[i * 4 + 3] = UInt8(truncatingIfNeeded: u >> 24)
-                    }
-                default:
-                    for i in 0..<count {
-                        let clamped = max(minVal, min(maxVal, buffer[i]))
-                        let intVal = Int(clamped.rounded())
-                        for b in 0..<bytesPerSample {
-                            base[i * bytesPerSample + b] = UInt8(truncatingIfNeeded: intVal >> (b * 8))
-                        }
-                    }
-                }
-            }
-            return J2KVolumeComponent(
-                index: index,
-                bitDepth: bitDepth,
-                signed: signed,
-                width: width,
-                height: height,
-                depth: depth,
-                data: data
-            )
-        }
+        jp3dAssembleVolumeComponentsFloat(
+            buffers: buffers,
+            width: width, height: height, depth: depth,
+            bitDepth: bitDepth, signed: signed
+        )
     }
 
     private func reportProgress(
