@@ -944,7 +944,7 @@ struct R1RemediationTests {
 
             let offsetsOccurrences = duplicateOffsets ? 2 : 1
             let countsOccurrences = duplicateByteCounts ? 2 : 1
-            let entryCount = UInt16(6 + offsetsOccurrences + countsOccurrences)
+            let entryCount = UInt16(7 + offsetsOccurrences + countsOccurrences)
             let offsetsTablePos: UInt32 = 8 + 2 + UInt32(entryCount) * 12 + 4
             let countsTablePos: UInt32 = offsetsTablePos + UInt32(strips.count * 4)
             let firstStripPos: UInt32 = countsTablePos + UInt32(strips.count * 4)
@@ -954,6 +954,7 @@ struct R1RemediationTests {
             putIFDEntry(tag: 257, type: 4, count: 1, valueOrOffset: height)
             putIFDEntry(tag: 258, type: 3, count: 1, valueOrOffset: 8)
             putIFDEntry(tag: 259, type: 3, count: 1, valueOrOffset: 1)
+            putIFDEntry(tag: 262, type: 3, count: 1, valueOrOffset: 1)
 
             if byteCountsBeforeOffsets {
                 for _ in 0..<countsOccurrences {

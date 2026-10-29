@@ -12,16 +12,16 @@ import Metal
 #endif
 
 /// Internal runtime dispatcher and availability registry for accelerated backends.
-enum AccelerationRuntime {
+package enum AccelerationRuntime {
     /// Task-local override used by tests to deterministically exercise
     /// fallback and `.backendUnavailable` paths even on hardware where
     /// Metal and SIMD/NEON acceleration are present, without leaking across
     /// concurrent test tasks.
-    @TaskLocal static var forceUnavailable: Bool = false
+    @TaskLocal package static var forceUnavailable: Bool = false
 
     /// Cached check whether a Metal GPU device is available on this host.
     /// Adapted from `J2KMetalDevice.isAvailable` (Raster-Lab/J2KSwift 7acc9ae4).
-    static let hasHardwareMetalDevice: Bool = {
+    package static let hasHardwareMetalDevice: Bool = {
         #if canImport(Metal)
         return MTLCreateSystemDefaultDevice() != nil
         #else
@@ -31,7 +31,7 @@ enum AccelerationRuntime {
 
     /// Whether CPU vector acceleration (ARM64 NEON / x86_64 SIMD / Accelerate)
     /// is compiled into this target.
-    static var hasHardwareSIMD: Bool {
+    package static var hasHardwareSIMD: Bool {
         #if arch(arm64) || arch(x86_64) || canImport(Accelerate)
         return true
         #else
@@ -40,25 +40,25 @@ enum AccelerationRuntime {
     }
 
     /// Whether Metal hardware is present and not simulated as unavailable.
-    static var isMetalDevicePermitted: Bool {
+    package static var isMetalDevicePermitted: Bool {
         guard !isSimulatedUnavailable else { return false }
         return hasHardwareMetalDevice
     }
 
     /// Whether Metal GPU compute acceleration is currently available.
-    static var isMetalAvailable: Bool {
+    package static var isMetalAvailable: Bool {
         guard isMetalDevicePermitted else { return false }
         return MetalAccelerationEngine.shared.isAvailable
     }
 
     /// Whether NEON / SIMD vector acceleration is currently available.
-    static var isSIMDAvailable: Bool {
+    package static var isSIMDAvailable: Bool {
         guard !isSimulatedUnavailable else { return false }
         return hasHardwareSIMD
     }
 
     /// Whether the `.accelerated` backend is available on the current runtime.
-    static var isAvailable: Bool {
+    package static var isAvailable: Bool {
         guard !isSimulatedUnavailable else { return false }
         return hasHardwareSIMD || hasHardwareMetalDevice
     }
@@ -68,20 +68,25 @@ enum AccelerationRuntime {
     }
 
     /// Backends advertised by `Encoder.capabilities` and `Decoder.capabilities`.
-    static var availableBackends: [Backend] {
+    package static var availableBackends: [Backend] {
         isAvailable ? [.scalarCPU, .accelerated] : [.scalarCPU]
     }
 
     /// Result of resolving an `ExecutionPolicy` for an operation.
-    struct ResolvedExecution: Sendable, Equatable {
-        let backend: Backend
-        let fallbackReason: String?
+    package struct ResolvedExecution: Sendable, Equatable {
+        package let backend: Backend
+        package let fallbackReason: String?
+
+        package init(backend: Backend, fallbackReason: String?) {
+            self.backend = backend
+            self.fallbackReason = fallbackReason
+        }
     }
 
     /// Resolves `policy` against current runtime availability per `API-07` and `PLAT-05`.
     /// - Throws: `CodecError(.backendUnavailable, ...)` when `.required(.accelerated)`
     ///   is requested and no accelerated backend is available.
-    static func resolve(_ policy: ExecutionPolicy) throws -> ResolvedExecution {
+    package static func resolve(_ policy: ExecutionPolicy) throws -> ResolvedExecution {
         switch policy {
         case .scalarCPU, .preferred(.scalarCPU), .required(.scalarCPU):
             return ResolvedExecution(backend: .scalarCPU, fallbackReason: nil)
@@ -107,12 +112,12 @@ enum AccelerationRuntime {
     }
 
     /// Runs `body` with hardware acceleration simulated as unavailable on the current task.
-    static func withSimulatedUnavailable<R>(_ body: () throws -> R) rethrows -> R {
+    package static func withSimulatedUnavailable<R>(_ body: () throws -> R) rethrows -> R {
         try $forceUnavailable.withValue(true, operation: body)
     }
 
     /// Runs async `body` with hardware acceleration simulated as unavailable on the current task.
-    static func withSimulatedUnavailable<R>(_ body: () async throws -> R) async rethrows -> R {
+    package static func withSimulatedUnavailable<R>(_ body: () async throws -> R) async rethrows -> R {
         try await $forceUnavailable.withValue(true) {
             try await body()
         }

@@ -293,6 +293,24 @@ public struct J2KImage: Sendable, Equatable {
 
     /// Converts this ``J2KImage`` into a contract-aligned ``Image``.
     public func toContractImage(limits: ResourceLimits = .default) throws -> Image {
+        try toContractImage(
+            colourOverride: nil,
+            alphaOverride: nil,
+            iccProfileOverride: nil,
+            metadata: .empty,
+            limits: limits
+        )
+    }
+
+    /// Converts this ``J2KImage`` into a contract-aligned ``Image`` while preserving
+    /// container-reconciled colour, alpha, ICC profile, and ancillary metadata.
+    package func toContractImage(
+        colourOverride: ColourInterpretation?,
+        alphaOverride: AlphaInterpretation?,
+        iccProfileOverride: Data?,
+        metadata: ImageMetadata,
+        limits: ResourceLimits = .default
+    ) throws -> Image {
         try validate()
         let compCount = components.count
         let first = components[0]
@@ -303,33 +321,166 @@ public struct J2KImage: Sendable, Equatable {
         let dstBytesPerSample = storageBits / 8
         let srcBytesPerSample = (clampedBitDepth + 7) / 8
 
+        let effectiveICC: Data?
+        if let iccOverride = iccProfileOverride {
+            effectiveICC = iccOverride
+        } else if case .iccProfile(let icc) = colorSpace {
+            effectiveICC = icc
+        } else {
+            effectiveICC = nil
+        }
+
         let descriptor: ImageDescriptor
         if compCount == 1 {
+            let baseDesc: ImageDescriptor
             if signed {
-                descriptor = try ImageDescriptor.signedGreyscale16(
+                baseDesc = try ImageDescriptor.signedGreyscale16(
                     width: width, height: height, meaningfulBits: clampedBitDepth, limits: limits
                 )
             } else {
-                descriptor = try ImageDescriptor.greyscale16(
+                baseDesc = try ImageDescriptor.greyscale16(
                     width: width, height: height, meaningfulBits: clampedBitDepth, limits: limits
                 )
             }
-        } else if compCount == 3 {
-            descriptor = try ImageDescriptor.rgbPlanar(
+            if let icc = effectiveICC {
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: 16,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: [.grey],
+                    colour: .greyscale,
+                    alpha: .absent,
+                    planes: baseDesc.planes,
+                    iccProfile: icc,
+                    limits: limits
+                )
+            } else {
+                descriptor = baseDesc
+            }
+        } else if compCount == 2 {
+            let baseDesc = try ImageDescriptor.multiComponentPlanar(
+                width: width, height: height, componentCount: 2,
+                storageBits: storageBits, meaningfulBits: clampedBitDepth,
+                sampleType: sampleType, limits: limits
+            )
+            let isGreyAlpha = (alphaOverride != nil && alphaOverride != .absent)
+                || colourOverride == .greyscale
+                || colorSpace == .grayscale
+            if isGreyAlpha {
+                let resolvedAlpha: AlphaInterpretation = (alphaOverride == .premultiplied) ? .premultiplied : .straight
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: storageBits,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: [.grey, .alpha],
+                    colour: .greyscale,
+                    alpha: resolvedAlpha,
+                    planes: baseDesc.planes,
+                    iccProfile: effectiveICC,
+                    limits: limits
+                )
+            } else if let icc = effectiveICC {
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: storageBits,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: baseDesc.components,
+                    colour: .unknown,
+                    alpha: .absent,
+                    planes: baseDesc.planes,
+                    iccProfile: icc,
+                    limits: limits
+                )
+            } else {
+                descriptor = baseDesc
+            }
+        } else if compCount == 3 && (colourOverride ?? (colorSpace == .unknown ? .unknown : .rgb)) == .rgb {
+            let baseDesc = try ImageDescriptor.rgbPlanar(
                 width: width, height: height, storageBits: storageBits,
                 meaningfulBits: clampedBitDepth, signed: signed, limits: limits
             )
+            if let icc = effectiveICC {
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: storageBits,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: baseDesc.components,
+                    colour: .rgb,
+                    alpha: .absent,
+                    planes: baseDesc.planes,
+                    iccProfile: icc,
+                    limits: limits
+                )
+            } else {
+                descriptor = baseDesc
+            }
+        } else if compCount == 4 && (colourOverride ?? (colorSpace == .unknown ? .unknown : .rgb)) == .rgb {
+            let resolvedAlpha: AlphaInterpretation = (alphaOverride == .premultiplied) ? .premultiplied : .straight
+            let baseDesc = try ImageDescriptor.rgbPlanar(
+                width: width, height: height, storageBits: storageBits,
+                meaningfulBits: clampedBitDepth, signed: signed,
+                alpha: resolvedAlpha, limits: limits
+            )
+            if let icc = effectiveICC {
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: storageBits,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: baseDesc.components,
+                    colour: .rgb,
+                    alpha: resolvedAlpha,
+                    planes: baseDesc.planes,
+                    iccProfile: icc,
+                    limits: limits
+                )
+            } else {
+                descriptor = baseDesc
+            }
         } else {
-            descriptor = try ImageDescriptor.multiComponentPlanar(
+            let baseDesc = try ImageDescriptor.multiComponentPlanar(
                 width: width, height: height, componentCount: compCount,
                 storageBits: storageBits, meaningfulBits: clampedBitDepth,
                 sampleType: sampleType, limits: limits
             )
+            if colourOverride == .unknown || effectiveICC != nil {
+                let roles: [ComponentRole] = (0..<compCount).map { .uninterpreted("c\($0)") }
+                descriptor = try ImageDescriptor(
+                    width: width,
+                    height: height,
+                    sampleType: sampleType,
+                    storageBits: storageBits,
+                    meaningfulBits: clampedBitDepth,
+                    byteOrder: baseDesc.byteOrder,
+                    components: colourOverride == .unknown ? roles : baseDesc.components,
+                    colour: colourOverride == .unknown ? .unknown : baseDesc.colour,
+                    alpha: colourOverride == .unknown ? .absent : baseDesc.alpha,
+                    planes: baseDesc.planes,
+                    iccProfile: effectiveICC,
+                    limits: limits
+                )
+            } else {
+                descriptor = baseDesc
+            }
         }
 
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let pixelCount = width * height
-        return try destination.write { dst in
+        let rawImage = try destination.write { dst in
             for (cIdx, comp) in components.enumerated() {
                 let plane = descriptor.planes[cIdx]
                 let compBytes = [UInt8](comp.data)
@@ -388,6 +539,15 @@ public struct J2KImage: Sendable, Equatable {
                 }
             }
         }
+        if metadata.entries.isEmpty && metadata.requiredKeys.isEmpty {
+            return rawImage
+        }
+        return try Image(
+            descriptor: rawImage.descriptor,
+            storage: rawImage.storage,
+            metadata: metadata,
+            limits: limits
+        )
     }
 
     /// Creates a ``J2KImage`` from a contract-aligned ``Image``.
@@ -469,7 +629,16 @@ public struct J2KImage: Sendable, Equatable {
             }
         }
 
-        let cs: J2KColorSpace = compCount == 1 ? .grayscale : .sRGB
+        let cs: J2KColorSpace
+        if let icc = desc.iccProfile {
+            cs = .iccProfile(icc)
+        } else if desc.colour == .greyscale {
+            cs = .grayscale
+        } else if desc.colour == .rgb {
+            cs = .sRGB
+        } else {
+            cs = .unknown
+        }
         self.init(width: w, height: h, components: builtComponents, colorSpace: cs)
     }
 }
@@ -875,6 +1044,14 @@ public struct J2KDecoder: Sendable {
     /// Decoded codestream metadata alongside the decoded ``J2KImage``.
     package struct DecodedCodestreamInfo: Sendable {
         package let image: J2KImage
+        package let contractImage: Image?
+        package let colourInterpretation: ColourInterpretation
+        package let alphaInterpretation: AlphaInterpretation
+        package let iccProfile: Data?
+        package let metadata: ImageMetadata
+        package let discardedMetadataCount: Int
+        package let discardedMetadataBytes: Int
+        package let discardedMetadataKinds: [String]
         package let isReversibleLossless: Bool
         package let totalQualityLayers: Int
         package let totalComponents: Int
@@ -899,7 +1076,8 @@ public struct J2KDecoder: Sendable {
                 components: components,
                 region: region,
                 limits: .default,
-                executionPolicy: .automatic
+                executionPolicy: .automatic,
+                metadataPolicy: .preserve
             ).image
         } catch let error as CodecError {
             throw J2KError(error)
@@ -914,13 +1092,13 @@ public struct J2KDecoder: Sendable {
         components: [Int]? = nil,
         region: (x: Int, y: Int, width: Int, height: Int)? = nil,
         limits: ResourceLimits = .default,
-        executionPolicy: ExecutionPolicy = .automatic
+        executionPolicy: ExecutionPolicy = .automatic,
+        metadataPolicy: MetadataPolicy = .preserve
     ) throws -> DecodedCodestreamInfo {
         guard !data.isEmpty else {
             throw J2KError.decodingError("Cannot decode empty data")
         }
 
-        let codestreamBytes: [UInt8]
         do {
             let work = WorkGuard(limits: limits)
             try work.check()
@@ -948,69 +1126,149 @@ public struct J2KDecoder: Sendable {
                 throw CodecError(.resourceLimitExceeded, "Compressed input workspace copy exceeds operation limits.")
             }
 
-            let rawBytes = [UInt8](data)
-            if JP2Container.isContainer(rawBytes) {
-                let parsed = try JP2Container.parse(rawBytes, limits: limits, metadataPolicy: .preserve)
-                codestreamBytes = Array(rawBytes[parsed.codestreamRange])
-            } else if let socOffset = findSOCOffset(in: rawBytes) {
-                codestreamBytes = Array(rawBytes[socOffset...])
-            } else {
-                throw J2KError.decodingError("No JPEG 2000 SOC marker (0xFF4F) found in input data")
-            }
-
-            let profile = try Part1Pipeline.inspect(codestreamBytes, limits: limits, metadataPolicy: .preserve)
-            let descriptor = try profile.defaultDescriptor(limits: limits)
-            let minDecodedBytes = descriptor.requiredByteCount
-            let estWorkspace = try checkedAdd(
-                try Part1Pipeline.workspaceBytes(
-                    planePixels: profile.largestTilePixels,
-                    componentCount: profile.componentCount,
-                    bytesPerCoeff: profile.isReversibleLossless ? 4 : 8,
-                    joinedBytes: profile.largestTileBytes
-                ),
-                profile.retainedMetadataBytes
-            )
-            guard minDecodedBytes <= limits.maximumDecodedBytes,
-                  estWorkspace <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Decoded image and workspace exceed operation limits.")
-            }
-
-            let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
             let effectiveLayers: Int?
             if let q = maxQualityLayers, q > 0 {
                 effectiveLayers = q
             } else {
                 effectiveLayers = nil
             }
-            let (contractImage, workspace): (Image, Int)
-            do {
-                (contractImage, workspace) = try Part1Pipeline.decode(
-                    bytes: codestreamBytes,
-                    profile: profile,
-                    into: destination,
+
+            let rawBytes = [UInt8](data)
+            let contractImage: Image
+            let workspace: Int
+            let isReversibleLossless: Bool
+            let totalLayers: Int
+            let totalComponents: Int
+            let discardedCount: Int
+            let discardedBytes: Int
+            let discardedKinds: [String]
+
+            if JP2Container.isContainer(rawBytes) {
+                let reconciled = try JP2Container.inspectReconciled(
+                    rawBytes,
                     limits: limits,
-                    backend: resolvedBackend.backend,
-                    progress: nil,
+                    metadataPolicy: metadataPolicy
+                )
+                let profile = reconciled.part1Profile
+                let descriptor = reconciled.outputDescriptor
+                let minDecodedBytes = descriptor.requiredByteCount
+                let estWorkspace = try checkedAdd(
+                    try Part1Pipeline.workspaceBytes(
+                        planePixels: profile.largestTilePixels,
+                        componentCount: max(profile.componentCount, descriptor.components.count),
+                        bytesPerCoeff: profile.isReversibleLossless ? 4 : 8,
+                        joinedBytes: profile.largestTileBytes
+                    ),
+                    reconciled.container.totalMetadataBytes
+                )
+                guard minDecodedBytes <= limits.maximumDecodedBytes,
+                      estWorkspace <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Decoded container image and workspace exceed operation limits.")
+                }
+
+                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
+                let decodeOpts = DecodeOptions(
+                    resourceLimits: limits,
+                    executionPolicy: executionPolicy,
+                    copyPolicy: .allowCopy,
+                    metadataPolicy: metadataPolicy
+                )
+                let decoded = try JP2Container.decode(
+                    reconciled: reconciled,
+                    into: destination,
+                    options: decodeOpts,
+                    allocations: 1,
                     maxQualityLayers: effectiveLayers
                 )
-            } catch {
-                destination.invalidateAfterFailure()
-                throw error
+                contractImage = decoded.image
+                workspace = max(decoded.report.peakWorkspaceBytes ?? 0, estWorkspace)
+                isReversibleLossless = profile.isReversibleLossless
+                totalLayers = max(1, profile.tiles.map(\.defaultCodingStyle.layers).max() ?? 1)
+                totalComponents = descriptor.components.count
+                discardedCount = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataCount : 0
+                discardedBytes = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataBytes : 0
+                discardedKinds = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataKinds : []
+            } else {
+                guard let socOffset = findSOCOffset(in: rawBytes) else {
+                    throw J2KError.decodingError("No JPEG 2000 SOC marker (0xFF4F) found in input data")
+                }
+                let codestreamBytes = Array(rawBytes[socOffset...])
+                let profile = try Part1Pipeline.inspect(codestreamBytes, limits: limits, metadataPolicy: metadataPolicy)
+                let descriptor = try profile.defaultDescriptor(limits: limits)
+                let minDecodedBytes = descriptor.requiredByteCount
+                let estWorkspace = try checkedAdd(
+                    try Part1Pipeline.workspaceBytes(
+                        planePixels: profile.largestTilePixels,
+                        componentCount: profile.componentCount,
+                        bytesPerCoeff: profile.isReversibleLossless ? 4 : 8,
+                        joinedBytes: profile.largestTileBytes
+                    ),
+                    profile.retainedMetadataBytes
+                )
+                guard minDecodedBytes <= limits.maximumDecodedBytes,
+                      estWorkspace <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Decoded image and workspace exceed operation limits.")
+                }
+
+                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
+                do {
+                    (contractImage, workspace) = try Part1Pipeline.decode(
+                        bytes: codestreamBytes,
+                        profile: profile,
+                        into: destination,
+                        limits: limits,
+                        backend: resolvedBackend.backend,
+                        progress: nil,
+                        maxQualityLayers: effectiveLayers
+                    )
+                } catch {
+                    destination.invalidateAfterFailure()
+                    throw error
+                }
+                isReversibleLossless = profile.isReversibleLossless
+                totalLayers = max(1, profile.tiles.map(\.defaultCodingStyle.layers).max() ?? 1)
+                totalComponents = profile.componentCount
+                discardedCount = (metadataPolicy == .discardAncillary) ? profile.commentCount : 0
+                discardedBytes = (metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
+                discardedKinds = (discardedCount > 0) ? ["COM"] : []
             }
+
             try work.check()
             var image = try J2KImage(contractImage: contractImage)
+            var wasViewWindowTransformed = false
+            var outColour = contractImage.descriptor.colour
+            var outAlpha = contractImage.descriptor.alpha
+            var outICC = contractImage.descriptor.iccProfile
 
-            // Apply component filtering if requested
+            // 1. Apply strict component validation & selection if requested.
             if let selectedComponents = components, !selectedComponents.isEmpty {
-                let filtered = selectedComponents.compactMap { idx -> J2KComponent? in
-                    guard idx >= 0 && idx < image.components.count else { return nil }
-                    return image.components[idx]
+                var filtered: [J2KComponent] = []
+                filtered.reserveCapacity(selectedComponents.count)
+                for idx in selectedComponents {
+                    guard idx >= 0 && idx < image.components.count else {
+                        throw CodecError(
+                            .invalidArgument,
+                            "Requested component index \(idx) is out of range 0..<\(image.components.count)."
+                        )
+                    }
+                    filtered.append(image.components[idx])
                 }
-                guard !filtered.isEmpty else {
-                    throw J2KError.invalidComponentConfiguration(
-                        "Requested components \(selectedComponents) do not exist in image with \(image.components.count) components"
-                    )
+                if selectedComponents != Array(0..<image.components.count) {
+                    wasViewWindowTransformed = true
+                    if filtered.count == 1 {
+                        outColour = .greyscale
+                        outAlpha = .absent
+                        outICC = nil
+                    } else if selectedComponents == [0, 1, 2] && contractImage.descriptor.colour == .rgb {
+                        outColour = .rgb
+                        outAlpha = .absent
+                    } else {
+                        outColour = .unknown
+                        outAlpha = .absent
+                        outICC = nil
+                    }
                 }
                 let reindexed = filtered.enumerated().map { newIdx, comp in
                     J2KComponent(
@@ -1024,33 +1282,65 @@ public struct J2KDecoder: Sendable {
                         data: comp.data
                     )
                 }
+                let resolvedCS: J2KColorSpace
+                if let icc = outICC {
+                    resolvedCS = .iccProfile(icc)
+                } else if outColour == .greyscale {
+                    resolvedCS = .grayscale
+                } else if outColour == .rgb {
+                    resolvedCS = .sRGB
+                } else {
+                    resolvedCS = .unknown
+                }
                 image = J2KImage(
                     width: image.width,
                     height: image.height,
                     components: reindexed,
-                    colorSpace: reindexed.count == 1 ? .grayscale : image.colorSpace
+                    colorSpace: resolvedCS
                 )
             }
 
-            // Apply resolution level reduction if requested.
+            // 2. Apply spatial region cropping in full-resolution reference grid coordinates
+            // BEFORE resolution-level downsampling, rejecting out-of-bounds regions cleanly.
+            if let reg = region {
+                let (endX, ovX) = reg.x.addingReportingOverflow(reg.width)
+                let (endY, ovY) = reg.y.addingReportingOverflow(reg.height)
+                guard !ovX, !ovY,
+                      reg.x >= 0, reg.y >= 0, reg.width > 0, reg.height > 0,
+                      endX <= image.width, endY <= image.height else {
+                    throw CodecError(
+                        .invalidArgument,
+                        "Requested region (\(reg.x), \(reg.y), \(reg.width)x\(reg.height)) exceeds image bounds \(image.width)x\(image.height)."
+                    )
+                }
+                if reg.x != 0 || reg.y != 0 || reg.width != image.width || reg.height != image.height {
+                    wasViewWindowTransformed = true
+                    image = try cropImage(image, region: reg)
+                }
+            }
+
+            // 3. Apply resolution level reduction after full-resolution region cropping.
             // Convention (per JPIPClient and DICOMJPIPClient):
             // resolutionLevel == 0 is full resolution; higher values halve dimensions by 2^level.
             if let resLevel = resolutionLevel, resLevel > 0 {
+                wasViewWindowTransformed = true
                 let factor = 1 << min(30, resLevel)
                 image = downsampleImage(image, factor: factor)
             }
 
-            // Apply spatial region cropping if requested
-            if let reg = region {
-                image = try cropImage(image, region: reg)
-            }
-
-            let totalLayers = max(1, profile.tiles.map(\.defaultCodingStyle.layers).max() ?? 1)
             return DecodedCodestreamInfo(
                 image: image,
-                isReversibleLossless: profile.isReversibleLossless,
+                contractImage: wasViewWindowTransformed ? nil : contractImage,
+                colourInterpretation: outColour,
+                alphaInterpretation: outAlpha,
+                iccProfile: outICC,
+                metadata: contractImage.metadata,
+                discardedMetadataCount: discardedCount,
+                discardedMetadataBytes: discardedBytes,
+                discardedMetadataKinds: discardedKinds,
+                isReversibleLossless: isReversibleLossless,
                 totalQualityLayers: totalLayers,
-                totalComponents: profile.componentCount,
+                totalComponents: totalComponents,
                 backend: resolvedBackend.backend,
                 fallbackReason: resolvedBackend.fallbackReason,
                 peakWorkspaceBytes: workspace
@@ -1255,14 +1545,32 @@ public struct J2KTranscoder: Sendable {
         self.configuration = configuration
     }
 
-    /// Detects whether a JPEG 2000 codestream uses HTJ2K (Part 15) coding.
+    /// Detects whether a JPEG 2000 codestream or JP2/JPH/JPX container uses HTJ2K (Part 15) coding.
     ///
     /// Scans the main header for a `CAP` marker (`0xFF50`) or the HT bit (`0x40`)
     /// in the `COD` marker coding style byte.
     public func isHTJ2K(_ data: Data) throws -> Bool {
-        let bytes = [UInt8](data)
-        guard bytes.count >= 4 else {
+        let rawBytes = [UInt8](data)
+        guard rawBytes.count >= 4 else {
             throw J2KError.decodingError("Codestream too short to detect format")
+        }
+
+        let bytes: [UInt8]
+        if JP2Container.isContainer(rawBytes) {
+            do {
+                let parsed = try JP2Container.parse(rawBytes, limits: .default, metadataPolicy: .preserve)
+                if parsed.format == JP2Container.jphFormat {
+                    return true
+                }
+                bytes = Array(rawBytes[parsed.codestreamRange])
+            } catch let error as CodecError {
+                throw J2KError(error)
+            }
+            guard bytes.count >= 4 else {
+                throw J2KError.decodingError("Container codestream too short to detect format")
+            }
+        } else {
+            bytes = rawBytes
         }
 
         let socMarker = (UInt16(bytes[0]) << 8) | UInt16(bytes[1])
@@ -1303,7 +1611,7 @@ public struct J2KTranscoder: Sendable {
         return false
     }
 
-    /// Synchronously transcodes a JPEG 2000 codestream between legacy Part 1 and HTJ2K Part 15.
+    /// Synchronously transcodes a JPEG 2000 codestream or container between legacy Part 1 and HTJ2K Part 15.
     public func transcode(
         _ data: Data,
         direction: TranscodingDirection,
@@ -1320,15 +1628,18 @@ public struct J2KTranscoder: Sendable {
         ))
 
         let codestreamBytes: [UInt8]
+        var reconciledContainer: JP2Container.ReconciledContainerProfile? = nil
         do {
             if JP2Container.isContainer(rawBytes) {
-                let parsed = try JP2Container.parse(rawBytes, limits: .default, metadataPolicy: .preserve)
-                codestreamBytes = Array(rawBytes[parsed.codestreamRange])
+                let rec = try JP2Container.inspectReconciled(rawBytes, limits: .default, metadataPolicy: .preserve)
+                reconciledContainer = rec
+                codestreamBytes = rec.codestreamBytes
             } else {
                 codestreamBytes = rawBytes
             }
 
-            let part1Profile = try Part1Pipeline.inspect(codestreamBytes, limits: .default, metadataPolicy: .preserve)
+            let part1Profile = try reconciledContainer?.part1Profile
+                ?? Part1Pipeline.inspect(codestreamBytes, limits: .default, metadataPolicy: .preserve)
             progress?(TranscodingProgressUpdate(
                 stage: .parsing, progress: 1.0, overallProgress: 0.2, direction: direction
             ))
@@ -1344,10 +1655,10 @@ public struct J2KTranscoder: Sendable {
                 stage: .validation, progress: 1.0, overallProgress: 0.6, direction: direction
             ))
 
-            let transcodedData: Data
+            let transcodedCodestream: [UInt8]
             if part1Profile.isHTJ2K == targetIsHT {
                 // Already in the requested coding mode; re-emit valid codestream unchanged.
-                transcodedData = Data(codestreamBytes)
+                transcodedCodestream = codestreamBytes
             } else if part1Profile.componentCount == 1 && !part1Profile.signed && part1Profile.isReversibleLossless,
                       let losslessProfile = try? ScalarLosslessCodec.inspect(
                           codestreamBytes, limits: .default, metadataPolicy: .preserve
@@ -1370,10 +1681,10 @@ public struct J2KTranscoder: Sendable {
                     backend: .scalarCPU,
                     progress: nil
                 )
-                transcodedData = outData
+                transcodedCodestream = [UInt8](outData)
             } else {
-                // Multi-component or general codestream: preserve decomposition geometry and
-                // re-encode with the target Tier-1 block coder.
+                // Multi-component or general codestream: preserve raw codestream component layout
+                // and decomposition geometry, then re-encode with the target Tier-1 block coder.
                 let descriptor = try part1Profile.defaultDescriptor(limits: .default)
                 let destination = try ImageDestination.allocate(descriptor: descriptor, limits: .default)
                 let resolvedBackend = try AccelerationRuntime.resolve(.automatic)
@@ -1409,7 +1720,20 @@ public struct J2KTranscoder: Sendable {
                     backend: resolvedBackend.backend,
                     progress: nil
                 )
-                transcodedData = Data(encodedBytes)
+                transcodedCodestream = encodedBytes
+            }
+
+            let transcodedData: Data
+            if let rec = reconciledContainer {
+                let wrapped = try JP2Container.rewrapPreservingHeader(
+                    reconciled: rec,
+                    codestream: transcodedCodestream,
+                    targetIsHT: targetIsHT,
+                    limits: .default
+                )
+                transcodedData = Data(wrapped)
+            } else {
+                transcodedData = Data(transcodedCodestream)
             }
 
             progress?(TranscodingProgressUpdate(

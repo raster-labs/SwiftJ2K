@@ -1,0 +1,49 @@
+=== SwiftJ2K Phase R2 Verification & Gate Summary ===
+branch: antigravity/r2-semantics-remediation
+accepted_r1_base_commit: c4706d58cc5dde4828ea71f324817590f0671e78
+r1_doc_reconciliation_commit: 57d7398938f36f0324a3689badacd794d5f9f462
+developer_phase_state: submitted (Codex acceptance: pending independent audit)
+
+1. Primary Toolchain
+command: swift --version
+output: swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+target: arm64-apple-macosx27.0.0 (package deployment floor preserved at macOS 26.0 / iOS 26.0 / tvOS 26.0 / watchOS 26.0 / visionOS 26.0; swift-tools-version: 6.2 preserved)
+
+2. Focused Phase R2 Regression Suites
+command: swift test --filter R2
+exit_code: 0
+targets:
+  - SwiftJ2KTests / R2RemediationTests: 6/6 @Test passed (F07, F08, F12, M12-CX-03, M12-CX-04, CLI F09/F10/F11)
+  - SwiftJ2KJPIPTests / R2JPIPRemediationTests: 4/4 @Test passed (F07, F09, F10 view window, F10 session cache/deliveryMode)
+  - SwiftJ2K3DTests / R2VolumeRemediationTests: 3/3 @Test passed (F09 CopyPolicy/OperationReport, F09 ExecutionPolicy/unavailability, F11 volume geometry)
+total_focused_r2_tests: 13/13 passed, 0 failures
+
+3. Full Package Test Suite
+command: swift test
+exit_code: 0
+results_by_target:
+  - SwiftJ2KTests: 138 Swift Testing @Test declarations in 5 suites passed (0 XCTest, 0 failures)
+  - SwiftJ2KJPIPTests: 544 XCTest + 8 Swift Testing @Test declarations in 2 suites = 552 tests passed (0 failures)
+  - SwiftJ2K3DTests: 490 XCTest + 12 Swift Testing @Test declarations in 2 suites = 502 tests passed (0 failures)
+combined_executed_tests: 1,034 XCTest + 158 Swift Testing = 1,192 tests passed, 0 failures
+
+4. Black-Box CLI & Staged Installation Regression Suite
+command: python3 Scripts/test-cli.py --binary <bin_path>/swiftj2k-cli --output <temp_dir>/evidence
+exit_code: 0
+output: swiftj2k-cli: 246 process checks passed
+
+5. Independent Downstream Consumer Package
+command: (cd Examples/Consumer && swift run)
+exit_code: 0
+output: Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; 106-byte Part 1, 126-byte HTJ2K, 353-byte JP3D codestreams and JPIP session round-tripped.
+
+6. Byte-Preservation & Boundary Verification
+- Common contract SHA-256 check (`cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt`): 7/7 OK
+  (CLI_CONTRACT.md, COMMON_API.md, MEMORY_CONTRACT.md, PERFORMANCE.md, PLATFORMS.md, SUITE_POLICY.md, TESTING.md)
+- Swift 6.4 historical pack (`git status --short Documentation/Engineering/Swift64/`): clean (0 modifications)
+- Frozen Phase R1 branch (`antigravity/m1-m12-remediation`): preserved untouched at c4706d58cc5dde4828ea71f324817590f0671e78
+
+7. Retained Unexecuted / Deferred Gates
+- Linux build/test (`x86_64` / `aarch64`) and macOS ASan/TSan for Phase R2: not executed locally; deferred to GitHub Actions CI and independent Codex audit.
+- Hosted GitHub Actions external-oracle installation (`openjpeg`, `openjph`, `kakadu`): remains unprovisioned in hosted CI (external-oracle tests self-skip when binaries are absent on hosted runners).
+- Phase R3 (`F01` JPIP real networking/framing, `F04` JP3D standards-interoperable 3D vs private `J3DS`/`J3DI` labelling) and Phase R4 (`M6-AUD-007` multi-tile mixed-COD transcoding + broad qualification): out of Phase R2 scope and retained `open`.

@@ -296,7 +296,8 @@ final class JPIPContractTests: XCTestCase {
         XCTAssertTrue(delivered.image.descriptor.colour == .rgb)
         XCTAssertEqual(delivered.image.descriptor.components.count, 3)
         XCTAssertTrue(delivered.report.fidelity == .exactSamples)
-        XCTAssertEqual(delivered.report.discardedMetadataCount, 1)
+        XCTAssertEqual(delivered.report.discardedMetadataCount, 0)
+        XCTAssertEqual(delivered.report.copyEvents.count, 1)
         XCTAssertTrue(recorder.phases.contains(.completed))
 
         // 2. ViewWindow spatial sub-region delivery

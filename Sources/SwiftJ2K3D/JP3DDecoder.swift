@@ -157,6 +157,11 @@ public struct JP3DDecoderResult: Sendable {
     /// Whether the decoded data was losslessly encoded.
     public let isLossless: Bool
 
+    internal let peakWorkspaceBytes: Int
+    internal let commentCount: Int
+    internal let commentPayloadBytes: Int
+    internal let hadVolumeGeometry: Bool
+
     public init(
         volume: J2KVolume,
         isPartial: Bool,
@@ -171,6 +176,34 @@ public struct JP3DDecoderResult: Sendable {
         self.tilesDecoded = tilesDecoded
         self.tilesTotal = tilesTotal
         self.isLossless = isLossless
+        self.peakWorkspaceBytes = 0
+        self.commentCount = 0
+        self.commentPayloadBytes = 0
+        self.hadVolumeGeometry = false
+    }
+
+    internal init(
+        volume: J2KVolume,
+        isPartial: Bool,
+        warnings: [String],
+        tilesDecoded: Int,
+        tilesTotal: Int,
+        isLossless: Bool,
+        peakWorkspaceBytes: Int,
+        commentCount: Int,
+        commentPayloadBytes: Int,
+        hadVolumeGeometry: Bool
+    ) {
+        self.volume = volume
+        self.isPartial = isPartial
+        self.warnings = warnings
+        self.tilesDecoded = tilesDecoded
+        self.tilesTotal = tilesTotal
+        self.isLossless = isLossless
+        self.peakWorkspaceBytes = peakWorkspaceBytes
+        self.commentCount = commentCount
+        self.commentPayloadBytes = commentPayloadBytes
+        self.hadVolumeGeometry = hadVolumeGeometry
     }
 }
 
@@ -286,6 +319,7 @@ public actor JP3DDecoder {
         _ data: Data,
         limits: ResourceLimits?,
         executionPolicy: ExecutionPolicy,
+        metadataPolicy: MetadataPolicy = .preserve,
         work: VolumeWorkGuard
     ) async throws -> JP3DDecoderResult {
         try work.check()
@@ -763,11 +797,25 @@ public actor JP3DDecoder {
             )
         }
 
+        let restoredGeometry: JP3DVolumeGeometry? = (metadataPolicy == .preserve) ? codestream.geometry : nil
+        let outSpacingX = restoredGeometry.map { $0.spacingX > 0 ? scalbn($0.spacingX, K) : 0 } ?? 0
+        let outSpacingY = restoredGeometry.map { $0.spacingY > 0 ? scalbn($0.spacingY, K) : 0 } ?? 0
+        let outSpacingZ = restoredGeometry?.spacingZ ?? 0
+        let outOriginX = restoredGeometry?.originX ?? 0
+        let outOriginY = restoredGeometry?.originY ?? 0
+        let outOriginZ = restoredGeometry?.originZ ?? 0
+
         let volume = J2KVolume(
             width: outWidth,
             height: outHeight,
             depth: outDepth,
-            components: volumeComponents
+            components: volumeComponents,
+            spacingX: outSpacingX,
+            spacingY: outSpacingY,
+            spacingZ: outSpacingZ,
+            originX: outOriginX,
+            originY: outOriginY,
+            originZ: outOriginZ
         )
 
         try work.check()
@@ -779,7 +827,11 @@ public actor JP3DDecoder {
             warnings: warnings,
             tilesDecoded: tilesDecoded,
             tilesTotal: tilesExpected,
-            isLossless: isStreamLossless && !isPartial && K == 0 && maxQLayers == nil
+            isLossless: isStreamLossless && !isPartial && K == 0 && maxQLayers == nil,
+            peakWorkspaceBytes: peakDecodeWorkspace,
+            commentCount: codestream.comments.count,
+            commentPayloadBytes: codestream.commentPayloadBytes,
+            hadVolumeGeometry: codestream.geometry != nil
         )
     }
 

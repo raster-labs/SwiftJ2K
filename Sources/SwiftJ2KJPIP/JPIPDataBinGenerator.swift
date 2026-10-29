@@ -66,9 +66,29 @@ public struct JPIPDataBinGenerator: Sendable {
 
         var bins: [JPIPDataBin] = []
 
-        // Find the codestream start (skip JP2 file format boxes if present)
-        let codestreamOffset = findCodestreamStart(in: bytes)
-        let csBytes = Array(bytes[codestreamOffset...])
+        // Preserve JP2/JPH/JPX container framing (ihdr, colr, pclr, cmap, cdef, rreq, res, xml, uuid)
+        // in JPIP metadata bins when streaming container targets.
+        let csBytes: [UInt8]
+        let trailingContainerBytes: [UInt8]?
+        if let span = findContainerCodestreamSpan(in: bytes) {
+            if span.boxStart > 0 {
+                bins.append(JPIPDataBin(
+                    binClass: .metadata,
+                    binID: 0,
+                    data: Data(bytes[0..<span.boxStart]),
+                    isComplete: true
+                ))
+            }
+            csBytes = Array(bytes[span.payloadStart..<span.boxEnd])
+            if span.boxEnd < bytes.count {
+                trailingContainerBytes = Array(bytes[span.boxEnd..<bytes.count])
+            } else {
+                trailingContainerBytes = nil
+            }
+        } else {
+            csBytes = bytes
+            trailingContainerBytes = nil
+        }
 
         // Extract main header
         let mainHeader = try extractMainHeader(from: csBytes)
@@ -110,6 +130,15 @@ public struct JPIPDataBinGenerator: Sendable {
             ))
         }
 
+        if let trailing = trailingContainerBytes, !trailing.isEmpty {
+            bins.append(JPIPDataBin(
+                binClass: .metadata,
+                binID: 1,
+                data: Data(trailing),
+                isComplete: true
+            ))
+        }
+
         return bins
     }
 
@@ -122,13 +151,15 @@ public struct JPIPDataBinGenerator: Sendable {
         return (try? transcoder.isHTJ2K(data)) ?? false
     }
 
-    /// Reassembles a JPEG 2000 codestream from an array of JPIP data bins.
+    /// Reassembles a JPEG 2000 codestream (or JP2/JPH/JPX container when metadata bins are present)
+    /// from an array of JPIP data bins.
     ///
     /// Combines the `.mainHeader` bin, `.tileHeader` bins, `.tile` / `.precinct` bins,
-    /// and restores `SOD` (`0xFF93`) and `EOC` (`0xFFD9`) markers when needed.
+    /// restores `SOD` (`0xFF93`) and `EOC` (`0xFFD9`) markers when needed, and wraps
+    /// the codestream back into its container boxes when `.metadata` bin 0 is present.
     ///
     /// - Parameter bins: The JPIP data bins to reassemble.
-    /// - Returns: A reassembled JPEG 2000 codestream.
+    /// - Returns: A reassembled JPEG 2000 codestream or container.
     public func reassembleCodestream(from bins: [JPIPDataBin]) -> Data {
         guard !bins.isEmpty else { return Data() }
 
@@ -177,55 +208,102 @@ public struct JPIPDataBinGenerator: Sendable {
             }
         }
 
+        if let prefixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 0 }) {
+            var containerData = Data()
+            containerData.reserveCapacity(prefixMeta.data.count + 16 + output.count)
+            containerData.append(prefixMeta.data)
+            if output.count <= Int(UInt32.max) - 8 {
+                let boxLen = UInt32(output.count + 8)
+                containerData.append(contentsOf: [
+                    UInt8((boxLen >> 24) & 0xFF),
+                    UInt8((boxLen >> 16) & 0xFF),
+                    UInt8((boxLen >> 8) & 0xFF),
+                    UInt8(boxLen & 0xFF),
+                    0x6A, 0x70, 0x32, 0x63 // "jp2c"
+                ])
+            } else {
+                let xlBoxLen = UInt64(output.count) + 16
+                containerData.append(contentsOf: [
+                    0x00, 0x00, 0x00, 0x01,
+                    0x6A, 0x70, 0x32, 0x63, // "jp2c"
+                    UInt8((xlBoxLen >> 56) & 0xFF),
+                    UInt8((xlBoxLen >> 48) & 0xFF),
+                    UInt8((xlBoxLen >> 40) & 0xFF),
+                    UInt8((xlBoxLen >> 32) & 0xFF),
+                    UInt8((xlBoxLen >> 24) & 0xFF),
+                    UInt8((xlBoxLen >> 16) & 0xFF),
+                    UInt8((xlBoxLen >> 8) & 0xFF),
+                    UInt8(xlBoxLen & 0xFF)
+                ])
+            }
+            containerData.append(output)
+            if let suffixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 1 }) {
+                containerData.append(suffixMeta.data)
+            }
+            return containerData
+        }
+
         return output
     }
 
     // MARK: - Private Helpers
 
-    /// Finds the start of the JPEG 2000 codestream within file data.
+    /// Locates the first `jp2c` contiguous codestream box inside a JP2/JPH/JPX container.
     ///
-    /// For raw J2K codestreams, returns 0. For JP2/JPH file formats,
-    /// finds the contiguous codestream box (jp2c) and returns its offset.
-    ///
-    /// - Parameter bytes: The file data bytes.
-    /// - Returns: Offset to the codestream start.
-    private func findCodestreamStart(in bytes: [UInt8]) -> Int {
-        // Check for SOC marker at start (raw codestream)
+    /// Returns `nil` for raw codestreams so raw J2K inputs retain their exact three-bin framing.
+    private func findContainerCodestreamSpan(
+        in bytes: [UInt8]
+    ) -> (boxStart: Int, payloadStart: Int, boxEnd: Int)? {
         if bytes.count >= 2 && bytes[0] == 0xFF && bytes[1] == 0x4F {
-            return 0
+            return nil
         }
+        guard bytes.count >= 12 else { return nil }
+        let isJP2 = bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x00 &&
+                    bytes[3] == 0x0C && bytes[4] == 0x6A && bytes[5] == 0x50 &&
+                    bytes[6] == 0x20 && bytes[7] == 0x20 && bytes[8] == 0x0D &&
+                    bytes[9] == 0x0A && bytes[10] == 0x87 && bytes[11] == 0x0A
+        guard isJP2 else { return nil }
 
-        // Look for JP2 signature box
-        if bytes.count >= 12 {
-            // JP2 signature: 0x0000000C 6A502020 0D0A870A
-            let isJP2 = bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x00 &&
-                         bytes[3] == 0x0C && bytes[4] == 0x6A && bytes[5] == 0x50
+        var offset = 0
+        while offset <= bytes.count - 8 {
+            let boxLenU32 = (UInt32(bytes[offset]) << 24) |
+                            (UInt32(bytes[offset + 1]) << 16) |
+                            (UInt32(bytes[offset + 2]) << 8) |
+                            UInt32(bytes[offset + 3])
+            let boxType = String(bytes: bytes[(offset + 4)..<(offset + 8)], encoding: .ascii)
 
-            if isJP2 {
-                // Search for jp2c box (contiguous codestream)
-                var offset = 0
-                while offset <= bytes.count - 8 {
-                    let boxLenU32 = (UInt32(bytes[offset]) << 24) |
-                                    (UInt32(bytes[offset + 1]) << 16) |
-                                    (UInt32(bytes[offset + 2]) << 8) |
-                                    UInt32(bytes[offset + 3])
-                    let boxLen = Int(boxLenU32)
-                    let boxType = String(bytes: bytes[(offset + 4)..<(offset + 8)], encoding: .ascii)
-
-                    if boxType == "jp2c" {
-                        // Codestream starts after box header (8 bytes)
-                        return min(offset + 8, bytes.count)
-                    }
-
-                    if boxLen < 8 { break }
-                    let (nextOffset, overflow) = offset.addingReportingOverflow(boxLen)
-                    if overflow { break }
-                    offset = nextOffset
+            let headerSize: Int
+            let boxEnd: Int
+            if boxLenU32 == 0 {
+                headerSize = 8
+                boxEnd = bytes.count
+            } else if boxLenU32 == 1 {
+                guard offset <= bytes.count - 16 else { break }
+                var xl: UInt64 = 0
+                for b in 0..<8 {
+                    xl = (xl << 8) | UInt64(bytes[offset + 8 + b])
                 }
+                guard xl >= 16, xl <= UInt64(Int.max) else { break }
+                let (end, ov) = offset.addingReportingOverflow(Int(xl))
+                guard !ov else { break }
+                headerSize = 16
+                boxEnd = min(end, bytes.count)
+            } else {
+                guard boxLenU32 >= 8 else { break }
+                let (end, ov) = offset.addingReportingOverflow(Int(boxLenU32))
+                guard !ov else { break }
+                headerSize = 8
+                boxEnd = min(end, bytes.count)
             }
-        }
 
-        return 0
+            if boxType == "jp2c" {
+                let payloadStart = min(offset + headerSize, boxEnd)
+                return (boxStart: offset, payloadStart: payloadStart, boxEnd: boxEnd)
+            }
+            if boxEnd <= offset { break }
+            offset = boxEnd
+        }
+        return nil
     }
 
     /// Extracts the main header from a codestream.

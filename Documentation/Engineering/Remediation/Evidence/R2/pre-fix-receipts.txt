@@ -1,0 +1,32 @@
+=== SwiftJ2K Phase R2 Pre-Fix Reproduction Receipts ===
+timestamp_utc: 2026-10-29T12:25:38.919764+00:00
+base_r1_commit: c4706d58cc5dde4828ea71f324817590f0671e78
+cli_sha256: 16e13c141cdc8510e361c78404ea9e4396275816265b22da62531dce56be2e09
+
+[F07] Core decode palettised JP2: rc=0 report={"backend":"accelerated","command":"decode","components":3,"copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.034153250000000003,"fidelity":"exactSamples","height":12,"inputBytes":1246,"meaningfulBits":8,"outputBytes":776,"peakWorkspaceBytes":79496,"pixelAllocations":1,"width":16}
+[F07] JPIP client palettised JP2: rc=0 report={"backend":"accelerated","cachedBytes":329,"cachedDataBins":3,"channelID":"cid-CE9A2F39-4B3D-451B-A4DF-5A2DE8B3CAAB","command":"jpip","components":1,"elapsedSeconds":0.026889041999999998,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":584,"role":"client","target":"jp2_pal8_pclr_cmap_resc.kdu.jp2","width":16}
+
+[F08] Generated JPX rreq: FUAM=0xff00 DCM=0xff union_SM=0xf800 SFs=[(5, '0x8000'), (45, '0x4000'), (18, '0x2000'), (1, '0x1000'), (12, '0x800')]
+[F08] Validate JPX requiring unsupported SF=2: rc=0 out='valid: 8x8, 8 meaningful bits, 463 bytes' err=''
+
+[F09] JPIP client --copy-policy require-sharing: rc=0 report={"backend":"accelerated","cachedBytes":741,"cachedDataBins":3,"channelID":"cid-44917B3D-3ADB-4619-9A47-D431386395C0","command":"jpip","components":3,"elapsedSeconds":0.037198792000000001,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":776,"role":"client","target":"jp2_rgb8_rct.kdu.jp2","width":16}
+
+[F10] JPIP combined view window (16x12 img, region=8x8, resLevel=1, comp=[1]; expected 4x4x1): rc=0 report={"backend":"accelerated","cachedBytes":741,"cachedDataBins":3,"channelID":"cid-214DCC94-9B43-491C-AA9E-32692A7ED7A6","command":"jpip","components":1,"elapsedSeconds":0.031226291999999999,"fidelity":"lossy","height":6,"meaningfulBits":8,"outputBytes":294,"role":"client","target":"jp2_rgb8_rct.kdu.jp2","width":8}
+
+[F11] encode3d with negative --origin -120,10,25: rc=2 err='swiftj2k-cli: An option is missing its value. Use --help for syntax.'
+[F11] Decoded 3D NRRD header (rc_enc=0, rc_dec=0) after --spacing 0.7,0.8,1.5 --origin 12,10,25:
+NRRD0004
+type: uint8
+dimension: 3
+sizes: 8 8 4
+encoding: raw
+swiftj2k.meaningfulbits:=8
+
+[F12] Inspect JP2 with duplicate jp2c box: rc=0 out={"bytes":1583,"components":3,"format":"jp2","frames":1,"height":12,"meaningfulBits":8,"sampleType":"unsignedInteger","storageBits":8,"width":16}
+
+[M12-CX-03] Read normative 12-in-16 PNG [0, 1024, 2048, 4095] (stored [0x0000, 0x4004, 0x8008, 0xFFFF]): rc=0 decoded=[0, 4095, 4095, 4095]
+[M12-CX-03] Write 12-bit PGM [0, 1024, 2048, 4095] to PNG: rc=0 sBIT=[12] stored_u16=['0x0', '0x400', '0x400', '0x7ff']
+
+[M12-CX-04] TIFF WhiteIsZero (tag 262=0) raw=[0, 200] (expected [255, 55]): rc=0 decoded=[0, 200]
+[M12-CX-04] TIFF Palette (tag 262=3) 2x1 indexed (expected components=3 RGB): rc=0 report={"bitDepth":8,"command":"convert","components":1,"elapsedSeconds":0.001507083,"height":1,"inputBytes":1672,"meaningfulBits":8,"outputBytes":13,"outputFormat":"pgm","sourceFormat":"tiff","targetFormat":"pgm","width":2}
+[M12-CX-04] TIFF YCbCr (tag 262=6) (expected rejection rc=4): rc=0 report={"bitDepth":8,"command":"convert","components":3,"elapsedSeconds":0.0012756670000000001,"height":1,"inputBytes":134,"meaningfulBits":8,"outputBytes":17,"outputFormat":"ppm","sourceFormat":"tiff","targetFormat":"ppm","width":2}

@@ -146,9 +146,20 @@ enum JP2Container {
                 guard !box.payloadRange.isEmpty else {
                     throw CodecError(.malformedInput, "Contiguous codestream box ('jp2c') is empty.")
                 }
-                if codestreamRange == nil {
-                    codestreamRange = box.payloadRange
+                if codestreamRange != nil {
+                    if format == jp2Format || format == jphFormat {
+                        throw CodecError(
+                            .malformedInput,
+                            "Duplicate 'jp2c' contiguous codestream box is invalid in \(format.uppercased()) containers."
+                        )
+                    } else {
+                        throw CodecError(
+                            .unsupportedFeature,
+                            "Multiple 'jp2c' contiguous codestream boxes in JPX containers are not supported."
+                        )
+                    }
                 }
+                codestreamRange = box.payloadRange
 
             case .xml:
                 try recordAncillary(kind: "xml", payloadRange: box.payloadRange)
@@ -235,6 +246,19 @@ enum JP2Container {
         metadataPolicy: MetadataPolicy
     ) throws -> ReconciledContainerProfile {
         let container = try parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
+        if let rreq = container.readerRequirements {
+            let eval = rreq.evaluate()
+            if !eval.canDecodeCompletely {
+                let codes = eval.unsupportedRequiredFeatures.map(String.init).joined(separator: ", ")
+                let detail = codes.isEmpty
+                    ? String(format: "unsatisfied DCM mask 0x%llx", eval.unsatisfiedDecodeMask)
+                    : "unsupported required standard feature(s) [\(codes)]"
+                throw CodecError(
+                    .unsupportedFeature,
+                    "Container Reader Requirements ('rreq') cannot be satisfied: \(detail)."
+                )
+            }
+        }
         let csBytes = Array(bytes[container.codestreamRange])
 
         // Parse codestream syntax first to reconcile SIZ against ihdr/bpcc before checking unsupported features.
@@ -489,7 +513,8 @@ enum JP2Container {
         reconciled: ReconciledContainerProfile,
         into destination: ImageDestination,
         options: DecodeOptions,
-        allocations: Int
+        allocations: Int,
+        maxQualityLayers: Int? = nil
     ) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
@@ -514,7 +539,8 @@ enum JP2Container {
         let sealedImage: Image
         let peakWorkspace: Int
 
-        let isDefaultGreyscale16 = reconciled.paletteMapping == nil &&
+        let isDefaultGreyscale16 = maxQualityLayers == nil &&
+            reconciled.paletteMapping == nil &&
             reconciled.channelPermutation == nil &&
             destDesc.sampleType == .unsignedInteger &&
             destDesc.storageBits == 16 &&
@@ -545,7 +571,8 @@ enum JP2Container {
                 backend: resolvedBackend.backend,
                 progress: options.progress,
                 paletteMapping: reconciled.paletteMapping,
-                channelPermutation: reconciled.channelPermutation
+                channelPermutation: reconciled.channelPermutation,
+                maxQualityLayers: maxQualityLayers
             )
         }
         // Attach container metadata to the sealed Image view (same underlying storage & allocationID).
@@ -558,7 +585,13 @@ enum JP2Container {
 
         try Task.checkCancellation()
         let elapsed = clock.now - started
-        let fidelity: Fidelity = reconciled.part1Profile.isReversibleLossless ? .exactSamples : .lossy
+        let hasReducedLayers: Bool
+        if let maxLayers = maxQualityLayers {
+            hasReducedLayers = reconciled.part1Profile.tiles.contains { maxLayers < $0.defaultCodingStyle.layers }
+        } else {
+            hasReducedLayers = false
+        }
+        let fidelity: Fidelity = (reconciled.part1Profile.isReversibleLossless && !hasReducedLayers) ? .exactSamples : .lossy
         let report = OperationReport(
             backend: resolvedBackend.backend,
             fallbackReason: resolvedBackend.fallbackReason,
@@ -657,15 +690,20 @@ enum JP2Container {
         // 3. Reader Requirements box ('rreq') for JPX (or if supplied in metadata)
         if containerFormat == .jpx {
             let rreqPayload: [UInt8]
-            if metadataPolicy == .preserve, let customRreq = metadata.entries["rreq"] {
-                let parsed = try JP2ReaderRequirementsBox.parse(bytes: [UInt8](customRreq), range: 0..<customRreq.count)
+            if metadataPolicy == .preserve,
+               let customRreq = metadata.entries["rreq"],
+               let parsed = try? JP2ReaderRequirementsBox.parse(bytes: [UInt8](customRreq), range: 0..<customRreq.count),
+               parsed.standardFeatures.contains(where: { $0.knownFeature == .htj2kCodestream }) == isHTJ2K,
+               parsed.evaluate().canDecodeCompletely {
                 rreqPayload = parsed.serialise()
             } else {
                 let defaultRreq = try JP2ReaderRequirementsBox.defaultJPX(
                     isLossless: isLossless,
                     isHTJ2K: isHTJ2K,
                     colour: descriptor.colour,
-                    hasAlpha: descriptor.alpha != .absent
+                    hasAlpha: descriptor.alpha != .absent,
+                    isPremultipliedAlpha: descriptor.alpha == .premultiplied,
+                    hasRestrictedICC: descriptor.iccProfile != nil
                 )
                 rreqPayload = defaultRreq.serialise()
             }
@@ -807,5 +845,85 @@ enum JP2Container {
             discardedMetadataBytes: discardedBytes,
             discardedMetadataKinds: discardedKinds
         )
+    }
+
+    /// Re-wraps a transcoded codestream inside its original parsed container header
+    /// (`ihdr`, `bpcc`, `colr`, `pclr`, `cmap`, `cdef`, `res `) and ancillary metadata boxes,
+    /// updating `ftyp` (`jp2 ` <-> `jph `, or `jpx ` with updated `rreq`) to match `targetIsHT`.
+    static func rewrapPreservingHeader(
+        reconciled: ReconciledContainerProfile,
+        codestream: [UInt8],
+        targetIsHT: Bool,
+        limits: ResourceLimits
+    ) throws -> [UInt8] {
+        var writer = JP2BoxWriter(capacity: codestream.count + 256)
+        try writer.appendBox(type: .signature, payload: JP2SignatureBox.expectedPayload)
+
+        let sourceFormat = reconciled.container.format
+        let ftyp: JP2FileTypeBox
+        if sourceFormat == jpxFormat {
+            var cl = [JP2FileTypeBox.brandJPX, JP2FileTypeBox.brandJPXB]
+            if !targetIsHT {
+                cl.insert(JP2FileTypeBox.brandJP2, at: 1)
+            }
+            ftyp = try JP2FileTypeBox(
+                brand: JP2FileTypeBox.brandJPX,
+                minorVersion: reconciled.container.fileType.minorVersion,
+                compatibleBrands: cl
+            )
+        } else if targetIsHT {
+            ftyp = try JP2FileTypeBox(
+                brand: JP2FileTypeBox.brandJPH,
+                minorVersion: 0,
+                compatibleBrands: [JP2FileTypeBox.brandJPH, JP2FileTypeBox.brandJP2]
+            )
+        } else {
+            ftyp = try JP2FileTypeBox(
+                brand: JP2FileTypeBox.brandJP2,
+                minorVersion: 0,
+                compatibleBrands: [JP2FileTypeBox.brandJP2]
+            )
+        }
+        try writer.appendBox(type: .fileType, payload: ftyp.serialise())
+
+        if sourceFormat == jpxFormat {
+            let desc = reconciled.outputDescriptor
+            let rreq = try JP2ReaderRequirementsBox.defaultJPX(
+                isLossless: reconciled.part1Profile.isReversibleLossless,
+                isHTJ2K: targetIsHT,
+                colour: desc.colour,
+                hasAlpha: desc.alpha != .absent,
+                isPremultipliedAlpha: desc.alpha == .premultiplied,
+                hasRestrictedICC: desc.iccProfile != nil
+            )
+            try writer.appendBox(type: .readerRequirements, payload: rreq.serialise())
+        }
+
+        try writer.appendBox(type: .jp2Header, payload: try reconciled.container.header.serialise())
+
+        for key in reconciled.container.metadataEntries.keys.sorted() {
+            guard key != "rreq" && key != "res" else { continue }
+            guard let payloadData = reconciled.container.metadataEntries[key] else { continue }
+            let baseKey = key.split(separator: ".").first.map(String.init) ?? key
+            let boxType: JP2BoxType?
+            switch baseKey {
+            case "xml", "xml ":   boxType = .xml
+            case "uuid":          boxType = .uuid
+            case "uinf":          boxType = .uuidInfo
+            case "jp2i":          boxType = .ipr
+            case "asoc":          boxType = .association
+            case "lbl", "lbl ":   boxType = .label
+            default:              boxType = JP2BoxType(fourCC: baseKey)
+            }
+            if let validType = boxType {
+                try writer.appendBox(type: validType, payload: [UInt8](payloadData))
+            }
+        }
+
+        try writer.appendBox(type: .contiguousCodestream, payload: codestream)
+        guard writer.bytes.count <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Container output (\(writer.bytes.count) bytes) exceeds maximumCompressedBytes (\(limits.maximumCompressedBytes)).")
+        }
+        return writer.bytes
     }
 }

@@ -111,21 +111,34 @@ public struct JP3DParsedCodestream: Sendable {
     public let tiles: [JP3DParsedTile]
     /// Whether a main-header CAP (`0xFF50`) marker with Part 15 HTJ2K signalling was present.
     public let hasCAPMarker: Bool
+    /// Optional physical voxel spacing and origin parsed from a `"SJ2K3D_GEOM_V1"` `COM` marker segment.
+    public let geometry: JP3DVolumeGeometry?
+    /// Main-header `COM` (`0xFF64`) marker segments in codestream order.
+    public let comments: [JP3DCommentSegment]
     /// Total bytes retained across parsed tile subdata buffers.
     internal let retainedTileBytes: Int
+
+    /// Total payload bytes across all parsed `COM` marker segments.
+    public var commentPayloadBytes: Int {
+        comments.reduce(0) { $0 + $1.payload.count }
+    }
 
     public init(
         siz: JP3DSIZInfo,
         cod: JP3DCODInfo,
         isLosslessQuantization: Bool,
         tiles: [JP3DParsedTile],
-        hasCAPMarker: Bool = false
+        hasCAPMarker: Bool = false,
+        geometry: JP3DVolumeGeometry? = nil,
+        comments: [JP3DCommentSegment] = []
     ) {
         self.siz = siz
         self.cod = cod
         self.isLosslessQuantization = isLosslessQuantization
         self.tiles = tiles
         self.hasCAPMarker = hasCAPMarker
+        self.geometry = geometry
+        self.comments = comments
         self.retainedTileBytes = tiles.reduce(0) { $0 + 32 + $1.data.count + MemoryLayout<JP3DParsedTile>.stride }
     }
 
@@ -135,7 +148,9 @@ public struct JP3DParsedCodestream: Sendable {
         isLosslessQuantization: Bool,
         tiles: [JP3DParsedTile],
         hasCAPMarker: Bool,
-        retainedTileBytes: Int
+        retainedTileBytes: Int,
+        geometry: JP3DVolumeGeometry? = nil,
+        comments: [JP3DCommentSegment] = []
     ) {
         self.siz = siz
         self.cod = cod
@@ -143,6 +158,8 @@ public struct JP3DParsedCodestream: Sendable {
         self.tiles = tiles
         self.hasCAPMarker = hasCAPMarker
         self.retainedTileBytes = retainedTileBytes
+        self.geometry = geometry
+        self.comments = comments
     }
 
     /// Compute the tile grid for this codestream.
@@ -197,6 +214,9 @@ public struct JP3DCodestreamParser: Sendable {
         var codInfo: JP3DCODInfo?
         var isLosslessQuan = true
         var hasCAP = false
+        var parsedGeometry: JP3DVolumeGeometry?
+        var parsedComments: [JP3DCommentSegment] = []
+        var totalCommentMetadataBytes = 0
         var parsedTiles: [JP3DParsedTile] = []
         var retainedTileBytes = 0
         var foundEOC = false
@@ -249,12 +269,40 @@ public struct JP3DCodestreamParser: Sendable {
                 }
                 hasCAP = true
                 offset += len - 2
-            case 0xFF59, 0xFF64: // CPF or COM – skip
+            case 0xFF59: // CPF – skip
                 let len = Int(try readUInt16BE(data, at: &offset))
                 guard len >= 2, offset + (len - 2) <= data.count else {
                     throw J2KError.decodingError("Marker 0x\(String(marker, radix: 16)) has invalid length \(len)")
                 }
                 offset += len - 2
+            case 0xFF64: // COM – parse comment and optional SJ2K3D_GEOM_V1 volume geometry
+                let len = Int(try readUInt16BE(data, at: &offset))
+                guard len >= 4, offset + (len - 2) <= data.count else {
+                    throw J2KError.decodingError("COM marker has invalid length \(len)")
+                }
+                let rcom = try readUInt16BE(data, at: &offset)
+                let payloadLen = len - 4
+                let (nextMetaBytes, metaOv) = totalCommentMetadataBytes.addingReportingOverflow(payloadLen)
+                guard !metaOv else {
+                    throw J2KError.decodingError("COM metadata byte count overflows integer arithmetic")
+                }
+                if let limits {
+                    guard nextMetaBytes <= limits.maximumMetadataBytes,
+                          nextMetaBytes <= limits.maximumMemoryBytes else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "Volumetric COM metadata (\(nextMetaBytes) bytes) exceeds maximumMetadataBytes (\(limits.maximumMetadataBytes))"
+                        )
+                    }
+                }
+                totalCommentMetadataBytes = nextMetaBytes
+                let payloadStart = data.startIndex + offset
+                let payload = Data(data[payloadStart..<(payloadStart + payloadLen)])
+                offset += payloadLen
+                if rcom == 0, let decodedGeom = try JP3DVolumeGeometry.decodePayload(payload) {
+                    parsedGeometry = decodedGeom
+                }
+                parsedComments.append(JP3DCommentSegment(registration: rcom, payload: payload))
             case 0xFF90: // SOT
                 let tile = try parseSOTAndData(
                     data,
@@ -298,7 +346,9 @@ public struct JP3DCodestreamParser: Sendable {
             isLosslessQuantization: isLosslessQuan,
             tiles: parsedTiles.sorted { $0.tileIndex < $1.tileIndex },
             hasCAPMarker: hasCAP,
-            retainedTileBytes: retainedTileBytes
+            retainedTileBytes: retainedTileBytes,
+            geometry: parsedGeometry,
+            comments: parsedComments
         )
     }
 

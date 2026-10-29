@@ -1,0 +1,44 @@
+=== SwiftJ2K Phase R2 Post-Fix Verification Receipts ===
+timestamp_utc: 2026-10-29T14:20:34.672888+00:00
+base_r1_commit: c4706d58cc5dde4828ea71f324817590f0671e78
+cli_sha256: 942c6947aa68b233ea42277ad2f44c2d21a7c3f0c5d7c865eb70617675025899
+
+[F07] Core decode palettised JP2: rc=0 report={"backend":"accelerated","command":"decode","components":3,"copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.032233583000000003,"fidelity":"exactSamples","height":12,"inputBytes":1246,"meaningfulBits":8,"outputBytes":776,"peakWorkspaceBytes":79496,"pixelAllocations":1,"width":16}
+[F07] JPIP client palettised JP2: rc=0 report={"backend":"accelerated","cachedBytes":1234,"cachedDataBins":4,"channelID":"cid-91C2AAD3-4D8F-45D6-9E89-E3655A0950FB","command":"jpip","components":3,"elapsedSeconds":0.025100332999999999,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":776,"role":"client","target":"jp2_pal8_pclr_cmap_resc.kdu.jp2","width":16}
+[F07] Compare core decode vs JPIP client palettised RGB: rc=0 report={"bitDepth":8,"bitExact":true,"components":[{"bitExact":true,"component":0,"mae":0,"maxError":0,"mse":0,"psnr":"infinity"},{"bitExact":true,"component":1,"mae":0,"maxError":0,"mse":0,"psnr":"infinity"},{"bitExact":true,"component":2,"mae":0,"maxError":0,"mse":0,"psnr":"infinity"}],"elapsedSeconds":0.0020475419999999999,"height":12,"mae":0,"maxError":0,"mode":"2d","mse":0,"passed":true,"psnr":"infinity","signed":false,"width":16}
+
+[F08] Generated JPX rreq: ML=2 FUAM=0xff00 DCM=0xff00 union_SM=0xff00 undefined_DCM=0x0 undefined_FUAM=0x0 SFs=[(5, '0x8000'), (1, '0x4000'), (12, '0x2000'), (18, '0x1000'), (20, '0x800'), (31, '0x400'), (8, '0x200'), (45, '0x100')]
+[F08] Validate Kakadu JPX fixtures: part1_rc=0 htj2k_rc=0
+[F08] Validate JPX requiring unsupported SF=2: rc=4 out='' err="swiftj2k-cli: unsupported: Container Reader Requirements ('rreq') cannot be satisfied: unsupported required standard feature(s) [2]."
+
+[F09] JPIP client --copy-policy require-sharing: rc=4 err='swiftj2k-cli: unsupported: JPIPStreamingSession.deliverImage materialises both contract Image and legacy J2KImage sample buffers, requiring a buffer copy; pass copyPolicy: .allowCopy.'
+[F09] JPIP client --copy-policy allow-copy: rc=0 report={"backend":"accelerated","cachedBytes":818,"cachedDataBins":4,"channelID":"cid-015BC62F-D737-40BD-8A38-B46178CE44ED","command":"jpip","components":3,"elapsedSeconds":0.038718416999999998,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":776,"role":"client","target":"jp2_rgb8_rct.kdu.jp2","width":16}
+
+[F10] JPIP combined view window (16x12 img, region=8x8, resLevel=1, layers=1, comp=[1]; expected 4x4x1): rc=0 report={"backend":"accelerated","cachedBytes":818,"cachedDataBins":4,"channelID":"cid-8BA8A04D-5F4C-44F1-BB75-13D10F977D8B","command":"jpip","components":1,"elapsedSeconds":0.032304290999999999,"fidelity":"lossy","height":4,"meaningfulBits":8,"outputBytes":230,"role":"client","target":"jp2_rgb8_rct.kdu.jp2","width":4}
+[F10] JPIP invalid --components rejection: '0,abc' rc=2; '99' rc=2
+
+[F09] encode3d/decode3d --copy-policy require-sharing: encode3d_rc=4 decode3d_rc=4
+[F11] encode3d with negative --origin -120,10,25 and --spacing 0.7,0.8,1.5: rc_enc=0 rc_dec=0
+[F11] Decoded 3D NRRD header (--metadata-policy preserve):
+NRRD0004
+type: uint8
+dimension: 3
+sizes: 8 8 4
+space dimension: 3
+space directions: (0.7,0,0) (0,0.8,0) (0,0,1.5)
+space origin: (-120.0,10.0,25.0)
+encoding: raw
+swiftj2k.meaningfulbits:=8
+[F11] Decoded 3D NRRD header (--metadata-policy discard-ancillary, rc=0): has_space=False
+
+[F12] Inspect JP2 (1583 B) with duplicate jp2c box: rc=3 err="swiftj2k-cli: malformed input: Duplicate 'jp2c' contiguous codestream box is invalid in JP2 containers."
+[F12] Inspect JPX with multiple jp2c boxes: rc=4 err="swiftj2k-cli: unsupported: Multiple 'jp2c' contiguous codestream boxes in JPX containers are not supported."
+
+[M12-CX-03] Read normative 12-in-16 PNG [0, 1024, 2048, 4095] (stored [0x0000, 0x4004, 0x8008, 0xFFFF]): rc=0 decoded=[0, 1024, 2048, 4095]
+[M12-CX-03] Write 12-bit PGM [0, 1024, 2048, 4095] to PNG: rc=0 sBIT=[12] stored_u16=['0x0000', '0x4004', '0x8008', '0xffff']
+[M12-CX-03] Rejections: unequal_sBIT_rc=4 unscaled16_precision12_rc=2
+
+[M12-CX-04] TIFF WhiteIsZero (tag 262=0) raw=[0, 200] (expected [255, 55]): rc=0 decoded=[255, 55]
+[M12-CX-04] TIFF Palette (tag 262=3) 2x1 indexed (expected components=3 RGB [255, 10, 20, 30, 200, 240]): rc=0 samples=[255, 10, 20, 30, 200, 240] report={"bitDepth":8,"command":"convert","components":3,"elapsedSeconds":0.0013711249999999999,"height":1,"inputBytes":1672,"meaningfulBits":8,"outputBytes":204,"outputFormat":"nrrd","sourceFormat":"tiff","targetFormat":"nrrd","width":2}
+[M12-CX-04] TIFF YCbCr (tag 262=6) (expected rejection rc=4): rc=4 err='swiftj2k-cli: unsupported: Unsupported TIFF PhotometricInterpretation (6).'
+[M12-CX-04] TIFF missing PhotometricInterpretation (tag 262) (expected rejection rc=3): rc=3 err='swiftj2k-cli: malformed input: TIFF missing required PhotometricInterpretation tag (262).'

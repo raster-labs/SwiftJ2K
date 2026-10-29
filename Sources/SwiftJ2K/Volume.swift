@@ -280,6 +280,12 @@ public struct J2KVolume: Sendable, Equatable {
         spacingX > 0 && spacingY > 0 && spacingZ > 0
     }
 
+    /// Returns true if any physical voxel spacing or origin coordinate is explicitly non-zero.
+    public var hasExplicitGeometry: Bool {
+        spacingX != 0 || spacingY != 0 || spacingZ != 0
+            || originX != 0 || originY != 0 || originZ != 0
+    }
+
     /// Whether the volume has equal dimensions (or equal spacing when set) along all three axes.
     public var isIsotropic: Bool {
         if hasSpacing {
@@ -360,9 +366,21 @@ public struct J2KVolume: Sendable, Equatable {
             }
         }
 
+        if !spacingX.isFinite || !spacingY.isFinite || !spacingZ.isFinite {
+            throw J2KError.invalidParameter(
+                "Voxel spacing must be finite: (\(spacingX), \(spacingY), \(spacingZ))"
+            )
+        }
+
         if spacingX < 0 || spacingY < 0 || spacingZ < 0 {
             throw J2KError.invalidParameter(
                 "Voxel spacing must be non-negative: (\(spacingX), \(spacingY), \(spacingZ))"
+            )
+        }
+
+        if !originX.isFinite || !originY.isFinite || !originZ.isFinite {
+            throw J2KError.invalidParameter(
+                "Volume origin coordinates must be finite: (\(originX), \(originY), \(originZ))"
             )
         }
 
@@ -756,5 +774,42 @@ package enum Slice2DBridge {
             }
         }
         return (out, w, h, profile.precision, profile.signed)
+    }
+
+    /// Transcodes a lossless single-component 2D slice codestream (unsigned or signed, 1–16 bits)
+    /// between Part 1 and HTJ2K directly in the wavelet coefficient domain without decoding pixels.
+    package static func transcodeLosslessSliceCoefficients(
+        _ sliceData: Data,
+        to target: TranscodeTarget,
+        limits: ResourceLimits = .default,
+        executionPolicy: ExecutionPolicy = .automatic
+    ) throws -> Data {
+        let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
+        let bytes = [UInt8](sliceData)
+        let profile = try ScalarLosslessCodec.inspect(
+            bytes,
+            limits: limits,
+            metadataPolicy: .preserve,
+            allowSignedWaveletTranscode: true
+        )
+        let firstCOD = profile.tiles.first?.codingStyle
+        let cbWidth = firstCOD.map { 1 << $0.codeBlockWidthExponent } ?? 64
+        let cbHeight = firstCOD.map { 1 << $0.codeBlockHeightExponent } ?? 64
+        let codecOptions = try CodecOptions(
+            codeBlockWidth: max(4, min(1024, cbWidth)),
+            codeBlockHeight: max(4, min(1024, cbHeight)),
+            blockCoding: (target == .htj2k) ? .htj2k : .part1
+        )
+        let (transcoded, _) = try ScalarLosslessCodec.transcode(
+            bytes: bytes,
+            profile: profile,
+            to: target,
+            codecOptions: codecOptions,
+            metadataPolicy: .preserve,
+            limits: limits,
+            backend: resolvedBackend.backend,
+            progress: nil
+        )
+        return transcoded
     }
 }

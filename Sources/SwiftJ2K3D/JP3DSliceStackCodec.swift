@@ -361,6 +361,7 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         var liveOutputBytes = 0
         var retainedBytes = 0
         var releasedOutputBytes = 0
+        var peakWorkspaceBytes = 0
         var revision: UInt64 = 0
     }
 
@@ -374,6 +375,7 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         internal var currentTransientBytes: Int { state.withLock { $0.liveScratchBytes + $0.liveOutputBytes } }
         internal var currentRetainedBytes: Int { state.withLock { $0.retainedBytes } }
         internal var currentReleasedOutputBytes: Int { state.withLock { $0.releasedOutputBytes } }
+        internal var peakWorkspaceBytes: Int { state.withLock { $0.peakWorkspaceBytes } }
     }
 
     private struct PublishedSnapshot: Sendable {
@@ -635,6 +637,10 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         stateStorage.currentOutputBytes
     }
 
+    internal var peakWorkspaceBytes: Int {
+        stateStorage.peakWorkspaceBytes
+    }
+
     internal var currentRevision: UInt64 {
         stateStorage.state.withLock { $0.revision }
     }
@@ -649,6 +655,10 @@ internal final class JP3DLiveBudgetTracker: Sendable {
     ) -> PublishedSnapshot {
         let rev = Self.allocateRevision()
         st.revision = rev
+        let currentWorkspace = st.liveScratchBytes + st.liveOutputBytes + st.retainedBytes
+        if currentWorkspace > st.peakWorkspaceBytes {
+            st.peakWorkspaceBytes = currentWorkspace
+        }
         let snap = PublishedSnapshot(
             revision: rev,
             scratch: st.liveScratchBytes,
@@ -1533,9 +1543,7 @@ internal struct JP3DSliceStackCodec: Sendable {
         out.append(bitDepth)
         out.append(signed)
 
-        let transcoder = try Transcoder()
         let target: TranscodeTarget = toHTJ2K ? .htj2k : .jpeg2000
-        let options = TranscodeOptions(resourceLimits: limits, executionPolicy: executionPolicy)
 
         for _ in 0..<compCount {
             for _ in 0..<tileD {
@@ -1550,7 +1558,12 @@ internal struct JP3DSliceStackCodec: Sendable {
                 let sliceData = data.subdata(in: (data.startIndex + offset)..<(data.startIndex + endPos))
                 offset = endPos
 
-                let transcodedSlice = try await transcoder.transcode(sliceData, to: target, options: options).data
+                let transcodedSlice = try Slice2DBridge.transcodeLosslessSliceCoefficients(
+                    sliceData,
+                    to: target,
+                    limits: limits,
+                    executionPolicy: executionPolicy
+                )
                 appendUInt32BE(&out, UInt32(transcodedSlice.count))
                 out.append(transcodedSlice)
             }

@@ -33,6 +33,7 @@ struct LosslessProfile: Sendable {
     let tileWidth: Int, tileHeight: Int   // XTsiz, YTsiz
     let tileOriginX: Int, tileOriginY: Int
     let precision: Int
+    let signed: Bool
     let isHTJ2K: Bool
     let tiles: [TileProfile]
     let mainHeaderComments: [[UInt8]]
@@ -76,7 +77,8 @@ enum ScalarLosslessCodec {
     static func inspect(
         _ bytes: [UInt8],
         limits: ResourceLimits,
-        metadataPolicy: MetadataPolicy = .preserve
+        metadataPolicy: MetadataPolicy = .preserve,
+        allowSignedWaveletTranscode: Bool = false
     ) throws -> LosslessProfile {
         let parsed = try CodestreamSyntax.parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
         let size = parsed.size
@@ -105,7 +107,9 @@ enum ScalarLosslessCodec {
             throw CodecError(.unsupportedFeature, "RGN or POC markers require the general Part 1 pipeline.")
         }
         let component = size.components[0]
-        guard !component.signed else { throw CodecError(.unsupportedFeature, "Signed components are not supported.") }
+        if !allowSignedWaveletTranscode {
+            guard !component.signed else { throw CodecError(.unsupportedFeature, "Signed components are not supported.") }
+        }
         guard component.precision <= 16 else {
             throw CodecError(.unsupportedFeature, "Component precision above 16 bits is not supported.")
         }
@@ -175,7 +179,7 @@ enum ScalarLosslessCodec {
                                originX: size.originX, originY: size.originY,
                                tileWidth: size.tileWidth, tileHeight: size.tileHeight,
                                tileOriginX: size.tileOriginX, tileOriginY: size.tileOriginY,
-                               precision: component.precision, isHTJ2K: parsed.isHTJ2K, tiles: tiles,
+                               precision: component.precision, signed: component.signed, isHTJ2K: parsed.isHTJ2K, tiles: tiles,
                                mainHeaderComments: parsed.mainHeaderComments,
                                componentRegistration: parsed.componentRegistration,
                                commentCount: parsed.commentCount,
@@ -312,7 +316,8 @@ enum ScalarLosslessCodec {
                        limits: ResourceLimits, backend: Backend = .scalarCPU,
                        progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
         let descriptor = destination.descriptor
-        guard descriptor.width == profile.width, descriptor.height == profile.height,
+        guard !profile.signed,
+              descriptor.width == profile.width, descriptor.height == profile.height,
               descriptor.sampleType == .unsignedInteger, descriptor.storageBits == 16,
               descriptor.components == [.grey], descriptor.planes.count == 1,
               descriptor.meaningfulBits == profile.precision else {
@@ -809,7 +814,7 @@ enum ScalarLosslessCodec {
             tileHeight: profile.tileHeight,
             tileOriginX: profile.tileOriginX,
             tileOriginY: profile.tileOriginY,
-            components: [ComponentSignalling(precision: profile.precision, signed: false,
+            components: [ComponentSignalling(precision: profile.precision, signed: profile.signed,
                                              horizontalSeparation: 1, verticalSeparation: 1)]
         )
         try CodestreamSyntax.writeSIZ(size, into: &out)

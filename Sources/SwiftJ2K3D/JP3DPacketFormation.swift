@@ -254,6 +254,129 @@ public struct JP3DPacketSequencer: Sendable {
     }
 }
 
+/// Physical voxel spacing and origin coordinates stored in a JP3D main-header `COM` (`0xFF64`) marker segment.
+public struct JP3DVolumeGeometry: Sendable, Equatable {
+    /// 14-byte ASCII magic `"SJ2K3D_GEOM_V1"`.
+    public static let magicBytes: [UInt8] = Array("SJ2K3D_GEOM_V1".utf8)
+    /// Binary `COM` payload byte count (`14` magic bytes + `6 * 8 = 48` IEEE-754 bytes = `62` bytes).
+    public static let payloadByteCount: Int = 62
+
+    /// Voxel spacing along X (`0` indicates unset/unknown).
+    public let spacingX: Double
+    /// Voxel spacing along Y (`0` indicates unset/unknown).
+    public let spacingY: Double
+    /// Voxel spacing along Z (`0` indicates unset/unknown).
+    public let spacingZ: Double
+    /// Physical origin X coordinate.
+    public let originX: Double
+    /// Physical origin Y coordinate.
+    public let originY: Double
+    /// Physical origin Z coordinate.
+    public let originZ: Double
+
+    public init(
+        spacingX: Double,
+        spacingY: Double,
+        spacingZ: Double,
+        originX: Double,
+        originY: Double,
+        originZ: Double
+    ) {
+        self.spacingX = spacingX
+        self.spacingY = spacingY
+        self.spacingZ = spacingZ
+        self.originX = originX
+        self.originY = originY
+        self.originZ = originZ
+    }
+
+    /// Returns `true` when any spacing or origin coordinate differs from default `0`.
+    public var hasNonDefaultValues: Bool {
+        spacingX != 0 || spacingY != 0 || spacingZ != 0
+            || originX != 0 || originY != 0 || originZ != 0
+    }
+
+    /// Serialises this geometry into a 62-byte binary `COM` payload (`"SJ2K3D_GEOM_V1"` + 6 big-endian IEEE-754 `UInt64` words).
+    public func encodePayload() throws -> Data {
+        guard spacingX.isFinite, spacingY.isFinite, spacingZ.isFinite,
+              originX.isFinite, originY.isFinite, originZ.isFinite,
+              spacingX >= 0, spacingY >= 0, spacingZ >= 0 else {
+            throw J2KError.invalidParameter(
+                "Volume geometry must have finite origin and finite non-negative spacing"
+            )
+        }
+        var out = Data(capacity: Self.payloadByteCount)
+        out.append(contentsOf: Self.magicBytes)
+        for value in [spacingX, spacingY, spacingZ, originX, originY, originZ] {
+            // Normalise -0.0 to +0.0 for deterministic canonical representation.
+            let canonical = (value == 0) ? 0.0 : value
+            var bits = canonical.bitPattern.bigEndian
+            withUnsafeBytes(of: &bits) { out.append(contentsOf: $0) }
+        }
+        return out
+    }
+
+    /// Decodes a binary `COM` payload if it carries the `"SJ2K3D_GEOM_V1"` prefix; throws on truncated or invalid geometry.
+    public static func decodePayload(_ payload: Data) throws -> JP3DVolumeGeometry? {
+        guard payload.count >= Self.magicBytes.count else { return nil }
+        guard payload.prefix(Self.magicBytes.count).elementsEqual(Self.magicBytes) else {
+            return nil
+        }
+        guard payload.count == Self.payloadByteCount else {
+            throw J2KError.decodingError(
+                "Truncated or malformed SJ2K3D_GEOM_V1 COM payload (\(payload.count) bytes, expected \(Self.payloadByteCount))"
+            )
+        }
+        var values: [Double] = []
+        values.reserveCapacity(6)
+        let baseIdx = payload.startIndex + Self.magicBytes.count
+        for i in 0..<6 {
+            let off = baseIdx + i * 8
+            var word: UInt64 = 0
+            for b in 0..<8 {
+                word = (word << 8) | UInt64(payload[off + b])
+            }
+            values.append(Double(bitPattern: word))
+        }
+        let geom = JP3DVolumeGeometry(
+            spacingX: values[0],
+            spacingY: values[1],
+            spacingZ: values[2],
+            originX: values[3],
+            originY: values[4],
+            originZ: values[5]
+        )
+        guard geom.spacingX.isFinite, geom.spacingY.isFinite, geom.spacingZ.isFinite,
+              geom.originX.isFinite, geom.originY.isFinite, geom.originZ.isFinite,
+              geom.spacingX >= 0, geom.spacingY >= 0, geom.spacingZ >= 0 else {
+            throw J2KError.decodingError(
+                "Invalid non-finite or negative spacing in SJ2K3D_GEOM_V1 COM payload"
+            )
+        }
+        return geom
+    }
+}
+
+/// A parsed or serialisable JPEG 2000 `COM` (`0xFF64`) marker segment (`Rcom` + payload bytes).
+public struct JP3DCommentSegment: Sendable, Equatable {
+    /// Registration value (`0` = binary data, `1` = ISO/IEC 8859-15 text).
+    public let registration: UInt16
+    /// Raw comment payload bytes following `Rcom`.
+    public let payload: Data
+
+    public init(registration: UInt16, payload: Data) {
+        self.registration = registration
+        self.payload = payload
+    }
+
+    /// Whether this `COM` segment carries `"SJ2K3D_GEOM_V1"` volume geometry.
+    public var isVolumeGeometry: Bool {
+        registration == 0
+            && payload.count >= JP3DVolumeGeometry.magicBytes.count
+            && payload.prefix(JP3DVolumeGeometry.magicBytes.count).elementsEqual(JP3DVolumeGeometry.magicBytes)
+    }
+}
+
 /// Builds a JP3D codestream from packets.
 public struct JP3DCodestreamBuilder: Sendable {
     /// JP3D marker segment identifiers.
@@ -294,7 +417,9 @@ public struct JP3DCodestreamBuilder: Sendable {
         tileSizeX: Int,
         tileSizeY: Int,
         tileSizeZ: Int,
-        isLossless: Bool
+        isLossless: Bool,
+        geometry: JP3DVolumeGeometry? = nil,
+        comments: [JP3DCommentSegment] = []
     ) -> Data {
         var stream = Data()
 
@@ -309,6 +434,18 @@ public struct JP3DCodestreamBuilder: Sendable {
 
         let maxLevels = max(levelsX, max(levelsY, levelsZ))
         appendQCD(&stream, bitDepth: bitDepth, levels: maxLevels, isLossless: isLossless)
+
+        var emittedGeometry = false
+        if let geometry, geometry.hasNonDefaultValues, let payload = try? geometry.encodePayload() {
+            appendCOM(&stream, registration: 0, payload: payload)
+            emittedGeometry = true
+        }
+        for comment in comments {
+            if emittedGeometry && comment.isVolumeGeometry {
+                continue
+            }
+            appendCOM(&stream, registration: comment.registration, payload: comment.payload)
+        }
 
         for (index, data) in tileData.enumerated() {
             appendSOT(&stream, tileIndex: index, tilePartLength: data.count)
@@ -412,5 +549,13 @@ public struct JP3DCodestreamBuilder: Sendable {
         appendUInt32BE(&stream, totalLength)
         stream.append(UInt8(0))
         stream.append(UInt8(1))
+    }
+
+    private func appendCOM(_ stream: inout Data, registration: UInt16, payload: Data) {
+        guard payload.count <= 65_531 else { return }
+        appendMarker(&stream, .com)
+        appendUInt16BE(&stream, UInt16(4 + payload.count))
+        appendUInt16BE(&stream, registration)
+        stream.append(payload)
     }
 }

@@ -48,6 +48,14 @@ public actor JPIPSession {
         self.precinctCache = JPIPPrecinctCache()
     }
 
+    /// Creates a new JPIP session with explicit cache bounds from ``JPIPSessionConfiguration``.
+    internal init(sessionID: String, maxCacheSizeBytes: Int, maxCachedDataBins: Int) {
+        self.sessionID = sessionID
+        self.isActive = false
+        self.cacheModel = JPIPCacheModel(maxCacheSize: maxCacheSizeBytes, maxEntries: maxCachedDataBins)
+        self.precinctCache = JPIPPrecinctCache()
+    }
+
     /// Sets the channel ID for this session.
     ///
     /// - Parameter channelID: The channel ID from the server.
@@ -281,27 +289,35 @@ public struct JPIPCacheModel: Sendable {
         let key = cacheKey(binClass: dataBin.binClass, binID: dataBin.binID)
         let newSize = dataBin.data.count
 
-        // If entry exists, update it
-        if var existingEntry = cachedBins[key] {
-            statistics.totalSize -= existingEntry.size
-            existingEntry = CacheEntry(
-                dataBin: dataBin,
-                timestamp: Date(),
-                accessCount: existingEntry.accessCount
-            )
-            cachedBins[key] = existingEntry
-            statistics.totalSize += newSize
+        guard maxEntries > 0, newSize <= maxCacheSize else {
+            if let existing = cachedBins.removeValue(forKey: key) {
+                statistics.totalSize -= existing.size
+                statistics.entryCount -= 1
+                statistics.evictions += 1
+            }
             return
         }
 
-        // Check if we need to evict entries
+        let previousAccessCount: Int
+        if let existingEntry = cachedBins.removeValue(forKey: key) {
+            statistics.totalSize -= existingEntry.size
+            statistics.entryCount -= 1
+            previousAccessCount = existingEntry.accessCount
+        } else {
+            previousAccessCount = 0
+        }
+
+        // Evict LRU entries until both byte and entry-count limits accommodate the bin.
         while (statistics.totalSize + newSize > maxCacheSize ||
                statistics.entryCount >= maxEntries) && !cachedBins.isEmpty {
             evictLRU()
         }
 
-        // Add new entry
-        let entry = CacheEntry(dataBin: dataBin)
+        let entry = CacheEntry(
+            dataBin: dataBin,
+            timestamp: Date(),
+            accessCount: previousAccessCount
+        )
         cachedBins[key] = entry
         statistics.totalSize += newSize
         statistics.entryCount += 1

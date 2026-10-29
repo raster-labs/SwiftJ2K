@@ -258,7 +258,7 @@ public actor JPIPStreamingSession {
         self.configuration = configuration
         self.client = JPIPClient(
             serverURL: serverURL,
-            codingPreference: configuration.codingPreference
+            configuration: configuration
         )
         self.jp3dClient = JP3DJPIPClient(serverURL: serverURL)
     }
@@ -275,7 +275,7 @@ public actor JPIPStreamingSession {
         self.client = JPIPClient(
             server: server,
             serverURL: url,
-            codingPreference: configuration.codingPreference
+            configuration: configuration
         )
         self.jp3dClient = JP3DJPIPClient(serverURL: url)
     }
@@ -286,7 +286,9 @@ public actor JPIPStreamingSession {
         viewWindow: JPIPViewWindow? = nil,
         options: JPIPStreamingOptions = JPIPStreamingOptions()
     ) async throws -> JPIPDeliveredImage {
-        let deadline = ContinuousClock.now.advanced(
+        let clock = ContinuousClock()
+        let started = clock.now
+        let deadline = started.advanced(
             by: .seconds(options.resourceLimits.deadlineSeconds)
         )
         @inline(__always)
@@ -298,7 +300,13 @@ public actor JPIPStreamingSession {
         }
 
         try checkWork()
-        let (_, _) = try resolveJPIPBackend(options.executionPolicy)
+        _ = try AccelerationRuntime.resolve(options.executionPolicy)
+        guard options.copyPolicy == .allowCopy else {
+            throw CodecError(
+                .incompatibleImageLayout,
+                "JPIPStreamingSession.deliverImage materialises both contract Image and legacy J2KImage sample buffers, requiring a buffer copy; pass copyPolicy: .allowCopy."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -317,6 +325,7 @@ public actor JPIPStreamingSession {
                 viewWindow: viewWindow,
                 limits: options.resourceLimits,
                 executionPolicy: options.executionPolicy,
+                metadataPolicy: options.metadataPolicy,
                 deadline: deadline
             )
         } catch let error as J2KError {
@@ -327,7 +336,38 @@ public actor JPIPStreamingSession {
         try checkWork()
         try validateDeliveredLegacyImage(legacyImage, limits: options.resourceLimits)
 
-        let contractImage = try legacyImage.toContractImage(limits: options.resourceLimits)
+        let legacyPixelBytes = legacyImage.components.reduce(0) { $0 + $1.data.count }
+        let contractImage: Image
+        let pixelAllocations: Int
+        let copyEvent: CopyEvent
+        if let directContract = decodedInfo.contractImage {
+            contractImage = directContract
+            pixelAllocations = 1 + legacyImage.components.count
+            copyEvent = try CopyEvent(
+                reason: "Materialise legacy J2KImage planar components from decoded contract Image",
+                bytesMoved: legacyPixelBytes,
+                sourceLayout: jpipDescriptorLayoutName(directContract.descriptor),
+                destinationLayout: "j2kimage-planar-components"
+            )
+        } else {
+            contractImage = try legacyImage.toContractImage(
+                colourOverride: decodedInfo.colourInterpretation,
+                alphaOverride: decodedInfo.alphaInterpretation,
+                iccProfileOverride: decodedInfo.iccProfile,
+                metadata: decodedInfo.metadata,
+                limits: options.resourceLimits
+            )
+            pixelAllocations = 2 + legacyImage.components.count
+            let (totalMoved, ovMoved) = legacyPixelBytes.addingReportingOverflow(contractImage.descriptor.requiredByteCount)
+            let movedBytes = ovMoved ? contractImage.descriptor.requiredByteCount : totalMoved
+            copyEvent = try CopyEvent(
+                reason: "Materialise view-window J2KImage and contract Image buffers",
+                bytesMoved: movedBytes,
+                sourceLayout: "j2kimage-planar-components",
+                destinationLayout: jpipDescriptorLayoutName(contractImage.descriptor)
+            )
+        }
+
         let stats = await client.getSessionStats()
 
         try checkWork()
@@ -336,7 +376,8 @@ public actor JPIPStreamingSession {
         }
         try checkWork()
 
-        let pixelBytes = legacyImage.components.reduce(0) { $0 + $1.data.count }
+        let (combinedPixelBytes, ovPix) = legacyPixelBytes.addingReportingOverflow(contractImage.storage.byteCount)
+        let peakPixelBytes = ovPix ? contractImage.storage.byteCount : combinedPixelBytes
         let hasReducedResolution = (viewWindow?.resolutionLevel ?? 0) > 0
         let hasReducedLayers: Bool
         if let reqLayers = viewWindow?.maxQualityLayers {
@@ -346,7 +387,7 @@ public actor JPIPStreamingSession {
         }
         let hasSubsetComponents: Bool
         if let reqComps = viewWindow?.components {
-            hasSubsetComponents = Set(reqComps).count < decodedInfo.totalComponents
+            hasSubsetComponents = reqComps != Array(0..<decodedInfo.totalComponents)
         } else {
             hasSubsetComponents = false
         }
@@ -354,17 +395,21 @@ public actor JPIPStreamingSession {
             && !hasReducedResolution
             && !hasReducedLayers
             && !hasSubsetComponents
-        let peakWorkspace = max(decodedInfo.peakWorkspaceBytes, stats?.cacheSize ?? pixelBytes)
+        let peakWorkspace = max(decodedInfo.peakWorkspaceBytes, stats?.cacheSize ?? 0)
+        let elapsed = clock.now - started
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
             backend: decodedInfo.backend,
             fallbackReason: decodedInfo.fallbackReason,
             fidelity: isExact ? .exactSamples : .lossy,
-            copyEvents: [],
-            pixelAllocationCount: legacyImage.components.count,
-            peakPixelBytes: pixelBytes,
+            copyEvents: [copyEvent],
+            pixelAllocationCount: pixelAllocations,
+            peakPixelBytes: peakPixelBytes,
             peakWorkspaceBytes: peakWorkspace,
-            discardedMetadataCount: options.metadataPolicy == .discardAncillary ? 1 : 0,
-            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? ["jpipAncillaryMetadata"] : []
+            elapsedSeconds: elapsedSeconds,
+            discardedMetadataCount: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataCount : nil,
+            discardedMetadataBytes: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataBytes : nil,
+            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataKinds : []
         )
 
         return JPIPDeliveredImage(
@@ -383,7 +428,9 @@ public actor JPIPStreamingSession {
         region: JP3DStreamingRegion,
         options: JPIPStreamingOptions = JPIPStreamingOptions()
     ) async throws -> JPIPDeliveredVolumeSliceBins {
-        let deadline = ContinuousClock.now.advanced(
+        let clock = ContinuousClock()
+        let started = clock.now
+        let deadline = started.advanced(
             by: .seconds(options.resourceLimits.deadlineSeconds)
         )
         @inline(__always)
@@ -395,7 +442,7 @@ public actor JPIPStreamingSession {
         }
 
         try checkWork()
-        let (backend, fallbackReason) = try resolveJPIPBackend(options.executionPolicy)
+        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
 
         let width = region.xRange.count
         let height = region.yRange.count
@@ -464,14 +511,17 @@ public actor JPIPStreamingSession {
         }
         try checkWork()
 
+        let elapsed = clock.now - started
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
-            backend: backend,
-            fallbackReason: fallbackReason,
+            backend: resolvedBackend.backend,
+            fallbackReason: resolvedBackend.fallbackReason,
             fidelity: region.resolutionLevel > 0 ? .lossy : .exactSamples,
             copyEvents: [],
             pixelAllocationCount: 0,
             peakPixelBytes: 0,
-            peakWorkspaceBytes: totalBinBytes
+            peakWorkspaceBytes: totalBinBytes,
+            elapsedSeconds: elapsedSeconds
         )
 
         return JPIPDeliveredVolumeSliceBins(
@@ -520,34 +570,19 @@ public actor JPIPStreamingSession {
     }
 }
 
-// MARK: - Private Backend Resolution
-
-private func resolveJPIPBackend(
-    _ policy: ExecutionPolicy
-) throws -> (Backend, String?) {
-    switch policy {
-    case .scalarCPU, .required(.scalarCPU), .preferred(.scalarCPU):
-        return (.scalarCPU, nil)
-    case .automatic:
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        return (.scalarCPU, nil)
-        #endif
-    case .preferred(.accelerated):
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        return (.scalarCPU, "Hardware acceleration unavailable; fell back to scalar CPU")
-        #endif
-    case .required(.accelerated):
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        throw CodecError(
-            .backendUnavailable,
-            "Hardware acceleration is not available on this platform"
-        )
-        #endif
+private func jpipDescriptorLayoutName(_ descriptor: ImageDescriptor) -> String {
+    if descriptor.components == [.grey] && descriptor.planes.count == 1 {
+        if descriptor.storageBits == 16 {
+            return descriptor.sampleType == .signedInteger
+                ? "signed-greyscale-16bit-single-plane"
+                : CodecCapabilities.sharedGreyscaleLayout
+        }
+        return descriptor.sampleType == .signedInteger
+            ? "signed-greyscale-8bit-single-plane"
+            : "unsigned-greyscale-8bit-single-plane"
     }
+    if descriptor.colour == .rgb {
+        return descriptor.planes.count == 1 ? "rgb-interleaved" : "rgb-planar"
+    }
+    return "multicomponent-planar"
 }

@@ -89,11 +89,20 @@ private func parse(_ args: [String]) throws -> Options {
         return number
     }
     func consumeValue() throws -> String {
-        guard index + 1 < args.count, args[index + 1] == "-" || !args[index + 1].hasPrefix("-") else {
+        guard index + 1 < args.count else {
+            throw UsageError(message: "An option is missing its value. Use --help for syntax.")
+        }
+        let next = args[index + 1]
+        let isNegativeNumericLiteral: Bool = {
+            guard next.hasPrefix("-"), next.count >= 2 else { return false }
+            let second = next[next.index(after: next.startIndex)]
+            return second.isASCII && (second.isNumber || second == ".")
+        }()
+        guard next == "-" || isNegativeNumericLiteral || !next.hasPrefix("-") else {
             throw UsageError(message: "An option is missing its value. Use --help for syntax.")
         }
         index += 1
-        return args[index]
+        return next
     }
     while index < args.count {
         let arg = args[index]

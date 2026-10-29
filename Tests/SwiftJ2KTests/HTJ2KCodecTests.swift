@@ -720,6 +720,11 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
             && !$0.hasPrefix("swiftj2k-transcode-oracle-")
             && !$0.hasPrefix("swiftj2k-m7-oracle-")
             && !$0.hasPrefix("swiftj2k-m8-oracle-")
+            && !$0.hasPrefix("swiftj2k-ht-opts-")
+            && !$0.hasPrefix("swiftj2k-r1-")
+            && !$0.hasPrefix("swiftj2k-r2-")
+            && !$0.hasPrefix("swiftj2k-m12-")
+            && !$0.hasPrefix("swiftj2k-cli-")
             && ($0.contains("swiftj2k") || $0.contains("j2k") || $0.contains("htj2k"))
     }
     #expect(newSwiftJ2KTempFiles.isEmpty, "Unexpected temporary files created during in-memory transcode: \(newSwiftJ2KTempFiles)")

@@ -454,19 +454,22 @@ func independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() async throws {
 @Test func readerRequirementsBoxRoundTripAndFeatureEvaluation() throws {
     let vendorUUID: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10]
     let box = try JP2ReaderRequirementsBox(
-        fuam: 0xC0,
-        dcm: 0x80,
+        fuam: 0xE0,
+        dcm: 0xC0,
         standardFeatures: [
             .init(feature: .codestreamContainsNoExtensions, mask: 0x80),
             .init(feature: .sRGBEnumeratedColourSpace, mask: 0x40),
-            .init(code: 45, mask: 0x20) // Kakadu extended feature code
+            .init(code: 20, mask: 0x20) // T.801 Table M.14 SF=20: single codestream per compositing layer
         ],
         vendorFeatures: [
             try .init(uuid: vendorUUID, mask: 0x10)
         ]
     )
     #expect(box.standardFeatures[0].knownFeature == .codestreamContainsNoExtensions)
+    #expect(box.standardFeatures[1].code == 45)
     #expect(box.standardFeatures[2].knownFeature == .compositingLayerSingleCodestream)
+    let eval = box.evaluate()
+    #expect(eval.canDecodeCompletely == true)
     let unmapped = JP2ReaderRequirementsBox.StandardFeatureEntry(code: 9999, mask: 0x01)
     #expect(unmapped.knownFeature == nil)
 
