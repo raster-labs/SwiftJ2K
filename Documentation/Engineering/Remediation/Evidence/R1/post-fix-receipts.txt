@@ -1,0 +1,123 @@
+SwiftJ2K Phase R1 Post-Fix Verification Receipts
+================================================
+Remediation base commit: 24b18814c29362f3726321d6618d460da3606e8d (PR #27 head, untouched)
+Remediation branch: antigravity/m1-m12-remediation
+Common contract version: 0.10.0
+Host OS (`sw_vers` / `uname -ms`): macOS 27.0.1 (Build 26A434), Darwin arm64
+Package platform floor (`Package.swift`): Apple OS 26.0 (`.macOS(.v26), .iOS(.v26), .tvOS(.v26), .visionOS(.v26), .watchOS(.v26)`)
+Swift toolchain (`swift --version`):
+  swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+  Target: arm64-apple-macosx27.0.0
+Disk headroom (`df -h .`): 2.9 GiB available on `/System/Volumes/Data` (`/dev/disk3s5`)
+Audit state: Developer submission evidence ONLY (`submitted`); Codex independent acceptance is pending across all R1 items.
+
+1. Build, Test, CLI, Consumer, and Contract Integrity Gates
+-----------------------------------------------------------
+- Common contract SHA-256 byte-identity:
+  Command: `(cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt)`
+  Exit code: `0`
+  Output:
+    CLI_CONTRACT.md: OK
+    COMMON_API.md: OK
+    MEMORY_CONTRACT.md: OK
+    PERFORMANCE.md: OK
+    PLATFORMS.md: OK
+    SUITE_POLICY.md: OK
+    TESTING.md: OK
+
+- Archived Swift 6.4 records preservation:
+  Command: `git status --short -- Documentation/Engineering/Swift64/`
+  Exit code: `0` (empty output; byte-identical to base `24b18814c29362f3726321d6618d460da3606e8d`)
+
+- Focused Phase R1 & Shared-Storage regressions:
+  Command: `swift test --filter "R1RemediationTests|R1VolumeRemediationTests|R1JPIPRemediationTests|SharedStorageTests"`
+  Exit code: `0`
+  Summary:
+    - `SwiftJ2KTests`: 13 `@Test` declarations (`R1RemediationTests`: 5, `SharedStorageTests`: 8) — 13/13 passed, 0 failures.
+    - `SwiftJ2KJPIPTests`: 4 `@Test` declarations (`R1JPIPRemediationTests`: 4) — 4/4 passed, 0 failures.
+    - `SwiftJ2K3DTests`: 6 `@Test` declarations (`R1VolumeRemediationTests`: 6) — 6/6 passed, 0 failures.
+
+- Full package test suite (`SwiftJ2KTests`, `SwiftJ2K3DTests`, `SwiftJ2KJPIPTests`):
+  Command: `swift test`
+  Exit code: `0`
+  Summary:
+    - `SwiftJ2KTests`: 130 Swift Testing `@Test` declarations in 4 suites passed (`0` failures; `0` XCTest methods).
+    - `SwiftJ2KJPIPTests`: 544 XCTest methods + 4 Swift Testing `@Test` declarations = 548 tests passed (`0` failures).
+    - `SwiftJ2K3DTests`: 490 XCTest methods + 6 Swift Testing `@Test` declarations = 496 tests passed (`0` failures).
+    - Total executed across package: 1,034 XCTest methods + 140 Swift Testing `@Test` declarations = 1,174 tests passed (`0` failures).
+
+- Release CLI build:
+  Command: `swift build -c release --product swiftj2k-cli`
+  Exit code: `0`
+  Binary: `/Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli` (`swiftj2k-cli 12.1.0`)
+
+- Black-box CLI regression suite:
+  Command: `python3 Scripts/test-cli.py --binary /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli --output /tmp/r1-cli-check`
+  Exit code: `0`
+  Output: `swiftj2k-cli: 246 process checks passed`
+
+- Independent consumer package resolution & execution (`swift-tools-version: 6.2`):
+  Command: `swift run --package-path Examples/Consumer`
+  Exit code: `0`
+  Output:
+    `Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; 106-byte Part 1, 126-byte HTJ2K, 353-byte JP3D codestreams and JPIP session round-tripped.`
+
+2. Executed Post-Fix CLI Reproduction Verification (Release Binary `.build/out/Products/Release/swiftj2k-cli`)
+--------------------------------------------------------------------------------------------------------------
+- F05 (CLI `encode3d` enforces `--max-memory` pre-allocation):
+  Fixture: 64-byte raw 4x4x4 8-bit 1-component volume (`v.raw`)
+  Command: `swiftj2k-cli encode3d -i v.raw -o v.j3d --dimensions 4x4x4 --bit-depth 8 --components 1 --max-memory 16`
+  Exit code: `5`
+  Raw stderr: `swiftj2k-cli: resource limit: Input size (64 B) exceeds resource admission limit (16 B).`
+  Control without `--max-memory 16`: Exit code `0` (wrote `v.j3d`).
+
+- M12-CX-02 (CLI `decode3d --region` checked integer arithmetic & volume bounds):
+  1. Overflow probe:
+     Command: `swiftj2k-cli decode3d -i v.j3d -o out.raw --output-format raw --region 9223372036854775807,0,0,1,1,1 --overwrite`
+     Exit code: `2` (no `SIGTRAP`)
+     Raw stderr: `swiftj2k-cli: --region for decode3d overflows integer coordinate bounds.`
+  2. Out-of-bounds probe against `4x4x4` volume:
+     Command: `swiftj2k-cli decode3d -i v.j3d -o out.raw --output-format raw --region 3,0,0,2,1,1 --overwrite`
+     Exit code: `2`
+     Raw stderr: `swiftj2k-cli: --region (3,0,0,2,1,1) exceeds volume dimensions (4x4x4).`
+
+- F03 (CLI `decode3d --resolution-level 64` rejected cleanly):
+  Command: `swiftj2k-cli decode3d -i v.j3d -o out.raw --output-format raw --resolution-level 64 --overwrite`
+  Exit code: `2`
+  Raw stderr: `swiftj2k-cli: --resolution-level/--scale must be 0..32.`
+
+- M12-CX-01 (CLI TIFF pre-allocation admission & actual 16-bit contract storage accounting):
+  Fixture: 103-byte uncompressed little-endian 8-bit TIFF header claiming `256x256` pixels with a 1-byte strip (`claim256.tiff`)
+  1. Under `--max-memory 512`:
+     Command: `swiftj2k-cli encode -i claim256.tiff -o out.j2k --max-memory 512 --overwrite`
+     Exit code: `5` (denied before strip/destination buffer allocation; `103 B` input + `131,072 B` 16-bit greyscale contract storage = `131,175 B`)
+     Raw stderr: `swiftj2k-cli: resource limit: TIFF decode memory (131175 B) exceeds memory limit (512 B).`
+  2. Under default memory budget:
+     Command: `swiftj2k-cli encode -i claim256.tiff -o out.j2k --overwrite`
+     Exit code: `3`
+     Raw stderr: `swiftj2k-cli: malformed input: TIFF strip data (1 B) is shorter than required sample bytes (65536 B).`
+
+- F02 (CLI 32-bit unsigned lossless 3D NRRD round-trip preserving `2^24 + 1 = 16,777,217`):
+  Fixture: `4x4x2` `uint32` NRRD volume containing `16,777,217..16,777,221` (`u32_in.nrrd`)
+  Commands:
+    `swiftj2k-cli encode3d -i u32_in.nrrd -o u32.j3d --codec j2k-lossless --levels 1,1,1 --overwrite` -> Exit `0`
+    `swiftj2k-cli decode3d -i u32.j3d -o u32_out.nrrd --overwrite` -> Exit `0`
+    `swiftj2k-cli compare -i u32_out.nrrd --reference u32_in.nrrd --mode 3d --bit-exact --max-error 0 --json` -> Exit `0`
+  Raw stdout:
+    `{"bitDepth":32,"bitExact":true,"components":[{"bitExact":true,"component":0,"mae":0,"maxError":0,"mse":0,"psnr":"infinity"}],"depth":2,"elapsedSeconds":0.001107542,"height":4,"mae":0,"maxError":0,"mode":"3d","mse":0,"passed":true,"psnr":"infinity","signed":false,"width":4}`
+
+- M12-CI (macOS `CZlibShim` PNG `inflate`/`compress2` round-trip):
+  Commands:
+    `swiftj2k-cli convert -i img.pgm -o img.png --overwrite` -> Exit `0`
+    `swiftj2k-cli encode -i img.png -o img.j2k --overwrite` -> Exit `0`
+    `swiftj2k-cli decode -i img.j2k -o img_out.png --overwrite` -> Exit `0`
+    `swiftj2k-cli compare -i img_out.png --reference img.png --bit-exact --max-error 0 --json` -> Exit `0`
+  Raw stdout:
+    `{"bitDepth":8,"bitExact":true,"components":[{"bitExact":true,"component":0,"mae":0,"maxError":0,"mse":0,"psnr":"infinity"}],"elapsedSeconds":0.001379459,"height":8,"mae":0,"maxError":0,"mode":"2d","mse":0,"passed":true,"psnr":"infinity","signed":false,"width":8}`
+
+3. Blocked / Unexecuted Gates at Local Phase R1 Checkpoint
+----------------------------------------------------------
+- `M12-CI` Linux compilation verification (`Swift 6.2` / `Swift 6.4` on `ubuntu-24.04` / `ubuntu-24.04-arm`):
+  **Blocked / unexecuted locally.** Neither `docker`, `podman`, nor a Linux Swift cross-compilation SDK is installed on this macOS host (`which docker podman` -> not found), and pushing to remote CI is prohibited during the local-only Phase R1 review protocol. Portable C-target wiring (`Sources/CZlibShim` re-exporting `<zlib.h>` with `.linkedLibrary("z")`) is implemented and verified on macOS, but Linux compilation cannot be claimed passed from macOS execution alone.
+- Multi-repository `Integration/ContractHarness`:
+  **Unexecuted locally** (requires sibling `../SwiftJLS`, `../SwiftJXL`, `../SwiftJLI` checkouts not present in this single-repository workspace).

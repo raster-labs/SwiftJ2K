@@ -113,6 +113,10 @@ public struct CodecOptions: Sendable, Equatable {
             guard x >= 0, y >= 0, width > 0, height > 0 else {
                 throw CodecError(.invalidArgument, "Region of interest must have non-negative origin and positive dimensions.")
             }
+            guard !x.addingReportingOverflow(width).overflow,
+                  !y.addingReportingOverflow(height).overflow else {
+                throw CodecError(.invalidArgument, "Region of interest bounds overflow.")
+            }
             if let s = shift {
                 guard s >= 1 && s <= 37 else {
                     throw CodecError(.invalidArgument, "Region of interest MaxShift must lie in 1...37.")
@@ -537,6 +541,7 @@ public struct Encoder: Sendable {
             descriptor.alpha == .absent
 
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        try Task.checkCancellation()
         let codestreamBytes: [UInt8]
         let workspace: Int
 
@@ -641,6 +646,7 @@ public struct Encoder: Sendable {
                                      discardedMetadataBytes: discardedBytes,
                                      discardedMetadataKinds: discardedKinds)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
+        try Task.checkCancellation()
         return EncodedImage(data: Data(finalBytes), encoding: EncodingDescription(format: outputFormat, mode: configuration.mode),
                             report: report)
     }
@@ -787,7 +793,13 @@ public struct Decoder: Sendable {
         let clock = ContinuousClock()
         let started = clock.now
         let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
-        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        do {
+            options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+            try Task.checkCancellation()
+        } catch {
+            destination.invalidateAfterFailure()
+            throw error
+        }
         let (image, workspace) = try ScalarLosslessCodec.decode(
             bytes: bytes, profile: profile, into: destination,
             limits: options.resourceLimits, backend: resolvedBackend.backend,
@@ -808,6 +820,7 @@ public struct Decoder: Sendable {
                                      discardedMetadataBytes: discardedBytes,
                                      discardedMetadataKinds: discardedKinds)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
+        try Task.checkCancellation()
         return DecodedImage(image: image, report: report)
     }
 
@@ -816,7 +829,13 @@ public struct Decoder: Sendable {
         let clock = ContinuousClock()
         let started = clock.now
         let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
-        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        do {
+            options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+            try Task.checkCancellation()
+        } catch {
+            destination.invalidateAfterFailure()
+            throw error
+        }
         let (image, workspace) = try Part1Pipeline.decode(
             bytes: bytes, profile: profile, into: destination,
             limits: options.resourceLimits, backend: resolvedBackend.backend,
@@ -838,6 +857,7 @@ public struct Decoder: Sendable {
                                      discardedMetadataBytes: discardedBytes,
                                      discardedMetadataKinds: discardedKinds)
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
+        try Task.checkCancellation()
         return DecodedImage(image: image, report: report)
     }
 }

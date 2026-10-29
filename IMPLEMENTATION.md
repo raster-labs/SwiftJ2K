@@ -4,6 +4,8 @@ Read AGENTS.md and every common contract document first. Milestone 1 feasibility
 
 For applications upgrading from J2KSwift, use [MIGRATION.md](MIGRATION.md). This implementation plan is for codec developers, not a claim that application cutover is already possible.
 
+> **Independent Audit Remediation Status (29 October 2026)**: Milestones 1–12 are undergoing phased remediation against the independent audit findings (`F01`–`F13`, `M12-CX-01`–`M12-CX-04`, `M12-CI`, and open Milestone 6 audit items `M6-AUD-006`/`M6-AUD-007`) on branch `antigravity/m1-m12-remediation` from base `24b18814c29362f3726321d6618d460da3606e8d`. Historical dated milestone sections below preserve what was executed on each milestone branch; see [Documentation/Engineering/Remediation/STATUS.md](Documentation/Engineering/Remediation/STATUS.md) for current audited status, active findings, and phase checkpoints (`R1`–`R4`).
+
 ## Source and destination
 
 Predecessor: [Raster-Lab/J2KSwift](https://github.com/Raster-Lab/J2KSwift) at inspected SHA `768f6b53499b806fd0304962056e1fc7833f12e5`. Highest stable-shaped tag observed: `v11.0.3` (resolve independently before choosing it as a baseline). Target module/product: `SwiftJ2K`. Target CLI: `swiftj2k-cli`. Intended first stable library version: `12.1.0`.

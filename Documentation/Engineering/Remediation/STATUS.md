@@ -1,0 +1,119 @@
+# SwiftJ2K Milestones 1–12 Audit Remediation Status
+
+This document is the single canonical tracker for remediation of the independent audit findings across `SwiftJ2K` Milestones 1–12, including the Milestone 12 addendum, historical Milestone 6 audit lineage, and provisional Phase R1 review items.
+
+## Governance, Base, and Phased Protocol Acknowledgement
+
+- **Verified Clean Base**: `24b18814c29362f3726321d6618d460da3606e8d` (PR #27 exact head on `antigravity/milestone12-cli-consumer-breadth`; preserved untouched).
+- **Remediation Branch**: `antigravity/m1-m12-remediation` (single local feature branch forked cleanly from `24b18814c29362f3726321d6618d460da3606e8d`).
+- **Common Contract Version**: `0.10.0` (the seven shared contract files listed in `Documentation/COMMON_CONTRACT_SHA256.txt` and all archived records under `Documentation/Engineering/Swift64/` remain byte-identical).
+- **Platform and Toolchain Baseline**: Swift 6.4 primary toolchain (`swift-tools-version: 6.2` package floor), Swift 6 language mode with complete concurrency checking, Apple OS 26.0 platform floor, and portable Linux compilation.
+- **Role Separation**:
+  - **Antigravity**: Sole implementation owner on `antigravity/m1-m12-remediation`.
+  - **Codex**: Independent auditor reviewing stable local commits after each phase checkpoint (`R1`..`R4`).
+  - **User**: Sole merge, push, tag, and release authority.
+- **State Discipline**: Developer states are `open`, `in_progress`, `blocked`, and `submitted`. No finding or milestone is marked `independently accepted` by the implementation agent; every `submitted` item carries `Codex acceptance: pending independent audit` until Codex explicitly records independent acceptance.
+- **Current Checkpoint State**: **Phase R1 submitted** on `antigravity/m1-m12-remediation` (`Codex acceptance: pending independent audit`). All project writes and native test/build campaigns are stopped awaiting Codex's independent Phase R1 verification before any Phase R2 work begins.
+- **Phased Checkpoint Protocol**:
+  - **Phase R1 (`submitted` — pending Codex independent audit)**: Safety, traps, resource/deadline/worker admission, lossless 32-bit/38-bit 3D integer precision, truthful fidelity reporting, final-callback cancellation, cumulative pre-allocation parser memory admission, CLI TIFF pre-allocation admission, CLI 3D ROI overflow/bounds hardening, and portable Linux `zlib` manifest/module wiring (`F02`, `F03`, `F05`, `F06`, `F13`, `M6-AUD-006`, `M12-CX-01`, `M12-CX-02`, `M12-CI`, plus provisional R1 audit items `R1-DOC-01`, `R1-CODE-01`, `R1-CODE-02`).
+  - **Phase R2 (`open`)**: Container/legacy palette and channel semantics, JPX reader-requirements evaluation, copy/execution policy and operation-report truthfulness, combined JPIP view constraints and session/cache settings, volume geometry preservation under `.preserve`, duplicate JP2 codestream box rejection, and CLI PNG `sBIT` / TIFF `PhotometricInterpretation` fidelity (`F07`, `F08`, `F09`, `F10`, `F11`, `F12`, `M12-CX-03`, `M12-CX-04`).
+  - **Phase R3 (`open`)**: Standards-interoperable ISO/IEC 15444-10 JP3D codestream/signalling/entropy/HT-in-JP3D completion and real ISO/IEC 15444-9 JPIP network/data-bin/3D/WebSocket exchange (`F01`, `F04`).
+  - **Phase R4 (`open`)**: End-to-end qualification, small-case transcode latency and provenance verification (`M6-AUD-007`), release-mode benchmarks, long fuzz/adversarial campaigns, exact-head Linux/macOS CI verification, and full documentation reconciliation across Milestones 1–12.
+
+---
+
+## Milestones 1–12 Canonical Map and Audited Status
+
+Milestone names follow `IMPLEMENTATION.md` verbatim:
+
+| Milestone | Canonical Name (`IMPLEMENTATION.md`) | Audited Assessment at `24b1881` | Active Findings | Remediation Phase(s) | Codex Acceptance |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | `1 — contract feasibility` | Substantially sound local API, owning-memory types, descriptor validation | Regression-verified under R4 | R4 | Pending independent audit |
+| **2** | `2 — migration baseline` (scalar lossless) | Substantially sound scalar lossless core; shares core parser/callback paths | `F13`, `M6-AUD-006`, `R1-CODE-02` (R1 `submitted`) | R1, R4 | Pending independent audit |
+| **3** | `3 — shared-storage path` | Substantially sound caller-destination / sealed-source zero-copy path | `F13` (shared decode-into callback path; R1 `submitted`) | R1, R4 | Pending independent audit |
+| **4** | `4 — feature/platform coverage` | Substantially sound Part 1 lossless syntax & NRRD foundation | Platform/CI qualification under R4 | R4 | Pending independent audit |
+| **5** | `5 — release preparation` | Preparation only; owner ruled on 25 Sep 2026 no release until full migration | Re-qualified after full remediation | R4 | Pending independent audit |
+| **6** | `6 — HTJ2K` (and `J2K ↔ HTJ2K` transcoding) | `M6-AUD-001..005,008..009` closed historically; parser live-memory (`submitted` in R1) & small-case perf/provenance (`open` in R4) | `M6-AUD-006`, `R1-CODE-02`, `M6-AUD-007`, `F13` | R1, R4 | Pending independent audit |
+| **7** | `7 — Part 1 breadth` | Substantially sound 2D Part 1 breadth; shares core parser/callback paths | `F13`, `M6-AUD-006`, `R1-CODE-02` (R1 `submitted`) | R1, R4 | Pending independent audit |
+| **8** | `8 — containers` (`JP2`/`JPH`/`JPX`) | Open gaps in legacy/JPIP container bridge, JPX `rreq`, and duplicate `jp2c` rejection | `F07` (bridge), `F08`, `F12`, `F13` | R1, R2, R4 | Pending independent audit |
+| **9** | `9 — acceleration` (Metal & SIMD/NEON) | Substantially sound 2D acceleration boundaries behind `executionPolicy` | Regression-verified under R4 | R4 | Pending independent audit |
+| **10** | `10 — SwiftJ2K3D` (volume / JP3D) | Incomplete for normative Part 10 claim (`F01` open in R3); R1 safety/integer/limit/fidelity/callback repairs `submitted`; R2 policy/geometry `open` | `F01`, `F02`, `F03`, `F05`, `F06`, `F09`, `F11`, `F13`, `R1-CODE-01` | R1, R2, R3, R4 | Pending independent audit |
+| **11** | `11 — SwiftJ2KJPIP` (JPIP) | Incomplete for real network/data-bin/3D/WS claim (`F04` open in R3); R1 limit/fidelity/callback repairs `submitted`; R2 palette/policy/view/cache `open` | `F04`, `F05`, `F06`, `F07`, `F09`, `F10`, `F13` | R1, R2, R3, R4 | Pending independent audit |
+| **12** | `12 — CLI and consumer breadth` | R1 TIFF admission, 3D ROI overflow, CLI `F02`/`F03`/`F05`, and portable `CZlibShim` `submitted` (Linux CI compile blocked locally); R2 PNG `sBIT` / TIFF photometric & R3 CLI `F04` `open` | `M12-CI`, `M12-CX-01`, `M12-CX-02`, `M12-CX-03`, `M12-CX-04`, CLI `F02`/`F03`/`F04`/`F05` | R1, R2, R3, R4 | Pending independent audit |
+
+---
+
+## Canonical Finding Register
+
+### Primary Audit Findings (`F01`–`F13`)
+
+| ID | Severity | Milestone(s) | Phase | Canonical Problem Summary | Developer State | Codex Acceptance |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `F01` | P1 | M10 (CLI M12) | R3 | Emitted JP3D format lacks normative ISO/IEC 15444-10 signalling and uses private `J3DS`/raw-coefficient payloads, including false HT-in-JP3D claims | `open` | Pending independent audit |
+| `F02` | P1 | M10 (CLI M12) | R1 | Lossless 32-bit sample corruption through `Float` (`16,777,217` rounded to `16,777,216` and `min(30, bitDepth)` clamping) | `submitted` | Pending independent audit |
+| `F03` | P1 | M10 (CLI M12) | R1 | Accepted `resolutionLevel: 64` causes process crash (`1 << K` shift overflow / division by zero) | `submitted` | Pending independent audit |
+| `F04` | P1 | M11 (CLI M12) | R3 | Simulated 3D/WebSocket responses and incomplete real JPIP network/data-bin exchange | `open` | Pending independent audit |
+| `F05` | P1 | M10/M11 (CLI M12) | R1 | Resource limits, `deadlineSeconds`, and `maximumWorkers` concurrency limits not enforced or propagated before allocation/work | `submitted` | Pending independent audit |
+| `F06` | P1 | M10/M11 | R1 | Altered, partial, reduced-resolution/layer, or lossy samples labelled `.exactSamples` in `OperationReport.fidelity` | `submitted` | Pending independent audit |
+| `F07` | P1 | M11 bridge to M8 | R2 | Palette/channel container semantics (`pclr`/`cmap`/`cdef`) bypassed by legacy/JPIP decoder (`J2KDecoder`) | `open` | Pending independent audit |
+| `F08` | P2 | M8 | R2 | Incorrect JPX reader-requirement (`rreq`) codes/masks and missing support evaluation | `open` | Pending independent audit |
+| `F09` | P2 | M10/M11 | R2 | `CopyPolicy`/`ExecutionPolicy` ignored and `OperationReport` fields not based on actual work | `open` | Pending independent audit |
+| `F10` | P2 | M11 | R2 | Combined `JPIPViewWindow` constraints and session/cache settings ignored | `open` | Pending independent audit |
+| `F11` | P2 | M10 | R2 | Volume geometry (`spacing`/`origin`) lost under `.preserve` metadata policy | `open` | Pending independent audit |
+| `F12` | P2 | M8 | R2 | Duplicate JP2 contiguous codestream (`jp2c`) box accepted instead of rejected | `open` | Pending independent audit |
+| `F13` | P2 | Core / M10 / M11 | R1 | Final-callback (`.completed`) cancellation returns success instead of throwing `CancellationError` | `submitted` | Pending independent audit |
+
+### Milestone 12 Addendum Findings (`M12-CX-01`–`M12-CX-04`, `M12-CI`)
+
+| ID | Severity | Milestone(s) | Phase | Canonical Problem Summary | Developer State | Codex Acceptance |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `M12-CX-01` | P1 | M12 | R1 | TIFF geometry-to-memory admission occurs after `[Int]` sample allocation and before strip sufficiency checks (including combined input/strip/tag buffers and 16-bit greyscale contract storage) | `submitted` | Pending independent audit |
+| `M12-CX-02` | P1 | M12 | R1 | `decode3d --region` accepts `Int.max` origins and traps on unchecked `roi.x + roi.w` overflow or out-of-bounds extents | `submitted` | Pending independent audit |
+| `M12-CX-03` | P1 | M12 | R2 | PNG `sBIT` significant-bit handling reads only first byte, clamps instead of right-shifting high-order bits, and writes unshifted samples | `open` | Pending independent audit |
+| `M12-CX-04` | P2 | M12 | R2 | TIFF `PhotometricInterpretation` (tag 262) ignored (`WhiteIsZero`, palette, YCbCr silently misdecoded) | `open` | Pending independent audit |
+| `M12-CI` | Qualification / Build Gate | M12 | R1 (portable wiring) / R4 (provider CI) | PR #27 exact-head run `40684586676`: 4 Linux jobs failed at `CLIImageIO.swift:686+` (`z_stream`, `inflateInit_`, `zlibVersion`, `Z_OK` missing because `canImport(zlib)` is false on Linux Swift), macOS job cancelled (no hosted runner acquired — unexecuted), 2 jobs passed (`contract-identity`, `independent-consumer`) | `submitted` (portable `CZlibShim` wired & macOS-tested; **Linux compilation verification blocked/unexecuted locally** — requires Linux Swift 6.2/6.4 runner) | Pending independent audit |
+
+### Provisional Phase R1 Review Findings (`R1-DOC-01`, `R1-CODE-01`, `R1-CODE-02`)
+
+Recorded from `SwiftJ2K-R1-provisional-feedback.txt` (29 October 2026, provisional snapshots `remediation-20261029T060555Z` through `remediation-20261029T071011Z`):
+
+| ID | Severity | Scope | Phase | Canonical Problem Summary | Developer State | Codex Acceptance |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `R1-DOC-01` | Coordination / Doc | `STATUS.md`, `Evidence/R1/pre-fix-receipts.txt` | R1 | Restore canonical `F01`–`F13` mappings, `M12-CX-03` `P1` severity, `IMPLEMENTATION.md` milestone 1–12 names, verbatim `M6-AUD-001`–`M6-AUD-009` history, and accurate `b76e60a` / `24b1881` pre-fix receipt provenance | `submitted` | Pending independent audit |
+| `R1-CODE-01` | P1 | M10 (`JP3DWaveletTransform.swift`, `JP3DSliceStackCodec.swift`) | R1 | New `Int64` inverse 5/3 lifting helper had unchecked additions/subtractions (`hPrev + hCurr + 2`, etc.) allowing adversarial `Int64` coefficients (e.g. `[0, Int64.max]`) to trap on overflow instead of throwing a defined decoding/malformed-input error | `submitted` | Pending independent audit |
+| `R1-CODE-02` | P2 | M6 / Core (`Codestream.swift`, remaining `M6-AUD-006`/`F05`) | R1 | Parser retained-structure admission ran after `parseSIZ`/`parseCOD`/`parseQCD` allocated expanded arrays, and initially exempted 1-component `SIZ` and `<= 16`-entry `QCD` arrays | `submitted` | Pending independent audit |
+
+### Historical Milestone 6 Audit Lineage (`M6-AUD-001`–`M6-AUD-009`, Verbatim from `swiftj2k-milestone6-audit.json`)
+
+| ID | Severity | Canonical Problem (`audit.findings`) | Historical / Current State & Receipt Scope |
+| :--- | :--- | :--- | :--- |
+| `M6-AUD-001` | P2 | Transcode progress total counts source blocks twice while `completed` also counts the potentially different target grid; a non-nil callback can cause a valid transcode to throw `invalidArgument` | Closed at independently tested `9fa8fd0`; source/test identity preserved by `5223630` (`focused-tests-100738.log`) |
+| `M6-AUD-002` | P2 | Advertised coefficients-only route performs inverse/forward wavelet reconstruction when target decomposition differs | Closed at independently tested `9fa8fd0`; source/test identity preserved by `5223630` (`focused-tests-100738.log`) |
+| `M6-AUD-003` | P2 | Stale fixture split, unsupported environment strings, fuzz outcomes and incorrect API/metadata claims in submitted docs | Closed by documentation-only correction `5223630` |
+| `M6-AUD-004` | P2 | `COM` annotations dropped during successful default transcode despite advertised preservation; `metadataPolicy` is not propagated | Closed at independently tested `fabe127` (`focused-tests-fabe127.log`) |
+| `M6-AUD-005` | P2 | CI consumer fixture uses package `SwiftJ2K` while checkout path gives local identity `package` | Closed at `fabe127` provider CI consumer job `121553870898` |
+| `M6-AUD-006` | P2 | Resource guards run after target geometry, retained block payloads and packet writer allocations; at merged `1ef8a25`, `Codestream.swift` still admitted retained `COM` storage separately from `readSegmentPayload` without live cumulative retained `COM`/`CRG`/expanded parser structures | **Phase R1 `submitted`** (bounded-writer subtask repaired at `5941aa8`; cumulative pre-allocation admission across all nonempty retained parser structures + decode/transcode workspace propagation submitted in Phase R1 alongside `R1-CODE-02`; Codex acceptance: pending independent audit) |
+| `M6-AUD-007` | P2 | Coefficient transcoding `HTJ2K -> J2K` small `64x64` case median latency `+5.619%` / repeated `+6.649%` (~`0.14 ms`) at `5941aa8`, plus candidate source/binary provenance linkage at `1ef8a25` (`PERF-03`) | **Open** (scheduled for **Phase R4** controlled contemporaneous A/B verification and provenance linkage; Codex acceptance: pending independent audit) |
+| `M6-AUD-008` | P2 | `cancellationDuringDecodeInvalidatesTheDestination` Swift Testing self-cancellation reporting vs normal completion | Closed at `1ef8a25` by source review and actual provider debug/ASan/TSan passes (`m6-final-ci-log-review.json`) |
+| `M6-AUD-009` | P2 | `.github/workflows/contract.yml` macOS job label (`Swift 6.2` vs actual `Apple Swift 6.3.3 / Xcode 26.6`) and three skipped independent-oracle declarations in CI | Label/skip documentation discrepancy closed at `1ef8a25`; missing CI oracle coverage remains an explicit qualification gate (`m6-final-ci-log-review.json`) |
+
+---
+
+## Phase R1 Finding-to-Test & Evidence Map
+
+Pre-fix reproduction receipts: `Documentation/Engineering/Remediation/Evidence/R1/pre-fix-receipts.txt`
+Post-fix verification receipts: `Documentation/Engineering/Remediation/Evidence/R1/post-fix-receipts.txt`
+
+| Finding ID | Production Repair Paths | Regression Test Declarations | Verification Receipt & Status |
+| :--- | :--- | :--- | :--- |
+| `F02` | `Sources/SwiftJ2K3D/JP3DTiling.swift` (`extractIntegerTile`), `JP3DWaveletTransform.swift` (`forwardTransform3DReversibleInt64`, `inverseTransform3DReversibleInt64`), `JP3DSliceStackCodec.swift` (`"J3DI"` exact `Int64` tile framing for `> 16`-bit and lossless 3D), `JP3DEncoder.swift`, `JP3DDecoder.swift`, `JP3DROIDecoder.swift`, `Sources/SwiftJ2KCLI/CLIImageIO.swift` & `CLIVerbs.swift` (`1...38`-bit 3D NRRD/RAW/compare) | `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:79` (`F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)`); `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` (CLI `uint32` NRRD `encode3d`/`decode3d`/`compare --mode 3d`) | `Evidence/R1/post-fix-receipts.txt` §1 & §2 (`submitted`; pending Codex audit) |
+| `R1-CODE-01` | `Sources/SwiftJ2K3D/JP3DWaveletTransform.swift` (`forward53_1D_Int64`, `inverse53_1D_Int64`, `checkedAdd`/`checkedSub` throwing `J2KError.decodingError`), `JP3DSliceStackCodec.swift` (`decodeLosslessInt64Tile`) | `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:263` (`R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap`) | `Evidence/R1/post-fix-receipts.txt` §1 (`submitted`; pending Codex audit) |
+| `F03` | `Sources/SwiftJ2K3D/VolumeCodecAPI.swift` (`VolumeDecoderConfiguration.maxSupportedResolutionLevel = 32`), `JP3DDecoder.swift`, `JP3DROIDecoder.swift`, `Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift` (`JPIPViewWindow`), `Sources/SwiftJ2KCLI/CLIVerbs.swift` (`--resolution-level/--scale` `0...32`) | `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:320`; `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift:44`; `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` | `Evidence/R1/post-fix-receipts.txt` §1 & §2 (`submitted`; pending Codex audit) |
+| `F05` | `Sources/SwiftJ2K3D/JP3DTypes.swift` (`VolumeConcurrencyTelemetry`, `JP3DLiveBudgetTracker` with strong `TransientLease.owner`), `JP3DSliceStackCodec.swift` (`J3DI` DWT/output lease admission), `JP3DEncoder.swift` (bounded `withThrowingTaskGroup` capped at `maximumWorkers`, simultaneous worker + retained-tile admission, monotonic `deadlineSeconds`), `JP3DCodestreamParser.swift` (bounded-prefix `copyTilePayloads: false` inspect vs pre-admitted tile `subdata`), `JP3DDecoder.swift` (immediate tile scatter), `JP3DROIDecoder.swift`, `VolumeCodecAPI.swift`, `Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift`, `Sources/SwiftJ2K/LegacyImageBridge.swift` (`decodeWithInfo` preserving `CodecError`), `Sources/SwiftJ2KCLI/CLIVerbs.swift` (`--max-memory`, `--timeout`, `--threads`) | `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:376` (`F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap`); `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift:62`; `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` | `Evidence/R1/post-fix-receipts.txt` §1 & §2 (`submitted`; pending Codex audit) |
+| `F06` | `Sources/SwiftJ2K3D/VolumeCodecAPI.swift` (`VolumeEncoder.encode`, `VolumeDecoder.decode`, `VolumeTranscoder.transcode` checking reversible mode, partial/truncated warnings, `resolutionLevel == 0`, `maxQualityLayers`), `Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift` (`JPIPStreamingSession.deliverImage` checking codestream reversibility, resolution, quality layers, component subset) | `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:615`; `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift:159` | `Evidence/R1/post-fix-receipts.txt` §1 (`submitted`; pending Codex audit) |
+| `F13` | `Sources/SwiftJ2K/CodecAPI.swift` (`Encoder.encode`, `Decoder.decode`, `Decoder.decode(_:into:)` + `.inspecting` invalidation), `Transcoding.swift`, `Container/JP2Container.swift`, `Sources/SwiftJ2K3D/VolumeCodecAPI.swift`, `Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift` | `Tests/SwiftJ2KTests/R1RemediationTests.swift:523`; `Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift:704`; `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift:236` | `Evidence/R1/post-fix-receipts.txt` §1 (`submitted`; pending Codex audit) |
+| `M6-AUD-006` & `R1-CODE-02` | `Sources/SwiftJ2K/Codec/Codestream.swift` (cumulative `retainedBytes + transientPayloadBytes` pre-allocation admission for every nonempty `parser-markers`, 1-component & multi-component `SIZ`, small `<= 16`-entry & large `QCD`, `CPF`, `COD`, `COC`, `QCC`, `RGN`, `POC`, `COM`, `CRG`, `TilePartRecord`), `LosslessPipeline.swift`, `Part1Pipeline.swift`, `Telemetry.swift` | `Tests/SwiftJ2KTests/R1RemediationTests.swift:255` (`R1-CODE-02: pre-allocation parser admission reaches 1-component SIZ, small <=16-entry QCD, larger-budget control, and 16384-component SIZ`); `Tests/SwiftJ2KTests/R1RemediationTests.swift:388` (`M6-AUD-006: multiple small retained COC/QCC/COM structures accumulate to reject a final individually-fitting payload before allocation`) | `Evidence/R1/post-fix-receipts.txt` §1 (`submitted`; pending Codex audit) |
+| `M12-CX-01` | `Sources/SwiftJ2KCLI/CLIImageIO.swift` (zero `[UInt8](data)` input copy across TIFF/PNG/PNM/RAW; zero `stripBytes` copy on single-strip TIFF; pre-strip `makeContractImageDescriptor` admitting 16-bit greyscale contract storage before strip allocation; cumulative tag-array admission & pre-destination release; `CLIImageIOTelemetry` `.enter`/`.exit`/`.enterDecoded`) | `Tests/SwiftJ2KTests/R1RemediationTests.swift:614` (`M12-CX-01 + follow-up: 64x64 8-bit single-strip & multi-strip TIFF combined live-memory, 16-bit contract storage pre-strip check, and lifetime telemetry`); `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` | `Evidence/R1/post-fix-receipts.txt` §1 & §2 (`submitted`; pending Codex audit) |
+| `M12-CX-02` | `Sources/SwiftJ2K3D/JP3DTypes.swift` (`JP3DRegion.validatedBounds`), `JP3DROIDecoder.swift`, `Sources/SwiftJ2KJPIP/JPIP.swift` & `JPIPCodecAPI.swift`, `Sources/SwiftJ2KCLI/CLIVerbs.swift` (`decode3d --region`, `--slice-range`, `jpip client --region`) & `main.swift` (`encode --roi`) | `Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift:44`; `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` | `Evidence/R1/post-fix-receipts.txt` §1 & §2 (`submitted`; pending Codex audit) |
+| `M12-CI` | `Package.swift` (internal `CZlibShim` C target with `.linkedLibrary("z")`), `Sources/CZlibShim/include/CZlibShim.h` (`#include <zlib.h>`), `Sources/CZlibShim/CZlibShim.c`, `Sources/SwiftJ2KCLI/CLIImageIO.swift` (`import CZlibShim` replacing `#if canImport(zlib)`) | `Tests/SwiftJ2KTests/R1RemediationTests.swift:757` (CLI PNG `convert`/`encode`/`decode`/`compare` round-trip via `CZlibShim`); `Examples/Consumer` independent tools-6.2 build | `Evidence/R1/post-fix-receipts.txt` §1–§3 (`submitted` on macOS; **Linux compilation verification blocked/unexecuted locally**) |
+| `R1-DOC-01` | `Documentation/Engineering/Remediation/STATUS.md`, `IMPLEMENTATION.md`, `Documentation/Engineering/Remediation/Evidence/R1/pre-fix-receipts.txt`, `Documentation/MILESTONE6.md`, `MILESTONE10.md`, `MILESTONE11.md`, `MILESTONE12.md` | Verified against `COMMON_CONTRACT_SHA256.txt` (`7/7 OK`) and `Swift64` byte-identity check | `Evidence/R1/pre-fix-receipts.txt` & `post-fix-receipts.txt` (`submitted`; pending Codex audit) |

@@ -133,3 +133,19 @@ Measured on Apple M3 Max (`arm64-apple-macosx26.0`, Swift `6.4-dev`, `-c release
 
 - **JPIP (`SwiftJ2KJPIP`)**: Network streaming and JPIP client/server types (`Sources/JPIP/*`, including `JPIP3DStreamingTypes.swift`) remain scheduled for **Milestone 11** (`IMPLEMENTATION.md` line 88).
 - **3D CLI Verbs (`Encode3D` / `Decode3D`)**: Volumetric CLI commands remain scheduled for **Milestone 12** (`IMPLEMENTATION.md` lines 76, 89, 153).
+
+---
+
+## 7. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Submitted)
+
+Independent audit review at `b76e60a` / `24b1881` established that Milestone 10 is **not yet accepted as complete** for normative ISO/IEC 15444-10 conformance. Canonical tracking lives in [Engineering/Remediation/STATUS.md](Engineering/Remediation/STATUS.md) (`Evidence/R1/{pre,post}-fix-receipts.txt`).
+
+- **Phase R1 (`submitted` — `Codex acceptance: pending independent audit`)**:
+  - **`F02` & `R1-CODE-01`**: Added exact `Int64` integer-preserving reversible 3D tiling, checked `Int64` 5/3 wavelet lifting (`forward53_1D_Int64` / `inverse53_1D_Int64` throwing `CodecError(.malformedInput, ...)` on adversarial coefficient overflow), and `"J3DI"` lossless tile framing supporting `1...38`-bit signed and unsigned volumes without `Float` rounding (`16,777,217` preserved bit-exactly).
+  - **`F03`**: Bounded `resolutionLevel` to `0...32` across `VolumeDecoderConfiguration`, `JP3DDecoder`, and `JP3DROIDecoder`, eliminating shift-overflow / division-by-zero traps.
+  - **`F05`**: Enforced pre-allocation `ResourceLimits` (`maximumCompressedBytes`, `maximumDecodedBytes`, `maximumWorkspaceBytes`, `maximumMemoryBytes`), monotonic `deadlineSeconds`, bounded `maximumWorkers` task-group concurrency, simultaneous runtime worker + retained-tile + `J3DI` DWT/output lease accounting (`JP3DLiveBudgetTracker` with deterministic unwind release), and bounded-prefix `VolumeDecoder.inspect` parsing.
+  - **`F06` & `F13`**: `OperationReport.fidelity` now reports `.lossy` whenever 3D output is irreversible, partial/truncated, reduced-resolution, or layer-truncated; `VolumeEncoder`, `VolumeDecoder`, and `VolumeTranscoder` re-check cancellation after `.completed` progress callbacks.
+  - **Updated `SwiftJ2K3DTests` count at Phase R1**: `490` XCTest methods + `6` Swift Testing `@Test` declarations (`R1VolumeRemediationTests.swift`) = **`496` tests passing** (`0` failures).
+- **Remaining Open Milestone 10 Gaps (Scheduled for Phases R2 & R3 — Not Claimed Closed)**:
+  - **`F09` & `F11` (Phase R2 — `open`)**: `CopyPolicy` / `ExecutionPolicy` enforcement and `OperationReport` accounting (`F09`), plus `spacing`/`origin` volume geometry preservation under `.preserve` metadata policy (`F11`).
+  - **`F01` (Phase R3 — `open`)**: Standards-interoperable ISO/IEC 15444-10 JP3D codestream signalling, 3D entropy coding, and HT-in-JP3D conformance (replacing private `"J3DS"`/`"J3DI"` framing for normative Part 10 claims).

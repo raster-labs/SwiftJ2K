@@ -132,10 +132,12 @@ public struct JPIPViewWindow: Sendable, Equatable {
         components: [Int]? = nil
     ) throws {
         if let region = region {
-            guard region.x >= 0, region.y >= 0, region.width > 0, region.height > 0 else {
+            guard region.x >= 0, region.y >= 0, region.width > 0, region.height > 0,
+                  !region.x.addingReportingOverflow(region.width).overflow,
+                  !region.y.addingReportingOverflow(region.height).overflow else {
                 throw CodecError(
                     .invalidArgument,
-                    "JPIPViewWindow: region must have non-negative origin and positive dimensions"
+                    "JPIPViewWindow: region must have non-negative origin, positive dimensions, and non-overflowing bounds"
                 )
             }
             self.regionOriginX = region.x
@@ -150,10 +152,10 @@ public struct JPIPViewWindow: Sendable, Equatable {
         }
 
         if let level = resolutionLevel {
-            guard level >= 0, level < 31 else {
+            guard (0...32).contains(level) else {
                 throw CodecError(
                     .invalidArgument,
-                    "JPIPViewWindow: resolutionLevel must be in 0..<31"
+                    "JPIPViewWindow: resolutionLevel must be in 0...32"
                 )
             }
         }
@@ -284,76 +286,83 @@ public actor JPIPStreamingSession {
         viewWindow: JPIPViewWindow? = nil,
         options: JPIPStreamingOptions = JPIPStreamingOptions()
     ) async throws -> JPIPDeliveredImage {
-        try Task.checkCancellation()
-        let (backend, fallbackReason) = try resolveJPIPBackend(options.executionPolicy)
+        let deadline = ContinuousClock.now.advanced(
+            by: .seconds(options.resourceLimits.deadlineSeconds)
+        )
+        @inline(__always)
+        func checkWork() throws {
+            try Task.checkCancellation()
+            if ContinuousClock.now > deadline {
+                throw CodecError(.resourceLimitExceeded, "JPIP streaming deadline elapsed.")
+            }
+        }
+
+        try checkWork()
+        let (_, _) = try resolveJPIPBackend(options.executionPolicy)
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
         }
+        try checkWork()
 
         if let p = try? ProgressUpdate(phase: .processing, completedUnits: 1, totalUnits: 3) {
             options.progress?(p)
         }
+        try checkWork()
 
-        let legacyImage: J2KImage
+        let decodedInfo: J2KDecoder.DecodedCodestreamInfo
         do {
-            if let window = viewWindow {
-                if let rx = window.regionOriginX,
-                   let ry = window.regionOriginY,
-                   let rw = window.regionWidth,
-                   let rh = window.regionHeight {
-                    legacyImage = try await client.requestRegion(
-                        imageID: imageID,
-                        region: (x: rx, y: ry, width: rw, height: rh),
-                        layers: window.maxQualityLayers
-                    )
-                } else if let comps = window.components {
-                    legacyImage = try await client.requestComponents(
-                        imageID: imageID,
-                        components: comps,
-                        layers: window.maxQualityLayers
-                    )
-                } else if let level = window.resolutionLevel {
-                    legacyImage = try await client.requestResolutionLevel(
-                        imageID: imageID,
-                        level: level,
-                        layers: window.maxQualityLayers
-                    )
-                } else if let layers = window.maxQualityLayers {
-                    legacyImage = try await client.requestProgressiveQuality(
-                        imageID: imageID,
-                        upToLayers: layers
-                    )
-                } else {
-                    legacyImage = try await client.requestImage(imageID: imageID)
-                }
-            } else {
-                legacyImage = try await client.requestImage(imageID: imageID)
-            }
+            decodedInfo = try await client.requestDeliveredImage(
+                imageID: imageID,
+                viewWindow: viewWindow,
+                limits: options.resourceLimits,
+                executionPolicy: options.executionPolicy,
+                deadline: deadline
+            )
         } catch let error as J2KError {
             throw error.asCodecError
         }
 
-        try Task.checkCancellation()
+        let legacyImage = decodedInfo.image
+        try checkWork()
         try validateDeliveredLegacyImage(legacyImage, limits: options.resourceLimits)
 
         let contractImage = try legacyImage.toContractImage(limits: options.resourceLimits)
         let stats = await client.getSessionStats()
 
+        try checkWork()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
             options.progress?(p)
         }
+        try checkWork()
 
         let pixelBytes = legacyImage.components.reduce(0) { $0 + $1.data.count }
-        let isReduced = (viewWindow?.maxQualityLayers != nil) || ((viewWindow?.resolutionLevel ?? 0) > 0)
+        let hasReducedResolution = (viewWindow?.resolutionLevel ?? 0) > 0
+        let hasReducedLayers: Bool
+        if let reqLayers = viewWindow?.maxQualityLayers {
+            hasReducedLayers = reqLayers < decodedInfo.totalQualityLayers
+        } else {
+            hasReducedLayers = false
+        }
+        let hasSubsetComponents: Bool
+        if let reqComps = viewWindow?.components {
+            hasSubsetComponents = Set(reqComps).count < decodedInfo.totalComponents
+        } else {
+            hasSubsetComponents = false
+        }
+        let isExact = decodedInfo.isReversibleLossless
+            && !hasReducedResolution
+            && !hasReducedLayers
+            && !hasSubsetComponents
+        let peakWorkspace = max(decodedInfo.peakWorkspaceBytes, stats?.cacheSize ?? pixelBytes)
         let report = OperationReport(
-            backend: backend,
-            fallbackReason: fallbackReason,
-            fidelity: isReduced ? .lossy : .exactSamples,
+            backend: decodedInfo.backend,
+            fallbackReason: decodedInfo.fallbackReason,
+            fidelity: isExact ? .exactSamples : .lossy,
             copyEvents: [],
             pixelAllocationCount: legacyImage.components.count,
             peakPixelBytes: pixelBytes,
-            peakWorkspaceBytes: stats?.cacheSize ?? pixelBytes,
+            peakWorkspaceBytes: peakWorkspace,
             discardedMetadataCount: options.metadataPolicy == .discardAncillary ? 1 : 0,
             discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? ["jpipAncillaryMetadata"] : []
         )
@@ -374,24 +383,61 @@ public actor JPIPStreamingSession {
         region: JP3DStreamingRegion,
         options: JPIPStreamingOptions = JPIPStreamingOptions()
     ) async throws -> JPIPDeliveredVolumeSliceBins {
-        try Task.checkCancellation()
+        let deadline = ContinuousClock.now.advanced(
+            by: .seconds(options.resourceLimits.deadlineSeconds)
+        )
+        @inline(__always)
+        func checkWork() throws {
+            try Task.checkCancellation()
+            if ContinuousClock.now > deadline {
+                throw CodecError(.resourceLimitExceeded, "JPIP volumetric streaming deadline elapsed.")
+            }
+        }
+
+        try checkWork()
         let (backend, fallbackReason) = try resolveJPIPBackend(options.executionPolicy)
 
         let width = region.xRange.count
         let height = region.yRange.count
         let depth = region.zRange.count
-        let maxDim = options.resourceLimits.maximumDimension
-        guard width > 0, height > 0, depth > 0,
-              width <= maxDim, height <= maxDim, depth <= maxDim else {
+        let limits = options.resourceLimits
+        let maxDim = limits.maximumDimension
+        guard width > 0, height > 0, depth > 0 else {
+            throw CodecError(
+                .invalidArgument,
+                "3D streaming region dimensions (\(width)x\(height)x\(depth)) must be positive"
+            )
+        }
+        guard width <= maxDim, height <= maxDim, depth <= maxDim,
+              depth <= limits.maximumFrames else {
             throw CodecError(
                 .resourceLimitExceeded,
                 "3D streaming region dimensions (\(width)x\(height)x\(depth)) exceed resource limits"
+            )
+        }
+        let (wh, o1) = width.multipliedReportingOverflow(by: height)
+        let (voxels, o2) = wh.multipliedReportingOverflow(by: depth)
+        guard !o1, !o2, voxels <= limits.maximumPixels else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "3D streaming region voxel count exceeds pixel limit \(limits.maximumPixels)"
+            )
+        }
+        let estimatedBins = min(max(1, depth), 8)
+        let estimatedBinBytes = estimatedBins * 64
+        guard estimatedBinBytes <= limits.maximumCompressedBytes,
+              estimatedBinBytes <= limits.maximumWorkspaceBytes,
+              estimatedBinBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "3D streaming region data-bin budget (\(estimatedBinBytes) bytes) exceeds resource limits"
             )
         }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 2) {
             options.progress?(p)
         }
+        try checkWork()
 
         let bins: [JP3DDataBin]
         do {
@@ -402,12 +448,22 @@ public actor JPIPStreamingSession {
             throw error.asCodecError
         }
 
-        try Task.checkCancellation()
+        let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
+        guard totalBinBytes <= limits.maximumCompressedBytes,
+              totalBinBytes <= limits.maximumWorkspaceBytes,
+              totalBinBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Delivered 3D data-bin payload (\(totalBinBytes) bytes) exceeds resource limits"
+            )
+        }
+
+        try checkWork()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 2, totalUnits: 2) {
             options.progress?(p)
         }
+        try checkWork()
 
-        let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
         let report = OperationReport(
             backend: backend,
             fallbackReason: fallbackReason,

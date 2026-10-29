@@ -1134,9 +1134,17 @@ func parseEncodeConfiguration(
 
     var roi: CodecOptions.RegionOfInterest? = nil
     if let rText = options.values["--roi"] {
-        let parts = rText.split(separator: ",").compactMap { Int($0) }
-        guard parts.count == 4 || parts.count == 5 else {
+        let rawParts = rText.split(separator: ",", omittingEmptySubsequences: false)
+        guard rawParts.count == 4 || rawParts.count == 5 else {
             throw UsageError(message: "--roi must be X,Y,W,H or X,Y,W,H,SHIFT.")
+        }
+        var parts: [Int] = []
+        parts.reserveCapacity(rawParts.count)
+        for token in rawParts {
+            guard let v = Int(token) else {
+                throw UsageError(message: "--roi contains an invalid or out-of-range integer.")
+            }
+            parts.append(v)
         }
         do {
             roi = try CodecOptions.RegionOfInterest(
@@ -1263,8 +1271,14 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
     let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     try context.diagnostic(2, "reading input")
+    try admitRegularFileSize(
+        inputPath,
+        maxCategoryBytes: command == "encode" ? limits.maximumDecodedBytes : limits.maximumCompressedBytes,
+        memoryLimit: limits.maximumMemoryBytes
+    )
     let input = try readInput(inputPath)
-    guard input.count <= limits.maximumCompressedBytes else {
+    guard input.count <= (command == "encode" ? limits.maximumDecodedBytes : limits.maximumCompressedBytes),
+          input.count <= limits.maximumMemoryBytes else {
         throw ExitFailure(status: 5, message: "resource limit: input exceeds the compressed-size admission limit.")
     }
 

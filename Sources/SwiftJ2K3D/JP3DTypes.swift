@@ -38,9 +38,15 @@ public struct JP3DRegion: Sendable, Equatable {
 
     /// Creates a region from origin coordinates and dimensions.
     public init(originX: Int, originY: Int, originZ: Int, width: Int, height: Int, depth: Int) {
-        self.x = originX..<(originX + width)
-        self.y = originY..<(originY + height)
-        self.z = originZ..<(originZ + depth)
+        let safeW = max(0, width)
+        let safeH = max(0, height)
+        let safeD = max(0, depth)
+        let (endX, ovX) = originX.addingReportingOverflow(safeW)
+        let (endY, ovY) = originY.addingReportingOverflow(safeH)
+        let (endZ, ovZ) = originZ.addingReportingOverflow(safeD)
+        self.x = originX..<(ovX ? Int.max : max(originX, endX))
+        self.y = originY..<(ovY ? Int.max : max(originY, endY))
+        self.z = originZ..<(ovZ ? Int.max : max(originZ, endZ))
     }
 
     /// Creates a region starting at the origin with the given dimensions.
@@ -62,7 +68,12 @@ public struct JP3DRegion: Sendable, Equatable {
     public var depth: Int { z.count }
 
     /// The total number of voxels in this region.
-    public var volume: Int { width * height * depth }
+    public var volume: Int {
+        let (wh, ov1) = width.multipliedReportingOverflow(by: height)
+        if ov1 { return Int.max }
+        let (whd, ov2) = wh.multipliedReportingOverflow(by: depth)
+        return ov2 ? Int.max : whd
+    }
 
     /// Alias for ``volume`` (total number of voxels in this region).
     public var voxelCount: Int { volume }

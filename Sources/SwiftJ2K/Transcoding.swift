@@ -114,6 +114,7 @@ public struct Transcoder: Sendable {
         StorageTelemetry.recordWorkspaceAllocation(bytes: data.count)
         var bytes = [UInt8](data)
         options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        try Task.checkCancellation()
 
         let codestreamInput: [UInt8]
         var reconciledContainer: JP2Container.ReconciledContainerProfile?
@@ -204,6 +205,7 @@ public struct Transcoder: Sendable {
             discardedMetadataKinds: discardedKinds
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
+        try Task.checkCancellation()
         return EncodedImage(
             data: publishedData,
             encoding: EncodingDescription(format: outputFormat, mode: .lossless),

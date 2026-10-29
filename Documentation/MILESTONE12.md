@@ -149,3 +149,22 @@ Executed on Apple Silicon (`arm64-apple-macosx`, release build `-c release`, fix
 | `htj2k-lossless` | `accelerated` | 72,777 B | 1.80× | 1.60 ms | 40.93 MP/s | 1.40 ms | 46.73 MP/s |
 | `j2k-lossy` | `accelerated` | 61,484 B | 2.13× | 13.76 ms | 4.76 MP/s | 11.99 ms | 5.47 MP/s |
 
+---
+
+## 5. Milestones 1–12 Audit Remediation Update — 29 October 2026 (Phase R1 Submitted)
+
+Independent audit review of PR #27 (`24b18814c29362f3726321d6618d460da3606e8d`) identified four Milestone 12 CLI findings (`M12-CX-01`–`M12-CX-04`), CLI propagation of `F02`–`F05`, and the Linux `zlib` compilation failure (`M12-CI`, GitHub Actions run `40684586676` / Linux job `122803568965`). Canonical tracking lives in [Engineering/Remediation/STATUS.md](Engineering/Remediation/STATUS.md), with executed receipts in [Engineering/Remediation/Evidence/R1/pre-fix-receipts.txt](Engineering/Remediation/Evidence/R1/pre-fix-receipts.txt) and [Engineering/Remediation/Evidence/R1/post-fix-receipts.txt](Engineering/Remediation/Evidence/R1/post-fix-receipts.txt).
+
+- **Phase R1 (`submitted` — `Codex acceptance: pending independent audit`)**:
+  - **`M12-CX-01` (TIFF & 2D CLI pre-allocation memory admission)**: Removed duplicate `[UInt8](data)` input copies across `parseTIFF`, `parsePNG`, `parsePGMOrPPM`, and `parseRAW`; eliminated intermediate `stripBytes` copying for single-strip TIFFs; constructed `makeContractImageDescriptor` prior to strip buffering so 1-component 8-bit greyscale's actual 16-bit contract storage (`requiredByteCount`) is admitted against `maximumDecodedBytes` before any strip allocation; admitted multi-strip tag arrays cumulatively and released them before `ImageDestination.allocate`; and added `CLIImageIOTelemetry` lifetime verification (`Tests/SwiftJ2KTests/R1RemediationTests.swift:614,757`).
+  - **`M12-CX-02` & CLI `F02`/`F03`/`F05`**: Hardened `decode3d --region`, `--slice-range`, `jpip client --region`, and `encode --roi` with checked arithmetic and dimension bounds (clean exit `2`, no `SIGTRAP`); rejected `--resolution-level > 32` with exit `2`; extended 3D NRRD/RAW/compare I/O to `1...38`-bit signed/unsigned integers without `Float` truncation; and propagated `--max-memory`, `--timeout`, and `--threads` across `encode3d`, `decode3d`, `compare`, and `jpip`.
+  - **`M12-CI` (Portable `zlib` C-shim target)**: Replaced `#if canImport(zlib)` in `CLIImageIO.swift` with an internal `CZlibShim` C target (`Sources/CZlibShim`, `.linkedLibrary("z")`) including `<zlib.h>` directly for portable Darwin and Linux compilation without exposing any new public library product (`Examples/Consumer` verified at `swift-tools-version: 6.2`). **Local macOS verification passed; Linux compilation verification remains `blocked/unexecuted locally` (no Linux container/toolchain on this macOS host) and is gated on a Linux Swift 6.2/6.4 runner.**
+  - **Reconciled Test Counts at Phase R1 Checkpoint**:
+    - `SwiftJ2KTests`: `130/130` Swift Testing `@Test` declarations passing (`+5` in `R1RemediationTests.swift`).
+    - `SwiftJ2K3DTests`: `496/496` tests passing (`490` XCTest methods + `6` Swift Testing `@Test` declarations in `R1VolumeRemediationTests.swift`).
+    - `SwiftJ2KJPIPTests`: `548/548` tests passing (`544` XCTest methods + `4` Swift Testing `@Test` declarations in `R1JPIPRemediationTests.swift`).
+    - **Total package unit tests**: `1,174/1,174` passing (`0` failures); `Scripts/test-cli.py`: `246` process checks passing (`0` failures).
+- **Remaining Open Milestone 12 Gaps (Scheduled for Phases R2, R3 & R4 — Not Claimed Closed)**:
+  - **`M12-CX-03` (`P1`) & `M12-CX-04` (`P2`) (Phase R2 — `open`)**: Multi-channel PNG `sBIT` sample scaling/right-shifting (`M12-CX-03`) and TIFF `PhotometricInterpretation` handling (`WhiteIsZero` inversion and explicit rejection of unsupported palette/YCbCr/CMYK modes, `M12-CX-04`).
+  - **CLI `F01` / `F04` & Provider CI (`M12-CI`) (Phases R3 & R4 — `open`)**: Normative JP3D/JPIP CLI end-to-end exchange and actual Linux/macOS CI verification.
+
