@@ -339,14 +339,20 @@ public actor JPIPServer {
         return 50 // Normal priority
     }
 
-    /// Gets an existing session or creates a new one.
+    /// Gets an existing session, creates a persistent session when `cnew` is requested,
+    /// or returns an ephemeral non-persisted session for stateless requests (`cid == nil && cnew == nil`).
     private func getOrCreateSession(for request: JPIPRequest) async throws -> JPIPServerSession {
-        // Check if request has existing channel ID
-        if let cid = request.cid, let existingSession = sessions[cid] {
-            return existingSession
+        // Check if request references an existing channel ID
+        if let cid = request.cid {
+            if let existingSession = sessions[cid] {
+                return existingSession
+            }
+            if request.cnew == nil {
+                throw J2KError.invalidParameter("Unknown or expired JPIP channel ID: \(cid)")
+            }
         }
 
-        // Create new session if cnew is specified
+        // Create new persistent session if cnew is specified
         if request.cnew != nil {
             let sessionID = UUID().uuidString
             let channelID = "cid-\(sessionID)"
@@ -363,7 +369,13 @@ public actor JPIPServer {
             return newSession
         }
 
-        throw J2KError.invalidParameter("No session ID and no cnew specified")
+        // ISO/IEC 15444-9 stateless JPIP request (e.g. `deliveryMode == .full`):
+        // serve without allocating a persistent server-side session entry.
+        return JPIPServerSession(
+            sessionID: "stateless-\(UUID().uuidString)",
+            channelID: "",
+            target: request.target
+        )
     }
 
     /// Processes a request and generates a response.
@@ -375,6 +387,8 @@ public actor JPIPServer {
         guard let imageURL = registeredImages[request.target] else {
             throw J2KError.fileNotFound("Image not found: \(request.target)")
         }
+
+        let responseChannelID: String? = session.channelID.isEmpty ? nil : session.channelID
 
         // For session creation, return minimal response with channel ID
         if request.cnew != nil {
@@ -392,7 +406,7 @@ public actor JPIPServer {
             }
 
             return JPIPResponse(
-                channelID: session.channelID,
+                channelID: responseChannelID,
                 data: Data(),
                 statusCode: 200,
                 headers: headers
@@ -403,7 +417,7 @@ public actor JPIPServer {
         if request.metadata == true {
             let metadataData = try await generateMetadata(for: imageURL)
             return JPIPResponse(
-                channelID: session.channelID,
+                channelID: responseChannelID,
                 data: metadataData,
                 statusCode: 200,
                 headers: ["Content-Type": "application/octet-stream"]
@@ -418,7 +432,7 @@ public actor JPIPServer {
         )
 
         return JPIPResponse(
-            channelID: session.channelID,
+            channelID: responseChannelID,
             data: imageData,
             statusCode: 200,
             headers: ["Content-Type": "application/octet-stream"]

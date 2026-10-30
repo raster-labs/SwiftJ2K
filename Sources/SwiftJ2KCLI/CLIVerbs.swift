@@ -709,6 +709,28 @@ func load2DImageForAnalysis(
     return img
 }
 
+private func parseExtensionCopyPolicy(_ raw: String?) throws -> CopyPolicy {
+    switch raw {
+    case nil, "allow-copy":
+        return .allowCopy
+    case "require-sharing":
+        return .requireSharedStorage
+    default:
+        throw UsageError(message: "--copy-policy must be require-sharing or allow-copy.")
+    }
+}
+
+private func parseExtensionMetadataPolicy(_ raw: String?) throws -> MetadataPolicy {
+    switch raw {
+    case nil, "preserve":
+        return .preserve
+    case "discard-ancillary":
+        return .discardAncillary
+    default:
+        throw UsageError(message: "--metadata-policy must be preserve or discard-ancillary.")
+    }
+}
+
 private func load3DVolumeForAnalysis(
     path: String,
     options: Options,
@@ -737,7 +759,12 @@ private func load3DVolumeForAnalysis(
     )
     let data = try readInput(path)
     if detectUncompressedFormat(data) == .nrrd {
-        return try parseNRRDVolume(data, limits: limits)
+        return try parseNRRDVolume(
+            data,
+            spacingOverride: spacing,
+            originOverride: origin,
+            limits: limits
+        )
     }
     if data.count >= 4, data[data.startIndex] == 0xFF, data[data.startIndex + 1] == 0x4F {
         let dec = try VolumeDecoder()
@@ -866,8 +893,8 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
 
     try context.diagnostic(2, "loading 3D volume")
     let execPolicy = try parseExecutionPolicy(options.values["--backend"])
-    let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
-    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
+    let copyPolicy = try parseExtensionCopyPolicy(options.values["--copy-policy"])
+    let metadataPolicy = try parseExtensionMetadataPolicy(options.values["--metadata-policy"])
     let volume: J2KVolume
     var isDir: ObjCBool = false
     if FileManager.default.fileExists(atPath: inPath, isDirectory: &isDir), isDir.boolValue {
@@ -885,7 +912,12 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
             throw ExitFailure(status: 5, message: "resource limit: volume input exceeds memory limit.")
         }
         if detectUncompressedFormat(data) == .nrrd {
-            volume = try parseNRRDVolume(data, limits: lim)
+            volume = try parseNRRDVolume(
+                data,
+                spacingOverride: spacing,
+                originOverride: origin,
+                limits: lim
+            )
         } else if let geom = rawGeom, geom.depth >= 1 {
             volume = try parseRAWVolume(
                 data,
@@ -951,8 +983,8 @@ func runDecode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
     }
     let lim = try limits(from: options, command: "decode3d")
     let execPolicy = try parseExecutionPolicy(options.values["--backend"])
-    let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
-    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
+    let copyPolicy = try parseExtensionCopyPolicy(options.values["--copy-policy"])
+    let metadataPolicy = try parseExtensionMetadataPolicy(options.values["--metadata-policy"])
     let sliceRange = try parseSliceRange(from: options)
 
     var roiRegion: (x: Int, y: Int, z: Int, w: Int, h: Int, d: Int, xEnd: Int, yEnd: Int, zEnd: Int)? = nil
@@ -1179,8 +1211,8 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
     limitOpts.values.removeValue(forKey: "--mode")
     let lim = try limits(from: limitOpts, command: "jpip")
     let execPolicy = try parseExecutionPolicy(options.values["--backend"])
-    let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
-    let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
+    let copyPolicy = try parseExtensionCopyPolicy(options.values["--copy-policy"])
+    let metadataPolicy = try parseExtensionMetadataPolicy(options.values["--metadata-policy"])
 
     let singleFile = options.values["--single-file"] ?? options.values["--input"]
     let dataDir = options.values["--data-dir"]
@@ -1235,9 +1267,17 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
 
     var compSubset: [Int]? = nil
     if let cText = options.values["--components"] {
-        let comps = cText.split(separator: ",").compactMap { Int($0) }
-        guard !comps.isEmpty, comps.allSatisfy({ $0 >= 0 }) else {
+        let tokens = cText.split(separator: ",", omittingEmptySubsequences: false)
+        guard !tokens.isEmpty else {
             throw UsageError(message: "--components for jpip client must be non-negative component indices (e.g. 0 or 0,1,2).")
+        }
+        var comps: [Int] = []
+        comps.reserveCapacity(tokens.count)
+        for token in tokens {
+            guard let idx = Int(token), idx >= 0 else {
+                throw UsageError(message: "--components for jpip client must be non-negative component indices (e.g. 0 or 0,1,2).")
+            }
+            comps.append(idx)
         }
         compSubset = comps
     }

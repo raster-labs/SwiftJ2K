@@ -61,6 +61,9 @@ public actor JP3DMetalDWT {
     /// Whether Metal acceleration is available on this device.
     public static var isMetalAvailable: Bool {
         #if canImport(Metal)
+        guard AccelerationRuntime.isAvailable, AccelerationRuntime.isMetalDevicePermitted else {
+            return false
+        }
         return MTLCreateSystemDefaultDevice() != nil
         #else
         return false
@@ -441,7 +444,7 @@ kernel void jp3d_dwt_forward_97_x(
 """
 
     private func initializeMetal() throws {
-        guard let device = MTLCreateSystemDefaultDevice() else {
+        guard JP3DMetalDWT.isMetalAvailable, let device = MTLCreateSystemDefaultDevice() else {
             throw J2KError.unsupportedFeature("No Metal device available")
         }
         guard let queue = device.makeCommandQueue() else {

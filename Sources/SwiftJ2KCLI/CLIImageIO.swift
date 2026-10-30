@@ -327,6 +327,7 @@ func makeContractImageDescriptor(
     componentCount: Int,
     meaningfulBits: Int,
     signed: Bool,
+    alpha: AlphaInterpretation = .absent,
     limits: ResourceLimits
 ) throws -> ImageDescriptor {
     guard width > 0, height > 0 else {
@@ -344,10 +345,34 @@ func makeContractImageDescriptor(
         return signed
             ? try ImageDescriptor.signedGreyscale16(width: width, height: height, meaningfulBits: meaningfulBits, limits: limits)
             : try ImageDescriptor.greyscale16(width: width, height: height, meaningfulBits: meaningfulBits, limits: limits)
+    } else if componentCount == 2 && alpha != .absent && !signed {
+        let baseDesc = try ImageDescriptor.multiComponentPlanar(
+            width: width, height: height, componentCount: 2,
+            storageBits: storageBits, meaningfulBits: meaningfulBits,
+            sampleType: sampleType, limits: limits
+        )
+        return try ImageDescriptor(
+            width: width,
+            height: height,
+            sampleType: sampleType,
+            storageBits: storageBits,
+            meaningfulBits: meaningfulBits,
+            byteOrder: baseDesc.byteOrder,
+            components: [.grey, .alpha],
+            colour: .greyscale,
+            alpha: alpha,
+            planes: baseDesc.planes,
+            limits: limits
+        )
     } else if componentCount == 3 {
         return try ImageDescriptor.rgbPlanar(
             width: width, height: height, storageBits: storageBits,
             meaningfulBits: meaningfulBits, signed: signed, limits: limits
+        )
+    } else if componentCount == 4 && alpha != .absent {
+        return try ImageDescriptor.rgbPlanar(
+            width: width, height: height, storageBits: storageBits,
+            meaningfulBits: meaningfulBits, signed: signed, alpha: alpha, limits: limits
         )
     } else {
         return try ImageDescriptor.multiComponentPlanar(
@@ -361,12 +386,12 @@ func makeContractImageDescriptor(
 func makeContractImage(
     descriptor: ImageDescriptor,
     limits: ResourceLimits,
-    sampleAt: (_ component: Int, _ x: Int, _ y: Int) -> Int
+    sampleAt: (_ component: Int, _ x: Int, _ y: Int) throws -> Int
 ) throws -> Image {
     let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
     CLIImageIOTelemetry.enterDecoded(stage: "image-destination", decodedBytes: descriptor.requiredByteCount)
     return try destination.writeSamples { c, x, y in
-        sampleAt(c, x, y)
+        try sampleAt(c, x, y)
     }
 }
 
@@ -376,8 +401,9 @@ func makeContractImage(
     componentCount: Int,
     meaningfulBits: Int,
     signed: Bool,
+    alpha: AlphaInterpretation = .absent,
     limits: ResourceLimits,
-    sampleAt: (_ component: Int, _ x: Int, _ y: Int) -> Int
+    sampleAt: (_ component: Int, _ x: Int, _ y: Int) throws -> Int
 ) throws -> Image {
     let descriptor = try makeContractImageDescriptor(
         width: width,
@@ -385,6 +411,7 @@ func makeContractImage(
         componentCount: componentCount,
         meaningfulBits: meaningfulBits,
         signed: signed,
+        alpha: alpha,
         limits: limits
     )
     return try makeContractImage(descriptor: descriptor, limits: limits, sampleAt: sampleAt)
@@ -627,6 +654,9 @@ func parsePNG(
     var bitDepth = 0
     var colorType = 0
     var headerParsed = false
+    var sbitSeen = false
+    var plteSeen = false
+    var idatSeen = false
     var sbitDepth: Int?
     var idatCompressed = Data()
     var idatAdmittedBytes = 0
@@ -713,17 +743,58 @@ func parsePNG(
                 headerParsed = true
 
             case "sBIT":
-                if headerParsed && chunkLen >= 1 {
-                    let sb = Int(bytes[dataStart])
-                    if sb >= 1 && sb <= bitDepth {
-                        sbitDepth = sb
+                // W3C PNG §11.3.2.4: sBIT must appear after IHDR, before PLTE/IDAT, and at most once.
+                guard headerParsed, !plteSeen, !idatSeen, !sbitSeen else {
+                    throw CodecError(.malformedInput, "Invalid or misplaced PNG sBIT chunk.")
+                }
+                let expectedSbitBytes: Int
+                switch colorType {
+                case 0: expectedSbitBytes = 1
+                case 2: expectedSbitBytes = 3
+                case 4: expectedSbitBytes = 2
+                case 6: expectedSbitBytes = 4
+                default:
+                    throw CodecError(.unsupportedFormat, "Unsupported PNG colour type for sBIT.")
+                }
+                guard chunkLen == expectedSbitBytes else {
+                    throw CodecError(
+                        .malformedInput,
+                        "PNG sBIT chunk length (\(chunkLen)) does not match colour type \(colorType) (expected \(expectedSbitBytes))."
+                    )
+                }
+                let firstSig = Int(bytes[dataStart])
+                for cIdx in 0..<expectedSbitBytes {
+                    let sb = Int(bytes[dataStart + cIdx])
+                    guard sb >= 1, sb <= bitDepth else {
+                        throw CodecError(
+                            .malformedInput,
+                            "PNG sBIT significant bit count (\(sb)) must lie in 1...\(bitDepth)."
+                        )
+                    }
+                    if sb != firstSig {
+                        throw CodecError(
+                            .unsupportedFeature,
+                            "Unequal per-channel PNG sBIT depths are not supported by uniform ImageDescriptor."
+                        )
                     }
                 }
+                sbitDepth = firstSig
+                sbitSeen = true
+
+            case "PLTE":
+                // A suggested palette is optional for truecolour PNG, but must precede IDAT.
+                guard headerParsed, !plteSeen, !idatSeen,
+                      colorType == 2 || colorType == 6,
+                      chunkLen > 0, chunkLen <= 768, chunkLen % 3 == 0 else {
+                    throw CodecError(.malformedInput, "Invalid or misplaced PNG PLTE chunk.")
+                }
+                plteSeen = true
 
             case "IDAT":
                 guard headerParsed else {
                     throw CodecError(.malformedInput, "PNG IDAT chunk appeared before IHDR.")
                 }
+                idatSeen = true
                 let newCount = try checkedAdd(idatCompressed.count, chunkLen, label: "PNG IDAT total")
                 let liveWithIDAT = try checkedAdd(data.count, newCount, label: "PNG input and IDAT memory")
                 guard newCount <= limits.maximumCompressedBytes,
@@ -753,18 +824,27 @@ func parsePNG(
     }
 
     let channels: Int
+    let pngAlpha: AlphaInterpretation
     switch colorType {
-    case 0: channels = 1
-    case 2: channels = 3
-    case 4: channels = 2
-    case 6: channels = 4
+    case 0: (channels, pngAlpha) = (1, .absent)
+    case 2: (channels, pngAlpha) = (3, .absent)
+    case 4: (channels, pngAlpha) = (2, .straight)
+    case 6: (channels, pngAlpha) = (4, .straight)
     default:
         throw CodecError(.unsupportedFormat, "Unsupported PNG colour type.")
     }
 
+    if let dp = declaredPrecision {
+        guard (1...bitDepth).contains(dp) else {
+            throw CodecError(.invalidArgument, "Declared precision (\(dp)) is outside PNG storage bit depth 1...\(bitDepth).")
+        }
+        if let sb = sbitDepth, dp != sb {
+            throw CodecError(.invalidArgument, "Declared precision (\(dp)) conflicts with PNG sBIT chunk (\(sb)).")
+        }
+    }
     let meaningfulBits = declaredPrecision ?? sbitDepth ?? bitDepth
     guard (1...bitDepth).contains(meaningfulBits) else {
-        throw CodecError(.unsupportedFeature, "Declared precision exceeds PNG storage bit depth.")
+        throw CodecError(.invalidArgument, "Invalid PNG meaningful precision (\(meaningfulBits)).")
     }
 
     let descriptor = try makeContractImageDescriptor(
@@ -773,6 +853,7 @@ func parsePNG(
         componentCount: channels,
         meaningfulBits: meaningfulBits,
         signed: false,
+        alpha: pngAlpha,
         limits: limits
     )
     let destBytes = descriptor.requiredByteCount
@@ -845,6 +926,12 @@ func parsePNG(
     }
 
     let maxAllowedSample = (1 << meaningfulBits) - 1
+    let sbitShift: Int = {
+        if let sb = sbitDepth, sb < bitDepth {
+            return bitDepth - sb
+        }
+        return 0
+    }()
     let image = try rawScanlines.withUnsafeBytes { rawBuf -> Image in
         let buf = rawBuf.baseAddress!.assumingMemoryBound(to: UInt8.self)
         return try makeContractImage(
@@ -853,20 +940,49 @@ func parsePNG(
         ) { c, x, y in
             let rowPixels = y * strideWithFilter + 1
             let sampleInRow = x * channels + c
-            let v: Int
+            let rawSample: Int
             if bytesPerSample == 1 {
-                v = Int(buf[rowPixels + sampleInRow])
+                rawSample = Int(buf[rowPixels + sampleInRow])
             } else {
                 let off = rowPixels + sampleInRow * 2
-                v = (Int(buf[off]) << 8) | Int(buf[off + 1])
+                rawSample = (Int(buf[off]) << 8) | Int(buf[off + 1])
             }
-            return min(maxAllowedSample, max(0, v))
+            if sbitShift > 0 {
+                // W3C PNG §11.3.2.4 & §12.4: significant bits are stored in the most-significant bits;
+                // right-shift by (bitDepth - sBIT) to recover the exact original sBIT-bit sample.
+                return rawSample >> sbitShift
+            }
+            guard rawSample >= 0, rawSample <= maxAllowedSample else {
+                throw CodecError(
+                    .invalidArgument,
+                    "PNG sample value (\(rawSample)) exceeds declared precision \(meaningfulBits) (max \(maxAllowedSample)) without an sBIT chunk."
+                )
+            }
+            return rawSample
         }
     }
     rawScanlines = Data()
     CLIImageIOTelemetry.exit(stage: "png-scanline-workspace", workspaceBytes: expectedDecompressedSize, basePlusOtherLiveBytes: data.count + destBytes)
     scanlinesExited = true
     return image
+}
+
+/// Scales an `s`-bit unsigned sample (`0...(1<<s)-1`) into `dBits`-bit PNG storage (`8` or `16`)
+/// via normative W3C PNG §12.4 left-bit replication so `0 -> 0`, `maxVal -> (1<<dBits)-1`, and
+/// `scaled >> (dBits - s) == value` bit-identically.
+@inline(__always)
+private func scalePNGSampleLeftBitReplication(_ value: Int, fromBits s: Int, toBits dBits: Int) -> Int {
+    if s == dBits { return value }
+    var acc = 0
+    var remaining = dBits
+    while remaining >= s {
+        acc = (acc << s) | value
+        remaining -= s
+    }
+    if remaining > 0 {
+        acc = (acc << remaining) | (value >> (s - remaining))
+    }
+    return acc
 }
 
 func formatPNG(_ image: Image) throws -> Data {
@@ -876,13 +992,19 @@ func formatPNG(_ image: Image) throws -> Data {
     }
     let channels = d.components.count
     let colorType: UInt8
+    let expectedRoles: [ComponentRole]
     switch channels {
-    case 1: colorType = 0
-    case 2: colorType = 4
-    case 3: colorType = 2
-    case 4: colorType = 6
+    case 1: (colorType, expectedRoles) = (0, [.grey])
+    case 2: (colorType, expectedRoles) = (4, [.grey, .alpha])
+    case 3: (colorType, expectedRoles) = (2, [.red, .green, .blue])
+    case 4: (colorType, expectedRoles) = (6, [.red, .green, .blue, .alpha])
     default:
         throw CodecError(.unsupportedFeature, "PNG output supports 1, 2, 3, or 4 components.")
+    }
+    let expectedColour: ColourInterpretation = channels <= 2 ? .greyscale : .rgb
+    let expectedAlpha: AlphaInterpretation = channels == 2 || channels == 4 ? .straight : .absent
+    guard d.components == expectedRoles, d.colour == expectedColour, d.alpha == expectedAlpha else {
+        throw CodecError(.unsupportedFeature, "PNG output requires ordered greyscale or RGB channels with optional straight alpha.")
     }
 
     let pngBitDepth = (d.meaningfulBits <= 8) ? 8 : 16
@@ -901,7 +1023,18 @@ func formatPNG(_ image: Image) throws -> Data {
             var byteIdx = 0
             for x in 0..<d.width {
                 for c in 0..<channels {
-                    let v = max(0, min(maxVal, readLogicalSample(raw, descriptor: d, component: c, x: x, y: y)))
+                    let rawSample = readLogicalSample(raw, descriptor: d, component: c, x: x, y: y)
+                    guard rawSample >= 0, rawSample <= maxVal else {
+                        throw CodecError(
+                            .invalidArgument,
+                            "Logical sample (\(rawSample)) lies outside meaningful precision 0...\(maxVal)."
+                        )
+                    }
+                    let v = scalePNGSampleLeftBitReplication(
+                        rawSample,
+                        fromBits: d.meaningfulBits,
+                        toBits: pngBitDepth
+                    )
                     if bytesPerSample == 1 {
                         currentRow[byteIdx] = UInt8(truncatingIfNeeded: v)
                         byteIdx += 1
@@ -986,7 +1119,7 @@ private func pngCRC32(_ data: Data) -> UInt32 {
     return crc ^ 0xFFFF_FFFF
 }
 
-private func zlibInflateBounded(_ compressed: Data, expectedSize: Int) throws -> Data {
+func zlibInflateBounded(_ compressed: Data, expectedSize: Int) throws -> Data {
     guard expectedSize > 0 else { return Data() }
     guard compressed.count <= Int(uInt.max), expectedSize <= Int(uInt.max) else {
         throw CodecError(.resourceLimitExceeded, "PNG zlib stream exceeds 32-bit chunk bound.")
@@ -1244,6 +1377,106 @@ private func assembleTIFFMultiStripWorkspace(
     return stripWorkspace
 }
 
+private enum TIFFPhotometricMode {
+    case direct(minAllowed: Int, maxAllowed: Int, hasDeclaredPrecision: Bool)
+    case whiteIsZero(maxSample: Int, hasDeclaredPrecision: Bool)
+    case palette(
+        fileBytes: UnsafePointer<UInt8>,
+        colorMapValPos: Int,
+        paletteEntries: Int,
+        isLE: Bool,
+        output8Bit: Bool
+    )
+}
+
+@inline(__always)
+private func decodeTIFFLogicalSample(
+    stripSrc: UnsafePointer<UInt8>,
+    baseOffset: Int,
+    component c: Int,
+    x: Int,
+    y: Int,
+    width w: Int,
+    pixelCount: Int,
+    samplesPerPixel: Int,
+    planarConfig: Int,
+    bps: Int,
+    isLE: Bool,
+    signed: Bool,
+    photometricMode: TIFFPhotometricMode
+) throws -> Int {
+    switch photometricMode {
+    case .direct(let minAllowed, let maxAllowed, let hasDeclaredPrecision):
+        let pixelIdx = y * w + x
+        let sampleIdx = (planarConfig == 2)
+            ? (c * pixelCount + pixelIdx)
+            : (pixelIdx * samplesPerPixel + c)
+        let raw = decodeTIFFSampleFromBuffer(
+            stripSrc,
+            baseOffset: baseOffset,
+            sampleIdx: sampleIdx,
+            bps: bps,
+            isLE: isLE,
+            signed: signed
+        )
+        guard raw >= minAllowed, raw <= maxAllowed else {
+            throw CodecError(
+                hasDeclaredPrecision ? .invalidArgument : .malformedInput,
+                "TIFF sample value (\(raw)) lies outside meaningful precision range \(minAllowed)...\(maxAllowed)."
+            )
+        }
+        return raw
+
+    case .whiteIsZero(let maxSample, let hasDeclaredPrecision):
+        let pixelIdx = y * w + x
+        let sampleIdx = (planarConfig == 2)
+            ? (c * pixelCount + pixelIdx)
+            : (pixelIdx * samplesPerPixel + c)
+        let raw = decodeTIFFSampleFromBuffer(
+            stripSrc,
+            baseOffset: baseOffset,
+            sampleIdx: sampleIdx,
+            bps: bps,
+            isLE: isLE,
+            signed: false
+        )
+        guard raw >= 0, raw <= maxSample else {
+            throw CodecError(
+                hasDeclaredPrecision ? .invalidArgument : .malformedInput,
+                "TIFF WhiteIsZero sample value (\(raw)) lies outside 0...\(maxSample)."
+            )
+        }
+        // Invert luminance channel 0 (0 = white -> maxSample, maxSample = black -> 0);
+        // preserve any extra channel (alpha or unspecified data) uninverted.
+        return (c == 0) ? (maxSample - raw) : raw
+
+    case .palette(let fileBytes, let colorMapValPos, let paletteEntries, let mapIsLE, let output8Bit):
+        let idx: Int
+        if bps == 4 {
+            let rowBytes = (w + 1) / 2
+            let b = stripSrc[baseOffset + y * rowBytes + (x / 2)]
+            idx = (x % 2 == 0) ? Int((b >> 4) & 0x0F) : Int(b & 0x0F)
+        } else {
+            idx = decodeTIFFSampleFromBuffer(
+                stripSrc,
+                baseOffset: baseOffset,
+                sampleIdx: y * w + x,
+                bps: bps,
+                isLE: isLE,
+                signed: false
+            )
+        }
+        guard idx >= 0, idx < paletteEntries else {
+            throw CodecError(.malformedInput, "TIFF palette index (\(idx)) is outside ColorMap range 0..<\(paletteEntries).")
+        }
+        let p = colorMapValPos + (c * paletteEntries + idx) * 2
+        let entry: UInt16 = mapIsLE
+            ? (UInt16(fileBytes[p]) | (UInt16(fileBytes[p + 1]) << 8))
+            : ((UInt16(fileBytes[p]) << 8) | UInt16(fileBytes[p + 1]))
+        return output8Bit ? Int(entry & 0xFF) : Int(entry)
+    }
+}
+
 @inline(never)
 private func decodeTIFFFromStripWorkspace(
     _ stripWorkspace: TIFFOwnedStripBuffer,
@@ -1255,7 +1488,8 @@ private func decodeTIFFFromStripWorkspace(
     planarConfig: Int,
     bps: Int,
     isLE: Bool,
-    signed: Bool
+    signed: Bool,
+    photometricMode: TIFFPhotometricMode
 ) throws -> Image {
     let image = try stripWorkspace.bytes.withUnsafeBufferPointer { stripBuf -> Image in
         guard let stripPtr = stripBuf.baseAddress else {
@@ -1265,17 +1499,20 @@ private func decodeTIFFFromStripWorkspace(
             descriptor: descriptor,
             limits: limits
         ) { c, x, y in
-            let pixelIdx = y * w + x
-            let sampleIdx = (planarConfig == 2)
-                ? (c * pixelCount + pixelIdx)
-                : (pixelIdx * samplesPerPixel + c)
-            return decodeTIFFSampleFromBuffer(
-                stripPtr,
+            try decodeTIFFLogicalSample(
+                stripSrc: stripPtr,
                 baseOffset: 0,
-                sampleIdx: sampleIdx,
+                component: c,
+                x: x,
+                y: y,
+                width: w,
+                pixelCount: pixelCount,
+                samplesPerPixel: samplesPerPixel,
+                planarConfig: planarConfig,
                 bps: bps,
                 isLE: isLE,
-                signed: signed
+                signed: signed,
+                photometricMode: photometricMode
             )
         }
     }
@@ -1354,7 +1591,7 @@ func parseTIFF(
         }
 
         func resolveTagSpan(entryOffset: Int, fieldType: UInt16, count: Int) throws -> (valPos: Int, typeSize: Int)? {
-            guard count > 0, count <= 65536 else {
+            guard count > 0 else {
                 throw CodecError(.malformedInput, "Invalid TIFF tag value count.")
             }
             let typeSize: Int
@@ -1443,11 +1680,17 @@ func parseTIFF(
         var width: Int?
         var height: Int?
         var bps = 8
+        var bpsChannelCount = 1
         var compression = 1
+        var photometric: Int?
+        var fillOrder = 1
         var samplesPerPixel = 1
         var stripOffsets: TIFFStripList = .empty
         var stripByteCounts: TIFFStripList = .empty
         var planarConfig = 1
+        var colorMapInfo: (valPos: Int, fieldType: UInt16, count: Int)?
+        var extraSampleTypes: [Int] = []
+        var extraSamplesSeen = false
         var sampleFormat = 1
         var sMaxSampleValue: Int?
 
@@ -1462,19 +1705,31 @@ func parseTIFF(
             case 257:
                 height = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count)
             case 258:
-                if let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) {
-                    let first = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
-                    for cIdx in 1..<count {
-                        let other = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: cIdx)
-                        if other != first {
-                            throw CodecError(.unsupportedFeature, "Mixed per-channel TIFF BitsPerSample (\(first) vs \(other)) is not supported.")
-                        }
-                    }
-                    bps = first
+                guard let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) else {
+                    throw CodecError(.malformedInput, "Invalid TIFF BitsPerSample tag (258).")
                 }
+                let first = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: 0)
+                for cIdx in 1..<count {
+                    let other = try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: cIdx)
+                    if other != first {
+                        throw CodecError(.unsupportedFeature, "Mixed per-channel TIFF BitsPerSample (\(first) vs \(other)) is not supported.")
+                    }
+                }
+                bps = first
+                bpsChannelCount = count
             case 259:
                 if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
                     compression = v
+                }
+            case 262:
+                guard count == 1,
+                      let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) else {
+                    throw CodecError(.malformedInput, "Invalid TIFF PhotometricInterpretation tag (262).")
+                }
+                photometric = v
+            case 266:
+                if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
+                    fillOrder = v
                 }
             case 273:
                 stripOffsets = try readStripTagList(
@@ -1500,6 +1755,24 @@ func parseTIFF(
                 if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
                     planarConfig = v
                 }
+            case 320:
+                guard let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) else {
+                    throw CodecError(.malformedInput, "Invalid TIFF ColorMap tag (320).")
+                }
+                colorMapInfo = (valPos: span.valPos, fieldType: fieldType, count: count)
+            case 338:
+                guard !extraSamplesSeen, fieldType == 3, count > 0, count <= 16,
+                      let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) else {
+                    throw CodecError(.malformedInput, "Invalid TIFF ExtraSamples tag (338).")
+                }
+                extraSamplesSeen = true
+                extraSampleTypes = []
+                extraSampleTypes.reserveCapacity(count)
+                for idx in 0..<count {
+                    extraSampleTypes.append(
+                        try readTagElement(valPos: span.valPos, typeSize: span.typeSize, fieldType: fieldType, index: idx)
+                    )
+                }
             case 339:
                 if let v = try readFirstTagScalar(entryOffset: entryPos, fieldType: fieldType, count: count) {
                     sampleFormat = v
@@ -1522,8 +1795,17 @@ func parseTIFF(
         guard compression == 1 else {
             throw CodecError(.unsupportedFormat, "Compressed TIFF (compression=\(compression)) is not supported; use uncompressed TIFF.")
         }
+        guard fillOrder == 1 else {
+            throw CodecError(.unsupportedFeature, "TIFF FillOrder (\(fillOrder)) != 1 is not supported.")
+        }
+        guard let photo = photometric else {
+            throw CodecError(.malformedInput, "TIFF missing required PhotometricInterpretation tag (262).")
+        }
         guard (1...4).contains(samplesPerPixel) else {
             throw CodecError(.unsupportedFeature, "TIFF SamplesPerPixel (\(samplesPerPixel)) must be in 1...4.")
+        }
+        if bpsChannelCount > 1 && bpsChannelCount != samplesPerPixel {
+            throw CodecError(.malformedInput, "TIFF BitsPerSample count (\(bpsChannelCount)) does not match SamplesPerPixel (\(samplesPerPixel)).")
         }
         guard planarConfig == 1 || planarConfig == 2 else {
             throw CodecError(.unsupportedFormat, "Unsupported TIFF PlanarConfiguration (\(planarConfig)).")
@@ -1532,23 +1814,23 @@ func parseTIFF(
             throw CodecError(.unsupportedFormat, "Floating-point or unsupported TIFF SampleFormat (\(sampleFormat)).")
         }
         let signed = (sampleFormat == 2)
-        guard bps == 8 || bps == 12 || bps == 16 else {
-            throw CodecError(.unsupportedFeature, "Unsupported TIFF BitsPerSample (\(bps)); expected 8, 12, or 16.")
-        }
         guard stripOffsets.count > 0, stripOffsets.count == stripByteCounts.count else {
             throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
         }
 
-        let inferredBits: Int
-        if let smax = sMaxSampleValue, smax > 0, smax < 65535 {
-            let bits = Int.bitWidth - smax.leadingZeroBitCount
-            inferredBits = signed ? min(16, bits + 1) : max(1, min(16, bits))
-        } else {
-            inferredBits = bps
-        }
-        let meaningfulBits = declaredPrecision ?? inferredBits
-        guard (1...16).contains(meaningfulBits) else {
-            throw CodecError(.unsupportedFeature, "Invalid TIFF meaningful bit depth.")
+        func resolveAlphaMode() throws -> AlphaInterpretation {
+            // TIFF 6.0 pp. 31–32 requires ExtraSamples when SamplesPerPixel includes
+            // extra channels. A missing tag is malformed, not implicit opacity.
+            guard extraSampleTypes.count == 1 else {
+                throw CodecError(.malformedInput, "TIFF ExtraSamples must describe exactly one extra channel.")
+            }
+            switch extraSampleTypes[0] {
+            case 0: return .absent
+            case 1: return .premultiplied
+            case 2: return .straight
+            default:
+                throw CodecError(.malformedInput, "Invalid TIFF ExtraSamples value (\(extraSampleTypes[0])).")
+            }
         }
 
         let pixelCount = try checkedMultiply(w, h, label: "TIFF pixel count")
@@ -1556,32 +1838,232 @@ func parseTIFF(
             throw CodecError(.resourceLimitExceeded, "TIFF pixel count (\(pixelCount)) exceeds pixel limit (\(limits.maximumPixels)).")
         }
 
+        let outputComponentCount: Int
+        let outputSigned: Bool
+        let outputMeaningfulBits: Int
+        let outputAlpha: AlphaInterpretation
+        let photometricMode: TIFFPhotometricMode
+        let neededBytes: Int
+
+        switch photo {
+        case 0, 1: // 0 = WhiteIsZero, 1 = BlackIsZero
+            guard samplesPerPixel == 1 || samplesPerPixel == 2 else {
+                throw CodecError(
+                    .malformedInput,
+                    "TIFF \(photo == 0 ? "WhiteIsZero" : "BlackIsZero") PhotometricInterpretation requires 1 or 2 SamplesPerPixel, got \(samplesPerPixel)."
+                )
+            }
+            guard bps == 8 || bps == 12 || bps == 16 else {
+                throw CodecError(.unsupportedFeature, "Unsupported TIFF BitsPerSample (\(bps)); expected 8, 12, or 16.")
+            }
+            if photo == 0 && signed {
+                throw CodecError(.unsupportedFeature, "Signed TIFF WhiteIsZero is not supported.")
+            }
+            if samplesPerPixel == 1 && !extraSampleTypes.isEmpty {
+                throw CodecError(.malformedInput, "TIFF ExtraSamples specified without an extra channel in SamplesPerPixel.")
+            }
+            outputAlpha = (samplesPerPixel == 2) ? try resolveAlphaMode() : .absent
+            if samplesPerPixel == 2 && signed {
+                throw CodecError(.unsupportedFeature, "Signed greyscale TIFF with extra channels is not supported.")
+            }
+
+            let inferredBits: Int
+            if let smax = sMaxSampleValue, smax > 0, smax < 65535 {
+                let bits = Int.bitWidth - smax.leadingZeroBitCount
+                inferredBits = signed ? min(16, bits + 1) : max(1, min(16, bits))
+            } else {
+                inferredBits = bps
+            }
+            if let dp = declaredPrecision {
+                guard (1...bps).contains(dp) else {
+                    throw CodecError(.invalidArgument, "Declared precision (\(dp)) is outside TIFF BitsPerSample 1...\(bps).")
+                }
+            }
+            outputMeaningfulBits = declaredPrecision ?? inferredBits
+            guard (1...16).contains(outputMeaningfulBits) else {
+                throw CodecError(.unsupportedFeature, "Invalid TIFF meaningful bit depth.")
+            }
+            outputComponentCount = samplesPerPixel
+            outputSigned = signed
+
+            if photo == 0 {
+                let maxSample = (1 << outputMeaningfulBits) - 1
+                photometricMode = .whiteIsZero(maxSample: maxSample, hasDeclaredPrecision: declaredPrecision != nil)
+            } else {
+                let minAllowed = signed ? -(1 << (outputMeaningfulBits - 1)) : 0
+                let maxAllowed = signed ? ((1 << (outputMeaningfulBits - 1)) - 1) : ((1 << outputMeaningfulBits) - 1)
+                photometricMode = .direct(minAllowed: minAllowed, maxAllowed: maxAllowed, hasDeclaredPrecision: declaredPrecision != nil)
+            }
+
+            let totalSamples = try checkedMultiply(pixelCount, samplesPerPixel, label: "TIFF sample count")
+            if bps == 8 {
+                neededBytes = totalSamples
+            } else if bps == 16 {
+                neededBytes = try checkedMultiply(totalSamples, 2, label: "TIFF 16-bit byte count")
+            } else {
+                let pairs = totalSamples / 2
+                let rem = totalSamples % 2
+                let pairBytes = try checkedMultiply(pairs, 3, label: "TIFF 12-bit packed pair byte count")
+                neededBytes = try checkedAdd(pairBytes, rem == 1 ? 2 : 0, label: "TIFF 12-bit byte count")
+            }
+
+        case 2: // RGB
+            guard samplesPerPixel == 3 || samplesPerPixel == 4 else {
+                throw CodecError(
+                    .malformedInput,
+                    "TIFF RGB PhotometricInterpretation requires 3 or 4 SamplesPerPixel, got \(samplesPerPixel)."
+                )
+            }
+            guard bps == 8 || bps == 12 || bps == 16 else {
+                throw CodecError(.unsupportedFeature, "Unsupported TIFF BitsPerSample (\(bps)); expected 8, 12, or 16.")
+            }
+            if samplesPerPixel == 3 && !extraSampleTypes.isEmpty {
+                throw CodecError(.malformedInput, "TIFF ExtraSamples specified without a 4th channel in SamplesPerPixel.")
+            }
+            outputAlpha = (samplesPerPixel == 4) ? try resolveAlphaMode() : .absent
+
+            let inferredBits: Int
+            if let smax = sMaxSampleValue, smax > 0, smax < 65535 {
+                let bits = Int.bitWidth - smax.leadingZeroBitCount
+                inferredBits = signed ? min(16, bits + 1) : max(1, min(16, bits))
+            } else {
+                inferredBits = bps
+            }
+            if let dp = declaredPrecision {
+                guard (1...bps).contains(dp) else {
+                    throw CodecError(.invalidArgument, "Declared precision (\(dp)) is outside TIFF BitsPerSample 1...\(bps).")
+                }
+            }
+            outputMeaningfulBits = declaredPrecision ?? inferredBits
+            guard (1...16).contains(outputMeaningfulBits) else {
+                throw CodecError(.unsupportedFeature, "Invalid TIFF meaningful bit depth.")
+            }
+            outputComponentCount = samplesPerPixel
+            outputSigned = signed
+
+            let minAllowed = signed ? -(1 << (outputMeaningfulBits - 1)) : 0
+            let maxAllowed = signed ? ((1 << (outputMeaningfulBits - 1)) - 1) : ((1 << outputMeaningfulBits) - 1)
+            photometricMode = .direct(minAllowed: minAllowed, maxAllowed: maxAllowed, hasDeclaredPrecision: declaredPrecision != nil)
+
+            let totalSamples = try checkedMultiply(pixelCount, samplesPerPixel, label: "TIFF sample count")
+            if bps == 8 {
+                neededBytes = totalSamples
+            } else if bps == 16 {
+                neededBytes = try checkedMultiply(totalSamples, 2, label: "TIFF 16-bit byte count")
+            } else {
+                let pairs = totalSamples / 2
+                let rem = totalSamples % 2
+                let pairBytes = try checkedMultiply(pairs, 3, label: "TIFF 12-bit packed pair byte count")
+                neededBytes = try checkedAdd(pairBytes, rem == 1 ? 2 : 0, label: "TIFF 12-bit byte count")
+            }
+
+        case 3: // Palette Color
+            guard !signed else {
+                throw CodecError(.unsupportedFeature, "Signed TIFF Palette Color is not supported.")
+            }
+            guard samplesPerPixel == 1, extraSampleTypes.isEmpty else {
+                throw CodecError(.malformedInput, "TIFF Palette Color requires SamplesPerPixel == 1 without ExtraSamples.")
+            }
+            guard bps == 4 || bps == 8 || bps == 16 else {
+                throw CodecError(.unsupportedFeature, "Unsupported TIFF Palette Color BitsPerSample (\(bps)); expected 4, 8, or 16.")
+            }
+            let paletteEntries = 1 << bps
+            let expectedMapCount = 3 * paletteEntries
+            guard let cmap = colorMapInfo,
+                  cmap.fieldType == 3,
+                  cmap.count == expectedMapCount else {
+                throw CodecError(
+                    .malformedInput,
+                    "TIFF Palette Color requires ColorMap tag (320) of SHORT with \(expectedMapCount) entries."
+                )
+            }
+            let cmapBytes = try checkedMultiply(expectedMapCount, 2, label: "TIFF ColorMap byte count")
+            let totalMetaBytes = try checkedAdd(retainedTagBytes, cmapBytes, label: "TIFF ColorMap metadata budget")
+            guard totalMetaBytes <= limits.maximumMetadataBytes else {
+                throw CodecError(.resourceLimitExceeded, "TIFF ColorMap exceeds metadata byte limit.")
+            }
+
+            // TIFF 6.0 §5 stores 16-bit ColorMap entries; 8-bit palettes replicate v * 257 = (v << 8) | v.
+            var allReplicated8Bit = true
+            for entryIdx in 0..<expectedMapCount {
+                let w16 = try readU16(cmap.valPos + entryIdx * 2)
+                if (w16 >> 8) != (w16 & 0xFF) {
+                    allReplicated8Bit = false
+                    break
+                }
+            }
+            let output8Bit: Bool
+            if let dp = declaredPrecision {
+                if dp == 8 && allReplicated8Bit {
+                    output8Bit = true
+                } else if dp == 16 {
+                    output8Bit = false
+                } else {
+                    throw CodecError(
+                        .invalidArgument,
+                        "Declared precision (\(dp)) is incompatible with TIFF ColorMap precision."
+                    )
+                }
+                outputMeaningfulBits = dp
+            } else {
+                output8Bit = allReplicated8Bit
+                outputMeaningfulBits = allReplicated8Bit ? 8 : 16
+            }
+            outputComponentCount = 3
+            outputSigned = false
+            outputAlpha = .absent
+            photometricMode = .palette(
+                fileBytes: bytes,
+                colorMapValPos: cmap.valPos,
+                paletteEntries: paletteEntries,
+                isLE: isLE,
+                output8Bit: output8Bit
+            )
+            if bps == 4 {
+                let rowBytes = (w + 1) / 2
+                neededBytes = try checkedMultiply(h, rowBytes, label: "TIFF 4-bit palette byte count")
+            } else if bps == 8 {
+                neededBytes = pixelCount
+            } else {
+                neededBytes = try checkedMultiply(pixelCount, 2, label: "TIFF 16-bit palette byte count")
+            }
+
+        default:
+            // PhotometricInterpretation 4 (Transparency Mask), 5 (CMYK), 6 (YCbCr),
+            // 8/9/10 (CIE L*a*b*), 32803 (CFA), 34892 (LinearRaw), etc.
+            throw CodecError(.unsupportedFeature, "Unsupported TIFF PhotometricInterpretation (\(photo)).")
+        }
+
         // Build actual ImageDescriptor BEFORE any strip allocation so 1-component 8-bit greyscale's
         // 16-bit contract storage (requiredByteCount) is admitted against maximumDecodedBytes upfront.
-        let descriptor = try makeContractImageDescriptor(
+        let baseDescriptor = try makeContractImageDescriptor(
             width: w,
             height: h,
-            componentCount: samplesPerPixel,
-            meaningfulBits: meaningfulBits,
-            signed: signed,
+            componentCount: outputComponentCount,
+            meaningfulBits: outputMeaningfulBits,
+            signed: outputSigned,
+            alpha: outputAlpha,
             limits: limits
         )
+        let descriptor: ImageDescriptor
+        if outputAlpha == .absent && (outputComponentCount == 2 || outputComponentCount == 4) {
+            // Unspecified extras do not erase the known photometric meaning of the
+            // colour channels, and they must never acquire an alpha role.
+            let colourRoles: [ComponentRole] = photo == 2 ? [.red, .green, .blue] : [.grey]
+            descriptor = try ImageDescriptor(
+                width: w, height: h, sampleType: baseDescriptor.sampleType,
+                storageBits: baseDescriptor.storageBits, meaningfulBits: outputMeaningfulBits,
+                byteOrder: baseDescriptor.byteOrder,
+                components: colourRoles + [.uninterpreted("c\(outputComponentCount - 1)")],
+                colour: photo == 2 ? .rgb : .greyscale, alpha: .absent,
+                planes: baseDescriptor.planes, limits: limits
+            )
+        } else {
+            descriptor = baseDescriptor
+        }
         let destBytes = descriptor.requiredByteCount
         guard destBytes <= limits.maximumDecodedBytes else {
             throw CodecError(.resourceLimitExceeded, "TIFF decoded image size (\(destBytes) B) exceeds decoded byte limit (\(limits.maximumDecodedBytes) B).")
-        }
-
-        let totalSamples = try checkedMultiply(pixelCount, samplesPerPixel, label: "TIFF sample count")
-        let neededBytes: Int
-        if bps == 8 {
-            neededBytes = totalSamples
-        } else if bps == 16 {
-            neededBytes = try checkedMultiply(totalSamples, 2, label: "TIFF 16-bit byte count")
-        } else {
-            let pairs = totalSamples / 2
-            let rem = totalSamples % 2
-            let pairBytes = try checkedMultiply(pairs, 3, label: "TIFF 12-bit packed pair byte count")
-            neededBytes = try checkedAdd(pairBytes, rem == 1 ? 2 : 0, label: "TIFF 12-bit byte count")
         }
 
         if case .single(let off) = stripOffsets, case .single(let cnt) = stripByteCounts {
@@ -1604,17 +2086,20 @@ func parseTIFF(
                 descriptor: descriptor,
                 limits: limits
             ) { c, x, y in
-                let pixelIdx = y * w + x
-                let sampleIdx = (planarConfig == 2)
-                    ? (c * pixelCount + pixelIdx)
-                    : (pixelIdx * samplesPerPixel + c)
-                return decodeTIFFSampleFromBuffer(
-                    bytes,
+                try decodeTIFFLogicalSample(
+                    stripSrc: bytes,
                     baseOffset: off,
-                    sampleIdx: sampleIdx,
+                    component: c,
+                    x: x,
+                    y: y,
+                    width: w,
+                    pixelCount: pixelCount,
+                    samplesPerPixel: samplesPerPixel,
+                    planarConfig: planarConfig,
                     bps: bps,
                     isLE: isLE,
-                    signed: signed
+                    signed: signed,
+                    photometricMode: photometricMode
                 )
             }
         } else if stripOffsets.isMany && stripByteCounts.isMany {
@@ -1638,7 +2123,8 @@ func parseTIFF(
                 planarConfig: planarConfig,
                 bps: bps,
                 isLE: isLE,
-                signed: signed
+                signed: signed,
+                photometricMode: photometricMode
             )
         } else {
             throw CodecError(.malformedInput, "TIFF missing or mismatched StripOffsets and StripByteCounts.")
@@ -1651,6 +2137,31 @@ func formatTIFF(_ image: Image) throws -> Data {
     let channels = d.components.count
     guard (1...4).contains(channels) else {
         throw CodecError(.unsupportedFeature, "TIFF output supports 1 to 4 components.")
+    }
+    let colourRoles: [ComponentRole]
+    let photometric: UInt32
+    switch d.colour {
+    case .greyscale: (colourRoles, photometric) = ([.grey], 1)
+    case .rgb: (colourRoles, photometric) = ([.red, .green, .blue], 2)
+    case .unknown:
+        throw CodecError(.unsupportedFeature, "TIFF output requires known greyscale or RGB component meaning.")
+    }
+    guard Array(d.components.prefix(colourRoles.count)) == colourRoles,
+          channels == colourRoles.count || channels == colourRoles.count + 1 else {
+        throw CodecError(.unsupportedFeature, "TIFF output requires ordered greyscale or RGB channels with at most one extra channel.")
+    }
+    let includeExtraSamples = channels == colourRoles.count + 1
+    let extraSampleType: UInt32
+    if includeExtraSamples {
+        switch d.components[channels - 1] {
+        case .uninterpreted where d.alpha == .absent: extraSampleType = 0
+        case .alpha where d.alpha == .premultiplied: extraSampleType = 1
+        case .alpha where d.alpha == .straight: extraSampleType = 2
+        default:
+            throw CodecError(.unsupportedFeature, "TIFF output cannot represent the extra channel's meaning.")
+        }
+    } else {
+        extraSampleType = 0
     }
     let signed = (d.sampleType == .signedInteger)
     let tiffBitDepth = (d.meaningfulBits <= 8) ? 8 : 16
@@ -1684,7 +2195,7 @@ func formatTIFF(_ image: Image) throws -> Data {
     }
 
     let includeSMax = (d.meaningfulBits != tiffBitDepth)
-    let tagCount: UInt16 = includeSMax ? 12 : 11
+    let tagCount: UInt16 = 11 + (includeExtraSamples ? 1 : 0) + (includeSMax ? 1 : 0)
     let ifdOffset = 8
     let ifdSize = 2 + Int(tagCount) * 12 + 4
     let extraOffset = ifdOffset + ifdSize
@@ -1721,7 +2232,6 @@ func formatTIFF(_ image: Image) throws -> Data {
     // 259 Compression = 1 (Uncompressed)
     writeTag(259, type: 3, count: 1, valueOrOffset: 1)
     // 262 PhotometricInterpretation (1 = BlackIsZero, 2 = RGB)
-    let photometric: UInt32 = (channels >= 3) ? 2 : 1
     writeTag(262, type: 3, count: 1, valueOrOffset: photometric)
     // 273 StripOffsets (LONG)
     writeTag(273, type: 4, count: 1, valueOrOffset: UInt32(stripOffset))
@@ -1733,6 +2243,10 @@ func formatTIFF(_ image: Image) throws -> Data {
     writeTag(279, type: 4, count: 1, valueOrOffset: UInt32(stripByteCount))
     // 284 PlanarConfiguration = 1 (Chunky)
     writeTag(284, type: 3, count: 1, valueOrOffset: 1)
+    if includeExtraSamples {
+        // 338 ExtraSamples: 0 = unspecified, 1 = associated, 2 = unassociated alpha.
+        writeTag(338, type: 3, count: 1, valueOrOffset: extraSampleType)
+    }
     // 339 SampleFormat (SHORT: 1 = unsigned, 2 = signed)
     let sfVal: UInt32 = signed ? 2 : 1
     if channels == 1 {
@@ -1914,7 +2428,134 @@ func convertImageBitDepth(
 
 // MARK: - 3D Volumetric Readers & Writers (for `encode3d`, `decode3d`, `compare --mode 3d`)
 
-func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
+private func parseNRRDVolumeSpacings(_ raw: String, dim: Int) throws -> (Double, Double, Double) {
+    let tokens = raw.split(whereSeparator: \.isWhitespace).map(String.init)
+    guard tokens.count == dim else {
+        throw CodecError(.malformedInput, "NRRD volume spacings count (\(tokens.count)) does not match dimension (\(dim)).")
+    }
+    let startIdx: Int
+    if dim == 4 {
+        let compTok = tokens[0].lowercased()
+        guard compTok == "nan" || compTok == "none" else {
+            throw CodecError(.malformedInput, "NRRD 4D volume component-axis spacing must be NaN or none.")
+        }
+        startIdx = 1
+    } else {
+        startIdx = 0
+    }
+    var out: [Double] = []
+    out.reserveCapacity(3)
+    for axis in 0..<3 {
+        let tok = tokens[startIdx + axis]
+        let lower = tok.lowercased()
+        if lower == "nan" || lower == "none" {
+            out.append(0.0)
+        } else if let v = Double(tok), v.isFinite, v > 0 {
+            out.append(v)
+        } else {
+            throw CodecError(.malformedInput, "Invalid NRRD volume spacing token '\(tok)'; expected positive finite number or NaN.")
+        }
+    }
+    return (out[0], out[1], out[2])
+}
+
+private func parseNRRDParenthesisedTriplet(_ raw: String, label: String) throws -> (Double, Double, Double) {
+    let trimmed = raw.trimmingCharacters(in: .whitespaces)
+    guard trimmed.hasPrefix("("), trimmed.hasSuffix(")") else {
+        throw CodecError(.malformedInput, "Invalid NRRD \(label) '\(raw)'; expected (x,y,z).")
+    }
+    let inner = trimmed.dropFirst().dropLast()
+    let parts = inner.split(separator: ",", omittingEmptySubsequences: false)
+    guard parts.count == 3 else {
+        throw CodecError(.malformedInput, "Invalid NRRD \(label) '\(raw)'; expected 3 comma-separated components.")
+    }
+    var vals: [Double] = []
+    vals.reserveCapacity(3)
+    for part in parts {
+        let s = part.trimmingCharacters(in: .whitespaces)
+        guard let v = Double(s), v.isFinite else {
+            throw CodecError(.malformedInput, "Non-finite or invalid number in NRRD \(label) '\(raw)'.")
+        }
+        vals.append(v == 0 ? 0.0 : v)
+    }
+    return (vals[0], vals[1], vals[2])
+}
+
+private func parseNRRDVolumeSpaceDirections(_ raw: String, dim: Int) throws -> (Double, Double, Double) {
+    var tokens: [String] = []
+    var idx = raw.startIndex
+    while idx < raw.endIndex {
+        while idx < raw.endIndex && raw[idx].isWhitespace {
+            idx = raw.index(after: idx)
+        }
+        guard idx < raw.endIndex else { break }
+        if raw[idx] == "(" {
+            guard let closeIdx = raw[idx...].firstIndex(of: ")") else {
+                throw CodecError(.malformedInput, "Unterminated vector in NRRD space directions.")
+            }
+            let nextIdx = raw.index(after: closeIdx)
+            tokens.append(String(raw[idx..<nextIdx]))
+            idx = nextIdx
+        } else {
+            var endIdx = idx
+            while endIdx < raw.endIndex && !raw[endIdx].isWhitespace {
+                endIdx = raw.index(after: endIdx)
+            }
+            tokens.append(String(raw[idx..<endIdx]))
+            idx = endIdx
+        }
+    }
+    guard tokens.count == dim else {
+        throw CodecError(.malformedInput, "NRRD space directions count (\(tokens.count)) does not match dimension (\(dim)).")
+    }
+    let startIdx: Int
+    if dim == 4 {
+        guard tokens[0].lowercased() == "none" else {
+            throw CodecError(.malformedInput, "NRRD 4D volume component-axis space direction must be 'none'.")
+        }
+        startIdx = 1
+    } else {
+        startIdx = 0
+    }
+    var spacings: [Double] = []
+    spacings.reserveCapacity(3)
+    for axis in 0..<3 {
+        let tok = tokens[startIdx + axis]
+        if tok.lowercased() == "none" {
+            spacings.append(0.0)
+        } else {
+            let (vx, vy, vz) = try parseNRRDParenthesisedTriplet(tok, label: "space direction")
+            let vec = [vx, vy, vz]
+            for k in 0..<3 where k != axis {
+                if vec[k] != 0.0 {
+                    throw CodecError(
+                        .unsupportedFeature,
+                        "Non-axis-aligned NRRD space directions are not supported by J2KVolume."
+                    )
+                }
+            }
+            let diag = vec[axis]
+            if diag < 0 {
+                throw CodecError(
+                    .unsupportedFeature,
+                    "Negative or axis-flipped NRRD space directions are not supported by J2KVolume."
+                )
+            }
+            guard diag > 0 else {
+                throw CodecError(.malformedInput, "NRRD space direction vector cannot be zero; use 'none' for unset spacing.")
+            }
+            spacings.append(diag)
+        }
+    }
+    return (spacings[0], spacings[1], spacings[2])
+}
+
+func parseNRRDVolume(
+    _ data: Data,
+    spacingOverride: (Double, Double, Double)? = nil,
+    originOverride: (Double, Double, Double)? = nil,
+    limits: ResourceLimits
+) throws -> J2KVolume {
     guard data.count <= limits.maximumMemoryBytes else {
         throw CodecError(.resourceLimitExceeded, "NRRD volume input exceeds memory limit.")
     }
@@ -1989,6 +2630,28 @@ func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
     guard d <= limits.maximumFrames else {
         throw CodecError(.resourceLimitExceeded, "NRRD volume depth exceeds frame limit.")
     }
+
+    if let spaceDimRaw = fields["space dimension"] {
+        guard let spaceDim = Int(spaceDimRaw), spaceDim == 3 else {
+            throw CodecError(.unsupportedFeature, "NRRD volume space dimension must be 3.")
+        }
+    }
+    if fields["spacings"] != nil && fields["space directions"] != nil {
+        throw CodecError(.malformedInput, "NRRD volume header cannot specify both spacings and space directions.")
+    }
+    var parsedSpacing: (Double, Double, Double) = (0.0, 0.0, 0.0)
+    if let rawSpacings = fields["spacings"] {
+        parsedSpacing = try parseNRRDVolumeSpacings(rawSpacings, dim: dim)
+    } else if let rawDirs = fields["space directions"] {
+        parsedSpacing = try parseNRRDVolumeSpaceDirections(rawDirs, dim: dim)
+    }
+    var parsedOrigin: (Double, Double, Double) = (0.0, 0.0, 0.0)
+    if let rawOrigin = fields["space origin"] {
+        parsedOrigin = try parseNRRDParenthesisedTriplet(rawOrigin, label: "space origin")
+    }
+    let finalSpacing = spacingOverride ?? parsedSpacing
+    let finalOrigin = originOverride ?? parsedOrigin
+
     let defaultMeaningful = min(38, storageBits)
     let meaningful = keys["swiftj2k.meaningfulbits"].flatMap(Int.init) ?? defaultMeaningful
     guard (1...min(38, storageBits)).contains(meaningful) else {
@@ -2053,10 +2716,37 @@ func parseNRRDVolume(_ data: Data, limits: ResourceLimits) throws -> J2KVolume {
             )
         }
     }
-    return J2KVolume(width: w, height: h, depth: d, components: volComponents)
+    let vol = J2KVolume(
+        width: w,
+        height: h,
+        depth: d,
+        components: volComponents,
+        spacingX: finalSpacing.0,
+        spacingY: finalSpacing.1,
+        spacingZ: finalSpacing.2,
+        originX: finalOrigin.0,
+        originY: finalOrigin.1,
+        originZ: finalOrigin.2
+    )
+    do {
+        try vol.validate()
+    } catch let error as J2KError {
+        throw error.asCodecError
+    }
+    return vol
+}
+
+@inline(__always)
+private func formatNRRDDouble(_ v: Double) -> String {
+    v == 0 ? "0" : String(v)
 }
 
 func formatNRRDVolume(_ volume: J2KVolume) throws -> Data {
+    do {
+        try volume.validate()
+    } catch let error as J2KError {
+        throw error.asCodecError
+    }
     guard let first = volume.components.first else {
         throw CodecError(.malformedInput, "Volume has no components.")
     }
@@ -2091,6 +2781,25 @@ func formatNRRDVolume(_ volume: J2KVolume) throws -> Data {
         header += "dimension: 3\nsizes: \(w) \(h) \(d)\n"
     } else {
         header += "dimension: 4\nsizes: \(cCount) \(w) \(h) \(d)\n"
+    }
+    let hasSpacing = (volume.spacingX != 0 || volume.spacingY != 0 || volume.spacingZ != 0)
+    let hasOrigin = (volume.originX != 0 || volume.originY != 0 || volume.originZ != 0)
+    if hasOrigin {
+        header += "space dimension: 3\n"
+        if hasSpacing {
+            let dirX = volume.spacingX > 0 ? "(\(formatNRRDDouble(volume.spacingX)),0,0)" : "none"
+            let dirY = volume.spacingY > 0 ? "(0,\(formatNRRDDouble(volume.spacingY)),0)" : "none"
+            let dirZ = volume.spacingZ > 0 ? "(0,0,\(formatNRRDDouble(volume.spacingZ)))" : "none"
+            let prefix = (cCount > 1) ? "none " : ""
+            header += "space directions: \(prefix)\(dirX) \(dirY) \(dirZ)\n"
+        }
+        header += "space origin: (\(formatNRRDDouble(volume.originX)),\(formatNRRDDouble(volume.originY)),\(formatNRRDDouble(volume.originZ)))\n"
+    } else if hasSpacing {
+        let spX = volume.spacingX > 0 ? formatNRRDDouble(volume.spacingX) : "NaN"
+        let spY = volume.spacingY > 0 ? formatNRRDDouble(volume.spacingY) : "NaN"
+        let spZ = volume.spacingZ > 0 ? formatNRRDDouble(volume.spacingZ) : "NaN"
+        let prefix = (cCount > 1) ? "NaN " : ""
+        header += "spacings: \(prefix)\(spX) \(spY) \(spZ)\n"
     }
     header += "encoding: raw\n"
     if nrrdBps > 1 {

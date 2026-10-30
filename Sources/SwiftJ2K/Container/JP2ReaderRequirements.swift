@@ -12,33 +12,98 @@
 
 import Foundation
 
-/// Reader Requirements box (`'rreq'`, `0x72726571`, ISO/IEC 15444-2 Annex M.11.1 & ISO/IEC 15444-15 Annex A).
+/// Reader Requirements box (`'rreq'`, `0x72726571`, ISO/IEC 15444-2 Annex M.6 / M.11.1 & ISO/IEC 15444-15 Annex A).
 public struct JP2ReaderRequirementsBox: Sendable, Equatable {
-    /// Named standard feature codes from ISO/IEC 15444-2 Table M.14 and ISO/IEC 15444-15 Annex A.
-    public enum StandardFeature: UInt16, Sendable, Equatable {
+    /// Named standard feature codes (`SF^i`) from ISO/IEC 15444-2 (ITU-T T.801) Table M.14
+    /// and ISO/IEC 15444-15 (HTJ2K / JPH) Annex A.
+    public enum StandardFeature: UInt16, Sendable, Equatable, CaseIterable {
         case codestreamContainsNoExtensions   = 1
         case multipleCompositionLayers        = 2
         case profile0Codestream               = 3
         case profile1Codestream               = 4
-        case uncompressedOrReversible         = 5
-        case irreversibleCodestream           = 6
-        case reversibleColourTransform        = 7
-        case irreversibleColourTransform      = 8
-        case nonSubsampledCodestream          = 9
+        case unrestrictedJPEG2000Part1        = 5
+        case unrestrictedJPEG2000Part2        = 6
+        case dctCodestream                    = 7
+        case noOpacity                        = 8
+        case opacityChannel                   = 9
+        case premultipliedOpacityChannel      = 10
+        case chromaKeyOpacity                 = 11
         case codestreamContiguous             = 12
-        case singleTileCodestream             = 13
-        case noRegionOfInterest               = 15
-        case sRGBEnumeratedColourSpace        = 18
-        case eSRGBEnumeratedColourSpace       = 20
-        case greyscaleEnumeratedColourSpace   = 21
-        case sYCCEnumeratedColourSpace        = 22
-        case restrictedICCProfile             = 31
-        case anyICCProfile                    = 32
-        case opacityChannel                   = 41
-        case premultipliedOpacityChannel      = 42
-        case compositingLayerSingleCodestream = 45
-        case htj2kCodestream                  = 67
-        case htj2kLosslessCodestream          = 68
+        case fragmentedCodestreamInternal     = 13
+        case fragmentedCodestreamExternal     = 14
+        case noCompositingRequired            = 18
+        case multipleUncompositedLayers       = 19
+        case compositingLayerSingleCodestream = 20
+        case multipleCodestreamsPerLayer      = 21
+        case noScalingRequired                = 31
+        case scalingRequired                  = 32
+        case graphicArtsReproduction          = 41
+        case vendorColourSpace                = 42
+        case restrictedICCProfile             = 43
+        case anyICCProfile                    = 44
+        case sRGBEnumeratedColourSpace        = 45
+        case greyscaleEnumeratedColourSpace   = 46
+        case biLevel1EnumeratedColourSpace    = 47
+        case biLevel2EnumeratedColourSpace    = 48
+        case yCbCr1EnumeratedColourSpace      = 49
+        case yCbCr2EnumeratedColourSpace      = 50
+        case yCbCr3EnumeratedColourSpace      = 51
+        case photoYCCEnumeratedColourSpace    = 52
+        case ycckEnumeratedColourSpace        = 53
+        case cmyEnumeratedColourSpace         = 54
+        case cmykEnumeratedColourSpace        = 55
+        case cieLabEnumeratedColourSpace      = 56
+        case cieJabEnumeratedColourSpace      = 59
+        case eSRGBEnumeratedColourSpace       = 60
+        case rommRGBEnumeratedColourSpace     = 61
+        case gisMetadata                      = 67
+        case sYCCEnumeratedColourSpace        = 70
+        case htj2kCodestream                  = 86
+    }
+
+    /// Standard features implemented by SwiftJ2K's container and codestream decoders.
+    public static let swiftJ2KSupportedFeatures: Set<StandardFeature> = [
+        .codestreamContainsNoExtensions,
+        .profile0Codestream,
+        .profile1Codestream,
+        .unrestrictedJPEG2000Part1,
+        .noOpacity,
+        .opacityChannel,
+        .premultipliedOpacityChannel,
+        .codestreamContiguous,
+        .noCompositingRequired,
+        .compositingLayerSingleCodestream,
+        .noScalingRequired,
+        .restrictedICCProfile,
+        .anyICCProfile,
+        .sRGBEnumeratedColourSpace,
+        .greyscaleEnumeratedColourSpace,
+        .biLevel1EnumeratedColourSpace,
+        .biLevel2EnumeratedColourSpace,
+        .yCbCr1EnumeratedColourSpace,
+        .yCbCr2EnumeratedColourSpace,
+        .yCbCr3EnumeratedColourSpace,
+        .eSRGBEnumeratedColourSpace,
+        .rommRGBEnumeratedColourSpace,
+        .sYCCEnumeratedColourSpace,
+        .htj2kCodestream
+    ]
+
+    /// Result of evaluating a reader's feature capabilities against `DCM` and `FUAM`
+    /// under ISO/IEC 15444-2 Annex M.6.
+    public struct SupportEvaluation: Sendable, Equatable {
+        /// `true` when the reader satisfies `DCM` (`Decode Completely Mask`).
+        public let canDecodeCompletely: Bool
+        /// `true` when the reader satisfies `FUAM` (`Fully Understand Aspects Mask`).
+        public let understandsAllAspects: Bool
+        /// Bitwise union of masks for all features supported by the reader.
+        public let satisfiedMask: UInt64
+        /// Bits in `DCM` that remain unsatisfied by the reader's capabilities.
+        public let unsatisfiedDecodeMask: UInt64
+        /// Bits in `FUAM` that remain unsatisfied by the reader's capabilities.
+        public let unsatisfiedUnderstandMask: UInt64
+        /// Standard feature codes contributing to unsatisfied `DCM` clauses.
+        public let unsupportedRequiredFeatures: [UInt16]
     }
 
     public struct StandardFeatureEntry: Sendable, Equatable {
@@ -185,34 +250,120 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
         return out
     }
 
+    /// Evaluates whether a reader supporting `supportedFeatures` and `supportedVendorUUIDs`
+    /// can completely decode (`DCM`) and fully understand (`FUAM`) the container under
+    /// ISO/IEC 15444-2 (ITU-T T.801) Clause M.6.2.
+    public func evaluate(
+        supportedFeatures: Set<StandardFeature> = Self.swiftJ2KSupportedFeatures,
+        supportedVendorUUIDs: Set<[UInt8]> = []
+    ) -> SupportEvaluation {
+        var satisfiedMask: UInt64 = 0
+        for entry in standardFeatures {
+            if let feature = entry.knownFeature, supportedFeatures.contains(feature) {
+                satisfiedMask |= entry.mask
+            }
+        }
+        for vendor in vendorFeatures {
+            if supportedVendorUUIDs.contains(vendor.uuid) {
+                satisfiedMask |= vendor.mask
+            }
+        }
+
+        let unsatisfiedDecode = dcm & ~satisfiedMask
+        let unsatisfiedUnderstand = fuam & ~satisfiedMask
+
+        var unsupportedRequired: [UInt16] = []
+        if unsatisfiedDecode != 0 {
+            for entry in standardFeatures {
+                let isSupported = entry.knownFeature.map(supportedFeatures.contains) ?? false
+                if !isSupported && (entry.mask & unsatisfiedDecode) != 0 && !unsupportedRequired.contains(entry.code) {
+                    unsupportedRequired.append(entry.code)
+                }
+            }
+        }
+
+        return SupportEvaluation(
+            canDecodeCompletely: unsatisfiedDecode == 0,
+            understandsAllAspects: unsatisfiedUnderstand == 0,
+            satisfiedMask: satisfiedMask,
+            unsatisfiedDecodeMask: unsatisfiedDecode,
+            unsatisfiedUnderstandMask: unsatisfiedUnderstand,
+            unsupportedRequiredFeatures: unsupportedRequired
+        )
+    }
+
     static func defaultJPX(
         isLossless: Bool,
         isHTJ2K: Bool,
         colour: ColourInterpretation,
-        hasAlpha: Bool
+        hasAlpha: Bool,
+        isPremultipliedAlpha: Bool = false,
+        hasRestrictedICC: Bool = false,
+        colourFeatures: [StandardFeature]? = nil
     ) throws -> JP2ReaderRequirementsBox {
+        _ = isLossless // T.801 SF=5 covers both reversible and irreversible Part 1 codestreams.
+        let fallbackEnumFeature: StandardFeature = (colour == .rgb)
+            ? .sRGBEnumeratedColourSpace : .greyscaleEnumeratedColourSpace
+        let requestedColours = colourFeatures ?? (hasRestrictedICC
+            ? [.restrictedICCProfile, fallbackEnumFeature] : [fallbackEnumFeature])
+        var colours: [StandardFeature] = []
+        for feature in requestedColours where !colours.contains(feature) { colours.append(feature) }
+        let bitCount = (isHTJ2K ? 6 : 7) + colours.count + (colours.count > 1 ? 1 : 0)
+        guard bitCount <= 64 else {
+            throw CodecError(.unsupportedFeature, "Too many independent JPX reader requirements.")
+        }
+        let maskLength: UInt8 = bitCount <= 16 ? 2 : (bitCount <= 32 ? 4 : 8)
         var entries: [StandardFeatureEntry] = []
-        var bit: UInt64 = 0x8000
-        func add(_ feature: StandardFeature) {
-            entries.append(StandardFeatureEntry(feature: feature, mask: bit))
-            if bit > 1 { bit >>= 1 }
+        var fuam: UInt64 = 0
+        var dcm: UInt64 = 0
+        var nextBit: UInt64 = UInt64(1) << (Int(maskLength) * 8 - 1)
+
+        func allocateBit() -> UInt64 {
+            let b = nextBit
+            nextBit >>= 1
+            return b
         }
-        add(isLossless ? .uncompressedOrReversible : .irreversibleCodestream)
-        add(.compositingLayerSingleCodestream)
-        if colour == .rgb {
-            add(.sRGBEnumeratedColourSpace)
-        } else if colour == .greyscale {
-            add(.greyscaleEnumeratedColourSpace)
+
+        func addRequired(_ feature: StandardFeature) {
+            let b = allocateBit()
+            fuam |= b
+            dcm |= b
+            entries.append(StandardFeatureEntry(feature: feature, mask: b))
         }
-        add(isHTJ2K ? .htj2kCodestream : .codestreamContainsNoExtensions)
-        add(.codestreamContiguous)
+
+        addRequired(isHTJ2K ? .htj2kCodestream : .unrestrictedJPEG2000Part1)
+        if !isHTJ2K {
+            addRequired(.codestreamContainsNoExtensions)
+        }
+        addRequired(.codestreamContiguous)
+        addRequired(.noCompositingRequired)
+        addRequired(.compositingLayerSingleCodestream)
+        addRequired(.noScalingRequired)
         if hasAlpha {
-            add(.opacityChannel)
+            addRequired(isPremultipliedAlpha ? .premultipliedOpacityChannel : .opacityChannel)
+        } else {
+            addRequired(.noOpacity)
         }
+
+        if colours.count > 1 {
+            // Every colour description is an aspect; any complete colour description suffices
+            // for decoding. All masks describe real clauses; none rely on shifted-mask inference.
+            let understandingBits = colours.map { _ in allocateBit() }
+            let sharedDecodeBit = allocateBit()
+            dcm |= sharedDecodeBit
+            fuam |= sharedDecodeBit
+            for (index, feature) in colours.enumerated() {
+                fuam |= understandingBits[index]
+                entries.append(StandardFeatureEntry(feature: feature, mask: understandingBits[index] | sharedDecodeBit))
+            }
+        } else if let feature = colours.first {
+            addRequired(feature)
+        }
+
         return try JP2ReaderRequirementsBox(
-            maskLength: 2,
-            fuam: 0xFF00,
-            dcm: 0x00FF,
+            maskLength: maskLength,
+            fuam: fuam,
+            dcm: dcm,
             standardFeatures: entries
         )
     }

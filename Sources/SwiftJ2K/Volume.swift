@@ -280,6 +280,12 @@ public struct J2KVolume: Sendable, Equatable {
         spacingX > 0 && spacingY > 0 && spacingZ > 0
     }
 
+    /// Returns true if any physical voxel spacing or origin coordinate is explicitly non-zero.
+    public var hasExplicitGeometry: Bool {
+        spacingX != 0 || spacingY != 0 || spacingZ != 0
+            || originX != 0 || originY != 0 || originZ != 0
+    }
+
     /// Whether the volume has equal dimensions (or equal spacing when set) along all three axes.
     public var isIsotropic: Bool {
         if hasSpacing {
@@ -360,9 +366,21 @@ public struct J2KVolume: Sendable, Equatable {
             }
         }
 
+        if !spacingX.isFinite || !spacingY.isFinite || !spacingZ.isFinite {
+            throw J2KError.invalidParameter(
+                "Voxel spacing must be finite: (\(spacingX), \(spacingY), \(spacingZ))"
+            )
+        }
+
         if spacingX < 0 || spacingY < 0 || spacingZ < 0 {
             throw J2KError.invalidParameter(
                 "Voxel spacing must be non-negative: (\(spacingX), \(spacingY), \(spacingZ))"
+            )
+        }
+
+        if !originX.isFinite || !originY.isFinite || !originZ.isFinite {
+            throw J2KError.invalidParameter(
+                "Volume origin coordinates must be finite: (\(originX), \(originY), \(originZ))"
             )
         }
 
@@ -637,7 +655,10 @@ package enum Slice2DBridge {
         let minVal = signed ? -(1 << (clampedBitDepth - 1)) : 0
         let maxVal = signed ? ((1 << (clampedBitDepth - 1)) - 1) : ((1 << clampedBitDepth) - 1)
 
-        var rawBytes = [UInt8](repeating: 0, count: width * height * bytesPerSample)
+        let packedPixelBytes = try checkedMultiply(checkedMultiply(width, height), bytesPerSample)
+        try VolumePixelAccounting.recordAllocation()
+        StorageTelemetry.recordPixelAllocation(bytes: packedPixelBytes)
+        var rawBytes = [UInt8](repeating: 0, count: packedPixelBytes)
         if storageBits == 8 {
             if signed {
                 for i in 0..<(width * height) {
@@ -667,12 +688,15 @@ package enum Slice2DBridge {
             }
         }
 
+        try VolumePixelAccounting.recordConversion(.packEncoderSlice, bytes: packedPixelBytes)
+        try VolumePixelAccounting.recordAllocation()
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let image = try destination.write { dst in
             rawBytes.withUnsafeBytes { src in
                 dst.copyMemory(from: src)
             }
         }
+        try VolumePixelAccounting.recordConversion(.copyEncoderSlice, bytes: packedPixelBytes)
         let maxAllowedLevels = max(0, min(levels, Int(floor(log2(Double(max(1, min(width, height))))))))
 
         let mode: CompressionMode = (lossless || useHTJ2K) ? .lossless : .lossy
@@ -709,24 +733,48 @@ package enum Slice2DBridge {
         maxQualityLayers: Int? = nil,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) throws -> (samples: [Int32], width: Int, height: Int, bitDepth: Int, signed: Bool) {
+    ) throws -> (samples: [Int32], width: Int, height: Int, bitDepth: Int, signed: Bool, peakWorkspaceBytes: Int) {
+        // The caller reserves its slice Data; the copied byte array belongs to this bridge.
+        let inspectionLimits = try limits.reserving(workspaceBytes: data.count, memoryBytes: 0)
+        guard data.count <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Slice input copy exceeds memory limit")
+        }
         let bytes = [UInt8](data)
         let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
-        let profile = try Part1Pipeline.inspect(bytes, limits: limits, metadataPolicy: .preserve)
+        let profile = try Part1Pipeline.inspect(bytes, limits: inspectionLimits, metadataPolicy: .preserve)
+        guard profile.componentCount == 1 else {
+            throw CodecError(.malformedInput, "A volume slice must contain exactly one component")
+        }
         let descriptor = try profile.defaultDescriptor(limits: limits)
+        let count = try checkedMultiply(profile.width, profile.height)
+        let sampleBytes = try checkedMultiply(count, MemoryLayout<Int32>.stride)
+        let bridgeBytes = try checkedAdd(checkedAdd(bytes.count, descriptor.requiredByteCount), sampleBytes)
+        let coreWorkspace = try checkedAdd(
+            try Part1Pipeline.workspaceBytes(
+                planePixels: profile.largestTilePixels, componentCount: profile.componentCount,
+                bytesPerCoeff: profile.isReversibleLossless ? 4 : 8, joinedBytes: profile.largestTileBytes
+            ), profile.retainedMetadataBytes
+        )
+        let peakWorkspace = try checkedAdd(bridgeBytes, coreWorkspace)
+        guard peakWorkspace <= limits.maximumWorkspaceBytes,
+              peakWorkspace <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Slice decode buffers exceed operation limits")
+        }
+        // The core includes its input array and destination in its memory check.
+        let coreLimits = try limits.reserving(workspaceBytes: bridgeBytes, memoryBytes: sampleBytes)
+        try VolumePixelAccounting.recordAllocation()
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let (image, _) = try Part1Pipeline.decode(
             bytes: bytes,
             profile: profile,
             into: destination,
-            limits: limits,
+            limits: coreLimits,
             backend: resolvedBackend.backend,
             progress: nil,
             maxQualityLayers: maxQualityLayers
         )
         let w = profile.width
         let h = profile.height
-        let count = w * h
         var out = [Int32](repeating: 0, count: count)
         try image.storage.withUnsafeBytes { raw in
             if descriptor.storageBits == 8 {
@@ -755,6 +803,50 @@ package enum Slice2DBridge {
                 }
             }
         }
-        return (out, w, h, profile.precision, profile.signed)
+        try VolumePixelAccounting.recordConversion(.unpackDecoderSlice, bytes: sampleBytes)
+        return (out, w, h, profile.precision, profile.signed, peakWorkspace)
     }
+
+    /// Transcodes a lossless single-component 2D slice codestream (unsigned or signed, 1–16 bits)
+    /// between Part 1 and HTJ2K directly in the wavelet coefficient domain without decoding pixels.
+    package static func transcodeLosslessSliceCoefficients(
+        _ sliceData: Data,
+        to target: TranscodeTarget,
+        limits: ResourceLimits = .default,
+        executionPolicy: ExecutionPolicy = .automatic
+    ) throws -> (data: Data, peakWorkspaceBytes: Int) {
+        let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
+        // The caller's Data and the codec's copied byte array overlap. The codec
+        // accounts its own coefficient/output workspace, excluding its input array.
+        let codecLimits = try limits.reserving(
+            workspaceBytes: sliceData.count, memoryBytes: sliceData.count
+        )
+        let bytes = [UInt8](sliceData)
+        let profile = try ScalarLosslessCodec.inspect(
+            bytes,
+            limits: codecLimits,
+            metadataPolicy: .preserve,
+            allowSignedWaveletTranscode: true
+        )
+        let firstCOD = profile.tiles.first?.codingStyle
+        let cbWidth = firstCOD.map { 1 << $0.codeBlockWidthExponent } ?? 64
+        let cbHeight = firstCOD.map { 1 << $0.codeBlockHeightExponent } ?? 64
+        let codecOptions = try CodecOptions(
+            codeBlockWidth: max(4, min(1024, cbWidth)),
+            codeBlockHeight: max(4, min(1024, cbHeight)),
+            blockCoding: (target == .htj2k) ? .htj2k : .part1
+        )
+        let (transcoded, peakWorkspace) = try ScalarLosslessCodec.transcode(
+            bytes: bytes,
+            profile: profile,
+            to: target,
+            codecOptions: codecOptions,
+            metadataPolicy: .preserve,
+            limits: codecLimits,
+            backend: resolvedBackend.backend,
+            progress: nil
+        )
+        return (transcoded, try checkedAdd(bytes.count, peakWorkspace))
+    }
+
 }

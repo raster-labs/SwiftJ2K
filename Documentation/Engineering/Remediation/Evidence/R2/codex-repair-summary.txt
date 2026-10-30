@@ -1,0 +1,52 @@
+Codex R2 repair validation — 30 October 2026
+State: LOCAL REVIEW PASSED; exact-source GitHub CI PENDING; R2 NOT ACCEPTED.
+Implementation owner: Codex isolated clone/branch codex/r2-six-finding-repairs.
+Original checkout and .git: unchanged at cd57f9ab955cc56291c7a8c1e0dfc66f5ab7feaf.
+Qualified code/test commit: dbffda5eaba104fc24ff80a54454e94c634e47d6.
+Parent independently executed native validation; Astra Ultra cross-reviewed bounded areas.
+
+Changes and scope:
+- F07/F08: preserve permuted channel/alpha roles, complete ICC colour tuples and native enumerated colour without implicit RGB conversion. Partial tuples do not retain invalid whole-tuple profiles. Output JP2/JPX colour/brand declarations are consistent. Known Kakadu shifted reader masks are admitted only for the exact structurally reconciled supported baseline; COM text grants no authority. Valid supplied colr remains applicable with ihdr.UnkC=1 (T.800 I.5.3.1).
+- F09/F10: account actual legacy/JPIP materialisations, retained cache and generator descriptor/payload storage; actual LRU access order; nested volume decode/publication/fallback budgets; per-operation volume bridge copy/allocation counters. Concurrent volume pixel peaks are unknown (nil), not final-size estimates or zero.
+- F11: one global reduction grid controls odd ROI/tile sample selection, physical origin, dimensions and spacing. Coefficient-only transcodes report their workspace and admit final publication before allocation.
+- M12-CX-03/04: sBIT precedes PLTE; TIFF ExtraSamples0 stays unspecified,1 premultiplied,2 straight; colour exporters reject representations that would invent meaning. TIFF supported-depth descriptions corrected.
+- F12 existing duplicate-codestream rejection remains qualified by focused regression.
+
+Executed:
+1. Apple Swift6.4 (swiftlang6.4.0.34.1; arm64 macOS27 host, package floor26 unchanged).
+2. swift test --disable-sandbox --build-system native --scratch-path <isolated> -j2 --filter 'R2|CodexR2|IndependentR2|Container|R1|JPIPContract|JPIPDataBin'
+   EXIT0: 16 XCTest +86 Swift Testing declarations across18 suites; no failures. All tracked inputs verified unchanged during run. Includes original unchanged independent reproducers, new edge/admission probes and affected R1 safety regressions.
+3. python3 Scripts/test-cli.py --binary <isolated-debug>/swiftj2k-cli --output <fresh-evidence>
+   EXIT0:246 process checks, including staged installation in temporary output.
+4. swift build --disable-sandbox --build-system native -c release --product swiftj2k-cli -j2
+   EXIT0. Bounded scalar/one-worker release measurements:5 warmups +20 interleaved timed runs each for palette container decode, small JPIP view, full volume decode and odd-ROI/reduced volume decode. Synthetic volume full and ROI samples checked exactly. Candidate-only cold-process timings include startup; no comparative speedup or R4 performance acceptance claim.
+5. Additional affected legacy volume regression run on documentation-only head 03d50300fe05fd041e450bc44502bd1d7ae4a496:
+   swift test --disable-sandbox --build-system native --scratch-path <isolated> -j2 --filter 'JP3DDecoderTests|JP3DROIDecoderTests|JP3DTranscoderTests|JP3DEncoderTests|JP3DSliceStack|JPIPSessionManagerTests'
+   EXIT0:127 XCTest cases in JP3DDecoderTests and JP3DEncoderTests; no failures, tracked inputs unchanged. Other filter alternatives matched no additional tests. Combined native total229 tests/declarations; no duplicate total inferred from nested XCTest summaries.
+6. Seven common contracts match their SHA256 manifest. Independent fixtures, historical M6 and Swift6.4 records unchanged.
+
+Preserved failures:
+- b6b101c: first build EXIT1, new ICC test expression exceeded type-check complexity; corrected by typed locals.
+- f679ad0:56 focused declarations failed13 expectations. Actual colour regression (UnkC suppressing supplied colr) repaired without changing external fixtures/expectations. Invalid bare-unknown JP2 synthetic cases were replaced with explicit-colour plus unspecified extras; required colr now expected to survive discardAncillary. All failures retained.
+- Earlier ffa9dc0 and cd57f9a independent failures remain historical evidence; no claim their original source passed.
+
+Raw audit evidence (outside original repository):
+/Users/raster/Documents/Codex/2026-10-29/swiftj2k-r2-remediation-audit/work/r2-codex-validation/
+  first-focused.log, first-exit.json, source-identity-first.json
+  second-focused.log, second-focused-identity.json, second-focused-exit.json
+  third-focused-regressions.log, third-focused-regressions-identity.json, third-focused-regressions-exit.json
+  volume-affected-regressions.log, volume-affected-regressions-identity.json, volume-affected-regressions-exit.json
+  cli-regressions/report.json; release-build.log; release-command.json; release-exit.json
+  release-benchmark/results.json; contract-identity.json
+
+Pending/separate gates:
+- Exact-source GitHub CI:7 required jobs and their required debug/release/ASan/TSan steps; no local Linux execution.
+- Five hosted external-decoder oracle declarations remain UNEXECUTED, not waived. Existing valid independent file fixtures are distinct from newly executed external-decoder oracles.
+- R3 normative JP3D/real JPIP work, R4 qualification and M6-AUD-007 remain OPEN. No merge/tag/release is authorised.
+- Legacy unbounded optional verifyRoundTrip diagnostic is not a newly qualified bounded public configuration; public VolumeTranscoder keeps it false.
+
+CI portability follow-up — 30 October 2026
+- PR29/run41022299412 at484f6f9 completed: contract identity, independent Swift6.2 consumer, and both Swift6.4 Linux debug/release jobs PASS. Swift6.2 x86/arm and macOS Swift6.3.3 production builds PASS, but test compilation FAILS on expression type-check complexity in three volume regression files. Swift6.2 release and macOS ASan/TSan steps SKIPPED after these failures, not passed.
+- Test-only repair commit38e7cd8723246313b120168c33b798b4d9431cff replaces nested higher-order expressions and complex macro arguments with explicitly typed locals and loops. Parent independently verified identical row-major sample values, little-endian synthetic fixture bytes, telemetry filters/sums and expected values; all14 test declarations and all139 assertions in the3files remain. Production code, external fixtures, contracts and CI workflow are unchanged.
+- Independent focused rerun: swift test --disable-sandbox --build-system native --scratch-path <isolated> -j2 --filter 'CodexR2VolumeGridTests|CodexR2VolumePixelAccountingTests|R2VolumeRemediationTests' => EXIT0,14 declarations in3suites PASS; all tracked inputs unchanged. These are repeated affected tests, not14new tests added to the229total. Swift6.2/6.3.3 qualification still requires fresh hosted CI.
+- Evidence: work/r2-ci-41022299412/{provider-*.json,job-*.json,failure-summary.json,independent-review.json,test-expression-repair.patch}; work/r2-codex-validation/ci-expression-focused{.log,-identity.json,-exit.json} in the successor audit workspace. All failed receipts retained. R2 remains unaccepted.

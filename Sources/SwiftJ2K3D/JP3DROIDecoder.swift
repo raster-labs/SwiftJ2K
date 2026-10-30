@@ -46,6 +46,11 @@ public struct JP3DROIDecoderResult: Sendable {
         return Double(tilesSkipped) / Double(total)
     }
 
+    internal let peakWorkspaceBytes: Int
+    internal let commentCount: Int
+    internal let commentPayloadBytes: Int
+    internal let hadVolumeGeometry: Bool
+
     public init(
         volume: J2KVolume,
         decodedRegion: JP3DRegion,
@@ -60,6 +65,34 @@ public struct JP3DROIDecoderResult: Sendable {
         self.tilesSkipped = tilesSkipped
         self.tilesDecoded = tilesDecoded
         self.warnings = warnings
+        self.peakWorkspaceBytes = 0
+        self.commentCount = 0
+        self.commentPayloadBytes = 0
+        self.hadVolumeGeometry = false
+    }
+
+    internal init(
+        volume: J2KVolume,
+        decodedRegion: JP3DRegion,
+        isFullVolume: Bool,
+        tilesSkipped: Int,
+        tilesDecoded: Int,
+        warnings: [String],
+        peakWorkspaceBytes: Int,
+        commentCount: Int,
+        commentPayloadBytes: Int,
+        hadVolumeGeometry: Bool
+    ) {
+        self.volume = volume
+        self.decodedRegion = decodedRegion
+        self.isFullVolume = isFullVolume
+        self.tilesSkipped = tilesSkipped
+        self.tilesDecoded = tilesDecoded
+        self.warnings = warnings
+        self.peakWorkspaceBytes = peakWorkspaceBytes
+        self.commentCount = commentCount
+        self.commentPayloadBytes = commentPayloadBytes
+        self.hadVolumeGeometry = hadVolumeGeometry
     }
 }
 
@@ -149,6 +182,7 @@ public actor JP3DROIDecoder {
         resolutionLevel: Int,
         limits: ResourceLimits?,
         executionPolicy: ExecutionPolicy,
+        metadataPolicy: MetadataPolicy = .preserve,
         work: VolumeWorkGuard
     ) async throws -> JP3DROIDecoderResult {
         try work.check()
@@ -218,9 +252,19 @@ public actor JP3DROIDecoder {
                     )
                 }
             }
-            let emptyVolume = J2KVolume(
+            let blankVolume = J2KVolume(
                 width: siz.width, height: siz.height, depth: siz.depth,
                 componentCount: siz.componentCount, bitDepth: siz.bitDepth, signed: siz.signed
+            )
+            // Preserve the existing partial/full-canvas empty-ROI result, including
+            // its canvas geometry; it must not silently reset physical coordinates.
+            let geometry = metadataPolicy == .preserve ? codestream.geometry : nil
+            let emptyVolume = J2KVolume(
+                width: siz.width, height: siz.height, depth: siz.depth,
+                components: blankVolume.components,
+                spacingX: geometry?.spacingX ?? 0, spacingY: geometry?.spacingY ?? 0,
+                spacingZ: geometry?.spacingZ ?? 0, originX: geometry?.originX ?? 0,
+                originY: geometry?.originY ?? 0, originZ: geometry?.originZ ?? 0
             )
             let emptyRegion = JP3DRegion(x: 0..<0, y: 0..<0, z: 0..<0)
             return JP3DROIDecoderResult(
@@ -229,7 +273,11 @@ public actor JP3DROIDecoder {
                 isFullVolume: false,
                 tilesSkipped: codestream.tiles.count,
                 tilesDecoded: 0,
-                warnings: ["Requested region does not intersect the volume"]
+                warnings: ["Requested region does not intersect the volume"],
+                peakWorkspaceBytes: codestream.retainedTileBytes,
+                commentCount: codestream.comments.count,
+                commentPayloadBytes: codestream.commentPayloadBytes,
+                hadVolumeGeometry: codestream.geometry != nil
             )
         }
 
@@ -255,6 +303,7 @@ public actor JP3DROIDecoder {
                 data,
                 limits: limits,
                 executionPolicy: executionPolicy,
+                metadataPolicy: metadataPolicy,
                 work: work
             )
             return JP3DROIDecoderResult(
@@ -263,7 +312,11 @@ public actor JP3DROIDecoder {
                 isFullVolume: true,
                 tilesSkipped: 0,
                 tilesDecoded: result.tilesDecoded,
-                warnings: result.warnings
+                warnings: result.warnings,
+                peakWorkspaceBytes: result.peakWorkspaceBytes,
+                commentCount: result.commentCount,
+                commentPayloadBytes: result.commentPayloadBytes,
+                hadVolumeGeometry: result.hadVolumeGeometry
             )
         }
 
@@ -292,8 +345,16 @@ public actor JP3DROIDecoder {
             )
         })
 
-        let outW = jp3dDownsampleDimension(roiW, resolutionLevel: K)
-        let outH = jp3dDownsampleDimension(roiH, resolutionLevel: K)
+        // ROI bounds select points of the same grid used by full-volume reduction.
+        let reducedX0 = jp3dDownsampleOrigin(clampedXLower, resolutionLevel: K, roundUp: true)
+        let reducedX1 = jp3dDownsampleOrigin(clampedXUpper, resolutionLevel: K, roundUp: true)
+        let reducedY0 = jp3dDownsampleOrigin(clampedYLower, resolutionLevel: K, roundUp: true)
+        let reducedY1 = jp3dDownsampleOrigin(clampedYUpper, resolutionLevel: K, roundUp: true)
+        let outW = reducedX1 - reducedX0
+        let outH = reducedY1 - reducedY0
+        guard outW > 0, outH > 0 else {
+            throw CodecError(.invalidArgument, "Requested ROI contains no samples at the requested resolution level")
+        }
         let outD = roiD
         let (outWH, vOv1) = outW.multipliedReportingOverflow(by: outH)
         let (outVoxels, vOv2) = outWH.multipliedReportingOverflow(by: outD)
@@ -315,6 +376,17 @@ public actor JP3DROIDecoder {
             throw J2KError.decodingError("ROI workspace size overflows integer arithmetic")
         }
 
+        let (tWH0, tOv1) = min(siz.width, siz.tileSizeX).multipliedReportingOverflow(by: min(siz.height, siz.tileSizeY))
+        let (maxTileVox0, tOv2) = tWH0.multipliedReportingOverflow(by: min(siz.depth, siz.tileSizeZ))
+        let (tileSamples0, tOv3) = maxTileVox0.multipliedReportingOverflow(by: siz.componentCount)
+        let (tileScratch0, tOv4) = tileSamples0.multipliedReportingOverflow(by: max(elementStride * 2, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride))
+        let retainedSourceBytes = try jp3dDecodeAdd(codestream.retainedTileBytes, codestream.commentPayloadBytes)
+        let (ws10, wOv1) = retainedSourceBytes.addingReportingOverflow(bufferWorkspaceBytes)
+        let (computedPeakROIWorkspace, wOv2) = ws10.addingReportingOverflow(tileScratch0)
+        guard !tOv1, !tOv2, !tOv3, !tOv4, !wOv1, !wOv2 else {
+            throw J2KError.decodingError("ROI workspace size overflows integer arithmetic")
+        }
+
         if let limits {
             guard outVoxels <= limits.maximumPixels else {
                 throw CodecError(
@@ -328,20 +400,14 @@ public actor JP3DROIDecoder {
                     "ROI decoded byte count \(outDecodedBytes) exceeds decoded-byte limit \(limits.maximumDecodedBytes)"
                 )
             }
-            let (tWH, tOv1) = min(siz.width, siz.tileSizeX).multipliedReportingOverflow(by: min(siz.height, siz.tileSizeY))
-            let (maxTileVox, tOv2) = tWH.multipliedReportingOverflow(by: min(siz.depth, siz.tileSizeZ))
-            let (tileSamples, tOv3) = maxTileVox.multipliedReportingOverflow(by: siz.componentCount)
-            let (tileScratch, tOv4) = tileSamples.multipliedReportingOverflow(by: elementStride * 2)
-            let (ws1, wOv1) = codestream.retainedTileBytes.addingReportingOverflow(bufferWorkspaceBytes)
-            let (peakROIWorkspace, wOv2) = ws1.addingReportingOverflow(tileScratch)
-            guard !tOv1, !tOv2, !tOv3, !tOv4, !wOv1, !wOv2, peakROIWorkspace <= limits.maximumWorkspaceBytes else {
+            guard computedPeakROIWorkspace <= limits.maximumWorkspaceBytes else {
                 throw CodecError(
                     .resourceLimitExceeded,
-                    "ROI workspace \(peakROIWorkspace) exceeds workspace limit \(limits.maximumWorkspaceBytes)"
+                    "ROI workspace \(computedPeakROIWorkspace) exceeds workspace limit \(limits.maximumWorkspaceBytes)"
                 )
             }
             let (mem1, mOv1) = data.count.addingReportingOverflow(outDecodedBytes)
-            let (totalLiveMem, mOv2) = mem1.addingReportingOverflow(peakROIWorkspace)
+            let (totalLiveMem, mOv2) = mem1.addingReportingOverflow(computedPeakROIWorkspace)
             guard !mOv1, !mOv2, totalLiveMem <= limits.maximumMemoryBytes else {
                 throw CodecError(
                     .resourceLimitExceeded,
@@ -349,6 +415,12 @@ public actor JP3DROIDecoder {
                 )
             }
         }
+
+        let workerLimits = try limits.map {
+            try jp3dDecodeWorkerLimits($0, retainedWorkspace: ws10,
+                retainedMemory: jp3dDecodeAdd(jp3dDecodeAdd(data.count, outDecodedBytes), ws10), workers: 1)
+        }
+        let decodeWorkspace = JP3DDecodeWorkspace()
 
         StorageTelemetry.recordStage("volume-roi-decode-buffers", bytes: bufferWorkspaceBytes)
         StorageTelemetry.recordWorkspaceAllocation(bytes: bufferWorkspaceBytes)
@@ -365,8 +437,8 @@ public actor JP3DROIDecoder {
             filter: filter,
             mode: .separable,
             boundary: .symmetric,
-            levelsX: max(0, cod.levelsX - K),
-            levelsY: max(0, cod.levelsY - K),
+            levelsX: cod.levelsX,
+            levelsY: cod.levelsY,
             levelsZ: cod.levelsZ
         )
 
@@ -383,8 +455,10 @@ public actor JP3DROIDecoder {
             }
 
             let tile = allTiles[parsedTile.tileIndex]
-            let tileW = jp3dDownsampleDimension(tile.width, resolutionLevel: K)
-            let tileH = jp3dDownsampleDimension(tile.height, resolutionLevel: K)
+            let tileX0 = jp3dDownsampleOrigin(tile.region.x.lowerBound, resolutionLevel: K, roundUp: true)
+            let tileY0 = jp3dDownsampleOrigin(tile.region.y.lowerBound, resolutionLevel: K, roundUp: true)
+            let tileW = jp3dDownsampleOrigin(tile.region.x.upperBound, resolutionLevel: K, roundUp: true) - tileX0
+            let tileH = jp3dDownsampleOrigin(tile.region.y.upperBound, resolutionLevel: K, roundUp: true) - tileY0
             let tileD = tile.depth
 
             let overlapZ0 = max(tile.region.z.lowerBound, roiRegion.z.lowerBound)
@@ -407,12 +481,12 @@ public actor JP3DROIDecoder {
             let decodedStrideW: Int
             let decodedStrideH: Int
 
-            let tStartX = jp3dDownsampleOrigin(tile.region.x.lowerBound, resolutionLevel: K, roundUp: false)
-            let tStartY = jp3dDownsampleOrigin(tile.region.y.lowerBound, resolutionLevel: K, roundUp: false)
+            let tStartX = tileX0
+            let tStartY = tileY0
             let tStartZ = tile.region.z.lowerBound
 
-            let rStartX = jp3dDownsampleOrigin(roiRegion.x.lowerBound, resolutionLevel: K, roundUp: false)
-            let rStartY = jp3dDownsampleOrigin(roiRegion.y.lowerBound, resolutionLevel: K, roundUp: false)
+            let rStartX = reducedX0
+            let rStartY = reducedY0
             let rStartZ = roiRegion.z.lowerBound
 
             if useExactIntegerPath {
@@ -432,8 +506,9 @@ public actor JP3DROIDecoder {
                             resolutionLevel: 0,
                             zRange: localZStart..<localZEnd,
                             xyROI: isSubTileXY ? (x: localXRange, y: localYRange) : nil,
-                            limits: limits ?? .default,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits ?? .default,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         decodedZOffset = localZStart
                         decodedXOffset = isSubTileXY ? localXRange.lowerBound : 0
@@ -447,8 +522,9 @@ public actor JP3DROIDecoder {
                             componentCount: siz.componentCount,
                             maxQualityLayers: maxQualityLayers,
                             resolutionLevel: K,
-                            limits: limits,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         decodedZOffset = 0
                         decodedXOffset = 0
@@ -520,8 +596,9 @@ public actor JP3DROIDecoder {
                             resolutionLevel: 0,
                             zRange: localZStart..<localZEnd,
                             xyROI: isSubTileXY ? (x: localXRange, y: localYRange) : nil,
-                            limits: limits ?? .default,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits ?? .default,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         decodedZOffset = localZStart
                         decodedXOffset = isSubTileXY ? localXRange.lowerBound : 0
@@ -540,8 +617,9 @@ public actor JP3DROIDecoder {
                             transformConfig: transformConfig,
                             maxQualityLayers: maxQualityLayers,
                             resolutionLevel: K,
-                            limits: limits,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         decodedZOffset = 0
                         decodedXOffset = 0
@@ -626,10 +704,25 @@ public actor JP3DROIDecoder {
                 bitDepth: siz.bitDepth, signed: siz.signed
             )
         }
+        let restoredGeometry: JP3DVolumeGeometry? = (metadataPolicy == .preserve) ? codestream.geometry : nil
+        let outSpacingX = restoredGeometry.map { $0.spacingX > 0 ? scalbn($0.spacingX, K) : 0 } ?? 0
+        let outSpacingY = restoredGeometry.map { $0.spacingY > 0 ? scalbn($0.spacingY, K) : 0 } ?? 0
+        let outSpacingZ = restoredGeometry?.spacingZ ?? 0
+        let outOriginX = restoredGeometry.map { $0.originX + ($0.spacingX > 0 ? Double(reducedX0) * outSpacingX : 0) } ?? 0
+        let outOriginY = restoredGeometry.map { $0.originY + ($0.spacingY > 0 ? Double(reducedY0) * outSpacingY : 0) } ?? 0
+        let outOriginZ = restoredGeometry.map { $0.originZ + ($0.spacingZ > 0 ? Double(clampedZLower) * $0.spacingZ : 0) } ?? 0
+
         let roiVolume = J2KVolume(
             width: outW, height: outH, depth: outD,
-            components: components
+            components: components,
+            spacingX: outSpacingX,
+            spacingY: outSpacingY,
+            spacingZ: outSpacingZ,
+            originX: outOriginX,
+            originY: outOriginY,
+            originZ: outOriginZ
         )
+        try roiVolume.validate()
 
         try work.check()
         reportProgress(.volumeAssembly, stageProgress: 1.0, tilesDone: tilesDecoded, tilesTotal: intersectingIndices.count)
@@ -640,7 +733,11 @@ public actor JP3DROIDecoder {
             isFullVolume: false,
             tilesSkipped: tilesSkipped,
             tilesDecoded: tilesDecoded,
-            warnings: warnings
+            warnings: warnings,
+            peakWorkspaceBytes: max(computedPeakROIWorkspace, try jp3dDecodeAdd(ws10, decodeWorkspace.peak)),
+            commentCount: codestream.comments.count,
+            commentPayloadBytes: codestream.commentPayloadBytes,
+            hadVolumeGeometry: codestream.geometry != nil
         )
     }
 

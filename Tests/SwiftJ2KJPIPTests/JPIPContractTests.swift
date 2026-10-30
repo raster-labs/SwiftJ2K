@@ -224,10 +224,10 @@ final class JPIPContractTests: XCTestCase {
     func testDataBinGeneratorCheckedArithmeticAndReassembly() async throws {
         let generator = JPIPDataBinGenerator()
 
-        // Truncated SOT marker with oversized Psot must throw cleanly without trapping
+        // Truncated SOT with oversized Psot must throw. The former assertion accepted
+        // nonempty bins from this malformed stream despite this stated invariant.
         let malformed = Data([0xFF, 0x4F, 0xFF, 0x51, 0x00, 0x04, 0x00, 0x00, 0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0x00, 0x01, 0xFF, 0x93])
-        let bins = try generator.generateDataBins(from: malformed)
-        XCTAssertFalse(bins.isEmpty)
+        XCTAssertThrowsError(try generator.generateDataBins(from: malformed))
 
         // Reassemble from valid image data bins and verify decode
         let sourceImage = makeTestJ2KImage(width: 16, height: 16, components: 1, bitDepth: 8)
@@ -296,7 +296,8 @@ final class JPIPContractTests: XCTestCase {
         XCTAssertTrue(delivered.image.descriptor.colour == .rgb)
         XCTAssertEqual(delivered.image.descriptor.components.count, 3)
         XCTAssertTrue(delivered.report.fidelity == .exactSamples)
-        XCTAssertEqual(delivered.report.discardedMetadataCount, 1)
+        XCTAssertEqual(delivered.report.discardedMetadataCount, 0)
+        XCTAssertEqual(delivered.report.copyEvents.count, 1)
         XCTAssertTrue(recorder.phases.contains(.completed))
 
         // 2. ViewWindow spatial sub-region delivery

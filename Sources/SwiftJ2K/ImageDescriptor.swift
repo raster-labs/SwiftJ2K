@@ -304,8 +304,6 @@ public struct ImageDescriptor: Sendable, Equatable {
             roles = [.grey]; colour = .greyscale; alpha = .absent
         case 3:
             roles = [.red, .green, .blue]; colour = .rgb; alpha = .absent
-        case 4:
-            roles = [.red, .green, .blue, .alpha]; colour = .rgb; alpha = .straight
         default:
             roles = (0..<componentCount).map { .uninterpreted("c\($0)") }
             colour = .unknown; alpha = .absent

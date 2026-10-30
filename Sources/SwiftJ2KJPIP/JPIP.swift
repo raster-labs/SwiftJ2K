@@ -57,6 +57,15 @@ public actor JPIPClient {
     /// Preferred coding format for JPIP capability negotiation.
     public let codingPreference: JPIPCodingPreference
 
+    /// Session delivery mode (`incremental` stateful data-bin caching or `full` stateless delivery).
+    package let deliveryMode: JPIPDeliveryMode
+
+    /// Maximum number of data bins retained in the session cache.
+    package let maxCachedDataBins: Int
+
+    /// Maximum byte size retained in the session cache.
+    package let maxCacheSizeBytes: Int
+
     /// The HTTP transport layer.
     private let transport: JPIPTransport
 
@@ -71,6 +80,22 @@ public actor JPIPClient {
     public init(serverURL: URL, codingPreference: JPIPCodingPreference = .none) {
         self.serverURL = serverURL
         self.codingPreference = codingPreference
+        self.deliveryMode = .incremental
+        self.maxCachedDataBins = 10_000
+        self.maxCacheSizeBytes = 100 * 1024 * 1024
+        self.transport = JPIPTransport(baseURL: serverURL)
+    }
+
+    /// Creates a new JPIP client with explicit ``JPIPSessionConfiguration`` parameters.
+    package init(
+        serverURL: URL,
+        configuration: JPIPSessionConfiguration
+    ) {
+        self.serverURL = serverURL
+        self.codingPreference = configuration.codingPreference
+        self.deliveryMode = configuration.deliveryMode
+        self.maxCachedDataBins = configuration.maxCachedDataBins
+        self.maxCacheSizeBytes = configuration.maxCacheSizeBytes
         self.transport = JPIPTransport(baseURL: serverURL)
     }
 
@@ -87,6 +112,23 @@ public actor JPIPClient {
     ) {
         self.serverURL = serverURL ?? URL(string: "http://localhost:\(server.port)")!
         self.codingPreference = codingPreference
+        self.deliveryMode = .incremental
+        self.maxCachedDataBins = 10_000
+        self.maxCacheSizeBytes = 100 * 1024 * 1024
+        self.transport = JPIPTransport(server: server)
+    }
+
+    /// Creates a new JPIP client bound directly to an in-process ``JPIPServer`` with explicit session configuration.
+    package init(
+        server: JPIPServer,
+        serverURL: URL? = nil,
+        configuration: JPIPSessionConfiguration
+    ) {
+        self.serverURL = serverURL ?? URL(string: "http://localhost:\(server.port)")!
+        self.codingPreference = configuration.codingPreference
+        self.deliveryMode = configuration.deliveryMode
+        self.maxCachedDataBins = configuration.maxCachedDataBins
+        self.maxCacheSizeBytes = configuration.maxCacheSizeBytes
         self.transport = JPIPTransport(server: server)
     }
 
@@ -106,7 +148,11 @@ public actor JPIPClient {
     public func createSession(target: String) async throws -> JPIPSession {
         // Create a new session ID
         let sessionID = UUID().uuidString
-        let newSession = JPIPSession(sessionID: sessionID)
+        let newSession = JPIPSession(
+            sessionID: sessionID,
+            maxCacheSizeBytes: maxCacheSizeBytes,
+            maxCachedDataBins: maxCachedDataBins
+        )
         await newSession.setTarget(target)
 
         // Make initial request to establish channel
@@ -335,6 +381,7 @@ public actor JPIPClient {
         viewWindow: JPIPViewWindow?,
         limits: ResourceLimits,
         executionPolicy: ExecutionPolicy,
+        metadataPolicy: MetadataPolicy,
         deadline: ContinuousClock.Instant
     ) async throws -> J2KDecoder.DecodedCodestreamInfo {
         @inline(__always)
@@ -346,10 +393,15 @@ public actor JPIPClient {
         }
 
         try checkDeadline()
-        let currentSession = try await getOrCreateSession(target: imageID)
+        let activeSession: JPIPSession?
+        if deliveryMode == .incremental {
+            activeSession = try await getOrCreateSession(target: imageID)
+        } else {
+            activeSession = nil
+        }
         try checkDeadline()
 
-        var request: JPIPRequest
+        var request = JPIPRequest(target: imageID)
         var regionTuple: (x: Int, y: Int, width: Int, height: Int)? = nil
         if let window = viewWindow {
             if let rx = window.regionOriginX,
@@ -357,42 +409,24 @@ public actor JPIPClient {
                let rw = window.regionWidth,
                let rh = window.regionHeight {
                 regionTuple = (x: rx, y: ry, width: rw, height: rh)
-                request = JPIPRequest.regionRequest(
-                    target: imageID,
-                    x: rx,
-                    y: ry,
-                    width: rw,
-                    height: rh,
-                    layers: window.maxQualityLayers
-                )
-            } else if let comps = window.components {
-                request = JPIPRequest.componentRequest(
-                    target: imageID,
-                    components: comps,
-                    layers: window.maxQualityLayers
-                )
-            } else if let level = window.resolutionLevel {
-                request = JPIPRequest.resolutionLevelRequest(
-                    target: imageID,
-                    level: level,
-                    layers: window.maxQualityLayers
-                )
-            } else if let layers = window.maxQualityLayers {
-                request = JPIPRequest.progressiveQualityRequest(
-                    target: imageID,
-                    upToLayers: layers
-                )
-            } else {
-                request = JPIPRequest(target: imageID)
+                request.roff = (rx, ry)
+                request.rsiz = (rw, rh)
             }
-        } else {
-            request = JPIPRequest(target: imageID)
+            if let comps = window.components {
+                request.comps = comps
+            }
+            if let level = window.resolutionLevel {
+                request.reslevels = level
+            }
+            if let layers = window.maxQualityLayers {
+                request.layers = layers
+            }
         }
 
         if codingPreference != .none {
             request.codingPreference = codingPreference
         }
-        if let channelID = await currentSession.channelID {
+        if let currentSession = activeSession, let channelID = await currentSession.channelID {
             request.cid = channelID
         }
 
@@ -410,20 +444,35 @@ public actor JPIPClient {
             )
         }
 
-        let (binWorkspace, bwOv) = response.data.count.addingReportingOverflow(64)
-        let (liveBinMem, bmOv) = response.data.count.addingReportingOverflow(binWorkspace)
-        if !bwOv, !bmOv,
-           binWorkspace <= limits.maximumWorkspaceBytes,
-           liveBinMem <= limits.maximumMemoryBytes {
-            let generator = JPIPDataBinGenerator()
-            if let bins = try? generator.generateDataBins(from: response.data) {
-                for bin in bins {
-                    await currentSession.recordDataBin(bin)
-                }
+        func cacheStorageBytes(_ statistics: JPIPCacheModel.Statistics) throws -> Int {
+            let (descriptors, overflow) = statistics.entryCount.multipliedReportingOverflow(by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride)
+            let (total, sumOverflow) = statistics.totalSize.addingReportingOverflow(descriptors)
+            guard !overflow, !sumOverflow else {
+                throw CodecError(.resourceLimitExceeded, "JPIP retained cache storage overflows Int.")
+            }
+            return total
+        }
+        var generationWorkspacePeak = 0
+        if let currentSession = activeSession, maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
+            let cacheStatistics = await currentSession.getCacheStatistics()
+            let generated = try JPIPDataBinGenerator().generateDataBins(
+                from: response.data, limits: limits,
+                retainedBytes: cacheStorageBytes(cacheStatistics),
+                maximumAdditionalCacheEntries: max(0, maxCachedDataBins - cacheStatistics.entryCount))
+            generationWorkspacePeak = generated.peakWorkspaceBytes
+            for bin in generated.bins {
+                try checkDeadline()
+                await currentSession.recordDataBin(bin)
             }
         }
 
         try checkDeadline()
+        let retainedCacheBytes: Int
+        if let activeSession {
+            retainedCacheBytes = try cacheStorageBytes(await activeSession.getCacheStatistics())
+        } else {
+            retainedCacheBytes = 0
+        }
         let decoded = try J2KDecoder.decodeWithInfo(
             response.data,
             maxQualityLayers: viewWindow?.maxQualityLayers,
@@ -431,10 +480,12 @@ public actor JPIPClient {
             components: viewWindow?.components,
             region: regionTuple,
             limits: limits,
-            executionPolicy: executionPolicy
+            executionPolicy: executionPolicy,
+            metadataPolicy: metadataPolicy,
+            retainedExternalBytes: retainedCacheBytes
         )
         try checkDeadline()
-        return decoded
+        return decoded.includingAdditionalWorkspacePeak(generationWorkspacePeak)
     }
 
     /// Records received data bins in the session cache model and decodes the codestream.

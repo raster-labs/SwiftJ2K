@@ -59,6 +59,18 @@ public struct VolumeInfo: Sendable, Equatable {
     public let isHTJ2K: Bool
     /// Total number of tiles in the codestream.
     public let tileCount: Int
+    /// Physical voxel spacing along X (`0` when unset or discarded by metadata policy).
+    public let spacingX: Double
+    /// Physical voxel spacing along Y (`0` when unset or discarded by metadata policy).
+    public let spacingY: Double
+    /// Physical voxel spacing along Z (`0` when unset or discarded by metadata policy).
+    public let spacingZ: Double
+    /// Physical origin X coordinate (`0` when unset or discarded by metadata policy).
+    public let originX: Double
+    /// Physical origin Y coordinate (`0` when unset or discarded by metadata policy).
+    public let originY: Double
+    /// Physical origin Z coordinate (`0` when unset or discarded by metadata policy).
+    public let originZ: Double
 
     public init(
         width: Int,
@@ -76,7 +88,13 @@ public struct VolumeInfo: Sendable, Equatable {
         qualityLayers: Int,
         isLossless: Bool,
         isHTJ2K: Bool,
-        tileCount: Int
+        tileCount: Int,
+        spacingX: Double = 0,
+        spacingY: Double = 0,
+        spacingZ: Double = 0,
+        originX: Double = 0,
+        originY: Double = 0,
+        originZ: Double = 0
     ) {
         self.width = width
         self.height = height
@@ -94,6 +112,12 @@ public struct VolumeInfo: Sendable, Equatable {
         self.isLossless = isLossless
         self.isHTJ2K = isHTJ2K
         self.tileCount = tileCount
+        self.spacingX = spacingX
+        self.spacingY = spacingY
+        self.spacingZ = spacingZ
+        self.originX = originX
+        self.originY = originY
+        self.originZ = originZ
     }
 }
 
@@ -283,6 +307,8 @@ public struct VolumeDecodeOptions: Sendable {
     /// Metadata preservation policy.
     public var metadataPolicy: MetadataPolicy
     /// Optional 3D region of interest to decode.
+    /// At reduced resolution, selects volume-grid points at multiples of `2^resolutionLevel`.
+    /// The returned origin is the first selected point; an intersecting ROI containing no such points fails.
     public var regionOfInterest: JP3DRegion?
     /// Optional progress callback.
     public var progress: (@Sendable (ProgressUpdate) -> Void)?
@@ -341,8 +367,15 @@ public struct VolumeEncoder: Sendable {
         _ volume: J2KVolume,
         options: VolumeEncodeOptions = VolumeEncodeOptions()
     ) async throws -> EncodedVolume {
+        let startedAt = ContinuousClock.now
         let work = VolumeWorkGuard(limits: options.resourceLimits)
         try work.check()
+        guard options.copyPolicy == .allowCopy else {
+            throw CodecError(
+                .incompatibleImageLayout,
+                "VolumeEncoder extracts tile sample buffers from J2KVolumeComponent.data (Foundation.Data), requiring a buffer copy; pass copyPolicy: .allowCopy."
+            )
+        }
         do {
             try volume.validate()
         } catch let error as J2KError {
@@ -382,7 +415,7 @@ public struct VolumeEncoder: Sendable {
             )
         }
 
-        let (backend, fallbackReason) = try resolveBackend(options.executionPolicy)
+        let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -408,14 +441,18 @@ public struct VolumeEncoder: Sendable {
         }
         try work.check()
 
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let result: JP3DEncoderResult
         do {
-            result = try await actorEncoder.encodeAdmitted(
-                volume,
-                limits: options.resourceLimits,
-                executionPolicy: options.executionPolicy,
-                work: work
-            )
+            result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                try await actorEncoder.encodeAdmitted(
+                    volume,
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    metadataPolicy: options.metadataPolicy,
+                    work: work
+                )
+            }
         } catch let error as J2KError {
             throw error.asCodecError
         }
@@ -426,17 +463,29 @@ public struct VolumeEncoder: Sendable {
         }
         try work.check()
 
+        let elapsed = ContinuousClock.now - startedAt
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
         let fidelity: Fidelity = result.isLossless ? .exactSamples : .lossy
+        let discardedGeometry = (options.metadataPolicy == .discardAncillary && volume.hasExplicitGeometry)
+        let copyEvent = try CopyEvent(
+            reason: "extract tile sample buffers from J2KVolume Data components",
+            bytesMoved: volumeByteCount,
+            sourceLayout: "j2kvolume-component-data",
+            destinationLayout: "jp3d-tile-sample-buffers"
+        )
         let report = OperationReport(
-            backend: backend,
-            fallbackReason: fallbackReason,
+            backend: resolvedExec.backend,
+            fallbackReason: resolvedExec.fallbackReason,
             fidelity: fidelity,
-            copyEvents: [],
-            pixelAllocationCount: 0,
-            peakPixelBytes: volumeByteCount,
-            peakWorkspaceBytes: result.data.count,
-            discardedMetadataCount: options.metadataPolicy == .discardAncillary ? 1 : 0,
-            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? ["ancillaryVolumeMetadata"] : []
+            copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: pixelAccounting.allocationCount,
+            // Bridge pixel lifetimes across worker tasks are not measured.
+            peakPixelBytes: pixelAccounting.allocationCount == 0 ? volumeByteCount : nil,
+            peakWorkspaceBytes: result.peakWorkspaceBytes,
+            elapsedSeconds: elapsedSeconds,
+            discardedMetadataCount: discardedGeometry ? 1 : 0,
+            discardedMetadataBytes: discardedGeometry ? JP3DVolumeGeometry.payloadByteCount : 0,
+            discardedMetadataKinds: discardedGeometry ? ["volumeGeometry"] : []
         )
 
         return EncodedVolume(
@@ -520,6 +569,7 @@ public struct VolumeDecoder: Sendable {
         }
 
         let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) } ?? 1
+        let inspectedGeometry: JP3DVolumeGeometry? = (options.metadataPolicy == .preserve) ? parsed.geometry : nil
 
         return VolumeInfo(
             width: siz.width,
@@ -537,7 +587,13 @@ public struct VolumeDecoder: Sendable {
             qualityLayers: detectedLayers,
             isLossless: cod.isLossless && parsed.isLosslessQuantization,
             isHTJ2K: parsed.containsHTJ2KTiles,
-            tileCount: parsed.tiles.count
+            tileCount: parsed.tiles.count,
+            spacingX: inspectedGeometry?.spacingX ?? 0,
+            spacingY: inspectedGeometry?.spacingY ?? 0,
+            spacingZ: inspectedGeometry?.spacingZ ?? 0,
+            originX: inspectedGeometry?.originX ?? 0,
+            originY: inspectedGeometry?.originY ?? 0,
+            originZ: inspectedGeometry?.originZ ?? 0
         )
     }
 
@@ -546,8 +602,15 @@ public struct VolumeDecoder: Sendable {
         _ data: Data,
         options: VolumeDecodeOptions = VolumeDecodeOptions()
     ) async throws -> DecodedVolume {
+        let startedAt = ContinuousClock.now
         let work = VolumeWorkGuard(limits: options.resourceLimits)
         try work.check()
+        guard options.copyPolicy == .allowCopy else {
+            throw CodecError(
+                .incompatibleImageLayout,
+                "VolumeDecoder assembles decoded tile buffers into J2KVolumeComponent.data (Foundation.Data), requiring a buffer copy; pass copyPolicy: .allowCopy."
+            )
+        }
         let info = try inspect(data, options: options)
 
         let outW: Int
@@ -561,8 +624,13 @@ public struct VolumeDecoder: Sendable {
             let cz0 = max(0, roi.z.lowerBound)
             let cz1 = min(info.depth, roi.z.upperBound)
             if cx0 < cx1 && cy0 < cy1 && cz0 < cz1 {
-                outW = jp3dDownsampleDimension(cx1 - cx0, resolutionLevel: configuration.resolutionLevel)
-                outH = jp3dDownsampleDimension(cy1 - cy0, resolutionLevel: configuration.resolutionLevel)
+                outW = jp3dDownsampleOrigin(cx1, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                    - jp3dDownsampleOrigin(cx0, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                outH = jp3dDownsampleOrigin(cy1, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                    - jp3dDownsampleOrigin(cy0, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                guard outW > 0, outH > 0 else {
+                    throw CodecError(.invalidArgument, "Requested ROI contains no samples at the requested resolution level")
+                }
                 outD = cz1 - cz0
             } else {
                 outW = info.width
@@ -592,16 +660,21 @@ public struct VolumeDecoder: Sendable {
             )
         }
 
-        let (backend, fallbackReason) = try resolveBackend(options.executionPolicy)
+        let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
         }
         try work.check()
 
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let volume: J2KVolume
         let isPartial: Bool
         let resultIsLossless: Bool
+        let measuredPeakWorkspace: Int
+        let sourceCommentCount: Int
+        let sourceCommentBytes: Int
+        let sourceHadGeometry: Bool
         do {
             if let roi = options.regionOfInterest {
                 let roiConfig = JP3DDecoderConfiguration(
@@ -616,18 +689,25 @@ public struct VolumeDecoder: Sendable {
                     options.progress?(p)
                 }
                 try work.check()
-                let roiResult = try await roiDecoder.decodeAdmitted(
-                    data,
-                    region: roi,
-                    maxQualityLayers: configuration.maxQualityLayers > 0 ? configuration.maxQualityLayers : nil,
-                    resolutionLevel: configuration.resolutionLevel,
-                    limits: options.resourceLimits,
-                    executionPolicy: options.executionPolicy,
-                    work: work
-                )
+                let roiResult = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                    try await roiDecoder.decodeAdmitted(
+                        data,
+                        region: roi,
+                        maxQualityLayers: configuration.maxQualityLayers > 0 ? configuration.maxQualityLayers : nil,
+                        resolutionLevel: configuration.resolutionLevel,
+                        limits: options.resourceLimits,
+                        executionPolicy: options.executionPolicy,
+                        metadataPolicy: options.metadataPolicy,
+                        work: work
+                    )
+                }
                 volume = roiResult.volume
                 isPartial = !roiResult.warnings.isEmpty
                 resultIsLossless = info.isLossless
+                measuredPeakWorkspace = roiResult.peakWorkspaceBytes
+                sourceCommentCount = roiResult.commentCount
+                sourceCommentBytes = roiResult.commentPayloadBytes
+                sourceHadGeometry = roiResult.hadVolumeGeometry
             } else {
                 let jp3dConfig = JP3DDecoderConfiguration(
                     maxQualityLayers: configuration.maxQualityLayers,
@@ -641,15 +721,22 @@ public struct VolumeDecoder: Sendable {
                     options.progress?(p)
                 }
                 try work.check()
-                let result = try await actorDecoder.decodeAdmitted(
-                    data,
-                    limits: options.resourceLimits,
-                    executionPolicy: options.executionPolicy,
-                    work: work
-                )
+                let result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                    try await actorDecoder.decodeAdmitted(
+                        data,
+                        limits: options.resourceLimits,
+                        executionPolicy: options.executionPolicy,
+                        metadataPolicy: options.metadataPolicy,
+                        work: work
+                    )
+                }
                 volume = result.volume
                 isPartial = result.isPartial
                 resultIsLossless = result.isLossless
+                measuredPeakWorkspace = result.peakWorkspaceBytes
+                sourceCommentCount = result.commentCount
+                sourceCommentBytes = result.commentPayloadBytes
+                sourceHadGeometry = result.hadVolumeGeometry
             }
         } catch let error as J2KError {
             throw error.asCodecError
@@ -671,16 +758,38 @@ public struct VolumeDecoder: Sendable {
             && !reducedQualityLayers
         let fidelity: Fidelity = isExact ? .exactSamples : .lossy
 
+        let decodedPixelBytes = (try? volume.sizeInBytes) ?? volume.estimatedMemorySize
+        let elapsed = ContinuousClock.now - startedAt
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        let discardedCount = (options.metadataPolicy == .discardAncillary) ? sourceCommentCount : 0
+        let discardedBytes = (options.metadataPolicy == .discardAncillary) ? sourceCommentBytes : 0
+        let discardedKinds: [String]
+        if discardedCount == 0 {
+            discardedKinds = []
+        } else if sourceHadGeometry {
+            discardedKinds = discardedCount > 1 ? ["COM", "volumeGeometry"] : ["volumeGeometry"]
+        } else {
+            discardedKinds = ["COM"]
+        }
+        let copyEvent = try CopyEvent(
+            reason: "pack reconstructed voxel buffers into J2KVolume Data components",
+            bytesMoved: decodedPixelBytes,
+            sourceLayout: "jp3d-decoded-tile-buffers",
+            destinationLayout: "j2kvolume-component-data"
+        )
+
         let report = OperationReport(
-            backend: backend,
-            fallbackReason: fallbackReason,
+            backend: resolvedExec.backend,
+            fallbackReason: resolvedExec.fallbackReason,
             fidelity: fidelity,
-            copyEvents: [],
-            pixelAllocationCount: volume.componentCount,
-            peakPixelBytes: volume.estimatedMemorySize,
-            peakWorkspaceBytes: data.count,
-            discardedMetadataCount: options.metadataPolicy == .discardAncillary ? 1 : 0,
-            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? ["ancillaryVolumeMetadata"] : []
+            copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: try jp3dDecodeAdd(volume.componentCount, pixelAccounting.allocationCount),
+            peakPixelBytes: pixelAccounting.allocationCount == 0 ? decodedPixelBytes : nil,
+            peakWorkspaceBytes: measuredPeakWorkspace,
+            elapsedSeconds: elapsedSeconds,
+            discardedMetadataCount: discardedCount,
+            discardedMetadataBytes: discardedBytes,
+            discardedMetadataKinds: discardedKinds
         )
 
         return DecodedVolume(
@@ -708,6 +817,7 @@ public struct VolumeTranscoder: Sendable {
         to target: TranscodeTarget,
         options: TranscodeOptions = .init()
     ) async throws -> EncodedVolume {
+        let startedAt = ContinuousClock.now
         let work = VolumeWorkGuard(limits: options.resourceLimits)
         try work.check()
         let info = try VolumeDecoder().inspect(
@@ -720,7 +830,7 @@ public struct VolumeTranscoder: Sendable {
             )
         )
 
-        let (backend, fallbackReason) = try resolveBackend(options.executionPolicy)
+        let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -741,18 +851,23 @@ public struct VolumeTranscoder: Sendable {
         try work.check()
 
         let jp3dTranscoder = JP3DTranscoder()
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let result: JP3DTranscoderResult
         do {
-            result = try await jp3dTranscoder.transcodeAdmitted(
-                data,
-                configuration: JP3DTranscoderConfiguration(
-                    direction: direction,
-                    verifyRoundTrip: false
-                ),
-                limits: options.resourceLimits,
-                executionPolicy: options.executionPolicy,
-                work: work
-            )
+            result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                try await jp3dTranscoder.transcodeAdmitted(
+                    data,
+                    configuration: JP3DTranscoderConfiguration(
+                        direction: direction,
+                        verifyRoundTrip: false
+                    ),
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    copyPolicy: options.copyPolicy,
+                    metadataPolicy: options.metadataPolicy,
+                    work: work
+                )
+            }
         } catch let error as J2KError {
             throw error.asCodecError
         }
@@ -763,15 +878,43 @@ public struct VolumeTranscoder: Sendable {
         }
         try work.check()
 
+        let elapsed = ContinuousClock.now - startedAt
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
         let isExact = info.isLossless && result.warnings.isEmpty
+        let copyEvents: [CopyEvent] = result.usedFullRoundTripCopy
+            ? [
+                try CopyEvent(
+                    reason: "lossy volumetric transcoding fallback decoded and re-encoded transient J2KVolume buffers",
+                    bytesMoved: jp3dDecodeMultiply(result.roundTripPixelBytes, 2),
+                    sourceLayout: "jp3d-source-tiles",
+                    destinationLayout: "jp3d-reencoded-tiles"
+                )
+            ]
+            : []
+        let discardedCount = (options.metadataPolicy == .discardAncillary) ? result.sourceCommentCount : 0
+        let discardedBytes = (options.metadataPolicy == .discardAncillary) ? result.sourceCommentBytes : 0
+        let discardedKinds: [String]
+        if discardedCount == 0 {
+            discardedKinds = []
+        } else if result.sourceHadVolumeGeometry {
+            discardedKinds = discardedCount > 1 ? ["COM", "volumeGeometry"] : ["volumeGeometry"]
+        } else {
+            discardedKinds = ["COM"]
+        }
         let report = OperationReport(
-            backend: backend,
-            fallbackReason: fallbackReason,
+            backend: resolvedExec.backend,
+            fallbackReason: resolvedExec.fallbackReason,
             fidelity: isExact ? .exactSamples : .lossy,
-            copyEvents: [],
-            pixelAllocationCount: 0,
-            peakPixelBytes: 0,
-            peakWorkspaceBytes: result.data.count
+            copyEvents: copyEvents + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: try jp3dDecodeAdd(
+                result.usedFullRoundTripCopy ? result.roundTripComponentCount : 0, pixelAccounting.allocationCount),
+            peakPixelBytes: pixelAccounting.allocationCount == 0
+                ? (result.usedFullRoundTripCopy ? result.roundTripPixelBytes : 0) : nil,
+            peakWorkspaceBytes: result.peakWorkspaceBytes,
+            elapsedSeconds: elapsedSeconds,
+            discardedMetadataCount: discardedCount,
+            discardedMetadataBytes: discardedBytes,
+            discardedMetadataKinds: discardedKinds
         )
 
         return EncodedVolume(
@@ -784,37 +927,5 @@ public struct VolumeTranscoder: Sendable {
             isLossless: isExact,
             report: report
         )
-    }
-}
-
-// MARK: - Private Backend Resolution
-
-private func resolveBackend(
-    _ policy: ExecutionPolicy
-) throws -> (Backend, String?) {
-    switch policy {
-    case .scalarCPU, .required(.scalarCPU), .preferred(.scalarCPU):
-        return (.scalarCPU, nil)
-    case .automatic:
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        return (.scalarCPU, nil)
-        #endif
-    case .preferred(.accelerated):
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        return (.scalarCPU, "Hardware acceleration unavailable; fell back to scalar CPU")
-        #endif
-    case .required(.accelerated):
-        #if canImport(Accelerate) || arch(arm64) || arch(x86_64)
-        return (.accelerated, nil)
-        #else
-        throw CodecError(
-            .backendUnavailable,
-            "Hardware acceleration is not available on this platform"
-        )
-        #endif
     }
 }

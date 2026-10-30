@@ -287,6 +287,9 @@ public struct JP3DEncoderResult: Sendable {
     /// Original uncompressed size in bytes.
     public let originalSize: Int
 
+    /// Measured peak workspace bytes during encoding.
+    internal let peakWorkspaceBytes: Int
+
     /// Compression ratio (original size / encoded size).
     public var compressionRatio: Double {
         guard !data.isEmpty else { return 0 }
@@ -312,6 +315,29 @@ public struct JP3DEncoderResult: Sendable {
         self.isLossless = isLossless
         self.tileCount = tileCount
         self.originalSize = originalSize > 0 ? originalSize : (width * height * depth * componentCount * 4)
+        self.peakWorkspaceBytes = data.count
+    }
+
+    internal init(
+        data: Data,
+        width: Int,
+        height: Int,
+        depth: Int,
+        componentCount: Int,
+        isLossless: Bool,
+        tileCount: Int,
+        originalSize: Int,
+        peakWorkspaceBytes: Int
+    ) {
+        self.data = data
+        self.width = width
+        self.height = height
+        self.depth = depth
+        self.componentCount = componentCount
+        self.isLossless = isLossless
+        self.tileCount = tileCount
+        self.originalSize = originalSize > 0 ? originalSize : (width * height * depth * componentCount * 4)
+        self.peakWorkspaceBytes = peakWorkspaceBytes
     }
 }
 
@@ -412,6 +438,7 @@ public actor JP3DEncoder {
         _ volume: J2KVolume,
         limits: ResourceLimits?,
         executionPolicy: ExecutionPolicy,
+        metadataPolicy: MetadataPolicy = .preserve,
         work: VolumeWorkGuard
     ) async throws -> JP3DEncoderResult {
         try work.check()
@@ -520,8 +547,27 @@ public actor JP3DEncoder {
         }
 
         try work.check()
+        let geometryToEmit: JP3DVolumeGeometry? = (metadataPolicy == .preserve && volume.hasExplicitGeometry)
+            ? JP3DVolumeGeometry(
+                spacingX: volume.spacingX,
+                spacingY: volume.spacingY,
+                spacingZ: volume.spacingZ,
+                originX: volume.originX,
+                originY: volume.originY,
+                originZ: volume.originZ
+            )
+            : nil
+        if geometryToEmit != nil, let limits {
+            guard JP3DVolumeGeometry.payloadByteCount <= limits.maximumMetadataBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Volumetric geometry metadata (\(JP3DVolumeGeometry.payloadByteCount) bytes) exceeds maximumMetadataBytes (\(limits.maximumMetadataBytes))."
+                )
+            }
+        }
+        let geometryMarkerBytes = geometryToEmit != nil ? (6 + JP3DVolumeGeometry.payloadByteCount) : 0
         let totalTilePayloadBytes = encodedTiles.reduce(0) { $0 + $1.count }
-        let estimatedHeaderAndMarkers = 128 + encodedTiles.count * 24
+        let estimatedHeaderAndMarkers = 128 + geometryMarkerBytes + encodedTiles.count * 24
         let estimatedCodestreamBytes = totalTilePayloadBytes + estimatedHeaderAndMarkers
         if let limits {
             let (liveBuildBytes, ov1) = totalTilePayloadBytes.addingReportingOverflow(estimatedCodestreamBytes)
@@ -560,7 +606,8 @@ public actor JP3DEncoder {
                 tileSizeY: clampedTiling.tileSizeY,
                 tileSizeZ: clampedTiling.tileSizeZ,
                 isLossless: configuration.compressionMode.isLossless,
-                htj2kConfiguration: .default
+                htj2kConfiguration: .default,
+                geometry: geometryToEmit
             )
         } else {
             codestream = builder.build(
@@ -577,7 +624,8 @@ public actor JP3DEncoder {
                 tileSizeX: clampedTiling.tileSizeX,
                 tileSizeY: clampedTiling.tileSizeY,
                 tileSizeZ: clampedTiling.tileSizeZ,
-                isLossless: configuration.compressionMode.isLossless
+                isLossless: configuration.compressionMode.isLossless,
+                geometry: geometryToEmit
             )
         }
 
@@ -593,6 +641,7 @@ public actor JP3DEncoder {
 
         reportProgress(.codestreamGeneration, stageProgress: 1.0, tile: totalTiles, total: totalTiles)
 
+        let measuredPeakWorkspace = max(budget.peakWorkspaceBytes, totalTilePayloadBytes + codestream.count)
         return JP3DEncoderResult(
             data: codestream,
             width: volume.width,
@@ -601,7 +650,8 @@ public actor JP3DEncoder {
             componentCount: volume.componentCount,
             isLossless: configuration.compressionMode.isLossless,
             tileCount: totalTiles,
-            originalSize: volumeBytes
+            originalSize: volumeBytes,
+            peakWorkspaceBytes: measuredPeakWorkspace
         )
     }
 

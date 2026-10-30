@@ -59,58 +59,78 @@ public struct JPIPDataBinGenerator: Sendable {
     /// - Returns: Array of generated data bins.
     /// - Throws: ``J2KError`` if the data cannot be parsed.
     public func generateDataBins(from data: Data) throws -> [JPIPDataBin] {
-        let bytes = [UInt8](data)
-        guard bytes.count >= 2 else {
-            throw J2KError.invalidParameter("Data too small for JPEG 2000 codestream")
+        try generateDataBins(from: data, limits: .default, retainedBytes: 0).bins
+    }
+
+    package struct BoundedGeneration: Sendable {
+        package let bins: [JPIPDataBin]
+        /// Computed upper bound from bin payload/descriptor counts, retained external
+        /// workspace and reserved cache entries. Excludes allocator/hash capacity overhead.
+        package let peakWorkspaceBytes: Int
+    }
+
+    /// Borrows the compressed input and scans ranges without making raw/extracted byte copies.
+    /// The first pass validates and admits every final payload and descriptor before allocation.
+    package func generateDataBins(
+        from data: Data, limits: ResourceLimits, retainedBytes: Int,
+        maximumAdditionalCacheEntries: Int = 0
+    ) throws -> BoundedGeneration {
+        guard data.count >= 2 else {
+            throw CodecError(.malformedInput, "Data too small for JPEG 2000 codestream")
         }
-
-        var bins: [JPIPDataBin] = []
-
-        // Find the codestream start (skip JP2 file format boxes if present)
-        let codestreamOffset = findCodestreamStart(in: bytes)
-        let csBytes = Array(bytes[codestreamOffset...])
-
-        // Extract main header
-        let mainHeader = try extractMainHeader(from: csBytes)
-        bins.append(JPIPDataBin(
-            binClass: .mainHeader,
-            binID: 0,
-            data: Data(mainHeader),
-            isComplete: true
-        ))
-
-        // Extract tile parts
-        let tileParts = extractTileParts(from: csBytes, headerEnd: mainHeader.count)
-        for (index, tilePart) in tileParts.enumerated() {
-            // Tile header data bin
-            bins.append(JPIPDataBin(
-                binClass: .tileHeader,
-                binID: index,
-                data: Data(tilePart.header),
-                isComplete: true
-            ))
-
-            // Tile data bin (bitstream data)
-            bins.append(JPIPDataBin(
-                binClass: .tile,
-                binID: index,
-                data: Data(tilePart.data),
-                isComplete: true
-            ))
+        guard retainedBytes >= 0, maximumAdditionalCacheEntries >= 0,
+              data.count <= limits.maximumCompressedBytes,
+              try Self.add(data.count, retainedBytes) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "JPIP generator input and retained cache exceed memory limits.")
         }
-
-        // If no tile parts found, package remaining data as tile 0
-        if tileParts.isEmpty && csBytes.count > mainHeader.count {
-            let remainingData = Array(csBytes[mainHeader.count...])
-            bins.append(JPIPDataBin(
-                binClass: .tile,
-                binID: 0,
-                data: Data(remainingData),
-                isComplete: true
-            ))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(limits.deadlineSeconds))
+        func checkWork() throws {
+            try Task.checkCancellation()
+            guard ContinuousClock.now <= deadline else {
+                throw CodecError(.resourceLimitExceeded, "JPIP data-bin generation deadline elapsed.")
+            }
         }
-
-        return bins
+        return try data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            var binCount = 0
+            var payloadBytes = 0
+            try enumerateBinRanges(bytes, checkWork: checkWork) { _, _, range in
+                binCount = try Self.add(binCount, 1)
+                payloadBytes = try Self.add(payloadBytes, range.count)
+            }
+            let (descriptorBytes, overflow) = binCount.multipliedReportingOverflow(by: MemoryLayout<JPIPDataBin>.stride)
+            guard !overflow else {
+                throw CodecError(.resourceLimitExceeded, "JPIP bin descriptor storage overflows Int.")
+            }
+            let (cacheDescriptorBytes, cacheOverflow) = min(binCount, maximumAdditionalCacheEntries)
+                .multipliedReportingOverflow(by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride)
+            guard !cacheOverflow else {
+                throw CodecError(.resourceLimitExceeded, "JPIP cache descriptor storage overflows Int.")
+            }
+            let workspace = try Self.add(retainedBytes, Self.add(payloadBytes, Self.add(descriptorBytes, cacheDescriptorBytes)))
+            guard workspace <= limits.maximumWorkspaceBytes,
+                  try Self.add(data.count, workspace) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "JPIP bin payloads, descriptors and retained cache exceed combined limits.")
+            }
+            try checkWork()
+            let bins = try Array<JPIPDataBin>(unsafeUninitializedCapacity: binCount) { buffer, initialisedCount in
+                guard let destination = buffer.baseAddress, let source = bytes.baseAddress else {
+                    throw CodecError(.internalFailure, "Missing admitted JPIP buffer storage.")
+                }
+                try enumerateBinRanges(bytes, checkWork: checkWork) { kind, id, range in
+                    guard initialisedCount < binCount else {
+                        throw CodecError(.internalFailure, "JPIP bin scan count changed between passes.")
+                    }
+                    let payload = Data(bytes: source.advanced(by: range.lowerBound), count: range.count)
+                    destination.advanced(by: initialisedCount).initialize(to: JPIPDataBin(
+                        binClass: kind, binID: id, data: payload, isComplete: true))
+                    initialisedCount += 1
+                }
+                guard initialisedCount == binCount else {
+                    throw CodecError(.internalFailure, "JPIP bin scan count changed between passes.")
+                }
+            }
+            return BoundedGeneration(bins: bins, peakWorkspaceBytes: workspace)
+        }
     }
 
     /// Checks whether the given data is an HTJ2K codestream.
@@ -122,13 +142,15 @@ public struct JPIPDataBinGenerator: Sendable {
         return (try? transcoder.isHTJ2K(data)) ?? false
     }
 
-    /// Reassembles a JPEG 2000 codestream from an array of JPIP data bins.
+    /// Reassembles a JPEG 2000 codestream (or JP2/JPH/JPX container when metadata bins are present)
+    /// from an array of JPIP data bins.
     ///
     /// Combines the `.mainHeader` bin, `.tileHeader` bins, `.tile` / `.precinct` bins,
-    /// and restores `SOD` (`0xFF93`) and `EOC` (`0xFFD9`) markers when needed.
+    /// restores `SOD` (`0xFF93`) and `EOC` (`0xFFD9`) markers when needed, and wraps
+    /// the codestream back into its container boxes when `.metadata` bin 0 is present.
     ///
     /// - Parameter bins: The JPIP data bins to reassemble.
-    /// - Returns: A reassembled JPEG 2000 codestream.
+    /// - Returns: A reassembled JPEG 2000 codestream or container.
     public func reassembleCodestream(from bins: [JPIPDataBin]) -> Data {
         guard !bins.isEmpty else { return Data() }
 
@@ -177,210 +199,201 @@ public struct JPIPDataBinGenerator: Sendable {
             }
         }
 
+        if let prefixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 0 }) {
+            var containerData = Data()
+            containerData.reserveCapacity(prefixMeta.data.count + 16 + output.count)
+            containerData.append(prefixMeta.data)
+            if output.count <= Int(UInt32.max) - 8 {
+                let boxLen = UInt32(output.count + 8)
+                containerData.append(contentsOf: [
+                    UInt8((boxLen >> 24) & 0xFF),
+                    UInt8((boxLen >> 16) & 0xFF),
+                    UInt8((boxLen >> 8) & 0xFF),
+                    UInt8(boxLen & 0xFF),
+                    0x6A, 0x70, 0x32, 0x63 // "jp2c"
+                ])
+            } else {
+                let xlBoxLen = UInt64(output.count) + 16
+                containerData.append(contentsOf: [
+                    0x00, 0x00, 0x00, 0x01,
+                    0x6A, 0x70, 0x32, 0x63, // "jp2c"
+                    UInt8((xlBoxLen >> 56) & 0xFF),
+                    UInt8((xlBoxLen >> 48) & 0xFF),
+                    UInt8((xlBoxLen >> 40) & 0xFF),
+                    UInt8((xlBoxLen >> 32) & 0xFF),
+                    UInt8((xlBoxLen >> 24) & 0xFF),
+                    UInt8((xlBoxLen >> 16) & 0xFF),
+                    UInt8((xlBoxLen >> 8) & 0xFF),
+                    UInt8(xlBoxLen & 0xFF)
+                ])
+            }
+            containerData.append(output)
+            if let suffixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 1 }) {
+                containerData.append(suffixMeta.data)
+            }
+            return containerData
+        }
+
         return output
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Borrowed range scanner
 
-    /// Finds the start of the JPEG 2000 codestream within file data.
-    ///
-    /// For raw J2K codestreams, returns 0. For JP2/JPH file formats,
-    /// finds the contiguous codestream box (jp2c) and returns its offset.
-    ///
-    /// - Parameter bytes: The file data bytes.
-    /// - Returns: Offset to the codestream start.
-    private func findCodestreamStart(in bytes: [UInt8]) -> Int {
-        // Check for SOC marker at start (raw codestream)
-        if bytes.count >= 2 && bytes[0] == 0xFF && bytes[1] == 0x4F {
-            return 0
+    private static func add(_ a: Int, _ b: Int) throws -> Int {
+        let (value, overflow) = a.addingReportingOverflow(b)
+        guard a >= 0, b >= 0, !overflow else {
+            throw CodecError(.resourceLimitExceeded, "JPIP generator storage arithmetic overflow.")
         }
-
-        // Look for JP2 signature box
-        if bytes.count >= 12 {
-            // JP2 signature: 0x0000000C 6A502020 0D0A870A
-            let isJP2 = bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x00 &&
-                         bytes[3] == 0x0C && bytes[4] == 0x6A && bytes[5] == 0x50
-
-            if isJP2 {
-                // Search for jp2c box (contiguous codestream)
-                var offset = 0
-                while offset <= bytes.count - 8 {
-                    let boxLenU32 = (UInt32(bytes[offset]) << 24) |
-                                    (UInt32(bytes[offset + 1]) << 16) |
-                                    (UInt32(bytes[offset + 2]) << 8) |
-                                    UInt32(bytes[offset + 3])
-                    let boxLen = Int(boxLenU32)
-                    let boxType = String(bytes: bytes[(offset + 4)..<(offset + 8)], encoding: .ascii)
-
-                    if boxType == "jp2c" {
-                        // Codestream starts after box header (8 bytes)
-                        return min(offset + 8, bytes.count)
-                    }
-
-                    if boxLen < 8 { break }
-                    let (nextOffset, overflow) = offset.addingReportingOverflow(boxLen)
-                    if overflow { break }
-                    offset = nextOffset
-                }
-            }
-        }
-
-        return 0
+        return value
     }
 
-    /// Extracts the main header from a codestream.
-    ///
-    /// The main header spans from SOC (0xFF4F) to the first SOT (0xFF90)
-    /// marker, or to the end of data if no SOT is found.
-    ///
-    /// - Parameter bytes: The codestream bytes starting at SOC.
-    /// - Returns: The main header bytes.
-    /// - Throws: ``J2KError`` if the codestream is invalid.
-    private func extractMainHeader(from bytes: [UInt8]) throws -> [UInt8] {
-        guard bytes.count >= 2, bytes[0] == 0xFF, bytes[1] == 0x4F else {
-            throw J2KError.invalidParameter("Invalid codestream: missing SOC marker")
+    /// Emits non-overlapping byte ranges. Neither pass allocates intermediate byte arrays.
+    private func enumerateBinRanges(
+        _ bytes: UnsafeRawBufferPointer,
+        checkWork: () throws -> Void,
+        emit: (JPIPDataBinClass, Int, Range<Int>) throws -> Void
+    ) throws {
+        func malformed(_ message: String) -> CodecError { CodecError(.malformedInput, message) }
+        func u16(_ p: Int) -> Int { (Int(bytes[p]) << 8) | Int(bytes[p + 1]) }
+        func u32(_ p: Int) -> UInt32 {
+            (UInt32(bytes[p]) << 24) | (UInt32(bytes[p + 1]) << 16) |
+            (UInt32(bytes[p + 2]) << 8) | UInt32(bytes[p + 3])
         }
-
-        // Scan for SOT marker (0xFF90) which marks end of main header
-        var offset = 2
-        while offset + 1 < bytes.count {
-            if bytes[offset] == 0xFF && bytes[offset + 1] == 0x90 {
-                return Array(bytes[0..<offset])
+        try checkWork()
+        var codestream = 0..<bytes.count
+        var prefixEnd = 0
+        var suffixStart = bytes.count
+        if bytes[0] != 0xFF || bytes[1] != 0x4F {
+            guard bytes.count >= 12, u32(0) == 12, u32(4) == 0x6A50_2020,
+                  u32(8) == 0x0D0A_870A else { throw malformed("Invalid codestream: missing SOC marker") }
+            var offset = 0
+            var foundCodestream = false
+            while offset < bytes.count {
+                try checkWork()
+                guard bytes.count - offset >= 8 else { throw malformed("Truncated JPIP container box.") }
+                let length = u32(offset)
+                let type = u32(offset + 4)
+                var headerSize = 8
+                let end: Int
+                if length == 0 {
+                    end = bytes.count
+                } else if length == 1 {
+                    guard bytes.count - offset >= 16 else { throw malformed("Truncated JPIP extended box length.") }
+                    let extended = (UInt64(u32(offset + 8)) << 32) | UInt64(u32(offset + 12))
+                    guard extended >= 16, extended <= UInt64(bytes.count - offset) else {
+                        throw malformed("Invalid JPIP extended box bounds.")
+                    }
+                    headerSize = 16
+                    end = offset + Int(extended)
+                } else {
+                    guard length >= 8, Int(length) <= bytes.count - offset else {
+                        throw malformed("Invalid JPIP container box bounds.")
+                    }
+                    end = offset + Int(length)
+                }
+                if type == 0x6A70_3263 {
+                    guard !foundCodestream, end - offset > headerSize else {
+                        throw malformed("Empty or duplicate JPIP codestream box.")
+                    }
+                    foundCodestream = true
+                    codestream = (offset + headerSize)..<end
+                    prefixEnd = offset
+                    suffixStart = end
+                }
+                offset = end
             }
+            guard foundCodestream else { throw malformed("JPIP container is missing a codestream box.") }
+        }
+        let start = codestream.lowerBound
+        let end = codestream.upperBound
+        guard end - start >= 2, bytes[start] == 0xFF, bytes[start + 1] == 0x4F else {
+            throw malformed("Invalid codestream: missing SOC marker")
+        }
+        if prefixEnd > 0 { try emit(.metadata, 0, 0..<prefixEnd) }
 
-            // If it's a marker with a length field, skip it
+        var offset = start + 2
+        var foundTile = false
+        while end - offset >= 2 {
+            try checkWork()
+            if bytes[offset] == 0xFF && bytes[offset + 1] == 0x90 {
+                foundTile = true
+                break
+            }
             if bytes[offset] == 0xFF && bytes[offset + 1] != 0xFF {
                 let marker = bytes[offset + 1]
-                // SOC (0x4F), SOD (0x93), EOC (0xD9) have no length
-                if marker == 0x4F || marker == 0x93 || marker == 0xD9 {
-                    offset += 2
-                } else if offset + 3 < bytes.count {
-                    let length = (Int(bytes[offset + 2]) << 8) | Int(bytes[offset + 3])
-                    guard length >= 2 else {
-                        offset += 2
-                        continue
-                    }
-                    let (nextOffset, overflow) = offset.addingReportingOverflow(2 + length)
-                    if overflow { break }
-                    offset = nextOffset
-                } else {
-                    offset += 2
+                if marker == 0xD9 { offset += 2; break }
+                guard marker != 0x4F, marker != 0x93, end - offset >= 4 else {
+                    throw malformed("Invalid marker in JPIP main header.")
                 }
+                let length = u16(offset + 2)
+                guard length >= 2, length <= end - offset - 2 else {
+                    throw malformed("Invalid JPIP main-header segment length.")
+                }
+                offset += 2 + length
             } else {
                 offset += 1
             }
         }
-
-        // No SOT found - entire data is the header
-        return bytes
-    }
-
-    /// Represents a parsed tile part.
-    struct TilePart {
-        /// The tile header bytes (SOT marker segment).
-        let header: [UInt8]
-
-        /// The tile bitstream data (after SOD).
-        let data: [UInt8]
-
-        /// The tile index from the SOT marker.
-        let tileIndex: Int
-    }
-
-    /// Extracts tile parts from a codestream.
-    ///
-    /// - Parameters:
-    ///   - bytes: The codestream bytes starting at SOC.
-    ///   - headerEnd: Offset past the main header.
-    /// - Returns: Array of tile parts found.
-    private func extractTileParts(from bytes: [UInt8], headerEnd: Int) -> [TilePart] {
-        var tileParts: [TilePart] = []
-        var offset = headerEnd
-
-        while offset + 1 < bytes.count {
-            // Look for SOT marker (0xFF90)
-            if bytes[offset] == 0xFF && bytes[offset + 1] == 0x90 {
-                guard offset + 11 < bytes.count else { break }
-
-                // Parse SOT marker segment
-                let sotLength = (Int(bytes[offset + 2]) << 8) | Int(bytes[offset + 3])
-                let tileIndex = (Int(bytes[offset + 4]) << 8) | Int(bytes[offset + 5])
-                let tilePartLengthU32 = (UInt32(bytes[offset + 6]) << 24) |
-                                        (UInt32(bytes[offset + 7]) << 16) |
-                                        (UInt32(bytes[offset + 8]) << 8) |
-                                        UInt32(bytes[offset + 9])
-                let tilePartLength = Int(tilePartLengthU32)
-
-                // Tile header: SOT marker + its length field content
-                let (headerEndOffset, hOverflow) = offset.addingReportingOverflow(2 + max(2, sotLength))
-                if hOverflow { break }
-
-                // Find SOD marker (0xFF93) to separate header from data
-                var sodOffset = min(headerEndOffset, bytes.count)
-                while sodOffset + 1 < bytes.count {
-                    if bytes[sodOffset] == 0xFF && bytes[sodOffset + 1] == 0x93 {
-                        break
-                    }
-                    // Skip marker segments within tile header
-                    if bytes[sodOffset] == 0xFF && bytes[sodOffset + 1] != 0xFF {
-                        let m = bytes[sodOffset + 1]
-                        if m == 0x4F || m == 0x93 || m == 0xD9 {
-                            break
-                        } else if sodOffset + 3 < bytes.count {
-                            let mLen = (Int(bytes[sodOffset + 2]) << 8) | Int(bytes[sodOffset + 3])
-                            guard mLen >= 2 else {
-                                sodOffset += 2
-                                continue
-                            }
-                            let (nextSod, mOverflow) = sodOffset.addingReportingOverflow(2 + mLen)
-                            if mOverflow { break }
-                            sodOffset = nextSod
-                        } else {
-                            sodOffset += 2
-                        }
-                    } else {
-                        sodOffset += 1
-                    }
-                }
-
-                let tileHeader = Array(bytes[offset..<min(sodOffset, bytes.count)])
-
-                // Tile data starts after SOD marker
-                let dataStart = min(sodOffset + 2, bytes.count)
-                let dataEnd: Int
-                if tilePartLength > 0 {
-                    let (tpEnd, tpOverflow) = offset.addingReportingOverflow(tilePartLength)
-                    dataEnd = tpOverflow ? bytes.count : min(tpEnd, bytes.count)
-                } else {
-                    // Find next SOT or EOC
-                    var nextOffset = dataStart
-                    while nextOffset + 1 < bytes.count {
-                        if bytes[nextOffset] == 0xFF &&
-                           (bytes[nextOffset + 1] == 0x90 || bytes[nextOffset + 1] == 0xD9) {
-                            break
-                        }
-                        nextOffset += 1
-                    }
-                    dataEnd = nextOffset
-                }
-
-                let tileData = dataStart < dataEnd ? Array(bytes[dataStart..<dataEnd]) : []
-
-                tileParts.append(TilePart(
-                    header: tileHeader,
-                    data: tileData,
-                    tileIndex: tileIndex
-                ))
-
-                offset = dataEnd
-            } else if bytes[offset] == 0xFF && bytes[offset + 1] == 0xD9 {
-                // EOC marker - end of codestream
-                break
+        try emit(.mainHeader, 0, start..<(foundTile ? offset : end))
+        var tileID = 0
+        while foundTile && offset < end {
+            try checkWork()
+            guard end - offset >= 2 else { throw malformed("Truncated JPIP tile marker.") }
+            if bytes[offset] == 0xFF && bytes[offset + 1] == 0xD9 { break }
+            guard end - offset >= 12, bytes[offset] == 0xFF, bytes[offset + 1] == 0x90,
+                  u16(offset + 2) == 10 else { throw malformed("Invalid JPIP SOT marker.") }
+            let psot = Int(u32(offset + 6))
+            let tileEnd: Int
+            if psot == 0 {
+                tileEnd = end
             } else {
-                offset += 1
+                guard psot >= 14, psot <= end - offset else {
+                    throw malformed("JPIP tile-part length is outside its codestream bounds.")
+                }
+                tileEnd = offset + psot
+            }
+            var sod = offset + 12
+            while true {
+                try checkWork()
+                guard tileEnd - sod >= 2 else { throw malformed("JPIP tile part has no SOD marker.") }
+                if bytes[sod] == 0xFF && bytes[sod + 1] == 0x93 { break }
+                guard bytes[sod] == 0xFF else { throw malformed("Invalid JPIP tile-header marker.") }
+                if bytes[sod + 1] == 0xFF { sod += 1; continue }
+                guard bytes[sod + 1] != 0x90, bytes[sod + 1] != 0xD9,
+                      tileEnd - sod >= 4 else { throw malformed("Invalid JPIP tile-header boundary.") }
+                let length = u16(sod + 2)
+                guard length >= 2, length <= tileEnd - sod - 2 else {
+                    throw malformed("JPIP tile-header segment extends past Psot.")
+                }
+                sod += 2 + length
+            }
+            let dataStart = sod + 2
+            var dataEnd = tileEnd
+            if psot == 0 {
+                // Psot=0 denotes the final tile part. Stop only at EOC, never rescan
+                // an overlapping SOT/header as a second materialised tile part.
+                var cursor = dataStart
+                while end - cursor >= 2 {
+                    if cursor & 0xFFFF == 0 { try checkWork() }
+                    if bytes[cursor] == 0xFF && bytes[cursor + 1] == 0xD9 { break }
+                    if bytes[cursor] == 0xFF && bytes[cursor + 1] == 0x90 {
+                        throw malformed("A zero-length JPIP tile part must be the final tile part.")
+                    }
+                    cursor += 1
+                }
+                guard end - cursor >= 2 else { throw malformed("Zero-length JPIP tile part has no EOC marker.") }
+                dataEnd = cursor
+            }
+            try emit(.tileHeader, tileID, offset..<sod)
+            try emit(.tile, tileID, dataStart..<dataEnd)
+            tileID = try Self.add(tileID, 1)
+            offset = dataEnd // Always beyond the SOT and SOD; no overlapping/backwards scan.
+        }
+        if foundTile {
+            guard end - offset == 2, bytes[offset] == 0xFF, bytes[offset + 1] == 0xD9 else {
+                throw malformed("JPIP codestream must finish with EOC after its final tile part.")
             }
         }
-
-        return tileParts
+        if suffixStart < bytes.count { try emit(.metadata, 1, suffixStart..<bytes.count) }
     }
 }
