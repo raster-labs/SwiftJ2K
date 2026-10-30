@@ -1,1 +1,3 @@
+Binary: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli
+cd82d10ab239c632784764628fc6b9bddae1231812b1e6244eac18d6b7bbe249  /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli
 swiftj2k-cli: 246 process checks passed

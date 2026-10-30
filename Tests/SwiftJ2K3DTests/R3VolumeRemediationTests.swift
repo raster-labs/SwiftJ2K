@@ -65,6 +65,28 @@ struct R3VolumeRemediationTests {
         return data.range(of: bytes) != nil
     }
 
+    private func makeTestVolume(
+        width: Int,
+        height: Int,
+        depth: Int,
+        bitDepth: Int,
+        signed: Bool,
+        componentSamples: [[Int64]]
+    ) -> J2KVolume {
+        let comps = componentSamples.enumerated().map { idx, samples in
+            J2KVolumeComponent(
+                index: idx,
+                bitDepth: bitDepth,
+                signed: signed,
+                width: width,
+                height: height,
+                depth: depth,
+                data: packSamples(samples, bitDepth: bitDepth, signed: signed)
+            )
+        }
+        return J2KVolume(width: width, height: height, depth: depth, components: comps)
+    }
+
     // MARK: - 1. Byte-Level Normative Marker Segment Inspection
 
     @Test("F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic")
@@ -555,10 +577,27 @@ struct R3VolumeRemediationTests {
         dupCap.append(valid.suffix(from: capPos + 12))
         #expect(throws: (any Error).self) { _ = try parser.parse(dupCap) }
 
-        // 5e. Reserved Ccap^15 bits 14..15 == 2 (0x8000):
-        var badCcap15 = valid
-        badCcap15[capPos + 10] = (badCcap15[capPos + 10] & 0x3F) | 0x80
-        #expect(throws: (any Error).self) { _ = try parser.parse(badCcap15) }
+        // 5e. ISO/IEC 15444-15:2019 Table A.2 Ccap^15 bit-field semantics:
+        //   - bits 15..14 == 10 (0x8000, HTDECLARED) and bit 13 == 1 (0x2000, MULTIHT) are LEGAL;
+        //   - bits 15..14 == 01 (0x4000) and bits 10..6 != 0 (0x07C0) are RESERVED and MUST throw.
+        var legalHTDeclared = valid
+        legalHTDeclared[capPos + 10] = (legalHTDeclared[capPos + 10] & 0x3F) | 0x80
+        let parsedHTDeclared = try parser.parse(legalHTDeclared)
+        #expect(parsedHTDeclared.hasHTJ2KCAPMarker == true)
+        #expect(((parsedHTDeclared.ccap15 ?? 0) & 0xC000) == 0x8000)
+
+        var legalMultiHT = valid
+        legalMultiHT[capPos + 10] = (legalMultiHT[capPos + 10] & 0x1F) | 0x20
+        let parsedMultiHT = try parser.parse(legalMultiHT)
+        #expect(((parsedMultiHT.ccap15 ?? 0) & 0x2000) == 0x2000)
+
+        var badCcap15Reserved01 = valid
+        badCcap15Reserved01[capPos + 10] = (badCcap15Reserved01[capPos + 10] & 0x3F) | 0x40
+        #expect(throws: (any Error).self) { _ = try parser.parse(badCcap15Reserved01) }
+
+        var badCcap15ReservedMidBits = valid
+        badCcap15ReservedMidBits[capPos + 10] |= 0x04 // bit 10 in reserved 0x07C0 mask
+        #expect(throws: (any Error).self) { _ = try parser.parse(badCcap15ReservedMidBits) }
 
         // 5f. HT codestream with zcb > 0:
         var badHTZcb = valid
@@ -615,5 +654,378 @@ struct R3VolumeRemediationTests {
         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+    }
+
+    // MARK: - 6. Phase R3 Rework Coverage (F01-01..04 & REG-01..03)
+
+    @Test("F01-01 & F01-03: CAP Ccap^15 MAGB Table 4 encoding and RGNFREE/HOMOGENEOUS consistency checks")
+    func capMagbTable4AndRgnfreeHomogeneousEnforcement() async throws {
+        // ITU-T T.814 Table 4 piecewise formula check:
+        //   P = 0 -> B = 8; 1 <= P < 20 -> B = P + 8; 20 <= P < 31 -> B = 4*(P - 19) + 27; P = 31 -> B = 74
+        let p8 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 8))
+        let p20 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 20))
+        let p28 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 28))
+        let p31 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 31))
+        let p74 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 74))
+        #expect(p8 == 0 && JP3DHTMarkers.decodeMAGBBound(p: p8) == 8)
+        #expect(p20 == 12 && JP3DHTMarkers.decodeMAGBBound(p: p20) == 20)
+        #expect(p28 == 20 && JP3DHTMarkers.decodeMAGBBound(p: p28) == 31)
+        #expect(p31 == 20 && JP3DHTMarkers.decodeMAGBBound(p: p31) == 31)
+        #expect(p74 == 31 && JP3DHTMarkers.decodeMAGBBound(p: p74) == 74)
+
+        // Multi-level 16-bit HTJ2K-in-JP3D emits valid MAGB >= wire K_max and round-trips bit-exact
+        let samples16: [Int64] = (0..<(8 * 8 * 4)).map { idx in
+            Int64((idx * 257) & 0xFFFF)
+        }
+        let vol16 = makeTestVolume(width: 8, height: 8, depth: 4, bitDepth: 16, signed: false, componentSamples: [samples16])
+        let encoded16 = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(
+                compressionMode: .losslessHTJ2K,
+                levelsX: 2,
+                levelsY: 2,
+                levelsZ: 1
+            )
+        ).encode(vol16)
+        let parsed16 = try JP3DCodestreamParser().parse(encoded16.data)
+        let ccap15 = try #require(parsed16.ccap15)
+        let maxWireK = (parsed16.qcd.steps.map(\.exponent).max() ?? 0) + parsed16.qcd.guardBits - 1
+        let decodedMagb = JP3DHTMarkers.decodeMAGBBound(p: Int(ccap15 & 0x1F))
+        #expect(decodedMagb >= maxWireK)
+
+        let decoded16 = try await JP3DDecoder().decode(encoded16.data)
+        #expect(unpackSamples(decoded16.volume.components[0].data, count: samples16.count, bitDepth: 16, signed: false) == samples16)
+
+        // Inject RGN marker into RGNFREE (bit 12 == 0) HT codestream -> MUST throw
+        let bytes16 = [UInt8](encoded16.data)
+        var sotPos16: Int?
+        for idx in 0..<(bytes16.count - 14) {
+            if bytes16[idx] == 0xFF && bytes16[idx + 1] == 0x90 {
+                sotPos16 = idx
+                break
+            }
+        }
+        if let sot = sotPos16 {
+            // Insert main-header RGN (0xFF5E, Lrgn=5, Crgn=0, Srgn=0, SPrgn=3) right before SOT
+            var withIllegalRGN = Data(encoded16.data.prefix(sot))
+            withIllegalRGN.append(contentsOf: [0xFF, 0x5E, 0x00, 0x05, 0x00, 0x00, 0x03])
+            withIllegalRGN.append(encoded16.data.suffix(from: sot))
+            #expect(throws: (any Error).self) {
+                _ = try JP3DCodestreamParser().parse(withIllegalRGN)
+            }
+        }
+    }
+
+    @Test("F01-02: Tile-header QCD/QCC/COD/COC/RGN overrides and wire K_max without private +3 lift")
+    func tileHeaderQcdQccCodCocPrecedenceAndWireKmax() async throws {
+        // Reproduce Codex independent finding: valid codestream whose main-header QCD has deliberately
+        // wrong exponents, overridden by a valid TPsot==0 tile-part QCD marker before SOD.
+        var samples: [Int64] = []
+        samples.reserveCapacity(8 * 8 * 4)
+        for i in 0..<(8 * 8 * 4) {
+            samples.append(Int64((i * 73 + 19) & 0xFF))
+        }
+        let vol = makeTestVolume(width: 8, height: 8, depth: 4, bitDepth: 8, signed: false, componentSamples: [samples])
+        let baseEncoded = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(
+                compressionMode: .lossless,
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        ).encode(vol)
+
+        // Extract main-header QCD segment from `baseEncoded.data`, corrupt main-header QCD exponents
+        // (+4 bitplanes on every subband so decoding without tile-QCD override produces completely wrong samples),
+        // and splice the true QCD segment into tile 0's TPsot==0 tile-part header before SOD (updating Psot).
+        let bytes = [UInt8](baseEncoded.data)
+        var pos = 2
+        var qcdRange: Range<Int>?
+        var sotOffset: Int?
+        while pos + 4 <= bytes.count {
+            if bytes[pos] == 0xFF && bytes[pos + 1] == 0x90 {
+                sotOffset = pos
+                break
+            }
+            let segLen = (Int(bytes[pos + 2]) << 8) | Int(bytes[pos + 3])
+            if bytes[pos] == 0xFF && bytes[pos + 1] == 0x5C {
+                qcdRange = pos..<(pos + 2 + segLen)
+            }
+            pos += 2 + segLen
+        }
+        let qRange = try #require(qcdRange)
+        let sot = try #require(sotOffset)
+        let trueQCDSegment = Data(bytes[qRange])
+
+        var overridden = Data(baseEncoded.data)
+        for idx in (qRange.lowerBound + 5)..<qRange.upperBound {
+            let origExp = Int(overridden[idx] >> 3)
+            let bogusExp = min(31, origExp + 4)
+            overridden[idx] = UInt8(bogusExp << 3)
+        }
+        let b0 = UInt32(overridden[sot + 6]) << 24
+        let b1 = UInt32(overridden[sot + 7]) << 16
+        let b2 = UInt32(overridden[sot + 8]) << 8
+        let b3 = UInt32(overridden[sot + 9])
+        let oldPsot = b0 | b1 | b2 | b3
+        let newPsot = oldPsot + UInt32(trueQCDSegment.count)
+        overridden[sot + 6] = UInt8((newPsot >> 24) & 0xFF)
+        overridden[sot + 7] = UInt8((newPsot >> 16) & 0xFF)
+        overridden[sot + 8] = UInt8((newPsot >> 8) & 0xFF)
+        overridden[sot + 9] = UInt8(newPsot & 0xFF)
+
+        // Splice `trueQCDSegment` right after the 12-byte SOT segment (before SOD 0xFF93)
+        var spliced = Data(overridden.prefix(sot + 12))
+        spliced.append(trueQCDSegment)
+        spliced.append(overridden.suffix(from: sot + 12))
+
+        let decodedOverride = try await JP3DDecoder().decode(spliced)
+        let actualOverride = unpackSamples(decodedOverride.volume.components[0].data, count: samples.count, bitDepth: 8, signed: false)
+        #expect(actualOverride == samples)
+
+        // Verify wire K_max == G + eps_b - 1 (no private +3 lift even when usesReversibleMCT == true)
+        let parsed0 = try JP3DCodestreamParser().parse(baseEncoded.data)
+        #expect(parsed0.qcd.guardBits == 2)
+        let lllBand = JP3DBandGeometry(
+            bandNumber: 0, orientation: .ll,
+            x0: 0, x1: 4, y0: 0, y1: 4, z0: 0, z1: 2,
+            bufX: 0, bufY: 0, bufZ: 0,
+            gain: 0, quantizationIndex: 0
+        )
+        let wireMb = parsed0.qcd.magnitudeBitPlanes(
+            for: lllBand, resolution: 0, maxLevels: 1, componentBitDepth: 8, usesReversibleMCT: true
+        )
+        #expect(wireMb == parsed0.qcd.guardBits + parsed0.qcd.steps[0].exponent - 1)
+    }
+
+    @Test("F01-04: Multi-pass HT block coding (SigProp + MagRef, MULTIHT, and 3*P0 placeholder passes) decodes and transcodes losslessly")
+    func multiPassHTSigPropMagRefMultiHTAndPlaceholders() async throws {
+        // 1. Direct HTBlockEncoder & HTBlockDecoder test across 3 passes (Cleanup + SigProp + MagRef),
+        //    4 passes across 2 HT sets (MULTIHT), SINGLEHT rejection, and 3*P0 leading placeholder passes.
+        let width = 8
+        let height = 8
+        let kMax = 9
+        var coeffs32: [Int32] = []
+        coeffs32.reserveCapacity(width * height)
+        for idx in 0..<(width * height) {
+            // Alternating >= 2 and 1 magnitudes so every |v|==1 sample has an adjacent significant neighbour
+            // in cleanup at bandShift=1, exercising both SigProp (for |v|==1) and MagRef (for |v|>=2)!
+            let mag: Int32 = (idx % 2 == 0) ? Int32(2 + ((idx * 37) & 0xFD)) : 1
+            coeffs32.append((idx % 3 == 0) ? -mag : mag)
+        }
+        let coeffs64 = coeffs32.map { Int64($0) }
+
+        // 3 passes in 1 HT set at sBlk = kMax - 2 = 7 (p = 1: Cleanup at bandShift=1 + SigProp + MagRef)
+        let cupBand1 = try HTBlockEncoder.encodeCleanup(
+            coefficients: coeffs32,
+            width: width,
+            height: height,
+            bandShift: 1
+        )
+        let refBand1 = try HTBlockEncoder.encodeRefinement(
+            coefficients: coeffs64,
+            width: width,
+            height: height,
+            cleanupBandShift: 1,
+            includeMagRef: true
+        )
+        #expect(!cupBand1.isEmpty)
+        #expect(!refBand1.isEmpty)
+
+        let rec3 = try HTBlockDecoder.decodeHTCodeBlock(
+            segments: [
+                HTSegmentInput(data: cupBand1, passes: 1),
+                HTSegmentInput(data: refBand1, passes: 2)
+            ],
+            zeroBitPlanes: kMax - 2,
+            totalPasses: 3,
+            width: width,
+            height: height,
+            kMax: kMax,
+            allowMultiHT: false
+        )
+        #expect(rec3 == coeffs64)
+
+        // 4 passes across 2 HT sets (MULTIHT: Set 0 = Cleanup@1 + SigProp + MagRef; Set 1 = Cleanup@0)
+        let cupBand0 = try HTBlockEncoder.encodeCleanup(
+            coefficients: coeffs32,
+            width: width,
+            height: height,
+            bandShift: 0
+        )
+        let multiHTSegments = [
+            HTSegmentInput(data: cupBand1, passes: 1),
+            HTSegmentInput(data: refBand1, passes: 2),
+            HTSegmentInput(data: cupBand0, passes: 1)
+        ]
+        let recMulti = try HTBlockDecoder.decodeHTCodeBlock(
+            segments: multiHTSegments,
+            zeroBitPlanes: kMax - 2,
+            totalPasses: 4,
+            width: width,
+            height: height,
+            kMax: kMax,
+            allowMultiHT: true
+        )
+        #expect(recMulti == coeffs64)
+
+        // SINGLEHT (allowMultiHT: false) MUST reject >1 HT sets per code-block!
+        #expect(throws: (any Error).self) {
+            _ = try HTBlockDecoder.decodeHTCodeBlock(
+                segments: multiHTSegments,
+                zeroBitPlanes: kMax - 2,
+                totalPasses: 4,
+                width: width,
+                height: height,
+                kMax: kMax,
+                allowMultiHT: false
+            )
+        }
+
+        // Leading 3*P0 zero-length placeholder passes (P0 = 1 -> 3 placeholder passes + 1 active cleanup pass)
+        let recPlaceholder = try HTBlockDecoder.decodeHTCodeBlock(
+            segments: [
+                HTSegmentInput(data: [], passes: 3),
+                HTSegmentInput(data: cupBand0, passes: 1)
+            ],
+            zeroBitPlanes: kMax - 2,
+            totalPasses: 4,
+            width: width,
+            height: height,
+            kMax: kMax,
+            allowMultiHT: false
+        )
+        #expect(recPlaceholder == coeffs64)
+
+        // 2. End-to-end 3D multi-layer HTJ2K-in-JP3D (qualityLayers = 2 -> multi-pass HT refinement + MULTIHT)
+        //    decode AND lossless transcode to Part 10 EBCOT and back to HTJ2K-in-JP3D!
+        var vox: [Int64] = []
+        vox.reserveCapacity(8 * 8 * 4)
+        for idx in 0..<(8 * 8 * 4) {
+            vox.append(Int64((idx * 53 + 7) & 0xFF))
+        }
+        let vol = makeTestVolume(width: 8, height: 8, depth: 4, bitDepth: 8, signed: false, componentSamples: [vox])
+        let multiLayerHT = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(
+                compressionMode: .losslessHTJ2K,
+                qualityLayers: 2,
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        ).encode(vol)
+        let parsedMultiHT = try JP3DCodestreamParser().parse(multiLayerHT.data)
+        #expect(((parsedMultiHT.ccap15 ?? 0) & 0x2000) == 0x2000)
+
+        let decodedMultiHT = try await JP3DDecoder().decode(multiLayerHT.data)
+        #expect(unpackSamples(decodedMultiHT.volume.components[0].data, count: vox.count, bitDepth: 8, signed: false) == vox)
+
+        let transcoder = JP3DTranscoder()
+        let toEBCOT = try await transcoder.transcode(multiLayerHT.data, configuration: .reverseDefault)
+        let decodedEBCOT = try await JP3DDecoder().decode(toEBCOT.data)
+        #expect(unpackSamples(decodedEBCOT.volume.components[0].data, count: vox.count, bitDepth: 8, signed: false) == vox)
+
+        let backToHT = try await transcoder.transcode(toEBCOT.data, configuration: .forwardDefault)
+        let decodedBackHT = try await JP3DDecoder().decode(backToHT.data)
+        #expect(unpackSamples(decodedBackHT.volume.components[0].data, count: vox.count, bitDepth: 8, signed: false) == vox)
+    }
+
+    @Test("REG-01, REG-02, REG-03: Pre-decode tile workspace limits, 20/24/38-bit Part 2 reversible bit-split JP3D, and honest SIMD acceleration policy")
+    func r1R2RegressionRepairsBitSplitWorkspaceAndAcceleration() async throws {
+        // REG-02: 20-bit unsigned, 24-bit signed, and 38-bit unsigned reversible JP3D bit-exact round-trip
+        let count = 4 * 4 * 2
+        let mask20 = (Int64(1) << 20) - 1
+        var samples20: [Int64] = []
+        for idx in 0..<count {
+            samples20.append((Int64(idx) * 32_771 + 123_457) & mask20)
+        }
+        let vol20 = makeTestVolume(width: 4, height: 4, depth: 2, bitDepth: 20, signed: false, componentSamples: [samples20])
+        let enc20 = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(compressionMode: .lossless, levelsX: 1, levelsY: 1, levelsZ: 1)
+        ).encode(vol20)
+        let dec20 = try await JP3DDecoder().decode(enc20.data)
+        #expect(dec20.volume.components[0].bitDepth == 20)
+        #expect(unpackSamples(dec20.volume.components[0].data, count: count, bitDepth: 20, signed: false) == samples20)
+
+        let mask23 = (Int64(1) << 23) - 1
+        var samples24Signed: [Int64] = []
+        for i in 0..<count {
+            let mag = (Int64(i) * 262_147 + 77_777) & mask23
+            samples24Signed.append((i % 2 == 0) ? mag : -mag)
+        }
+        let vol24s = makeTestVolume(width: 4, height: 4, depth: 2, bitDepth: 24, signed: true, componentSamples: [samples24Signed])
+        let enc24s = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(compressionMode: .losslessHTJ2K, levelsX: 1, levelsY: 1, levelsZ: 1)
+        ).encode(vol24s)
+        let dec24s = try await JP3DDecoder().decode(enc24s.data)
+        #expect(dec24s.volume.components[0].bitDepth == 24)
+        #expect(dec24s.volume.components[0].signed == true)
+        #expect(unpackSamples(dec24s.volume.components[0].data, count: count, bitDepth: 24, signed: true) == samples24Signed)
+
+        let mask38 = (Int64(1) << 38) - 1
+        var samples38: [Int64] = [0, mask38, Int64(1) << 37, (Int64(1) << 19) - 1, Int64(1) << 19]
+        for idx in 5..<count {
+            samples38.append((Int64(idx) * 1_000_000_007) & mask38)
+        }
+        let vol38 = makeTestVolume(width: 4, height: 4, depth: 2, bitDepth: 38, signed: false, componentSamples: [samples38])
+        let enc38 = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(compressionMode: .lossless, levelsX: 1, levelsY: 1, levelsZ: 1)
+        ).encode(vol38)
+        let dec38 = try await JP3DDecoder().decode(enc38.data)
+        #expect(dec38.volume.components[0].bitDepth == 38)
+        #expect(unpackSamples(dec38.volume.components[0].data, count: count, bitDepth: 38, signed: false) == samples38)
+
+        // REG-01: Tight maximumWorkspaceBytes fails pre-decode before allocating tile buffers
+        let tightWS = try ResourceLimits(maximumWorkspaceBytes: 128)
+        let contractDecoder = try VolumeDecoder()
+        do {
+            _ = try await contractDecoder.decode(enc20.data, options: VolumeDecodeOptions(resourceLimits: tightWS))
+            Issue.record("Expected tight maximumWorkspaceBytes to reject JP3D decode pre-allocation")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+
+        // REG-03: `.required(.accelerated)` executes genuine SIMD kernels on >=4-sample volumes (`backend == .accelerated`)
+        //         and fails explicitly with `CodecError(.backendUnavailable)` on 2x2x2 sub-vector volumes!
+        let contractEncoder = try VolumeEncoder(configuration: VolumeEncoderConfiguration(compressionMode: .lossless))
+        var simdSamples: [Int64] = []
+        for idx in 0..<(8 * 8 * 4) {
+            simdSamples.append(Int64(idx & 0xFF))
+        }
+        let simdVol = makeTestVolume(
+            width: 8,
+            height: 8,
+            depth: 4,
+            bitDepth: 8,
+            signed: false,
+            componentSamples: [simdSamples]
+        )
+        let accelEnc = try await contractEncoder.encode(
+            simdVol,
+            options: VolumeEncodeOptions(executionPolicy: .required(.accelerated))
+        )
+        #expect(accelEnc.report.backend == .accelerated)
+        let accelDec = try await contractDecoder.decode(
+            accelEnc.data,
+            options: VolumeDecodeOptions(executionPolicy: .required(.accelerated))
+        )
+        #expect(accelDec.report.backend == .accelerated)
+
+        let tinySubVectorVol = makeTestVolume(
+            width: 1,
+            height: 1,
+            depth: 2,
+            bitDepth: 8,
+            signed: false,
+            componentSamples: [[19, 211]]
+        )
+        do {
+            _ = try await contractEncoder.encode(
+                tinySubVectorVol,
+                options: VolumeEncodeOptions(executionPolicy: .required(.accelerated))
+            )
+            Issue.record("Expected 1x1x2 (<4-lane) volume under .required(.accelerated) to throw CodecError(.backendUnavailable)")
+        } catch let err as CodecError {
+            #expect(err.category == .backendUnavailable)
+        }
     }
 }

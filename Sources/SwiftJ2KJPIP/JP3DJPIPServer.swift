@@ -358,11 +358,36 @@ public actor JP3DJPIPServer {
     ) -> [JP3DDataBin] {
         if JP3DJPIPIndexer.isJP3DCodestream(registered.data) {
             var req = JPIPRequest(target: registered.volumeID)
-            req.roff = (xRange.lowerBound, yRange.lowerBound)
-            req.rsiz = (xRange.count, yRange.count)
-            req.zRange = (zRange.lowerBound, zRange.count)
+            if let dims = JPIPRequest.extract3DCodestreamDimensions(fromMainHeader: registered.data) {
+                let frame = JPIPRequest.frameDimensions3D(
+                    fullWidth: dims.width,
+                    fullHeight: dims.height,
+                    fullDepth: dims.depth,
+                    levelsX: dims.levelsX,
+                    levelsY: dims.levelsY,
+                    levelsZ: dims.levelsZ,
+                    resolutionLevel: resolutionLevel
+                )
+                let fx = frame[0], fy = frame[1], fz = frame[2]
+                req.fvsiz = frame
+                req.fvsizRoundDirection = "closest"
+                let ox = (xRange.lowerBound * fx) / max(1, dims.width)
+                let oy = (yRange.lowerBound * fy) / max(1, dims.height)
+                let oz = (zRange.lowerBound * fz) / max(1, dims.depth)
+                let endX = max(ox + 1, (xRange.upperBound * fx + max(1, dims.width) - 1) / max(1, dims.width))
+                let endY = max(oy + 1, (yRange.upperBound * fy + max(1, dims.height) - 1) / max(1, dims.height))
+                let endZ = max(oz + 1, (zRange.upperBound * fz + max(1, dims.depth) - 1) / max(1, dims.depth))
+                req.rvoff = [ox, oy, oz]
+                req.rvsiz = [
+                    max(1, min(fx, endX) - ox),
+                    max(1, min(fy, endY) - oy),
+                    max(1, min(fz, endZ) - oz)
+                ]
+            } else {
+                req.rvoff = [xRange.lowerBound, yRange.lowerBound, zRange.lowerBound]
+                req.rvsiz = [xRange.count, yRange.count, zRange.count]
+            }
             if qualityLayer > 0 { req.layers = qualityLayer }
-            if resolutionLevel > 0 { req.reslevels = resolutionLevel }
             req.streamType = .jppStream
 
             if let generated = try? dataBinGenerator.generateWireDataBins(

@@ -296,6 +296,24 @@ package struct JP3DTileComponentGeometry: Sendable {
     }
 }
 
+package struct JP3DTileGeometryFootprint: Sendable {
+    package let resolutionCount: Int
+    package let bandCount: Int
+    package let precinctCount: Int
+    package let precinctBandCount: Int
+    package let codeBlockCount: Int
+    package let tagTreeNodeCount: Int
+    package let geometryBytes: Int
+    package let decodeStateBytes: Int
+    package let encodeStateBytes: Int
+
+    package var totalBytes: Int {
+        let (s1, o1) = geometryBytes.addingReportingOverflow(decodeStateBytes)
+        let (s2, o2) = s1.addingReportingOverflow(encodeStateBytes)
+        return (o1 || o2) ? Int.max : s2
+    }
+}
+
 package enum JP3DGeometryBuilder {
     /// Computes the normative Morton sub-band count for arbitrary `(levelsX, levelsY, levelsZ)`.
     package static func totalSubbandCount(levelsX: Int, levelsY: Int, levelsZ: Int) -> Int {
@@ -321,6 +339,232 @@ package enum JP3DGeometryBuilder {
         case 2: return .lh
         default: return .hh
         }
+    }
+
+    /// Preflights exact 3D resolution, sub-band, precinct, code-block and octree tag-tree node
+    /// counts and nested array/state memory footprints using checked scalar arithmetic BEFORE
+    /// allocating any geometry or Tier-2 state arrays.
+    package static func preflightTileComponentGeometry(
+        x0: Int, x1: Int,
+        y0: Int, y1: Int,
+        z0: Int, z1: Int,
+        cod: JP3DCODInfo,
+        maximumWorkspaceBytes: Int? = nil,
+        includeDecodeState: Bool = false,
+        includeEncodeState: Bool = false
+    ) throws -> JP3DTileGeometryFootprint {
+        guard x1 > x0, y1 > y0, z1 > z0 else {
+            throw CodecError(.malformedInput, "Empty 3D tile-component bounds (\(x0)..<\(x1), \(y0)..<\(y1), \(z0)..<\(z1)).")
+        }
+        let lx = cod.levelsX, ly = cod.levelsY, lz = cod.levelsZ
+        guard (0...32).contains(lx), (0...32).contains(ly), (0...32).contains(lz) else {
+            throw CodecError(.malformedInput, "3D decomposition levels (\(lx), \(ly), \(lz)) out of range 0...32.")
+        }
+        let nl = max(lx, max(ly, lz))
+        let rawXCB = cod.codeBlockWidthExponent
+        let rawYCB = cod.codeBlockHeightExponent
+        let rawZCB = cod.codeBlockDepthExponent
+        guard (0...10).contains(rawXCB), (0...10).contains(rawYCB), (0...10).contains(rawZCB),
+              rawXCB + rawYCB + rawZCB <= 18 else {
+            throw CodecError(
+                .malformedInput,
+                "Invalid 3D code-block exponents (\(rawXCB), \(rawYCB), \(rawZCB)); sum must not exceed 18."
+            )
+        }
+        if (cod.codeBlockStyle & 0x40) != 0 {
+            guard rawZCB == 0, rawXCB >= 2, rawYCB >= 2, rawXCB + rawYCB <= 12 else {
+                throw CodecError(
+                    .malformedInput,
+                    "HTJ2K-in-JP3D requires zcb == 0 and 2 <= xcb, ycb with xcb + ycb <= 12 (got \(rawXCB), \(rawYCB), \(rawZCB))."
+                )
+            }
+        }
+
+        let resolutionCount = nl + 1
+        var bandCount = 0
+        var precinctCount = 0
+        var precinctBandCount = 0
+        var codeBlockCount = 0
+        var tagTreeNodeCount = 0
+        let arrayHeader = 32
+        let tagNodeStride = 16
+
+        @inline(__always)
+        func checkRunningFootprint() throws -> (geom: Int, dec: Int, enc: Int) {
+            let resBytes = try jp3dCheckedMul(resolutionCount, MemoryLayout<JP3DResolutionGeometry>.stride + 2 * arrayHeader)
+            let bandBytes = try jp3dCheckedMul(bandCount, MemoryLayout<JP3DBandGeometry>.stride)
+            let prcBytes = try jp3dCheckedMul(precinctCount, MemoryLayout<JP3DPrecinctGeometry>.stride + arrayHeader)
+            let pbBytes = try jp3dCheckedMul(precinctBandCount, MemoryLayout<JP3DPrecinctBandGeometry>.stride + arrayHeader)
+            let cbBytes = try jp3dCheckedMul(codeBlockCount, MemoryLayout<JP3DCodeBlockGeometry>.stride)
+            let g1 = try jp3dCheckedAdd(MemoryLayout<JP3DTileComponentGeometry>.stride + arrayHeader, resBytes)
+            let g2 = try jp3dCheckedAdd(bandBytes, prcBytes)
+            let g3 = try jp3dCheckedAdd(pbBytes, cbBytes)
+            let geomBytes = try jp3dCheckedAdd(g1, try jp3dCheckedAdd(g2, g3))
+
+            // Decode state holds `result` + `wireState` (`2 * CodeBlockContribution` per block) + `trees` (2 octree tag-trees per precinct-band).
+            let decContrib = try jp3dCheckedMul(codeBlockCount, 2 * MemoryLayout<CodeBlockContribution>.stride)
+            let decArrays = try jp3dCheckedAdd(
+                try jp3dCheckedMul(precinctCount, 3 * arrayHeader),
+                try jp3dCheckedMul(precinctBandCount, 4 * arrayHeader)
+            )
+            let treeBytes = try jp3dCheckedMul(tagTreeNodeCount, tagNodeStride)
+            let decBytes = try jp3dCheckedAdd(decContrib, try jp3dCheckedAdd(decArrays, treeBytes))
+
+            let encEntries = try jp3dCheckedMul(
+                codeBlockCount,
+                MemoryLayout<JP3DTier2Coder.BlockEncodingEntry>.stride + 32
+            )
+            let encBytes = try jp3dCheckedAdd(encEntries, try jp3dCheckedAdd(decArrays, treeBytes))
+
+            if let limit = maximumWorkspaceBytes {
+                var active = geomBytes
+                if includeDecodeState {
+                    active = try jp3dCheckedAdd(active, decBytes)
+                }
+                if includeEncodeState {
+                    active = try jp3dCheckedAdd(active, encBytes)
+                }
+                guard active <= limit else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "3D tile-component geometry/Tier-2 state requires \(active) bytes, exceeding workspace budget of \(limit) bytes."
+                    )
+                }
+            }
+            return (geomBytes, decBytes, encBytes)
+        }
+
+        for r in 0...nl {
+            let stepsFromFull = nl - r
+            let dx = min(stepsFromFull, lx)
+            let dy = min(stepsFromFull, ly)
+            let dz = min(stepsFromFull, lz)
+            let rx0 = jp3dCeilDivPow2(x0, dx), rx1 = jp3dCeilDivPow2(x1, dx)
+            let ry0 = jp3dCeilDivPow2(y0, dy), ry1 = jp3dCeilDivPow2(y1, dy)
+            let rz0 = jp3dCeilDivPow2(z0, dz), rz1 = jp3dCeilDivPow2(z1, dz)
+
+            let step = nl - r
+            let activeX = r > 0 && (step < lx)
+            let activeY = r > 0 && (step < ly)
+            let activeZ = r > 0 && (step < lz)
+
+            let (ppx, ppy, ppz) = cod.precinctExponents(forResolution: r)
+            guard (0...15).contains(ppx), (0...15).contains(ppy), (0...15).contains(ppz) else {
+                throw CodecError(.malformedInput, "3D precinct exponents (\(ppx), \(ppy), \(ppz)) out of range 0...15.")
+            }
+
+            let tlprcx = jp3dFloorDivPow2(rx0, ppx) << ppx
+            let tlprcy = jp3dFloorDivPow2(ry0, ppy) << ppy
+            let tlprcz = jp3dFloorDivPow2(rz0, ppz) << ppz
+            let brprcx = jp3dCeilDivPow2(rx1, ppx) << ppx
+            let brprcy = jp3dCeilDivPow2(ry1, ppy) << ppy
+            let brprcz = jp3dCeilDivPow2(rz1, ppz) << ppz
+
+            let prcW = rx1 > rx0 ? max(1, (brprcx - tlprcx) >> ppx) : 0
+            let prcH = ry1 > ry0 ? max(1, (brprcy - tlprcy) >> ppy) : 0
+            let prcD = rz1 > rz0 ? max(1, (brprcz - tlprcz) >> ppz) : 0
+            let totalPrecincts = try jp3dCheckedMul(try jp3dCheckedMul(prcW, prcH), prcD, label: "3D precinct count")
+            guard totalPrecincts <= (1 << 22) else {
+                throw CodecError(.resourceLimitExceeded, "3D precinct count \(totalPrecincts) exceeds safety ceiling.")
+            }
+
+            var bandBoxes: [(x0: Int, x1: Int, y0: Int, y1: Int, z0: Int, z1: Int)] = []
+            if r == 0 {
+                bandBoxes.append((rx0, rx1, ry0, ry1, rz0, rz1))
+            } else {
+                for bandNo in 1...7 {
+                    let x0b = bandNo & 1
+                    let y0b = (bandNo >> 1) & 1
+                    let z0b = (bandNo >> 2) & 1
+                    if (x0b == 1 && !activeX) || (y0b == 1 && !activeY) || (z0b == 1 && !activeZ) {
+                        continue
+                    }
+                    let bx0 = activeX ? jp3dCeilDivPow2(x0 - (1 << dx) * x0b, dx + 1) : rx0
+                    let bx1 = activeX ? jp3dCeilDivPow2(x1 - (1 << dx) * x0b, dx + 1) : rx1
+                    let by0 = activeY ? jp3dCeilDivPow2(y0 - (1 << dy) * y0b, dy + 1) : ry0
+                    let by1 = activeY ? jp3dCeilDivPow2(y1 - (1 << dy) * y0b, dy + 1) : ry1
+                    let bz0 = activeZ ? jp3dCeilDivPow2(z0 - (1 << dz) * z0b, dz + 1) : rz0
+                    let bz1 = activeZ ? jp3dCeilDivPow2(z1 - (1 << dz) * z0b, dz + 1) : rz1
+                    bandBoxes.append((bx0, bx1, by0, by1, bz0, bz1))
+                }
+            }
+
+            bandCount = try jp3dCheckedAdd(bandCount, bandBoxes.count)
+            precinctCount = try jp3dCheckedAdd(precinctCount, totalPrecincts)
+            precinctBandCount = try jp3dCheckedAdd(
+                precinctBandCount,
+                try jp3dCheckedMul(totalPrecincts, bandBoxes.count)
+            )
+            // Early budget check BEFORE iterating over precincts at resolution r!
+            _ = try checkRunningFootprint()
+
+            let cbgExpX = activeX ? max(0, ppx - 1) : ppx
+            let cbgExpY = activeY ? max(0, ppy - 1) : ppy
+            let cbgExpZ = activeZ ? max(0, ppz - 1) : ppz
+            let tlcbgX = activeX ? jp3dCeilDivPow2(tlprcx, 1) : tlprcx
+            let tlcbgY = activeY ? jp3dCeilDivPow2(tlprcy, 1) : tlprcy
+            let tlcbgZ = activeZ ? jp3dCeilDivPow2(tlprcz, 1) : tlprcz
+            let xcb = min(rawXCB, cbgExpX)
+            let ycb = min(rawYCB, cbgExpY)
+            let zcb = min(rawZCB, cbgExpZ)
+
+            for pz in 0..<prcD {
+                for py in 0..<prcH {
+                    for px in 0..<prcW {
+                        let cbgX0 = tlcbgX + px * (1 << cbgExpX)
+                        let cbgY0 = tlcbgY + py * (1 << cbgExpY)
+                        let cbgZ0 = tlcbgZ + pz * (1 << cbgExpZ)
+                        let cbgX1 = cbgX0 + (1 << cbgExpX)
+                        let cbgY1 = cbgY0 + (1 << cbgExpY)
+                        let cbgZ1 = cbgZ0 + (1 << cbgExpZ)
+
+                        for box in bandBoxes {
+                            let px0 = max(cbgX0, box.x0), px1 = min(cbgX1, box.x1)
+                            let py0 = max(cbgY0, box.y0), py1 = min(cbgY1, box.y1)
+                            let pz0 = max(cbgZ0, box.z0), pz1 = min(cbgZ1, box.z1)
+                            guard px1 > px0, py1 > py0, pz1 > pz0 else { continue }
+                            let tlcblkX = jp3dFloorDivPow2(px0, xcb) << xcb
+                            let tlcblkY = jp3dFloorDivPow2(py0, ycb) << ycb
+                            let tlcblkZ = jp3dFloorDivPow2(pz0, zcb) << zcb
+                            let brcblkX = jp3dCeilDivPow2(px1, xcb) << xcb
+                            let brcblkY = jp3dCeilDivPow2(py1, ycb) << ycb
+                            let brcblkZ = jp3dCeilDivPow2(pz1, zcb) << zcb
+                            let cbW = max(1, (brcblkX - tlcblkX) >> xcb)
+                            let cbH = max(1, (brcblkY - tlcblkY) >> ycb)
+                            let cbD = max(1, (brcblkZ - tlcblkZ) >> zcb)
+                            let blockCount = try jp3dCheckedMul(try jp3dCheckedMul(cbW, cbH), cbD, label: "3D code-block count")
+                            codeBlockCount = try jp3dCheckedAdd(codeBlockCount, blockCount, label: "Total 3D code-blocks")
+                            guard codeBlockCount <= (1 << 24) else {
+                                throw CodecError(.resourceLimitExceeded, "3D tile code-block count \(codeBlockCount) exceeds safety ceiling.")
+                            }
+                            let treeNodes = try JP3DTagTree.nodeCount(width: cbW, height: cbH, depth: cbD)
+                            tagTreeNodeCount = try jp3dCheckedAdd(
+                                tagTreeNodeCount,
+                                try jp3dCheckedMul(treeNodes, 2, label: "3D tag-tree pair nodes"),
+                                label: "Total 3D tag-tree nodes"
+                            )
+                        }
+                        if ((px + py * prcW + pz * prcW * prcH) & 63) == 63 {
+                            _ = try checkRunningFootprint()
+                        }
+                    }
+                }
+            }
+            _ = try checkRunningFootprint()
+        }
+
+        let totals = try checkRunningFootprint()
+        return JP3DTileGeometryFootprint(
+            resolutionCount: resolutionCount,
+            bandCount: bandCount,
+            precinctCount: precinctCount,
+            precinctBandCount: precinctBandCount,
+            codeBlockCount: codeBlockCount,
+            tagTreeNodeCount: tagTreeNodeCount,
+            geometryBytes: totals.geom,
+            decodeStateBytes: includeDecodeState ? totals.dec : 0,
+            encodeStateBytes: includeEncodeState ? totals.enc : 0
+        )
     }
 
     /// Builds complete 3D tile-component geometry with checked bounds before allocation.
@@ -553,6 +797,10 @@ package enum JP3DGeometryBuilder {
                 precincts: precincts
             ))
         }
+        StorageTelemetry.recordStage(
+            "jp3d-tile-geometry",
+            bytes: totalBlocks * MemoryLayout<JP3DCodeBlockGeometry>.stride
+        )
 
         return JP3DTileComponentGeometry(
             x0: x0, x1: x1,
@@ -660,12 +908,13 @@ package enum JP3DBitPlaneCoder {
 
         func beginPass() {
             if activeCoder == nil {
+                let remCap = max(1, maximumOutputBytes - committedData.count)
                 if style.passIsRaw(passIndex) {
-                    activeCoder = .raw(RawEncoder(maximumOutputBytes: max(1, maximumOutputBytes - committedData.count)))
+                    activeCoder = .raw(RawEncoder(maximumOutputBytes: remCap))
                 } else {
                     activeCoder = .mq(MQEncoder(
-                        capacityHint: max(16, count / 2),
-                        maximumOutputBytes: max(1, maximumOutputBytes - committedData.count)
+                        capacityHint: min(remCap, max(16, count / 2)),
+                        maximumOutputBytes: remCap
                     ))
                 }
             }
@@ -1400,16 +1649,191 @@ package enum JP3DWaveletEngine {
         for i in 0..<dn { line[2 * i + 1 - cas] = d[i] }
     }
 
+    // MARK: - 4-Lane SIMD Parallel 1D 5-3 & 9-7 Lifting (`SIMD4<Int64>` / `SIMD4<Double>`)
+
+    private static func forward53_1D_SIMD4(_ line: inout [SIMD4<Int64>], length n: Int, cas: Int) {
+        guard n > 0 else { return }
+        if n == 1 {
+            if cas != 0 {
+                line[0] &+= line[0]
+            }
+            return
+        }
+        let sn = (n + 1 - cas) >> 1
+        let dn = n - sn
+        var s = [SIMD4<Int64>](repeating: .zero, count: sn)
+        var d = [SIMD4<Int64>](repeating: .zero, count: dn)
+        for i in 0..<sn { s[i] = line[2 * i + cas] }
+        for i in 0..<dn { d[i] = line[2 * i + 1 - cas] }
+
+        @inline(__always)
+        func sExt(_ idx: Int) -> SIMD4<Int64> {
+            s[max(0, min(sn - 1, idx))]
+        }
+        @inline(__always)
+        func dExt(_ idx: Int) -> SIMD4<Int64> {
+            d[max(0, min(dn - 1, idx))]
+        }
+        let one = SIMD4<Int64>(repeating: 1)
+        let two = SIMD4<Int64>(repeating: 2)
+
+        if cas == 0 {
+            for i in 0..<dn {
+                d[i] &-= (sExt(i) &+ sExt(i + 1)) &>> one
+            }
+            for i in 0..<sn {
+                s[i] &+= (dExt(i - 1) &+ dExt(i) &+ two) &>> two
+            }
+        } else {
+            for i in 0..<dn {
+                d[i] &-= (sExt(i - 1) &+ sExt(i)) &>> one
+            }
+            for i in 0..<sn {
+                s[i] &+= (dExt(i) &+ dExt(i + 1) &+ two) &>> two
+            }
+        }
+        for i in 0..<sn { line[i] = s[i] }
+        for i in 0..<dn { line[sn + i] = d[i] }
+    }
+
+    private static func inverse53_1D_SIMD4(_ line: inout [SIMD4<Int64>], length n: Int, cas: Int) {
+        guard n > 0 else { return }
+        let one = SIMD4<Int64>(repeating: 1)
+        let two = SIMD4<Int64>(repeating: 2)
+        if n == 1 {
+            if cas != 0 {
+                line[0] &>>= one
+            }
+            return
+        }
+        let sn = (n + 1 - cas) >> 1
+        let dn = n - sn
+        var s = [SIMD4<Int64>](line[0..<sn])
+        var d = [SIMD4<Int64>](line[sn..<n])
+
+        @inline(__always)
+        func sExt(_ idx: Int) -> SIMD4<Int64> {
+            s[max(0, min(sn - 1, idx))]
+        }
+        @inline(__always)
+        func dExt(_ idx: Int) -> SIMD4<Int64> {
+            d[max(0, min(dn - 1, idx))]
+        }
+
+        if cas == 0 {
+            for i in 0..<sn {
+                s[i] &-= (dExt(i - 1) &+ dExt(i) &+ two) &>> two
+            }
+            for i in 0..<dn {
+                d[i] &+= (sExt(i) &+ sExt(i + 1)) &>> one
+            }
+        } else {
+            for i in 0..<sn {
+                s[i] &-= (dExt(i) &+ dExt(i + 1) &+ two) &>> two
+            }
+            for i in 0..<dn {
+                d[i] &+= (sExt(i - 1) &+ sExt(i)) &>> one
+            }
+        }
+        for i in 0..<sn { line[2 * i + cas] = s[i] }
+        for i in 0..<dn { line[2 * i + 1 - cas] = d[i] }
+    }
+
+    private static func forward97_1D_SIMD4(_ line: inout [SIMD4<Double>], length n: Int, cas: Int) {
+        guard n > 1 else { return }
+        let sn = (n + 1 - cas) >> 1
+        let dn = n - sn
+        var s = [SIMD4<Double>](repeating: .zero, count: sn)
+        var d = [SIMD4<Double>](repeating: .zero, count: dn)
+        for i in 0..<sn { s[i] = line[2 * i + cas] }
+        for i in 0..<dn { d[i] = line[2 * i + 1 - cas] }
+
+        @inline(__always)
+        func sExt(_ idx: Int) -> SIMD4<Double> {
+            s[max(0, min(sn - 1, idx))]
+        }
+        @inline(__always)
+        func dExt(_ idx: Int) -> SIMD4<Double> {
+            d[max(0, min(dn - 1, idx))]
+        }
+
+        let vAlpha = SIMD4<Double>(repeating: alpha)
+        let vBeta  = SIMD4<Double>(repeating: beta)
+        let vGamma = SIMD4<Double>(repeating: gamma)
+        let vDelta = SIMD4<Double>(repeating: delta)
+        let vInvK  = SIMD4<Double>(repeating: invK)
+        let vHalfK = SIMD4<Double>(repeating: halfK)
+
+        if cas == 0 {
+            for i in 0..<dn { d[i] += vAlpha * (sExt(i) + sExt(i + 1)) }
+            for i in 0..<sn { s[i] += vBeta * (dExt(i - 1) + dExt(i)) }
+            for i in 0..<dn { d[i] += vGamma * (sExt(i) + sExt(i + 1)) }
+            for i in 0..<sn { s[i] += vDelta * (dExt(i - 1) + dExt(i)) }
+        } else {
+            for i in 0..<dn { d[i] += vAlpha * (sExt(i - 1) + sExt(i)) }
+            for i in 0..<sn { s[i] += vBeta * (dExt(i) + dExt(i + 1)) }
+            for i in 0..<dn { d[i] += vGamma * (sExt(i - 1) + sExt(i)) }
+            for i in 0..<sn { s[i] += vDelta * (dExt(i) + dExt(i + 1)) }
+        }
+        for i in 0..<sn { line[i] = s[i] * vInvK }
+        for i in 0..<dn { line[sn + i] = d[i] * vHalfK }
+    }
+
+    private static func inverse97_1D_SIMD4(_ line: inout [SIMD4<Double>], length n: Int, cas: Int) {
+        guard n > 1 else { return }
+        let sn = (n + 1 - cas) >> 1
+        let dn = n - sn
+        let vKNorm   = SIMD4<Double>(repeating: kNorm)
+        let vTwoInvK = SIMD4<Double>(repeating: 2.0 * invK)
+        var s = [SIMD4<Double>](repeating: .zero, count: sn)
+        var d = [SIMD4<Double>](repeating: .zero, count: dn)
+        for i in 0..<sn { s[i] = line[i] * vKNorm }
+        for i in 0..<dn { d[i] = line[sn + i] * vTwoInvK }
+
+        @inline(__always)
+        func sExt(_ idx: Int) -> SIMD4<Double> {
+            s[max(0, min(sn - 1, idx))]
+        }
+        @inline(__always)
+        func dExt(_ idx: Int) -> SIMD4<Double> {
+            d[max(0, min(dn - 1, idx))]
+        }
+
+        let vAlpha = SIMD4<Double>(repeating: alpha)
+        let vBeta  = SIMD4<Double>(repeating: beta)
+        let vGamma = SIMD4<Double>(repeating: gamma)
+        let vDelta = SIMD4<Double>(repeating: delta)
+
+        if cas == 0 {
+            for i in 0..<sn { s[i] -= vDelta * (dExt(i - 1) + dExt(i)) }
+            for i in 0..<dn { d[i] -= vGamma * (sExt(i) + sExt(i + 1)) }
+            for i in 0..<sn { s[i] -= vBeta * (dExt(i - 1) + dExt(i)) }
+            for i in 0..<dn { d[i] -= vAlpha * (sExt(i) + sExt(i + 1)) }
+        } else {
+            for i in 0..<sn { s[i] -= vDelta * (dExt(i) + dExt(i + 1)) }
+            for i in 0..<dn { d[i] -= vGamma * (sExt(i - 1) + sExt(i)) }
+            for i in 0..<sn { s[i] -= vBeta * (dExt(i) + dExt(i + 1)) }
+            for i in 0..<dn { d[i] -= vAlpha * (sExt(i - 1) + sExt(i)) }
+        }
+        for i in 0..<sn { line[2 * i + cas] = s[i] }
+        for i in 0..<dn { line[2 * i + 1 - cas] = d[i] }
+    }
+
     // MARK: - Separable 3D Forward & Inverse DWT
 
+    @discardableResult
     package static func forward53_3D(
         buffer: inout [Int64],
-        geometry: JP3DTileComponentGeometry
-    ) {
+        geometry: JP3DTileComponentGeometry,
+        useSIMD: Bool = false
+    ) -> Bool {
         let w = geometry.width, h = geometry.height, wh = w * h
         let nl = geometry.maxLevels
-        guard nl > 0 else { return }
-        var scratch = [Int64](repeating: 0, count: max(w, max(h, geometry.depth)))
+        guard nl > 0 else { return false }
+        let maxDim = max(w, max(h, geometry.depth))
+        var scratch = [Int64](repeating: 0, count: maxDim)
+        var simdScratch = useSIMD ? [SIMD4<Int64>](repeating: .zero, count: maxDim) : []
+        var usedSIMD = false
 
         for r in stride(from: nl, through: 1, by: -1) {
             let res = geometry.resolutions[r]
@@ -1417,52 +1841,125 @@ package enum JP3DWaveletEngine {
             if res.axisActiveX {
                 let casX = res.x0 & 1
                 for z in 0..<rd {
-                    for y in 0..<rh {
+                    var y = 0
+                    if useSIMD {
+                        while y + 4 <= rh {
+                            let b0 = z * wh + y * w
+                            let b1 = b0 + w
+                            let b2 = b1 + w
+                            let b3 = b2 + w
+                            for x in 0..<rw {
+                                simdScratch[x] = SIMD4<Int64>(buffer[b0 + x], buffer[b1 + x], buffer[b2 + x], buffer[b3 + x])
+                            }
+                            forward53_1D_SIMD4(&simdScratch, length: rw, cas: casX)
+                            for x in 0..<rw {
+                                let v = simdScratch[x]
+                                buffer[b0 + x] = v[0]
+                                buffer[b1 + x] = v[1]
+                                buffer[b2 + x] = v[2]
+                                buffer[b3 + x] = v[3]
+                            }
+                            usedSIMD = true
+                            y += 4
+                        }
+                    }
+                    while y < rh {
                         let base = z * wh + y * w
                         for x in 0..<rw { scratch[x] = buffer[base + x] }
                         forward53_1D(&scratch, length: rw, cas: casX)
                         for x in 0..<rw { buffer[base + x] = scratch[x] }
+                        y += 1
                     }
                 }
             }
             if res.axisActiveY {
                 let casY = res.y0 & 1
                 for z in 0..<rd {
-                    for x in 0..<rw {
+                    var x = 0
+                    if useSIMD {
+                        while x + 4 <= rw {
+                            let base = z * wh + x
+                            for y in 0..<rh {
+                                let off = base + y * w
+                                simdScratch[y] = SIMD4<Int64>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            forward53_1D_SIMD4(&simdScratch, length: rh, cas: casY)
+                            for y in 0..<rh {
+                                let off = base + y * w
+                                let v = simdScratch[y]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < rw {
                         let base = z * wh + x
                         for y in 0..<rh { scratch[y] = buffer[base + y * w] }
                         forward53_1D(&scratch, length: rh, cas: casY)
                         for y in 0..<rh { buffer[base + y * w] = scratch[y] }
+                        x += 1
                     }
                 }
             }
             if res.axisActiveZ {
                 let casZ = res.z0 & 1
                 for y in 0..<rh {
-                    for x in 0..<rw {
+                    var x = 0
+                    if useSIMD {
+                        while x + 4 <= rw {
+                            let base = y * w + x
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                simdScratch[z] = SIMD4<Int64>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            forward53_1D_SIMD4(&simdScratch, length: rd, cas: casZ)
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                let v = simdScratch[z]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < rw {
                         let base = y * w + x
                         for z in 0..<rd { scratch[z] = buffer[base + z * wh] }
                         forward53_1D(&scratch, length: rd, cas: casZ)
                         for z in 0..<rd { buffer[base + z * wh] = scratch[z] }
+                        x += 1
                     }
                 }
             }
         }
+        return usedSIMD
     }
 
     /// Inverse 3D 5-3 DWT. When `skipLastXYLevels > 0`, stops XY reconstruction `skipLastXYLevels`
     /// steps before full XY resolution while completing all Z-axis inverse DWT steps so Z depth
     /// remains full-resolution (matching the R2 reduced-resolution contract).
+    @discardableResult
     package static func inverse53_3D(
         buffer: inout [Int64],
         geometry: JP3DTileComponentGeometry,
-        skipLastXYLevels: Int = 0
-    ) {
+        skipLastXYLevels: Int = 0,
+        useSIMD: Bool = false
+    ) -> Bool {
         let w = geometry.width, h = geometry.height, wh = w * h
         let nl = geometry.maxLevels
-        guard nl > 0 else { return }
+        guard nl > 0 else { return false }
         let maxRForXY = max(0, nl - max(0, skipLastXYLevels))
-        var scratch = [Int64](repeating: 0, count: max(w, max(h, geometry.depth)))
+        let maxDim = max(w, max(h, geometry.depth))
+        var scratch = [Int64](repeating: 0, count: maxDim)
+        var simdScratch = useSIMD ? [SIMD4<Int64>](repeating: .zero, count: maxDim) : []
+        var usedSIMD = false
 
         // Track current reconstructed XY extent when XY stops early while Z continues.
         var curW = geometry.resolutions[0].width
@@ -1478,22 +1975,66 @@ package enum JP3DWaveletEngine {
             if res.axisActiveZ {
                 let casZ = res.z0 & 1
                 for y in 0..<targetH {
-                    for x in 0..<targetW {
+                    var x = 0
+                    if useSIMD {
+                        while x + 4 <= targetW {
+                            let base = y * w + x
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                simdScratch[z] = SIMD4<Int64>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            inverse53_1D_SIMD4(&simdScratch, length: rd, cas: casZ)
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                let v = simdScratch[z]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < targetW {
                         let base = y * w + x
                         for z in 0..<rd { scratch[z] = buffer[base + z * wh] }
                         inverse53_1D(&scratch, length: rd, cas: casZ)
                         for z in 0..<rd { buffer[base + z * wh] = scratch[z] }
+                        x += 1
                     }
                 }
             }
             if doXY && res.axisActiveY {
                 let casY = res.y0 & 1
                 for z in 0..<rd {
-                    for x in 0..<targetW {
+                    var x = 0
+                    if useSIMD {
+                        while x + 4 <= targetW {
+                            let base = z * wh + x
+                            for y in 0..<targetH {
+                                let off = base + y * w
+                                simdScratch[y] = SIMD4<Int64>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            inverse53_1D_SIMD4(&simdScratch, length: targetH, cas: casY)
+                            for y in 0..<targetH {
+                                let off = base + y * w
+                                let v = simdScratch[y]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < targetW {
                         let base = z * wh + x
                         for y in 0..<targetH { scratch[y] = buffer[base + y * w] }
                         inverse53_1D(&scratch, length: targetH, cas: casY)
                         for y in 0..<targetH { buffer[base + y * w] = scratch[y] }
+                        x += 1
                     }
                 }
                 curH = targetH
@@ -1501,26 +2042,55 @@ package enum JP3DWaveletEngine {
             if doXY && res.axisActiveX {
                 let casX = res.x0 & 1
                 for z in 0..<rd {
-                    for y in 0..<targetH {
+                    var y = 0
+                    if useSIMD {
+                        while y + 4 <= targetH {
+                            let b0 = z * wh + y * w
+                            let b1 = b0 + w
+                            let b2 = b1 + w
+                            let b3 = b2 + w
+                            for x in 0..<targetW {
+                                simdScratch[x] = SIMD4<Int64>(buffer[b0 + x], buffer[b1 + x], buffer[b2 + x], buffer[b3 + x])
+                            }
+                            inverse53_1D_SIMD4(&simdScratch, length: targetW, cas: casX)
+                            for x in 0..<targetW {
+                                let v = simdScratch[x]
+                                buffer[b0 + x] = v[0]
+                                buffer[b1 + x] = v[1]
+                                buffer[b2 + x] = v[2]
+                                buffer[b3 + x] = v[3]
+                            }
+                            usedSIMD = true
+                            y += 4
+                        }
+                    }
+                    while y < targetH {
                         let base = z * wh + y * w
                         for x in 0..<targetW { scratch[x] = buffer[base + x] }
                         inverse53_1D(&scratch, length: targetW, cas: casX)
                         for x in 0..<targetW { buffer[base + x] = scratch[x] }
+                        y += 1
                     }
                 }
                 curW = targetW
             }
         }
+        return usedSIMD
     }
 
+    @discardableResult
     package static func forward97_3D(
         buffer: inout [Double],
-        geometry: JP3DTileComponentGeometry
-    ) {
+        geometry: JP3DTileComponentGeometry,
+        useSIMD: Bool = false
+    ) -> Bool {
         let w = geometry.width, h = geometry.height, wh = w * h
         let nl = geometry.maxLevels
-        guard nl > 0 else { return }
-        var scratch = [Double](repeating: 0, count: max(w, max(h, geometry.depth)))
+        guard nl > 0 else { return false }
+        let maxDim = max(w, max(h, geometry.depth))
+        var scratch = [Double](repeating: 0, count: maxDim)
+        var simdScratch = useSIMD ? [SIMD4<Double>](repeating: .zero, count: maxDim) : []
+        var usedSIMD = false
 
         for r in stride(from: nl, through: 1, by: -1) {
             let res = geometry.resolutions[r]
@@ -1528,49 +2098,122 @@ package enum JP3DWaveletEngine {
             if res.axisActiveX {
                 let casX = res.x0 & 1
                 for z in 0..<rd {
-                    for y in 0..<rh {
+                    var y = 0
+                    if useSIMD && rw > 1 {
+                        while y + 4 <= rh {
+                            let b0 = z * wh + y * w
+                            let b1 = b0 + w
+                            let b2 = b1 + w
+                            let b3 = b2 + w
+                            for x in 0..<rw {
+                                simdScratch[x] = SIMD4<Double>(buffer[b0 + x], buffer[b1 + x], buffer[b2 + x], buffer[b3 + x])
+                            }
+                            forward97_1D_SIMD4(&simdScratch, length: rw, cas: casX)
+                            for x in 0..<rw {
+                                let v = simdScratch[x]
+                                buffer[b0 + x] = v[0]
+                                buffer[b1 + x] = v[1]
+                                buffer[b2 + x] = v[2]
+                                buffer[b3 + x] = v[3]
+                            }
+                            usedSIMD = true
+                            y += 4
+                        }
+                    }
+                    while y < rh {
                         let base = z * wh + y * w
                         for x in 0..<rw { scratch[x] = buffer[base + x] }
                         forward97_1D(&scratch, length: rw, cas: casX)
                         for x in 0..<rw { buffer[base + x] = scratch[x] }
+                        y += 1
                     }
                 }
             }
             if res.axisActiveY {
                 let casY = res.y0 & 1
                 for z in 0..<rd {
-                    for x in 0..<rw {
+                    var x = 0
+                    if useSIMD && rh > 1 {
+                        while x + 4 <= rw {
+                            let base = z * wh + x
+                            for y in 0..<rh {
+                                let off = base + y * w
+                                simdScratch[y] = SIMD4<Double>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            forward97_1D_SIMD4(&simdScratch, length: rh, cas: casY)
+                            for y in 0..<rh {
+                                let off = base + y * w
+                                let v = simdScratch[y]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < rw {
                         let base = z * wh + x
                         for y in 0..<rh { scratch[y] = buffer[base + y * w] }
                         forward97_1D(&scratch, length: rh, cas: casY)
                         for y in 0..<rh { buffer[base + y * w] = scratch[y] }
+                        x += 1
                     }
                 }
             }
             if res.axisActiveZ {
                 let casZ = res.z0 & 1
                 for y in 0..<rh {
-                    for x in 0..<rw {
+                    var x = 0
+                    if useSIMD && rd > 1 {
+                        while x + 4 <= rw {
+                            let base = y * w + x
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                simdScratch[z] = SIMD4<Double>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            forward97_1D_SIMD4(&simdScratch, length: rd, cas: casZ)
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                let v = simdScratch[z]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < rw {
                         let base = y * w + x
                         for z in 0..<rd { scratch[z] = buffer[base + z * wh] }
                         forward97_1D(&scratch, length: rd, cas: casZ)
                         for z in 0..<rd { buffer[base + z * wh] = scratch[z] }
+                        x += 1
                     }
                 }
             }
         }
+        return usedSIMD
     }
 
+    @discardableResult
     package static func inverse97_3D(
         buffer: inout [Double],
         geometry: JP3DTileComponentGeometry,
-        skipLastXYLevels: Int = 0
-    ) {
+        skipLastXYLevels: Int = 0,
+        useSIMD: Bool = false
+    ) -> Bool {
         let w = geometry.width, h = geometry.height, wh = w * h
         let nl = geometry.maxLevels
-        guard nl > 0 else { return }
+        guard nl > 0 else { return false }
         let maxRForXY = max(0, nl - max(0, skipLastXYLevels))
-        var scratch = [Double](repeating: 0, count: max(w, max(h, geometry.depth)))
+        let maxDim = max(w, max(h, geometry.depth))
+        var scratch = [Double](repeating: 0, count: maxDim)
+        var simdScratch = useSIMD ? [SIMD4<Double>](repeating: .zero, count: maxDim) : []
+        var usedSIMD = false
 
         var curW = geometry.resolutions[0].width
         var curH = geometry.resolutions[0].height
@@ -1585,22 +2228,66 @@ package enum JP3DWaveletEngine {
             if res.axisActiveZ {
                 let casZ = res.z0 & 1
                 for y in 0..<targetH {
-                    for x in 0..<targetW {
+                    var x = 0
+                    if useSIMD && rd > 1 {
+                        while x + 4 <= targetW {
+                            let base = y * w + x
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                simdScratch[z] = SIMD4<Double>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            inverse97_1D_SIMD4(&simdScratch, length: rd, cas: casZ)
+                            for z in 0..<rd {
+                                let off = base + z * wh
+                                let v = simdScratch[z]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < targetW {
                         let base = y * w + x
                         for z in 0..<rd { scratch[z] = buffer[base + z * wh] }
                         inverse97_1D(&scratch, length: rd, cas: casZ)
                         for z in 0..<rd { buffer[base + z * wh] = scratch[z] }
+                        x += 1
                     }
                 }
             }
             if doXY && res.axisActiveY {
                 let casY = res.y0 & 1
                 for z in 0..<rd {
-                    for x in 0..<targetW {
+                    var x = 0
+                    if useSIMD && targetH > 1 {
+                        while x + 4 <= targetW {
+                            let base = z * wh + x
+                            for y in 0..<targetH {
+                                let off = base + y * w
+                                simdScratch[y] = SIMD4<Double>(buffer[off], buffer[off + 1], buffer[off + 2], buffer[off + 3])
+                            }
+                            inverse97_1D_SIMD4(&simdScratch, length: targetH, cas: casY)
+                            for y in 0..<targetH {
+                                let off = base + y * w
+                                let v = simdScratch[y]
+                                buffer[off] = v[0]
+                                buffer[off + 1] = v[1]
+                                buffer[off + 2] = v[2]
+                                buffer[off + 3] = v[3]
+                            }
+                            usedSIMD = true
+                            x += 4
+                        }
+                    }
+                    while x < targetW {
                         let base = z * wh + x
                         for y in 0..<targetH { scratch[y] = buffer[base + y * w] }
                         inverse97_1D(&scratch, length: targetH, cas: casY)
                         for y in 0..<targetH { buffer[base + y * w] = scratch[y] }
+                        x += 1
                     }
                 }
                 curH = targetH
@@ -1608,16 +2295,40 @@ package enum JP3DWaveletEngine {
             if doXY && res.axisActiveX {
                 let casX = res.x0 & 1
                 for z in 0..<rd {
-                    for y in 0..<targetH {
+                    var y = 0
+                    if useSIMD && targetW > 1 {
+                        while y + 4 <= targetH {
+                            let b0 = z * wh + y * w
+                            let b1 = b0 + w
+                            let b2 = b1 + w
+                            let b3 = b2 + w
+                            for x in 0..<targetW {
+                                simdScratch[x] = SIMD4<Double>(buffer[b0 + x], buffer[b1 + x], buffer[b2 + x], buffer[b3 + x])
+                            }
+                            inverse97_1D_SIMD4(&simdScratch, length: targetW, cas: casX)
+                            for x in 0..<targetW {
+                                let v = simdScratch[x]
+                                buffer[b0 + x] = v[0]
+                                buffer[b1 + x] = v[1]
+                                buffer[b2 + x] = v[2]
+                                buffer[b3 + x] = v[3]
+                            }
+                            usedSIMD = true
+                            y += 4
+                        }
+                    }
+                    while y < targetH {
                         let base = z * wh + y * w
                         for x in 0..<targetW { scratch[x] = buffer[base + x] }
                         inverse97_1D(&scratch, length: targetW, cas: casX)
                         for x in 0..<targetW { buffer[base + x] = scratch[x] }
+                        y += 1
                     }
                 }
                 curW = targetW
             }
         }
+        return usedSIMD
     }
 }
 
@@ -1671,13 +2382,6 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
         }
         if style == 1 {
             let base = steps[0]
-            // ISO/IEC 15444-1 Eq. E-5 extended to 3D: eps_b = eps_0 - N_L + n_b = eps_0 - max(0, r - 1) - (r == 0 ? 0 : 1) ...
-            // At r = 0 (n_b = NL): eps = eps_0. At r >= 1 (n_b = NL - r + 1): eps = eps_0 - (r - 1)?
-            // Check ISO/IEC 15444-1 Eq. E-5 & openjp3d jp3d.c:1154:
-            // n_b is decomposition level (NL for r=0 and r=1, NL-1 for r=2, ..., 1 for r=NL):
-            // eps_b = eps_0 - NL + n_b = (r <= 1) ? eps_0 : (eps_0 - (r - 1))!
-            // Verify jp3d.c:1154: `expn[0] - (bandno - 1) / 7`: for bandno 1..7 (r=1), (bandno-1)/7 == 0 -> eps_0!
-            // For bandno 8..14 (r=2), (bandno-1)/7 == 1 -> eps_0 - 1!
             let dec = rOffsetForDerived(resolution: resolution)
             return (exponent: max(0, base.exponent - dec), mantissa: base.mantissa)
         }
@@ -1690,7 +2394,8 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
         resolution <= 1 ? 0 : (resolution - 1)
     }
 
-    /// Computes sub-band `Mb = G + eps_b - 1` (with deterministic extended-precision ceiling lift for 34...38-bit reversible volumes).
+    /// Computes normative sub-band `Mb = G + eps_b - 1 + roiShift` strictly from wire `QCD`/`QCC` and `RGN`
+    /// parameters (ITU-T Rec. T.809 Annex E / ISO/IEC 15444-1 Eq. E-2), with zero private bit-plane lifts.
     package func magnitudeBitPlanes(
         for band: JP3DBandGeometry,
         resolution: Int,
@@ -1699,13 +2404,10 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
         usesReversibleMCT: Bool = false,
         roiShift: Int = 0
     ) -> Int {
+        _ = componentBitDepth
+        _ = usesReversibleMCT
         let s = step(for: band, resolution: resolution, maxLevels: maxLevels)
-        var mb = max(1, guardBits + s.exponent - 1)
-        if style == 0 && componentBitDepth > 33 && guardBits == 7 && s.exponent == 31 {
-            let mctExtra = usesReversibleMCT ? 1 : 0
-            let neededMb = componentBitDepth + mctExtra + band.gain + 1
-            if neededMb > mb { mb = neededMb }
-        }
+        let mb = max(1, guardBits + s.exponent - 1)
         return min(JP3DBitPlaneCoder.maximumExtendedBitPlanes, mb + max(0, roiShift))
     }
 
@@ -1725,6 +2427,7 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
     }
 
     /// Builds normative reversible (`qstyle = 0`) `QCD` parameters for `(levelsX, levelsY, levelsZ)`.
+    /// Maximises wire-representable `Mb = G + eps_b - 1` (`G <= 7, eps_b <= 31 -> Mb <= 37`) without private lifts.
     package static func makeReversible(
         maxBitDepth: Int,
         levelsX: Int,
@@ -1734,15 +2437,16 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
     ) -> JP3DQuantizationParameters {
         let nl = max(levelsX, max(levelsY, levelsZ))
         let effPrecision = maxBitDepth + (usesReversibleMCT ? 1 : 0)
-        // Determine max desired exponent across all bands (max gain <= 3).
         let maxGain = (levelsX > 0 ? 1 : 0) + (levelsY > 0 ? 1 : 0) + (levelsZ > 0 ? 1 : 0)
-        let maxDesiredExp = effPrecision + maxGain
-        let extraGuard = max(0, min(5, maxDesiredExp - 31))
-        let guardBits = 2 + extraGuard
+        // Desired Mb for band with `gain` is `effPrecision + gain + 1` (equivalent to G = 2, eps = effPrecision + gain).
+        // When `effPrecision + maxGain > 31`, raise G up to 7 so wire `Mb = G + eps - 1` reaches up to 37 honestly.
+        let maxDesiredMb = min(37, effPrecision + maxGain + 1)
+        let guardBits = min(7, max(2, maxDesiredMb - 31 + 1))
 
         var steps: [(exponent: Int, mantissa: Int)] = []
         // r = 0: LLL (gain = 0)
-        steps.append((exponent: min(31, max(0, effPrecision - extraGuard)), mantissa: 0))
+        let lllMb = min(37, effPrecision + 1)
+        steps.append((exponent: min(31, max(0, lllMb - guardBits + 1)), mantissa: 0))
         if nl >= 1 {
             for r in 1...nl {
                 let step = nl - r
@@ -1755,7 +2459,8 @@ package struct JP3DQuantizationParameters: Sendable, Equatable {
                     let z0b = (bandNo >> 2) & 1
                     if (x0b == 1 && !ax) || (y0b == 1 && !ay) || (z0b == 1 && !az) { continue }
                     let gain = x0b + y0b + z0b
-                    let exp = min(31, max(0, effPrecision + gain - extraGuard))
+                    let desiredMb = min(37, effPrecision + gain + 1)
+                    let exp = min(31, max(0, desiredMb - guardBits + 1))
                     steps.append((exponent: exp, mantissa: 0))
                 }
             }
@@ -2055,11 +2760,52 @@ package enum JP3DTier2Coder {
     package struct BlockEncodingEntry: Sendable {
         package let encoding: CodeBlockEncoding
         package let isHT: Bool
+        /// Index of the first non-placeholder HT cleanup pass (`3 * P0`, default `0`).
+        package let firstHTCleanupPass: Int
 
-        package init(encoding: CodeBlockEncoding, isHT: Bool = false) {
+        package init(encoding: CodeBlockEncoding, isHT: Bool = false, firstHTCleanupPass: Int = 0) {
             self.encoding = encoding
             self.isHT = isHT
+            self.firstHTCleanupPass = max(0, firstHTCleanupPass)
         }
+    }
+
+    /// Computes ITU-T T.814 Annex B (`B.1`–`B.3`) packet-header codeword segment pass chunks for an HT code-block.
+    package static func htSegmentPassCountsForEncoding(
+        start: Int,
+        count: Int,
+        firstCleanupPass: Int = 0
+    ) -> [Int] {
+        guard count > 0 else { return [] }
+        // Pure placeholder-pass packet before `firstCleanupPass`: single zero-length segment of `count` passes.
+        if start + count <= firstCleanupPass {
+            return [count]
+        }
+        var chunks: [Int] = []
+        var index = start
+        var remaining = count
+        var current = 0
+        while remaining > 0 {
+            current += 1
+            remaining -= 1
+            let terminates: Bool
+            if index < firstCleanupPass {
+                // Trailing placeholder passes in the same packet as `firstCleanupPass` merge with `firstCleanupPass` (Clause B.2).
+                terminates = false
+            } else if index == firstCleanupPass {
+                terminates = true
+            } else {
+                // After `firstCleanupPass` (`3 * P0`), every HT cleanup pass (`index % 3 == 0`) and
+                // every HT MagRef pass (`index % 3 == 2`) terminates its codeword segment.
+                terminates = (index % 3 == 0) || (index % 3 == 2)
+            }
+            if terminates || remaining == 0 {
+                chunks.append(current)
+                current = 0
+            }
+            index += 1
+        }
+        return chunks
     }
 
     private struct PrecinctTrees3D {
@@ -2078,11 +2824,12 @@ package enum JP3DTier2Coder {
     package static func encodePackets(
         geometries: [JP3DTileComponentGeometry],
         cod: JP3DCODInfo,
+        componentCODs: [JP3DCODInfo]? = nil,
         encodings: [[[[[BlockEncodingEntry]]]]],
+        admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
     ) throws -> Data {
         let totalLayers = max(1, cod.numLayers)
-        let style = CodeBlockStyle(bits: cod.codeBlockStyle)
 
         var trees: [[[PrecinctTrees3D]]] = []
         var progress: [[[[[BlockProgressState]]]]] = []
@@ -2143,15 +2890,9 @@ package enum JP3DTier2Coder {
         for addr in sequence {
             try cancellation()
             let c = addr.component, r = addr.resolution, p = addr.precinct, l = addr.layer
+            let compCOD = (componentCODs != nil && c < componentCODs!.count) ? componentCODs![c] : cod
+            let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle)
             let prc = geometries[c].resolutions[r].precincts[p]
-
-            if cod.usesSOP {
-                out.append(contentsOf: [
-                    0xFF, 0x91, 0x00, 0x04,
-                    UInt8(sopSeq >> 8), UInt8(sopSeq & 0xFF)
-                ])
-                sopSeq &+= 1
-            }
 
             let anyIncluded = prc.bands.enumerated().contains { b, pb in
                 pb.blocks.indices.contains { k in
@@ -2194,8 +2935,17 @@ package enum JP3DTier2Coder {
                         }
 
                         try Tier2.writePassCount(newPasses, &header)
-                        let effectiveStyle = entry.isHT ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40) : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
-                        let chunks = Tier2.segmentPassCounts(start: st.emittedPasses, count: newPasses, style: effectiveStyle)
+                        let chunks: [Int]
+                        if entry.isHT {
+                            chunks = htSegmentPassCountsForEncoding(
+                                start: st.emittedPasses,
+                                count: newPasses,
+                                firstCleanupPass: entry.firstHTCleanupPass
+                            )
+                        } else {
+                            let ebcotStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
+                            chunks = Tier2.segmentPassCounts(start: st.emittedPasses, count: newPasses, style: ebcotStyle)
+                        }
                         var chunkRanges: [Range<Int>] = []
                         chunkRanges.reserveCapacity(chunks.count)
                         var passCursor = st.emittedPasses
@@ -2213,7 +2963,7 @@ package enum JP3DTier2Coder {
                         for (chunkIdx, (chunk, range)) in zip(chunks, chunkRanges).enumerated() {
                             let segLen = range.count
                             var needed = segLen > 0 ? (Int.bitWidth - segLen.leadingZeroBitCount) : 1
-                            if firstInclusion && chunkIdx == 0 && style.ht && style.htMixed {
+                            if firstInclusion && chunkIdx == 0 && compStyle.ht && compStyle.htMixed {
                                 if entry.isHT {
                                     // ISO/IEC 15444-15 Clause B.10.6: mixed HT block signals lblock > 3 and MSB == 0.
                                     needed += 1
@@ -2243,7 +2993,18 @@ package enum JP3DTier2Coder {
                 }
             }
 
-            out.append(contentsOf: header.finish())
+            let headerBytes = header.finish()
+            let packetOverhead = (cod.usesSOP ? 6 : 0) + headerBytes.count + (cod.usesEPH ? 2 : 0)
+            try admitEncodedBytes?(packetOverhead)
+
+            if cod.usesSOP {
+                out.append(contentsOf: [
+                    0xFF, 0x91, 0x00, 0x04,
+                    UInt8(sopSeq >> 8), UInt8(sopSeq & 0xFF)
+                ])
+                sopSeq &+= 1
+            }
+            out.append(contentsOf: headerBytes)
             if cod.usesEPH {
                 out.append(contentsOf: [0xFF, 0x92])
             }
@@ -2251,14 +3012,17 @@ package enum JP3DTier2Coder {
                 out.append(contentsOf: slice)
             }
         }
+        StorageTelemetry.recordStage("jp3d-tier2-packet-output", bytes: out.count)
         return out
     }
 
     /// Decodes packets of a 3D tile (with optional layer/resolution filtering, truncation tolerance,
+    /// per-component `COD`/`COC` styles, ITU-T T.814 Annex B `3 * P0` / `MULTIHT` segment parsing,
     /// and packet byte-range indexing for JPIP Class 0 precinct data-bin extraction).
     package static func decodePackets(
         geometries: [JP3DTileComponentGeometry],
         cod: JP3DCODInfo,
+        componentCODs: [JP3DCODInfo]? = nil,
         bytes: [UInt8],
         maxQualityLayers: Int? = nil,
         maxResolutionIndex: Int? = nil,
@@ -2266,7 +3030,6 @@ package enum JP3DTier2Coder {
         cancellation: () throws -> Void
     ) throws -> (contributions: [[[[[CodeBlockContribution]]]]], packets: [JP3DIndexedPacket], wasTruncated: Bool) {
         let totalLayers = max(1, cod.numLayers)
-        let style = CodeBlockStyle(bits: cod.codeBlockStyle)
 
         var result: [[[[[CodeBlockContribution]]]]] = geometries.map { geom in
             geom.resolutions.map { res in
@@ -2276,6 +3039,16 @@ package enum JP3DTier2Coder {
             }
         }
         var wireState = result
+        // Track whether a non-zero HT cleanup segment has been observed yet per block (ITU-T T.814 Clause B.3).
+        var wireHasHTCleanup: [[[[[Bool]]]]] = geometries.map { geom in
+            geom.resolutions.map { res in
+                res.precincts.map { prc in
+                    prc.bands.map { [Bool](repeating: false, count: $0.blocks.count) }
+                }
+            }
+        }
+        var outHasHTCleanup = wireHasHTCleanup
+
         var trees: [[[PrecinctTrees3D]]] = try geometries.map { geom in
             try geom.resolutions.map { res in
                 try res.precincts.map { prc in
@@ -2320,6 +3093,9 @@ package enum JP3DTier2Coder {
             let packetStart = cursor
 
             let c = addr.component, r = addr.resolution, p = addr.precinct
+            let compCOD = (componentCODs != nil && c < componentCODs!.count) ? componentCODs![c] : cod
+            let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle)
+            let compEbcotStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
             let prc = geometries[c].resolutions[r].precincts[p]
 
             do {
@@ -2338,6 +3114,7 @@ package enum JP3DTier2Coder {
                     for (b, pb) in prc.bands.enumerated() where !pb.blocks.isEmpty {
                         for k in 0..<pb.blocks.count {
                             var st = wireState[c][r][p][b][k]
+                            var hasCleanup = wireHasHTCleanup[c][r][p][b][k]
                             let included: Bool
                             if st.included {
                                 included = try reader.readBit()
@@ -2360,7 +3137,7 @@ package enum JP3DTier2Coder {
                                 }
                                 st.included = true
                                 st.zeroBitPlanes = Int(trees[c][r][p].msb[b].value(leaf: k))
-                                if style.ht && !style.htMixed {
+                                if compStyle.ht && !compStyle.htMixed {
                                     st.isHT = true
                                 }
                             }
@@ -2371,37 +3148,121 @@ package enum JP3DTier2Coder {
                                     throw CodecError(.malformedInput, "3D Lblock indicator exceeds 40.")
                                 }
                             }
-                            let placeholderStyle = st.isHT
-                                ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40)
-                                : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
-                            var chunks = Tier2.segmentPassCounts(start: st.passes, count: newPasses, style: placeholderStyle)
-                            var lengths: [Int] = []
-                            if firstInclusion && style.ht && style.htMixed {
-                                // Determine HT vs Part 1 from the first chunk's MSB before splitting remaining chunks.
-                                let firstChunk = chunks[0]
-                                let firstBits = st.lblock + Tier2.floorLog2(firstChunk)
-                                let firstLen = try reader.readBits(firstBits)
-                                st.isHT = st.lblock > 3 && firstBits >= 1 && ((firstLen >> (firstBits - 1)) == 0)
-                                let resolvedStyle = st.isHT
-                                    ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40)
-                                    : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
-                                chunks = Tier2.segmentPassCounts(start: st.passes, count: newPasses, style: resolvedStyle)
-                                if chunks[0] == firstChunk {
-                                    lengths.append(firstLen)
-                                    for chunk in chunks.dropFirst() {
-                                        lengths.append(try reader.readBits(st.lblock + Tier2.floorLog2(chunk)))
-                                    }
+
+                            var preReadFirstMSB: Int? = nil
+                            if firstInclusion && compStyle.ht && compStyle.htMixed {
+                                // ITU-T T.814 Clause B.3 / B.10.6: in MIXED mode, an HT block has `Lblock > 3`
+                                // on first inclusion and the MSB (first bit) of its first length field equal to `0`.
+                                if st.lblock <= 3 {
+                                    st.isHT = false
                                 } else {
-                                    lengths.append(firstLen)
-                                }
-                            } else {
-                                for chunk in chunks {
-                                    let bitCount = st.lblock + Tier2.floorLog2(chunk)
-                                    lengths.append(try reader.readBits(bitCount))
+                                    let msbBit = try reader.readBit() ? 1 : 0
+                                    preReadFirstMSB = msbBit
+                                    st.isHT = (msbBit == 0)
                                 }
                             }
+
+                            @inline(__always)
+                            func readFirstLength(width w: Int) throws -> Int {
+                                guard w >= 1 else { return 0 }
+                                if let msb = preReadFirstMSB {
+                                    let low = w > 1 ? (try reader.readBits(w - 1)) : 0
+                                    return (msb << (w - 1)) | low
+                                }
+                                return try reader.readBits(w)
+                            }
+
+                            var chunks: [Int] = []
+                            var lengths: [Int] = []
+
+                            if st.isHT {
+                                if !hasCleanup {
+                                    // ITU-T T.814 Clause B.3: before first non-zero HT cleanup pass (`3 * P0` placeholder awareness).
+                                    let endPasses = st.passes + newPasses
+                                    let rem = endPasses % 3
+                                    if rem == 1 || (rem == 2 && newPasses == 1) || (rem == 0 && newPasses <= 2) {
+                                        let w1 = st.lblock + Tier2.floorLog2(newPasses)
+                                        let len0 = try readFirstLength(width: w1)
+                                        if len0 > 0 {
+                                            guard rem == 1 else {
+                                                throw CodecError(
+                                                    .malformedInput,
+                                                    "HTJ2K non-zero first cleanup segment encountered at non-cleanup pass alignment (endPasses=\(endPasses))."
+                                                )
+                                            }
+                                            hasCleanup = true
+                                        }
+                                        chunks = [newPasses]
+                                        lengths = [len0]
+                                    } else if rem == 2 {
+                                        // `newPasses >= 2`: Possibility 1 (all placeholders, length 0) vs Possibility 2 (`c0 = newPasses - 1` + `1` SigProp).
+                                        let c0 = newPasses - 1
+                                        let w1 = st.lblock + Tier2.floorLog2(newPasses)
+                                        let w2 = st.lblock + Tier2.floorLog2(c0)
+                                        let len0 = try readFirstLength(width: w2)
+                                        if len0 == 0 {
+                                            if w1 > w2 {
+                                                let extra = try reader.readBits(w1 - w2)
+                                                guard extra == 0 else {
+                                                    throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
+                                                }
+                                            }
+                                            chunks = [newPasses]
+                                            lengths = [0]
+                                        } else {
+                                            hasCleanup = true
+                                            let len1 = try reader.readBits(st.lblock)
+                                            chunks = [c0, 1]
+                                            lengths = [len0, len1]
+                                        }
+                                    } else {
+                                        // `rem == 0 && newPasses >= 3`: Possibility 1 (all placeholders, length 0) vs Possibility 2 (`c0 = newPasses - 2` + `2` SigProp/MagRef).
+                                        let c0 = newPasses - 2
+                                        let w1 = st.lblock + Tier2.floorLog2(newPasses)
+                                        let w2 = st.lblock + Tier2.floorLog2(c0)
+                                        let len0 = try readFirstLength(width: w2)
+                                        if len0 == 0 {
+                                            if w1 > w2 {
+                                                let extra = try reader.readBits(w1 - w2)
+                                                guard extra == 0 else {
+                                                    throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
+                                                }
+                                            }
+                                            chunks = [newPasses]
+                                            lengths = [0]
+                                        } else {
+                                            hasCleanup = true
+                                            let len1 = try reader.readBits(st.lblock + 1)
+                                            chunks = [c0, 2]
+                                            lengths = [len0, len1]
+                                        }
+                                    }
+                                } else {
+                                    // Subsequent packets after first HT cleanup pass: every `index % 3 == 0` (MULTIHT cleanup)
+                                    // and `index % 3 == 2` (HT MagRef) terminates a codeword segment.
+                                    chunks = htSegmentPassCountsForEncoding(
+                                        start: st.passes,
+                                        count: newPasses,
+                                        firstCleanupPass: 0
+                                    )
+                                    for (idx, chunk) in chunks.enumerated() {
+                                        let bitCount = st.lblock + Tier2.floorLog2(chunk)
+                                        let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
+                                        lengths.append(len)
+                                    }
+                                }
+                            } else {
+                                chunks = Tier2.segmentPassCounts(start: st.passes, count: newPasses, style: compEbcotStyle)
+                                for (idx, chunk) in chunks.enumerated() {
+                                    let bitCount = st.lblock + Tier2.floorLog2(chunk)
+                                    let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
+                                    lengths.append(len)
+                                }
+                            }
+
                             order.append((b, k, chunks, lengths))
                             wireState[c][r][p][b][k] = st
+                            wireHasHTCleanup[c][r][p][b][k] = hasCleanup
                             if keepPacket {
                                 var outSt = result[c][r][p][b][k]
                                 if !outSt.included {
@@ -2427,20 +3288,36 @@ package enum JP3DTier2Coder {
                 for entry in order {
                     var wSt = wireState[c][r][p][entry.band][entry.block]
                     var outSt = result[c][r][p][entry.band][entry.block]
-                    let blkStyle = wSt.isHT
-                        ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40)
-                        : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
+                    var outSeenCleanup = outHasHTCleanup[c][r][p][entry.band][entry.block]
                     for (chunk, length) in zip(entry.chunks, entry.lengths) {
                         guard length >= 0, cursor + length <= end else {
                             throw CodecError(.malformedInput, "3D code-block segment length \(length) exceeds tile-part data.")
                         }
                         if keepPacket {
                             if outSt.isHT {
-                                if outSt.segments.isEmpty || (length > 0 && !outSt.segments[outSt.segments.count - 1].data.isEmpty) {
-                                    outSt.segments.append(CodewordSegment())
+                                if !outSeenCleanup {
+                                    if length == 0 {
+                                        // Leading placeholder passes (`L = 0`)
+                                        if outSt.segments.isEmpty {
+                                            outSt.segments.append(CodewordSegment())
+                                        }
+                                    } else {
+                                        // First non-zero HT cleanup segment starts its own `CodewordSegment`
+                                        outSt.segments.append(CodewordSegment())
+                                        outSeenCleanup = true
+                                    }
+                                } else {
+                                    // After first HT cleanup (`outSt.passes` is `3 * P0 + 1` or greater):
+                                    // `pStart % 3 == 0` -> new MULTIHT cleanup segment
+                                    // `pStart % 3 == 1` -> new HT refinement segment (`SigProp` [+ `MagRef`])
+                                    // `pStart % 3 == 2` -> continuation (`MagRef`) of previous `SigProp` refinement segment!
+                                    let pStart = outSt.passes
+                                    if outSt.segments.isEmpty || (pStart % 3) != 2 {
+                                        outSt.segments.append(CodewordSegment())
+                                    }
                                 }
                             } else {
-                                let lastTerm = outSt.passes == 0 || blkStyle.passTerminates(outSt.passes - 1)
+                                let lastTerm = outSt.passes == 0 || compEbcotStyle.passTerminates(outSt.passes - 1)
                                 if lastTerm || outSt.segments.isEmpty {
                                     outSt.segments.append(CodewordSegment())
                                 }
@@ -2455,6 +3332,7 @@ package enum JP3DTier2Coder {
                     wireState[c][r][p][entry.band][entry.block] = wSt
                     if keepPacket {
                         result[c][r][p][entry.band][entry.block] = outSt
+                        outHasHTCleanup[c][r][p][entry.band][entry.block] = outSeenCleanup
                     }
                 }
                 indexedPackets.append(JP3DIndexedPacket(address: addr, byteRange: packetStart..<cursor))
@@ -2501,10 +3379,15 @@ package enum JP3DNormativeTileCodec {
         z0: Int, z1: Int,
         cod: JP3DCODInfo,
         qcd: JP3DQuantizationParameters,
+        componentCODs: [JP3DCODInfo]? = nil,
+        componentQCDs: [JP3DQuantizationParameters]? = nil,
         htConfiguration: JP3DHTJ2KConfiguration? = nil,
         targetBitrateBPP: Float? = nil,
+        useAccelerated: Bool = false,
+        remainingOutputLimit: (() -> Int)? = nil,
+        admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
-    ) throws -> Data {
+    ) throws -> (data: Data, usedAccelerated: Bool) {
         let compCount = componentVoxels.count
         guard compCount > 0,
               componentBitDepths.count == compCount,
@@ -2512,23 +3395,29 @@ package enum JP3DNormativeTileCodec {
             throw CodecError(.invalidArgument, "Mismatched component arrays for 3D tile encoding.")
         }
 
-        let geom = try JP3DGeometryBuilder.makeTileComponentGeometry(
-            x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: cod
-        )
-        let geometries = [JP3DTileComponentGeometry](repeating: geom, count: compCount)
-        let tileW = geom.width, tileH = geom.height, tileD = geom.depth
+        let cods = (0..<compCount).map { c in
+            (componentCODs != nil && c < componentCODs!.count) ? componentCODs![c] : cod
+        }
+        let qcds = (0..<compCount).map { c in
+            (componentQCDs != nil && c < componentQCDs!.count) ? componentQCDs![c] : qcd
+        }
+        let geometries = try (0..<compCount).map { c in
+            try JP3DGeometryBuilder.makeTileComponentGeometry(
+                x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: cods[c]
+            )
+        }
+        let tileW = geometries[0].width, tileH = geometries[0].height, tileD = geometries[0].depth
         let tileWH = tileW * tileH
         let voxelCount = tileWH * tileD
 
         let useMCT = cod.multipleComponentTransform == 1 && compCount >= 3
-        let isHT = (cod.codeBlockStyle & 0x40) != 0
-        let isMixedHT = (cod.codeBlockStyle & 0xC0) == 0xC0
-        let blockStyle = CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
+        let allReversible = (0..<compCount).allSatisfy { cods[$0].isLossless && qcds[$0].isReversible }
+        var usedSIMD = false
 
         var allEncodings: [[[[[JP3DTier2Coder.BlockEncodingEntry]]]]] = []
         allEncodings.reserveCapacity(compCount)
 
-        if cod.isLossless && qcd.isReversible {
+        if allReversible {
             // 1. Level-shift unsigned components by -2^(B_c - 1) in Int64.
             var planes = componentVoxels
             for c in 0..<compCount {
@@ -2537,14 +3426,45 @@ package enum JP3DNormativeTileCodec {
                 }
                 if !componentSigned[c] {
                     let shift = Int64(1) << Int64(componentBitDepths[c] - 1)
-                    for i in 0..<voxelCount {
+                    var i = 0
+                    if useAccelerated && voxelCount >= 4 {
+                        let vShift = SIMD4<Int64>(repeating: shift)
+                        while i + 4 <= voxelCount {
+                            let v = SIMD4<Int64>(planes[c][i], planes[c][i + 1], planes[c][i + 2], planes[c][i + 3]) &- vShift
+                            planes[c][i] = v[0]; planes[c][i + 1] = v[1]; planes[c][i + 2] = v[2]; planes[c][i + 3] = v[3]
+                            i += 4
+                        }
+                        usedSIMD = true
+                    }
+                    while i < voxelCount {
                         planes[c][i] -= shift
+                        i += 1
                     }
                 }
             }
             // 2. Optional Reversible Component Transform (RCT) on components 0, 1, 2.
             if useMCT {
-                for i in 0..<voxelCount {
+                var i = 0
+                if useAccelerated && voxelCount >= 4 {
+                    let one = SIMD4<Int64>(repeating: 1)
+                    let two = SIMD4<Int64>(repeating: 2)
+                    while i + 4 <= voxelCount {
+                        let r = SIMD4<Int64>(planes[0][i], planes[0][i + 1], planes[0][i + 2], planes[0][i + 3])
+                        let g = SIMD4<Int64>(planes[1][i], planes[1][i + 1], planes[1][i + 2], planes[1][i + 3])
+                        let b = SIMD4<Int64>(planes[2][i], planes[2][i + 1], planes[2][i + 2], planes[2][i + 3])
+                        let y0 = (r &+ (g &<< one) &+ b) &>> two
+                        let u0 = b &- g
+                        let v0 = r &- g
+                        for lane in 0..<4 {
+                            planes[0][i + lane] = y0[lane]
+                            planes[1][i + lane] = u0[lane]
+                            planes[2][i + lane] = v0[lane]
+                        }
+                        i += 4
+                    }
+                    usedSIMD = true
+                }
+                while i < voxelCount {
                     let r = planes[0][i], g = planes[1][i], b = planes[2][i]
                     let y0 = (r + (g << 1) + b) >> 2
                     let u0 = b - g
@@ -2552,33 +3472,44 @@ package enum JP3DNormativeTileCodec {
                     planes[0][i] = y0
                     planes[1][i] = u0
                     planes[2][i] = v0
+                    i += 1
                 }
             }
             // 3. Forward separable 3D 5-3 DWT + Tier-1 block coding.
             for c in 0..<compCount {
                 try cancellation()
-                JP3DWaveletEngine.forward53_3D(buffer: &planes[c], geometry: geom)
-                let compEnc = try encodeWaveletSubbands(
+                if JP3DWaveletEngine.forward53_3D(buffer: &planes[c], geometry: geometries[c], useSIMD: useAccelerated) {
+                    usedSIMD = true
+                }
+                let compCOD = cods[c]
+                let compIsHT = (compCOD.codeBlockStyle & 0x40) != 0
+                let compIsMixed = (compCOD.codeBlockStyle & 0xC0) == 0xC0
+                let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
+                let (compEnc, blkSIMD) = try encodeWaveletSubbands(
                     waveletBuffer: planes[c],
                     tileW: tileW, tileWH: tileWH,
-                    geometry: geom,
+                    geometry: geometries[c],
                     cod: cod,
-                    qcd: qcd,
+                    componentCOD: compCOD,
+                    qcd: qcds[c],
                     componentBitDepth: componentBitDepths[c],
                     usesReversibleMCT: useMCT && c < 3,
-                    isHT: isHT,
-                    isMixedHT: isMixedHT,
+                    isHT: compIsHT,
+                    isMixedHT: compIsMixed,
                     htConfiguration: htConfiguration,
-                    ebcotStyle: blockStyle,
+                    ebcotStyle: compStyle,
                     maxPassesLimit: nil,
+                    useAccelerated: useAccelerated,
+                    remainingOutputLimit: remainingOutputLimit,
+                    admitEncodedBytes: admitEncodedBytes,
                     cancellation: cancellation
                 )
+                if blkSIMD { usedSIMD = true }
                 allEncodings.append(compEnc)
             }
         } else {
-            // Irreversible 9-7 floating-point DWT + dead-zone scalar quantisation.
-            var floatPlanes: [[Double]] = []
-            floatPlanes.reserveCapacity(compCount)
+            // Per-component reversible/irreversible (supports HETEROGENEOUS COC filters as well as standard 9-7 ICT).
+            var floatPlanes = [[Double]](repeating: [], count: compCount)
             for c in 0..<compCount {
                 guard componentVoxels[c].count == voxelCount else {
                     throw CodecError(.invalidArgument, "3D tile component \(c) voxel count mismatch.")
@@ -2588,66 +3519,109 @@ package enum JP3DNormativeTileCodec {
                 for i in 0..<voxelCount {
                     fp[i] = Double(componentVoxels[c][i]) - shift
                 }
-                floatPlanes.append(fp)
+                floatPlanes[c] = fp
             }
-            // Optional Irreversible Component Transform (ICT) on components 0, 1, 2.
             if useMCT {
-                for i in 0..<voxelCount {
+                var i = 0
+                if useAccelerated && voxelCount >= 4 {
+                    let cYR = SIMD4<Double>(repeating: 0.299), cYG = SIMD4<Double>(repeating: 0.587), cYB = SIMD4<Double>(repeating: 0.114)
+                    let cCbR = SIMD4<Double>(repeating: -0.16875), cCbG = SIMD4<Double>(repeating: -0.33126), cCbB = SIMD4<Double>(repeating: 0.5)
+                    let cCrR = SIMD4<Double>(repeating: 0.5), cCrG = SIMD4<Double>(repeating: -0.41869), cCrB = SIMD4<Double>(repeating: -0.08131)
+                    while i + 4 <= voxelCount {
+                        let r = SIMD4<Double>(floatPlanes[0][i], floatPlanes[0][i + 1], floatPlanes[0][i + 2], floatPlanes[0][i + 3])
+                        let g = SIMD4<Double>(floatPlanes[1][i], floatPlanes[1][i + 1], floatPlanes[1][i + 2], floatPlanes[1][i + 3])
+                        let b = SIMD4<Double>(floatPlanes[2][i], floatPlanes[2][i + 1], floatPlanes[2][i + 2], floatPlanes[2][i + 3])
+                        let y0 = cYR * r + cYG * g + cYB * b
+                        let cb = cCbR * r + cCbG * g + cCbB * b
+                        let cr = cCrR * r + cCrG * g + cCrB * b
+                        for lane in 0..<4 {
+                            floatPlanes[0][i + lane] = y0[lane]
+                            floatPlanes[1][i + lane] = cb[lane]
+                            floatPlanes[2][i + lane] = cr[lane]
+                        }
+                        i += 4
+                    }
+                    usedSIMD = true
+                }
+                while i < voxelCount {
                     let r = floatPlanes[0][i], g = floatPlanes[1][i], b = floatPlanes[2][i]
                     floatPlanes[0][i] =  0.299 * r + 0.587 * g + 0.114 * b
                     floatPlanes[1][i] = -0.16875 * r - 0.33126 * g + 0.5 * b
                     floatPlanes[2][i] =  0.5 * r - 0.41869 * g - 0.08131 * b
+                    i += 1
                 }
             }
             for c in 0..<compCount {
                 try cancellation()
-                JP3DWaveletEngine.forward97_3D(buffer: &floatPlanes[c], geometry: geom)
-                // Quantise each sub-band in-place into Int64 indices q = sign(w) * floor(|w| / Delta_b).
+                let geom = geometries[c]
+                let compCOD = cods[c]
+                let compQCD = qcds[c]
                 var qPlane = [Int64](repeating: 0, count: voxelCount)
-                for res in geom.resolutions {
-                    for band in res.bands where !band.isEmpty {
-                        let delta = qcd.stepSize(
-                            for: band,
-                            resolution: res.index,
-                            maxLevels: geom.maxLevels,
-                            componentBitDepth: componentBitDepths[c]
-                        )
-                        let invDelta = 1.0 / max(1e-12, delta)
-                        let mb = qcd.magnitudeBitPlanes(
-                            for: band,
-                            resolution: res.index,
-                            maxLevels: geom.maxLevels,
-                            componentBitDepth: componentBitDepths[c]
-                        )
-                        let maxAllowedMag: Int64 = mb >= 62 ? (Int64.max / 2) : ((Int64(1) << Int64(mb)) - 1)
-                        for bz in 0..<band.depth {
-                            let zOff = (band.bufZ + bz) * tileWH
-                            for by in 0..<band.height {
-                                let yOff = zOff + (band.bufY + by) * tileW + band.bufX
-                                for bx in 0..<band.width {
-                                    let val = floatPlanes[c][yOff + bx] * invDelta
-                                    let mag = min(maxAllowedMag, Int64(floor(abs(val))))
-                                    qPlane[yOff + bx] = val < 0 ? -mag : mag
+                if compCOD.isLossless && compQCD.isReversible && !useMCT {
+                    let shift = componentSigned[c] ? Int64(0) : (Int64(1) << Int64(componentBitDepths[c] - 1))
+                    for i in 0..<voxelCount {
+                        qPlane[i] = componentVoxels[c][i] - shift
+                    }
+                    if JP3DWaveletEngine.forward53_3D(buffer: &qPlane, geometry: geom, useSIMD: useAccelerated) {
+                        usedSIMD = true
+                    }
+                } else {
+                    if JP3DWaveletEngine.forward97_3D(buffer: &floatPlanes[c], geometry: geom, useSIMD: useAccelerated) {
+                        usedSIMD = true
+                    }
+                    for res in geom.resolutions {
+                        for band in res.bands where !band.isEmpty {
+                            let delta = compQCD.stepSize(
+                                for: band,
+                                resolution: res.index,
+                                maxLevels: geom.maxLevels,
+                                componentBitDepth: componentBitDepths[c]
+                            )
+                            let invDelta = 1.0 / max(1e-12, delta)
+                            let mb = compQCD.magnitudeBitPlanes(
+                                for: band,
+                                resolution: res.index,
+                                maxLevels: geom.maxLevels,
+                                componentBitDepth: componentBitDepths[c]
+                            )
+                            let maxAllowedMag: Int64 = mb >= 62 ? (Int64.max / 2) : ((Int64(1) << Int64(mb)) - 1)
+                            for bz in 0..<band.depth {
+                                let zOff = (band.bufZ + bz) * tileWH
+                                for by in 0..<band.height {
+                                    let yOff = zOff + (band.bufY + by) * tileW + band.bufX
+                                    for bx in 0..<band.width {
+                                        let val = floatPlanes[c][yOff + bx] * invDelta
+                                        let mag = min(maxAllowedMag, Int64(floor(abs(val))))
+                                        qPlane[yOff + bx] = val < 0 ? -mag : mag
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                let compEnc = try encodeWaveletSubbands(
+                let compIsHT = (compCOD.codeBlockStyle & 0x40) != 0
+                let compIsMixed = (compCOD.codeBlockStyle & 0xC0) == 0xC0
+                let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
+                let (compEnc, blkSIMD) = try encodeWaveletSubbands(
                     waveletBuffer: qPlane,
                     tileW: tileW, tileWH: tileWH,
                     geometry: geom,
                     cod: cod,
-                    qcd: qcd,
+                    componentCOD: compCOD,
+                    qcd: compQCD,
                     componentBitDepth: componentBitDepths[c],
                     usesReversibleMCT: false,
-                    isHT: isHT,
-                    isMixedHT: isMixedHT,
+                    isHT: compIsHT,
+                    isMixedHT: compIsMixed,
                     htConfiguration: htConfiguration,
-                    ebcotStyle: blockStyle,
+                    ebcotStyle: compStyle,
                     maxPassesLimit: nil,
+                    useAccelerated: useAccelerated,
+                    remainingOutputLimit: remainingOutputLimit,
+                    admitEncodedBytes: admitEncodedBytes,
                     cancellation: cancellation
                 )
+                if blkSIMD { usedSIMD = true }
                 allEncodings.append(compEnc)
             }
         }
@@ -2656,10 +3630,13 @@ package enum JP3DNormativeTileCodec {
         var encodedPackets = try JP3DTier2Coder.encodePackets(
             geometries: geometries,
             cod: cod,
+            componentCODs: cods,
             encodings: allEncodings,
+            admitEncodedBytes: admitEncodedBytes,
             cancellation: cancellation
         )
-        if let bpp = targetBitrateBPP, bpp > 0, !isHT {
+        let anyHT = cods.contains { ($0.codeBlockStyle & 0x40) != 0 }
+        if let bpp = targetBitrateBPP, bpp > 0, !anyHT {
             let maxBytes = max(32, Int(ceil(Double(bpp) * Double(voxelCount * compCount) / 8.0)))
             if encodedPackets.count > maxBytes {
                 var trimmed = allEncodings
@@ -2695,7 +3672,9 @@ package enum JP3DNormativeTileCodec {
                 let reencoded = try JP3DTier2Coder.encodePackets(
                     geometries: geometries,
                     cod: cod,
+                    componentCODs: cods,
                     encodings: trimmed,
+                    admitEncodedBytes: nil,
                     cancellation: cancellation
                 )
                 if reencoded.count <= encodedPackets.count {
@@ -2704,7 +3683,7 @@ package enum JP3DNormativeTileCodec {
             }
         }
 
-        return encodedPackets
+        return (encodedPackets, usedSIMD)
     }
 
     private static func encodeWaveletSubbands(
@@ -2712,6 +3691,7 @@ package enum JP3DNormativeTileCodec {
         tileW: Int, tileWH: Int,
         geometry: JP3DTileComponentGeometry,
         cod: JP3DCODInfo,
+        componentCOD: JP3DCODInfo,
         qcd: JP3DQuantizationParameters,
         componentBitDepth: Int,
         usesReversibleMCT: Bool,
@@ -2720,11 +3700,37 @@ package enum JP3DNormativeTileCodec {
         htConfiguration: JP3DHTJ2KConfiguration?,
         ebcotStyle: CodeBlockStyle,
         maxPassesLimit: Int?,
+        useAccelerated: Bool,
+        remainingOutputLimit: (() -> Int)?,
+        admitEncodedBytes: ((Int) throws -> Void)?,
         cancellation: () throws -> Void
-    ) throws -> [[[[JP3DTier2Coder.BlockEncodingEntry]]]] {
+    ) throws -> (encodings: [[[[JP3DTier2Coder.BlockEncodingEntry]]]], usedSIMD: Bool) {
+        _ = componentCOD
         let layers = max(1, cod.numLayers)
+        var usedSIMD = false
         var resList: [[[[JP3DTier2Coder.BlockEncodingEntry]]]] = []
         resList.reserveCapacity(geometry.resolutions.count)
+
+        @inline(__always)
+        func runHTCleanup(coeffs32: [Int32], width: Int, height: Int, bandShift: Int, maxOut: Int) throws -> [UInt8] {
+            if useAccelerated {
+                usedSIMD = true
+                return try SIMDHTBlockCoder.encodeCleanup(
+                    coefficients: coeffs32,
+                    width: width,
+                    height: height,
+                    bandShift: bandShift,
+                    maximumOutputBytes: maxOut
+                )
+            }
+            return try HTBlockEncoder.encodeCleanup(
+                coefficients: coeffs32,
+                width: width,
+                height: height,
+                bandShift: bandShift,
+                maximumOutputBytes: maxOut
+            )
+        }
 
         for res in geometry.resolutions {
             var prcList: [[[JP3DTier2Coder.BlockEncodingEntry]]] = []
@@ -2756,13 +3762,40 @@ package enum JP3DNormativeTileCodec {
                         }
                         var coeffs64 = [Int64](repeating: 0, count: count)
                         var dst = 0
+                        var maxMag: UInt64 = 0
                         for cz in 0..<blk.depth {
                             let zOff = (band.bufZ + (blk.z0 - band.z0) + cz) * tileWH
                             for cy in 0..<blk.height {
                                 let yOff = zOff + (band.bufY + (blk.y0 - band.y0) + cy) * tileW + band.bufX + (blk.x0 - band.x0)
-                                for cx in 0..<blk.width {
-                                    coeffs64[dst] = waveletBuffer[yOff + cx]
+                                var cx = 0
+                                if useAccelerated && blk.width >= 4 {
+                                    usedSIMD = true
+                                    while cx + 4 <= blk.width {
+                                        let v = SIMD4<Int64>(
+                                            waveletBuffer[yOff + cx],
+                                            waveletBuffer[yOff + cx + 1],
+                                            waveletBuffer[yOff + cx + 2],
+                                            waveletBuffer[yOff + cx + 3]
+                                        )
+                                        coeffs64[dst] = v[0]
+                                        coeffs64[dst + 1] = v[1]
+                                        coeffs64[dst + 2] = v[2]
+                                        coeffs64[dst + 3] = v[3]
+                                        let m0 = max(v[0].magnitude, v[1].magnitude)
+                                        let m1 = max(v[2].magnitude, v[3].magnitude)
+                                        let m = max(m0, m1)
+                                        if m > maxMag { maxMag = m }
+                                        dst += 4
+                                        cx += 4
+                                    }
+                                }
+                                while cx < blk.width {
+                                    let val = waveletBuffer[yOff + cx]
+                                    coeffs64[dst] = val
+                                    let mag = val.magnitude
+                                    if mag > maxMag { maxMag = mag }
                                     dst += 1
+                                    cx += 1
                                 }
                             }
                         }
@@ -2803,7 +3836,33 @@ package enum JP3DNormativeTileCodec {
                             }
                         }
 
+                        let blockMaxOut: Int
+                        if let remainingOutputLimit {
+                            let rem = remainingOutputLimit()
+                            guard rem > 0 || maxMag == 0 else {
+                                throw CodecError(.resourceLimitExceeded, "Encoded 3D code-block exceeds output byte budget.")
+                            }
+                            blockMaxOut = max(1, rem)
+                        } else {
+                            blockMaxOut = Int.max
+                        }
+
                         if useHTForBlock {
+                            if maxMag == 0 {
+                                let empty = CodeBlockEncoding(
+                                    data: [],
+                                    passCount: 0,
+                                    zeroBitPlanes: mb,
+                                    layerPassCounts: [Int](repeating: 0, count: layers)
+                                )
+                                blkList.append(JP3DTier2Coder.BlockEncodingEntry(encoding: empty, isHT: true))
+                                continue
+                            }
+                            let activePlanes = UInt64.bitWidth - maxMag.leadingZeroBitCount
+                            guard activePlanes <= mb else {
+                                throw CodecError(.invalidArgument, "3D HTJ2K coefficient requires \(activePlanes) bit-planes, exceeding band Mb=\(mb).")
+                            }
+
                             var coeffs32 = [Int32](repeating: 0, count: count)
                             for i in 0..<count {
                                 guard let v32 = Int32(exactly: coeffs64[i]) else {
@@ -2811,22 +3870,139 @@ package enum JP3DNormativeTileCodec {
                                 }
                                 coeffs32[i] = v32
                             }
-                            let coded = try HTBlockEncoder.encodeCleanup(
-                                coefficients: coeffs32,
-                                width: blk.width,
-                                height: blk.height,
-                                bandShift: 0
-                            )
-                            var layerCounts = [Int](repeating: 0, count: layers)
-                            if !coded.isEmpty {
-                                layerCounts[0] = 1
+
+                            let desiredHTPasses = max(1, htConfiguration?.passCount ?? 1)
+                            let enc: CodeBlockEncoding
+
+                            if desiredHTPasses >= 4 && layers >= 2 && mb >= 2 && maxMag >= 2 {
+                                // MULTIHT (ITU-T T.814 Clauses 7.1–7.6 & Annex B):
+                                // Set 0 (`sSkip = 0`, `p_0 = 1`) in Layer 0 (`HT Cleanup` + `HT SigProp` + `HT MagRef`),
+                                // Set 1 (`sSkip = 1`, `p_1 = 0`) in Layer `layers - 1` (`HT Cleanup` at full precision).
+                                let cup0 = try runHTCleanup(
+                                    coeffs32: coeffs32,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    bandShift: 1,
+                                    maxOut: blockMaxOut
+                                )
+                                let remAfterCup0 = max(1, blockMaxOut - cup0.count)
+                                guard blockMaxOut - cup0.count >= 0 else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                }
+                                let ref0 = try HTBlockEncoder.encodeRefinement(
+                                    coefficients: coeffs64,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    cleanupBandShift: 1,
+                                    includeMagRef: true,
+                                    causal: ebcotStyle.causal,
+                                    maximumOutputBytes: min(2046, remAfterCup0)
+                                )
+                                guard cup0.count + ref0.count <= blockMaxOut else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                }
+                                let remAfterSet0 = max(1, blockMaxOut - cup0.count - ref0.count)
+                                let cup1 = try runHTCleanup(
+                                    coeffs32: coeffs32,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    bandShift: 0,
+                                    maxOut: remAfterSet0
+                                )
+                                var allBytes: [UInt8] = []
+                                allBytes.reserveCapacity(cup0.count + ref0.count + cup1.count)
+                                allBytes.append(contentsOf: cup0)
+                                allBytes.append(contentsOf: ref0)
+                                allBytes.append(contentsOf: cup1)
+                                guard allBytes.count <= blockMaxOut else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                }
+                                let off0 = cup0.count
+                                let off2 = cup0.count + ref0.count
+                                let off3 = allBytes.count
+                                var layerCounts = [Int](repeating: 0, count: layers)
+                                layerCounts[0] = 3
+                                layerCounts[layers - 1] += 1
+                                enc = CodeBlockEncoding(
+                                    data: allBytes,
+                                    passCount: 4,
+                                    zeroBitPlanes: mb - 2,
+                                    passByteOffsets: [off0, off2, off2, off3],
+                                    passTerminatedBytes: [off0, off2, off2, off3],
+                                    layerPassCounts: layerCounts
+                                )
+                            } else if (desiredHTPasses == 2 || desiredHTPasses == 3) && mb >= 2 && maxMag >= 2 {
+                                // Single HT set with HT SigProp (+ optional HT MagRef) refinement segment (`Lcup` + `Lref`).
+                                let cup = try runHTCleanup(
+                                    coeffs32: coeffs32,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    bandShift: 1,
+                                    maxOut: blockMaxOut
+                                )
+                                guard cup.count <= blockMaxOut else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                }
+                                let includeMagRef = (desiredHTPasses >= 3)
+                                let remForRef = max(0, blockMaxOut - cup.count)
+                                let ref = try HTBlockEncoder.encodeRefinement(
+                                    coefficients: coeffs64,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    cleanupBandShift: 1,
+                                    includeMagRef: includeMagRef,
+                                    causal: ebcotStyle.causal,
+                                    maximumOutputBytes: min(2046, remForRef)
+                                )
+                                var allBytes: [UInt8] = []
+                                allBytes.reserveCapacity(cup.count + ref.count)
+                                allBytes.append(contentsOf: cup)
+                                allBytes.append(contentsOf: ref)
+                                guard allBytes.count <= blockMaxOut else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                }
+                                let totalP = includeMagRef ? 3 : 2
+                                let offsets = includeMagRef
+                                    ? [cup.count, allBytes.count, allBytes.count]
+                                    : [cup.count, allBytes.count]
+                                var layerCounts = [Int](repeating: 0, count: layers)
+                                if layers == 1 {
+                                    layerCounts[0] = totalP
+                                } else {
+                                    layerCounts[0] = 1
+                                    layerCounts[layers - 1] = totalP - 1
+                                }
+                                enc = CodeBlockEncoding(
+                                    data: allBytes,
+                                    passCount: totalP,
+                                    zeroBitPlanes: mb - 2,
+                                    passByteOffsets: offsets,
+                                    passTerminatedBytes: offsets,
+                                    layerPassCounts: layerCounts
+                                )
+                            } else {
+                                let coded = try runHTCleanup(
+                                    coeffs32: coeffs32,
+                                    width: blk.width,
+                                    height: blk.height,
+                                    bandShift: 0,
+                                    maxOut: blockMaxOut
+                                )
+                                var layerCounts = [Int](repeating: 0, count: layers)
+                                if !coded.isEmpty {
+                                    layerCounts[0] = 1
+                                }
+                                enc = CodeBlockEncoding(
+                                    data: coded,
+                                    passCount: coded.isEmpty ? 0 : 1,
+                                    zeroBitPlanes: coded.isEmpty ? mb : (mb - 1),
+                                    layerPassCounts: layerCounts
+                                )
                             }
-                            let enc = CodeBlockEncoding(
-                                data: coded,
-                                passCount: coded.isEmpty ? 0 : 1,
-                                zeroBitPlanes: coded.isEmpty ? mb : (mb - 1),
-                                layerPassCounts: layerCounts
-                            )
+                            try admitEncodedBytes?(enc.data.count)
+                            if !enc.data.isEmpty {
+                                StorageTelemetry.recordStage("jp3d-tier1-block-output", bytes: enc.data.count)
+                            }
                             blkList.append(JP3DTier2Coder.BlockEncodingEntry(encoding: enc, isHT: true))
                         } else {
                             let enc = try JP3DBitPlaneCoder.encode3D(
@@ -2838,8 +4014,13 @@ package enum JP3DNormativeTileCodec {
                                 magnitudeBitPlanes: mb,
                                 style: ebcotStyle,
                                 maxPasses: maxPassesLimit,
-                                qualityLayers: layers
+                                qualityLayers: layers,
+                                maximumOutputBytes: blockMaxOut
                             )
+                            try admitEncodedBytes?(enc.data.count)
+                            if !enc.data.isEmpty {
+                                StorageTelemetry.recordStage("jp3d-tier1-block-output", bytes: enc.data.count)
+                            }
                             blkList.append(JP3DTier2Coder.BlockEncodingEntry(encoding: enc, isHT: false))
                         }
                     }
@@ -2849,7 +4030,7 @@ package enum JP3DNormativeTileCodec {
             }
             resList.append(prcList)
         }
-        return resList
+        return (resList, usedSIMD)
     }
 
     /// Decodes a normative ITU-T T.809 (or reconciled HT-in-JP3D) tile-part bitstream into
@@ -2862,33 +4043,48 @@ package enum JP3DNormativeTileCodec {
         siz: JP3DSIZInfo,
         cod: JP3DCODInfo,
         qcd: JP3DQuantizationParameters,
+        componentCODs: [JP3DCODInfo]? = nil,
+        componentQCDs: [JP3DQuantizationParameters]? = nil,
         roiShifts: [Int] = [],
+        allowMultiHT: Bool = true,
         x0: Int, x1: Int,
         y0: Int, y1: Int,
         z0: Int, z1: Int,
         maxQualityLayers: Int? = nil,
         resolutionLevel: Int = 0,
         tolerateTruncation: Bool = false,
+        useAccelerated: Bool = false,
         cancellation: () throws -> Void
-    ) throws -> (components: [[Int64]], outWidth: Int, outHeight: Int, outDepth: Int, wasTruncated: Bool) {
+    ) throws -> (components: [[Int64]], outWidth: Int, outHeight: Int, outDepth: Int, wasTruncated: Bool, usedAccelerated: Bool) {
         let compCount = siz.componentCount
-        let geom = try JP3DGeometryBuilder.makeTileComponentGeometry(
-            x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: cod
-        )
-        let geometries = [JP3DTileComponentGeometry](repeating: geom, count: compCount)
-        let tileW = geom.width, tileH = geom.height, tileD = geom.depth
+        let cods = (0..<compCount).map { c in
+            (componentCODs != nil && c < componentCODs!.count) ? componentCODs![c] : cod
+        }
+        let qcds = (0..<compCount).map { c in
+            (componentQCDs != nil && c < componentQCDs!.count) ? componentQCDs![c] : qcd
+        }
+        let geometries = try (0..<compCount).map { c in
+            try JP3DGeometryBuilder.makeTileComponentGeometry(
+                x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: cods[c]
+            )
+        }
+        let tileW = geometries[0].width, tileH = geometries[0].height, tileD = geometries[0].depth
         let tileWH = tileW * tileH
         let voxelCount = tileWH * tileD
+        var usedSIMD = false
 
         let bytes = [UInt8](tileData)
-        // Notice: when resolutionLevel > 0, Z still needs full Z detail bands unless levelsZ == 0!
-        // When levelsZ == 0, we can skip decoding XY resolutions above (maxLevels - min(K, maxLevels)).
-        let xyDwtSkip = min(max(0, resolutionLevel), min(cod.levelsX, cod.levelsY))
-        let maxResFilter: Int? = (cod.levelsZ == 0 && xyDwtSkip > 0) ? (geom.maxLevels - xyDwtSkip) : nil
+        // Only apply a uniform Tier-2 resolution filter when every component has `levelsZ == 0` and identical `maxLevels`.
+        let minXYLevels = cods.map { min($0.levelsX, $0.levelsY) }.min() ?? 0
+        let allZZero = cods.allSatisfy { $0.levelsZ == 0 }
+        let allSameNL = Set(geometries.map(\.maxLevels)).count <= 1
+        let uniformSkip = min(max(0, resolutionLevel), minXYLevels)
+        let maxResFilter: Int? = (allZZero && allSameNL && uniformSkip > 0) ? (geometries[0].maxLevels - uniformSkip) : nil
 
         let decodedPackets = try JP3DTier2Coder.decodePackets(
             geometries: geometries,
             cod: cod,
+            componentCODs: cods,
             bytes: bytes,
             maxQualityLayers: maxQualityLayers,
             maxResolutionIndex: maxResFilter,
@@ -2897,14 +4093,19 @@ package enum JP3DNormativeTileCodec {
         )
         let contributions = decodedPackets.contributions
         let useMCT = cod.multipleComponentTransform == 1 && compCount >= 3
-        let ebcotStyle = CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
 
         // Decode Tier-1 code-blocks into integer wavelet sub-band buffers `[Int64]`.
         var intSubbandPlanes: [[Int64]] = []
         intSubbandPlanes.reserveCapacity(compCount)
-        let useMidpoint = !(cod.isLossless && qcd.isReversible) && (maxQualityLayers != nil || decodedPackets.wasTruncated)
 
         for c in 0..<compCount {
+            let geom = geometries[c]
+            let compCOD = cods[c]
+            let compQCD = qcds[c]
+            let compReversible = compCOD.isLossless && compQCD.isReversible
+            let useMidpoint = !compReversible && (maxQualityLayers != nil || decodedPackets.wasTruncated)
+            let ebcotStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
+
             var wBuf = [Int64](repeating: 0, count: voxelCount)
             let compBitDepth = siz.bitDepth(forComponent: c)
             let roiShift = c < roiShifts.count ? roiShifts[c] : 0
@@ -2914,12 +4115,12 @@ package enum JP3DNormativeTileCodec {
                 for (p, prc) in res.precincts.enumerated() {
                     for (b, pb) in prc.bands.enumerated() {
                         let band = res.bands[pb.bandIndex]
-                        let mb = qcd.magnitudeBitPlanes(
+                        let mb = compQCD.magnitudeBitPlanes(
                             for: band,
                             resolution: r,
                             maxLevels: geom.maxLevels,
                             componentBitDepth: compBitDepth,
-                            usesReversibleMCT: cod.isLossless && qcd.isReversible && useMCT && c < 3,
+                            usesReversibleMCT: compReversible && useMCT && c < 3,
                             roiShift: roiShift
                         )
                         for (k, blk) in pb.blocks.enumerated() {
@@ -2932,15 +4133,20 @@ package enum JP3DNormativeTileCodec {
                                 guard blk.depth == 1, !contrib.segments.isEmpty else {
                                     throw CodecError(.malformedInput, "Malformed HTJ2K-in-JP3D code-block contribution.")
                                 }
-                                let missingMSBs = contrib.zeroBitPlanes + (contrib.passes - 1) / 3
-                                let dec32 = try HTBlockDecoder.decodeCleanup(
-                                    block: contrib.segments[0].data,
+                                let segInputs = contrib.segments.map {
+                                    HTSegmentInput(data: $0.data, passes: $0.passes)
+                                }
+                                decodedBlock = try HTBlockDecoder.decodeHTCodeBlock(
+                                    segments: segInputs,
+                                    zeroBitPlanes: contrib.zeroBitPlanes,
+                                    totalPasses: contrib.passes,
                                     width: blk.width,
                                     height: blk.height,
                                     kMax: mb,
-                                    missingMSBs: missingMSBs
+                                    causal: (compCOD.codeBlockStyle & 0x08) != 0,
+                                    allowMultiHT: allowMultiHT,
+                                    midpointReconstruction: useMidpoint
                                 )
-                                decodedBlock = dec32.map { Int64($0) }
                             } else {
                                 decodedBlock = try JP3DBitPlaneCoder.decode3D(
                                     segments: contrib.segments,
@@ -2984,12 +4190,6 @@ package enum JP3DNormativeTileCodec {
             intSubbandPlanes.append(wBuf)
         }
 
-        // Determine reconstructed XY dimensions after skipping `xyDwtSkip` XY DWT levels
-        // plus any additional striding when `resolutionLevel > min(levelsX, levelsY)`.
-        let dwtOutResIdx = geom.maxLevels - xyDwtSkip
-        let dwtW = geom.resolutions[dwtOutResIdx].width
-        let dwtH = geom.resolutions[dwtOutResIdx].height
-        let extraReduce = max(0, resolutionLevel - xyDwtSkip)
         let outW = jp3dDownsampleDimension(tileW, resolutionLevel: resolutionLevel)
         let outH = jp3dDownsampleDimension(tileH, resolutionLevel: resolutionLevel)
         let outD = tileD
@@ -2999,20 +4199,57 @@ package enum JP3DNormativeTileCodec {
             count: compCount
         )
 
-        if cod.isLossless && qcd.isReversible {
+        let allReversible = (0..<compCount).allSatisfy { cods[$0].isLossless && qcds[$0].isReversible }
+
+        if allReversible {
+            var compDwtDims: [(w: Int, h: Int, extraReduce: Int)] = []
+            compDwtDims.reserveCapacity(compCount)
             for c in 0..<compCount {
                 try cancellation()
-                JP3DWaveletEngine.inverse53_3D(
+                let geom = geometries[c]
+                let skip = min(max(0, resolutionLevel), min(cods[c].levelsX, cods[c].levelsY))
+                if JP3DWaveletEngine.inverse53_3D(
                     buffer: &intSubbandPlanes[c],
                     geometry: geom,
-                    skipLastXYLevels: xyDwtSkip
-                )
+                    skipLastXYLevels: skip,
+                    useSIMD: useAccelerated
+                ) {
+                    usedSIMD = true
+                }
+                let resIdx = geom.maxLevels - skip
+                compDwtDims.append((
+                    w: geom.resolutions[resIdx].width,
+                    h: geom.resolutions[resIdx].height,
+                    extraReduce: max(0, resolutionLevel - skip)
+                ))
             }
             if useMCT {
+                let dwtW = compDwtDims[0].w
+                let dwtH = compDwtDims[0].h
+                let two = SIMD4<Int64>(repeating: 2)
                 for z in 0..<outD {
                     for y in 0..<dwtH {
                         let base = z * tileWH + y * tileW
-                        for x in 0..<dwtW {
+                        var x = 0
+                        if useAccelerated && dwtW >= 4 {
+                            while x + 4 <= dwtW {
+                                let idx = base + x
+                                let y0 = SIMD4<Int64>(intSubbandPlanes[0][idx], intSubbandPlanes[0][idx + 1], intSubbandPlanes[0][idx + 2], intSubbandPlanes[0][idx + 3])
+                                let u0 = SIMD4<Int64>(intSubbandPlanes[1][idx], intSubbandPlanes[1][idx + 1], intSubbandPlanes[1][idx + 2], intSubbandPlanes[1][idx + 3])
+                                let v0 = SIMD4<Int64>(intSubbandPlanes[2][idx], intSubbandPlanes[2][idx + 1], intSubbandPlanes[2][idx + 2], intSubbandPlanes[2][idx + 3])
+                                let g = y0 &- ((u0 &+ v0) &>> two)
+                                let r = v0 &+ g
+                                let b = u0 &+ g
+                                for lane in 0..<4 {
+                                    intSubbandPlanes[0][idx + lane] = r[lane]
+                                    intSubbandPlanes[1][idx + lane] = g[lane]
+                                    intSubbandPlanes[2][idx + lane] = b[lane]
+                                }
+                                x += 4
+                            }
+                            usedSIMD = true
+                        }
+                        while x < dwtW {
                             let idx = base + x
                             let y0 = intSubbandPlanes[0][idx]
                             let u0 = intSubbandPlanes[1][idx]
@@ -3023,11 +4260,15 @@ package enum JP3DNormativeTileCodec {
                             intSubbandPlanes[0][idx] = r
                             intSubbandPlanes[1][idx] = g
                             intSubbandPlanes[2][idx] = b
+                            x += 1
                         }
                     }
                 }
             }
             for c in 0..<compCount {
+                let dwtW = compDwtDims[c].w
+                let dwtH = compDwtDims[c].h
+                let extraReduce = compDwtDims[c].extraReduce
                 let compDepth = siz.bitDepth(forComponent: c)
                 let compSigned = siz.isSigned(forComponent: c)
                 let shift: Int64 = compSigned ? 0 : (Int64(1) << Int64(compDepth - 1))
@@ -3035,83 +4276,160 @@ package enum JP3DNormativeTileCodec {
                 let maxVal: Int64 = compSigned
                     ? ((Int64(1) << Int64(compDepth - 1)) - 1)
                     : ((Int64(1) << Int64(compDepth)) - 1)
-                let gainShift = xyDwtSkip // 5-3 low-pass has DC gain 1, no extra shift needed!
-                _ = gainShift
 
                 var outPlane = [Int64](repeating: 0, count: outW * outH * outD)
                 let strideStep = extraReduce >= 30 ? max(1, max(dwtW, dwtH)) : (1 << extraReduce)
-                for z in 0..<outD {
-                    for oy in 0..<outH {
-                        let sy = min(dwtH - 1, oy * strideStep)
-                        for ox in 0..<outW {
-                            let sx = min(dwtW - 1, ox * strideStep)
-                            let raw = intSubbandPlanes[c][z * tileWH + sy * tileW + sx] + shift
-                            outPlane[z * (outW * outH) + oy * outW + ox] = max(minVal, min(maxVal, raw))
+                if strideStep == 1 && useAccelerated && outW >= 4 {
+                    let vShift = SIMD4<Int64>(repeating: shift)
+                    for z in 0..<outD {
+                        for oy in 0..<outH {
+                            let sy = min(dwtH - 1, oy)
+                            let srcBase = z * tileWH + sy * tileW
+                            let dstBase = z * (outW * outH) + oy * outW
+                            var ox = 0
+                            while ox + 4 <= outW {
+                                let raw = SIMD4<Int64>(
+                                    intSubbandPlanes[c][srcBase + ox],
+                                    intSubbandPlanes[c][srcBase + ox + 1],
+                                    intSubbandPlanes[c][srcBase + ox + 2],
+                                    intSubbandPlanes[c][srcBase + ox + 3]
+                                ) &+ vShift
+                                for lane in 0..<4 {
+                                    outPlane[dstBase + ox + lane] = max(minVal, min(maxVal, raw[lane]))
+                                }
+                                ox += 4
+                            }
+                            while ox < outW {
+                                let raw = intSubbandPlanes[c][srcBase + min(dwtW - 1, ox)] + shift
+                                outPlane[dstBase + ox] = max(minVal, min(maxVal, raw))
+                                ox += 1
+                            }
+                        }
+                    }
+                    usedSIMD = true
+                } else {
+                    for z in 0..<outD {
+                        for oy in 0..<outH {
+                            let sy = min(dwtH - 1, oy * strideStep)
+                            for ox in 0..<outW {
+                                let sx = min(dwtW - 1, ox * strideStep)
+                                let raw = intSubbandPlanes[c][z * tileWH + sy * tileW + sx] + shift
+                                outPlane[z * (outW * outH) + oy * outW + ox] = max(minVal, min(maxVal, raw))
+                            }
                         }
                     }
                 }
                 reconstructedComponents[c] = outPlane
             }
         } else {
-            // Dequantise integer sub-bands into Double wavelet buffers and run inverse 3D 9-7 DWT.
+            // Per-component inverse 5-3 or 9-7 (supports HETEROGENEOUS COC filters and standard 9-7 ICT).
             var floatPlanes: [[Double]] = []
             floatPlanes.reserveCapacity(compCount)
+            var compDwtDims: [(w: Int, h: Int, extraReduce: Int, skip: Int)] = []
+            compDwtDims.reserveCapacity(compCount)
+
             for c in 0..<compCount {
+                let geom = geometries[c]
+                let compCOD = cods[c]
+                let compQCD = qcds[c]
                 let compDepth = siz.bitDepth(forComponent: c)
+                let skip = min(max(0, resolutionLevel), min(compCOD.levelsX, compCOD.levelsY))
+                let resIdx = geom.maxLevels - skip
+                let dwtW = geom.resolutions[resIdx].width
+                let dwtH = geom.resolutions[resIdx].height
+                compDwtDims.append((w: dwtW, h: dwtH, extraReduce: max(0, resolutionLevel - skip), skip: skip))
+
                 var fp = [Double](repeating: 0, count: voxelCount)
-                for res in geom.resolutions {
-                    for band in res.bands where !band.isEmpty {
-                        let delta = qcd.stepSize(
-                            for: band,
-                            resolution: res.index,
-                            maxLevels: geom.maxLevels,
-                            componentBitDepth: compDepth
-                        )
-                        // Dead-zone midpoint reconstruction (r = 0.5) on non-zero quantised indices.
-                        for bz in 0..<band.depth {
-                            let zOff = (band.bufZ + bz) * tileWH
-                            for by in 0..<band.height {
-                                let yOff = zOff + (band.bufY + by) * tileW + band.bufX
-                                for bx in 0..<band.width {
-                                    let q = intSubbandPlanes[c][yOff + bx]
-                                    if q > 0 {
-                                        fp[yOff + bx] = (Double(q) + 0.5) * delta
-                                    } else if q < 0 {
-                                        fp[yOff + bx] = (Double(q) - 0.5) * delta
+                if compCOD.isLossless && compQCD.isReversible && !useMCT {
+                    if JP3DWaveletEngine.inverse53_3D(
+                        buffer: &intSubbandPlanes[c],
+                        geometry: geom,
+                        skipLastXYLevels: skip,
+                        useSIMD: useAccelerated
+                    ) {
+                        usedSIMD = true
+                    }
+                    for i in 0..<voxelCount {
+                        fp[i] = Double(intSubbandPlanes[c][i])
+                    }
+                } else {
+                    for res in geom.resolutions {
+                        for band in res.bands where !band.isEmpty {
+                            let delta = compQCD.stepSize(
+                                for: band,
+                                resolution: res.index,
+                                maxLevels: geom.maxLevels,
+                                componentBitDepth: compDepth
+                            )
+                            for bz in 0..<band.depth {
+                                let zOff = (band.bufZ + bz) * tileWH
+                                for by in 0..<band.height {
+                                    let yOff = zOff + (band.bufY + by) * tileW + band.bufX
+                                    for bx in 0..<band.width {
+                                        let q = intSubbandPlanes[c][yOff + bx]
+                                        if q > 0 {
+                                            fp[yOff + bx] = (Double(q) + 0.5) * delta
+                                        } else if q < 0 {
+                                            fp[yOff + bx] = (Double(q) - 0.5) * delta
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                try cancellation()
-                JP3DWaveletEngine.inverse97_3D(
-                    buffer: &fp,
-                    geometry: geom,
-                    skipLastXYLevels: xyDwtSkip
-                )
-                floatPlanes.append(fp)
-            }
-            // Note: when 9-7 stops `xyDwtSkip` XY steps early, each skipped 1D low-pass step retains `1/K` scaling;
-            // rescale by `K^(2 * xyDwtSkip)` so reduced-resolution intensities preserve nominal dynamic range.
-            let normScale = xyDwtSkip > 0 ? pow(1.230174104914001, Double(2 * xyDwtSkip)) : 1.0
-            if normScale != 1.0 {
-                for c in 0..<compCount {
-                    for z in 0..<outD {
-                        for y in 0..<dwtH {
-                            let base = z * tileWH + y * tileW
-                            for x in 0..<dwtW {
-                                floatPlanes[c][base + x] *= normScale
+                    try cancellation()
+                    if JP3DWaveletEngine.inverse97_3D(
+                        buffer: &fp,
+                        geometry: geom,
+                        skipLastXYLevels: skip,
+                        useSIMD: useAccelerated
+                    ) {
+                        usedSIMD = true
+                    }
+                    if skip > 0 {
+                        let normScale = pow(1.230174104914001, Double(2 * skip))
+                        for z in 0..<outD {
+                            for y in 0..<dwtH {
+                                let base = z * tileWH + y * tileW
+                                for x in 0..<dwtW {
+                                    fp[base + x] *= normScale
+                                }
                             }
                         }
                     }
                 }
+                floatPlanes.append(fp)
             }
             if useMCT {
+                let dwtW = compDwtDims[0].w
+                let dwtH = compDwtDims[0].h
                 for z in 0..<outD {
                     for y in 0..<dwtH {
                         let base = z * tileWH + y * tileW
-                        for x in 0..<dwtW {
+                        var x = 0
+                        if useAccelerated && dwtW >= 4 {
+                            let c1402 = SIMD4<Double>(repeating: 1.402)
+                            let c0344 = SIMD4<Double>(repeating: 0.34413)
+                            let c0714 = SIMD4<Double>(repeating: 0.71414)
+                            let c1772 = SIMD4<Double>(repeating: 1.772)
+                            while x + 4 <= dwtW {
+                                let idx = base + x
+                                let y0 = SIMD4<Double>(floatPlanes[0][idx], floatPlanes[0][idx + 1], floatPlanes[0][idx + 2], floatPlanes[0][idx + 3])
+                                let cb = SIMD4<Double>(floatPlanes[1][idx], floatPlanes[1][idx + 1], floatPlanes[1][idx + 2], floatPlanes[1][idx + 3])
+                                let cr = SIMD4<Double>(floatPlanes[2][idx], floatPlanes[2][idx + 1], floatPlanes[2][idx + 2], floatPlanes[2][idx + 3])
+                                let r = y0 + c1402 * cr
+                                let g = y0 - c0344 * cb - c0714 * cr
+                                let b = y0 + c1772 * cb
+                                for lane in 0..<4 {
+                                    floatPlanes[0][idx + lane] = r[lane]
+                                    floatPlanes[1][idx + lane] = g[lane]
+                                    floatPlanes[2][idx + lane] = b[lane]
+                                }
+                                x += 4
+                            }
+                            usedSIMD = true
+                        }
+                        while x < dwtW {
                             let idx = base + x
                             let y0 = floatPlanes[0][idx]
                             let cb = floatPlanes[1][idx]
@@ -3119,11 +4437,15 @@ package enum JP3DNormativeTileCodec {
                             floatPlanes[0][idx] = y0 + 1.402 * cr
                             floatPlanes[1][idx] = y0 - 0.34413 * cb - 0.71414 * cr
                             floatPlanes[2][idx] = y0 + 1.772 * cb
+                            x += 1
                         }
                     }
                 }
             }
             for c in 0..<compCount {
+                let dwtW = compDwtDims[c].w
+                let dwtH = compDwtDims[c].h
+                let extraReduce = compDwtDims[c].extraReduce
                 let compDepth = siz.bitDepth(forComponent: c)
                 let compSigned = siz.isSigned(forComponent: c)
                 let shift = compSigned ? 0.0 : Double(Int64(1) << Int64(compDepth - 1))
@@ -3148,7 +4470,7 @@ package enum JP3DNormativeTileCodec {
             }
         }
 
-        return (reconstructedComponents, outW, outH, outD, decodedPackets.wasTruncated)
+        return (reconstructedComponents, outW, outH, outD, decodedPackets.wasTruncated, usedSIMD)
     }
 
     /// Transcodes a normative 3D tile directly in the **wavelet sub-band domain** (`EBCOT <-> HTJ2K`)
@@ -3160,45 +4482,70 @@ package enum JP3DNormativeTileCodec {
         sourceCOD: JP3DCODInfo,
         targetCOD: JP3DCODInfo,
         qcd: JP3DQuantizationParameters,
+        sourceComponentCODs: [JP3DCODInfo]? = nil,
+        targetComponentCODs: [JP3DCODInfo]? = nil,
+        componentQCDs: [JP3DQuantizationParameters]? = nil,
         roiShifts: [Int] = [],
+        allowSourceMultiHT: Bool = true,
         htConfiguration: JP3DHTJ2KConfiguration?,
         x0: Int, x1: Int,
         y0: Int, y1: Int,
         z0: Int, z1: Int,
+        useAccelerated: Bool = false,
+        remainingOutputLimit: (() -> Int)? = nil,
+        admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
-    ) throws -> (data: Data, peakWorkspaceBytes: Int) {
+    ) throws -> (data: Data, peakWorkspaceBytes: Int, usedAccelerated: Bool) {
         let compCount = siz.componentCount
-        let srcGeom = try JP3DGeometryBuilder.makeTileComponentGeometry(
-            x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: sourceCOD
-        )
-        let dstGeom = try JP3DGeometryBuilder.makeTileComponentGeometry(
-            x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: targetCOD
-        )
-        let tileW = srcGeom.width, tileH = srcGeom.height, tileD = srcGeom.depth
+        let srcCODs = (0..<compCount).map { c in
+            (sourceComponentCODs != nil && c < sourceComponentCODs!.count) ? sourceComponentCODs![c] : sourceCOD
+        }
+        let dstCODs = (0..<compCount).map { c in
+            (targetComponentCODs != nil && c < targetComponentCODs!.count) ? targetComponentCODs![c] : targetCOD
+        }
+        let qcds = (0..<compCount).map { c in
+            (componentQCDs != nil && c < componentQCDs!.count) ? componentQCDs![c] : qcd
+        }
+        let srcGeoms = try (0..<compCount).map { c in
+            try JP3DGeometryBuilder.makeTileComponentGeometry(
+                x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: srcCODs[c]
+            )
+        }
+        let dstGeoms = try (0..<compCount).map { c in
+            try JP3DGeometryBuilder.makeTileComponentGeometry(
+                x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, cod: dstCODs[c]
+            )
+        }
+        let tileW = srcGeoms[0].width, tileH = srcGeoms[0].height, tileD = srcGeoms[0].depth
         let tileWH = tileW * tileH
         let voxelCount = try jp3dCheckedMul(tileWH, tileD, label: "3D transcode tile volume")
         let planeWorkspaceBytes = try jp3dCheckedMul(voxelCount, MemoryLayout<Int64>.stride, label: "3D transcode wavelet workspace")
 
-        let srcGeoms = [JP3DTileComponentGeometry](repeating: srcGeom, count: compCount)
-        let dstGeoms = [JP3DTileComponentGeometry](repeating: dstGeom, count: compCount)
-
         let decodedPackets = try JP3DTier2Coder.decodePackets(
             geometries: srcGeoms,
             cod: sourceCOD,
+            componentCODs: srcCODs,
             bytes: [UInt8](tileData),
             cancellation: cancellation
         )
         let contributions = decodedPackets.contributions
         let useMCT = sourceCOD.multipleComponentTransform == 1 && compCount >= 3
-        let srcEbcotStyle = CodeBlockStyle(bits: sourceCOD.codeBlockStyle & ~0xC0)
-        let dstIsHT = (targetCOD.codeBlockStyle & 0x40) != 0
-        let dstIsMixedHT = (targetCOD.codeBlockStyle & 0xC0) == 0xC0
-        let dstEbcotStyle = CodeBlockStyle(bits: targetCOD.codeBlockStyle & ~0xC0)
+        var usedSIMD = false
 
         var targetEncodings: [[[[[JP3DTier2Coder.BlockEncodingEntry]]]]] = []
         targetEncodings.reserveCapacity(compCount)
 
         for c in 0..<compCount {
+            let srcGeom = srcGeoms[c]
+            let dstGeom = dstGeoms[c]
+            let srcCompCOD = srcCODs[c]
+            let dstCompCOD = dstCODs[c]
+            let compQCD = qcds[c]
+            let srcEbcotStyle = CodeBlockStyle(bits: srcCompCOD.codeBlockStyle & ~0xC0)
+            let dstIsHT = (dstCompCOD.codeBlockStyle & 0x40) != 0
+            let dstIsMixedHT = (dstCompCOD.codeBlockStyle & 0xC0) == 0xC0
+            let dstEbcotStyle = CodeBlockStyle(bits: dstCompCOD.codeBlockStyle & ~0xC0)
+
             var wBuf = [Int64](repeating: 0, count: voxelCount)
             let compDepth = siz.bitDepth(forComponent: c)
             let roiShift = c < roiShifts.count ? roiShifts[c] : 0
@@ -3207,12 +4554,12 @@ package enum JP3DNormativeTileCodec {
                 for (p, prc) in res.precincts.enumerated() {
                     for (b, pb) in prc.bands.enumerated() {
                         let band = res.bands[pb.bandIndex]
-                        let mb = qcd.magnitudeBitPlanes(
+                        let mb = compQCD.magnitudeBitPlanes(
                             for: band,
                             resolution: r,
                             maxLevels: srcGeom.maxLevels,
                             componentBitDepth: compDepth,
-                            usesReversibleMCT: sourceCOD.isLossless && qcd.isReversible && useMCT && c < 3,
+                            usesReversibleMCT: srcCompCOD.isLossless && compQCD.isReversible && useMCT && c < 3,
                             roiShift: roiShift
                         )
                         for (k, blk) in pb.blocks.enumerated() {
@@ -3221,15 +4568,20 @@ package enum JP3DNormativeTileCodec {
                             guard contrib.included, contrib.passes > 0, blk.voxelCount > 0 else { continue }
                             let decodedBlock: [Int64]
                             if contrib.isHT {
-                                let missingMSBs = contrib.zeroBitPlanes + (contrib.passes - 1) / 3
-                                let dec32 = try HTBlockDecoder.decodeCleanup(
-                                    block: contrib.segments[0].data,
+                                let segInputs = contrib.segments.map {
+                                    HTSegmentInput(data: $0.data, passes: $0.passes)
+                                }
+                                decodedBlock = try HTBlockDecoder.decodeHTCodeBlock(
+                                    segments: segInputs,
+                                    zeroBitPlanes: contrib.zeroBitPlanes,
+                                    totalPasses: contrib.passes,
                                     width: blk.width,
                                     height: blk.height,
                                     kMax: mb,
-                                    missingMSBs: missingMSBs
+                                    causal: (srcCompCOD.codeBlockStyle & 0x08) != 0,
+                                    allowMultiHT: allowSourceMultiHT,
+                                    midpointReconstruction: false
                                 )
-                                decodedBlock = dec32.map { Int64($0) }
                             } else {
                                 decodedBlock = try JP3DBitPlaneCoder.decode3D(
                                     segments: contrib.segments,
@@ -3259,31 +4611,38 @@ package enum JP3DNormativeTileCodec {
                 }
             }
 
-            let reencodedComp = try encodeWaveletSubbands(
+            let (reencodedComp, blkSIMD) = try encodeWaveletSubbands(
                 waveletBuffer: wBuf,
                 tileW: tileW, tileWH: tileWH,
                 geometry: dstGeom,
                 cod: targetCOD,
-                qcd: qcd,
+                componentCOD: dstCompCOD,
+                qcd: compQCD,
                 componentBitDepth: compDepth,
-                usesReversibleMCT: targetCOD.isLossless && qcd.isReversible && useMCT && c < 3,
+                usesReversibleMCT: dstCompCOD.isLossless && compQCD.isReversible && useMCT && c < 3,
                 isHT: dstIsHT,
                 isMixedHT: dstIsMixedHT,
                 htConfiguration: htConfiguration,
                 ebcotStyle: dstEbcotStyle,
                 maxPassesLimit: nil,
+                useAccelerated: useAccelerated,
+                remainingOutputLimit: remainingOutputLimit,
+                admitEncodedBytes: admitEncodedBytes,
                 cancellation: cancellation
             )
+            if blkSIMD { usedSIMD = true }
             targetEncodings.append(reencodedComp)
         }
 
         let outTile = try JP3DTier2Coder.encodePackets(
             geometries: dstGeoms,
             cod: targetCOD,
+            componentCODs: dstCODs,
             encodings: targetEncodings,
+            admitEncodedBytes: admitEncodedBytes,
             cancellation: cancellation
         )
         let peakWS = try jp3dCheckedAdd(planeWorkspaceBytes, outTile.count, label: "3D transcode tile peak")
-        return (outTile, peakWS)
+        return (outTile, peakWS, usedSIMD)
     }
 }

@@ -229,7 +229,7 @@ public actor JPIPClient {
             throw J2KError.invalidState("No active JPIP session cache to reconstruct.")
         }
         let bins = await currentSession.getAccumulatedDataBins()
-        return JPIPDataBinGenerator().reassembleCodestream(
+        return try JPIPDataBinGenerator().reassembleCodestreamThrowing(
             from: bins,
             reconstructContainer: reconstructContainer,
             limits: limits
@@ -499,6 +499,7 @@ public actor JPIPClient {
         }
 
         let maxWireBytes = min(limits.maximumCompressedBytes, limits.maximumMemoryBytes)
+        var cumulativeWireBytes = 0
         var probedBins: [JPIPDataBin] = []
         if request.fsiz == nil {
             var cachedMainHdr: Data? = nil
@@ -515,13 +516,32 @@ public actor JPIPClient {
                 probeReq.fsizRoundDirection = "closest"
                 let probeResp = try await transport.send(probeReq, maxBodyBytes: maxWireBytes)
                 try checkDeadline()
+                cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, probeResp.data.count)
+                guard cumulativeWireBytes <= limits.maximumCompressedBytes,
+                      cumulativeWireBytes <= limits.maximumMemoryBytes else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "JPIP probe payload (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit"
+                    )
+                }
                 if !probeResp.data.isEmpty, Self.isVBASStreamResponse(probeResp) {
                     let probeParsed = try JPIPWireCodec.decodeStream(
                         probeResp.data,
                         maxPayloadBytes: limits.maximumCompressedBytes
                     )
                     probedBins = probeParsed.bins
-                    var tmpCache = JPIPCacheModel(maxCacheSize: Int.max, maxEntries: Int.max)
+                    var tmpCache = JPIPCacheModel(
+                        maxCacheSize: limits.maximumWorkspaceBytes,
+                        maxEntries: max(16, min(100_000, limits.maximumWorkspaceBytes / 64))
+                    )
+                    let probeProj = try tmpCache.projectedAllocation(adding: probedBins)
+                    guard probeProj.totalPayloadBytes <= limits.maximumWorkspaceBytes,
+                          try checkedAdd(probeResp.data.count, probeProj.totalPayloadBytes) <= limits.maximumMemoryBytes else {
+                        throw CodecError(
+                            .resourceLimitExceeded,
+                            "JPIP bin payloads, descriptors and retained cache exceed combined limits."
+                        )
+                    }
                     for b in probedBins { tmpCache.addDataBin(b) }
                     cachedMainHdr = tmpCache.allDataBins().first(where: { $0.binClass == .mainHeader })?.data
                     if activeSession == nil, !probedBins.isEmpty {
@@ -537,17 +557,19 @@ public actor JPIPClient {
             }
         }
 
-        let response = try await transport.send(request, maxBodyBytes: maxWireBytes)
+        let remainingWireBudget = max(0, maxWireBytes - cumulativeWireBytes)
+        let response = try await transport.send(request, maxBodyBytes: remainingWireBudget)
         try checkDeadline()
 
         guard !response.data.isEmpty else {
             throw J2KError.decodingError("JPIP response contains no image data")
         }
-        guard response.data.count <= limits.maximumCompressedBytes,
-              response.data.count <= limits.maximumMemoryBytes else {
+        cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, response.data.count)
+        guard cumulativeWireBytes <= limits.maximumCompressedBytes,
+              cumulativeWireBytes <= limits.maximumMemoryBytes else {
             throw CodecError(
                 .resourceLimitExceeded,
-                "JPIP response payload (\(response.data.count) bytes) exceeds compressed or memory limit"
+                "JPIP response payload (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit"
             )
         }
 
@@ -565,7 +587,10 @@ public actor JPIPClient {
             // budget checks leave `activeSession` untouched on limit denial, AND small cache
             // eviction bounds (`maxCachedDataBins` / `maxCacheSizeBytes`) can evict old retained
             // entries without losing bins needed to decode the current delivery.
-            var assemblyCache = JPIPCacheModel(maxCacheSize: Int.max, maxEntries: Int.max)
+            var assemblyCache = JPIPCacheModel(
+                maxCacheSize: limits.maximumWorkspaceBytes,
+                maxEntries: Int.max
+            )
             let priorStats: JPIPCacheModel.Statistics
             if let currentSession = activeSession {
                 priorStats = await currentSession.getCacheStatistics()
@@ -578,7 +603,11 @@ public actor JPIPClient {
 
             let incomingBins = probedBins + parsed.bins
             let retainedBefore = try cacheStorageBytes(priorStats)
-            let incomingPayload = try incomingBins.reduce(0) { try checkedAdd($0, $1.data.count) }
+            var cumulativeRawPayload = try incomingBins.reduce(0) { try checkedAdd($0, $1.data.count) }
+            let projected = try assemblyCache.projectedAllocation(adding: incomingBins)
+            let projectedSpanDelta = max(0, projected.totalPayloadBytes - priorStats.totalSize)
+            let effectivePayload = max(cumulativeRawPayload, projectedSpanDelta)
+
             let (binDescBytes, ov1) = incomingBins.count.multipliedReportingOverflow(
                 by: MemoryLayout<JPIPDataBin>.stride
             )
@@ -593,7 +622,7 @@ public actor JPIPClient {
             }
             let streamWorkspace = try checkedAdd(
                 retainedBefore,
-                try checkedAdd(incomingPayload, try checkedAdd(binDescBytes, cacheDescBytes))
+                try checkedAdd(effectivePayload, try checkedAdd(binDescBytes, cacheDescBytes))
             )
             guard streamWorkspace <= limits.maximumWorkspaceBytes,
                   try checkedAdd(response.data.count, streamWorkspace) <= limits.maximumMemoryBytes else {
@@ -611,7 +640,7 @@ public actor JPIPClient {
             }
 
             // If server truncated due to server-side `byteLimit` (`0x04`) and caller didn't cap `len`,
-            // resume automatically up to completion.
+            // resume automatically up to completion while enforcing cumulative workspace/compressed/memory limits.
             var resumeRounds = 0
             while parsed.eorReason == .byteLimit && request.len == nil && resumeRounds < 1024 {
                 resumeRounds += 1
@@ -621,12 +650,57 @@ public actor JPIPClient {
                 if activeSession == nil {
                     followReq.model = assemblyCache.formatCacheModelDescriptors()
                 }
-                let nextResp = try await transport.send(followReq, maxBodyBytes: maxWireBytes)
+                let nextMaxWire = max(0, maxWireBytes - cumulativeWireBytes)
+                guard nextMaxWire > 0 else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "JPIP multi-round response exceeds compressed or memory limit."
+                    )
+                }
+                let nextResp = try await transport.send(followReq, maxBodyBytes: nextMaxWire)
+                cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, nextResp.data.count)
+                guard cumulativeWireBytes <= limits.maximumCompressedBytes,
+                      cumulativeWireBytes <= limits.maximumMemoryBytes else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "JPIP multi-round response (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit."
+                    )
+                }
                 let nextParsed = try JPIPWireCodec.decodeStream(
                     nextResp.data,
                     maxPayloadBytes: limits.maximumCompressedBytes
                 )
                 if nextParsed.bins.isEmpty { break }
+
+                cumulativeRawPayload = try nextParsed.bins.reduce(cumulativeRawPayload) {
+                    try checkedAdd($0, $1.data.count)
+                }
+                let nextProjected = try assemblyCache.projectedAllocation(adding: nextParsed.bins)
+                let nextSpanDelta = max(0, nextProjected.totalPayloadBytes - priorStats.totalSize)
+                let nextEffectivePayload = max(cumulativeRawPayload, nextSpanDelta)
+                let totalPendingCount = try checkedAdd(pendingSessionBins.count, nextParsed.bins.count)
+                let (nextBinDescBytes, nOv1) = totalPendingCount.multipliedReportingOverflow(
+                    by: MemoryLayout<JPIPDataBin>.stride
+                )
+                let (nextCacheDescBytes, nOv2) = min(totalPendingCount, maxAdditionalEntries).multipliedReportingOverflow(
+                    by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
+                )
+                guard !nOv1, !nOv2 else {
+                    throw CodecError(.resourceLimitExceeded, "JPIP bin descriptor storage overflows Int.")
+                }
+                let nextWorkspace = try checkedAdd(
+                    retainedBefore,
+                    try checkedAdd(nextEffectivePayload, try checkedAdd(nextBinDescBytes, nextCacheDescBytes))
+                )
+                guard nextWorkspace <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(nextResp.data.count, nextWorkspace) <= limits.maximumMemoryBytes else {
+                    throw CodecError(
+                        .resourceLimitExceeded,
+                        "JPIP bin payloads, descriptors and retained cache exceed combined limits."
+                    )
+                }
+                generationWorkspacePeak = max(generationWorkspacePeak, nextWorkspace)
+
                 for bin in nextParsed.bins {
                     try checkDeadline()
                     assemblyCache.addDataBin(bin)
@@ -635,7 +709,7 @@ public actor JPIPClient {
                 parsed = nextParsed
             }
 
-            codestreamToDecode = JPIPDataBinGenerator().reassembleCodestream(
+            codestreamToDecode = try JPIPDataBinGenerator().reassembleCodestreamThrowing(
                 from: assemblyCache.allDataBins(),
                 reconstructContainer: true,
                 limits: limits

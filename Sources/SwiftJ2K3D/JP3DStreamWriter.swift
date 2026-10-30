@@ -326,7 +326,7 @@ public actor JP3DStreamWriter {
                         if Task.isCancelled { throw CancellationError() }
                     }
                 )
-                encodedTiles.append(tileBytes)
+                encodedTiles.append(tileBytes.data)
             }
         }
     }

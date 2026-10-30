@@ -473,9 +473,31 @@ public struct VolumeEncoder: Sendable {
             sourceLayout: "j2kvolume-component-data",
             destinationLayout: "jp3d-tile-sample-buffers"
         )
+        let actualBackend: Backend
+        let actualFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if result.usedAcceleratedKernel {
+                actualBackend = .accelerated
+                actualFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions were below the 4-lane SIMD vector threshold."
+                    )
+                }
+                actualBackend = .scalarCPU
+                actualFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualBackend = resolvedExec.backend
+            actualFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualBackend,
+            fallbackReason: actualFallback,
             fidelity: fidelity,
             copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
             pixelAllocationCount: pixelAccounting.allocationCount,
@@ -576,9 +598,9 @@ public struct VolumeDecoder: Sendable {
             width: siz.width,
             height: siz.height,
             depth: siz.depth,
-            componentCount: siz.componentCount,
-            bitDepth: siz.bitDepth,
-            signed: siz.signed,
+            componentCount: parsed.logicalComponentCount,
+            bitDepth: parsed.logicalBitDepth(forComponent: 0),
+            signed: parsed.logicalIsSigned(forComponent: 0),
             tileSizeX: siz.tileSizeX,
             tileSizeY: siz.tileSizeY,
             tileSizeZ: siz.tileSizeZ,
@@ -586,7 +608,7 @@ public struct VolumeDecoder: Sendable {
             levelsY: cod.levelsY,
             levelsZ: cod.levelsZ,
             qualityLayers: detectedLayers,
-            isLossless: cod.isLossless && parsed.isLosslessQuantization,
+            isLossless: parsed.isFullyReversible,
             isHTJ2K: parsed.containsHTJ2KTiles,
             tileCount: parsed.tiles.count,
             spacingX: inspectedGeometry?.spacingX ?? 0,
@@ -676,6 +698,7 @@ public struct VolumeDecoder: Sendable {
         let sourceCommentCount: Int
         let sourceCommentBytes: Int
         let sourceHadGeometry: Bool
+        let usedAcceleratedKernel: Bool
         do {
             if let roi = options.regionOfInterest {
                 let roiConfig = JP3DDecoderConfiguration(
@@ -709,6 +732,7 @@ public struct VolumeDecoder: Sendable {
                 sourceCommentCount = roiResult.commentCount
                 sourceCommentBytes = roiResult.commentPayloadBytes
                 sourceHadGeometry = roiResult.hadVolumeGeometry
+                usedAcceleratedKernel = roiResult.usedAcceleratedKernel
             } else {
                 let jp3dConfig = JP3DDecoderConfiguration(
                     maxQualityLayers: configuration.maxQualityLayers,
@@ -738,6 +762,7 @@ public struct VolumeDecoder: Sendable {
                 sourceCommentCount = result.commentCount
                 sourceCommentBytes = result.commentPayloadBytes
                 sourceHadGeometry = result.hadVolumeGeometry
+                usedAcceleratedKernel = result.usedAcceleratedKernel
             }
         } catch let error as J2KError {
             throw error.asCodecError
@@ -779,9 +804,31 @@ public struct VolumeDecoder: Sendable {
             destinationLayout: "j2kvolume-component-data"
         )
 
+        let actualBackend: Backend
+        let actualFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if usedAcceleratedKernel {
+                actualBackend = .accelerated
+                actualFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions were below the 4-lane SIMD vector threshold."
+                    )
+                }
+                actualBackend = .scalarCPU
+                actualFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualBackend = resolvedExec.backend
+            actualFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualBackend,
+            fallbackReason: actualFallback,
             fidelity: fidelity,
             copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
             pixelAllocationCount: try jp3dDecodeAdd(volume.componentCount, pixelAccounting.allocationCount),
@@ -902,9 +949,31 @@ public struct VolumeTranscoder: Sendable {
         } else {
             discardedKinds = ["COM"]
         }
+        let actualTranscodeBackend: Backend
+        let actualTranscodeFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if result.usedAcceleratedKernel {
+                actualTranscodeBackend = .accelerated
+                actualTranscodeFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions or format had no eligible SIMD vector kernel."
+                    )
+                }
+                actualTranscodeBackend = .scalarCPU
+                actualTranscodeFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions or codestream format below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualTranscodeBackend = resolvedExec.backend
+            actualTranscodeFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualTranscodeBackend,
+            fallbackReason: actualTranscodeFallback,
             fidelity: isExact ? .exactSamples : .lossy,
             copyEvents: copyEvents + (try pixelAccounting.copyEvents),
             pixelAllocationCount: try jp3dDecodeAdd(

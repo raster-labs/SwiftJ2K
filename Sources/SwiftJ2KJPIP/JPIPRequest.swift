@@ -9,9 +9,12 @@
 // Extended in Phase R3 (F04) with normative ITU-T Rec. T.808 (12/2022) V2 |
 // ISO/IEC 15444-9 stream return types (`image/jpp-stream`, `image/jpt-stream`),
 // target ID (`tid`), channel close (`cclose`), Clause C.8.1 cache model (`model`),
-// 3D depth window (`zoff`, `zsiz`), and HTTP query-string parsing.
+// Clauses C.4.5–C.4.7 variable-dimension 3D view-window (`fvsiz`, `rvoff`, `rvsiz`)
+// plus compatibility `zoff`/`zsiz` extensions, and checked HTTP query-string parsing.
 
 import Foundation
+@_exported import SwiftJ2K
+@_exported import SwiftJ2K3D
 
 /// Return stream media types per ITU-T Rec. T.808 Clause C.7.2 (`type=`).
 public enum JPIPStreamType: String, Sendable, Equatable {
@@ -57,7 +60,19 @@ public struct JPIPRequest: Sendable {
     /// Region offset (x, y) from top-left corner.
     public var roff: (x: Int, y: Int)?
 
-    /// Optional 3D depth offset and extent (`zoff`, `zsiz`) for volumetric Part 10 JP3D targets.
+    /// Normative ITU-T Rec. T.808 Clause C.4.5 variable-dimension frame size (`fvsiz=fx,fy,fz[,round-direction]`).
+    public var fvsiz: [Int]?
+
+    /// Optional ITU-T Rec. T.808 Clause C.4.5 rounding direction for `fvsiz` (`"round-down"`, `"round-up"`, `"closest"`).
+    public var fvsizRoundDirection: String?
+
+    /// Normative ITU-T Rec. T.808 Clause C.4.6 variable-dimension region offset (`rvoff=ox,oy,oz`) in `fvsiz` frame coordinates.
+    public var rvoff: [Int]?
+
+    /// Normative ITU-T Rec. T.808 Clause C.4.7 variable-dimension region size (`rvsiz=sx,sy,sz`) in `fvsiz` frame coordinates.
+    public var rvsiz: [Int]?
+
+    /// Compatibility extension: 3D depth offset and extent (`zoff`, `zsiz`) when `fvsiz`/`rvoff`/`rvsiz` are omitted.
     public var zRange: (offset: Int, size: Int)?
 
     /// Number of quality layers to request.
@@ -78,7 +93,7 @@ public struct JPIPRequest: Sendable {
     /// Component indices to request (e.g., `[0, 1]` for red and green channels).
     public var comps: [Int]?
 
-    /// Resolution levels to request (`0` = full resolution, higher values = lower resolution).
+    /// Compatibility extension: resolution reduction levels (`0` = full resolution, higher values = lower resolution).
     public var reslevels: Int?
 
     /// Whether to request metadata only.
@@ -93,6 +108,9 @@ public struct JPIPRequest: Sendable {
     /// Coding preference for HTJ2K or legacy JPEG 2000 responses.
     public var codingPreference: JPIPCodingPreference?
 
+    /// Deferred query-parsing validation error recorded by ``parseHTTPTarget(_:)``.
+    package var parseValidationError: String?
+
     /// Creates a new JPIP request.
     ///
     /// - Parameter target: The target image identifier.
@@ -103,7 +121,8 @@ public struct JPIPRequest: Sendable {
     /// Whether this request explicitly asks for view-window or stream payload delivery
     /// alongside any `cnew` channel creation parameter.
     public var hasViewWindowOrStreamParameters: Bool {
-        fsiz != nil || rsiz != nil || roff != nil || zRange != nil
+        fsiz != nil || rsiz != nil || roff != nil
+            || fvsiz != nil || rvoff != nil || rvsiz != nil || zRange != nil
             || layers != nil || comps != nil || reslevels != nil
             || streamType != nil || model != nil
     }
@@ -134,6 +153,23 @@ public struct JPIPRequest: Sendable {
 
         if let roff = roff {
             items["roff"] = "\(roff.x),\(roff.y)"
+        }
+
+        if let fvsiz = fvsiz, !fvsiz.isEmpty {
+            let joined = fvsiz.map { "\($0)" }.joined(separator: ",")
+            if let dir = fvsizRoundDirection, !dir.isEmpty {
+                items["fvsiz"] = "\(joined),\(dir)"
+            } else {
+                items["fvsiz"] = joined
+            }
+        }
+
+        if let rvoff = rvoff, !rvoff.isEmpty {
+            items["rvoff"] = rvoff.map { "\($0)" }.joined(separator: ",")
+        }
+
+        if let rvsiz = rvsiz, !rvsiz.isEmpty {
+            items["rvsiz"] = rvsiz.map { "\($0)" }.joined(separator: ",")
         }
 
         if let zRange = zRange {
@@ -231,73 +267,218 @@ public struct JPIPRequest: Sendable {
             }
         }
 
-        if let ccloseVal = params["cclose"], !ccloseVal.isEmpty {
-            req.cclose = ccloseVal.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        let validRoundDirections: Set<String> = ["round-up", "round-down", "closest"]
+        func recordParseError(_ message: String) {
+            if req.parseValidationError == nil {
+                req.parseValidationError = message
+            }
+        }
+
+        if let ccloseVal = params["cclose"] {
+            let items = ccloseVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+            if items.isEmpty || items.contains(where: \.isEmpty) {
+                recordParseError("Malformed JPIP cclose= parameter.")
+            } else {
+                req.cclose = items
+            }
         }
 
         if let fsizVal = params["fsiz"] {
-            let tokens = fsizVal.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            let nums = tokens.prefix(2).compactMap { Int($0) }
-            if nums.count == 2 {
-                req.fsiz = (nums[0], nums[1])
-                if tokens.count >= 3 && !tokens[2].isEmpty && Int(tokens[2]) == nil {
-                    req.fsizRoundDirection = tokens[2].lowercased()
+            let tokens = fsizVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            if (2...3).contains(tokens.count),
+               let w = Int(tokens[0]), let h = Int(tokens[1]),
+               w > 0, h > 0 {
+                req.fsiz = (w, h)
+                if tokens.count == 3 {
+                    let dir = tokens[2].lowercased()
+                    if validRoundDirections.contains(dir) {
+                        req.fsizRoundDirection = dir
+                    } else {
+                        recordParseError("Invalid JPIP fsiz rounding direction '\(tokens[2])'.")
+                    }
                 }
+            } else {
+                recordParseError("Malformed JPIP fsiz= parameter '\(fsizVal)'.")
             }
         }
 
         if let rsizVal = params["rsiz"] {
-            let nums = rsizVal.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-            if nums.count >= 2 {
-                req.rsiz = (nums[0], nums[1])
+            let tokens = rsizVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            if tokens.count == 2,
+               let w = Int(tokens[0]), let h = Int(tokens[1]),
+               w > 0, h > 0,
+               !w.multipliedReportingOverflow(by: h).overflow {
+                req.rsiz = (w, h)
+            } else {
+                recordParseError("Malformed or overflowing JPIP rsiz= parameter '\(rsizVal)'.")
             }
         }
 
         if let roffVal = params["roff"] {
-            let nums = roffVal.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-            if nums.count >= 2 {
-                req.roff = (nums[0], nums[1])
+            let tokens = roffVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            if tokens.count == 2,
+               let ox = Int(tokens[0]), let oy = Int(tokens[1]),
+               ox >= 0, oy >= 0 {
+                req.roff = (ox, oy)
+            } else {
+                recordParseError("Malformed JPIP roff= parameter '\(roffVal)'.")
             }
         }
 
-        if let zoffStr = params["zoff"], let zoff = Int(zoffStr) {
-            let zsiz = params["zsiz"].flatMap(Int.init) ?? 1
-            req.zRange = (zoff, max(1, zsiz))
-        } else if let sliceStr = params["slice"], let zoff = Int(sliceStr) {
-            req.zRange = (zoff, 1)
+        if let fvsizVal = params["fvsiz"] {
+            let tokens = fvsizVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            if tokens.isEmpty || tokens.count > 17 {
+                recordParseError("Malformed JPIP fvsiz= parameter '\(fvsizVal)'.")
+            } else {
+                var dimTokens = tokens
+                if let last = tokens.last, Int(last) == nil {
+                    let dir = last.lowercased()
+                    if validRoundDirections.contains(dir) && tokens.count >= 2 {
+                        req.fvsizRoundDirection = dir
+                        dimTokens.removeLast()
+                    } else {
+                        recordParseError("Invalid JPIP fvsiz rounding direction '\(last)'.")
+                    }
+                }
+                let parsedDims = dimTokens.compactMap { Int($0) }
+                if parsedDims.count == dimTokens.count,
+                   !parsedDims.isEmpty,
+                   parsedDims.allSatisfy({ $0 > 0 }) {
+                    req.fvsiz = parsedDims
+                } else {
+                    recordParseError("Malformed JPIP fvsiz= dimensions '\(fvsizVal)'.")
+                }
+            }
         }
 
-        if let layersVal = params["layers"], let l = Int(layersVal) {
-            req.layers = l
+        if let rvoffVal = params["rvoff"] {
+            let tokens = rvoffVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            let parsed = tokens.compactMap { Int($0) }
+            if !tokens.isEmpty, tokens.count <= 16,
+               parsed.count == tokens.count,
+               parsed.allSatisfy({ $0 >= 0 }) {
+                req.rvoff = parsed
+            } else {
+                recordParseError("Malformed JPIP rvoff= parameter '\(rvoffVal)'.")
+            }
         }
 
-        if let lenVal = params["len"], let l = Int(lenVal) {
-            req.len = l
+        if let rvsizVal = params["rvsiz"] {
+            let tokens = rvsizVal.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            let parsed = tokens.compactMap { Int($0) }
+            if !tokens.isEmpty, tokens.count <= 16,
+               parsed.count == tokens.count,
+               parsed.allSatisfy({ $0 > 0 }) {
+                var product = 1
+                var overflowed = false
+                for d in parsed {
+                    let (p, ov) = product.multipliedReportingOverflow(by: d)
+                    if ov { overflowed = true; break }
+                    product = p
+                }
+                if overflowed {
+                    recordParseError("Overflowing JPIP rvsiz= parameter '\(rvsizVal)'.")
+                } else {
+                    req.rvsiz = parsed
+                }
+            } else {
+                recordParseError("Malformed JPIP rvsiz= parameter '\(rvsizVal)'.")
+            }
+        }
+
+        if let zoffStr = params["zoff"] {
+            if let zoff = Int(zoffStr), zoff >= 0 {
+                if let zsizStr = params["zsiz"] {
+                    if let zsiz = Int(zsizStr), zsiz > 0, !zoff.addingReportingOverflow(zsiz).overflow {
+                        req.zRange = (zoff, zsiz)
+                    } else {
+                        recordParseError("Malformed JPIP zsiz= parameter '\(zsizStr)'.")
+                    }
+                } else {
+                    req.zRange = (zoff, 1)
+                }
+            } else {
+                recordParseError("Malformed JPIP zoff= parameter '\(zoffStr)'.")
+            }
+        } else if let zsizStr = params["zsiz"] {
+            if let zsiz = Int(zsizStr), zsiz > 0 {
+                req.zRange = (0, zsiz)
+            } else {
+                recordParseError("Malformed JPIP zsiz= parameter '\(zsizStr)'.")
+            }
+        } else if let sliceStr = params["slice"] {
+            if let zoff = Int(sliceStr), zoff >= 0 {
+                req.zRange = (zoff, 1)
+            } else {
+                recordParseError("Malformed JPIP slice= parameter '\(sliceStr)'.")
+            }
+        }
+
+        if let layersVal = params["layers"] {
+            if let l = Int(layersVal), l >= 1 {
+                req.layers = l
+            } else {
+                recordParseError("Malformed JPIP layers= parameter '\(layersVal)'.")
+            }
+        }
+
+        if let lenVal = params["len"] {
+            if let l = Int(lenVal), l >= 0 {
+                req.len = l
+            } else {
+                recordParseError("Malformed JPIP len= parameter '\(lenVal)'.")
+            }
         }
 
         if let compsVal = params["comps"] {
             var list: [Int] = []
-            for token in compsVal.split(separator: ",") {
+            var compsValid = !compsVal.isEmpty
+            for token in compsVal.split(separator: ",", omittingEmptySubsequences: false) {
                 let t = token.trimmingCharacters(in: .whitespaces)
                 if t.contains("-") {
-                    let bounds = t.split(separator: "-").compactMap { Int($0) }
-                    if bounds.count == 2, bounds[0] <= bounds[1], bounds[1] - bounds[0] <= 4096 {
-                        list.append(contentsOf: bounds[0]...bounds[1])
+                    let parts = t.split(separator: "-", omittingEmptySubsequences: false)
+                    if parts.count == 2,
+                       let lo = Int(parts[0]), let hi = Int(parts[1]),
+                       lo >= 0, lo <= hi, (hi - lo) <= 4096 {
+                        list.append(contentsOf: lo...hi)
+                    } else {
+                        compsValid = false
                     }
-                } else if let idx = Int(t) {
+                } else if let idx = Int(t), idx >= 0 {
                     list.append(idx)
+                } else {
+                    compsValid = false
                 }
             }
-            if !list.isEmpty { req.comps = list }
+            if compsValid && !list.isEmpty {
+                req.comps = list
+            } else {
+                recordParseError("Malformed JPIP comps= parameter '\(compsVal)'.")
+            }
         }
 
-        if let resVal = params["reslevels"], let r = Int(resVal) {
-            req.reslevels = r
+        if let resVal = params["reslevels"] {
+            if let r = Int(resVal), (0...64).contains(r) {
+                req.reslevels = r
+            } else {
+                recordParseError("Malformed JPIP reslevels= parameter '\(resVal)'.")
+            }
         }
 
         if let metaVal = params["meta"]?.lowercased() {
             if metaVal == "yes" || metaVal == "true" || metaVal == "1" {
                 req.metadata = true
+            } else if metaVal == "no" || metaVal == "false" || metaVal == "0" {
+                req.metadata = false
+            } else {
+                recordParseError("Malformed JPIP meta= parameter '\(metaVal)'.")
             }
         }
 
@@ -311,8 +492,13 @@ public struct JPIPRequest: Sendable {
             }
         }
 
-        if let modelVal = params["model"], !modelVal.isEmpty {
-            req.model = modelVal.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        if let modelVal = params["model"] {
+            if modelVal.isEmpty {
+                recordParseError("Empty JPIP model= parameter.")
+            } else {
+                req.model = modelVal.split(separator: ",", omittingEmptySubsequences: false)
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+            }
         }
 
         if let prefVal = params["pref"], let pref = JPIPCodingPreference(rawValue: prefVal) {
@@ -320,6 +506,101 @@ public struct JPIPRequest: Sendable {
         }
 
         return req
+    }
+
+    /// Validates all query and view-window fields with checked arithmetic, throwing
+    /// ``J2KError/invalidParameter(_:)`` on malformed, negative, or overflowing values.
+    public func validateParameters() throws {
+        if let err = parseValidationError {
+            throw J2KError.invalidParameter(err)
+        }
+        let validRoundDirections: Set<String> = ["round-up", "round-down", "closest"]
+        if let fsiz = fsiz {
+            guard fsiz.width > 0, fsiz.height > 0 else {
+                throw J2KError.invalidParameter("JPIP fsiz dimensions must be positive.")
+            }
+        }
+        if let dir = fsizRoundDirection, !dir.isEmpty, !validRoundDirections.contains(dir.lowercased()) {
+            throw J2KError.invalidParameter("Unsupported JPIP fsiz rounding direction '\(dir)'.")
+        }
+        if let roff = roff {
+            guard roff.x >= 0, roff.y >= 0 else {
+                throw J2KError.invalidParameter("JPIP roff coordinates must be non-negative.")
+            }
+        }
+        if let rsiz = rsiz {
+            guard rsiz.width > 0, rsiz.height > 0,
+                  !rsiz.width.multipliedReportingOverflow(by: rsiz.height).overflow else {
+                throw J2KError.invalidParameter("JPIP rsiz dimensions must be positive and non-overflowing.")
+            }
+            if let roff = roff {
+                guard !roff.x.addingReportingOverflow(rsiz.width).overflow,
+                      !roff.y.addingReportingOverflow(rsiz.height).overflow else {
+                    throw J2KError.invalidParameter("JPIP roff + rsiz overflows integer bounds.")
+                }
+            }
+        }
+        if let fvsiz = fvsiz {
+            guard !fvsiz.isEmpty, fvsiz.count <= 16, fvsiz.allSatisfy({ $0 > 0 }) else {
+                throw J2KError.invalidParameter("JPIP fvsiz dimensions must be 1..16 positive integers.")
+            }
+        }
+        if let dir = fvsizRoundDirection, !dir.isEmpty, !validRoundDirections.contains(dir.lowercased()) {
+            throw J2KError.invalidParameter("Unsupported JPIP fvsiz rounding direction '\(dir)'.")
+        }
+        if let rvoff = rvoff {
+            guard !rvoff.isEmpty, rvoff.count <= 16, rvoff.allSatisfy({ $0 >= 0 }) else {
+                throw J2KError.invalidParameter("JPIP rvoff coordinates must be non-negative.")
+            }
+        }
+        if let rvsiz = rvsiz {
+            guard !rvsiz.isEmpty, rvsiz.count <= 16, rvsiz.allSatisfy({ $0 > 0 }) else {
+                throw J2KError.invalidParameter("JPIP rvsiz dimensions must be positive.")
+            }
+            var prod = 1
+            for d in rvsiz {
+                let (next, ov) = prod.multipliedReportingOverflow(by: d)
+                guard !ov else {
+                    throw J2KError.invalidParameter("JPIP rvsiz volume product overflows integer bounds.")
+                }
+                prod = next
+            }
+            if let rvoff = rvoff {
+                for i in 0..<min(rvoff.count, rvsiz.count) {
+                    guard !rvoff[i].addingReportingOverflow(rvsiz[i]).overflow else {
+                        throw J2KError.invalidParameter("JPIP rvoff + rvsiz overflows integer bounds.")
+                    }
+                }
+            }
+        }
+        if let zr = zRange {
+            guard zr.offset >= 0, zr.size > 0, !zr.offset.addingReportingOverflow(zr.size).overflow else {
+                throw J2KError.invalidParameter("JPIP zoff/zsiz range must be non-negative, positive, and non-overflowing.")
+            }
+        }
+        if let len = len {
+            guard len >= 0 else {
+                throw J2KError.invalidParameter("JPIP len= must be non-negative.")
+            }
+        }
+        if let layers = layers {
+            guard layers >= 1 else {
+                throw J2KError.invalidParameter("JPIP layers= must be >= 1.")
+            }
+        }
+        if let res = reslevels {
+            guard (0...64).contains(res) else {
+                throw J2KError.invalidParameter("JPIP reslevels= must be in 0..64.")
+            }
+        }
+        if let comps = comps {
+            guard !comps.isEmpty, comps.allSatisfy({ $0 >= 0 }) else {
+                throw J2KError.invalidParameter("JPIP comps= indices must be non-negative.")
+            }
+        }
+        if let modelItems = model {
+            _ = try JPIPCacheModel.parseValidatedModelItems(modelItems)
+        }
     }
 }
 
@@ -432,5 +713,47 @@ extension JPIPRequest {
             cursor += 2 + segLen
         }
         return nil
+    }
+
+    /// Extracts full-resolution 3D reference-grid extents and decomposition levels from a Part 10 JP3D
+    /// `Class 6` main header (`SIZ` + `NSI` + `COD`).
+    public static func extract3DCodestreamDimensions(
+        fromMainHeader mainHeader: Data
+    ) -> (width: Int, height: Int, depth: Int, levelsX: Int, levelsY: Int, levelsZ: Int)? {
+        guard JP3DJPIPIndexer.isJP3DCodestream(mainHeader) else { return nil }
+        var synthetic = mainHeader
+        // Append one minimal empty 14-byte tile-part + EOC so `JP3DCodestreamParser` validates the full main header.
+        synthetic.append(contentsOf: [
+            0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x0E, 0x00, 0x01,
+            0xFF, 0x93, 0xFF, 0xD9
+        ])
+        guard let parsed = try? JP3DCodestreamParser().parse(synthetic) else { return nil }
+        let w = parsed.siz.width - parsed.siz.originX
+        let h = parsed.siz.height - parsed.siz.originY
+        let d = parsed.siz.depth - parsed.siz.originZ
+        guard w > 0, h > 0, d > 0 else { return nil }
+        return (w, h, d, parsed.cod.levelsX, parsed.cod.levelsY, parsed.cod.levelsZ)
+    }
+
+    /// Computes ITU-T Rec. T.808 Clause C.4.5 3D frame size `[fx, fy, fz]` at `resolutionLevel`
+    /// (`0` = full resolution, `k > 0` = reduced by `k` DWT levels per axis up to `(levelsX, levelsY, levelsZ)`).
+    public static func frameDimensions3D(
+        fullWidth: Int,
+        fullHeight: Int,
+        fullDepth: Int,
+        levelsX: Int,
+        levelsY: Int,
+        levelsZ: Int,
+        resolutionLevel: Int
+    ) -> [Int] {
+        let r = max(0, resolutionLevel)
+        let sx = min(r, max(0, levelsX))
+        let sy = min(r, max(0, levelsY))
+        let sz = min(r, max(0, levelsZ))
+        let fx = max(1, (fullWidth + (1 << sx) - 1) >> sx)
+        let fy = max(1, (fullHeight + (1 << sy) - 1) >> sy)
+        let fz = max(1, (fullDepth + (1 << sz) - 1) >> sz)
+        return [fx, fy, fz]
     }
 }

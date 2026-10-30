@@ -436,12 +436,16 @@ public struct JP3DCodestreamBuilder: Sendable {
         case siz = 0xFF51
         /// Coding style default (`COD`, `Lcod = 17 [+ 2*(NL+1)]`).
         case cod = 0xFF52
+        /// Coding style component (`COC`).
+        case coc = 0xFF53
         /// N-dimensional size and tile information (`NSI`, `Lnsi = 19 + Csiz`).
         case nsi = 0xFF54
         /// Corresponding profile (`CPF`).
         case cpf = 0xFF59
         /// Quantisation default (`QCD`).
         case qcd = 0xFF5C
+        /// Quantisation component (`QCC`).
+        case qcc = 0xFF5D
         /// Region of interest (`RGN`).
         case rgn = 0xFF5E
         /// Comment (`COM`).
@@ -481,7 +485,8 @@ public struct JP3DCodestreamBuilder: Sendable {
     }
 
     /// The caller admits `capacity` before allocating this single output buffer.
-    /// Normative `SIZ`, `CAP` (+ `CPF` when HTJ2K is active), `NSI`, `COD`, `QCD`, `RGN`, `COM`, `SOT`/`SOD`, and `EOC`
+    /// Normative `SIZ`, `CAP` (+ `CPF` when HTJ2K is active), `NSI`, `COD`, `COC`, `QCD`, `QCC`,
+    /// optional Part 2 `CBD`/`MCT`/`MCC`/`MCO`, `RGN`, `COM`, `SOT` (+ optional tile overrides) / `SOD`, and `EOC`
     /// are emitted directly in place without intermediate copies.
     package func buildPreallocated(
         tileData: [Data], width: Int, height: Int, depth: Int,
@@ -494,7 +499,13 @@ public struct JP3DCodestreamBuilder: Sendable {
         componentSigned: [Bool]? = nil,
         codOverride: JP3DCODInfo? = nil,
         qcdOverride: JP3DQuantizationParameters? = nil,
-        roiShifts: [Int] = []
+        roiShifts: [Int] = [],
+        mainCOC: [Int: JP3DCODInfo] = [:],
+        mainQCC: [Int: JP3DQuantizationParameters] = [:],
+        mainRGNAllComponents: Int? = nil,
+        mainRGNByComponent: [Int: Int] = [:],
+        tileOverrides: [Int: JP3DTileHeaderOverrides] = [:],
+        part2BitSplit: JP3DPart2BitSplitDescriptor? = nil
     ) -> Data {
         var stream = Data(capacity: max(0, capacity))
 
@@ -504,7 +515,8 @@ public struct JP3DCodestreamBuilder: Sendable {
         } else {
             let htStyle: UInt8
             if let htCfg = htj2kConfiguration {
-                htStyle = htCfg.allowMixedTiles ? 0xC0 : 0x40
+                let refBit: UInt8 = htCfg.passCount >= 2 ? 0x01 : 0x00
+                htStyle = (htCfg.allowMixedTiles ? 0xC0 : 0x40) | refBit
             } else {
                 htStyle = 0x00
             }
@@ -552,6 +564,19 @@ public struct JP3DCodestreamBuilder: Sendable {
             )
         }
 
+        // Determine effective RGN and tile functional flags for CAP Ccap^15 consistency.
+        let hasMainRGN = roiShifts.enumerated().contains(where: { $0.offset < components && $0.element > 0 })
+            || ((mainRGNAllComponents ?? 0) > 0)
+            || mainRGNByComponent.contains(where: { $0.key < components && $0.value > 0 })
+        let hasTileRGN = tileOverrides.values.contains(where: {
+            (($0.rgnAllComponents ?? 0) > 0) || $0.rgnByComponent.values.contains(where: { $0 > 0 })
+        })
+        let hasAnyRGN = hasMainRGN || hasTileRGN
+        let hasAnyTileFunctional = tileOverrides.values.contains(where: {
+            $0.cod != nil || !$0.coc.isEmpty || $0.qcd != nil || !$0.qcc.isEmpty
+                || $0.rgnAllComponents != nil || !$0.rgnByComponent.isEmpty
+        })
+
         // 1. SOC (0xFF4F)
         appendMarker(&stream, .soc)
 
@@ -566,17 +591,49 @@ public struct JP3DCodestreamBuilder: Sendable {
 
         // 3. Mandatory CAP (0xFF50) immediately after SIZ (ITU-T T.809 Table A.2), plus CPF (0xFF59) when HTJ2K is active.
         if let htj2kConfiguration {
-            let maxExp = effectiveQCD.steps.map(\.exponent).max() ?? maxCompBitDepth
-            let maxMb = max(8, effectiveQCD.guardBits + maxExp - 1)
+            var allQCDs: [JP3DQuantizationParameters] = [effectiveQCD]
+            allQCDs.append(contentsOf: mainQCC.values)
+            for ov in tileOverrides.values {
+                if let tq = ov.qcd { allQCDs.append(tq) }
+                allQCDs.append(contentsOf: ov.qcc.values.map(\.params))
+            }
+            let maxMb = allQCDs.map { q in
+                let maxExp = q.steps.map(\.exponent).max() ?? maxCompBitDepth
+                return max(8, q.guardBits + maxExp - 1)
+            }.max() ?? max(8, maxCompBitDepth)
+
+            var allCODs: [JP3DCODInfo] = [effectiveCOD]
+            allCODs.append(contentsOf: mainCOC.values)
+            for ov in tileOverrides.values {
+                if let tc = ov.cod { allCODs.append(tc) }
+                allCODs.append(contentsOf: ov.coc.values)
+            }
+            let anyIrreversible = allCODs.contains(where: { !$0.isLossless }) || allQCDs.contains(where: { !$0.isReversible })
+            let anyPart1OnlyComp = allCODs.contains(where: { ($0.codeBlockStyle & 0x40) == 0 })
+            let anyMixedBlockStyle = allCODs.contains(where: { ($0.codeBlockStyle & 0xC0) == 0xC0 })
+            let maxLayers = allCODs.map(\.numLayers).max() ?? effectiveCOD.numLayers
+            let usesMultiHT = htj2kConfiguration.passCount >= 4 && maxLayers >= 2
+
             stream.append(JP3DHTMarkers.capMarkerData(
                 for: htj2kConfiguration,
-                isLossless: effectiveCOD.isLossless,
-                maxMb: maxMb
+                isLossless: !anyIrreversible,
+                maxMb: maxMb,
+                htDeclaredOnly: anyPart1OnlyComp && !anyMixedBlockStyle && !htj2kConfiguration.allowMixedTiles,
+                multiHT: usesMultiHT,
+                hasRGN: hasAnyRGN,
+                heterogeneous: hasAnyTileFunctional,
+                includePart2MCT: part2BitSplit != nil
             ))
             stream.append(JP3DHTMarkers.cpfMarkerData(
                 for: htj2kConfiguration,
-                isLossless: effectiveCOD.isLossless
+                isLossless: !anyIrreversible
             ))
+        } else if part2BitSplit != nil {
+            appendMarker(&stream, .cap)
+            appendUInt16BE(&stream, 10)             // Lcap = 10 (2 Pcap bits: Pcap^2 | Pcap^10)
+            appendUInt32BE(&stream, 0x4040_0000)    // Pcap^2 (0x4000_0000) | Pcap^10 (0x0040_0000)
+            appendUInt16BE(&stream, 0x0000)         // Ccap^2
+            appendUInt16BE(&stream, 0x0000)         // Ccap^10
         } else {
             appendMarker(&stream, .cap)
             appendUInt16BE(&stream, 8)              // Lcap = 8 (1 Pcap bit set)
@@ -587,15 +644,41 @@ public struct JP3DCodestreamBuilder: Sendable {
         // 4. Mandatory NSI (0xFF54, Lnsi = 19 + Csiz, Ndim = 3)
         appendNSI(&stream, depth: depth, tileSizeZ: tileSizeZ, components: components)
 
-        // 5. Normative 3D COD (0xFF52, Lcod = 17 [+ 2*(NL+1)])
+        // 5. Normative 3D COD (0xFF52) + optional main-header COC (0xFF53)
         appendCOD(&stream, cod: effectiveCOD)
+        for compIdx in mainCOC.keys.sorted() where compIdx >= 0 && compIdx < components {
+            if let coc = mainCOC[compIdx] {
+                appendCOC(&stream, component: compIdx, totalComponents: components, cod: coc)
+            }
+        }
 
-        // 6. Normative Morton-order 3D QCD (0xFF5C)
+        // 6. Normative Morton-order 3D QCD (0xFF5C) + optional main-header QCC (0xFF5D)
         appendQCD(&stream, qcd: effectiveQCD)
+        for compIdx in mainQCC.keys.sorted() where compIdx >= 0 && compIdx < components {
+            if let qcc = mainQCC[compIdx] {
+                appendQCC(&stream, component: compIdx, totalComponents: components, qcd: qcc)
+            }
+        }
+
+        // 6b. Optional Part 2 CBD / MCT / MCC / MCO bit-split synthesis markers
+        if let part2BitSplit {
+            stream.append(part2BitSplit.rawMarkerSegments)
+        }
 
         // 7. Optional RGN (0xFF5E) Maxshift ROI segments
-        for (compIdx, shift) in roiShifts.enumerated() where shift > 0 && compIdx < components {
-            appendRGN(&stream, component: compIdx, totalComponents: components, shift: shift)
+        if let allShift = mainRGNAllComponents, allShift > 0 {
+            appendRGNAllComponents(&stream, shift: allShift)
+        }
+        if !mainRGNByComponent.isEmpty {
+            for compIdx in mainRGNByComponent.keys.sorted() where compIdx >= 0 && compIdx < components {
+                if let shift = mainRGNByComponent[compIdx], shift > 0 {
+                    appendRGN(&stream, component: compIdx, totalComponents: components, shift: shift)
+                }
+            }
+        } else {
+            for (compIdx, shift) in roiShifts.enumerated() where shift > 0 && compIdx < components {
+                appendRGN(&stream, component: compIdx, totalComponents: components, shift: shift)
+            }
         }
 
         // 8. Optional COM (0xFF64) segments
@@ -611,9 +694,39 @@ public struct JP3DCodestreamBuilder: Sendable {
             appendCOM(&stream, registration: comment.registration, payload: comment.payload)
         }
 
-        // 9. Tile-parts: SOT (0xFF90) + SOD (0xFF93) + packet bitstream
+        // 9. Tile-parts: SOT (0xFF90) + optional tile-part header overrides + SOD (0xFF93) + packet bitstream
         for (index, data) in tileData.enumerated() {
-            appendSOT(&stream, tileIndex: index, tilePartLength: data.count)
+            var tileHeaderMarkers = Data()
+            if let ov = tileOverrides[index] {
+                if let tcod = ov.cod {
+                    appendCOD(&tileHeaderMarkers, cod: tcod)
+                }
+                for compIdx in ov.coc.keys.sorted() where compIdx >= 0 && compIdx < components {
+                    if let tcoc = ov.coc[compIdx] {
+                        appendCOC(&tileHeaderMarkers, component: compIdx, totalComponents: components, cod: tcoc)
+                    }
+                }
+                if let tqcd = ov.qcd {
+                    appendQCD(&tileHeaderMarkers, qcd: tqcd)
+                }
+                for compIdx in ov.qcc.keys.sorted() where compIdx >= 0 && compIdx < components {
+                    if let tqcc = ov.qcc[compIdx] {
+                        appendQCC(&tileHeaderMarkers, component: compIdx, totalComponents: components, qcd: tqcc.params)
+                    }
+                }
+                if let allShift = ov.rgnAllComponents, allShift > 0 {
+                    appendRGNAllComponents(&tileHeaderMarkers, shift: allShift)
+                }
+                for compIdx in ov.rgnByComponent.keys.sorted() where compIdx >= 0 && compIdx < components {
+                    if let shift = ov.rgnByComponent[compIdx], shift > 0 {
+                        appendRGN(&tileHeaderMarkers, component: compIdx, totalComponents: components, shift: shift)
+                    }
+                }
+            }
+            appendSOT(&stream, tileIndex: index, tilePartLength: tileHeaderMarkers.count + data.count)
+            if !tileHeaderMarkers.isEmpty {
+                stream.append(tileHeaderMarkers)
+            }
             appendMarker(&stream, .sod)
             stream.append(data)
         }
@@ -630,7 +743,13 @@ public struct JP3DCodestreamBuilder: Sendable {
         isLossless: Bool, includesHTMarkers: Bool, comments: [JP3DCommentSegment],
         codOverride: JP3DCODInfo? = nil,
         qcdOverride: JP3DQuantizationParameters? = nil,
-        roiShifts: [Int] = []
+        roiShifts: [Int] = [],
+        mainCOC: [Int: JP3DCODInfo] = [:],
+        mainQCC: [Int: JP3DQuantizationParameters] = [:],
+        mainRGNAllComponents: Int? = nil,
+        mainRGNByComponent: [Int: Int] = [:],
+        tileOverrides: [Int: JP3DTileHeaderOverrides] = [:],
+        part2BitSplit: JP3DPart2BitSplitDescriptor? = nil
     ) throws -> Int {
         guard components > 0, components <= (Int(UInt16.max) - 38) / 3,
               (0...32).contains(levelsX), (0...32).contains(levelsY),
@@ -648,6 +767,27 @@ public struct JP3DCodestreamBuilder: Sendable {
             count = next
         }
 
+        let compIdBytes = components < 257 ? 1 : 2
+
+        func cocMarkerBytes(_ cod: JP3DCODInfo) -> Int {
+            let nl = max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
+            return 2 + 2 + compIdBytes + 1 + 10 + (cod.usesCustomPrecincts ? 2 * (nl + 1) : 0)
+        }
+        func codMarkerBytes(_ cod: JP3DCODInfo) -> Int {
+            let nl = max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
+            return 19 + (cod.usesCustomPrecincts ? 2 * (nl + 1) : 0)
+        }
+        func qcdBodyBytes(_ qcd: JP3DQuantizationParameters) -> Int {
+            switch qcd.style {
+            case 0: return qcd.steps.count
+            case 1: return 2
+            default: return 2 * qcd.steps.count
+            }
+        }
+        func qccMarkerBytes(_ qcd: JP3DQuantizationParameters) -> Int {
+            2 + 2 + compIdBytes + 1 + qcdBodyBytes(qcd)
+        }
+
         if let codOverride, codOverride.usesCustomPrecincts {
             let nl = max(codOverride.levelsX, max(codOverride.levelsY, codOverride.levelsZ))
             try add(2 * (nl + 1))
@@ -655,14 +795,7 @@ public struct JP3DCodestreamBuilder: Sendable {
 
         let qcdPayloadBytes: Int
         if let qcdOverride {
-            switch qcdOverride.style {
-            case 0:
-                qcdPayloadBytes = qcdOverride.steps.count
-            case 1:
-                qcdPayloadBytes = 2
-            default:
-                qcdPayloadBytes = 2 * qcdOverride.steps.count
-            }
+            qcdPayloadBytes = qcdBodyBytes(qcdOverride)
         } else {
             let totalSubbands = JP3DQuantizationParameters.totalSubbandCount(
                 levelsX: levelsX, levelsY: levelsY, levelsZ: levelsZ
@@ -673,10 +806,34 @@ public struct JP3DCodestreamBuilder: Sendable {
 
         // HT adds +2 bytes to CAP (12 vs 10) and +6 bytes for CPF = +8 bytes.
         if includesHTMarkers { try add(8) }
+        // Part 2 bit-split adds +2 bytes to CAP (Ccap^2) plus CBD/MCT/MCC/MCO marker bytes.
+        if let part2BitSplit {
+            try add(2 + part2BitSplit.rawMarkerSegments.count)
+        }
+
+        for compIdx in mainCOC.keys where compIdx >= 0 && compIdx < components {
+            if let coc = mainCOC[compIdx] {
+                try add(cocMarkerBytes(coc))
+            }
+        }
+        for compIdx in mainQCC.keys where compIdx >= 0 && compIdx < components {
+            if let qcc = mainQCC[compIdx] {
+                try add(qccMarkerBytes(qcc))
+            }
+        }
 
         let rgnEach = components < 257 ? 7 : 8
-        for (compIdx, shift) in roiShifts.enumerated() where shift > 0 && compIdx < components {
-            try add(rgnEach)
+        if let allShift = mainRGNAllComponents, allShift > 0 {
+            try add(8) // 2-byte Crgn = 65535 (Lrgn = 6 -> 8 total bytes)
+        }
+        if !mainRGNByComponent.isEmpty {
+            for (compIdx, shift) in mainRGNByComponent where compIdx >= 0 && compIdx < components && shift > 0 {
+                try add(rgnEach)
+            }
+        } else {
+            for (compIdx, shift) in roiShifts.enumerated() where shift > 0 && compIdx < components {
+                try add(rgnEach)
+            }
         }
 
         for comment in comments {
@@ -685,11 +842,27 @@ public struct JP3DCodestreamBuilder: Sendable {
             }
             try add(6 + comment.payload.count)
         }
-        for tile in tileData {
-            guard tile.count <= Int(UInt32.max) - 14 else {
+        for (tIdx, tile) in tileData.enumerated() {
+            var ovBytes = 0
+            if let ov = tileOverrides[tIdx] {
+                if let tcod = ov.cod { ovBytes += codMarkerBytes(tcod) }
+                for (cIdx, tcoc) in ov.coc where cIdx >= 0 && cIdx < components {
+                    ovBytes += cocMarkerBytes(tcoc)
+                }
+                if let tqcd = ov.qcd { ovBytes += 5 + qcdBodyBytes(tqcd) }
+                for (cIdx, tqcc) in ov.qcc where cIdx >= 0 && cIdx < components {
+                    ovBytes += qccMarkerBytes(tqcc.params)
+                }
+                if let allS = ov.rgnAllComponents, allS > 0 { ovBytes += 8 }
+                for (cIdx, s) in ov.rgnByComponent where cIdx >= 0 && cIdx < components && s > 0 {
+                    ovBytes += rgnEach
+                }
+            }
+            let totalTilePartPayload = try jp3dCheckedAdd(ovBytes, tile.count, label: "3D tile-part payload")
+            guard totalTilePartPayload <= Int(UInt32.max) - 14 else {
                 throw CodecError(.resourceLimitExceeded, "Tile exceeds SOT marker capacity")
             }
-            try add(14 + tile.count)
+            try add(14 + totalTilePartPayload)
         }
         return count
     }
@@ -811,6 +984,85 @@ public struct JP3DCodestreamBuilder: Sendable {
                 appendUInt16BE(&stream, word)
             }
         }
+    }
+
+    private func appendCOC(_ stream: inout Data, component: Int, totalComponents: Int, cod: JP3DCODInfo) {
+        appendMarker(&stream, .coc)
+        let compIdBytes = totalComponents < 257 ? 1 : 2
+        let maxLevels = max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
+        let hasPrecincts = cod.usesCustomPrecincts
+        let segmentLength = UInt16(2 + compIdBytes + 1 + 10 + (hasPrecincts ? 2 * (maxLevels + 1) : 0))
+        appendUInt16BE(&stream, segmentLength)
+        if totalComponents < 257 {
+            stream.append(UInt8(component))
+        } else {
+            appendUInt16BE(&stream, UInt16(component))
+        }
+        stream.append(cod.scod & 0x01)
+        stream.append(UInt8(max(0, min(32, cod.levelsX))))
+        stream.append(UInt8(max(0, min(32, cod.levelsY))))
+        stream.append(UInt8(max(0, min(32, cod.levelsZ))))
+        stream.append(UInt8(max(0, min(10, cod.codeBlockWidthExponent))))
+        stream.append(UInt8(max(0, min(10, cod.codeBlockHeightExponent))))
+        stream.append(UInt8(max(0, min(10, cod.codeBlockDepthExponent))))
+        stream.append(cod.codeBlockStyle)
+        stream.append(cod.dwtX)
+        stream.append(cod.dwtY)
+        stream.append(cod.dwtZ)
+        if hasPrecincts {
+            for r in 0...maxLevels {
+                let p = cod.precinctExponents(forResolution: r)
+                let word = UInt16(((p.ppz & 0x0F) << 8) | ((p.ppy & 0x0F) << 4) | (p.ppx & 0x0F))
+                appendUInt16BE(&stream, word)
+            }
+        }
+    }
+
+    private func appendQCC(
+        _ stream: inout Data,
+        component: Int,
+        totalComponents: Int,
+        qcd: JP3DQuantizationParameters
+    ) {
+        appendMarker(&stream, .qcc)
+        let compIdBytes = totalComponents < 257 ? 1 : 2
+        let sqcc = UInt8(((qcd.guardBits & 0x07) << 5)) | (qcd.style & 0x1F)
+        let bodyBytes: Int
+        switch qcd.style {
+        case 0: bodyBytes = qcd.steps.count
+        case 1: bodyBytes = 2
+        default: bodyBytes = 2 * qcd.steps.count
+        }
+        appendUInt16BE(&stream, UInt16(2 + compIdBytes + 1 + bodyBytes))
+        if totalComponents < 257 {
+            stream.append(UInt8(component))
+        } else {
+            appendUInt16BE(&stream, UInt16(component))
+        }
+        stream.append(sqcc)
+        switch qcd.style {
+        case 0:
+            for s in qcd.steps {
+                stream.append(UInt8((max(0, min(31, s.exponent)) & 0x1F) << 3))
+            }
+        case 1:
+            let base = qcd.steps.first ?? (exponent: 8, mantissa: 0)
+            let word = UInt16(((max(0, min(31, base.exponent)) & 0x1F) << 11) | (max(0, min(2047, base.mantissa)) & 0x07FF))
+            appendUInt16BE(&stream, word)
+        default:
+            for s in qcd.steps {
+                let word = UInt16(((max(0, min(31, s.exponent)) & 0x1F) << 11) | (max(0, min(2047, s.mantissa)) & 0x07FF))
+                appendUInt16BE(&stream, word)
+            }
+        }
+    }
+
+    private func appendRGNAllComponents(_ stream: inout Data, shift: Int) {
+        appendMarker(&stream, .rgn)
+        appendUInt16BE(&stream, 6)
+        appendUInt16BE(&stream, 0xFFFF) // Crgn = 65535 (all components)
+        stream.append(UInt8(0)) // Srgn = 0 (Maxshift)
+        stream.append(UInt8(max(0, min(37, shift))))
     }
 
     private func appendRGN(_ stream: inout Data, component: Int, totalComponents: Int, shift: Int) {

@@ -300,6 +300,146 @@ public struct JP3DCODInfo: Sendable {
         }
         return (15, 15, 15)
     }
+
+    /// Merges a component-specific `COC` (`0xFF53`) override onto a `COD` base (`ITU-T T.809` Clause A.2.3),
+    /// preserving tile-wide `SGcod` parameters (`progressionOrderByte`, `numLayers`, `multipleComponentTransform`,
+    /// `SOP`/`EPH` bits `1..2` of `Scod`) while overriding `SPcoc` and custom precinct bit `0`.
+    package func applying(coc: JP3DCODInfo) -> JP3DCODInfo {
+        let mergedScod = (scod & 0x06) | (coc.scod & 0x01)
+        return JP3DCODInfo(
+            levelsX: coc.levelsX,
+            levelsY: coc.levelsY,
+            levelsZ: coc.levelsZ,
+            isLossless: coc.isLossless,
+            codeBlockStyle: coc.codeBlockStyle,
+            scod: mergedScod,
+            progressionOrderByte: progressionOrderByte,
+            numLayers: numLayers,
+            multipleComponentTransform: multipleComponentTransform,
+            codeBlockWidthExponent: coc.codeBlockWidthExponent,
+            codeBlockHeightExponent: coc.codeBlockHeightExponent,
+            codeBlockDepthExponent: coc.codeBlockDepthExponent,
+            dwtX: coc.dwtX,
+            dwtY: coc.dwtY,
+            dwtZ: coc.dwtZ,
+            precinctSizes: coc.precinctSizes
+        )
+    }
+}
+
+/// First-tile-part (`TPsot == 0`) functional marker overrides for one tile (`ITU-T T.809` Clauses A.2.2–A.2.6).
+package struct JP3DTileHeaderOverrides: Sendable {
+    package var cod: JP3DCODInfo?
+    package var coc: [Int: JP3DCODInfo] = [:]
+    package var qcd: JP3DQuantizationParameters?
+    package var qcdExplicitSubbandCount: Int?
+    package var qcc: [Int: (params: JP3DQuantizationParameters, explicitSubbandCount: Int?)] = [:]
+    package var rgnAllComponents: Int?
+    package var rgnByComponent: [Int: Int] = [:]
+
+    package init() {}
+
+    package var hasAnyFunctionalOverride: Bool {
+        cod != nil || !coc.isEmpty || qcd != nil || !qcc.isEmpty || rgnAllComponents != nil || !rgnByComponent.isEmpty
+    }
+}
+
+/// Normative ITU-T T.809 Table A.1 / ITU-T T.801 `CBD` (`0xFF78`) + `MCT` (`0xFF74`) + `MCC` (`0xFF75`) + `MCO` (`0xFF77`)
+/// reversible `19 + (B - 19)` multi-component synthesis descriptor for extreme-range `35...38`-bit lossless volumes
+/// whose wavelet sub-band magnitudes exceed the single-component `G + eps_b - 1 <= 37` Part 10 `QCD` ceiling.
+package struct JP3DPart2BitSplitDescriptor: Sendable, Equatable {
+    package static let defaultSplitLowBits = 19
+
+    package let logicalComponentBitDepths: [Int]
+    package let logicalComponentSigned: [Bool]
+    package let rawMarkerSegments: Data
+
+    package init(
+        logicalComponentBitDepths: [Int],
+        logicalComponentSigned: [Bool],
+        rawMarkerSegments: Data
+    ) {
+        self.logicalComponentBitDepths = logicalComponentBitDepths
+        self.logicalComponentSigned = logicalComponentSigned
+        self.rawMarkerSegments = rawMarkerSegments
+    }
+
+    package var logicalComponentCount: Int { logicalComponentBitDepths.count }
+
+    /// Builds normative `CBD` (`0xFF78`), `MCT` (`0xFF74`), `MCC` (`0xFF75`), and `MCO` (`0xFF77`) main-header marker segments
+    /// mapping `2 * N` codestream components `(lo_19bit_unsigned, hi_(B-19)bit)` into `N` reconstructed `B`-bit output components
+    /// via integer decorrelation matrix `[1, 2^19]`.
+    package static func buildMarkerSegments(
+        logicalBitDepths: [Int],
+        logicalSigned: [Bool]
+    ) -> JP3DPart2BitSplitDescriptor {
+        let n = logicalBitDepths.count
+        var buf = Data()
+
+        func appendU16(_ v: UInt16) {
+            buf.append(UInt8((v >> 8) & 0xFF))
+            buf.append(UInt8(v & 0xFF))
+        }
+        func appendU32(_ v: UInt32) {
+            buf.append(UInt8((v >> 24) & 0xFF))
+            buf.append(UInt8((v >> 16) & 0xFF))
+            buf.append(UInt8((v >> 8) & 0xFF))
+            buf.append(UInt8(v & 0xFF))
+        }
+
+        // 1. CBD (0xFF78, ITU-T T.801 A.3.7): Lcbd = 4 + N, Ncbd = N (bit 15 = 0 => explicit BDcbd^i)
+        appendU16(0xFF78)
+        appendU16(UInt16(4 + n))
+        appendU16(UInt16(n))
+        for i in 0..<n {
+            let depth = max(1, min(38, logicalBitDepths[i]))
+            let sgn = i < logicalSigned.count ? logicalSigned[i] : false
+            buf.append((sgn ? 0x80 : 0x00) | UInt8(depth - 1))
+        }
+
+        // 2. MCT (0xFF74, ITU-T T.801 A.3.8): Lmct = 16, Zmct = 0, Imct = 0x0501 (Int32 decorrelation array #1),
+        //    Ymct = 0, SPmct = [Int32(1), Int32(524288)] (1 x 2 synthesis matrix `[1, 2^19]`).
+        appendU16(0xFF74)
+        appendU16(16)
+        appendU16(0)
+        appendU16(0x0501)
+        appendU16(0)
+        appendU32(1)
+        appendU32(524_288)
+
+        // 3. MCC (0xFF75, ITU-T T.801 A.3.9): stage Imcc = 1, Qmcc = N collections, each 11 bytes:
+        //    Xmcc = 0x09 (reversible matrix decorrelation), Nmcc = 2 (`2*c`, `2*c+1`), Mmcc = 1 (`c`), Tmcc = 0x000001 (array #1).
+        let lmcc = 9 + 11 * n
+        appendU16(0xFF75)
+        appendU16(UInt16(lmcc))
+        appendU16(0)      // Zmcc = 0
+        buf.append(1)     // Imcc = 1
+        appendU16(0)      // Ymcc = 0
+        appendU16(UInt16(n)) // Qmcc = N
+        for c in 0..<n {
+            buf.append(0x09) // Xmcc: reversible matrix decorrelation
+            appendU16(2)     // Nmcc = 2 (8-bit indices)
+            buf.append(UInt8(2 * c))
+            buf.append(UInt8(2 * c + 1))
+            appendU16(1)     // Mmcc = 1 (8-bit index)
+            buf.append(UInt8(c))
+            buf.append(0x00) // Tmcc (24 bits): reversible=0, offset=0, decorrelation=1
+            buf.append(0x00)
+            buf.append(0x01)
+        }
+
+        // 4. MCO (0xFF77, ITU-T T.801 A.3.10): Lmco = 4, Nmco = 1, Imco^1 = 1
+        appendU16(0xFF77)
+        appendU16(4)
+        buf.append(1)
+        buf.append(1)
+
+        return JP3DPart2BitSplitDescriptor(
+            logicalComponentBitDepths: logicalBitDepths,
+            logicalComponentSigned: logicalSigned,
+            rawMarkerSegments: buf
+        )
+    }
 }
 
 /// Encoded data for a single tile parsed from the codestream.
@@ -347,6 +487,18 @@ public struct JP3DParsedCodestream: Sendable {
     package let qcd: JP3DQuantizationParameters
     /// Per-component Maxshift ROI shifts from `RGN` (`0xFF5E`).
     package let roiShifts: [Int]
+    /// Main-header `COC` (`0xFF53`) component overrides.
+    package let mainCOC: [Int: JP3DCODInfo]
+    /// Main-header `QCC` (`0xFF5D`) component overrides.
+    package let mainQCC: [Int: JP3DQuantizationParameters]
+    /// Main-header `RGN` (`0xFF5E`) all-components (`Crgn == 65535`) shift.
+    package let mainRGNAllComponents: Int?
+    /// Main-header `RGN` (`0xFF5E`) per-component shifts.
+    package let mainRGNByComponent: [Int: Int]
+    /// First-tile-part (`TPsot == 0`) functional marker overrides keyed by tile index.
+    package let tileOverrides: [Int: JP3DTileHeaderOverrides]
+    /// Optional Part 2 `CBD`/`MCT`/`MCC`/`MCO` reversible bit-split synthesis descriptor.
+    package let part2BitSplit: JP3DPart2BitSplitDescriptor?
     /// Total bytes retained across parsed tile subdata buffers.
     internal let retainedTileBytes: Int
 
@@ -381,6 +533,12 @@ public struct JP3DParsedCodestream: Sendable {
             ? .makeReversible(maxBitDepth: siz.bitDepth, levelsX: cod.levelsX, levelsY: cod.levelsY, levelsZ: cod.levelsZ)
             : .makeIrreversible(maxBitDepth: siz.bitDepth, levelsX: cod.levelsX, levelsY: cod.levelsY, levelsZ: cod.levelsZ)
         self.roiShifts = [Int](repeating: 0, count: max(1, siz.componentCount))
+        self.mainCOC = [:]
+        self.mainQCC = [:]
+        self.mainRGNAllComponents = nil
+        self.mainRGNByComponent = [:]
+        self.tileOverrides = [:]
+        self.part2BitSplit = nil
         self.retainedTileBytes = tiles.reduce(0) { $0 + 32 + $1.data.count + MemoryLayout<JP3DParsedTile>.stride }
     }
 
@@ -398,7 +556,13 @@ public struct JP3DParsedCodestream: Sendable {
         ccap15: UInt16? = nil,
         hasNSIMarker: Bool = false,
         qcd: JP3DQuantizationParameters? = nil,
-        roiShifts: [Int] = []
+        roiShifts: [Int] = [],
+        mainCOC: [Int: JP3DCODInfo] = [:],
+        mainQCC: [Int: JP3DQuantizationParameters] = [:],
+        mainRGNAllComponents: Int? = nil,
+        mainRGNByComponent: [Int: Int] = [:],
+        tileOverrides: [Int: JP3DTileHeaderOverrides] = [:],
+        part2BitSplit: JP3DPart2BitSplitDescriptor? = nil
     ) {
         self.siz = siz
         self.cod = cod
@@ -418,6 +582,107 @@ public struct JP3DParsedCodestream: Sendable {
             ? .makeReversible(maxBitDepth: siz.bitDepth, levelsX: cod.levelsX, levelsY: cod.levelsY, levelsZ: cod.levelsZ)
             : .makeIrreversible(maxBitDepth: siz.bitDepth, levelsX: cod.levelsX, levelsY: cod.levelsY, levelsZ: cod.levelsZ))
         self.roiShifts = roiShifts.isEmpty ? [Int](repeating: 0, count: max(1, siz.componentCount)) : roiShifts
+        self.mainCOC = mainCOC
+        self.mainQCC = mainQCC
+        self.mainRGNAllComponents = mainRGNAllComponents
+        self.mainRGNByComponent = mainRGNByComponent
+        self.tileOverrides = tileOverrides
+        self.part2BitSplit = part2BitSplit
+    }
+
+    /// Effective tile-wide `COD` (`Tile COD ?? Main COD`) supplying `SGcod` parameters (`progressionOrderByte`,
+    /// `numLayers`, `multipleComponentTransform`, `SOP`, `EPH`) for `tileIndex`.
+    package func effectiveTileCOD(tileIndex: Int) -> JP3DCODInfo {
+        tileOverrides[tileIndex]?.cod ?? cod
+    }
+
+    /// Effective `COD`/`COC` parameters for `(tileIndex, component)` following `ITU-T T.809` Clauses A.2.2–A.2.3:
+    /// `Tile-part COC > Tile-part COD > Main COC > Main COD`.
+    package func effectiveCOD(tileIndex: Int, component: Int) -> JP3DCODInfo {
+        let tileOv = tileOverrides[tileIndex]
+        var base = tileOv?.cod ?? cod
+        if tileOv?.cod == nil, let mCOC = mainCOC[component] {
+            base = base.applying(coc: mCOC)
+        }
+        if let tCOC = tileOv?.coc[component] {
+            base = base.applying(coc: tCOC)
+        }
+        return base
+    }
+
+    /// Effective `QCD`/`QCC` parameters for `(tileIndex, component)` following `ITU-T T.809` Clauses A.2.5–A.2.6:
+    /// `Tile-part QCC > Tile-part QCD > Main QCC > Main QCD`.
+    package func effectiveQCD(tileIndex: Int, component: Int) -> JP3DQuantizationParameters {
+        if let tQCC = tileOverrides[tileIndex]?.qcc[component]?.params {
+            return tQCC
+        }
+        if let tQCD = tileOverrides[tileIndex]?.qcd {
+            return tQCD
+        }
+        if let mQCC = mainQCC[component] {
+            return mQCC
+        }
+        return qcd
+    }
+
+    /// Effective Maxshift ROI binary shift for `(tileIndex, component)` following `ITU-T T.809` Clause A.2.4:
+    /// `Tile-part RGN (Crgn != 65535) > Tile-part RGN (Crgn == 65535) > Main RGN (Crgn != 65535) > Main RGN (Crgn == 65535)`.
+    package func effectiveROIShift(tileIndex: Int, component: Int) -> Int {
+        if let tComp = tileOverrides[tileIndex]?.rgnByComponent[component] {
+            return tComp
+        }
+        if let tAll = tileOverrides[tileIndex]?.rgnAllComponents {
+            return tAll
+        }
+        if let mComp = mainRGNByComponent[component] {
+            return mComp
+        }
+        if let mAll = mainRGNAllComponents {
+            return mAll
+        }
+        return component < roiShifts.count ? roiShifts[component] : 0
+    }
+
+    /// Whether every effective `(tile, component)` pair in the codestream uses lossless reversible coding.
+    package var isFullyReversible: Bool {
+        let tileIndices = tiles.isEmpty ? [0] : tiles.map(\.tileIndex)
+        for t in tileIndices {
+            for c in 0..<siz.componentCount {
+                let cCOD = effectiveCOD(tileIndex: t, component: c)
+                let cQCD = effectiveQCD(tileIndex: t, component: c)
+                if !cCOD.isLossless || !cQCD.isReversible {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    /// Whether `CAP Ccap^15` permits more than one HT set per code-block (`MULTIHT`, bit 13 == `1`).
+    package var allowsMultiHTSets: Bool {
+        guard let c15 = ccap15 else { return true }
+        return (c15 & 0x2000) != 0
+    }
+
+    /// Reconstructed logical output component count (accounting for Part 2 `CBD` synthesis when present).
+    package var logicalComponentCount: Int {
+        part2BitSplit?.logicalComponentCount ?? siz.componentCount
+    }
+
+    /// Reconstructed logical bit depth for output component `c`.
+    package func logicalBitDepth(forComponent c: Int) -> Int {
+        if let split = part2BitSplit, c >= 0, c < split.logicalComponentBitDepths.count {
+            return split.logicalComponentBitDepths[c]
+        }
+        return siz.bitDepth(forComponent: c)
+    }
+
+    /// Reconstructed logical signedness for output component `c`.
+    package func logicalIsSigned(forComponent c: Int) -> Bool {
+        if let split = part2BitSplit, c >= 0, c < split.logicalComponentSigned.count {
+            return split.logicalComponentSigned[c]
+        }
+        return siz.isSigned(forComponent: c)
     }
 
     /// Compute the tile grid for this codestream.
@@ -484,12 +749,26 @@ public struct JP3DCodestreamParser: Sendable {
         var codWasLegacyShort = false
         var qcdParams: JP3DQuantizationParameters?
         var qcdExplicitSubbandCount: Int?
+        var mainCOC: [Int: JP3DCODInfo] = [:]
+        var mainQCC: [Int: (params: JP3DQuantizationParameters, explicitSubbandCount: Int?)] = [:]
+        var mainRGNAllComponents: Int?
+        var mainRGNByComponent: [Int: Int] = [:]
+        var tileOverrides: [Int: JP3DTileHeaderOverrides] = [:]
+        var sawAnyRGN = false
+        var sawAnyTileFunctionalOrPPT = false
         var hasCAP = false
         var parsedPcap: UInt32?
         var parsedCcap10: UInt16?
         var parsedCcap15: UInt16?
         var hasNSI = false
         var roiShifts = [Int](repeating: 0, count: sizInfo.componentCount)
+        var parsedCBD: (depths: [Int], signed: [Bool], raw: Data)?
+        var parsedMCTValid = false
+        var parsedMCTRaw = Data()
+        var parsedMCCValidCount: Int?
+        var parsedMCCRaw = Data()
+        var parsedMCOValid = false
+        var parsedMCORaw = Data()
         var parsedGeometry: JP3DVolumeGeometry?
         var parsedComments: [JP3DCommentSegment] = []
         var totalCommentMetadataBytes = 0
@@ -550,8 +829,12 @@ public struct JP3DCodestreamParser: Sendable {
                 codInfo = parsedCOD.cod
                 codWasLegacyShort = parsedCOD.wasLegacyShort
 
-            case 0xFF53: // COC
-                try validateCOC(data, at: &offset, componentCount: sizInfo.componentCount, is3D: hasNSI)
+            case 0xFF53: // COC (ITU-T T.809 Clause A.2.3)
+                let parsedCOC = try parseCOC(data, at: &offset, componentCount: sizInfo.componentCount, requireNormative3D: hasNSI)
+                guard mainCOC[parsedCOC.component] == nil else {
+                    throw J2KError.decodingError("Duplicate main-header COC (0xFF53) for component \(parsedCOC.component)")
+                }
+                mainCOC[parsedCOC.component] = parsedCOC.coc
 
             case 0xFF5C: // QCD
                 guard qcdParams == nil else {
@@ -561,12 +844,53 @@ public struct JP3DCodestreamParser: Sendable {
                 qcdParams = parsedQCD.params
                 qcdExplicitSubbandCount = parsedQCD.explicitSubbandCount
 
-            case 0xFF5D: // QCC
-                try validateQCC(data, at: &offset, componentCount: sizInfo.componentCount)
+            case 0xFF5D: // QCC (ITU-T T.809 Clause A.2.6)
+                let parsedQCC = try parseQCC(data, at: &offset, componentCount: sizInfo.componentCount)
+                guard mainQCC[parsedQCC.component] == nil else {
+                    throw J2KError.decodingError("Duplicate main-header QCC (0xFF5D) for component \(parsedQCC.component)")
+                }
+                mainQCC[parsedQCC.component] = (parsedQCC.params, parsedQCC.explicitSubbandCount)
 
-            case 0xFF5E: // RGN (Maxshift ROI)
+            case 0xFF5E: // RGN (Maxshift ROI, ITU-T T.809 Clause A.2.4)
                 let rgn = try parseRGN(data, at: &offset, componentCount: sizInfo.componentCount)
-                roiShifts[rgn.component] = rgn.shift
+                sawAnyRGN = true
+                if let comp = rgn.component {
+                    mainRGNByComponent[comp] = rgn.shift
+                    roiShifts[comp] = rgn.shift
+                } else {
+                    mainRGNAllComponents = rgn.shift
+                    for c in 0..<sizInfo.componentCount where mainRGNByComponent[c] == nil {
+                        roiShifts[c] = rgn.shift
+                    }
+                }
+
+            case 0xFF78: // CBD (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.7)
+                guard parsedCBD == nil else {
+                    throw J2KError.decodingError("Duplicate CBD (0xFF78) marker in main header")
+                }
+                parsedCBD = try parseCBD(data, markerStart: markerStart, at: &offset, codestreamComponents: sizInfo.componentCount)
+
+            case 0xFF74: // MCT (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.8)
+                guard !parsedMCTValid else {
+                    throw J2KError.decodingError("Duplicate MCT (0xFF74) marker in main header")
+                }
+                parsedMCTRaw = try parsePart2BitSplitMCT(data, markerStart: markerStart, at: &offset)
+                parsedMCTValid = true
+
+            case 0xFF75: // MCC (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.9)
+                guard parsedMCCValidCount == nil else {
+                    throw J2KError.decodingError("Duplicate MCC (0xFF75) marker in main header")
+                }
+                let mcc = try parsePart2BitSplitMCC(data, markerStart: markerStart, at: &offset, codestreamComponents: sizInfo.componentCount)
+                parsedMCCValidCount = mcc.logicalCount
+                parsedMCCRaw = mcc.raw
+
+            case 0xFF77: // MCO (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.10)
+                guard !parsedMCOValid else {
+                    throw J2KError.decodingError("Duplicate MCO (0xFF77) marker in main header")
+                }
+                parsedMCORaw = try parsePart2BitSplitMCO(data, markerStart: markerStart, at: &offset)
+                parsedMCOValid = true
 
             case 0xFF59: // CPF
                 let len = Int(try readUInt16BE(data, at: &offset))
@@ -614,6 +938,9 @@ public struct JP3DCodestreamParser: Sendable {
                     is3D: hasNSI,
                     limits: limits,
                     retainedTileBytes: &retainedTileBytes,
+                    tileOverrides: &tileOverrides,
+                    sawAnyRGN: &sawAnyRGN,
+                    sawAnyTileFunctionalOrPPT: &sawAnyTileFunctionalOrPPT,
                     copyTilePayloads: copyTilePayloads
                 )
                 tilePartsByTile[part.tileIndex, default: []].append(
@@ -625,6 +952,9 @@ public struct JP3DCodestreamParser: Sendable {
                 foundEOC = true
 
             case 0xFF55, 0xFF57, 0xFF58, 0xFF60, 0xFF61, 0xFF63: // TLM, PLM, PLT, PPM, PPT, CRG
+                if marker == 0xFF61 {
+                    sawAnyTileFunctionalOrPPT = true
+                }
                 let len = Int(try readUInt16BE(data, at: &offset))
                 guard len >= 2, offset + (len - 2) <= data.count else {
                     throw J2KError.decodingError("Marker 0x\(String(marker, radix: 16)) has invalid length \(len)")
@@ -652,62 +982,35 @@ public struct JP3DCodestreamParser: Sendable {
             throw J2KError.decodingError("Codestream contains no tile data")
         }
 
-        // Cross-marker normative consistency checks (ITU-T T.809 & T.814):
-        if hasNSI {
-            guard !codWasLegacyShort else {
-                throw J2KError.decodingError("Normative Part 10 codestream with NSI cannot use 2D short COD length")
+        // Validate optional Part 2 CBD/MCT/MCC/MCO reversible bit-split synthesis group.
+        var part2Descriptor: JP3DPart2BitSplitDescriptor?
+        let anyPart2MCTMarkers = (parsedCBD != nil) || parsedMCTValid || (parsedMCCValidCount != nil) || parsedMCOValid
+        if anyPart2MCTMarkers {
+            guard let cbd = parsedCBD,
+                  parsedMCTValid,
+                  let mccLogical = parsedMCCValidCount,
+                  parsedMCOValid,
+                  cbd.depths.count == mccLogical else {
+                throw J2KError.decodingError("Incomplete or mismatched Part 2 CBD/MCT/MCC/MCO marker set in main header")
             }
-            let cbExpSum = cod.codeBlockWidthExponent + cod.codeBlockHeightExponent + cod.codeBlockDepthExponent
-            guard cod.codeBlockWidthExponent >= 0,
-                  cod.codeBlockHeightExponent >= 0,
-                  cod.codeBlockDepthExponent >= 0,
-                  cbExpSum <= 18 else {
-                throw J2KError.decodingError(
-                    "3D COD code-block exponents (\(cod.codeBlockWidthExponent),\(cod.codeBlockHeightExponent),\(cod.codeBlockDepthExponent)) violate ITU-T T.809 xcb+ycb+zcb <= 18"
-                )
-            }
-            // Note: OpenJPEG 2.4.0 `opj_jp3d_compress` omits CAP (`0xFF50`) while setting `Rsiz = 0x0201` (draft JP3D profile)
-            // and emitting normative `NSI` (`0xFF54`) + 3D `COD` + 3D `QCD`. When `Rsiz & 0x4000 != 0` (ITU-T T.809 Table A.3),
-            // CAP with `Pcap^10` (`0x0040_0000`) IS mandatory!
-            if (sizInfo.rsiz & 0x4000) != 0 {
-                guard let pcap = parsedPcap, (pcap & 0x0040_0000) != 0 else {
-                    throw J2KError.decodingError("SIZ Rsiz signals CAP (0x4000), but CAP with Pcap^10 (0x0040_0000) is missing")
+            if let pcap = parsedPcap {
+                guard (pcap & 0x4000_0000) != 0 || (sizInfo.rsiz & 0x8010) != 0 else {
+                    throw J2KError.decodingError("Part 2 CBD/MCT/MCC/MCO markers present without Pcap^2 or Part 2 Rsiz signalling")
                 }
             }
-            if let explicitBands = qcdExplicitSubbandCount {
-                let expectedBands = JP3DQuantizationParameters.totalSubbandCount(
-                    levelsX: cod.levelsX,
-                    levelsY: cod.levelsY,
-                    levelsZ: cod.levelsZ
-                )
-                guard explicitBands == expectedBands else {
-                    throw J2KError.decodingError(
-                        "QCD sub-band entry count (\(explicitBands)) does not match 3D DWT sub-band count (\(expectedBands)) for NL=(\(cod.levelsX),\(cod.levelsY),\(cod.levelsZ))"
-                    )
-                }
-            }
-            if (cod.codeBlockStyle & 0x40) != 0 {
-                guard cod.codeBlockDepthExponent == 0 else {
-                    throw J2KError.decodingError(
-                        "HTJ2K-in-JP3D requires planar 3D code-blocks (zcb == 0), got zcb=\(cod.codeBlockDepthExponent)"
-                    )
-                }
-            }
+            var rawAll = Data()
+            rawAll.append(cbd.raw)
+            rawAll.append(parsedMCTRaw)
+            rawAll.append(parsedMCCRaw)
+            rawAll.append(parsedMCORaw)
+            part2Descriptor = JP3DPart2BitSplitDescriptor(
+                logicalComponentBitDepths: cbd.depths,
+                logicalComponentSigned: cbd.signed,
+                rawMarkerSegments: rawAll
+            )
         }
-        if let pcap = parsedPcap, (pcap & 0x0040_0000) != 0 {
-            guard hasNSI else {
-                throw J2KError.decodingError("CAP signals Part 10 (Pcap^10 = 0x0040_0000), but mandatory NSI (0xFF54) is missing")
-            }
-        }
-        if let ccap15 = parsedCcap15 {
-            let htMode = (ccap15 >> 14) & 0x03
-            if htMode == 0 && (cod.codeBlockStyle & 0x40) == 0 {
-                throw J2KError.decodingError("CAP Ccap^15 signals HTONLY, but COD does not set HT bit 0x40")
-            }
-            if (cod.codeBlockStyle & 0xC0) == 0xC0 && htMode != 3 {
-                throw J2KError.decodingError("COD sets mixed HT/Part 1 mode (0xC0), but CAP Ccap^15 is not HTMIXED")
-            }
-        }
+
+        let mainQCCParams: [Int: JP3DQuantizationParameters] = mainQCC.mapValues(\.params)
 
         // Assemble multi-tile-part data per tile index in `TPsot` (then arrival) order.
         var parsedTiles: [JP3DParsedTile] = []
@@ -730,7 +1033,7 @@ public struct JP3DCodestreamParser: Sendable {
             }
         }
 
-        return JP3DParsedCodestream(
+        let assembled = JP3DParsedCodestream(
             siz: sizInfo,
             cod: cod,
             isLosslessQuantization: qcd.isReversible,
@@ -744,8 +1047,122 @@ public struct JP3DCodestreamParser: Sendable {
             ccap15: parsedCcap15,
             hasNSIMarker: hasNSI,
             qcd: qcd,
-            roiShifts: roiShifts
+            roiShifts: roiShifts,
+            mainCOC: mainCOC,
+            mainQCC: mainQCCParams,
+            mainRGNAllComponents: mainRGNAllComponents,
+            mainRGNByComponent: mainRGNByComponent,
+            tileOverrides: tileOverrides,
+            part2BitSplit: part2Descriptor
         )
+
+        // Cross-marker normative consistency checks across all effective `(tile, component)` pairs (ITU-T T.809 & T.814):
+        if hasNSI {
+            guard !codWasLegacyShort else {
+                throw J2KError.decodingError("Normative Part 10 codestream with NSI cannot use 2D short COD length")
+            }
+            if (sizInfo.rsiz & 0x4000) != 0 {
+                guard let pcap = parsedPcap, (pcap & 0x0040_0000) != 0 else {
+                    throw J2KError.decodingError("SIZ Rsiz signals CAP (0x4000), but CAP with Pcap^10 (0x0040_0000) is missing")
+                }
+            }
+            let hasAnyCODOverride = !mainCOC.isEmpty || tileOverrides.values.contains(where: { $0.cod != nil || !$0.coc.isEmpty })
+            if !hasAnyCODOverride, let explicitBands = qcdExplicitSubbandCount {
+                let expectedBands = JP3DQuantizationParameters.totalSubbandCount(
+                    levelsX: cod.levelsX,
+                    levelsY: cod.levelsY,
+                    levelsZ: cod.levelsZ
+                )
+                guard explicitBands == expectedBands else {
+                    throw J2KError.decodingError(
+                        "QCD sub-band entry count (\(explicitBands)) does not match 3D DWT sub-band count (\(expectedBands)) for NL=(\(cod.levelsX),\(cod.levelsY),\(cod.levelsZ))"
+                    )
+                }
+            }
+        }
+        if let pcap = parsedPcap, (pcap & 0x0040_0000) != 0 {
+            guard hasNSI else {
+                throw J2KError.decodingError("CAP signals Part 10 (Pcap^10 = 0x0040_0000), but mandatory NSI (0xFF54) is missing")
+            }
+        }
+
+        if let ccap15 = parsedCcap15 {
+            // ITU-T T.814 Table A.2 & Clauses A.3.2–A.3.6:
+            if (ccap15 & 0x1000) == 0 && sawAnyRGN {
+                throw J2KError.decodingError("CAP Ccap^15 signals RGNFREE (bit 12 == 0), but RGN marker is present")
+            }
+            if (ccap15 & 0x0800) == 0 && sawAnyTileFunctionalOrPPT {
+                throw J2KError.decodingError("CAP Ccap^15 signals HOMOGENEOUS (bit 11 == 0), but tile-part functional override or PPT is present")
+            }
+        }
+
+        for tile in parsedTiles {
+            let tIdx = tile.tileIndex
+            let tileSGcod = assembled.effectiveTileCOD(tileIndex: tIdx)
+            for c in 0..<sizInfo.componentCount {
+                let effCOD = assembled.effectiveCOD(tileIndex: tIdx, component: c)
+                let effQCD = assembled.effectiveQCD(tileIndex: tIdx, component: c)
+                let top2 = effCOD.codeBlockStyle & 0xC0
+                if top2 == 0x80 {
+                    throw J2KError.decodingError("Invalid code-block style 0x\(String(effCOD.codeBlockStyle, radix: 16)): bit 7 set without HT bit 6")
+                }
+                if hasNSI {
+                    let cbExpSum = effCOD.codeBlockWidthExponent + effCOD.codeBlockHeightExponent + effCOD.codeBlockDepthExponent
+                    guard effCOD.codeBlockWidthExponent >= 0,
+                          effCOD.codeBlockHeightExponent >= 0,
+                          effCOD.codeBlockDepthExponent >= 0,
+                          cbExpSum <= 18 else {
+                        throw J2KError.decodingError(
+                            "3D COD/COC code-block exponents (\(effCOD.codeBlockWidthExponent),\(effCOD.codeBlockHeightExponent),\(effCOD.codeBlockDepthExponent)) violate ITU-T T.809 xcb+ycb+zcb <= 18"
+                        )
+                    }
+                    if (effCOD.codeBlockStyle & 0x40) != 0 && effCOD.codeBlockDepthExponent != 0 {
+                        throw J2KError.decodingError(
+                            "HTJ2K-in-JP3D requires planar 3D code-blocks (zcb == 0), got zcb=\(effCOD.codeBlockDepthExponent)"
+                        )
+                    }
+                    if effQCD.style != 1 {
+                        let expectedBands = JP3DQuantizationParameters.totalSubbandCount(
+                            levelsX: effCOD.levelsX,
+                            levelsY: effCOD.levelsY,
+                            levelsZ: effCOD.levelsZ
+                        )
+                        guard effQCD.steps.count >= expectedBands else {
+                            throw J2KError.decodingError(
+                                "Effective QCD/QCC sub-band entry count (\(effQCD.steps.count)) is smaller than 3D DWT sub-band count (\(expectedBands)) on tile \(tIdx) component \(c)"
+                            )
+                        }
+                    }
+                }
+                if let ccap15 = parsedCcap15 {
+                    let htMode = (ccap15 >> 14) & 0x03
+                    if htMode == 0 && (effCOD.codeBlockStyle & 0x40) == 0 {
+                        throw J2KError.decodingError("CAP Ccap^15 signals HTONLY, but effective COD/COC on tile \(tIdx) component \(c) omits HT bit 0x40")
+                    }
+                    if htMode == 2 && (effCOD.codeBlockStyle & 0x80) != 0 {
+                        throw J2KError.decodingError("CAP Ccap^15 signals HTDECLARED, but effective COD/COC on tile \(tIdx) component \(c) sets bit 7 (0xC0 mixed)")
+                    }
+                    if (ccap15 & 0x0020) == 0 && (effCOD.codeBlockStyle & 0x40) != 0 && !effCOD.isLossless {
+                        throw J2KError.decodingError("CAP Ccap^15 signals HTREV (bit 5 == 0), but HT tile \(tIdx) component \(c) uses irreversible wavelet")
+                    }
+                } else if hasNSI && top2 != 0 {
+                    throw J2KError.decodingError("COD/COC sets HTJ2K bits (0x\(String(effCOD.codeBlockStyle, radix: 16))) without Part 15 CAP (Pcap^15)")
+                }
+            }
+            if tileSGcod.multipleComponentTransform == 1 && sizInfo.componentCount >= 3 {
+                let c0 = assembled.effectiveCOD(tileIndex: tIdx, component: 0)
+                let c1 = assembled.effectiveCOD(tileIndex: tIdx, component: 1)
+                let c2 = assembled.effectiveCOD(tileIndex: tIdx, component: 2)
+                guard c0.isLossless == c1.isLossless, c1.isLossless == c2.isLossless,
+                      c0.levelsX == c1.levelsX, c1.levelsX == c2.levelsX,
+                      c0.levelsY == c1.levelsY, c1.levelsY == c2.levelsY,
+                      c0.levelsZ == c1.levelsZ, c1.levelsZ == c2.levelsZ else {
+                    throw J2KError.decodingError("MCT enabled on tile \(tIdx), but components 0..2 have incompatible wavelet filter or decomposition levels")
+                }
+            }
+        }
+
+        return assembled
     }
 
     // MARK: - Private Marker Parsers
@@ -915,16 +1332,20 @@ public struct JP3DCodestreamParser: Sendable {
                 if k == 10 {
                     ccap10 = word
                 } else if k == 15 {
+                    // ITU-T T.814 Table A.2:
+                    //   bits 15..14: 00 = HTONLY, 01 = reserved (0x4000), 10 = HTDECLARED (0x8000), 11 = MIXED (0xC000)
+                    //   bit  13:     MULTIHT (0 = SINGLEHT, 1 = MULTIHT)
+                    //   bit  12:     RGN     (0 = RGNFREE,  1 = RGN permitted)
+                    //   bit  11:     HETEROGENEOUS (0 = HOMOGENEOUS, 1 = HETEROGENEOUS)
+                    //   bits 10..6:  reserved, must be 00000 (mask 0x07C0)
+                    //   bit  5:      HTIRV   (0 = HTREV,    1 = HTIRV)
+                    //   bits 4..0:   MAGB_P parameter P
                     let rawMode = (word >> 14) & 0x03
-                    guard rawMode != 2 else {
-                        throw J2KError.decodingError("CAP Ccap^15 bits 14-15 carry reserved value 2")
+                    guard rawMode != 1 else {
+                        throw J2KError.decodingError("CAP Ccap^15 bits 14-15 carry reserved value 1 (0x4000)")
                     }
-                    let multiField = (word >> 12) & 0x03
-                    guard multiField <= 1 else {
-                        throw J2KError.decodingError("CAP Ccap^15 bits 12-13 carry reserved value \(multiField)")
-                    }
-                    guard ((word >> 6) & 0x0F) == 0 else {
-                        throw J2KError.decodingError("CAP Ccap^15 reserved bits 6-9 must be zero")
+                    guard (word & 0x07C0) == 0 else {
+                        throw J2KError.decodingError("CAP Ccap^15 reserved bits 6-10 must be zero")
                     }
                     ccap15 = word
                 }
@@ -1144,10 +1565,15 @@ public struct JP3DCodestreamParser: Sendable {
         )
     }
 
-    private func validateCOC(_ data: Data, at offset: inout Int, componentCount: Int, is3D: Bool) throws {
+    private func parseCOC(
+        _ data: Data,
+        at offset: inout Int,
+        componentCount: Int,
+        requireNormative3D: Bool
+    ) throws -> (component: Int, coc: JP3DCODInfo) {
         let len = Int(try readUInt16BE(data, at: &offset))
         let compBytes = componentCount < 257 ? 1 : 2
-        let minLen = (is3D ? 13 : 8) + compBytes
+        let minLen = (requireNormative3D ? 13 : 8) + compBytes
         guard len >= minLen, offset + (len - 2) <= data.count else {
             throw J2KError.decodingError("COC segment length \(len) invalid or truncated")
         }
@@ -1161,7 +1587,120 @@ public struct JP3DCodestreamParser: Sendable {
         guard comp < componentCount else {
             throw J2KError.decodingError("COC component index \(comp) out of range (0..<\(componentCount))")
         }
+
+        // Normative ITU-T T.809 3D COC (Clause A.2.3, Table A.10–A.11):
+        // Lcoc = (13 + compBytes) without custom precincts, or (13 + compBytes + 2 * (maxLevels + 1)) with custom precincts.
+        if len >= 13 + compBytes || requireNormative3D {
+            let scoc = data[data.startIndex + offset]; offset += 1
+            guard (scoc & 0xFE) == 0 else {
+                throw J2KError.decodingError("COC: Scoc carries reserved bits (0x\(String(scoc, radix: 16)))")
+            }
+            let nlx = Int(data[data.startIndex + offset]); offset += 1
+            let nly = Int(data[data.startIndex + offset]); offset += 1
+            let nlz = Int(data[data.startIndex + offset]); offset += 1
+            guard nlx <= 32, nly <= 32, nlz <= 32 else {
+                throw J2KError.decodingError("COC: decomposition levels (\(nlx),\(nly),\(nlz)) exceed maximum 32")
+            }
+            let xcb = Int(data[data.startIndex + offset]); offset += 1
+            let ycb = Int(data[data.startIndex + offset]); offset += 1
+            let zcb = Int(data[data.startIndex + offset]); offset += 1
+            guard xcb <= 10, ycb <= 10, zcb <= 10, (xcb + ycb + zcb) <= 18 else {
+                throw J2KError.decodingError(
+                    "COC: invalid 3D code-block exponents (\(xcb),\(ycb),\(zcb)) (max 10 each, sum <= 18)"
+                )
+            }
+            let cbStyle = data[data.startIndex + offset]; offset += 1
+            let dwtX = data[data.startIndex + offset]; offset += 1
+            let dwtY = data[data.startIndex + offset]; offset += 1
+            let dwtZ = data[data.startIndex + offset]; offset += 1
+            guard dwtX <= 1, dwtY <= 1, dwtZ <= 1 else {
+                throw J2KError.decodingError("COC: invalid wavelet transform IDs (\(dwtX),\(dwtY),\(dwtZ))")
+            }
+            guard dwtX == dwtY, dwtY == dwtZ else {
+                throw J2KError.decodingError("COC: mixed reversible/irreversible wavelet kernels across axes are unsupported")
+            }
+            let maxLevels = max(nlx, max(nly, nlz))
+            var precincts: [(ppx: Int, ppy: Int, ppz: Int)] = []
+            let baseLen = 13 + compBytes
+            if (scoc & 0x01) != 0 {
+                let expectedLen = baseLen + 2 * (maxLevels + 1)
+                guard len == expectedLen else {
+                    throw J2KError.decodingError(
+                        "COC: custom precinct length \(len) does not match expected \(expectedLen) for maxLevels=\(maxLevels)"
+                    )
+                }
+                precincts.reserveCapacity(maxLevels + 1)
+                for _ in 0...maxLevels {
+                    let word = Int(try readUInt16BE(data, at: &offset))
+                    guard (word & 0xF000) == 0 else {
+                        throw J2KError.decodingError("COC: 3D precinct word carries non-zero reserved bits 12..15")
+                    }
+                    precincts.append((ppx: word & 0x0F, ppy: (word >> 4) & 0x0F, ppz: (word >> 8) & 0x0F))
+                }
+            } else {
+                guard len == baseLen else {
+                    throw J2KError.decodingError("COC: unexpected length \(len) without custom precincts (expected \(baseLen))")
+                }
+            }
+            offset = segEnd
+            return (
+                comp,
+                JP3DCODInfo(
+                    levelsX: nlx,
+                    levelsY: nly,
+                    levelsZ: nlz,
+                    isLossless: (dwtX == 1 && dwtY == 1 && dwtZ == 1),
+                    codeBlockStyle: cbStyle,
+                    scod: scoc & 0x01,
+                    progressionOrderByte: 0,
+                    numLayers: 1,
+                    multipleComponentTransform: 0,
+                    codeBlockWidthExponent: xcb,
+                    codeBlockHeightExponent: ycb,
+                    codeBlockDepthExponent: zcb,
+                    dwtX: dwtX,
+                    dwtY: dwtY,
+                    dwtZ: dwtZ,
+                    precinctSizes: precincts
+                )
+            )
+        }
+
+        // Legacy 2D-length COC fallback (only when `requireNormative3D == false`)
+        let scoc = data[data.startIndex + offset]; offset += 1
+        let nl = Int(data[data.startIndex + offset]); offset += 1
+        guard nl <= 32 else {
+            throw J2KError.decodingError("COC: decomposition levels exceed maximum (32)")
+        }
+        let xcb = min(10, Int(data[data.startIndex + offset]) + 2); offset += 1
+        let ycb = min(10, Int(data[data.startIndex + offset]) + 2); offset += 1
+        let cbStyle = data[data.startIndex + offset]; offset += 1
+        let dwtByte = data[data.startIndex + offset]; offset += 1
+        guard dwtByte <= 1 else {
+            throw J2KError.decodingError("COC: invalid wavelet filter byte \(dwtByte)")
+        }
         offset = segEnd
+        return (
+            comp,
+            JP3DCODInfo(
+                levelsX: nl,
+                levelsY: nl,
+                levelsZ: nl,
+                isLossless: dwtByte == 1,
+                codeBlockStyle: cbStyle,
+                scod: scoc & 0x01,
+                progressionOrderByte: 0,
+                numLayers: 1,
+                multipleComponentTransform: 0,
+                codeBlockWidthExponent: xcb,
+                codeBlockHeightExponent: ycb,
+                codeBlockDepthExponent: 0,
+                dwtX: dwtByte,
+                dwtY: dwtByte,
+                dwtZ: dwtByte,
+                precinctSizes: []
+            )
+        )
     }
 
     private func parseQCD(
@@ -1176,57 +1715,14 @@ public struct JP3DCodestreamParser: Sendable {
         guard segEnd <= data.count else {
             throw J2KError.decodingError("QCD segment truncated")
         }
-        let sqcd = data[data.startIndex + offset]
-        offset += 1
-        let style = sqcd & 0x1F
-        let guardBits = Int(sqcd >> 5)
-        let remBytes = segEnd - offset
-
-        switch style {
-        case 0: // No quantisation (reversible 5-3): 1 byte per sub-band (eps_b in bits 7..3)
-            guard remBytes >= 1 else {
-                throw J2KError.decodingError("QCD style 0 contains no sub-band exponents")
-            }
-            var steps: [(exponent: Int, mantissa: Int)] = []
-            steps.reserveCapacity(remBytes)
-            for _ in 0..<remBytes {
-                let sp = data[data.startIndex + offset]
-                offset += 1
-                let eps = Int(sp >> 3)
-                steps.append((exponent: eps, mantissa: 0))
-            }
-            return (JP3DQuantizationParameters(style: 0, guardBits: guardBits, steps: steps), remBytes)
-
-        case 1: // Scalar derived: single 16-bit base step (eps_0 in bits 15..11, mu_0 in bits 10..0)
-            guard remBytes == 2 else {
-                throw J2KError.decodingError("QCD style 1 must have length 5 (got \(len))")
-            }
-            let word = Int(try readUInt16BE(data, at: &offset))
-            let eps = (word >> 11) & 0x1F
-            let mu = word & 0x07FF
-            return (JP3DQuantizationParameters(style: 1, guardBits: guardBits, steps: [(eps, mu)]), nil)
-
-        case 2: // Scalar expounded: 2 bytes per sub-band
-            guard remBytes >= 2, (remBytes % 2) == 0 else {
-                throw J2KError.decodingError("QCD style 2 has invalid byte count \(remBytes)")
-            }
-            let bandCount = remBytes / 2
-            var steps: [(exponent: Int, mantissa: Int)] = []
-            steps.reserveCapacity(bandCount)
-            for _ in 0..<bandCount {
-                let word = Int(try readUInt16BE(data, at: &offset))
-                let eps = (word >> 11) & 0x1F
-                let mu = word & 0x07FF
-                steps.append((exponent: eps, mantissa: mu))
-            }
-            return (JP3DQuantizationParameters(style: 2, guardBits: guardBits, steps: steps), bandCount)
-
-        default:
-            throw J2KError.decodingError("QCD: unsupported quantisation style \(style)")
-        }
+        return try parseQuantizationBody(data, at: &offset, segEnd: segEnd, label: "QCD")
     }
 
-    private func validateQCC(_ data: Data, at offset: inout Int, componentCount: Int) throws {
+    private func parseQCC(
+        _ data: Data,
+        at offset: inout Int,
+        componentCount: Int
+    ) throws -> (component: Int, params: JP3DQuantizationParameters, explicitSubbandCount: Int?) {
         let len = Int(try readUInt16BE(data, at: &offset))
         let compBytes = componentCount < 257 ? 1 : 2
         guard len >= 4 + compBytes, offset + (len - 2) <= data.count else {
@@ -1242,38 +1738,91 @@ public struct JP3DCodestreamParser: Sendable {
         guard comp < componentCount else {
             throw J2KError.decodingError("QCC component index \(comp) out of range (0..<\(componentCount))")
         }
-        let sqcc = data[data.startIndex + offset]
-        offset += 1
-        let style = sqcc & 0x1F
-        let rem = segEnd - offset
-        switch style {
-        case 0:
-            guard rem >= 1 else { throw J2KError.decodingError("QCC style 0 missing exponent") }
-        case 1:
-            guard rem == 2 else { throw J2KError.decodingError("QCC style 1 invalid length") }
-        case 2:
-            guard rem >= 2, (rem % 2) == 0 else { throw J2KError.decodingError("QCC style 2 invalid length") }
-        default:
-            throw J2KError.decodingError("QCC invalid style \(style)")
-        }
-        offset = segEnd
+        let parsed = try parseQuantizationBody(data, at: &offset, segEnd: segEnd, label: "QCC")
+        return (comp, parsed.params, parsed.explicitSubbandCount)
     }
 
-    private func parseRGN(_ data: Data, at offset: inout Int, componentCount: Int) throws -> (component: Int, shift: Int) {
+    private func parseQuantizationBody(
+        _ data: Data,
+        at offset: inout Int,
+        segEnd: Int,
+        label: String
+    ) throws -> (params: JP3DQuantizationParameters, explicitSubbandCount: Int?) {
+        let sqcd = data[data.startIndex + offset]
+        offset += 1
+        let style = sqcd & 0x1F
+        let guardBits = Int(sqcd >> 5)
+        let remBytes = segEnd - offset
+
+        switch style {
+        case 0: // No quantisation (reversible 5-3): 1 byte per sub-band (eps_b in bits 7..3)
+            guard remBytes >= 1 else {
+                throw J2KError.decodingError("\(label) style 0 contains no sub-band exponents")
+            }
+            var steps: [(exponent: Int, mantissa: Int)] = []
+            steps.reserveCapacity(remBytes)
+            for _ in 0..<remBytes {
+                let sp = data[data.startIndex + offset]
+                offset += 1
+                let eps = Int(sp >> 3)
+                steps.append((exponent: eps, mantissa: 0))
+            }
+            return (JP3DQuantizationParameters(style: 0, guardBits: guardBits, steps: steps), remBytes)
+
+        case 1: // Scalar derived: single 16-bit base step (eps_0 in bits 15..11, mu_0 in bits 10..0)
+            guard remBytes == 2 else {
+                throw J2KError.decodingError("\(label) style 1 has invalid payload byte count \(remBytes)")
+            }
+            let word = Int(try readUInt16BE(data, at: &offset))
+            let eps = (word >> 11) & 0x1F
+            let mu = word & 0x07FF
+            return (JP3DQuantizationParameters(style: 1, guardBits: guardBits, steps: [(eps, mu)]), nil)
+
+        case 2: // Scalar expounded: 2 bytes per sub-band
+            guard remBytes >= 2, (remBytes % 2) == 0 else {
+                throw J2KError.decodingError("\(label) style 2 has invalid byte count \(remBytes)")
+            }
+            let bandCount = remBytes / 2
+            var steps: [(exponent: Int, mantissa: Int)] = []
+            steps.reserveCapacity(bandCount)
+            for _ in 0..<bandCount {
+                let word = Int(try readUInt16BE(data, at: &offset))
+                let eps = (word >> 11) & 0x1F
+                let mu = word & 0x07FF
+                steps.append((exponent: eps, mantissa: mu))
+            }
+            return (JP3DQuantizationParameters(style: 2, guardBits: guardBits, steps: steps), bandCount)
+
+        default:
+            throw J2KError.decodingError("\(label): unsupported quantisation style \(style)")
+        }
+    }
+
+    private func parseRGN(_ data: Data, at offset: inout Int, componentCount: Int) throws -> (component: Int?, shift: Int) {
         let len = Int(try readUInt16BE(data, at: &offset))
-        let compBytes = componentCount < 257 ? 1 : 2
-        let expectedLen = 4 + compBytes
-        guard len == expectedLen, offset + (len - 2) <= data.count else {
-            throw J2KError.decodingError("RGN segment length \(len) invalid (expected \(expectedLen))")
+        // ITU-T T.800 Table A.25 uses 1-byte Crgn when Csiz < 257 (Lrgn = 5);
+        // ITU-T T.809 Clause A.2.4 / Table A.12 also permits 2-byte Crgn (Lrgn = 6, including Crgn = 65535 for all components).
+        guard (len == 5 && componentCount < 257) || len == 6,
+              offset + (len - 2) <= data.count else {
+            throw J2KError.decodingError("RGN segment length \(len) invalid")
         }
-        let comp: Int
-        if compBytes == 1 {
-            comp = Int(data[data.startIndex + offset]); offset += 1
+        let comp: Int?
+        if len == 5 {
+            let raw = Int(data[data.startIndex + offset]); offset += 1
+            guard raw < componentCount else {
+                throw J2KError.decodingError("RGN component index \(raw) out of range")
+            }
+            comp = raw
         } else {
-            comp = Int(try readUInt16BE(data, at: &offset))
-        }
-        guard comp < componentCount else {
-            throw J2KError.decodingError("RGN component index \(comp) out of range")
+            let raw = Int(try readUInt16BE(data, at: &offset))
+            if raw == 65_535 {
+                comp = nil
+            } else {
+                guard raw < componentCount else {
+                    throw J2KError.decodingError("RGN component index \(raw) out of range")
+                }
+                comp = raw
+            }
         }
         let srgn = data[data.startIndex + offset]; offset += 1
         guard srgn == 0 else {
@@ -1286,6 +1835,128 @@ public struct JP3DCodestreamParser: Sendable {
         return (comp, shift)
     }
 
+    private func parseCBD(
+        _ data: Data,
+        markerStart: Int,
+        at offset: inout Int,
+        codestreamComponents: Int
+    ) throws -> (depths: [Int], signed: [Bool], raw: Data) {
+        let len = Int(try readUInt16BE(data, at: &offset))
+        guard len >= 5, offset + (len - 2) <= data.count else {
+            throw J2KError.decodingError("CBD (0xFF78) segment length \(len) invalid or truncated")
+        }
+        let segEnd = offset + len - 2
+        let ncbd = Int(try readUInt16BE(data, at: &offset))
+        let count = ncbd & 0x3FFF
+        let shared = (ncbd & 0x8000) != 0
+        guard count >= 1, codestreamComponents == 2 * count else {
+            throw J2KError.decodingError("CBD (0xFF78) output component count \(count) unsupported for \(codestreamComponents) codestream components")
+        }
+        let expectedLen = 4 + (shared ? 1 : count)
+        guard len == expectedLen else {
+            throw J2KError.decodingError("CBD (0xFF78) length \(len) does not match Ncbd=\(ncbd)")
+        }
+        var depths: [Int] = []
+        var signedFlags: [Bool] = []
+        depths.reserveCapacity(count)
+        signedFlags.reserveCapacity(count)
+        if shared {
+            let b = data[data.startIndex + offset]; offset += 1
+            let d = Int(b & 0x7F) + 1
+            guard (1...38).contains(d) else {
+                throw J2KError.decodingError("CBD (0xFF78) bit depth \(d) out of supported 1...38 range")
+            }
+            let s = (b & 0x80) != 0
+            depths = [Int](repeating: d, count: count)
+            signedFlags = [Bool](repeating: s, count: count)
+        } else {
+            for _ in 0..<count {
+                let b = data[data.startIndex + offset]; offset += 1
+                let d = Int(b & 0x7F) + 1
+                guard (1...38).contains(d) else {
+                    throw J2KError.decodingError("CBD (0xFF78) bit depth \(d) out of supported 1...38 range")
+                }
+                depths.append(d)
+                signedFlags.append((b & 0x80) != 0)
+            }
+        }
+        offset = segEnd
+        let raw = Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)])
+        return (depths, signedFlags, raw)
+    }
+
+    private func parsePart2BitSplitMCT(_ data: Data, markerStart: Int, at offset: inout Int) throws -> Data {
+        let len = Int(try readUInt16BE(data, at: &offset))
+        guard len == 16, offset + (len - 2) <= data.count else {
+            throw J2KError.decodingError("MCT (0xFF74) unsupported length \(len)")
+        }
+        let segEnd = offset + len - 2
+        let zmct = try readUInt16BE(data, at: &offset)
+        let imct = try readUInt16BE(data, at: &offset)
+        let ymct = try readUInt16BE(data, at: &offset)
+        let c0 = try readUInt32BE(data, at: &offset)
+        let c1 = try readUInt32BE(data, at: &offset)
+        guard zmct == 0, imct == 0x0501, ymct == 0, c0 == 1, c1 == 524_288 else {
+            throw J2KError.decodingError("MCT (0xFF74) unsupported Part 2 transform parameters")
+        }
+        offset = segEnd
+        return Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)])
+    }
+
+    private func parsePart2BitSplitMCC(
+        _ data: Data,
+        markerStart: Int,
+        at offset: inout Int,
+        codestreamComponents: Int
+    ) throws -> (logicalCount: Int, raw: Data) {
+        let len = Int(try readUInt16BE(data, at: &offset))
+        guard len >= 20, offset + (len - 2) <= data.count else {
+            throw J2KError.decodingError("MCC (0xFF75) segment length \(len) invalid or truncated")
+        }
+        let segEnd = offset + len - 2
+        let zmcc = try readUInt16BE(data, at: &offset)
+        let imcc = data[data.startIndex + offset]; offset += 1
+        let ymcc = try readUInt16BE(data, at: &offset)
+        let qmcc = Int(try readUInt16BE(data, at: &offset))
+        guard zmcc == 0, imcc == 1, ymcc == 0, qmcc >= 1,
+              codestreamComponents == 2 * qmcc,
+              len == 9 + 11 * qmcc else {
+            throw J2KError.decodingError("MCC (0xFF75) unsupported Part 2 collection layout")
+        }
+        for c in 0..<qmcc {
+            let xmcc = data[data.startIndex + offset]; offset += 1
+            let nmcc = try readUInt16BE(data, at: &offset)
+            let in0 = Int(data[data.startIndex + offset]); offset += 1
+            let in1 = Int(data[data.startIndex + offset]); offset += 1
+            let mmcc = try readUInt16BE(data, at: &offset)
+            let out0 = Int(data[data.startIndex + offset]); offset += 1
+            let t0 = data[data.startIndex + offset]; offset += 1
+            let t1 = data[data.startIndex + offset]; offset += 1
+            let t2 = data[data.startIndex + offset]; offset += 1
+            guard xmcc == 0x09, nmcc == 2, in0 == 2 * c, in1 == 2 * c + 1,
+                  mmcc == 1, out0 == c, t0 == 0, t1 == 0, t2 == 1 else {
+                throw J2KError.decodingError("MCC (0xFF75) unsupported Part 2 component binding on collection \(c)")
+            }
+        }
+        offset = segEnd
+        return (qmcc, Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)]))
+    }
+
+    private func parsePart2BitSplitMCO(_ data: Data, markerStart: Int, at offset: inout Int) throws -> Data {
+        let len = Int(try readUInt16BE(data, at: &offset))
+        guard len == 4, offset + (len - 2) <= data.count else {
+            throw J2KError.decodingError("MCO (0xFF77) unsupported length \(len)")
+        }
+        let segEnd = offset + len - 2
+        let nmco = data[data.startIndex + offset]; offset += 1
+        let stage0 = data[data.startIndex + offset]; offset += 1
+        guard nmco == 1, stage0 == 1 else {
+            throw J2KError.decodingError("MCO (0xFF77) unsupported Part 2 stage ordering")
+        }
+        offset = segEnd
+        return Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)])
+    }
+
     private func parseSOTAndData(
         _ data: Data,
         sotMarkerStart: Int,
@@ -1294,6 +1965,9 @@ public struct JP3DCodestreamParser: Sendable {
         is3D: Bool,
         limits: ResourceLimits?,
         retainedTileBytes: inout Int,
+        tileOverrides: inout [Int: JP3DTileHeaderOverrides],
+        sawAnyRGN: inout Bool,
+        sawAnyTileFunctionalOrPPT: inout Bool,
         copyTilePayloads: Bool
     ) throws -> (tileIndex: Int, tilePartIndex: Int, data: Data) {
         let len = Int(try readUInt16BE(data, at: &offset))
@@ -1316,6 +1990,9 @@ public struct JP3DCodestreamParser: Sendable {
 
         // Consume optional tile-part header markers until SOD (0xFF93).
         var foundSOD = false
+        var localOverrides = tileOverrides[tileIndex] ?? JP3DTileHeaderOverrides()
+        var addedOverrideBytes = 0
+
         while offset + 2 <= data.count {
             let m = try readUInt16BE(data, at: &offset)
             if m == 0xFF93 { // SOD
@@ -1323,17 +2000,76 @@ public struct JP3DCodestreamParser: Sendable {
                 break
             }
             switch m {
-            case 0xFF52:
-                _ = try parseCOD(data, at: &offset, requireNormative3D: is3D)
-            case 0xFF53:
-                try validateCOC(data, at: &offset, componentCount: componentCount, is3D: is3D)
-            case 0xFF5C:
-                _ = try parseQCD(data, at: &offset)
-            case 0xFF5D:
-                try validateQCC(data, at: &offset, componentCount: componentCount)
-            case 0xFF5E:
-                _ = try parseRGN(data, at: &offset, componentCount: componentCount)
+            case 0xFF52: // Tile-part COD (ITU-T T.809 Clause A.2.2: first tile-part TPsot == 0 only)
+                guard tpIndex == 0 else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: COD override is only permitted in first tile-part (TPsot == 0)")
+                }
+                guard localOverrides.cod == nil else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: duplicate COD in tile-part header")
+                }
+                let parsedCOD = try parseCOD(data, at: &offset, requireNormative3D: is3D)
+                if is3D && parsedCOD.wasLegacyShort {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: normative Part 10 tile COD cannot use 2D short length")
+                }
+                localOverrides.cod = parsedCOD.cod
+                sawAnyTileFunctionalOrPPT = true
+                addedOverrideBytes += MemoryLayout<JP3DCODInfo>.stride
+
+            case 0xFF53: // Tile-part COC (ITU-T T.809 Clause A.2.3: TPsot == 0 only)
+                guard tpIndex == 0 else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: COC override is only permitted in first tile-part (TPsot == 0)")
+                }
+                let parsedCOC = try parseCOC(data, at: &offset, componentCount: componentCount, requireNormative3D: is3D)
+                guard localOverrides.coc[parsedCOC.component] == nil else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: duplicate COC for component \(parsedCOC.component)")
+                }
+                localOverrides.coc[parsedCOC.component] = parsedCOC.coc
+                sawAnyTileFunctionalOrPPT = true
+                addedOverrideBytes += MemoryLayout<JP3DCODInfo>.stride + 16
+
+            case 0xFF5C: // Tile-part QCD (ITU-T T.809 Clause A.2.5: TPsot == 0 only)
+                guard tpIndex == 0 else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: QCD override is only permitted in first tile-part (TPsot == 0)")
+                }
+                guard localOverrides.qcd == nil else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: duplicate QCD in tile-part header")
+                }
+                let parsedQCD = try parseQCD(data, at: &offset)
+                localOverrides.qcd = parsedQCD.params
+                localOverrides.qcdExplicitSubbandCount = parsedQCD.explicitSubbandCount
+                sawAnyTileFunctionalOrPPT = true
+                addedOverrideBytes += parsedQCD.params.steps.count * 16 + 32
+
+            case 0xFF5D: // Tile-part QCC (ITU-T T.809 Clause A.2.6: TPsot == 0 only)
+                guard tpIndex == 0 else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: QCC override is only permitted in first tile-part (TPsot == 0)")
+                }
+                let parsedQCC = try parseQCC(data, at: &offset, componentCount: componentCount)
+                guard localOverrides.qcc[parsedQCC.component] == nil else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: duplicate QCC for component \(parsedQCC.component)")
+                }
+                localOverrides.qcc[parsedQCC.component] = (parsedQCC.params, parsedQCC.explicitSubbandCount)
+                sawAnyTileFunctionalOrPPT = true
+                addedOverrideBytes += parsedQCC.params.steps.count * 16 + 48
+
+            case 0xFF5E: // Tile-part RGN (ITU-T T.809 Clause A.2.4: TPsot == 0 only)
+                guard tpIndex == 0 else {
+                    throw J2KError.decodingError("SOT[\(tileIndex)]: RGN override is only permitted in first tile-part (TPsot == 0)")
+                }
+                let rgn = try parseRGN(data, at: &offset, componentCount: componentCount)
+                sawAnyRGN = true
+                sawAnyTileFunctionalOrPPT = true
+                if let comp = rgn.component {
+                    localOverrides.rgnByComponent[comp] = rgn.shift
+                } else {
+                    localOverrides.rgnAllComponents = rgn.shift
+                }
+                addedOverrideBytes += 24
+
             case 0xFF58, 0xFF61, 0xFF64: // PLT, PPT, COM
+                if m == 0xFF61 {
+                    sawAnyTileFunctionalOrPPT = true
+                }
                 let mLen = Int(try readUInt16BE(data, at: &offset))
                 guard mLen >= 2, offset + (mLen - 2) <= data.count else {
                     throw J2KError.decodingError("Tile-part marker 0x\(String(m, radix: 16)) truncated")
@@ -1347,6 +2083,10 @@ public struct JP3DCodestreamParser: Sendable {
         }
         guard foundSOD else {
             throw J2KError.decodingError("SOT[\(tileIndex)]: truncated before SOD (0xFF93)")
+        }
+
+        if localOverrides.hasAnyFunctionalOverride {
+            tileOverrides[tileIndex] = localOverrides
         }
 
         let tileHeaderBytes = offset - sotMarkerStart
@@ -1370,7 +2110,7 @@ public struct JP3DCodestreamParser: Sendable {
         }
 
         let copyLength = copyTilePayloads ? dataLength : min(dataLength, 32)
-        let recordOverhead = 32 + MemoryLayout<JP3DParsedTile>.stride
+        let recordOverhead = 32 + MemoryLayout<JP3DParsedTile>.stride + addedOverrideBytes
         let (tileEntryBytes, ov1) = copyLength.addingReportingOverflow(recordOverhead)
         let (nextRetained, ov2) = retainedTileBytes.addingReportingOverflow(tileEntryBytes)
         let (liveTotal, ov3) = data.count.addingReportingOverflow(nextRetained)

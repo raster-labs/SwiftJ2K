@@ -158,26 +158,82 @@ public struct JP3DHTMarkers: Sendable {
         capMarkerData(for: configuration, isLossless: true, maxMb: 12)
     }
 
+    /// Encodes the 5-bit `MAGB_P` field (`bits 0..4` of `Ccap^15`) per ITU-T T.814 Clause A.3.7 / Table 4:
+    /// - `B = 8` for `P = 0`
+    /// - `B = P + 8` for `1 <= P < 20` (`B` in `9...27`)
+    /// - `B = 4 * (P - 19) + 27` for `20 <= P < 31` (`B` in `31...71`)
+    /// - `B = 74` for `P = 31`
+    package static func encodeMAGBParameter(maxMb: Int) -> UInt16 {
+        if maxMb <= 8 {
+            return 0
+        } else if maxMb <= 27 {
+            return UInt16(maxMb - 8)
+        } else if maxMb <= 71 {
+            return UInt16(19 + ((maxMb - 27 + 3) / 4))
+        } else {
+            return 31
+        }
+    }
+
+    /// Decodes the magnitude bound `B` from `P = Ccap^15 & 0x1F` per ITU-T T.814 Clause A.3.7 / Table 4.
+    package static func decodeMAGBBound(p: Int) -> Int {
+        let clamped = max(0, min(31, p))
+        if clamped < 20 {
+            return clamped + 8
+        } else if clamped < 31 {
+            return 4 * (clamped - 19) + 27
+        } else {
+            return 74
+        }
+    }
+
     package static func capMarkerData(
         for configuration: JP3DHTJ2KConfiguration,
         isLossless: Bool,
-        maxMb: Int
+        maxMb: Int,
+        htDeclaredOnly: Bool = false,
+        multiHT: Bool = false,
+        hasRGN: Bool = false,
+        heterogeneous: Bool = false,
+        includePart2MCT: Bool = false
     ) -> Data {
-        var data = Data(capacity: 12)
+        var data = Data(capacity: 14)
         appendUInt16(&data, capMarkerCode)
-        // Pcap^10 = 1 << 22 (0x0040_0000) | Pcap^15 = 1 << 17 (0x0002_0000) -> 0x0042_0000
-        let pcap: UInt32 = 0x0042_0000
-        appendUInt16(&data, 10) // Lcap = 6 + 2 * 2 = 10
+        // Pcap^2 = 1 << 30 (0x4000_0000) | Pcap^10 = 1 << 22 (0x0040_0000) | Pcap^15 = 1 << 17 (0x0002_0000)
+        var pcap: UInt32 = 0x0042_0000
+        if includePart2MCT {
+            pcap |= 0x4000_0000
+        }
+        let ccapCount = includePart2MCT ? 3 : 2
+        appendUInt16(&data, UInt16(6 + 2 * ccapCount))
         appendUInt32(&data, pcap)
+        if includePart2MCT {
+            appendUInt16(&data, 0x0000) // Ccap^2
+        }
         appendUInt16(&data, 0x0000) // Ccap^10
 
         // ITU-T T.814 Table A.2 Ccap^15:
-        //   bits 14..15: 0 = HTONLY, 3 = HTMIXED (when allowMixedTiles)
-        //   bit  5:      0 = HTREV (reversible), 1 = HTIRV (irreversible)
-        //   bits 0..4:   MAGB = max(0, min(26, maxMb - 8))
-        var ccap15: UInt16 = UInt16(max(0, min(26, maxMb - 8)))
+        //   bits 15..14: 00 = HTONLY, 10 (0x8000) = HTDECLARED, 11 (0xC000) = MIXED (01 = 0x4000 reserved)
+        //   bit  13:     0 = SINGLEHT, 1 (0x2000) = MULTIHT
+        //   bit  12:     0 = RGNFREE,  1 (0x1000) = RGN permitted
+        //   bit  11:     0 = HOMOGENEOUS, 1 (0x0800) = HETEROGENEOUS
+        //   bits 10..6:  00000 (reserved)
+        //   bit  5:      0 = HTREV (reversible), 1 (0x0020) = HTIRV (irreversible)
+        //   bits 4..0:   MAGB_P parameter P
+        var ccap15: UInt16 = encodeMAGBParameter(maxMb: maxMb)
         if configuration.allowMixedTiles {
-            ccap15 |= 0xC000 // HTMIXED (bits 14-15 == 3)
+            ccap15 |= 0xC000 // MIXED (bits 15..14 == 11)
+        } else if htDeclaredOnly {
+            ccap15 |= 0x8000 // HTDECLARED (bits 15..14 == 10)
+        }
+        if multiHT {
+            ccap15 |= 0x2000
+        }
+        if hasRGN {
+            ccap15 |= 0x1000
+        }
+        if heterogeneous {
+            ccap15 |= 0x0800
         }
         if !isLossless {
             ccap15 |= 0x0020 // HTIRV

@@ -71,8 +71,19 @@ public actor JPIPServerSession {
         self.totalRequests = 0
     }
 
-    private func binKey(_ binClass: JPIPDataBinClass, _ binID: Int) -> String {
-        "\(binClass.rawValue):\(binID)"
+    private func binKey(_ binClass: JPIPDataBinClass, _ binID: Int, codestreamID: Int = 0) -> String {
+        "\(binClass.canonicalClass.rawValue):\(codestreamID):\(binID)"
+    }
+
+    private static func parseBinKey(_ key: String) -> (rawClass: Int, codestreamID: Int, binID: Int)? {
+        let parts = key.split(separator: ":")
+        guard parts.count == 3,
+              let cls = Int(parts[0]),
+              let cs = Int(parts[1]),
+              let bid = Int(parts[2]) else {
+            return nil
+        }
+        return (cls, cs, bid)
     }
 
     /// Updates the last activity timestamp.
@@ -88,34 +99,41 @@ public actor JPIPServerSession {
     }
 
     /// Checks if any bytes (or complete marker) of a data bin have been sent to the client.
-    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int) -> Bool {
-        let key = binKey(binClass, binID)
+    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Bool {
+        let key = binKey(binClass, binID, codestreamID: codestreamID)
         return completedBinKeys.contains(key)
             || (sentByteOffsets[key] ?? 0) > 0
-            || clientCache.hasDataBin(binClass: binClass, binID: binID)
+            || clientCache.hasDataBin(binClass: binClass, binID: binID, codestreamID: codestreamID)
     }
 
     /// Checks whether the client already holds the complete data-bin.
-    public func hasCompleteDataBin(binClass: JPIPDataBinClass, binID: Int, totalLength: Int) -> Bool {
-        let key = binKey(binClass, binID)
+    public func hasCompleteDataBin(
+        binClass: JPIPDataBinClass,
+        binID: Int,
+        totalLength: Int,
+        codestreamID: Int = 0
+    ) -> Bool {
+        let key = binKey(binClass, binID, codestreamID: codestreamID)
         if completedBinKeys.contains(key) {
             return true
         }
         return totalLength > 0 && (sentByteOffsets[key] ?? 0) >= totalLength
     }
 
-    /// Returns the number of leading bytes already held by the client for `(binClass, binID)`.
-    public func sentByteOffset(binClass: JPIPDataBinClass, binID: Int) -> Int {
-        sentByteOffsets[binKey(binClass, binID)] ?? 0
+    /// Returns the number of leading bytes already held by the client for `(binClass, binID, codestreamID)`.
+    public func sentByteOffset(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Int {
+        sentByteOffsets[binKey(binClass, binID, codestreamID: codestreamID)] ?? 0
     }
 
     /// Records that a data bin (full or partial `Msg-Offset` slice) was sent to the client.
     public func recordSentDataBin(_ dataBin: JPIPDataBin) {
-        let key = binKey(dataBin.binClass, dataBin.binID)
-        let endOffset = max(0, dataBin.msgOffset) + dataBin.data.count
-        let prev = sentByteOffsets[key] ?? 0
-        if endOffset > prev {
-            sentByteOffsets[key] = endOffset
+        let key = binKey(dataBin.binClass, dataBin.binID, codestreamID: dataBin.codestreamID)
+        let (endOffset, ov) = max(0, dataBin.msgOffset).addingReportingOverflow(dataBin.data.count)
+        if !ov {
+            let prev = sentByteOffsets[key] ?? 0
+            if endOffset > prev {
+                sentByteOffsets[key] = endOffset
+            }
         }
         if dataBin.isComplete {
             completedBinKeys.insert(key)
@@ -132,17 +150,63 @@ public actor JPIPServerSession {
         let directives = JPIPCacheModel.parseModelItems(items)
         guard !directives.isEmpty else { return }
 
+        func matchesCodestream(_ cs: Int, target: Int?) -> Bool {
+            target == nil || target == cs
+        }
+
         for dir in directives {
             if dir.binClass == nil && dir.binID == nil {
                 if !dir.isAdditive {
-                    sentByteOffsets.removeAll()
-                    completedBinKeys.removeAll()
-                    clientCache.clear()
+                    if let targetCS = dir.codestreamID {
+                        if let retain = dir.byteLength, retain > 0 {
+                            for (k, cur) in sentByteOffsets {
+                                if let parsed = Self.parseBinKey(k), parsed.codestreamID == targetCS {
+                                    sentByteOffsets[k] = min(cur, retain)
+                                    completedBinKeys.remove(k)
+                                    if let cls = JPIPDataBinClass(rawValue: parsed.rawClass) {
+                                        clientCache.truncateOrRemove(
+                                            binClass: cls,
+                                            binID: parsed.binID,
+                                            codestreamID: parsed.codestreamID,
+                                            retainBytes: retain
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            let needle = ":\(targetCS):"
+                            for k in Array(sentByteOffsets.keys) where k.contains(needle) {
+                                sentByteOffsets.removeValue(forKey: k)
+                            }
+                            for k in Array(completedBinKeys) where k.contains(needle) {
+                                completedBinKeys.remove(k)
+                            }
+                            clientCache.invalidateCodestream(targetCS)
+                        }
+                    } else if let retain = dir.byteLength, retain > 0 {
+                        for (k, cur) in sentByteOffsets {
+                            sentByteOffsets[k] = min(cur, retain)
+                            if let parsed = Self.parseBinKey(k),
+                               let cls = JPIPDataBinClass(rawValue: parsed.rawClass) {
+                                clientCache.truncateOrRemove(
+                                    binClass: cls,
+                                    binID: parsed.binID,
+                                    codestreamID: parsed.codestreamID,
+                                    retainBytes: retain
+                                )
+                            }
+                        }
+                        completedBinKeys.removeAll()
+                    } else {
+                        sentByteOffsets.removeAll()
+                        completedBinKeys.removeAll()
+                        clientCache.clear()
+                    }
                 } else {
-                    for bin in availableBins {
-                        let key = binKey(bin.binClass, bin.binID)
+                    for bin in availableBins where matchesCodestream(bin.codestreamID, target: dir.codestreamID) {
+                        let key = binKey(bin.binClass, bin.binID, codestreamID: bin.codestreamID)
                         let len = dir.byteLength.map { min($0, bin.data.count) } ?? bin.data.count
-                        sentByteOffsets[key] = len
+                        sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, len)
                         if dir.byteLength == nil || len >= bin.data.count {
                             completedBinKeys.insert(key)
                         }
@@ -151,55 +215,125 @@ public actor JPIPServerSession {
                 continue
             }
 
-            guard let targetClass = dir.binClass else { continue }
-            if let explicitID = dir.binID {
-                let key = binKey(targetClass, explicitID)
-                let matchingLen = availableBins.first {
-                    $0.binClass == targetClass && $0.binID == explicitID
-                }?.data.count
+            guard let rawTargetClass = dir.binClass else { continue }
+            let targetClass = rawTargetClass.canonicalClass
 
-                if dir.isAdditive {
-                    if let specifiedBytes = dir.byteLength {
-                        let clamped = matchingLen.map { min(specifiedBytes, $0) } ?? specifiedBytes
-                        sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, clamped)
-                        if let total = matchingLen, clamped >= total {
+            if let explicitID = dir.binID {
+                var candidateCS = Set<Int>()
+                if let cs = dir.codestreamID {
+                    candidateCS.insert(cs)
+                } else {
+                    for bin in availableBins where bin.binClass.canonicalClass == targetClass && bin.binID == explicitID {
+                        candidateCS.insert(bin.codestreamID)
+                    }
+                    for k in sentByteOffsets.keys {
+                        if let parsed = Self.parseBinKey(k),
+                           parsed.rawClass == targetClass.rawValue,
+                           parsed.binID == explicitID {
+                            candidateCS.insert(parsed.codestreamID)
+                        }
+                    }
+                    for k in completedBinKeys {
+                        if let parsed = Self.parseBinKey(k),
+                           parsed.rawClass == targetClass.rawValue,
+                           parsed.binID == explicitID {
+                            candidateCS.insert(parsed.codestreamID)
+                        }
+                    }
+                    if candidateCS.isEmpty {
+                        candidateCS.insert(0)
+                    }
+                }
+
+                for cs in candidateCS {
+                    let key = binKey(targetClass, explicitID, codestreamID: cs)
+                    let matchingLen = availableBins.first {
+                        $0.binClass.canonicalClass == targetClass
+                            && $0.binID == explicitID
+                            && $0.codestreamID == cs
+                    }?.data.count
+
+                    if dir.isAdditive {
+                        if let specifiedBytes = dir.byteLength {
+                            let clamped = matchingLen.map { min(specifiedBytes, $0) } ?? specifiedBytes
+                            sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, clamped)
+                            if let total = matchingLen, clamped >= total {
+                                completedBinKeys.insert(key)
+                            }
+                        } else {
+                            if let total = matchingLen {
+                                sentByteOffsets[key] = total
+                            }
                             completedBinKeys.insert(key)
                         }
                     } else {
-                        if let total = matchingLen {
-                            sentByteOffsets[key] = total
+                        // ITU-T Rec. T.808 Clause C.8.1.2 & Example 1:
+                        // `-<bin>:<B>` retains at most the first `B` already-held bytes without adding unheld bytes.
+                        if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
+                            if let cur = sentByteOffsets[key] {
+                                let retained = min(cur, specifiedBytes)
+                                if retained > 0 {
+                                    sentByteOffsets[key] = retained
+                                } else {
+                                    sentByteOffsets.removeValue(forKey: key)
+                                }
+                            }
+                        } else {
+                            sentByteOffsets.removeValue(forKey: key)
                         }
-                        completedBinKeys.insert(key)
+                        completedBinKeys.remove(key)
+                        clientCache.truncateOrRemove(
+                            binClass: targetClass,
+                            binID: explicitID,
+                            codestreamID: cs,
+                            retainBytes: dir.byteLength ?? 0
+                        )
                     }
-                } else {
-                    if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
-                        let cur = sentByteOffsets[key] ?? (matchingLen ?? 0)
-                        sentByteOffsets[key] = max(0, cur - specifiedBytes)
-                    } else {
-                        sentByteOffsets.removeValue(forKey: key)
-                    }
-                    completedBinKeys.remove(key)
                 }
             } else {
-                // Wildcard within `targetClass` (e.g. `H*`, `P*`, `-P*`)
+                // Wildcard within `targetClass` (e.g. `H*`, `P*`, `-P*`, `-P*:20`)
                 if dir.isAdditive {
-                    for bin in availableBins where bin.binClass == targetClass {
-                        let key = binKey(bin.binClass, bin.binID)
+                    for bin in availableBins
+                    where bin.binClass.canonicalClass == targetClass
+                        && matchesCodestream(bin.codestreamID, target: dir.codestreamID) {
+                        let key = binKey(bin.binClass, bin.binID, codestreamID: bin.codestreamID)
                         let len = dir.byteLength.map { min($0, bin.data.count) } ?? bin.data.count
                         sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, len)
                         if dir.byteLength == nil || len >= bin.data.count {
                             completedBinKeys.insert(key)
                         }
                     }
+                } else if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
+                    for (k, cur) in sentByteOffsets {
+                        if let parsed = Self.parseBinKey(k),
+                           parsed.rawClass == targetClass.rawValue,
+                           matchesCodestream(parsed.codestreamID, target: dir.codestreamID) {
+                            sentByteOffsets[k] = min(cur, specifiedBytes)
+                            completedBinKeys.remove(k)
+                            clientCache.truncateOrRemove(
+                                binClass: targetClass,
+                                binID: parsed.binID,
+                                codestreamID: parsed.codestreamID,
+                                retainBytes: specifiedBytes
+                            )
+                        }
+                    }
+                    for k in Array(completedBinKeys) {
+                        if let parsed = Self.parseBinKey(k),
+                           parsed.rawClass == targetClass.rawValue,
+                           matchesCodestream(parsed.codestreamID, target: dir.codestreamID) {
+                            completedBinKeys.remove(k)
+                        }
+                    }
                 } else {
-                    let prefix = "\(targetClass.rawValue):"
-                    for k in sentByteOffsets.keys where k.hasPrefix(prefix) {
+                    let prefix = dir.codestreamID.map { "\(targetClass.rawValue):\($0):" } ?? "\(targetClass.rawValue):"
+                    for k in Array(sentByteOffsets.keys) where k.hasPrefix(prefix) {
                         sentByteOffsets.removeValue(forKey: k)
                     }
-                    for k in completedBinKeys where k.hasPrefix(prefix) {
+                    for k in Array(completedBinKeys) where k.hasPrefix(prefix) {
                         completedBinKeys.remove(k)
                     }
-                    clientCache.invalidate(binClass: targetClass)
+                    clientCache.invalidate(binClass: targetClass, codestreamID: dir.codestreamID)
                 }
             }
         }

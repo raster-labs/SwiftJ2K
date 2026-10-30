@@ -128,6 +128,7 @@ public struct JPIPDataBinGenerator: Sendable {
         defaultStreamType: JPIPStreamType = .jppStream,
         limits: ResourceLimits = .default
     ) throws -> JPIPWireWindowGeneration {
+        try request?.validateParameters()
         let streamType = request?.streamType ?? defaultStreamType
         if JP3DJPIPIndexer.isJP3DCodestream(fileData) {
             return try generate3DWireDataBins(from: fileData, streamType: streamType, request: request, limits: limits)
@@ -261,6 +262,14 @@ public struct JPIPDataBinGenerator: Sendable {
             let fullH = max(1, idx.height - idx.originY)
             let roff = request?.roff ?? (x: 0, y: 0)
             let rsiz = request?.rsiz ?? (width: fullW, height: fullH)
+            guard roff.x >= 0, roff.y >= 0, rsiz.width > 0, rsiz.height > 0 else {
+                throw J2KError.invalidParameter("2D JPIP roff/rsiz must be non-negative origin and positive size.")
+            }
+            let (endX, ovX) = roff.x.addingReportingOverflow(rsiz.width)
+            let (endY, ovY) = roff.y.addingReportingOverflow(rsiz.height)
+            guard !ovX, !ovY else {
+                throw J2KError.invalidParameter("2D JPIP roff + rsiz overflows integer bounds.")
+            }
             let scaleX: Double
             let scaleY: Double
             if let fsiz = request?.fsiz, fsiz.width > 0, fsiz.height > 0 {
@@ -272,11 +281,18 @@ public struct JPIPDataBinGenerator: Sendable {
                 scaleX = 1.0
                 scaleY = 1.0
             }
-            let x0 = idx.originX + max(0, Int(floor(Double(roff.x) * scaleX)))
-            let y0 = idx.originY + max(0, Int(floor(Double(roff.y) * scaleY)))
-            let x1 = min(idx.width, idx.originX + max(1, Int(ceil(Double(roff.x + rsiz.width) * scaleX))))
-            let y1 = min(idx.height, idx.originY + max(1, Int(ceil(Double(roff.y + rsiz.height) * scaleY))))
-            if x0 > idx.originX || y0 > idx.originY || x1 < idx.width || y1 < idx.height {
+            let scaledX0 = min(Double(fullW), max(0.0, floor(Double(roff.x) * scaleX)))
+            let scaledY0 = min(Double(fullH), max(0.0, floor(Double(roff.y) * scaleY)))
+            let scaledX1 = min(Double(fullW), max(0.0, ceil(Double(endX) * scaleX)))
+            let scaledY1 = min(Double(fullH), max(0.0, ceil(Double(endY) * scaleY)))
+            let x0 = idx.originX + Int(scaledX0)
+            let y0 = idx.originY + Int(scaledY0)
+            let x1 = min(idx.width, idx.originX + Int(scaledX1))
+            let y1 = min(idx.height, idx.originY + Int(scaledY1))
+            if x0 >= x1 || y0 >= y1 {
+                // Disjoint view window outside image bounds: empty spatial ROI.
+                spatialROI = (idx.width, idx.height, idx.width, idx.height)
+            } else if x0 > idx.originX || y0 > idx.originY || x1 < idx.width || y1 < idx.height {
                 spatialROI = (x0, y0, x1, y1)
             }
         }
@@ -387,31 +403,183 @@ public struct JPIPDataBinGenerator: Sendable {
             return JPIPWireWindowGeneration(bins: bins, streamType: streamType, coversFullTarget: false)
         }
 
+        let fullW = max(1, idx.width - idx.originX)
+        let fullH = max(1, idx.height - idx.originY)
+        let fullD = max(1, idx.depth - idx.originZ)
         let maxNL = idx.maxLevels
         var maxResIndex = maxNL
-        if let reslevels = request?.reslevels, reslevels > 0 {
+
+        // 1. Normative ITU-T Rec. T.808 Clause C.4.5 `fvsiz` resolution selection (with `reslevels` compatibility fallback)
+        if let fvsiz = request?.fvsiz, fvsiz.count >= 3,
+           fvsiz[0] > 0, fvsiz[1] > 0, fvsiz[2] > 0 {
+            let fx = fvsiz[0], fy = fvsiz[1], fz = fvsiz[2]
+            if fx < fullW || fy < fullH || fz < fullD {
+                let dir = request?.fvsizRoundDirection?.lowercased() ?? "round-up"
+                if dir == "round-down" {
+                    var best = 0
+                    for r in 0...maxNL {
+                        let shift = maxNL - r
+                        let sx = min(shift, idx.levelsX)
+                        let sy = min(shift, idx.levelsY)
+                        let sz = min(shift, idx.levelsZ)
+                        let rw = max(1, (fullW + (1 << sx) - 1) >> sx)
+                        let rh = max(1, (fullH + (1 << sy) - 1) >> sy)
+                        let rd = max(1, (fullD + (1 << sz) - 1) >> sz)
+                        if rw <= fx && rh <= fy && rd <= fz {
+                            best = r
+                        }
+                    }
+                    maxResIndex = best
+                } else if dir == "closest" {
+                    var best = maxNL
+                    var bestDist = Int.max
+                    for r in 0...maxNL {
+                        let shift = maxNL - r
+                        let sx = min(shift, idx.levelsX)
+                        let sy = min(shift, idx.levelsY)
+                        let sz = min(shift, idx.levelsZ)
+                        let rw = max(1, (fullW + (1 << sx) - 1) >> sx)
+                        let rh = max(1, (fullH + (1 << sy) - 1) >> sy)
+                        let rd = max(1, (fullD + (1 << sz) - 1) >> sz)
+                        let dist = abs(rw - fx) + abs(rh - fy) + abs(rd - fz)
+                        if dist < bestDist {
+                            bestDist = dist
+                            best = r
+                        }
+                    }
+                    maxResIndex = best
+                } else {
+                    for r in 0...maxNL {
+                        let shift = maxNL - r
+                        let sx = min(shift, idx.levelsX)
+                        let sy = min(shift, idx.levelsY)
+                        let sz = min(shift, idx.levelsZ)
+                        let rw = max(1, (fullW + (1 << sx) - 1) >> sx)
+                        let rh = max(1, (fullH + (1 << sy) - 1) >> sy)
+                        let rd = max(1, (fullD + (1 << sz) - 1) >> sz)
+                        if rw >= fx && rh >= fy && rd >= fz {
+                            maxResIndex = r
+                            break
+                        }
+                    }
+                }
+            }
+        } else if let reslevels = request?.reslevels, reslevels > 0 {
             maxResIndex = max(0, maxNL - reslevels)
         }
+
         let totalLayers = max(1, idx.totalLayers)
         let keptLayers = request?.layers.map { min(totalLayers, max(1, $0)) } ?? totalLayers
 
+        // 2. Normative ITU-T Rec. T.808 Clauses C.4.6–C.4.7 `rvoff`/`rvsiz` frame-coordinate window
+        //    (retaining `roff`/`rsiz` + `zoff`/`zsiz` only as fallback compatibility extensions).
         var roiX: Range<Int>?
         var roiY: Range<Int>?
-        if request?.roff != nil || request?.rsiz != nil {
-            let roff = request?.roff ?? (0, 0)
-            let rsiz = request?.rsiz ?? (idx.width, idx.height)
-            let x0 = max(idx.originX, idx.originX + roff.x)
-            let y0 = max(idx.originY, idx.originY + roff.y)
-            let x1 = min(idx.width, x0 + max(1, rsiz.width))
-            let y1 = min(idx.height, y0 + max(1, rsiz.height))
-            if x0 > idx.originX || x1 < idx.width { roiX = x0..<x1 }
-            if y0 > idx.originY || y1 < idx.height { roiY = y0..<y1 }
-        }
         var roiZ: Range<Int>?
-        if let zr = request?.zRange {
-            let z0 = max(idx.originZ, idx.originZ + zr.offset)
-            let z1 = min(idx.depth, z0 + max(1, zr.size))
-            if z0 > idx.originZ || z1 < idx.depth { roiZ = z0..<z1 }
+        var disjointROI = false
+
+        if request?.rvoff != nil || request?.rvsiz != nil {
+            let effFX: Int
+            let effFY: Int
+            let effFZ: Int
+            if let fvsiz = request?.fvsiz, fvsiz.count >= 3,
+               fvsiz[0] > 0, fvsiz[1] > 0, fvsiz[2] > 0 {
+                let clampDown = (request?.fvsizRoundDirection?.lowercased() == "round-down")
+                effFX = max(1, clampDown ? min(fullW, fvsiz[0]) : fvsiz[0])
+                effFY = max(1, clampDown ? min(fullH, fvsiz[1]) : fvsiz[1])
+                effFZ = max(1, clampDown ? min(fullD, fvsiz[2]) : fvsiz[2])
+            } else {
+                effFX = fullW
+                effFY = fullH
+                effFZ = fullD
+            }
+
+            let rvoff = request?.rvoff ?? []
+            let rvsiz = request?.rvsiz ?? []
+            let ox = rvoff.count >= 1 ? rvoff[0] : 0
+            let oy = rvoff.count >= 2 ? rvoff[1] : 0
+            let oz = rvoff.count >= 3 ? rvoff[2] : 0
+            let sx = rvsiz.count >= 1 ? rvsiz[0] : max(1, effFX - min(effFX, ox))
+            let sy = rvsiz.count >= 2 ? rvsiz[1] : max(1, effFY - min(effFY, oy))
+            let sz = rvsiz.count >= 3 ? rvsiz[2] : max(1, effFZ - min(effFZ, oz))
+
+            guard ox >= 0, oy >= 0, oz >= 0, sx > 0, sy > 0, sz > 0 else {
+                throw J2KError.invalidParameter("3D JPIP rvoff/rvsiz must have non-negative offsets and positive sizes.")
+            }
+            let (endFX, ovX) = ox.addingReportingOverflow(sx)
+            let (endFY, ovY) = oy.addingReportingOverflow(sy)
+            let (endFZ, ovZ) = oz.addingReportingOverflow(sz)
+            guard !ovX, !ovY, !ovZ else {
+                throw J2KError.invalidParameter("3D JPIP rvoff + rvsiz overflows integer bounds.")
+            }
+
+            let scaleX = Double(fullW) / Double(effFX)
+            let scaleY = Double(fullH) / Double(effFY)
+            let scaleZ = Double(fullD) / Double(effFZ)
+
+            let x0 = idx.originX + Int(min(Double(fullW), max(0.0, floor(Double(ox) * scaleX))))
+            let y0 = idx.originY + Int(min(Double(fullH), max(0.0, floor(Double(oy) * scaleY))))
+            let z0 = idx.originZ + Int(min(Double(fullD), max(0.0, floor(Double(oz) * scaleZ))))
+            let x1 = min(idx.width, idx.originX + Int(min(Double(fullW), max(0.0, ceil(Double(endFX) * scaleX)))))
+            let y1 = min(idx.height, idx.originY + Int(min(Double(fullH), max(0.0, ceil(Double(endFY) * scaleY)))))
+            let z1 = min(idx.depth, idx.originZ + Int(min(Double(fullD), max(0.0, ceil(Double(endFZ) * scaleZ)))))
+
+            if x0 >= x1 || y0 >= y1 || z0 >= z1 {
+                disjointROI = true
+            } else {
+                if x0 > idx.originX || x1 < idx.width { roiX = x0..<x1 }
+                if y0 > idx.originY || y1 < idx.height { roiY = y0..<y1 }
+                if z0 > idx.originZ || z1 < idx.depth { roiZ = z0..<z1 }
+            }
+        } else {
+            if request?.roff != nil || request?.rsiz != nil {
+                let roff = request?.roff ?? (0, 0)
+                let rsiz = request?.rsiz ?? (fullW, fullH)
+                guard roff.x >= 0, roff.y >= 0, rsiz.width > 0, rsiz.height > 0 else {
+                    throw J2KError.invalidParameter("3D JPIP fallback roff/rsiz must be non-negative origin and positive size.")
+                }
+                let (endRX, ovX) = roff.x.addingReportingOverflow(rsiz.width)
+                let (endRY, ovY) = roff.y.addingReportingOverflow(rsiz.height)
+                guard !ovX, !ovY else {
+                    throw J2KError.invalidParameter("3D JPIP fallback roff + rsiz overflows integer bounds.")
+                }
+                let (x0Raw, ovX0) = idx.originX.addingReportingOverflow(roff.x)
+                let (y0Raw, ovY0) = idx.originY.addingReportingOverflow(roff.y)
+                let (x1Raw, ovX1) = idx.originX.addingReportingOverflow(endRX)
+                let (y1Raw, ovY1) = idx.originY.addingReportingOverflow(endRY)
+                let x0 = ovX0 ? idx.width : min(idx.width, max(idx.originX, x0Raw))
+                let y0 = ovY0 ? idx.height : min(idx.height, max(idx.originY, y0Raw))
+                let x1 = ovX1 ? idx.width : min(idx.width, max(idx.originX, x1Raw))
+                let y1 = ovY1 ? idx.height : min(idx.height, max(idx.originY, y1Raw))
+                if x0 >= x1 || y0 >= y1 {
+                    disjointROI = true
+                } else {
+                    if x0 > idx.originX || x1 < idx.width { roiX = x0..<x1 }
+                    if y0 > idx.originY || y1 < idx.height { roiY = y0..<y1 }
+                }
+            }
+            if let zr = request?.zRange {
+                guard zr.offset >= 0, zr.size > 0 else {
+                    throw J2KError.invalidParameter("3D JPIP fallback zoff/zsiz must be non-negative offset and positive size.")
+                }
+                let (endRZ, ovZ) = zr.offset.addingReportingOverflow(zr.size)
+                guard !ovZ else {
+                    throw J2KError.invalidParameter("3D JPIP fallback zoff + zsiz overflows integer bounds.")
+                }
+                let (z0Raw, ovZ0) = idx.originZ.addingReportingOverflow(zr.offset)
+                let (z1Raw, ovZ1) = idx.originZ.addingReportingOverflow(endRZ)
+                let z0 = ovZ0 ? idx.depth : min(idx.depth, max(idx.originZ, z0Raw))
+                let z1 = ovZ1 ? idx.depth : min(idx.depth, max(idx.originZ, z1Raw))
+                if z0 >= z1 {
+                    disjointROI = true
+                } else if z0 > idx.originZ || z1 < idx.depth {
+                    roiZ = z0..<z1
+                }
+            }
+        }
+
+        if disjointROI {
+            return JPIPWireWindowGeneration(bins: bins, streamType: streamType, coversFullTarget: false)
         }
 
         let coversFull = (maxResIndex >= maxNL)
@@ -499,13 +667,42 @@ public struct JPIPDataBinGenerator: Sendable {
         reconstructContainer: Bool = true,
         limits: ResourceLimits = .default
     ) -> Data {
+        (try? reassembleCodestreamThrowing(
+            from: bins,
+            reconstructContainer: reconstructContainer,
+            limits: limits
+        )) ?? Data()
+    }
+
+    /// Throwing bounded variant of ``reassembleCodestream(from:reconstructContainer:limits:)``
+    /// enforcing pre-allocation sparse `Msg-Offset` span and descriptor admission against `limits`.
+    public func reassembleCodestreamThrowing(
+        from bins: [JPIPDataBin],
+        reconstructContainer: Bool = true,
+        limits: ResourceLimits = .default
+    ) throws -> Data {
         guard !bins.isEmpty else { return Data() }
 
-        // 1. Merge any partial/segmented `Msg-Offset` bins via a local JPIPCacheModel.
-        let totalInputBytes = bins.reduce(0) { $0 + max(0, $1.msgOffset) + $1.data.count }
+        // 1. Pre-flight sparse `Msg-Offset + data.count` spans and descriptor storage BEFORE allocation.
+        let probeCache = JPIPCacheModel(maxCacheSize: limits.maximumWorkspaceBytes, maxEntries: Int.max)
+        let projected = try probeCache.projectedAllocation(adding: bins)
+        let (descBytes, ovDesc) = projected.entryCount.multipliedReportingOverflow(
+            by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
+        )
+        let (mergeWorkspace, ovWs) = projected.totalPayloadBytes.addingReportingOverflow(descBytes)
+        guard !ovDesc, !ovWs,
+              mergeWorkspace <= limits.maximumWorkspaceBytes,
+              mergeWorkspace <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "JPIP reassembly cache span (\(mergeWorkspace) bytes) exceeds resource limits."
+            )
+        }
+
+        // 2. Merge any partial/segmented `Msg-Offset` bins via a bounded JPIPCacheModel.
         var merger = JPIPCacheModel(
-            maxCacheSize: max(128 * 1024 * 1024, totalInputBytes + 1024 * 1024),
-            maxEntries: max(65536, bins.count + 16)
+            maxCacheSize: min(limits.maximumWorkspaceBytes, max(1024, projected.totalPayloadBytes)),
+            maxEntries: max(16, projected.entryCount + 16)
         )
         for bin in bins {
             merger.addDataBin(bin)
@@ -546,19 +743,19 @@ public struct JPIPDataBinGenerator: Sendable {
             for prc in precinctBins { prcDict[prc.binID] = prc.data }
 
             if JP3DJPIPIndexer.isJP3DCodestream(mainHeader) {
-                codestream = (try? JP3DJPIPIndexer.reassembleJPP3D(
+                codestream = try JP3DJPIPIndexer.reassembleJPP3D(
                     mainHeader: mainHeader,
                     tileHeaders: thDict,
                     precinctBins: prcDict,
                     limits: limits
-                )) ?? Data()
+                )
             } else {
-                codestream = (try? JPIPCodestreamIndexer.reassembleJPP(
+                codestream = try JPIPCodestreamIndexer.reassembleJPP(
                     mainHeader: mainHeader,
                     tileHeaders: thDict,
                     precinctBins: prcDict,
                     limits: limits
-                )) ?? Data()
+                )
             }
         } else if firstTileStartsWithSOT && tileHeaders.isEmpty {
             // Normative JPT-stream (`Class 6` + `Class 4`/`5` starting with SOT)
@@ -583,6 +780,9 @@ public struct JPIPDataBinGenerator: Sendable {
             let tail = [UInt8](out.suffix(2))
             if tail.count < 2 || tail[0] != 0xFF || tail[1] != 0xD9 {
                 out.append(contentsOf: [0xFF, 0xD9])
+            }
+            guard out.count <= limits.maximumWorkspaceBytes, out.count <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled JPIP JPT codestream exceeds resource limits.")
             }
             codestream = out
         } else {
@@ -614,6 +814,9 @@ public struct JPIPDataBinGenerator: Sendable {
                     output.append(contentsOf: [0xFF, 0xD9] as [UInt8])
                 }
             }
+            guard output.count <= limits.maximumWorkspaceBytes, output.count <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled JPIP codestream exceeds resource limits.")
+            }
             codestream = output
         }
 
@@ -621,7 +824,11 @@ public struct JPIPDataBinGenerator: Sendable {
         guard reconstructContainer, let meta0 = metaBins[0], !meta0.isEmpty else {
             return codestream
         }
-        return Self.reconstructJP2Container(metaBins: metaBins, codestream: codestream)
+        let container = Self.reconstructJP2Container(metaBins: metaBins, codestream: codestream)
+        guard container.count <= limits.maximumWorkspaceBytes, container.count <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Reassembled JP2 container exceeds resource limits.")
+        }
+        return container
     }
 
     private static func inferTotalTiles(fromMainHeader mainHeader: Data) -> Int? {

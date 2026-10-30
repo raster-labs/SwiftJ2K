@@ -372,7 +372,11 @@ struct R3JPIPRemediationTests {
             rReq.len = 96
             rReq.streamType = .jppStream
             let (rResp, rStream) = try await chunkedClient.sendStreamRequest(rReq)
-            #expect(rResp.data.count <= 96)
+            // Per ITU-T Rec. T.808 Clause C.6.1, `len=` bounds ordinary JPIP data-bin message bytes
+            // and excludes the mandatory 3-byte End of Response (EOR) message.
+            #expect(rResp.data.count >= 3)
+            #expect(rStream.eor != nil)
+            #expect(rResp.data.count - 3 <= 96)
             if rStream.bins.contains(where: { !$0.isComplete || $0.msgOffset > 0 }) {
                 sawPartialBin = true
             }

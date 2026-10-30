@@ -477,6 +477,9 @@ public actor JPIPWebSocketTransport {
     /// Keepalive interval in seconds.
     private let keepaliveInterval: TimeInterval
 
+    /// Per-request / handshake timeout in seconds.
+    private let requestTimeout: TimeInterval
+
     /// Last ping timestamp for latency measurement.
     private var lastPingTime: Date?
 
@@ -523,7 +526,8 @@ public actor JPIPWebSocketTransport {
     public init(
         url: URL,
         reconnectionConfig: JPIPWebSocketReconnectionConfig = .default,
-        keepaliveInterval: TimeInterval = 30.0
+        keepaliveInterval: TimeInterval = 30.0,
+        requestTimeout: TimeInterval = 30.0
     ) {
         self.url = url
         self.connectionState = .disconnected
@@ -535,12 +539,15 @@ public actor JPIPWebSocketTransport {
         self.pendingContinuations = [:]
         self.receivedDataBins = []
         self.keepaliveInterval = keepaliveInterval
+        self.requestTimeout = max(0.001, requestTimeout)
         self.tcpConnection = nil
         self.statistics = Statistics()
     }
 
     /// Establishes the real TCP RFC 6455 WebSocket connection (`Sec-WebSocket-Protocol: jpip`).
     public func connect() async throws {
+        try Task.checkCancellation()
+
         guard connectionState == .disconnected
                 || connectionState == .reconnecting else {
             throw J2KError.invalidState(
@@ -567,17 +574,34 @@ public actor JPIPWebSocketTransport {
 
         connectionState = .connecting
 
+        let handshakeTimeout = self.requestTimeout
+        let cancelToken = JPIPSocketCancellationToken()
         let openedConn: JPIPTCPConnection
         do {
-            openedConn = try await Self.openAndHandshakeOffPool(
-                host: host,
-                port: port,
-                pathAndQuery: pathAndQuery,
-                hostHeader: hostHeader
-            )
+            openedConn = try await withTaskCancellationHandler {
+                try await Self.openAndHandshakeOffPool(
+                    host: host,
+                    port: port,
+                    pathAndQuery: pathAndQuery,
+                    hostHeader: hostHeader,
+                    timeoutInterval: handshakeTimeout,
+                    cancelToken: cancelToken
+                )
+            } onCancel: {
+                cancelToken.cancel()
+            }
         } catch {
             connectionState = .disconnected
+            if Task.isCancelled || cancelToken.cancelled {
+                throw CancellationError()
+            }
             throw error
+        }
+
+        if Task.isCancelled {
+            openedConn.close()
+            connectionState = .disconnected
+            throw CancellationError()
         }
 
         connectionGeneration &+= 1
@@ -600,26 +624,42 @@ public actor JPIPWebSocketTransport {
         host: String,
         port: Int,
         pathAndQuery: String,
-        hostHeader: String
+        hostHeader: String,
+        timeoutInterval: TimeInterval,
+        cancelToken: JPIPSocketCancellationToken
     ) async throws -> JPIPTCPConnection {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                if cancelToken.cancelled {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
                 do {
-                    let conn = try JPIPTCPConnection.connect(host: host, port: port, timeoutSeconds: 10)
+                    let conn = try JPIPTCPConnection.connect(
+                        host: host,
+                        port: port,
+                        timeoutInterval: timeoutInterval,
+                        cancellationToken: cancelToken
+                    )
                     do {
                         _ = try conn.performWebSocketClientHandshake(
                             pathAndQuery: pathAndQuery,
                             hostHeader: hostHeader,
                             subprotocol: "jpip"
                         )
+                        if cancelToken.cancelled {
+                            conn.close()
+                            continuation.resume(throwing: CancellationError())
+                            return
+                        }
                         conn.setReceiveTimeout(seconds: 0)
                         continuation.resume(returning: conn)
                     } catch {
                         conn.close()
-                        continuation.resume(throwing: error)
+                        continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
                     }
                 } catch {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
                 }
             }
         }
@@ -723,8 +763,14 @@ public actor JPIPWebSocketTransport {
         connectionState = .disconnected
     }
 
-    /// Sends a JPIP request as a masked RFC 6455 binary frame and awaits the matching `requestID` response.
-    public func sendRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
+    /// Sends a JPIP request as a masked RFC 6455 binary frame and awaits the matching `requestID` response
+    /// with structured task cancellation and bounded request-timeout enforcement.
+    public func sendRequest(
+        _ request: JPIPRequest,
+        timeout: TimeInterval? = nil
+    ) async throws -> JPIPResponse {
+        try Task.checkCancellation()
+
         guard connectionState == .connected,
               let conn = tcpConnection,
               conn.isOpen else {
@@ -746,18 +792,55 @@ public actor JPIPWebSocketTransport {
             return response
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            pendingContinuations[requestID] = continuation
-            do {
-                try conn.writeWebSocketFrame(
-                    opcode: .binary,
-                    payload: serialized,
-                    masked: true
-                )
-            } catch {
-                pendingContinuations.removeValue(forKey: requestID)
-                continuation.resume(throwing: error)
+        let effectiveTimeout = max(0.001, timeout ?? requestTimeout)
+        let transportRef = self
+        let timeoutTask = Task {
+            let nanos = UInt64(min(Double(UInt64.max / 2), effectiveTimeout * 1_000_000_000.0))
+            try await Task.sleep(nanoseconds: max(1, nanos))
+            await transportRef.failPendingRequestOnTimeout(requestID: requestID, timeout: effectiveTimeout)
+        }
+        defer { timeoutTask.cancel() }
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                pendingContinuations[requestID] = continuation
+                do {
+                    try conn.writeWebSocketFrame(
+                        opcode: .binary,
+                        payload: serialized,
+                        masked: true
+                    )
+                } catch {
+                    if let removed = pendingContinuations.removeValue(forKey: requestID) {
+                        removed.resume(throwing: error)
+                    }
+                }
             }
+        } onCancel: {
+            Task {
+                await transportRef.cancelPendingRequest(requestID: requestID)
+            }
+        }
+    }
+
+    private func cancelPendingRequest(requestID: UInt32) {
+        if let continuation = pendingContinuations.removeValue(forKey: requestID) {
+            continuation.resume(throwing: CancellationError())
+        }
+    }
+
+    private func failPendingRequestOnTimeout(requestID: UInt32, timeout: TimeInterval) {
+        if let continuation = pendingContinuations.removeValue(forKey: requestID) {
+            continuation.resume(
+                throwing: CodecError(
+                    .resourceLimitExceeded,
+                    "JPIP WebSocket request \(requestID) timed out after \(timeout) seconds."
+                )
+            )
         }
     }
 

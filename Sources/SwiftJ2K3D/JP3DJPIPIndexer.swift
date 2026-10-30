@@ -196,8 +196,13 @@ package enum JP3DJPIPIndexer {
         )
         let totalTiles = allTiles.count
         let compCount = siz.componentCount
-        let totalLayers = max(1, cod.numLayers)
-        let maxNL = max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
+        let totalLayers = max(1, (0..<max(1, totalTiles)).map { parsed.effectiveTileCOD(tileIndex: $0).numLayers }.max() ?? cod.numLayers)
+        let maxNL = (0..<max(1, totalTiles)).flatMap { t in
+            (0..<compCount).map { c in
+                let cc = parsed.effectiveCOD(tileIndex: t, component: c)
+                return max(cc.levelsX, max(cc.levelsY, cc.levelsZ))
+            }
+        }.max() ?? max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
 
         var indexedTiles: [JP3DJPIPIndexedTile] = []
         indexedTiles.reserveCapacity(totalTiles)
@@ -231,22 +236,42 @@ package enum JP3DJPIPIndexer {
             )
             guard !tileBitstream.isEmpty else { continue }
 
+            let tileCOD = parsed.effectiveTileCOD(tileIndex: tileIdx)
+            let tileLayers = max(1, tileCOD.numLayers)
+            let compCODs = (0..<compCount).map { parsed.effectiveCOD(tileIndex: tileIdx, component: $0) }
+
             var geometries: [JP3DTileComponentGeometry] = []
             geometries.reserveCapacity(compCount)
-            for _ in 0..<compCount {
+            var tileGeomBytes = 0
+            for c in 0..<compCount {
+                let remCap = max(0, min(limits.maximumWorkspaceBytes, limits.maximumMemoryBytes) - tileGeomBytes)
+                let fp = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                    x0: bounds.x0, x1: bounds.x1,
+                    y0: bounds.y0, y1: bounds.y1,
+                    z0: bounds.z0, z1: bounds.z1,
+                    cod: compCODs[c],
+                    maximumWorkspaceBytes: remCap,
+                    includeDecodeState: true
+                )
+                let (nextG, gOv) = tileGeomBytes.addingReportingOverflow(fp.totalBytes)
+                guard !gOv, nextG <= limits.maximumWorkspaceBytes, nextG <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "JP3D JPIP indexing 3D geometry exceeds resource limits.")
+                }
+                tileGeomBytes = nextG
                 geometries.append(
                     try JP3DGeometryBuilder.makeTileComponentGeometry(
                         x0: bounds.x0, x1: bounds.x1,
                         y0: bounds.y0, y1: bounds.y1,
                         z0: bounds.z0, z1: bounds.z1,
-                        cod: cod
+                        cod: compCODs[c]
                     )
                 )
             }
 
             let decoded = try JP3DTier2Coder.decodePackets(
                 geometries: geometries,
-                cod: cod,
+                cod: tileCOD,
+                componentCODs: compCODs,
                 bytes: tileBitstream,
                 tolerateTruncation: true,
                 cancellation: {}
@@ -255,7 +280,7 @@ package enum JP3DJPIPIndexer {
             // Organize packets by [c][r][p][l]
             var perPrc: [[[[Data]]]] = geometries.map { g in
                 g.resolutions.map { r in
-                    Array(repeating: [Data](repeating: Data(), count: totalLayers), count: r.precincts.count)
+                    Array(repeating: [Data](repeating: Data(), count: tileLayers), count: r.precincts.count)
                 }
             }
             for pkt in decoded.packets {
@@ -263,7 +288,7 @@ package enum JP3DJPIPIndexer {
                 if a.component < perPrc.count,
                    a.resolution < perPrc[a.component].count,
                    a.precinct < perPrc[a.component][a.resolution].count,
-                   a.layer < totalLayers {
+                   a.layer < tileLayers {
                     perPrc[a.component][a.resolution][a.precinct][a.layer] = Data(tileBitstream[pkt.byteRange])
                 }
             }
@@ -313,7 +338,7 @@ package enum JP3DJPIPIndexer {
             }
         }
 
-        let isLossless = cod.isLossless && parsed.isLosslessQuantization
+        let isLossless = parsed.isFullyReversible
         let isHT = (cod.codeBlockStyle & 0x40) != 0 || parsed.hasHTJ2KCAPMarker
         return JP3DJPIPIndexedCodestream(
             width: siz.width,
@@ -358,9 +383,8 @@ package enum JP3DJPIPIndexer {
         probe.append(th0)
         probe.append(contentsOf: [0xFF, 0x93, 0xFF, 0xD9])
 
-        let parsed = try JP3DCodestreamParser().parse(probe, limits: limits)
+        var parsed = try JP3DCodestreamParser().parse(probe, limits: limits)
         let siz = parsed.siz
-        let cod = parsed.cod
         let compCount = siz.componentCount
         let tilingConfig = JP3DTilingConfiguration(
             tileSizeX: siz.tileSizeX,
@@ -373,9 +397,30 @@ package enum JP3DJPIPIndexer {
             volumeDepth: siz.depth
         )
         let totalTiles = allTiles.count
-        let totalLayers = max(1, cod.numLayers)
-        let style = CodeBlockStyle(bits: cod.codeBlockStyle)
 
+        if totalTiles > 1 && tileHeaders.contains(where: { $0.key > 0 && !$0.value.isEmpty }) {
+            var fullProbe = Data(mainHeader)
+            for tIdx in 0..<totalTiles {
+                let th = tileHeaders[tIdx] ?? Data()
+                let psot = UInt32(14 + th.count)
+                fullProbe.append(contentsOf: [
+                    0xFF, 0x90, 0x00, 0x0A,
+                    UInt8((tIdx >> 8) & 0xFF), UInt8(tIdx & 0xFF),
+                    UInt8((psot >> 24) & 0xFF), UInt8((psot >> 16) & 0xFF),
+                    UInt8((psot >> 8) & 0xFF), UInt8(psot & 0xFF),
+                    0x00, 0x01
+                ])
+                fullProbe.append(th)
+                fullProbe.append(contentsOf: [0xFF, 0x93])
+            }
+            fullProbe.append(contentsOf: [0xFF, 0xD9])
+            parsed = try JP3DCodestreamParser().parse(fullProbe, limits: limits)
+        }
+
+        let outCap = min(limits.maximumCompressedBytes, min(limits.maximumWorkspaceBytes, limits.maximumMemoryBytes))
+        guard mainHeader.count + 2 <= outCap else {
+            throw CodecError(.resourceLimitExceeded, "Reassembled 3D JPIP codestream exceeds resource limits.")
+        }
         var out = Data()
         out.append(mainHeader)
 
@@ -387,18 +432,56 @@ package enum JP3DJPIPIndexer {
                 z0: tileRegion.z.lowerBound, z1: tileRegion.z.upperBound
             )
             let thData = tileHeaders[tileIdx] ?? Data()
+            let tileCOD = parsed.effectiveTileCOD(tileIndex: tileIdx)
+            let totalLayers = max(1, tileCOD.numLayers)
+            let compCODs = (0..<compCount).map { parsed.effectiveCOD(tileIndex: tileIdx, component: $0) }
+
             var geometries: [JP3DTileComponentGeometry] = []
             geometries.reserveCapacity(compCount)
-            for _ in 0..<compCount {
+            var tileGeomBytes = 0
+            for c in 0..<compCount {
+                let remCap = max(0, min(limits.maximumWorkspaceBytes, limits.maximumMemoryBytes) - out.count - tileGeomBytes)
+                let fp = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                    x0: bounds.x0, x1: bounds.x1,
+                    y0: bounds.y0, y1: bounds.y1,
+                    z0: bounds.z0, z1: bounds.z1,
+                    cod: compCODs[c],
+                    maximumWorkspaceBytes: remCap,
+                    includeDecodeState: true
+                )
+                let (nextG, gOv) = tileGeomBytes.addingReportingOverflow(fp.totalBytes)
+                guard !gOv, out.count + nextG <= min(limits.maximumWorkspaceBytes, limits.maximumMemoryBytes) else {
+                    throw CodecError(.resourceLimitExceeded, "Reassembled 3D JPIP geometry workspace exceeds resource limits.")
+                }
+                tileGeomBytes = nextG
                 geometries.append(
                     try JP3DGeometryBuilder.makeTileComponentGeometry(
                         x0: bounds.x0, x1: bounds.x1,
                         y0: bounds.y0, y1: bounds.y1,
                         z0: bounds.z0, z1: bounds.z1,
-                        cod: cod
+                        cod: compCODs[c]
                     )
                 )
             }
+
+            let lrcpTileCOD = JP3DCODInfo(
+                levelsX: tileCOD.levelsX,
+                levelsY: tileCOD.levelsY,
+                levelsZ: tileCOD.levelsZ,
+                isLossless: tileCOD.isLossless,
+                codeBlockStyle: tileCOD.codeBlockStyle,
+                scod: tileCOD.scod,
+                progressionOrderByte: 0, // LRCP over single precinct -> layer 0..<totalLayers
+                numLayers: totalLayers,
+                multipleComponentTransform: tileCOD.multipleComponentTransform,
+                codeBlockWidthExponent: tileCOD.codeBlockWidthExponent,
+                codeBlockHeightExponent: tileCOD.codeBlockHeightExponent,
+                codeBlockDepthExponent: tileCOD.codeBlockDepthExponent,
+                dwtX: tileCOD.dwtX,
+                dwtY: tileCOD.dwtY,
+                dwtZ: tileCOD.dwtZ,
+                precinctSizes: tileCOD.precinctSizes
+            )
 
             var perPrecinctLayerPackets: [[[[Data?]]]] = []
             perPrecinctLayerPackets.reserveCapacity(compCount)
@@ -406,6 +489,7 @@ package enum JP3DJPIPIndexer {
 
             for c in 0..<compCount {
                 let geom = geometries[c]
+                let compCOD = compCODs[c]
                 var compLayers: [[[Data?]]] = []
                 compLayers.reserveCapacity(geom.resolutions.count)
                 var seqBase = 0
@@ -423,120 +507,36 @@ package enum JP3DJPIPIndexer {
                         if let rawBin = precinctBins[inClassID], !rawBin.isEmpty {
                             anyPresent = true
                             let binBytes = [UInt8](rawBin)
-                            let prc = res.precincts[p]
-                            var blocksState: [[CodeBlockContribution]] = prc.bands.map {
-                                [CodeBlockContribution](repeating: CodeBlockContribution(), count: $0.blocks.count)
-                            }
-                            var incTrees = try prc.bands.map {
-                                try JP3DTagTree(width: $0.blocksWide, height: $0.blocksHigh, depth: $0.blocksDeep)
-                            }
-                            var msbTrees = try prc.bands.map {
-                                try JP3DTagTree(width: $0.blocksWide, height: $0.blocksHigh, depth: $0.blocksDeep)
-                            }
-
-                            var pCursor = 0
-                            let pEnd = binBytes.count
-                            layerLoop: for layer in 0..<totalLayers {
-                                if pCursor >= pEnd { break }
-                                let pktStart = pCursor
-                                do {
-                                    if cod.usesSOP {
-                                        if pCursor + 6 <= pEnd,
-                                           binBytes[pCursor] == 0xFF, binBytes[pCursor + 1] == 0x91 {
-                                            pCursor += 6
-                                        } else {
-                                            break layerLoop
-                                        }
-                                    }
-                                    var reader = PacketBitReader(bytes: binBytes, start: pCursor, end: pEnd)
-                                    var bodyLen = 0
-                                    if try reader.readBit() {
-                                        for (b, pb) in prc.bands.enumerated() where !pb.blocks.isEmpty {
-                                            for k in 0..<pb.blocks.count {
-                                                var st = blocksState[b][k]
-                                                let included: Bool
-                                                if st.included {
-                                                    included = try reader.readBit()
-                                                } else {
-                                                    included = try incTrees[b].decode(
-                                                        reader: &reader, leaf: k, threshold: Int32(layer + 1)
-                                                    )
-                                                }
-                                                guard included else { continue }
-                                                let firstInc = !st.included
-                                                if firstInc {
-                                                    var thresh: Int32 = 1
-                                                    while try !msbTrees[b].decode(reader: &reader, leaf: k, threshold: thresh) {
-                                                        thresh += 1
-                                                        guard thresh <= 80 else {
-                                                            throw CodecError(.malformedInput, "Invalid 3D zero bit-planes.")
-                                                        }
-                                                    }
-                                                    st.included = true
-                                                    st.zeroBitPlanes = Int(msbTrees[b].value(leaf: k))
-                                                    if style.ht && !style.htMixed { st.isHT = true }
-                                                }
-                                                let newPasses = try Tier2.readPassCount(&reader)
-                                                while try reader.readBit() {
-                                                    st.lblock += 1
-                                                    guard st.lblock <= 40 else {
-                                                        throw CodecError(.malformedInput, "Invalid 3D Lblock.")
-                                                    }
-                                                }
-                                                let phStyle = st.isHT
-                                                    ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40)
-                                                    : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
-                                                var chunks = Tier2.segmentPassCounts(
-                                                    start: st.passes, count: newPasses, style: phStyle
-                                                )
-                                                if firstInc && style.ht && style.htMixed {
-                                                    let fc = chunks[0]
-                                                    let fb = st.lblock + Tier2.floorLog2(fc)
-                                                    let fl = try reader.readBits(fb)
-                                                    st.isHT = st.lblock > 3 && fb >= 1 && ((fl >> (fb - 1)) == 0)
-                                                    let rStyle = st.isHT
-                                                        ? CodeBlockStyle(bits: cod.codeBlockStyle | 0x40)
-                                                        : CodeBlockStyle(bits: cod.codeBlockStyle & ~0xC0)
-                                                    chunks = Tier2.segmentPassCounts(
-                                                        start: st.passes, count: newPasses, style: rStyle
-                                                    )
-                                                    bodyLen = try jp3dCheckedAdd(bodyLen, fl)
-                                                    st.passes += chunks[0]
-                                                    if chunks[0] == fc {
-                                                        for ch in chunks.dropFirst() {
-                                                            let sl = try reader.readBits(st.lblock + Tier2.floorLog2(ch))
-                                                            bodyLen = try jp3dCheckedAdd(bodyLen, sl)
-                                                            st.passes += ch
-                                                        }
-                                                    }
-                                                } else {
-                                                    for ch in chunks {
-                                                        let sl = try reader.readBits(st.lblock + Tier2.floorLog2(ch))
-                                                        bodyLen = try jp3dCheckedAdd(bodyLen, sl)
-                                                        st.passes += ch
-                                                    }
-                                                }
-                                                blocksState[b][k] = st
-                                            }
-                                        }
-                                    }
-                                    try reader.alignToByte()
-                                    var afterHeader = reader.position
-                                    if cod.usesEPH {
-                                        guard afterHeader + 2 <= pEnd,
-                                              binBytes[afterHeader] == 0xFF,
-                                              binBytes[afterHeader + 1] == 0x92 else {
-                                            break layerLoop
-                                        }
-                                        afterHeader += 2
-                                    }
-                                    guard afterHeader + bodyLen <= pEnd else {
-                                        break layerLoop
-                                    }
-                                    pCursor = afterHeader + bodyLen
-                                    layerSlices[layer] = Data(binBytes[pktStart..<pCursor])
-                                } catch {
-                                    break layerLoop
+                            let miniRes = JP3DResolutionGeometry(
+                                index: 0,
+                                x0: res.x0, x1: res.x1,
+                                y0: res.y0, y1: res.y1,
+                                z0: res.z0, z1: res.z1,
+                                decompX: res.decompX, decompY: res.decompY, decompZ: res.decompZ,
+                                axisActiveX: res.axisActiveX, axisActiveY: res.axisActiveY, axisActiveZ: res.axisActiveZ,
+                                ppx: res.ppx, ppy: res.ppy, ppz: res.ppz,
+                                precinctsWide: 1, precinctsHigh: 1, precinctsDeep: 1,
+                                bands: res.bands,
+                                precincts: [res.precincts[p]]
+                            )
+                            let miniGeom = JP3DTileComponentGeometry(
+                                x0: geom.x0, x1: geom.x1,
+                                y0: geom.y0, y1: geom.y1,
+                                z0: geom.z0, z1: geom.z1,
+                                levelsX: 0, levelsY: 0, levelsZ: 0,
+                                maxLevels: 0,
+                                resolutions: [miniRes]
+                            )
+                            if let splitPkts = try? JP3DTier2Coder.decodePackets(
+                                geometries: [miniGeom],
+                                cod: lrcpTileCOD,
+                                componentCODs: [compCOD],
+                                bytes: binBytes,
+                                tolerateTruncation: true,
+                                cancellation: {}
+                            ) {
+                                for pkt in splitPkts.packets where pkt.address.layer < totalLayers {
+                                    layerSlices[pkt.address.layer] = Data(binBytes[pkt.byteRange])
                                 }
                             }
                         }
@@ -549,6 +549,9 @@ package enum JP3DJPIPIndexer {
             }
 
             if !anyPresent && tileHeaders[tileIdx] == nil {
+                guard out.count + 16 <= outCap else {
+                    throw CodecError(.resourceLimitExceeded, "Reassembled 3D JPIP codestream exceeds resource limits.")
+                }
                 let psot: UInt32 = 14
                 out.append(contentsOf: [
                     0xFF, 0x90, 0x00, 0x0A,
@@ -563,7 +566,7 @@ package enum JP3DJPIPIndexer {
 
             let sequence = try JP3DTier2Coder.packetSequence(
                 geometries: geometries,
-                progression: cod.progressionOrderByte,
+                progression: tileCOD.progressionOrderByte,
                 totalLayers: totalLayers
             )
 
@@ -571,14 +574,14 @@ package enum JP3DJPIPIndexer {
             var sopSeq: UInt16 = 0
             for addr in sequence {
                 if let pkt = perPrecinctLayerPackets[addr.component][addr.resolution][addr.precinct][addr.layer] {
-                    if cod.usesSOP, pkt.count >= 6, pkt[pkt.startIndex] == 0xFF, pkt[pkt.startIndex + 1] == 0x91 {
+                    if tileCOD.usesSOP, pkt.count >= 6, pkt[pkt.startIndex] == 0xFF, pkt[pkt.startIndex + 1] == 0x91 {
                         tileBitstream.append(contentsOf: [
                             0xFF, 0x91, 0x00, 0x04,
                             UInt8((sopSeq >> 8) & 0xFF), UInt8(sopSeq & 0xFF)
                         ])
                         tileBitstream.append(pkt.dropFirst(6))
                     } else {
-                        if cod.usesSOP {
+                        if tileCOD.usesSOP {
                             tileBitstream.append(contentsOf: [
                                 0xFF, 0x91, 0x00, 0x04,
                                 UInt8((sopSeq >> 8) & 0xFF), UInt8(sopSeq & 0xFF)
@@ -587,21 +590,27 @@ package enum JP3DJPIPIndexer {
                         tileBitstream.append(pkt)
                     }
                 } else {
-                    if cod.usesSOP {
+                    if tileCOD.usesSOP {
                         tileBitstream.append(contentsOf: [
                             0xFF, 0x91, 0x00, 0x04,
                             UInt8((sopSeq >> 8) & 0xFF), UInt8(sopSeq & 0xFF)
                         ])
                     }
                     tileBitstream.append(0x00)
-                    if cod.usesEPH {
+                    if tileCOD.usesEPH {
                         tileBitstream.append(contentsOf: [0xFF, 0x92])
                     }
                 }
                 sopSeq &+= 1
+                guard out.count + 16 + thData.count + tileBitstream.count <= outCap else {
+                    throw CodecError(.resourceLimitExceeded, "Reassembled 3D JPIP codestream exceeds resource limits.")
+                }
             }
 
             let totalPartLen = 12 + thData.count + 2 + tileBitstream.count
+            guard out.count + totalPartLen + 2 <= outCap else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled 3D JPIP codestream exceeds resource limits.")
+            }
             let psot: UInt32 = totalPartLen <= Int(UInt32.max) ? UInt32(totalPartLen) : 0
             out.append(contentsOf: [
                 0xFF, 0x90, 0x00, 0x0A,

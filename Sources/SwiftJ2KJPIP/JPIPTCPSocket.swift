@@ -352,6 +352,85 @@ package final class JPIPTCPListener: @unchecked Sendable {
     }
 }
 
+// MARK: - Socket Cancellation Token
+
+/// Thread-safe cancellation token bridging structured Swift concurrency cancellation
+/// (`withTaskCancellationHandler`) to blocking POSIX `connect` / `recv` / `send` operations.
+///
+/// Concurrency proof (`@unchecked Sendable`):
+/// All mutable state (`isCancelled`, `connectingFD`, `activeConnection`) is guarded by `lock`.
+/// `endFailedConnectAttempt()` clears `connectingFD` under `lock` *before* `posixCloseSocket`
+/// closes the descriptor, and `cancel()` invokes non-blocking `shutdown(fd, SHUT_RDWR)` while
+/// holding `lock`, guaranteeing `shutdown` can never target a closed or recycled file descriptor.
+package final class JPIPSocketCancellationToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isCancelled = false
+    private var connectingFD: Int32 = -1
+    private var activeConnection: JPIPTCPConnection?
+
+    package init() {}
+
+    package var cancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return isCancelled
+    }
+
+    package func beginConnect(fd: Int32) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if isCancelled {
+            return false
+        }
+        connectingFD = fd
+        return true
+    }
+
+    package func endFailedConnectAttempt() {
+        lock.lock()
+        connectingFD = -1
+        lock.unlock()
+    }
+
+    package func completeConnect(connection: JPIPTCPConnection) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        connectingFD = -1
+        if isCancelled {
+            return false
+        }
+        activeConnection = connection
+        return true
+    }
+
+    package func bind(connection: JPIPTCPConnection?) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if isCancelled {
+            return false
+        }
+        activeConnection = connection
+        return true
+    }
+
+    package func cancel() {
+        var connToClose: JPIPTCPConnection?
+        lock.lock()
+        isCancelled = true
+        if connectingFD >= 0 {
+            #if canImport(Darwin)
+            _ = Darwin.shutdown(connectingFD, SHUT_RDWR)
+            #else
+            _ = Glibc.shutdown(connectingFD, Int32(SHUT_RDWR))
+            #endif
+        }
+        connToClose = activeConnection
+        activeConnection = nil
+        lock.unlock()
+        connToClose?.close()
+    }
+}
+
 // MARK: - JPIPTCPConnection
 
 /// Thread-safe buffered binary TCP socket supporting HTTP/1.1 persistent framing
@@ -359,25 +438,46 @@ package final class JPIPTCPListener: @unchecked Sendable {
 ///
 /// Concurrency proof (`@unchecked Sendable`):
 /// `fd` is synchronized by `fdLock` (`close()` atomically swaps `fd` to `-1` and calls
-/// `shutdown`/`close`). `readLock` serializes `readBuffer` and `recv` operations; `writeLock`
-/// serializes `send` operations so full-duplex WebSocket/server-push writes never race with
-/// concurrent frame reads.
+/// `shutdown`/`close`). `readLock` serializes `readBuffer` and `recv` operations; `wsReadLock`
+/// serializes RFC 6455 fragmented-message reassembly state across interleaved control frames;
+/// `writeLock` serializes `send` operations so full-duplex WebSocket/server-push writes never
+/// race with concurrent frame reads.
 package final class JPIPTCPConnection: @unchecked Sendable {
     private let fdLock = NSLock()
     private let readLock = NSLock()
+    private let wsReadLock = NSLock()
     private let writeLock = NSLock()
     private var fd: Int32
     private var readBuffer = [UInt8]()
     private var readOffset: Int = 0
+    private var wsFragmentedOpcode: JPIPRFC6455Opcode?
+    private var wsFragmentedPayload = Data()
 
     package init(connectedFD: Int32, timeoutSeconds: Int = 30) {
         self.fd = connectedFD
-        Self.configureSocket(connectedFD, timeoutSeconds: timeoutSeconds)
+        Self.configureSocket(connectedFD, timeoutInterval: TimeInterval(timeoutSeconds))
+    }
+
+    package init(connectedFD: Int32, timeoutInterval: TimeInterval) {
+        self.fd = connectedFD
+        Self.configureSocket(connectedFD, timeoutInterval: timeoutInterval)
     }
 
     package static func connect(host: String, port: Int, timeoutSeconds: Int = 30) throws -> JPIPTCPConnection {
+        try connect(host: host, port: port, timeoutInterval: TimeInterval(timeoutSeconds))
+    }
+
+    package static func connect(
+        host: String,
+        port: Int,
+        timeoutInterval: TimeInterval,
+        cancellationToken: JPIPSocketCancellationToken? = nil
+    ) throws -> JPIPTCPConnection {
         guard port > 0 && port <= 65535 else {
             throw J2KError.invalidParameter("Invalid remote TCP port: \(port)")
+        }
+        if cancellationToken?.cancelled == true {
+            throw CancellationError()
         }
 
         var hints = addrinfo()
@@ -403,17 +503,33 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         while let info = infoPtr {
             let sock = socket(info.pointee.ai_family, info.pointee.ai_socktype, info.pointee.ai_protocol)
             if sock >= 0 {
-                Self.configureSocket(sock, timeoutSeconds: timeoutSeconds)
+                if let cancellationToken, !cancellationToken.beginConnect(fd: sock) {
+                    posixCloseSocket(sock)
+                    throw CancellationError()
+                }
+                Self.configureSocket(sock, timeoutInterval: timeoutInterval)
                 let rc = DarwinOrGlibcConnect(sock, info.pointee.ai_addr, info.pointee.ai_addrlen)
                 if rc == 0 {
-                    return JPIPTCPConnection(connectedFD: sock, timeoutSeconds: timeoutSeconds)
+                    let conn = JPIPTCPConnection(connectedFD: sock, timeoutInterval: timeoutInterval)
+                    if let cancellationToken, !cancellationToken.completeConnect(connection: conn) {
+                        conn.close()
+                        throw CancellationError()
+                    }
+                    return conn
                 }
                 lastErrno = currentPOSIXErrno()
+                cancellationToken?.endFailedConnectAttempt()
                 posixCloseSocket(sock)
+                if cancellationToken?.cancelled == true {
+                    throw CancellationError()
+                }
             } else {
                 lastErrno = currentPOSIXErrno()
             }
             infoPtr = info.pointee.ai_next
+        }
+        if cancellationToken?.cancelled == true {
+            throw CancellationError()
         }
         throw J2KError.networkError("TCP connect to \(host):\(port) failed (errno=\(lastErrno))")
     }
@@ -435,26 +551,52 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private static func configureSocket(_ sock: Int32, timeoutSeconds: Int) {
+    private static func makeTimeval(_ interval: TimeInterval) -> timeval {
+        guard interval > 0, interval.isFinite else {
+            return timeval(tv_sec: 0, tv_usec: 0)
+        }
+        let wholeSec = Int(floor(interval))
+        let fracMicros = max(wholeSec == 0 ? 1 : 0, min(999_999, Int(((interval - Double(wholeSec)) * 1_000_000.0).rounded())))
+        #if canImport(Darwin)
+        return timeval(tv_sec: wholeSec, tv_usec: Int32(fracMicros))
+        #else
+        return timeval(tv_sec: wholeSec, tv_usec: Int(fracMicros))
+        #endif
+    }
+
+    private static func configureSocket(_ sock: Int32, timeoutInterval: TimeInterval) {
         var one: Int32 = 1
         _ = setsockopt(sock, Int32(IPPROTO_TCP), TCP_NODELAY, &one, socklen_t(MemoryLayout<Int32>.size))
         #if canImport(Darwin)
         _ = setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
         #endif
-        if timeoutSeconds > 0 {
-            var tv = timeval(tv_sec: timeoutSeconds, tv_usec: 0)
+        if timeoutInterval > 0 {
+            var tv = makeTimeval(timeoutInterval)
             _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
             _ = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
         }
     }
 
     package func setReceiveTimeout(seconds: Int) {
+        setReceiveTimeout(interval: TimeInterval(max(0, seconds)))
+    }
+
+    package func setReceiveTimeout(interval: TimeInterval) {
         fdLock.lock()
         let sock = fd
         fdLock.unlock()
         guard sock >= 0 else { return }
-        var tv = timeval(tv_sec: max(0, seconds), tv_usec: 0)
+        var tv = Self.makeTimeval(interval)
         _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+    }
+
+    package func setSendTimeout(interval: TimeInterval) {
+        fdLock.lock()
+        let sock = fd
+        fdLock.unlock()
+        guard sock >= 0 else { return }
+        var tv = Self.makeTimeval(interval)
+        _ = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
     }
 
     deinit {
@@ -976,14 +1118,14 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         try writeAll(wire)
     }
 
-    /// Reads one complete RFC 6455 message (assembling fragmented `FIN=0` continuation frames,
-    /// while returning control frames `ping`/`pong`/`close` immediately).
+    /// Reads one complete RFC 6455 message (preserving fragmented `FIN=0` continuation state on the
+    /// connection instance across interleaved `FIN=1` control frames `ping`/`pong`/`close` per RFC 6455 §5.4).
     package func readWebSocketFrame(
         maxFrameBytes: Int = 64 * 1024 * 1024,
         requireMasked: Bool? = nil
     ) throws -> JPIPRFC6455WireFrame {
-        var assembledOpcode: JPIPRFC6455Opcode?
-        var assembledPayload = Data()
+        wsReadLock.lock()
+        defer { wsReadLock.unlock() }
 
         while true {
             let hdr2 = try readExact(count: 2)
@@ -992,15 +1134,21 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             let fin = (b0 & 0x80) != 0
             let rsv = (b0 & 0x70)
             guard rsv == 0 else {
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload.removeAll(keepingCapacity: false)
                 throw J2KError.invalidData("RFC 6455 RSV bits must be 0 when no extension is negotiated.")
             }
             let rawOp = b0 & 0x0F
             guard let opcode = JPIPRFC6455Opcode(rawValue: rawOp) else {
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload.removeAll(keepingCapacity: false)
                 throw J2KError.invalidData("Unsupported RFC 6455 opcode 0x\(String(rawOp, radix: 16)).")
             }
 
             let isMasked = (b1 & 0x80) != 0
             if let reqMask = requireMasked, isMasked != reqMask {
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload.removeAll(keepingCapacity: false)
                 throw J2KError.invalidData("RFC 6455 masking requirement violated (masked=\(isMasked), expected=\(reqMask)).")
             }
 
@@ -1018,20 +1166,41 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                     u64 = (u64 << 8) | UInt64(ext[idx])
                 }
                 guard (u64 & (1 << 63)) == 0, u64 <= UInt64(maxFrameBytes) else {
+                    wsFragmentedOpcode = nil
+                    wsFragmentedPayload.removeAll(keepingCapacity: false)
                     throw CodecError(.resourceLimitExceeded, "RFC 6455 frame length \(u64) exceeds limit (\(maxFrameBytes)).")
                 }
                 payloadLen = Int(u64)
             }
 
             // Control frames (0x8..0xF) must not exceed 125 bytes and must not be fragmented.
+            // Per RFC 6455 §5.4, control frames may be injected in the middle of a fragmented
+            // data message and must be handled without resetting `wsFragmentedOpcode`/`wsFragmentedPayload`.
             if rawOp >= 0x8 {
                 guard fin, payloadLen <= 125 else {
+                    wsFragmentedOpcode = nil
+                    wsFragmentedPayload.removeAll(keepingCapacity: false)
                     throw J2KError.invalidData("RFC 6455 control frame must have FIN=1 and length <= 125.")
                 }
+                guard payloadLen <= maxFrameBytes else {
+                    throw CodecError(.resourceLimitExceeded, "RFC 6455 control frame exceeds limit (\(maxFrameBytes) bytes).")
+                }
+                let maskKey = isMasked ? [UInt8](try readExact(count: 4)) : []
+                var chunk = try readExact(count: payloadLen, maxAllowedBytes: maxFrameBytes)
+                if isMasked && !chunk.isEmpty {
+                    var arr = [UInt8](chunk)
+                    for i in 0..<arr.count {
+                        arr[i] ^= maskKey[i & 3]
+                    }
+                    chunk = Data(arr)
+                }
+                return JPIPRFC6455WireFrame(fin: true, opcode: opcode, payload: chunk)
             }
 
-            let (nextTotal, ov) = assembledPayload.count.addingReportingOverflow(payloadLen)
+            let (nextTotal, ov) = wsFragmentedPayload.count.addingReportingOverflow(payloadLen)
             guard !ov, nextTotal <= maxFrameBytes else {
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload.removeAll(keepingCapacity: false)
                 throw CodecError(.resourceLimitExceeded, "RFC 6455 message exceeds limit (\(maxFrameBytes) bytes).")
             }
 
@@ -1045,25 +1214,26 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 chunk = Data(arr)
             }
 
-            if rawOp >= 0x8 {
-                return JPIPRFC6455WireFrame(fin: true, opcode: opcode, payload: chunk)
-            }
-
             if opcode == .continuation {
-                guard assembledOpcode != nil else {
+                guard wsFragmentedOpcode != nil else {
                     throw J2KError.invalidData("Unexpected RFC 6455 continuation frame without initial data frame.")
                 }
-                assembledPayload.append(chunk)
+                wsFragmentedPayload.append(chunk)
             } else {
-                guard assembledOpcode == nil else {
+                guard wsFragmentedOpcode == nil else {
+                    wsFragmentedOpcode = nil
+                    wsFragmentedPayload.removeAll(keepingCapacity: false)
                     throw J2KError.invalidData("New RFC 6455 data frame started before fragmented message finished.")
                 }
-                assembledOpcode = opcode
-                assembledPayload = chunk
+                wsFragmentedOpcode = opcode
+                wsFragmentedPayload = chunk
             }
 
-            if fin, let finalOpcode = assembledOpcode {
-                return JPIPRFC6455WireFrame(fin: true, opcode: finalOpcode, payload: assembledPayload)
+            if fin, let finalOpcode = wsFragmentedOpcode {
+                let completed = wsFragmentedPayload
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload = Data()
+                return JPIPRFC6455WireFrame(fin: true, opcode: finalOpcode, payload: completed)
             }
         }
     }

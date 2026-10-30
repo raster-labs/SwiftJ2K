@@ -24,17 +24,21 @@ public struct JPIPCacheModelDirective: Sendable, Equatable {
     public let binID: Int?
     /// Prefix byte count (`:<length>`); `nil` denotes the complete data-bin.
     public let byteLength: Int?
+    /// Target codestream index (`0` by default per Clause C.8.1.3; `nil` represents `c*` wildcard across codestreams).
+    public let codestreamID: Int?
 
     public init(
         isAdditive: Bool,
         binClass: JPIPDataBinClass?,
         binID: Int?,
-        byteLength: Int?
+        byteLength: Int?,
+        codestreamID: Int? = 0
     ) {
         self.isAdditive = isAdditive
-        self.binClass = binClass
+        self.binClass = binClass?.canonicalClass
         self.binID = binID
         self.byteLength = byteLength
+        self.codestreamID = codestreamID
     }
 }
 
@@ -145,29 +149,33 @@ public actor JPIPSession {
         let evictionsBefore = cacheModel.statistics.evictions
         cacheModel.addDataBin(dataBin)
         if cacheModel.statistics.evictions > evictionsBefore ||
-           !cacheModel.hasDataBin(binClass: dataBin.binClass, binID: dataBin.binID) {
+           !cacheModel.hasDataBin(
+               binClass: dataBin.binClass,
+               binID: dataBin.binID,
+               codestreamID: dataBin.codestreamID
+           ) {
             needsServerModelSync = true
         }
     }
 
     /// Checks if a data bin is already in the cache (any bytes or complete).
-    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int) -> Bool {
-        cacheModel.hasDataBin(binClass: binClass, binID: binID)
+    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Bool {
+        cacheModel.hasDataBin(binClass: binClass, binID: binID, codestreamID: codestreamID)
     }
 
     /// Checks if a data bin is completely received (`0..<completeLength` contiguous).
-    public func hasCompleteDataBin(binClass: JPIPDataBinClass, binID: Int) -> Bool {
-        cacheModel.hasCompleteDataBin(binClass: binClass, binID: binID)
+    public func hasCompleteDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Bool {
+        cacheModel.hasCompleteDataBin(binClass: binClass, binID: binID, codestreamID: codestreamID)
     }
 
-    /// Returns the contiguous prefix length starting at byte `0` for `(binClass, binID)`.
-    public func contiguousPrefixLength(binClass: JPIPDataBinClass, binID: Int) -> Int {
-        cacheModel.contiguousPrefixLength(binClass: binClass, binID: binID)
+    /// Returns the contiguous prefix length starting at byte `0` for `(binClass, binID, codestreamID)`.
+    public func contiguousPrefixLength(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Int {
+        cacheModel.contiguousPrefixLength(binClass: binClass, binID: binID, codestreamID: codestreamID)
     }
 
     /// Retrieves a cached data bin.
-    public func getDataBin(binClass: JPIPDataBinClass, binID: Int) -> JPIPDataBin? {
-        cacheModel.getDataBin(binClass: binClass, binID: binID)
+    public func getDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> JPIPDataBin? {
+        cacheModel.getDataBin(binClass: binClass, binID: binID, codestreamID: codestreamID)
     }
 
     /// Returns all accumulated data bins currently stored in this session's cache model.
@@ -190,9 +198,9 @@ public actor JPIPSession {
         cacheModel.statistics
     }
 
-    /// Invalidates cached entries by bin class.
-    public func invalidateCache(binClass: JPIPDataBinClass) {
-        cacheModel.invalidate(binClass: binClass)
+    /// Invalidates cached entries by bin class (optionally scoped to one codestream).
+    public func invalidateCache(binClass: JPIPDataBinClass, codestreamID: Int? = nil) {
+        cacheModel.invalidate(binClass: binClass, codestreamID: codestreamID)
         needsServerModelSync = true
     }
 
@@ -279,9 +287,10 @@ public struct JPIPCacheModel: Sendable {
 
         init(dataBin: JPIPDataBin, timestamp: Date = Date(), accessCount: Int = 0) {
             let start = max(0, dataBin.msgOffset)
-            let end = start + dataBin.data.count
+            let (rawEnd, ov) = start.addingReportingOverflow(dataBin.data.count)
+            let end = ov ? dataBin.data.count : rawEnd
             var assembled: Data
-            if start == 0 {
+            if start == 0 || ov {
                 assembled = dataBin.data
             } else {
                 assembled = Data(count: end)
@@ -289,8 +298,8 @@ public struct JPIPCacheModel: Sendable {
                     assembled.replaceSubrange(start..<end, with: dataBin.data)
                 }
             }
-            let ranges: [Range<Int>] = (end > start) ? [start..<end] : []
-            let knownEnd: Int? = dataBin.isComplete ? end : nil
+            let ranges: [Range<Int>] = (!ov && end > start) ? [start..<end] : []
+            let knownEnd: Int? = (!ov && dataBin.isComplete) ? end : nil
             let fullyComplete: Bool
             if let ke = knownEnd {
                 fullyComplete = (ke == 0) || (ranges.count == 1 && ranges[0] == (0..<ke))
@@ -299,7 +308,7 @@ public struct JPIPCacheModel: Sendable {
             }
 
             self.dataBin = JPIPDataBin(
-                binClass: dataBin.binClass,
+                binClass: dataBin.binClass.canonicalClass,
                 binID: dataBin.binID,
                 data: assembled,
                 isComplete: fullyComplete,
@@ -344,8 +353,51 @@ public struct JPIPCacheModel: Sendable {
         self.maxEntries = maxEntries
     }
 
-    private func cacheKey(binClass: JPIPDataBinClass, binID: Int) -> String {
-        "\(binClass.rawValue):\(binID)"
+    private func cacheKey(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> String {
+        "\(binClass.canonicalClass.rawValue):\(codestreamID):\(binID)"
+    }
+
+    /// Pre-computes the exact post-merge buffer sizes (`max(existingSize, msgOffset + data.count)`)
+    /// and entry count for `incomingBins` using checked arithmetic without allocating any `Data`.
+    package func projectedAllocation(
+        adding incomingBins: [JPIPDataBin]
+    ) throws -> (totalPayloadBytes: Int, entryCount: Int, additionalEntries: Int) {
+        var sizes: [String: (size: Int, isComplete: Bool)] = [:]
+        sizes.reserveCapacity(cachedBins.count + incomingBins.count)
+        for (k, entry) in cachedBins {
+            sizes[k] = (entry.size, entry.dataBin.isComplete)
+        }
+        let initialCount = sizes.count
+
+        for bin in incomingBins {
+            guard bin.msgOffset >= 0 else {
+                throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+            }
+            let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+            guard !ov else {
+                throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+            }
+            let key = cacheKey(binClass: bin.binClass, binID: bin.binID, codestreamID: bin.codestreamID)
+            if let existing = sizes[key] {
+                if bin.msgOffset == 0 && bin.isComplete && existing.isComplete {
+                    sizes[key] = (segEnd, true)
+                } else {
+                    sizes[key] = (max(existing.size, segEnd), existing.isComplete || (bin.msgOffset == 0 && bin.isComplete))
+                }
+            } else {
+                sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+            }
+        }
+
+        var totalBytes = 0
+        for val in sizes.values {
+            let (sum, ov) = totalBytes.addingReportingOverflow(val.size)
+            guard !ov else {
+                throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+            }
+            totalBytes = sum
+        }
+        return (totalBytes, sizes.count, max(0, sizes.count - initialCount))
     }
 
     private static func mergeRange(_ newRange: Range<Int>, into existing: [Range<Int>]) -> [Range<Int>] {
@@ -367,7 +419,8 @@ public struct JPIPCacheModel: Sendable {
 
     /// Adds or merges a `Msg-Offset` data-bin segment into the cache.
     public mutating func addDataBin(_ dataBin: JPIPDataBin) {
-        let key = cacheKey(binClass: dataBin.binClass, binID: dataBin.binID)
+        let canonical = dataBin.binClass.canonicalClass
+        let key = cacheKey(binClass: canonical, binID: dataBin.binID, codestreamID: dataBin.codestreamID)
         let segStart = max(0, dataBin.msgOffset)
         let (segEnd, ov) = segStart.addingReportingOverflow(dataBin.data.count)
         guard !ov else { return }
@@ -431,7 +484,7 @@ public struct JPIPCacheModel: Sendable {
             }
 
             existing.dataBin = JPIPDataBin(
-                binClass: dataBin.binClass,
+                binClass: canonical,
                 binID: dataBin.binID,
                 data: buf,
                 isComplete: fullyComplete,
@@ -468,8 +521,12 @@ public struct JPIPCacheModel: Sendable {
 
     /// Retrieves a data bin from the cache, returning its contiguous prefix starting at byte `0`
     /// (or the full assembled buffer when complete).
-    public mutating func getDataBin(binClass: JPIPDataBinClass, binID: Int) -> JPIPDataBin? {
-        let key = cacheKey(binClass: binClass, binID: binID)
+    public mutating func getDataBin(
+        binClass: JPIPDataBinClass,
+        binID: Int,
+        codestreamID: Int = 0
+    ) -> JPIPDataBin? {
+        let key = cacheKey(binClass: binClass, binID: binID, codestreamID: codestreamID)
 
         if var entry = cachedBins[key] {
             statistics.hits += 1
@@ -492,32 +549,76 @@ public struct JPIPCacheModel: Sendable {
         }
     }
 
-    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int) -> Bool {
-        cachedBins[cacheKey(binClass: binClass, binID: binID)] != nil
+    public func hasDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Bool {
+        cachedBins[cacheKey(binClass: binClass, binID: binID, codestreamID: codestreamID)] != nil
     }
 
-    public func hasCompleteDataBin(binClass: JPIPDataBinClass, binID: Int) -> Bool {
-        cachedBins[cacheKey(binClass: binClass, binID: binID)]?.dataBin.isComplete == true
+    public func hasCompleteDataBin(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Bool {
+        cachedBins[cacheKey(binClass: binClass, binID: binID, codestreamID: codestreamID)]?.dataBin.isComplete == true
     }
 
-    public func contiguousPrefixLength(binClass: JPIPDataBinClass, binID: Int) -> Int {
-        guard let entry = cachedBins[cacheKey(binClass: binClass, binID: binID)] else {
+    public func contiguousPrefixLength(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Int {
+        guard let entry = cachedBins[cacheKey(binClass: binClass, binID: binID, codestreamID: codestreamID)] else {
             return 0
         }
         return entry.dataBin.isComplete ? entry.dataBin.data.count : entry.contiguousPrefix
     }
 
-    /// Alias for ``contiguousPrefixLength(binClass:binID:)``.
-    public func deliveredPrefixLength(binClass: JPIPDataBinClass, binID: Int) -> Int {
-        contiguousPrefixLength(binClass: binClass, binID: binID)
+    /// Alias for ``contiguousPrefixLength(binClass:binID:codestreamID:)``.
+    public func deliveredPrefixLength(binClass: JPIPDataBinClass, binID: Int, codestreamID: Int = 0) -> Int {
+        contiguousPrefixLength(binClass: binClass, binID: binID, codestreamID: codestreamID)
+    }
+
+    /// Truncates a cached data-bin entry to at most `retainBytes` leading bytes, or removes it when `retainBytes <= 0`.
+    package mutating func truncateOrRemove(
+        binClass: JPIPDataBinClass,
+        binID: Int,
+        codestreamID: Int = 0,
+        retainBytes: Int
+    ) {
+        let key = cacheKey(binClass: binClass, binID: binID, codestreamID: codestreamID)
+        guard var entry = cachedBins.removeValue(forKey: key) else { return }
+        statistics.totalSize -= entry.size
+        statistics.entryCount -= 1
+
+        guard retainBytes > 0 else { return }
+        let kept = min(entry.dataBin.data.count, retainBytes)
+        let clippedData = Data(entry.dataBin.data.prefix(kept))
+        let clippedRanges = entry.coveredRanges.compactMap { r -> Range<Int>? in
+            guard r.lowerBound < retainBytes else { return nil }
+            let hi = min(r.upperBound, retainBytes)
+            return r.lowerBound < hi ? (r.lowerBound..<hi) : nil
+        }
+        guard !clippedData.isEmpty || !clippedRanges.isEmpty else { return }
+
+        entry.dataBin = JPIPDataBin(
+            binClass: entry.dataBin.binClass.canonicalClass,
+            binID: entry.dataBin.binID,
+            data: clippedData,
+            isComplete: false,
+            qualityLayer: entry.dataBin.qualityLayer,
+            tileIndex: entry.dataBin.tileIndex,
+            codestreamID: entry.dataBin.codestreamID,
+            msgOffset: 0,
+            aux: entry.dataBin.aux
+        )
+        entry.coveredRanges = clippedRanges
+        entry.knownCompleteLength = nil
+        entry.size = clippedData.count
+        cachedBins[key] = entry
+        statistics.totalSize += entry.size
+        statistics.entryCount += 1
     }
 
     /// Returns all cached data bins (using contiguous prefixes from byte `0` for incomplete bins),
-    /// ordered deterministically by `(wireClassID, binID)`.
+    /// ordered deterministically by `(codestreamID, wireClassID, binID)`.
     public func allDataBins() -> [JPIPDataBin] {
         let sorted = cachedBins.values.sorted { a, b in
-            if a.dataBin.binClass.wireClassID != b.dataBin.binClass.wireClassID {
-                return a.dataBin.binClass.wireClassID < b.dataBin.binClass.wireClassID
+            if a.dataBin.codestreamID != b.dataBin.codestreamID {
+                return a.dataBin.codestreamID < b.dataBin.codestreamID
+            }
+            if a.dataBin.binClass.canonicalClass.wireClassID != b.dataBin.binClass.canonicalClass.wireClassID {
+                return a.dataBin.binClass.canonicalClass.wireClassID < b.dataBin.binClass.canonicalClass.wireClassID
             }
             return a.dataBin.binID < b.dataBin.binID
         }
@@ -534,23 +635,29 @@ public struct JPIPCacheModel: Sendable {
         }
     }
 
-    // MARK: - Normative ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` Grammar
+    // MARK: - Normative ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 / C.8.1.3 `model=` Grammar
 
-    /// Formats all cached entries into normative Clause C.8.1.2 cache-model descriptors
-    /// (`Hm`, `Hm:<bytes>`, `M<id>`, `H<id>`, `P<id>:<bytes>`, `T<id>`, etc.).
+    /// Formats all cached entries into normative Clause C.8.1.2 / C.8.1.3 cache-model descriptors
+    /// (`Hm`, `Hm:<bytes>`, `M<id>`, `H<id>`, `P<id>:<bytes>`, `T<id>`, plus sticky `c<id>` codestream
+    /// context qualifiers when `codestreamID != 0`).
     public func formatCacheModelDescriptors() -> [String] {
         let sorted = cachedBins.values.sorted { a, b in
-            if a.dataBin.binClass.wireClassID != b.dataBin.binClass.wireClassID {
-                return a.dataBin.binClass.wireClassID < b.dataBin.binClass.wireClassID
+            if a.dataBin.codestreamID != b.dataBin.codestreamID {
+                return a.dataBin.codestreamID < b.dataBin.codestreamID
+            }
+            if a.dataBin.binClass.canonicalClass.wireClassID != b.dataBin.binClass.canonicalClass.wireClassID {
+                return a.dataBin.binClass.canonicalClass.wireClassID < b.dataBin.binClass.canonicalClass.wireClassID
             }
             return a.dataBin.binID < b.dataBin.binID
         }
         var items: [String] = []
-        items.reserveCapacity(sorted.count)
+        items.reserveCapacity(sorted.count + 2)
+        var currentContextCodestream = 0
         for entry in sorted {
             let bin = entry.dataBin
+            let formattedDescriptor: String?
             let base: String
-            switch bin.binClass {
+            switch bin.binClass.canonicalClass {
             case .mainHeader:
                 base = (bin.binID == 0) ? "Hm" : "Hm\(bin.binID)"
             case .tileHeader:
@@ -563,12 +670,17 @@ public struct JPIPCacheModel: Sendable {
                 base = "M\(bin.binID)"
             }
             if bin.isComplete {
-                items.append(base)
+                formattedDescriptor = base
             } else {
                 let prefix = entry.contiguousPrefix
-                if prefix > 0 {
-                    items.append("\(base):\(prefix)")
+                formattedDescriptor = prefix > 0 ? "\(base):\(prefix)" : nil
+            }
+            if let desc = formattedDescriptor {
+                if bin.codestreamID != currentContextCodestream {
+                    items.append("c\(bin.codestreamID)")
+                    currentContextCodestream = bin.codestreamID
                 }
+                items.append(desc)
             }
         }
         return items
@@ -584,109 +696,257 @@ public struct JPIPCacheModel: Sendable {
         parseModelItems(items)
     }
 
-    /// Parses comma-separated ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` items.
-    public static func parseModelItems(_ items: [String]) -> [JPIPCacheModelDirective] {
-        var directives: [JPIPCacheModelDirective] = []
-        for rawItem in items {
-            for sub in rawItem.split(separator: ",") {
-                var token = sub.trimmingCharacters(in: .whitespaces)
-                guard !token.isEmpty else { continue }
+    private static func parseCodestreamSpec(_ spec: String) throws -> [Int?] {
+        guard !spec.isEmpty else {
+            throw J2KError.invalidParameter("Empty codestream qualifier in JPIP model= field.")
+        }
+        if spec == "*" {
+            return [nil]
+        }
+        if spec.contains("-") {
+            let parts = spec.split(separator: "-", omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                  let lo = Int(parts[0]), let hi = Int(parts[1]),
+                  lo >= 0, lo <= hi, (hi - lo) <= 4096 else {
+                throw J2KError.invalidParameter("Malformed codestream range 'c\(spec)' in JPIP model= field.")
+            }
+            return (lo...hi).map { Optional($0) }
+        }
+        guard let cs = Int(spec), cs >= 0 else {
+            throw J2KError.invalidParameter("Malformed codestream identifier 'c\(spec)' in JPIP model= field.")
+        }
+        return [cs]
+    }
 
-                var isAdditive = true
-                if token.hasPrefix("-") {
-                    isAdditive = false
-                    token.removeFirst()
-                } else if token.hasPrefix("+") {
-                    token.removeFirst()
-                }
-                guard !token.isEmpty else { continue }
+    private static func parseSingleModelToken(
+        _ rawToken: String,
+        activeCodestreams: inout [Int?]
+    ) throws -> [JPIPCacheModelDirective] {
+        var token = rawToken.trimmingCharacters(in: .whitespaces)
+        guard !token.isEmpty else {
+            throw J2KError.invalidParameter("Empty descriptor in JPIP model= field.")
+        }
 
-                // Optional `:<byteLength>` qualifier
-                var byteLength: Int?
-                if let colon = token.firstIndex(of: ":") {
-                    let lenStr = String(token[token.index(after: colon)...])
-                    if let parsedLen = Int(lenStr), parsedLen >= 0 {
-                        byteLength = parsedLen
-                    }
-                    token = String(token[..<colon])
-                }
+        var isAdditive = true
+        var hadExplicitSign = false
+        if token.hasPrefix("-") {
+            isAdditive = false
+            hadExplicitSign = true
+            token.removeFirst()
+        } else if token.hasPrefix("+") {
+            hadExplicitSign = true
+            token.removeFirst()
+        }
+        guard !token.isEmpty else {
+            throw J2KError.invalidParameter("Dangling sign in JPIP model= item '\(rawToken)'.")
+        }
 
-                // Optional codestream qualifier `[c<id>]` — strip if targeting codestream 0
-                if let bracket = token.firstIndex(of: "]") {
-                    token = String(token[token.index(after: bracket)...])
-                }
-
-                if token == "*" {
-                    directives.append(JPIPCacheModelDirective(
-                        isAdditive: isAdditive,
+        // 1. Standalone Clause C.8.1.3 codestream context or subtractive codestream flush (`c1`, `c0-2`, `c*`, `-c1`, `-c*`)
+        if token.hasPrefix("c") && !token.contains(":") && !token.contains("[") && !token.contains("]") {
+            let csSpec = String(token.dropFirst())
+            let parsedCS = try parseCodestreamSpec(csSpec)
+            if !isAdditive {
+                return parsedCS.map { cs in
+                    JPIPCacheModelDirective(
+                        isAdditive: false,
                         binClass: nil,
                         binID: nil,
-                        byteLength: byteLength
-                    ))
-                    continue
+                        byteLength: nil,
+                        codestreamID: cs
+                    )
                 }
+            }
+            activeCodestreams = parsedCS
+            if hadExplicitSign {
+                return parsedCS.map { cs in
+                    JPIPCacheModelDirective(
+                        isAdditive: true,
+                        binClass: nil,
+                        binID: nil,
+                        byteLength: nil,
+                        codestreamID: cs
+                    )
+                }
+            }
+            return []
+        }
 
-                if token == "Hm" || token == "Hm*" {
-                    directives.append(JPIPCacheModelDirective(
-                        isAdditive: isAdditive,
-                        binClass: .mainHeader,
-                        binID: token == "Hm" ? 0 : nil,
-                        byteLength: byteLength
-                    ))
-                    continue
-                }
-                if token.hasPrefix("Hm") {
-                    let idStr = String(token.dropFirst(2))
-                    if let id = Int(idStr), id >= 0 {
-                        directives.append(JPIPCacheModelDirective(
-                            isAdditive: isAdditive,
-                            binClass: .mainHeader,
-                            binID: id,
-                            byteLength: byteLength
-                        ))
-                    }
-                    continue
-                }
+        // 2. Optional inline `[c<id>]` codestream prefix before a bin descriptor (e.g. `[c1]Hm`, `-[c2]P7:20`)
+        var targetCodestreams = activeCodestreams
+        if token.hasPrefix("[") {
+            guard let closeIdx = token.firstIndex(of: "]") else {
+                throw J2KError.invalidParameter("Unclosed '[' in JPIP model= item '\(rawToken)'.")
+            }
+            let inside = String(token[token.index(after: token.startIndex)..<closeIdx])
+            guard inside.hasPrefix("c") else {
+                throw J2KError.invalidParameter("Malformed bracketed codestream qualifier '[\(inside)]' in JPIP model= item '\(rawToken)'.")
+            }
+            let parsedCS = try parseCodestreamSpec(String(inside.dropFirst()))
+            token = String(token[token.index(after: closeIdx)...])
+            if token.hasPrefix("-") && isAdditive && !hadExplicitSign {
+                isAdditive = false
+                token.removeFirst()
+            } else if token.hasPrefix("+") && !hadExplicitSign {
+                token.removeFirst()
+            }
+            guard !token.isEmpty else {
+                throw J2KError.invalidParameter("Missing bin descriptor after '[\(inside)]' in JPIP model= item '\(rawToken)'.")
+            }
+            targetCodestreams = parsedCS
+            activeCodestreams = parsedCS
+        } else if token.contains("[") || token.contains("]") {
+            throw J2KError.invalidParameter("Malformed bracket syntax in JPIP model= item '\(rawToken)'.")
+        }
 
-                let firstChar = token.first!
-                let rest = String(token.dropFirst())
-                let mappedClass: JPIPDataBinClass?
-                switch firstChar {
-                case "H": mappedClass = .tileHeader
-                case "P": mappedClass = .precinct
-                case "T": mappedClass = .tile
-                case "M": mappedClass = .metadata
-                default: mappedClass = nil
-                }
-                guard let cls = mappedClass else { continue }
+        // 3. Optional `:<byteLength>` qualifier
+        var byteLength: Int?
+        if let colon = token.firstIndex(of: ":") {
+            let lenStr = String(token[token.index(after: colon)...])
+            guard !lenStr.contains(":"), let parsedLen = Int(lenStr), parsedLen >= 0 else {
+                throw J2KError.invalidParameter("Invalid byte length qualifier in JPIP model= item '\(rawToken)'.")
+            }
+            byteLength = parsedLen
+            token = String(token[..<colon])
+        }
+        guard !token.isEmpty else {
+            throw J2KError.invalidParameter("Missing bin class before ':' in JPIP model= item '\(rawToken)'.")
+        }
 
-                if rest.isEmpty || rest == "*" {
-                    directives.append(JPIPCacheModelDirective(
+        var out: [JPIPCacheModelDirective] = []
+
+        if token == "*" {
+            for cs in targetCodestreams {
+                out.append(JPIPCacheModelDirective(
+                    isAdditive: isAdditive,
+                    binClass: nil,
+                    binID: nil,
+                    byteLength: byteLength,
+                    codestreamID: cs
+                ))
+            }
+            return out
+        }
+
+        if token == "Hm" || token == "Hm*" {
+            for cs in targetCodestreams {
+                out.append(JPIPCacheModelDirective(
+                    isAdditive: isAdditive,
+                    binClass: .mainHeader,
+                    binID: token == "Hm" ? 0 : nil,
+                    byteLength: byteLength,
+                    codestreamID: cs
+                ))
+            }
+            return out
+        }
+        if token.hasPrefix("Hm") {
+            let idStr = String(token.dropFirst(2))
+            guard let id = Int(idStr), id >= 0 else {
+                throw J2KError.invalidParameter("Invalid main-header bin ID in JPIP model= item '\(rawToken)'.")
+            }
+            for cs in targetCodestreams {
+                out.append(JPIPCacheModelDirective(
+                    isAdditive: isAdditive,
+                    binClass: .mainHeader,
+                    binID: id,
+                    byteLength: byteLength,
+                    codestreamID: cs
+                ))
+            }
+            return out
+        }
+
+        guard let firstChar = token.first else {
+            throw J2KError.invalidParameter("Empty bin descriptor in JPIP model= item '\(rawToken)'.")
+        }
+        let rest = String(token.dropFirst())
+        let mappedClass: JPIPDataBinClass
+        switch firstChar {
+        case "H": mappedClass = .tileHeader
+        case "P": mappedClass = .precinct
+        case "T": mappedClass = .tile
+        case "M": mappedClass = .metadata
+        default:
+            throw J2KError.invalidParameter("Unknown JPIP model= bin class '\(firstChar)' in '\(rawToken)'.")
+        }
+
+        if rest.isEmpty || rest == "*" {
+            for cs in targetCodestreams {
+                out.append(JPIPCacheModelDirective(
+                    isAdditive: isAdditive,
+                    binClass: mappedClass,
+                    binID: rest == "*" ? nil : 0,
+                    byteLength: byteLength,
+                    codestreamID: cs
+                ))
+            }
+            return out
+        }
+
+        if rest.contains("-") {
+            let parts = rest.split(separator: "-", omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                  let lo = Int(parts[0]), let hi = Int(parts[1]),
+                  lo >= 0, lo <= hi, (hi - lo) <= 65536 else {
+                throw J2KError.invalidParameter("Invalid bin ID range in JPIP model= item '\(rawToken)'.")
+            }
+            for cs in targetCodestreams {
+                for id in lo...hi {
+                    out.append(JPIPCacheModelDirective(
                         isAdditive: isAdditive,
-                        binClass: cls,
-                        binID: rest == "*" ? nil : 0,
-                        byteLength: byteLength
-                    ))
-                } else if rest.contains("-") {
-                    // Range syntax e.g. `P0-7` (Clause C.8.1.1)
-                    let bounds = rest.split(separator: "-").compactMap { Int($0) }
-                    if bounds.count == 2, bounds[0] >= 0, bounds[0] <= bounds[1], (bounds[1] - bounds[0]) <= 65536 {
-                        for id in bounds[0]...bounds[1] {
-                            directives.append(JPIPCacheModelDirective(
-                                isAdditive: isAdditive,
-                                binClass: cls,
-                                binID: id,
-                                byteLength: byteLength
-                            ))
-                        }
-                    }
-                } else if let id = Int(rest), id >= 0 {
-                    directives.append(JPIPCacheModelDirective(
-                        isAdditive: isAdditive,
-                        binClass: cls,
+                        binClass: mappedClass,
                         binID: id,
-                        byteLength: byteLength
+                        byteLength: byteLength,
+                        codestreamID: cs
                     ))
+                }
+            }
+            return out
+        }
+
+        guard let id = Int(rest), id >= 0 else {
+            throw J2KError.invalidParameter("Invalid bin ID in JPIP model= item '\(rawToken)'.")
+        }
+        for cs in targetCodestreams {
+            out.append(JPIPCacheModelDirective(
+                isAdditive: isAdditive,
+                binClass: mappedClass,
+                binID: id,
+                byteLength: byteLength,
+                codestreamID: cs
+            ))
+        }
+        return out
+    }
+
+    /// Parses and strictly validates comma-separated ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` items,
+    /// throwing ``J2KError/invalidParameter(_:)`` on any malformed descriptor.
+    public static func parseValidatedModelItems(_ items: [String]) throws -> [JPIPCacheModelDirective] {
+        var directives: [JPIPCacheModelDirective] = []
+        var activeCodestreams: [Int?] = [0]
+        for rawItem in items {
+            let trimmedItem = rawItem.trimmingCharacters(in: .whitespaces)
+            guard !trimmedItem.isEmpty else {
+                throw J2KError.invalidParameter("Empty JPIP model= parameter.")
+            }
+            let subTokens = rawItem.split(separator: ",", omittingEmptySubsequences: false)
+            for sub in subTokens {
+                let parsed = try parseSingleModelToken(String(sub), activeCodestreams: &activeCodestreams)
+                directives.append(contentsOf: parsed)
+            }
+        }
+        return directives
+    }
+
+    /// Parses comma-separated ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` items,
+    /// safely ignoring malformed tokens without trapping.
+    public static func parseModelItems(_ items: [String]) -> [JPIPCacheModelDirective] {
+        var directives: [JPIPCacheModelDirective] = []
+        var activeCodestreams: [Int?] = [0]
+        for rawItem in items {
+            for sub in rawItem.split(separator: ",") {
+                if let parsed = try? parseSingleModelToken(String(sub), activeCodestreams: &activeCodestreams) {
+                    directives.append(contentsOf: parsed)
                 }
             }
         }
@@ -716,10 +976,23 @@ public struct JPIPCacheModel: Sendable {
         }
     }
 
-    public mutating func invalidate(binClass: JPIPDataBinClass) {
+    public mutating func invalidate(binClass: JPIPDataBinClass, codestreamID: Int? = nil) {
+        let canonicalRaw = binClass.canonicalClass.rawValue
+        let prefix = codestreamID.map { "\(canonicalRaw):\($0):" } ?? "\(canonicalRaw):"
         let keysToRemove = cachedBins.keys.filter { key in
-            key.hasPrefix("\(binClass.rawValue):")
+            key.hasPrefix(prefix)
         }
+        for key in keysToRemove {
+            if let entry = cachedBins.removeValue(forKey: key) {
+                statistics.totalSize -= entry.size
+                statistics.entryCount -= 1
+            }
+        }
+    }
+
+    public mutating func invalidateCodestream(_ codestreamID: Int) {
+        let needle = ":\(codestreamID):"
+        let keysToRemove = cachedBins.keys.filter { $0.contains(needle) }
         for key in keysToRemove {
             if let entry = cachedBins.removeValue(forKey: key) {
                 statistics.totalSize -= entry.size

@@ -241,6 +241,18 @@ public enum JPIPDataBinClass: Int, Sendable {
         case .metadata: return "M"
         }
     }
+
+    /// Canonical ITU-T Rec. T.808 Clause A.2.2 / Table A.2 data-bin class unifying
+    /// normal and extended wire formats (`Class 1` -> `Class 0` precinct; `Class 5` -> `Class 4` tile).
+    public var canonicalClass: JPIPDataBinClass {
+        switch self {
+        case .precinct, .extendedPrecinct: return .precinct
+        case .tile, .extendedTile: return .tile
+        case .mainHeader: return .mainHeader
+        case .tileHeader: return .tileHeader
+        case .metadata: return .metadata
+        }
+    }
 }
 
 /// Represents a JPIP data bin (or partial message segment at `msgOffset`).

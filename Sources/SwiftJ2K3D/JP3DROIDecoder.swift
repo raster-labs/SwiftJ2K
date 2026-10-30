@@ -50,6 +50,7 @@ public struct JP3DROIDecoderResult: Sendable {
     internal let commentCount: Int
     internal let commentPayloadBytes: Int
     internal let hadVolumeGeometry: Bool
+    package let usedAcceleratedKernel: Bool
 
     public init(
         volume: J2KVolume,
@@ -69,6 +70,7 @@ public struct JP3DROIDecoderResult: Sendable {
         self.commentCount = 0
         self.commentPayloadBytes = 0
         self.hadVolumeGeometry = false
+        self.usedAcceleratedKernel = false
     }
 
     internal init(
@@ -81,7 +83,8 @@ public struct JP3DROIDecoderResult: Sendable {
         peakWorkspaceBytes: Int,
         commentCount: Int,
         commentPayloadBytes: Int,
-        hadVolumeGeometry: Bool
+        hadVolumeGeometry: Bool,
+        usedAcceleratedKernel: Bool = false
     ) {
         self.volume = volume
         self.decodedRegion = decodedRegion
@@ -93,6 +96,7 @@ public struct JP3DROIDecoderResult: Sendable {
         self.commentCount = commentCount
         self.commentPayloadBytes = commentPayloadBytes
         self.hadVolumeGeometry = hadVolumeGeometry
+        self.usedAcceleratedKernel = usedAcceleratedKernel
     }
 }
 
@@ -235,12 +239,15 @@ public actor JP3DROIDecoder {
         let clampedZUpper = min(siz.depth, requestedRegion.z.upperBound)
 
         if clampedXLower >= clampedXUpper || clampedYLower >= clampedYUpper || clampedZLower >= clampedZUpper {
+            let logicalC = codestream.logicalComponentCount
+            let logicalDepth0 = codestream.logicalBitDepth(forComponent: 0)
+            let logicalSigned0 = codestream.logicalIsSigned(forComponent: 0)
             if let limits {
-                let bytesPerSample = (siz.bitDepth + 7) / 8
+                let bytesPerSample = (logicalDepth0 + 7) / 8
                 let (wh, o1) = siz.width.multipliedReportingOverflow(by: siz.height)
                 let (vox, o2) = wh.multipliedReportingOverflow(by: siz.depth)
                 let (cb, o3) = vox.multipliedReportingOverflow(by: bytesPerSample)
-                let (tb, o4) = cb.multipliedReportingOverflow(by: siz.componentCount)
+                let (tb, o4) = cb.multipliedReportingOverflow(by: logicalC)
                 let (totMem, o5) = data.count.addingReportingOverflow(tb)
                 guard !o1, !o2, !o3, !o4, !o5,
                       vox <= limits.maximumPixels,
@@ -254,7 +261,7 @@ public actor JP3DROIDecoder {
             }
             let blankVolume = J2KVolume(
                 width: siz.width, height: siz.height, depth: siz.depth,
-                componentCount: siz.componentCount, bitDepth: siz.bitDepth, signed: siz.signed
+                componentCount: logicalC, bitDepth: logicalDepth0, signed: logicalSigned0
             )
             // Preserve the existing partial/full-canvas empty-ROI result, including
             // its canvas geometry; it must not silently reset physical coordinates.
@@ -316,7 +323,8 @@ public actor JP3DROIDecoder {
                 peakWorkspaceBytes: result.peakWorkspaceBytes,
                 commentCount: result.commentCount,
                 commentPayloadBytes: result.commentPayloadBytes,
-                hadVolumeGeometry: result.hadVolumeGeometry
+                hadVolumeGeometry: result.hadVolumeGeometry,
+                usedAcceleratedKernel: result.usedAcceleratedKernel
             )
         }
 
@@ -360,8 +368,9 @@ public actor JP3DROIDecoder {
         let (outVoxels, vOv2) = outWH.multipliedReportingOverflow(by: outD)
         var totalBytesPerVoxel = 0
         var bOv1 = false
-        for comp in 0..<siz.componentCount {
-            let compBytes = (siz.bitDepth(forComponent: comp) + 7) / 8
+        let logicalCompCount = codestream.logicalComponentCount
+        for comp in 0..<logicalCompCount {
+            let compBytes = (codestream.logicalBitDepth(forComponent: comp) + 7) / 8
             let (next, ov) = totalBytesPerVoxel.addingReportingOverflow(compBytes)
             if ov { bOv1 = true }
             totalBytesPerVoxel = next
@@ -371,7 +380,7 @@ public actor JP3DROIDecoder {
             throw J2KError.decodingError("ROI output volume dimensions overflow integer arithmetic")
         }
 
-        let isStreamLossless = cod.isLossless && codestream.isLosslessQuantization
+        let isStreamLossless = codestream.isFullyReversible
         let hasLegacyTilePayload = codestream.tiles.contains {
             JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
         }
@@ -381,10 +390,7 @@ public actor JP3DROIDecoder {
         })
         let normativeContext: JP3DDecoder.NormativeDecodeContext? = isNormativeCodestream
             ? JP3DDecoder.NormativeDecodeContext(
-                siz: siz,
-                cod: cod,
-                qcd: codestream.qcd,
-                roiShifts: codestream.roiShifts,
+                parsed: codestream,
                 tolerateTruncation: configuration.tolerateErrors
             )
             : nil
@@ -395,14 +401,43 @@ public actor JP3DROIDecoder {
             throw J2KError.decodingError("ROI workspace size overflows integer arithmetic")
         }
 
+        var maxROIGeomBytes = 0
+        if let ctx = normativeContext {
+            let geomCap = limits?.maximumWorkspaceBytes
+            for parsedTile in codestream.tiles where intersectingIndices.contains(parsedTile.tileIndex) && parsedTile.tileIndex < allTiles.count {
+                let tile = allTiles[parsedTile.tileIndex]
+                var tileGeom = 0
+                for c in 0..<siz.componentCount {
+                    let remCap = geomCap.map { max(0, $0 - tileGeom) }
+                    let fp = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                        x0: tile.region.x.lowerBound, x1: tile.region.x.upperBound,
+                        y0: tile.region.y.lowerBound, y1: tile.region.y.upperBound,
+                        z0: tile.region.z.lowerBound, z1: tile.region.z.upperBound,
+                        cod: ctx.effectiveCOD(tileIndex: parsedTile.tileIndex, component: c),
+                        maximumWorkspaceBytes: remCap,
+                        includeDecodeState: true
+                    )
+                    let (nextG, gOv) = tileGeom.addingReportingOverflow(fp.totalBytes)
+                    guard !gOv else {
+                        throw CodecError(.resourceLimitExceeded, "ROI 3D tile geometry workspace overflows Int.")
+                    }
+                    tileGeom = nextG
+                }
+                if tileGeom > maxROIGeomBytes {
+                    maxROIGeomBytes = tileGeom
+                }
+            }
+        }
+
         let (tWH0, tOv1) = min(siz.width, siz.tileSizeX).multipliedReportingOverflow(by: min(siz.height, siz.tileSizeY))
         let (maxTileVox0, tOv2) = tWH0.multipliedReportingOverflow(by: min(siz.depth, siz.tileSizeZ))
         let (tileSamples0, tOv3) = maxTileVox0.multipliedReportingOverflow(by: siz.componentCount)
-        let (tileScratch0, tOv4) = tileSamples0.multipliedReportingOverflow(by: max(elementStride * 2, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride))
+        let (tileSampleScratch0, tOv4) = tileSamples0.multipliedReportingOverflow(by: max(elementStride * 2, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride))
+        let (tileScratch0, tOv5) = tileSampleScratch0.addingReportingOverflow(maxROIGeomBytes)
         let retainedSourceBytes = try jp3dDecodeAdd(codestream.retainedTileBytes, codestream.commentPayloadBytes)
         let (ws10, wOv1) = retainedSourceBytes.addingReportingOverflow(bufferWorkspaceBytes)
         let (computedPeakROIWorkspace, wOv2) = ws10.addingReportingOverflow(tileScratch0)
-        guard !tOv1, !tOv2, !tOv3, !tOv4, !wOv1, !wOv2 else {
+        guard !tOv1, !tOv2, !tOv3, !tOv4, !tOv5, !wOv1, !wOv2 else {
             throw J2KError.decodingError("ROI workspace size overflows integer arithmetic")
         }
 
@@ -464,6 +499,7 @@ public actor JP3DROIDecoder {
         var tilesDecoded = 0
         var tilesSkipped = 0
         var warnings: [String] = []
+        var anyAccelerated = false
 
         for parsedTile in codestream.tiles {
             try work.check()
@@ -535,9 +571,10 @@ public actor JP3DROIDecoder {
                         decodedStrideW = isSubTileXY ? max(1, localXRange.count) : tileW
                         decodedStrideH = isSubTileXY ? max(1, localYRange.count) : tileH
                     } else {
-                        let (samples, wasTrunc) = try JP3DDecoder.decodeTilePayloadIntegerWithStatusStatic(
+                        let (samples, wasTrunc, usedAccel) = try JP3DDecoder.decodeTilePayloadIntegerWithStatusStatic(
                             parsedTile.data,
                             tile: tile,
+                            tileIndex: parsedTile.tileIndex,
                             componentCount: siz.componentCount,
                             maxQualityLayers: maxQualityLayers,
                             resolutionLevel: K,
@@ -547,6 +584,7 @@ public actor JP3DROIDecoder {
                             workspace: decodeWorkspace,
                             work: work
                         )
+                        if usedAccel { anyAccelerated = true }
                         reconstructedPerCompInt = samples
                         if wasTrunc {
                             warnings.append("Tile \(parsedTile.tileIndex) packet stream truncated")
@@ -714,18 +752,41 @@ public actor JP3DROIDecoder {
         try work.check()
         reportProgress(.volumeAssembly, stageProgress: 0.5, tilesDone: tilesDecoded, tilesTotal: intersectingIndices.count)
 
-        for comp in 0..<siz.componentCount {
-            let compBytes = (outW * outH * outD) * ((siz.bitDepth(forComponent: comp) + 7) / 8)
+        for comp in 0..<logicalCompCount {
+            let compBytes = (outW * outH * outD) * ((codestream.logicalBitDepth(forComponent: comp) + 7) / 8)
             StorageTelemetry.recordPixelAllocation(bytes: compBytes)
         }
         let components: [J2KVolumeComponent]
         if useExactIntegerPath {
+            var assembledBuffers = intComponentBuffers
+            var assembledBitDepths = siz.componentBitDepths
+            var assembledSigned = siz.componentSigned
+            if let split = codestream.part2BitSplit,
+               assembledBuffers.count == split.logicalComponentCount * 2 {
+                let shift = JP3DPart2BitSplitDescriptor.defaultSplitLowBits
+                var merged: [[Int64]] = []
+                merged.reserveCapacity(split.logicalComponentCount)
+                for c in 0..<split.logicalComponentCount {
+                    let lo = assembledBuffers[2 * c]
+                    let hi = assembledBuffers[2 * c + 1]
+                    let cnt = min(lo.count, hi.count)
+                    var plane = [Int64](repeating: 0, count: cnt)
+                    for idx in 0..<cnt {
+                        plane[idx] = lo[idx] &+ (hi[idx] << shift)
+                    }
+                    merged.append(plane)
+                }
+                assembledBuffers = merged
+                assembledBitDepths = split.logicalComponentBitDepths
+                assembledSigned = split.logicalComponentSigned
+            }
             components = jp3dAssembleVolumeComponentsInteger(
-                buffers: intComponentBuffers,
+                buffers: assembledBuffers,
                 width: outW, height: outH, depth: outD,
-                bitDepth: siz.bitDepth, signed: siz.signed,
-                componentBitDepths: siz.componentBitDepths,
-                componentSigned: siz.componentSigned
+                bitDepth: assembledBitDepths.first ?? siz.bitDepth,
+                signed: assembledSigned.first ?? siz.signed,
+                componentBitDepths: assembledBitDepths,
+                componentSigned: assembledSigned
             )
         } else {
             components = assembleROIComponents(
@@ -767,7 +828,8 @@ public actor JP3DROIDecoder {
             peakWorkspaceBytes: max(computedPeakROIWorkspace, try jp3dDecodeAdd(ws10, decodeWorkspace.peak)),
             commentCount: codestream.comments.count,
             commentPayloadBytes: codestream.commentPayloadBytes,
-            hadVolumeGeometry: codestream.geometry != nil
+            hadVolumeGeometry: codestream.geometry != nil,
+            usedAcceleratedKernel: anyAccelerated
         )
     }
 

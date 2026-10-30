@@ -605,6 +605,16 @@ internal final class JP3DLiveBudgetTracker: Sendable {
             owner?.promoteOutputToRetained(toPromote, stage: stage)
         }
 
+        internal func shrinkTo(_ actualBytes: Int) {
+            let target = max(0, actualBytes)
+            let current = reservedBytes
+            guard current > target else { return }
+            let removed = subtractReservedBytes(current - target)
+            if removed > 0 {
+                owner?.rollbackOutputGrowth(outputBytes: removed, scratchBytes: 0)
+            }
+        }
+
         internal func release() {
             let toRelease = bytesMutex.withLock { current -> Int in
                 let taken = current
@@ -676,6 +686,33 @@ internal final class JP3DLiveBudgetTracker: Sendable {
 
     internal var currentRevision: UInt64 {
         stateStorage.state.withLock { $0.revision }
+    }
+
+    internal func remainingCompressedOutputLimit() -> Int? {
+        guard let limits else { return nil }
+        return stateStorage.state.withLock { st in
+            let (liveOut, ov1) = st.liveOutputBytes.addingReportingOverflow(st.retainedBytes)
+            let (liveWs, ov2) = st.liveScratchBytes.addingReportingOverflow(liveOut)
+            let (liveMem, ov3) = baseBytes.addingReportingOverflow(liveWs)
+            if ov1 || ov2 || ov3 { return 0 }
+            let remComp = max(0, limits.maximumCompressedBytes - liveOut)
+            let remWs = max(0, limits.maximumWorkspaceBytes - liveWs)
+            let remMem = max(0, limits.maximumMemoryBytes - liveMem)
+            return min(remComp, min(remWs, remMem))
+        }
+    }
+
+    internal func remainingWorkspaceLimit() -> Int? {
+        guard let limits else { return nil }
+        return stateStorage.state.withLock { st in
+            let (liveOut, ov1) = st.liveOutputBytes.addingReportingOverflow(st.retainedBytes)
+            let (liveWs, ov2) = st.liveScratchBytes.addingReportingOverflow(liveOut)
+            let (liveMem, ov3) = baseBytes.addingReportingOverflow(liveWs)
+            if ov1 || ov2 || ov3 { return 0 }
+            let remWs = max(0, limits.maximumWorkspaceBytes - liveWs)
+            let remMem = max(0, limits.maximumMemoryBytes - liveMem)
+            return min(remWs, remMem)
+        }
     }
 
     /// Assigns a strictly increasing revision under `JP3DLiveBudgetTracker.state` and, in normal execution
@@ -883,6 +920,17 @@ internal final class JP3DLiveBudgetTracker: Sendable {
 internal struct JP3DEncodedTileOutput: Sendable {
     internal let data: Data
     internal let reservation: JP3DLiveBudgetTracker.OutputReservation
+    internal let usedAccelerated: Bool
+
+    internal init(
+        data: Data,
+        reservation: JP3DLiveBudgetTracker.OutputReservation,
+        usedAccelerated: Bool = false
+    ) {
+        self.data = data
+        self.reservation = reservation
+        self.usedAccelerated = usedAccelerated
+    }
 }
 
 @inline(__always)

@@ -1,24 +1,25 @@
 ========================================================================
 Phase R3 — F04 Direction A: swiftj2k-cli jpip client -> Kakadu kdu_server v8.4.1
 ========================================================================
-SwiftJ2K CLI: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli (sha256=bb0fdfda19291ae305185d199410e9cf0fcd3915fa3e415e9fe96a722d6bace8)
+SwiftJ2K CLI: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli (sha256=cd82d10ab239c632784764628fc6b9bddae1231812b1e6244eac18d6b7bbe249)
 kdu_server: /usr/local/bin/kdu_server (sha256=dc0cc8ad8637076258131ea83f3be3f829ff4439e36a4c23a484c07de78ec539)
+kdu_compress: /usr/local/bin/kdu_compress (sha256=6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06)
 kdu_expand: /usr/local/bin/kdu_expand (sha256=a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8)
 opj_jpip_transcode: /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode (sha256=bb98366ef30de3d9c5b439928d4856a844387a3375e57ee437d59f61ffdf3445)
 opj_decompress: /opt/homebrew/bin/opj_decompress (sha256=29f46b837c299a9001d73ec07ec39f157d80c3fa482c3b91121189302ce0282a)
 curl: /usr/bin/curl
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/source_48x32.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_targets/swift_target.j2c --output-format j2k --mode lossless --levels 2 --layers 2 --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/source_48x32.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/swift_target.j2c --output-format j2k --mode lossless --levels 2 --layers 2 --json
 exit_code: 0
 stderr:
-{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.030773834,"fidelity":"exactSamples","format":"jpeg2000-codestream","height":32,"inputBytes":1598,"meaningfulBits":8,"mode":"lossless","outputBytes":1614,"peakWorkspaceBytes":84228,"width":48}
+{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.026137125000000001,"fidelity":"exactSamples","format":"jpeg2000-codestream","height":32,"inputBytes":1598,"meaningfulBits":8,"mode":"lossless","outputBytes":1614,"peakWorkspaceBytes":84228,"width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/source_48x32.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_targets/swift_target.jp2 --output-format jp2 --mode lossless --levels 2 --layers 2 --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/source_48x32.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/swift_target.jp2 --output-format jp2 --mode lossless --levels 2 --layers 2 --json
 exit_code: 0
 stderr:
-{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.032676749999999997,"fidelity":"exactSamples","format":"jp2","height":32,"inputBytes":1598,"meaningfulBits":8,"mode":"lossless","outputBytes":1699,"peakWorkspaceBytes":84228,"width":48}
+{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.026828583999999999,"fidelity":"exactSamples","format":"jp2","height":32,"inputBytes":1598,"meaningfulBits":8,"mode":"lossless","outputBytes":1699,"peakWorkspaceBytes":84228,"width":48}
 
-$ /usr/local/bin/kdu_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/source_48x32.pgm -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_targets/kdu_target.jp2 Creversible=yes Clevels=2
+$ /usr/local/bin/kdu_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/source_48x32.pgm -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/kdu_target.jp2 Creversible=yes Clevels=2
 exit_code: 0
 stdout:
 Note:
@@ -36,14 +37,14 @@ Layer thresholds:
 Processed using the multi-threaded environment, with
     10 parallel threads of execution
 
-Started real kdu_server v8.4.1 (pid=58684) on 127.0.0.1:56735
+Started real kdu_server v8.4.1 (pid=79195) on 127.0.0.1:59286
 
-$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56735/swift_target.j2c?cnew=http&type=jpp-stream&fsiz=48,32 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_wire.http
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:59286/swift_target.j2c?cnew=http&type=jpp-stream&fsiz=48,32 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_wire.http
 exit_code: 0
 
 [kdu_server raw HTTP headers]
 HTTP/1.1 200 OK, with modifications
-JPIP-cnew: cid=JPH_C8D7FCD8560A2D3F,path=jpip,transport=http
+JPIP-cnew: cid=JPH_C8D7FCD855966D3F,path=jpip,transport=http
 JPIP-stream: 0
 Cache-Control: no-cache
 Connection: close
@@ -52,7 +53,7 @@ Content-Type: image/jpp-stream
 [kdu_server raw VBAS body first 64 bytes hex]: 70080000005006004aff4fff510029000000000030000000200000000000000000000000300000002000000000000000000001070101ff52000f010000020002
 [kdu_server raw VBAS body tail 16 bytes hex]:  65bf7819accccccccccccccb8b000100
 
-$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56735/swift_target.j2c?type=jpt-stream&fsiz=48,32 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_415.http
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:59286/swift_target.j2c?type=jpt-stream&fsiz=48,32 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_415.http
 exit_code: 0
 
 [DISCLOSURE: kdu_server v8.4.1 jpt-stream response]
@@ -60,34 +61,34 @@ HTTP/1.1 415 Requested image return types are not acceptable; can only return "j
 Connection: close
 Server: Kakadu JPIP Server v8.4.1
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target swift_target.j2c -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_swift_target.j2c.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target swift_target.j2c -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_swift_target.j2c.pgm --json
 exit_code: 0
 stdout:
-{"backend":"accelerated","cachedBytes":1601,"cachedDataBins":6,"channelID":"JPH_2E412E4F560A2D3F","command":"jpip","components":1,"elapsedSeconds":0.23635995800000001,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"swift_target.j2c","width":48}
+{"backend":"accelerated","cachedBytes":1601,"cachedDataBins":6,"channelID":"JPH_2E412E4F55966D3F","command":"jpip","components":1,"elapsedSeconds":0.238833084,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"swift_target.j2c","width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target swift_target.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_swift_target.jp2.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target swift_target.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_swift_target.jp2.pgm --json
 exit_code: 0
 stdout:
-{"backend":"accelerated","cachedBytes":1750,"cachedDataBins":7,"channelID":"JPH_D0F860003FB2C3DB","command":"jpip","components":1,"elapsedSeconds":0.26266024999999998,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"swift_target.jp2","width":48}
+{"backend":"accelerated","cachedBytes":1750,"cachedDataBins":7,"channelID":"JPH_D0F860003DE043DB","command":"jpip","components":1,"elapsedSeconds":0.25319962499999998,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"swift_target.jp2","width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target kdu_target.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_kdu_target.jp2.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target kdu_target.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_kdu_target.jp2.pgm --json
 exit_code: 0
 stdout:
-{"backend":"accelerated","cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_6F60BC2ADCBB3E14","command":"jpip","components":1,"elapsedSeconds":0.260545625,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"kdu_target.jp2","width":48}
+{"backend":"accelerated","cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_6F60BC2ADED0FE14","command":"jpip","components":1,"elapsedSeconds":0.25492891699999998,"fidelity":"exactSamples","height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","target":"kdu_target.jp2","width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target kdu_target.jp2 --len 200 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_len200.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target kdu_target.jp2 --len 200 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_len200.pgm --json
 exit_code: 0
 stdout:
-{"cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_B7EEE18DDCBB3E14","command":"jpip","components":1,"elapsedSeconds":0.39905374999999998,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":10,"streamType":"jpp-stream","target":"kdu_target.jp2","transport":"http","width":48}
+{"cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_B7EEE18DDED0FE14","command":"jpip","components":1,"elapsedSeconds":0.41539579199999999,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":10,"streamType":"jpp-stream","target":"kdu_target.jp2","transport":"http","width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target swift_target.j2c --stateless -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_stateless.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target swift_target.j2c --stateless -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_stateless.pgm --json
 exit_code: 0
 stdout:
-{"cachedBytes":1601,"cachedDataBins":6,"channelID":"stateless","command":"jpip","components":1,"elapsedSeconds":0.22621987499999999,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"http","width":48}
+{"cachedBytes":1601,"cachedDataBins":6,"channelID":"stateless","command":"jpip","components":1,"elapsedSeconds":0.22506975000000001,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"http","width":48}
 
-$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:56735 --target kdu_target.jp2 --region 8,4,16,12 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/from_kdu_roi.pgm --json
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59286 --target kdu_target.jp2 --region 8,4,16,12 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/from_kdu_roi.pgm --json
 exit_code: 0
 stdout:
-{"backend":"accelerated","cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_7438F6B3DCBB3E14","command":"jpip","components":1,"elapsedSeconds":0.27392395800000002,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":205,"role":"client","target":"kdu_target.jp2","width":16}
+{"backend":"accelerated","cachedBytes":1732,"cachedDataBins":7,"channelID":"JPH_7438F6B3DED0FE14","command":"jpip","components":1,"elapsedSeconds":0.26909662499999998,"fidelity":"exactSamples","height":12,"meaningfulBits":8,"outputBytes":205,"role":"client","target":"kdu_target.jp2","width":16}
 
 ALL DIRECTION A (swiftj2k-cli jpip client -> kdu_server v8.4.1) CHECKS PASSED.

@@ -926,11 +926,202 @@ package enum HTBlockEncoder {
             y += 2
         }
     }
+
+    /// Encodes an ITU-T T.814 refinement segment (`HT SigProp` + optional `HT MagRef`, Clauses 7.1.5–7.1.6 & 7.4–7.5)
+    /// for bit-plane `bandShift - 1` (`bandShift >= 1`), given the original signed `Int64` block coefficients.
+    package static func encodeRefinement(
+        coefficients: [Int64],
+        width: Int,
+        height: Int,
+        cleanupBandShift: Int,
+        includeMagRef: Bool,
+        causal: Bool = false,
+        maximumOutputBytes: Int = 2046
+    ) throws -> [UInt8] {
+        guard width >= 1, height >= 1, coefficients.count == width * height else {
+            throw CodecError(.invalidArgument, "HTJ2K refinement block dimensions do not match coefficient count.")
+        }
+        guard cleanupBandShift >= 1, cleanupBandShift < 63 else {
+            throw CodecError(.invalidArgument, "HTJ2K refinement cleanupBandShift (\(cleanupBandShift)) must be in 1..<63.")
+        }
+        let sampleCount = width * height
+        let refBitMask = UInt64(1) << UInt64(cleanupBandShift - 1)
+
+        var sigma = [Bool](repeating: false, count: sampleCount)
+        var mags = [UInt64](repeating: 0, count: sampleCount)
+        var signs = [Bool](repeating: false, count: sampleCount)
+        for i in 0..<sampleCount {
+            let v = coefficients[i]
+            if v == 0 { continue }
+            let mag = v.magnitude
+            mags[i] = mag
+            signs[i] = (v < 0)
+            if (mag >> UInt64(cleanupBandShift)) != 0 {
+                sigma[i] = true
+            }
+        }
+
+        // Forward SigProp bit-stream writer (ITU-T T.814 Clause 7.1.5 & 7.4)
+        var spBytes: [UInt8] = []
+        var spCur: UInt8 = 0
+        var spUsed = 0
+        var spMaxBits = 8
+        let hardLimit = min(2046, maximumOutputBytes)
+
+        func emitSigPropBit(_ bit: Int) throws {
+            spCur |= UInt8(bit & 1) << UInt8(spUsed)
+            spUsed += 1
+            if spUsed == spMaxBits {
+                guard spBytes.count < hardLimit else {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
+                }
+                spBytes.append(spCur)
+                spMaxBits = (spCur == 0xFF) ? 7 : 8
+                spCur = 0
+                spUsed = 0
+            }
+        }
+
+        var sigPropSig = [Bool](repeating: false, count: sampleCount)
+        for stripeY in stride(from: 0, to: height, by: 4) {
+            let stripeEnd = min(stripeY + 4, height)
+            for colGroup in stride(from: 0, to: width, by: 4) {
+                let colEnd = min(colGroup + 4, width)
+                for x in colGroup..<colEnd {
+                    for y in stripeY..<stripeEnd {
+                        let idx = y * width + x
+                        if sigma[idx] { continue }
+                        let nyMin = max(0, y - 1)
+                        let nyMax = (causal && y == stripeEnd - 1) ? y : min(height - 1, y + 1)
+                        let nxMin = max(0, x - 1)
+                        let nxMax = min(width - 1, x + 1)
+                        var mbr = false
+                        outerNbr: for ny in nyMin...nyMax {
+                            let rowOff = ny * width
+                            for nx in nxMin...nxMax {
+                                if nx == x && ny == y { continue }
+                                let nIdx = rowOff + nx
+                                if sigma[nIdx] || sigPropSig[nIdx] {
+                                    mbr = true
+                                    break outerNbr
+                                }
+                            }
+                        }
+                        if mbr {
+                            let rBit = (mags[idx] & refBitMask) != 0 ? 1 : 0
+                            try emitSigPropBit(rBit)
+                            if rBit == 1 {
+                                sigPropSig[idx] = true
+                            }
+                        }
+                    }
+                }
+                for x in colGroup..<colEnd {
+                    for y in stripeY..<stripeEnd {
+                        let idx = y * width + x
+                        if sigPropSig[idx] {
+                            try emitSigPropBit(signs[idx] ? 1 : 0)
+                        }
+                    }
+                }
+            }
+        }
+        if spUsed > 0 {
+            guard spBytes.count < hardLimit else {
+                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
+            }
+            spBytes.append(spCur)
+        }
+        if spBytes.last == 0xFF {
+            guard spBytes.count < hardLimit else {
+                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp trailing stuff byte exceeds segment budget.")
+            }
+            spBytes.append(0x00)
+        }
+
+        if !includeMagRef {
+            // Trim trailing zero bytes if there are no MagRef bytes (importSigPropBit synthesizes 0 past Lref),
+            // except preserve a stuff 0x00 byte immediately following 0xFF!
+            while spBytes.count >= 2 && spBytes[spBytes.count - 1] == 0x00 && spBytes[spBytes.count - 2] != 0xFF {
+                spBytes.removeLast()
+            }
+            if spBytes.count == 1 && spBytes[0] == 0x00 {
+                spBytes.removeAll()
+            }
+            return spBytes
+        }
+
+        // Backward MagRef bit-stream writer (ITU-T T.814 Clause 7.1.6 & 7.5)
+        var mrRev: [UInt8] = []
+        var mrCur: UInt8 = 0
+        var mrUsed = 0
+        var mrPrev: UInt8 = 0xFF
+
+        func emitMagRefBit(_ bit: Int) throws {
+            mrCur |= UInt8(bit & 1) << UInt8(mrUsed)
+            mrUsed += 1
+            if mrUsed == 7 && mrPrev > 0x8F && mrCur == 0x7F {
+                guard spBytes.count + mrRev.count < hardLimit else {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
+                }
+                mrRev.append(mrCur)
+                mrPrev = mrCur
+                mrCur = 0
+                mrUsed = 0
+            } else if mrUsed == 8 {
+                guard spBytes.count + mrRev.count < hardLimit else {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
+                }
+                mrRev.append(mrCur)
+                mrPrev = mrCur
+                mrCur = 0
+                mrUsed = 0
+            }
+        }
+
+        for stripeY in stride(from: 0, to: height, by: 4) {
+            let stripeEnd = min(stripeY + 4, height)
+            for x in 0..<width {
+                for y in stripeY..<stripeEnd {
+                    let idx = y * width + x
+                    if sigma[idx] {
+                        let rBit = (mags[idx] & refBitMask) != 0 ? 1 : 0
+                        try emitMagRefBit(rBit)
+                    }
+                }
+            }
+        }
+        if mrUsed > 0 {
+            guard spBytes.count + mrRev.count < hardLimit else {
+                throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
+            }
+            mrRev.append(mrCur)
+        }
+
+        var dref = spBytes
+        dref.append(contentsOf: mrRev.reversed())
+        return dref
+    }
 }
 
-// MARK: - HT Block Decoder (ISO/IEC 15444-15 Clause 7.3)
+/// One terminated HT codeword segment (either a 1-pass cleanup segment, a 1..2-pass refinement segment,
+/// or a leading zero-length placeholder segment) passed to `HTBlockDecoder.decodeHTCodeBlock`.
+package struct HTSegmentInput: Sendable, Equatable {
+    package let data: [UInt8]
+    package let passes: Int
+
+    package init(data: [UInt8], passes: Int) {
+        self.data = data
+        self.passes = passes
+    }
+}
+
+// MARK: - HT Block Decoder (ISO/IEC 15444-15 Clauses 7.1–7.6 & Annex B)
 
 package enum HTBlockDecoder {
+    /// Maximum subband bit-plane count supported by 64-bit HT reconstruction (`ITU-T T.814` Clause 8.7.3).
+    package static let maximumExtendedKMax = 62
+
     /// Decode a Part 15 code-block cleanup pass into signed `Int32` wavelet coefficients.
     ///
     /// - Parameters:
@@ -946,24 +1137,178 @@ package enum HTBlockDecoder {
         kMax: Int,
         missingMSBs: Int
     ) throws -> [Int32] {
+        guard kMax >= 1, kMax <= BitPlaneCoder.maximumMagnitudeBitPlanes else {
+            throw CodecError(.malformedInput, "HTJ2K subband K_max (\(kMax)) is out of range.")
+        }
+        let dec64 = try decodeHTCodeBlock(
+            segments: [HTSegmentInput(data: block, passes: 1)],
+            zeroBitPlanes: missingMSBs,
+            totalPasses: 1,
+            width: width,
+            height: height,
+            kMax: kMax,
+            causal: false,
+            allowMultiHT: false,
+            midpointReconstruction: false
+        )
+        var out = [Int32](repeating: 0, count: dec64.count)
+        for i in 0..<dec64.count {
+            let v = dec64[i]
+            guard v >= Int64(Int32.min), v <= Int64(Int32.max) else {
+                throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
+            }
+            out[i] = Int32(v)
+        }
+        return out
+    }
+
+    /// Decodes a complete Part 15 HT code-block contribution conforming to `ITU-T T.814` Clauses 7.1–7.6 and Annex B,
+    /// including `3 * P0` leading placeholder passes, `SINGLEHT`/`MULTIHT` set selection, `HT Cleanup` (7.3),
+    /// `HT SigProp` (7.4), `HT MagRef` (7.5), and `Sample output values` (7.6) into signed `Int64` coefficients.
+    package static func decodeHTCodeBlock(
+        segments: [HTSegmentInput],
+        zeroBitPlanes: Int,
+        totalPasses: Int,
+        width: Int,
+        height: Int,
+        kMax: Int,
+        causal: Bool = false,
+        allowMultiHT: Bool = true,
+        midpointReconstruction: Bool = false
+    ) throws -> [Int64] {
         guard width >= 1, height >= 1 else {
             throw CodecError(.invalidArgument, "Invalid HTJ2K code-block dimensions \(width)x\(height).")
         }
         let sampleCount = try checkedMultiply(width, height)
-        if block.isEmpty {
-            return [Int32](repeating: 0, count: sampleCount)
-        }
-        guard kMax >= 1, kMax <= BitPlaneCoder.maximumMagnitudeBitPlanes else {
+        guard kMax >= 1, kMax <= maximumExtendedKMax else {
             throw CodecError(.malformedInput, "HTJ2K subband K_max (\(kMax)) is out of range.")
         }
-        guard missingMSBs >= 0, missingMSBs < kMax else {
-            throw CodecError(.malformedInput, "HTJ2K missingMSBs (\(missingMSBs)) exceeds subband K_max - 1 (\(kMax - 1)).")
+        guard zeroBitPlanes >= 0 else {
+            throw CodecError(.malformedInput, "Negative HTJ2K zeroBitPlanes (\(zeroBitPlanes)).")
         }
-        let bandShift = kMax - 1 - missingMSBs
-        let maxMagnitudeBound = UInt64(1) << kMax
+        if segments.isEmpty || totalPasses <= 0 {
+            return [Int64](repeating: 0, count: sampleCount)
+        }
 
-        guard let parsed = HTBlockLayout.parse(block: block) else {
-            throw CodecError(.malformedInput, "Malformed HTJ2K cleanup segment trailer (Scup/Lcup).")
+        // Partition segments into leading placeholder passes (`3 * P0`) followed by HT sets `(cleanup, refinement?)`
+        // per ITU-T T.814 Annex B.1–B.3.
+        struct HTSetRecord {
+            let cleanupData: [UInt8]
+            let refinementData: [UInt8]
+            let passCountInSet: Int // 1..3
+            let sSkip: Int          // number of HT sets preceding this HT set (after P0)
+        }
+
+        var idx = 0
+        var placeholderPasses = 0
+
+        // Any strictly zero-length segments preceding the first non-zero cleanup segment contribute placeholder passes.
+        while idx < segments.count && segments[idx].data.isEmpty {
+            guard segments[idx].passes > 0 else {
+                throw CodecError(.malformedInput, "HTJ2K segment carries non-positive pass count.")
+            }
+            placeholderPasses += segments[idx].passes
+            idx += 1
+        }
+
+        // All segments empty => pure placeholder-pass contribution (`Z_blk = 0`, all zeros).
+        if idx >= segments.count {
+            return [Int64](repeating: 0, count: sampleCount)
+        }
+
+        // Note: per Annex B.2–B.3, if a single packet included both trailing placeholder passes of the `3 * P0`
+        // prefix and the first HT cleanup coding pass, that first non-empty cleanup segment carries
+        // `(trailingPlaceholderPasses + 1)` passes where `(placeholderPasses + trailingPlaceholderPasses) % 3 == 0`!
+        let firstCleanupSeg = segments[idx]
+        guard firstCleanupSeg.passes >= 1 else {
+            throw CodecError(.malformedInput, "HTJ2K first cleanup segment carries non-positive pass count.")
+        }
+        let totalBeforeAfterFirstCleanup = placeholderPasses + (firstCleanupSeg.passes - 1)
+        guard totalBeforeAfterFirstCleanup % 3 == 0 else {
+            throw CodecError(.malformedInput, "HTJ2K leading placeholder pass count (\(totalBeforeAfterFirstCleanup)) is not a multiple of 3 (Annex B.1).")
+        }
+        let p0 = totalBeforeAfterFirstCleanup / 3
+        guard firstCleanupSeg.data.count > 1 else {
+            throw CodecError(.malformedInput, "HTJ2K first cleanup segment length (\(firstCleanupSeg.data.count)) must exceed 1 byte (Annex B.3).")
+        }
+
+        var htSets: [HTSetRecord] = []
+        var sSkipCounter = 0
+
+        while idx < segments.count {
+            let cupSeg = segments[idx]
+            idx += 1
+            let cupPasses = (sSkipCounter == 0) ? 1 : cupSeg.passes
+            guard cupPasses == 1 else {
+                throw CodecError(.malformedInput, "HTJ2K cleanup segment carries \(cupPasses) passes instead of 1 (Annex B.2).")
+            }
+            if sSkipCounter > 0 && !cupSeg.data.isEmpty && cupSeg.data.count <= 1 {
+                throw CodecError(.malformedInput, "HTJ2K cleanup segment length (\(cupSeg.data.count)) must be 0 or > 1 (Annex B.3).")
+            }
+
+            var refData: [UInt8] = []
+            var refPasses = 0
+            if idx < segments.count {
+                // Next segment in the same HT set is the refinement segment (1 or 2 passes).
+                // Note: if the previous HT set stopped after cleanup (1 pass), there are no further HT sets!
+                let nextSeg = segments[idx]
+                guard nextSeg.passes >= 1, nextSeg.passes <= 2 else {
+                    throw CodecError(.malformedInput, "HTJ2K refinement segment carries \(nextSeg.passes) passes (expected 1 or 2).")
+                }
+                if cupSeg.data.isEmpty && !nextSeg.data.isEmpty {
+                    throw CodecError(.malformedInput, "HTJ2K empty cleanup segment followed by non-empty refinement segment (Annex B.3).")
+                }
+                guard nextSeg.data.count <= 2046 else {
+                    throw CodecError(.malformedInput, "HTJ2K refinement segment length (\(nextSeg.data.count)) exceeds 2046-byte limit.")
+                }
+                refData = nextSeg.data
+                refPasses = nextSeg.passes
+                idx += 1
+                // An HT set with only 2 total passes (Cleanup + SigProp, no MagRef) must be the final HT set per B.1!
+                if refPasses < 2 && idx < segments.count {
+                    throw CodecError(.malformedInput, "Non-final HTJ2K set has fewer than 3 coding passes (Annex B.1).")
+                }
+            }
+
+            htSets.append(HTSetRecord(
+                cleanupData: cupSeg.data,
+                refinementData: refData,
+                passCountInSet: 1 + refPasses,
+                sSkip: sSkipCounter
+            ))
+            sSkipCounter += 1
+        }
+
+        if htSets.count > 1 && !allowMultiHT {
+            throw CodecError(.malformedInput, "Codestream contains \(htSets.count) HT sets for a code-block while CAP Ccap15 signals SINGLEHT.")
+        }
+
+        // Validate every non-empty HT set's S_blk and trailer, and select the last non-empty HT set (`Z_blk > 0`)
+        // for highest-fidelity sample reconstruction (ITU-T T.814 Clause 8.3 & Annex B.3).
+        var activeSet: HTSetRecord?
+        for set in htSets where !set.cleanupData.isEmpty {
+            let sBlk = zeroBitPlanes + p0 + set.sSkip
+            guard sBlk >= 0, sBlk < kMax else {
+                throw CodecError(.malformedInput, "HTJ2K S_blk (\(sBlk)) exceeds subband K_max - 1 (\(kMax - 1)).")
+            }
+            guard HTBlockLayout.parse(block: set.cleanupData) != nil else {
+                throw CodecError(.malformedInput, "Malformed HTJ2K cleanup segment trailer (Scup/Lcup).")
+            }
+            activeSet = set
+        }
+
+        guard let chosen = activeSet, let parsed = HTBlockLayout.parse(block: chosen.cleanupData) else {
+            return [Int64](repeating: 0, count: sampleCount)
+        }
+
+        let sBlk = zeroBitPlanes + p0 + chosen.sSkip
+        let zBlk: Int
+        if chosen.cleanupData.isEmpty {
+            zBlk = 0
+        } else if chosen.refinementData.isEmpty {
+            zBlk = 1
+        } else {
+            zBlk = chosen.passCountInSet // 2 (Cleanup + SigProp) or 3 (Cleanup + SigProp + MagRef)
         }
 
         var state = DecodeState(
@@ -973,7 +1318,6 @@ package enum HTBlockDecoder {
             width: width,
             height: height
         )
-
         try state.decodeInitialRow()
         var y = 2
         while y < height {
@@ -981,20 +1325,197 @@ package enum HTBlockDecoder {
             y += 2
         }
 
-        var output = [Int32](repeating: 0, count: sampleCount)
+        var sigma = [Bool](repeating: false, count: sampleCount)
+        var sign = [Bool](repeating: false, count: sampleCount)
+        var muArr = [UInt64](repeating: 0, count: sampleCount)
         for i in 0..<sampleCount {
             let word = state.coefs[i]
-            if word == 0 { continue }
-            let sign = (word & 0x8000_0000) != 0
-            let mu = UInt64(word & 0x7FFF_FFFF)
-            let scaled = mu << bandShift
-            guard scaled < maxMagnitudeBound, scaled <= UInt64(Int32.max) else {
+            if word != 0 {
+                sigma[i] = true
+                sign[i] = (word & 0x8000_0000) != 0
+                muArr[i] = UInt64(word & 0x7FFF_FFFF)
+            }
+        }
+
+        var zN = [UInt8](repeating: 0, count: sampleCount)
+        var rN = [UInt8](repeating: 0, count: sampleCount)
+
+        // Clause 7.4: HT SigProp decoding procedure (`Z_blk > 1`)
+        if zBlk >= 2 {
+            var spReader = HTSigPropReader(bytes: chosen.refinementData)
+            var sigPropSig = [Bool](repeating: false, count: sampleCount)
+
+            for stripeY in stride(from: 0, to: height, by: 4) {
+                let stripeEnd = min(stripeY + 4, height)
+                for colGroup in stride(from: 0, to: width, by: 4) {
+                    let colEnd = min(colGroup + 4, width)
+                    // Step 1: decodeSigPropMag across 4-column group
+                    for x in colGroup..<colEnd {
+                        for sy in stripeY..<stripeEnd {
+                            let sampleIdx = sy * width + x
+                            if sigma[sampleIdx] { continue }
+                            let nyMin = max(0, sy - 1)
+                            let nyMax = (causal && sy == stripeEnd - 1) ? sy : min(height - 1, sy + 1)
+                            let nxMin = max(0, x - 1)
+                            let nxMax = min(width - 1, x + 1)
+                            var mbr = false
+                            outerNbr: for ny in nyMin...nyMax {
+                                let rowOff = ny * width
+                                for nx in nxMin...nxMax {
+                                    if nx == x && ny == sy { continue }
+                                    let nIdx = rowOff + nx
+                                    if sigma[nIdx] || sigPropSig[nIdx] {
+                                        mbr = true
+                                        break outerNbr
+                                    }
+                                }
+                            }
+                            if mbr {
+                                zN[sampleIdx] = 1
+                                let rBit = try spReader.importSigPropBit()
+                                rN[sampleIdx] = UInt8(rBit)
+                                if rBit == 1 {
+                                    sigPropSig[sampleIdx] = true
+                                }
+                            }
+                        }
+                    }
+                    // Step 2: decodeSigPropSign across the same 4-column group
+                    for x in colGroup..<colEnd {
+                        for sy in stripeY..<stripeEnd {
+                            let sampleIdx = sy * width + x
+                            if sigPropSig[sampleIdx] {
+                                let sBit = try spReader.importSigPropBit()
+                                sign[sampleIdx] = (sBit != 0)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Clause 7.5: HT MagRef decoding procedure (`Z_blk == 3`)
+        if zBlk == 3 {
+            var mrReader = HTMagRefReader(bytes: chosen.refinementData)
+            for stripeY in stride(from: 0, to: height, by: 4) {
+                let stripeEnd = min(stripeY + 4, height)
+                for x in 0..<width {
+                    for sy in stripeY..<stripeEnd {
+                        let sampleIdx = sy * width + x
+                        if sigma[sampleIdx] {
+                            zN[sampleIdx] = 1
+                            rN[sampleIdx] = UInt8(mrReader.importMagRefBit())
+                        }
+                    }
+                }
+            }
+        }
+
+        // Clause 7.6: Sample output values
+        let p = kMax - 1 - sBlk
+        let maxMagnitudeBound: UInt64 = (kMax >= 64) ? UInt64.max : (UInt64(1) << UInt64(kMax))
+        var output = [Int64](repeating: 0, count: sampleCount)
+        for i in 0..<sampleCount {
+            let mu = muArr[i]
+            let z = Int(zN[i])
+            let r = UInt64(rN[i])
+            if mu == 0 && r == 0 { continue }
+
+            // Guard against shift overflow on untrusted `mu` + `p`
+            if mu != 0 && p > 0 {
+                let leadZeros = mu.leadingZeroBitCount
+                if p >= leadZeros {
+                    throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
+                }
+            }
+            var mag: UInt64 = mu << UInt64(p)
+            if z != 0 && r != 0 {
+                if p >= 1 {
+                    mag |= r << UInt64(p - 1)
+                }
+            }
+            if midpointReconstruction && mag > 0 {
+                let lastDecodedPlane = p - z
+                if lastDecodedPlane > 0 {
+                    mag |= UInt64(1) << UInt64(lastDecodedPlane - 1)
+                }
+            }
+            guard mag < maxMagnitudeBound, mag <= UInt64(Int64.max) else {
                 throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
             }
-            let mag = Int32(scaled)
-            output[i] = sign ? -mag : mag
+            let signedVal = Int64(bitPattern: mag)
+            output[i] = sign[i] ? -signedVal : signedVal
         }
         return output
+    }
+}
+
+private struct HTSigPropReader {
+    private let dref: [UInt8]
+    private let lref: Int
+    private var pos: Int = 0
+    private var bits: Int = 0
+    private var tmp: UInt8 = 0
+    private var last: UInt8 = 0
+
+    init(bytes: [UInt8]) {
+        self.dref = bytes
+        self.lref = bytes.count
+    }
+
+    @inline(__always)
+    mutating func importSigPropBit() throws -> Int {
+        if bits == 0 {
+            bits = (last == 0xFF) ? 7 : 8
+            if pos < lref {
+                tmp = dref[pos]
+                pos += 1
+                if bits == 7 && (tmp & 0x80) != 0 {
+                    throw CodecError(.malformedInput, "Malformed HTJ2K SigProp stuffed bit after 0xFF (Clause 7.1.5).")
+                }
+            } else {
+                tmp = 0
+            }
+            last = tmp
+        }
+        let bit = Int(tmp & 1)
+        tmp >>= 1
+        bits -= 1
+        return bit
+    }
+}
+
+private struct HTMagRefReader {
+    private let dref: [UInt8]
+    private var pos: Int
+    private var bits: Int = 0
+    private var last: UInt8 = 0xFF
+    private var tmp: UInt8 = 0
+
+    init(bytes: [UInt8]) {
+        self.dref = bytes
+        self.pos = bytes.count - 1
+    }
+
+    @inline(__always)
+    mutating func importMagRefBit() -> Int {
+        if bits == 0 {
+            if pos >= 0 {
+                tmp = dref[pos]
+                pos -= 1
+            } else {
+                tmp = 0
+            }
+            bits = 8
+            if last > 0x8F && (tmp & 0x7F) == 0x7F {
+                bits = 7
+            }
+            last = tmp
+        }
+        let bit = Int(tmp & 1)
+        tmp >>= 1
+        bits -= 1
+        return bit
     }
 }
 

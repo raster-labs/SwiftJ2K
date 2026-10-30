@@ -668,6 +668,22 @@ public actor JPIPServer {
             let resp = try await handleRequest(parsedReq)
             let body = (method == "HEAD") ? Data() : resp.data
             return (resp.statusCode, resp.headers, body)
+        } catch let codecErr as CodecError {
+            let msg = codecErr.message
+            let status: Int
+            switch codecErr.category {
+            case .resourceLimitExceeded:
+                status = 413
+            case .malformedInput:
+                status = 422
+            case .invalidArgument:
+                status = 400
+            case .unsupportedFeature:
+                status = 415
+            default:
+                status = 500
+            }
+            return (status, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
         } catch let j2kErr as J2KError {
             let msg = "\(j2kErr)"
             if msg.contains("File not found") || msg.contains("Image not found") {
@@ -679,7 +695,18 @@ public actor JPIPServer {
             if msg.contains("Invalid parameter") || msg.contains("channel ID") {
                 return (400, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
             }
-            return (500, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            switch j2kErr.asCodecError.category {
+            case .invalidArgument:
+                return (400, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .unsupportedFeature:
+                return (415, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .malformedInput:
+                return (422, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .resourceLimitExceeded:
+                return (413, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            default:
+                return (500, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            }
         } catch {
             return (500, ["Content-Type": "text/plain; charset=utf-8"], Data("\(error)".utf8))
         }
@@ -693,7 +720,9 @@ public actor JPIPServer {
         case 404: return "Not Found"
         case 405: return "Method Not Allowed"
         case 410: return "Gone"
+        case 413: return "Payload Too Large"
         case 415: return "Unsupported Media Type"
+        case 422: return "Unprocessable Content"
         case 500: return "Internal Server Error"
         case 503: return "Service Unavailable"
         default: return "OK"
@@ -706,13 +735,16 @@ public actor JPIPServer {
     ///
     /// - Parameter request: The JPIP request to handle.
     /// - Returns: A JPIP response.
-    /// - Throws: ``J2KError`` if the request cannot be handled.
+    /// - Throws: ``J2KError`` or ``CodecError`` if the request cannot be handled.
     public func handleRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
         guard isRunning else {
             throw J2KError.invalidState("Server is not running")
         }
 
         stats.totalRequests += 1
+
+        // Validate all query, view-window, and cache-model parameters with checked arithmetic
+        try request.validateParameters()
 
         // 1. Handle ITU-T Rec. T.808 Clause C.3.3 channel close (`cclose`)
         if let ccloseList = request.cclose, !ccloseList.isEmpty {
@@ -722,7 +754,7 @@ public actor JPIPServer {
         // Enforce ITU-T Rec. T.808 Clause C.8.1.2: additive wildcard `model=` items (`*`, `H*`, `P*`, `T*`, `M*`)
         // are stateless-only and forbidden on stateful `cid=` requests.
         if request.cid != nil, let modelItems = request.model, !modelItems.isEmpty {
-            let directives = JPIPCacheModel.parseModelItems(modelItems)
+            let directives = try JPIPCacheModel.parseValidatedModelItems(modelItems)
             if directives.contains(where: { $0.isAdditive && $0.binID == nil }) {
                 throw J2KError.invalidParameter(
                     "ITU-T T.808 Clause C.8.1.2 forbids additive wildcard model= descriptors on stateful cid= requests."
@@ -846,8 +878,19 @@ public actor JPIPServer {
         if request.metadata == true {
             return 90
         }
-        if let rsiz = request.rsiz, rsiz.width * rsiz.height < 10000 {
-            return 80
+        if let rsiz = request.rsiz, rsiz.width > 0, rsiz.height > 0 {
+            let (area, ov) = rsiz.width.multipliedReportingOverflow(by: rsiz.height)
+            if !ov && area < 10_000 {
+                return 80
+            }
+        }
+        if let rvsiz = request.rvsiz, rvsiz.count == 3,
+           rvsiz[0] > 0, rvsiz[1] > 0, rvsiz[2] > 0 {
+            let (xy, o1) = rvsiz[0].multipliedReportingOverflow(by: rvsiz[1])
+            let (xyz, o2) = xy.multipliedReportingOverflow(by: rvsiz[2])
+            if !o1 && !o2 && xyz < 10_000 {
+                return 80
+            }
         }
         return 50
     }
@@ -1055,166 +1098,202 @@ public actor JPIPServer {
             }
         }
 
-        // Normative ITU-T Rec. T.808 Annex A.2 VBAS data-bin streaming for valid 2D & 3D targets
-        if let windowGen = try? dataBinGenerator.generateWireDataBins(
+        // Legacy fallback ONLY for untyped (`request.streamType == nil`) non-JPEG2000 unit-test stub blobs
+        // (e.g. `Data("test".utf8)`). Any explicit JPIP stream return type (`type=jpp-stream` / `jpt-stream`)
+        // or any JPEG 2000 / JP2 / JPH / JP3D target MUST go through normative indexing and propagate errors.
+        let requiresNormativeStream = (request.streamType != nil) || Self.hasJPEG2000OrContainerMagic(dataToServe)
+        if !requiresNormativeStream {
+            var responseData = dataToServe
+            if let maxLen = request.len, responseData.count > maxLen {
+                responseData = Data(responseData.prefix(max(0, maxLen)))
+            }
+            return (responseData, "application/octet-stream")
+        }
+
+        // Normative ITU-T Rec. T.808 Annex A.2 VBAS data-bin streaming for 2D & 3D targets
+        let windowGen = try dataBinGenerator.generateWireDataBins(
             from: dataToServe,
             request: request,
             defaultStreamType: configuration.defaultStreamType
-        ) {
-            // 1. Reconcile client-supplied Clause C.8.1 `model=` descriptors if present
-            if let modelItems = request.model, !modelItems.isEmpty {
-                let mergedBins = Self.mergeContiguousSegmentsForModel(windowGen.bins)
-                await session.applyCacheModel(items: modelItems, availableBins: mergedBins)
+        )
+
+        // 1. Reconcile client-supplied Clause C.8.1 `model=` descriptors if present
+        if let modelItems = request.model, !modelItems.isEmpty {
+            let mergedBins = Self.mergeContiguousSegmentsForModel(windowGen.bins)
+            await session.applyCacheModel(items: modelItems, availableBins: mergedBins)
+        }
+
+        // 2. Compute unsent segments / `Msg-Offset` tails against `session` (keyed by canonicalClass + codestreamID + binID)
+        var unsentSegments: [JPIPDataBin] = []
+        unsentSegments.reserveCapacity(windowGen.bins.count)
+
+        for seg in windowGen.bins {
+            let segStart = max(0, seg.msgOffset)
+            let segEnd = segStart + seg.data.count
+            if seg.data.isEmpty {
+                let complete = await session.hasCompleteDataBin(
+                    binClass: seg.binClass,
+                    binID: seg.binID,
+                    totalLength: segEnd,
+                    codestreamID: seg.codestreamID
+                )
+                if !complete {
+                    unsentSegments.append(seg)
+                }
+                continue
             }
 
-            // 2. Compute unsent segments / `Msg-Offset` tails against `session`
-            var unsentSegments: [JPIPDataBin] = []
-            unsentSegments.reserveCapacity(windowGen.bins.count)
-
-            for seg in windowGen.bins {
-                let segStart = max(0, seg.msgOffset)
-                let segEnd = segStart + seg.data.count
-                if seg.data.isEmpty {
+            let alreadySent = await session.sentByteOffset(
+                binClass: seg.binClass,
+                binID: seg.binID,
+                codestreamID: seg.codestreamID
+            )
+            if alreadySent >= segEnd {
+                if seg.isComplete {
                     let complete = await session.hasCompleteDataBin(
                         binClass: seg.binClass,
                         binID: seg.binID,
-                        totalLength: segEnd
+                        totalLength: segEnd,
+                        codestreamID: seg.codestreamID
                     )
                     if !complete {
-                        unsentSegments.append(seg)
-                    }
-                    continue
-                }
-
-                let alreadySent = await session.sentByteOffset(binClass: seg.binClass, binID: seg.binID)
-                if alreadySent >= segEnd {
-                    if seg.isComplete {
-                        let complete = await session.hasCompleteDataBin(
+                        unsentSegments.append(JPIPDataBin(
                             binClass: seg.binClass,
                             binID: seg.binID,
-                            totalLength: segEnd
-                        )
-                        if !complete {
-                            unsentSegments.append(JPIPDataBin(
-                                binClass: seg.binClass,
-                                binID: seg.binID,
-                                codestreamID: seg.codestreamID,
-                                data: Data(),
-                                isComplete: true,
-                                msgOffset: segEnd,
-                                aux: seg.aux
-                            ))
-                        }
+                            codestreamID: seg.codestreamID,
+                            data: Data(),
+                            isComplete: true,
+                            msgOffset: segEnd,
+                            aux: seg.aux
+                        ))
                     }
-                    continue
                 }
-
-                if alreadySent > segStart {
-                    let trim = min(seg.data.count, alreadySent - segStart)
-                    let tail = Data(seg.data.dropFirst(trim))
-                    unsentSegments.append(JPIPDataBin(
-                        binClass: seg.binClass,
-                        binID: seg.binID,
-                        codestreamID: seg.codestreamID,
-                        data: tail,
-                        isComplete: seg.isComplete,
-                        msgOffset: segStart + trim,
-                        aux: seg.aux
-                    ))
-                } else {
-                    unsentSegments.append(seg)
-                }
+                continue
             }
 
-            // 3. Enforce `len=` byte budget with partial-bin (`isComplete = false`) splitting + EOR
-            let completedReason: JPIPEORReason = windowGen.coversFullTarget ? .imageDone : .windowDone
-            if let maxLen = request.len {
-                if maxLen <= 3 {
-                    let eorOnly = JPIPWireCodec.encodeEOR(reason: .byteLimit)
-                    return (Data(eorOnly.prefix(max(0, maxLen))), windowGen.streamType.contentTypeHeader)
-                }
+            if alreadySent > segStart {
+                let trim = min(seg.data.count, alreadySent - segStart)
+                let tail = Data(seg.data.dropFirst(trim))
+                unsentSegments.append(JPIPDataBin(
+                    binClass: seg.binClass,
+                    binID: seg.binID,
+                    codestreamID: seg.codestreamID,
+                    data: tail,
+                    isComplete: seg.isComplete,
+                    msgOffset: segStart + trim,
+                    aux: seg.aux
+                ))
+            } else {
+                unsentSegments.append(seg)
+            }
+        }
 
-                var emitted: [JPIPDataBin] = []
-                var hitByteLimit = false
-
-                for seg in unsentSegments {
-                    let fullTrial = JPIPWireCodec.encodeStream(
-                        bins: emitted + [seg],
-                        eorReason: .byteLimit
-                    )
-                    if fullTrial.count <= maxLen {
-                        emitted.append(seg)
-                        await session.recordSentDataBin(seg)
-                        continue
-                    }
-
-                    // Binary-search largest non-empty prefix `k` (`1..<seg.data.count`) whose
-                    // VBAS header + `k` payload bytes + 3-byte EOR fits within `maxLen`.
-                    if seg.data.count > 1 {
-                        var lo = 1
-                        var hi = seg.data.count - 1
-                        var bestK = 0
-                        while lo <= hi {
-                            let mid = (lo + hi) / 2
-                            let partialTrial = JPIPDataBin(
-                                binClass: seg.binClass,
-                                binID: seg.binID,
-                                codestreamID: seg.codestreamID,
-                                data: Data(seg.data.prefix(mid)),
-                                isComplete: false,
-                                msgOffset: seg.msgOffset,
-                                aux: seg.aux
-                            )
-                            let wireTrial = JPIPWireCodec.encodeStream(
-                                bins: emitted + [partialTrial],
-                                eorReason: .byteLimit
-                            )
-                            if wireTrial.count <= maxLen {
-                                bestK = mid
-                                lo = mid + 1
-                            } else {
-                                hi = mid - 1
-                            }
-                        }
-
-                        if bestK > 0 {
-                            let partial = JPIPDataBin(
-                                binClass: seg.binClass,
-                                binID: seg.binID,
-                                codestreamID: seg.codestreamID,
-                                data: Data(seg.data.prefix(bestK)),
-                                isComplete: false,
-                                msgOffset: seg.msgOffset,
-                                aux: seg.aux
-                            )
-                            emitted.append(partial)
-                            await session.recordSentDataBin(partial)
-                        }
-                    }
-
-                    hitByteLimit = true
-                    break
-                }
-
-                let finalReason: JPIPEORReason = hitByteLimit ? .byteLimit : completedReason
-                let wireData = JPIPWireCodec.encodeStream(bins: emitted, eorReason: finalReason)
+        // 3. Enforce ITU-T Rec. T.808 Clause C.6.1 `len=` byte budget on ordinary data-bin messages,
+        //    always appending a complete, valid 3-byte EOR (excluded from `len=`).
+        let completedReason: JPIPEORReason = windowGen.coversFullTarget ? .imageDone : .windowDone
+        if let maxLen = request.len {
+            if maxLen <= 0 {
+                let reason: JPIPEORReason = unsentSegments.isEmpty ? completedReason : .byteLimit
+                let wireData = JPIPWireCodec.encodeStream(bins: [], eorReason: reason)
                 return (wireData, windowGen.streamType.contentTypeHeader)
             }
 
-            // Unbounded response (`len == nil`): emit all unsent segments + completion EOR
+            var emitted: [JPIPDataBin] = []
+            var hitByteLimit = false
+
             for seg in unsentSegments {
-                await session.recordSentDataBin(seg)
+                let fullOrdinaryBytes = JPIPWireCodec.encodeStream(
+                    bins: emitted + [seg],
+                    eorReason: .byteLimit
+                ).count - 3
+                if fullOrdinaryBytes <= maxLen {
+                    emitted.append(seg)
+                    await session.recordSentDataBin(seg)
+                    continue
+                }
+
+                // Binary-search largest non-empty prefix `k` (`1..<seg.data.count`) whose
+                // VBAS header + `k` payload bytes fits within `maxLen` (excluding the 3-byte EOR).
+                if seg.data.count > 1 {
+                    var lo = 1
+                    var hi = seg.data.count - 1
+                    var bestK = 0
+                    while lo <= hi {
+                        let mid = (lo + hi) / 2
+                        let partialTrial = JPIPDataBin(
+                            binClass: seg.binClass,
+                            binID: seg.binID,
+                            codestreamID: seg.codestreamID,
+                            data: Data(seg.data.prefix(mid)),
+                            isComplete: false,
+                            msgOffset: seg.msgOffset,
+                            aux: seg.aux
+                        )
+                        let wireOrdinaryBytes = JPIPWireCodec.encodeStream(
+                            bins: emitted + [partialTrial],
+                            eorReason: .byteLimit
+                        ).count - 3
+                        if wireOrdinaryBytes <= maxLen {
+                            bestK = mid
+                            lo = mid + 1
+                        } else {
+                            hi = mid - 1
+                        }
+                    }
+
+                    if bestK > 0 {
+                        let partial = JPIPDataBin(
+                            binClass: seg.binClass,
+                            binID: seg.binID,
+                            codestreamID: seg.codestreamID,
+                            data: Data(seg.data.prefix(bestK)),
+                            isComplete: false,
+                            msgOffset: seg.msgOffset,
+                            aux: seg.aux
+                        )
+                        emitted.append(partial)
+                        await session.recordSentDataBin(partial)
+                    }
+                }
+
+                hitByteLimit = true
+                break
             }
-            let wireData = JPIPWireCodec.encodeStream(bins: unsentSegments, eorReason: completedReason)
+
+            let finalReason: JPIPEORReason = hitByteLimit ? .byteLimit : completedReason
+            let wireData = JPIPWireCodec.encodeStream(bins: emitted, eorReason: finalReason)
             return (wireData, windowGen.streamType.contentTypeHeader)
         }
 
-        // Legacy fallback only for non-JPEG2000 synthetic unit-test stubs (e.g. `Data("test".utf8)`)
-        var responseData = dataToServe
-        if let maxLen = request.len, responseData.count > maxLen {
-            responseData = Data(responseData.prefix(max(0, maxLen)))
+        // Unbounded response (`len == nil`): emit all unsent segments + completion EOR
+        for seg in unsentSegments {
+            await session.recordSentDataBin(seg)
         }
-        return (responseData, "application/octet-stream")
+        let wireData = JPIPWireCodec.encodeStream(bins: unsentSegments, eorReason: completedReason)
+        return (wireData, windowGen.streamType.contentTypeHeader)
+    }
+
+    /// Detects JPEG 2000 / JP3D raw codestream (`0xFF 0x4F` SOC) or ISO BMFF JP2 / JPH / JPX / MJ2
+    /// container signatures (`jP  ` signature box or `ftyp` box) so malformed/oversized codestreams
+    /// never silently fall through to raw `application/octet-stream`.
+    private static func hasJPEG2000OrContainerMagic(_ data: Data) -> Bool {
+        guard data.count >= 2 else { return false }
+        let b0 = data[data.startIndex]
+        let b1 = data[data.startIndex + 1]
+        if b0 == 0xFF && b1 == 0x4F {
+            return true
+        }
+        if data.count >= 8 {
+            let sigJP2: [UInt8] = [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20]
+            let prefix8 = Array(data.prefix(8))
+            if prefix8 == sigJP2 {
+                return true
+            }
+            if prefix8[4] == 0x66 && prefix8[5] == 0x74 && prefix8[6] == 0x79 && prefix8[7] == 0x70 {
+                return true
+            }
+        }
+        return false
     }
 
     private static func mergeContiguousSegmentsForModel(_ segments: [JPIPDataBin]) -> [JPIPDataBin] {

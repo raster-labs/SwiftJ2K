@@ -75,6 +75,7 @@ public struct JP3DTranscoderResult: Sendable {
     internal let sourceCommentCount: Int
     internal let sourceCommentBytes: Int
     internal let sourceHadVolumeGeometry: Bool
+    package let usedAcceleratedKernel: Bool
 
     public init(
         data: Data,
@@ -95,6 +96,7 @@ public struct JP3DTranscoderResult: Sendable {
         self.sourceCommentCount = 0
         self.sourceCommentBytes = 0
         self.sourceHadVolumeGeometry = false
+        self.usedAcceleratedKernel = false
     }
 
     internal init(
@@ -109,7 +111,8 @@ public struct JP3DTranscoderResult: Sendable {
         roundTripComponentCount: Int = 0,
         sourceCommentCount: Int = 0,
         sourceCommentBytes: Int = 0,
-        sourceHadVolumeGeometry: Bool = false
+        sourceHadVolumeGeometry: Bool = false,
+        usedAcceleratedKernel: Bool = false
     ) {
         self.data = data
         self.tilesTranscoded = tilesTranscoded
@@ -123,6 +126,7 @@ public struct JP3DTranscoderResult: Sendable {
         self.sourceCommentCount = sourceCommentCount
         self.sourceCommentBytes = sourceCommentBytes
         self.sourceHadVolumeGeometry = sourceHadVolumeGeometry
+        self.usedAcceleratedKernel = usedAcceleratedKernel
     }
 }
 
@@ -418,7 +422,7 @@ public actor JP3DTranscoder {
         estimatedWorkspace: Int,
         work: VolumeWorkGuard
     ) async throws -> JP3DTranscoderResult {
-        guard source.cod.isLossless && source.qcd.isReversible else {
+        guard source.isFullyReversible else {
             return try await transcodeViaFullRoundTrip(
                 sourceData: sourceData,
                 source: source,
@@ -432,6 +436,8 @@ public actor JP3DTranscoder {
             )
         }
 
+        let resolvedExec = try AccelerationRuntime.resolve(executionPolicy)
+        let useAccelerated = (resolvedExec.backend == .accelerated)
         let toHTJ2K = configuration.direction == .standardToHTJ2K
         let preservedComments: [JP3DCommentSegment] = (metadataPolicy == .preserve) ? source.comments : []
         let (retainedSourceWorkspace, sourceWorkspaceOverflow) = source.retainedTileBytes.addingReportingOverflow(source.commentPayloadBytes)
@@ -440,54 +446,59 @@ public actor JP3DTranscoder {
         }
 
         let maxBitDepth = max(source.siz.bitDepth, source.siz.componentBitDepths.max() ?? source.siz.bitDepth)
-        let targetCOD: JP3DCODInfo
+        let requiresMixed = toHTJ2K && (configuration.htj2kConfiguration.allowMixedTiles || maxBitDepth > 26)
+        let targetCBStyle: UInt8 = toHTJ2K ? (requiresMixed ? 0xC0 : 0x40) : 0x00
+        let targetXCB = toHTJ2K ? 6 : 5
+        let targetYCB = toHTJ2K ? 6 : 5
+        let targetZCB = toHTJ2K ? 0 : 4
+
+        func makeTargetCOD(from base: JP3DCODInfo) -> JP3DCODInfo {
+            JP3DCODInfo(
+                levelsX: base.levelsX,
+                levelsY: base.levelsY,
+                levelsZ: base.levelsZ,
+                isLossless: true,
+                codeBlockStyle: targetCBStyle,
+                scod: base.scod & ~0x01,
+                progressionOrderByte: base.progressionOrderByte,
+                numLayers: base.numLayers,
+                multipleComponentTransform: base.multipleComponentTransform,
+                codeBlockWidthExponent: targetXCB,
+                codeBlockHeightExponent: targetYCB,
+                codeBlockDepthExponent: targetZCB,
+                dwtX: base.dwtX,
+                dwtY: base.dwtY,
+                dwtZ: base.dwtZ,
+                precinctSizes: []
+            )
+        }
+
+        let targetCOD = makeTargetCOD(from: source.cod)
+        let targetMainCOC = source.mainCOC.mapValues { makeTargetCOD(from: $0) }
+        var targetTileOverrides: [Int: JP3DTileHeaderOverrides] = [:]
+        for (tIdx, ov) in source.tileOverrides {
+            var mapped = ov
+            if let tc = ov.cod { mapped.cod = makeTargetCOD(from: tc) }
+            mapped.coc = ov.coc.mapValues { makeTargetCOD(from: $0) }
+            targetTileOverrides[tIdx] = mapped
+        }
+
         let targetHTConfig: JP3DHTJ2KConfiguration?
         if toHTJ2K {
-            let requiresMixed = configuration.htj2kConfiguration.allowMixedTiles || maxBitDepth > 26
-            let cbStyle: UInt8 = requiresMixed ? 0xC0 : 0x40
-            targetCOD = JP3DCODInfo(
-                levelsX: source.cod.levelsX,
-                levelsY: source.cod.levelsY,
-                levelsZ: source.cod.levelsZ,
-                isLossless: true,
-                codeBlockStyle: cbStyle,
-                scod: source.cod.scod & ~0x01,
-                progressionOrderByte: source.cod.progressionOrderByte,
-                numLayers: source.cod.numLayers,
-                multipleComponentTransform: source.cod.multipleComponentTransform,
-                codeBlockWidthExponent: 6,
-                codeBlockHeightExponent: 6,
-                codeBlockDepthExponent: 0,
-                dwtX: source.cod.dwtX,
-                dwtY: source.cod.dwtY,
-                dwtZ: source.cod.dwtZ,
-                precinctSizes: []
+            let maxTargetLayers = max(
+                targetCOD.numLayers,
+                max(
+                    targetMainCOC.values.map(\.numLayers).max() ?? 1,
+                    targetTileOverrides.values.compactMap { $0.cod?.numLayers }.max() ?? 1
+                )
             )
             targetHTConfig = JP3DHTJ2KConfiguration(
                 blockMode: requiresMixed ? .adaptive : configuration.htj2kConfiguration.blockMode,
-                passCount: configuration.htj2kConfiguration.passCount,
+                passCount: max(configuration.htj2kConfiguration.passCount, maxTargetLayers >= 2 ? 4 : 1),
                 cleanupPassEnabled: configuration.htj2kConfiguration.cleanupPassEnabled,
                 allowMixedTiles: requiresMixed
             )
         } else {
-            targetCOD = JP3DCODInfo(
-                levelsX: source.cod.levelsX,
-                levelsY: source.cod.levelsY,
-                levelsZ: source.cod.levelsZ,
-                isLossless: true,
-                codeBlockStyle: 0x00,
-                scod: source.cod.scod & ~0x01,
-                progressionOrderByte: source.cod.progressionOrderByte,
-                numLayers: source.cod.numLayers,
-                multipleComponentTransform: source.cod.multipleComponentTransform,
-                codeBlockWidthExponent: 5,
-                codeBlockHeightExponent: 5,
-                codeBlockDepthExponent: 4,
-                dwtX: source.cod.dwtX,
-                dwtY: source.cod.dwtY,
-                dwtZ: source.cod.dwtZ,
-                precinctSizes: []
-            )
             targetHTConfig = nil
         }
 
@@ -506,13 +517,16 @@ public actor JP3DTranscoder {
         transcodedTiles.reserveCapacity(source.tiles.count)
         var retainedOutputBytes = 0
         var peakWaveletWorkspace = estimatedWorkspace
+        var anyAccelerated = false
+        let compCount = source.siz.componentCount
 
         for parsedTile in source.tiles {
             try work.check()
             guard parsedTile.tileIndex >= 0, parsedTile.tileIndex < allTiles.count else {
                 throw CodecError(.malformedInput, "Tile index \(parsedTile.tileIndex) out of bounds in JP3D codestream.")
             }
-            let tile = allTiles[parsedTile.tileIndex]
+            let tIdx = parsedTile.tileIndex
+            let tile = allTiles[tIdx]
             let (outerWorkspace, wsOverflow) = retainedSourceWorkspace.addingReportingOverflow(retainedOutputBytes)
             let (outerMemory, memOverflow) = sourceData.count.addingReportingOverflow(outerWorkspace)
             guard !wsOverflow, !memOverflow else {
@@ -531,13 +545,62 @@ public actor JP3DTranscoder {
                 throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D tile transcoding workspace exceeds resource limits")
             }
 
+            let srcTileCOD = source.effectiveTileCOD(tileIndex: tIdx)
+            let dstTileCOD = makeTargetCOD(from: srcTileCOD)
+            let srcCompCODs = (0..<compCount).map { source.effectiveCOD(tileIndex: tIdx, component: $0) }
+            let dstCompCODs = srcCompCODs.map { makeTargetCOD(from: $0) }
+            let srcCompQCDs = (0..<compCount).map { source.effectiveQCD(tileIndex: tIdx, component: $0) }
+            let srcCompROIs = (0..<compCount).map { source.effectiveROIShift(tileIndex: tIdx, component: $0) }
+
+            let baseWsCap = min(tileLimits.maximumWorkspaceBytes, tileLimits.maximumMemoryBytes)
+            var geomBytes = 0
+            for c in 0..<compCount {
+                let remSrc = max(0, baseWsCap - planeBytes - geomBytes)
+                let fpSrc = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                    x0: tile.region.x.lowerBound, x1: tile.region.x.upperBound,
+                    y0: tile.region.y.lowerBound, y1: tile.region.y.upperBound,
+                    z0: tile.region.z.lowerBound, z1: tile.region.z.upperBound,
+                    cod: srcCompCODs[c],
+                    maximumWorkspaceBytes: remSrc,
+                    includeDecodeState: true
+                )
+                let (g1, o1) = geomBytes.addingReportingOverflow(fpSrc.totalBytes)
+                guard !o1, planeBytes + g1 <= baseWsCap else {
+                    throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D source geometry workspace exceeds resource limits")
+                }
+                let remDst = max(0, baseWsCap - planeBytes - g1)
+                let fpDst = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                    x0: tile.region.x.lowerBound, x1: tile.region.x.upperBound,
+                    y0: tile.region.y.lowerBound, y1: tile.region.y.upperBound,
+                    z0: tile.region.z.lowerBound, z1: tile.region.z.upperBound,
+                    cod: dstCompCODs[c],
+                    maximumWorkspaceBytes: remDst,
+                    includeEncodeState: true
+                )
+                let (g2, o2) = g1.addingReportingOverflow(fpDst.totalBytes)
+                guard !o2, planeBytes + g2 <= baseWsCap else {
+                    throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D target geometry workspace exceeds resource limits")
+                }
+                geomBytes = g2
+            }
+
+            let tileOutCap = min(
+                max(0, (limits ?? .default).maximumCompressedBytes - retainedOutputBytes),
+                max(0, baseWsCap - planeBytes - geomBytes)
+            )
+            var admittedTileOutBytes = 0
+
             let tileResult = try JP3DNormativeTileCodec.transcodeTileWaveletDomain(
                 tileData: parsedTile.data,
                 siz: source.siz,
-                sourceCOD: source.cod,
-                targetCOD: targetCOD,
+                sourceCOD: srcTileCOD,
+                targetCOD: dstTileCOD,
                 qcd: source.qcd,
-                roiShifts: source.roiShifts,
+                sourceComponentCODs: srcCompCODs,
+                targetComponentCODs: dstCompCODs,
+                componentQCDs: srcCompQCDs,
+                roiShifts: srcCompROIs,
+                allowSourceMultiHT: source.allowsMultiHTSets,
                 htConfiguration: targetHTConfig,
                 x0: tile.region.x.lowerBound,
                 x1: tile.region.x.upperBound,
@@ -545,12 +608,26 @@ public actor JP3DTranscoder {
                 y1: tile.region.y.upperBound,
                 z0: tile.region.z.lowerBound,
                 z1: tile.region.z.upperBound,
+                useAccelerated: useAccelerated,
+                remainingOutputLimit: {
+                    max(0, tileOutCap - admittedTileOutBytes)
+                },
+                admitEncodedBytes: { delta in
+                    guard delta > 0 else { return }
+                    let (nextOut, ov) = admittedTileOutBytes.addingReportingOverflow(delta)
+                    guard !ov, nextOut <= tileOutCap else {
+                        throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D transcode output exceeds resource limits")
+                    }
+                    admittedTileOutBytes = nextOut
+                },
                 cancellation: { try work.check() }
             )
-            let (tilePeak, peakOverflow) = outerWorkspace.addingReportingOverflow(tileResult.peakWorkspaceBytes)
+            if tileResult.usedAccelerated { anyAccelerated = true }
+            let (tileInnerPeak, innerOv) = tileResult.peakWorkspaceBytes.addingReportingOverflow(geomBytes)
+            let (tilePeak, peakOverflow) = outerWorkspace.addingReportingOverflow(tileInnerPeak)
             let (nextOutputBytes, outputOverflow) = retainedOutputBytes.addingReportingOverflow(tileResult.data.count)
-            guard !peakOverflow, !outputOverflow,
-                  tileResult.peakWorkspaceBytes <= tileLimits.maximumWorkspaceBytes,
+            guard !innerOv, !peakOverflow, !outputOverflow,
+                  tileInnerPeak <= tileLimits.maximumWorkspaceBytes,
                   tileResult.data.count <= tileLimits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D transcode output exceeds resource limits")
             }
@@ -568,7 +645,13 @@ public actor JP3DTranscoder {
             limits: limits ?? .default,
             codOverride: targetCOD,
             qcdOverride: source.qcd,
-            roiShifts: source.roiShifts
+            roiShifts: source.roiShifts,
+            mainCOC: targetMainCOC,
+            mainQCC: source.mainQCC,
+            mainRGNAllComponents: source.mainRGNAllComponents,
+            mainRGNByComponent: source.mainRGNByComponent,
+            tileOverrides: targetTileOverrides,
+            part2BitSplit: source.part2BitSplit
         )
         let codestream = publication.data
         let measuredPeak = max(peakWaveletWorkspace, publication.peakWorkspaceBytes)
@@ -606,7 +689,8 @@ public actor JP3DTranscoder {
             peakWorkspaceBytes: measuredPeak,
             sourceCommentCount: source.comments.count,
             sourceCommentBytes: source.commentPayloadBytes,
-            sourceHadVolumeGeometry: source.geometry != nil
+            sourceHadVolumeGeometry: source.geometry != nil,
+            usedAcceleratedKernel: anyAccelerated
         )
     }
 
@@ -810,7 +894,8 @@ public actor JP3DTranscoder {
             roundTripComponentCount: decoded.volume.componentCount,
             sourceCommentCount: source.comments.count,
             sourceCommentBytes: source.commentPayloadBytes,
-            sourceHadVolumeGeometry: source.geometry != nil
+            sourceHadVolumeGeometry: source.geometry != nil,
+            usedAcceleratedKernel: decoded.usedAcceleratedKernel || result.usedAcceleratedKernel
         )
     }
 
@@ -1012,7 +1097,13 @@ extension JP3DCodestreamBuilder {
         limits: ResourceLimits,
         codOverride: JP3DCODInfo? = nil,
         qcdOverride: JP3DQuantizationParameters? = nil,
-        roiShifts: [Int] = []
+        roiShifts: [Int] = [],
+        mainCOC: [Int: JP3DCODInfo] = [:],
+        mainQCC: [Int: JP3DQuantizationParameters] = [:],
+        mainRGNAllComponents: Int? = nil,
+        mainRGNByComponent: [Int: Int] = [:],
+        tileOverrides: [Int: JP3DTileHeaderOverrides] = [:],
+        part2BitSplit: JP3DPart2BitSplitDescriptor? = nil
     ) throws -> (data: Data, peakWorkspaceBytes: Int) {
         let outputBytes = try projectedByteCount(
             tileData: tileData, components: source.siz.componentCount,
@@ -1021,7 +1112,13 @@ extension JP3DCodestreamBuilder {
             comments: comments,
             codOverride: codOverride,
             qcdOverride: qcdOverride,
-            roiShifts: roiShifts
+            roiShifts: roiShifts,
+            mainCOC: mainCOC,
+            mainQCC: mainQCC,
+            mainRGNAllComponents: mainRGNAllComponents,
+            mainRGNByComponent: mainRGNByComponent,
+            tileOverrides: tileOverrides,
+            part2BitSplit: part2BitSplit
         )
         func add(_ a: Int, _ b: Int) throws -> Int {
             let (sum, overflow) = a.addingReportingOverflow(b)
@@ -1054,7 +1151,13 @@ extension JP3DCodestreamBuilder {
             componentSigned: source.siz.componentSigned,
             codOverride: codOverride,
             qcdOverride: qcdOverride,
-            roiShifts: roiShifts
+            roiShifts: roiShifts,
+            mainCOC: mainCOC,
+            mainQCC: mainQCC,
+            mainRGNAllComponents: mainRGNAllComponents,
+            mainRGNByComponent: mainRGNByComponent,
+            tileOverrides: tileOverrides,
+            part2BitSplit: part2BitSplit
         )
         return (data, peakWorkspaceBytes)
     }

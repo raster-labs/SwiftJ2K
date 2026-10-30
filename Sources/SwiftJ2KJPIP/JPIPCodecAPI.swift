@@ -476,8 +476,12 @@ public actor JPIPStreamingSession {
         let bins: [JP3DDataBin]
         do {
             try await jp3dClient.connect()
-            try await jp3dClient.createSession(volumeID: volumeID)
-            bins = try await jp3dClient.requestRegion(region)
+            try await jp3dClient.createSession(volumeID: volumeID, limits: limits)
+            bins = try await jp3dClient.requestRegion(region, limits: limits)
+        } catch let codecError as CodecError {
+            throw codecError
+        } catch let cancelError as CancellationError {
+            throw cancelError
         } catch let error as J2KError {
             throw error.asCodecError
         } catch let error as JP3DClientError {
@@ -489,7 +493,9 @@ public actor JPIPStreamingSession {
             }
         }
 
-        let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
+        try checkWork()
+
+        let totalBinBytes = try bins.reduce(0) { try jpipCheckedSum($0, $1.data.count) }
         guard totalBinBytes <= limits.maximumCompressedBytes,
               totalBinBytes <= limits.maximumWorkspaceBytes,
               totalBinBytes <= limits.maximumMemoryBytes else {
@@ -499,33 +505,93 @@ public actor JPIPStreamingSession {
             )
         }
 
+        // Substantiate 3D stream integrity, completeness, workspace footprint, and sample fidelity
+        let wireBins = await jp3dClient.cachedWireDataBins()
+        guard let mhBin = wireBins.first(where: { $0.binClass == .mainHeader }),
+              mhBin.isComplete,
+              JP3DJPIPIndexer.isJP3DCodestream(mhBin.data) else {
+            throw CodecError(
+                .malformedInput,
+                "Delivered 3D JPIP stream is missing a complete Part 10 JP3D main header."
+            )
+        }
+
+        let reconstructed: Data
+        do {
+            reconstructed = try await jp3dClient.reconstructCodestream(limits: limits)
+        } catch let codecError as CodecError {
+            throw codecError
+        } catch let j2kError as J2KError {
+            throw j2kError.asCodecError
+        } catch {
+            throw CodecError(.malformedInput, "Failed to reconstruct 3D JPIP codestream: \(error)")
+        }
+
+        let decodeOptions = VolumeDecodeOptions(
+            resourceLimits: limits,
+            executionPolicy: options.executionPolicy,
+            regionOfInterest: JP3DRegion(
+                x: region.xRange,
+                y: region.yRange,
+                z: region.zRange
+            )
+        )
+        let volInfo = try VolumeDecoder().inspect(reconstructed, options: decodeOptions)
+
+        let lastEOR = await jp3dClient.lastEORReason
+        let eorCompleted = (lastEOR == .imageDone || lastEOR == .windowDone)
+        let payloadBins = wireBins.filter {
+            $0.binClass == .precinct
+                || $0.binClass == .extendedPrecinct
+                || $0.binClass == .tile
+                || $0.binClass == .extendedTile
+        }
+        let allWireBinsComplete = !payloadBins.isEmpty && wireBins.allSatisfy(\.isComplete)
+        let reducedResolution = region.resolutionLevel > 0
+        let reducedQualityLayers = region.qualityLayer > 0 && region.qualityLayer < volInfo.qualityLayers
+        let candidateExact = volInfo.isLossless
+            && eorCompleted
+            && allWireBinsComplete
+            && !reducedResolution
+            && !reducedQualityLayers
+
+        let verifyDecoder = try VolumeDecoder(
+            configuration: VolumeDecoderConfiguration(
+                maxQualityLayers: region.qualityLayer,
+                resolutionLevel: region.resolutionLevel,
+                tolerateTruncation: !candidateExact
+            )
+        )
+        let verifyDecoded = try await verifyDecoder.decode(reconstructed, options: decodeOptions)
+        let isExact3D = candidateExact && (verifyDecoded.report.fidelity == Fidelity.exactSamples)
+
+        let clientCacheWorkspace = await jp3dClient.lastPeakWorkspaceBytes
+        let retainedStreamWorkspace = try jpipCheckedSum(max(clientCacheWorkspace, totalBinBytes), reconstructed.count)
+        let measuredPeakWorkspace = try jpipCheckedSum(retainedStreamWorkspace, verifyDecoded.report.peakWorkspaceBytes ?? 0)
+        guard measuredPeakWorkspace <= limits.maximumWorkspaceBytes,
+              measuredPeakWorkspace <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "3D JPIP streaming + verification workspace (\(measuredPeakWorkspace) bytes) exceeds resource limits."
+            )
+        }
+
         try checkWork()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 2, totalUnits: 2) {
             options.progress?(p)
         }
         try checkWork()
 
-        let isLossless3D: Bool = await {
-            let wireBins = await jp3dClient.cachedWireDataBins()
-            if let mh = wireBins.first(where: { $0.binClass == .mainHeader })?.data,
-               JP3DJPIPIndexer.isJP3DCodestream(mh),
-               let reconstructed = try? await jp3dClient.reconstructCodestream(),
-               let indexed = try? JP3DJPIPIndexer.index(reconstructed, limits: limits) {
-                return indexed.isReversibleLossless && region.resolutionLevel == 0
-            }
-            return region.resolutionLevel == 0
-        }()
-
         let elapsed = clock.now - started
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
-            backend: resolvedBackend.backend,
-            fallbackReason: resolvedBackend.fallbackReason,
-            fidelity: isLossless3D ? .exactSamples : .lossy,
+            backend: verifyDecoded.report.backend,
+            fallbackReason: verifyDecoded.report.fallbackReason ?? resolvedBackend.fallbackReason,
+            fidelity: isExact3D ? .exactSamples : .lossy,
             copyEvents: [],
             pixelAllocationCount: 0,
             peakPixelBytes: 0,
-            peakWorkspaceBytes: totalBinBytes,
+            peakWorkspaceBytes: measuredPeakWorkspace,
             elapsedSeconds: elapsedSeconds
         )
 

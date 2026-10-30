@@ -11,6 +11,7 @@
 // in-process loopback registry shortcuts.
 
 import Foundation
+import Dispatch
 @_exported import SwiftJ2K
 @_exported import SwiftJ2K3D
 
@@ -32,8 +33,8 @@ public actor JPIPTransport {
     /// Persistent HTTP/1.1 TCP socket connection for `http://` targets.
     private var tcpConnection: JPIPTCPConnection?
 
-    /// Request timeout in seconds.
-    private let timeoutSeconds: Int
+    /// Request timeout interval in seconds (supports sub-second deadlines).
+    private let timeoutInterval: TimeInterval
 
     /// Optional channel path negotiated via `JPIP-cnew` (`path=...`).
     private var channelPathOverride: String?
@@ -42,14 +43,14 @@ public actor JPIPTransport {
     ///
     /// - Parameters:
     ///   - baseURL: The base URL of the JPIP server.
-    ///   - configuration: Optional URL session configuration (used for `https://`).
+    ///   - configuration: Optional URL session configuration (used for `https://` and socket timeout).
     public init(baseURL: URL, configuration: URLSessionConfiguration? = nil) {
         self.baseURL = baseURL
         let config = configuration ?? URLSessionConfiguration.ephemeral
-        let reqTimeout = config.timeoutIntervalForRequest > 0 ? config.timeoutIntervalForRequest : 30
+        let reqTimeout = config.timeoutIntervalForRequest > 0 ? config.timeoutIntervalForRequest : 30.0
         config.timeoutIntervalForRequest = reqTimeout
-        config.timeoutIntervalForResource = max(reqTimeout, 300)
-        self.timeoutSeconds = max(1, Int(reqTimeout.rounded(.up)))
+        config.timeoutIntervalForResource = max(reqTimeout, 300.0)
+        self.timeoutInterval = max(0.001, reqTimeout)
         self.session = URLSession(configuration: config)
         self.boundServer = nil
         self.tcpConnection = nil
@@ -61,7 +62,7 @@ public actor JPIPTransport {
     /// - Parameter server: The injected JPIP server actor.
     public init(server: JPIPServer) {
         self.baseURL = URL(string: "http://127.0.0.1:\(max(1, server.port))")!
-        self.timeoutSeconds = 30
+        self.timeoutInterval = 30.0
         self.session = URLSession(configuration: .ephemeral)
         self.boundServer = server
         self.tcpConnection = nil
@@ -93,6 +94,8 @@ public actor JPIPTransport {
         _ request: JPIPRequest,
         maxBodyBytes: Int = 128 * 1024 * 1024
     ) async throws -> JPIPResponse {
+        try Task.checkCancellation()
+
         // 1. Explicit actor injection (only when constructed via `init(server:)`)
         if let server = boundServer {
             let response = try await server.handleRequest(request)
@@ -122,7 +125,7 @@ public actor JPIPTransport {
         return try await sendViaHTTP11TCP(request, maxBodyBytes: maxBodyBytes)
     }
 
-    // MARK: - Real POSIX TCP HTTP/1.1 Transport
+    // MARK: - Real POSIX TCP HTTP/1.1 Transport (Off Cooperative Pool + Cancellation Safe)
 
     private func sendViaHTTP11TCP(
         _ request: JPIPRequest,
@@ -141,60 +144,55 @@ public actor JPIPTransport {
             "Connection": "keep-alive"
         ]
 
-        // Attempt on existing persistent keep-alive socket first; if a stale socket
-        // broke after server-side idle close, reconnect once cleanly.
-        var hadExistingConnection = false
-        let conn: JPIPTCPConnection
+        let existingConn: JPIPTCPConnection?
         if let existing = tcpConnection, existing.isOpen {
-            conn = existing
-            hadExistingConnection = true
+            existingConn = existing
+            // Detach while off-pool I/O executes so concurrent actor messages or cancellation never double-use it
+            self.tcpConnection = nil
         } else {
-            let fresh = try JPIPTCPConnection.connect(host: host, port: port, timeoutSeconds: timeoutSeconds)
-            self.tcpConnection = fresh
-            conn = fresh
+            existingConn = nil
         }
 
-        let wireResponse: JPIPHTTPWireResponse
+        let timeout = self.timeoutInterval
+        let cancelToken = JPIPSocketCancellationToken()
+        if let existingConn, !cancelToken.bind(connection: existingConn) {
+            existingConn.close()
+            throw CancellationError()
+        }
+
+        let (wireResponse, survivingConnection): (JPIPHTTPWireResponse, JPIPTCPConnection)
         do {
-            try conn.writeHTTPRequest(
-                method: "GET",
-                pathAndQuery: pathAndQuery,
-                hostHeader: hostHeader,
-                headers: reqHeaders
-            )
-            wireResponse = try conn.readHTTPResponse(maxBodyBytes: maxBodyBytes)
-        } catch let limitErr as CodecError {
-            conn.close()
-            self.tcpConnection = nil
-            throw limitErr
-        } catch {
-            conn.close()
-            self.tcpConnection = nil
-            guard hadExistingConnection else {
-                throw error
-            }
-            let retryConn = try JPIPTCPConnection.connect(host: host, port: port, timeoutSeconds: timeoutSeconds)
-            self.tcpConnection = retryConn
-            do {
-                try retryConn.writeHTTPRequest(
-                    method: "GET",
+            (wireResponse, survivingConnection) = try await withTaskCancellationHandler {
+                try await Self.executeHTTP11OffPool(
+                    host: host,
+                    port: port,
+                    timeoutInterval: timeout,
+                    existingConnection: existingConn,
                     pathAndQuery: pathAndQuery,
                     hostHeader: hostHeader,
-                    headers: reqHeaders
+                    headers: reqHeaders,
+                    maxBodyBytes: maxBodyBytes,
+                    cancelToken: cancelToken
                 )
-                wireResponse = try retryConn.readHTTPResponse(maxBodyBytes: maxBodyBytes)
-            } catch {
-                retryConn.close()
-                self.tcpConnection = nil
-                throw error
+            } onCancel: {
+                cancelToken.cancel()
             }
+        } catch {
+            if Task.isCancelled || cancelToken.cancelled {
+                throw CancellationError()
+            }
+            throw error
         }
+
+        try Task.checkCancellation()
 
         // Respect `Connection: close` or HTTP/1.0 non-keep-alive peers (e.g., single-shot daemons)
         let connHdr = wireResponse.header("Connection")?.lowercased() ?? ""
         if connHdr.contains("close") || (wireResponse.version == "HTTP/1.0" && !connHdr.contains("keep-alive")) {
-            tcpConnection?.close()
-            tcpConnection = nil
+            survivingConnection.close()
+            self.tcpConnection = nil
+        } else {
+            self.tcpConnection = survivingConnection
         }
 
         guard (200..<300).contains(wireResponse.statusCode) else {
@@ -219,7 +217,103 @@ public actor JPIPTransport {
         )
     }
 
-    // MARK: - HTTPS Fallback via URLSession
+    nonisolated private static func executeHTTP11OffPool(
+        host: String,
+        port: Int,
+        timeoutInterval: TimeInterval,
+        existingConnection: JPIPTCPConnection?,
+        pathAndQuery: String,
+        hostHeader: String,
+        headers: [String: String],
+        maxBodyBytes: Int,
+        cancelToken: JPIPSocketCancellationToken
+    ) async throws -> (JPIPHTTPWireResponse, JPIPTCPConnection) {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                if cancelToken.cancelled {
+                    existingConnection?.close()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+
+                let hadExisting = (existingConnection != nil)
+                let conn: JPIPTCPConnection
+                do {
+                    if let existingConnection {
+                        existingConnection.setReceiveTimeout(interval: timeoutInterval)
+                        existingConnection.setSendTimeout(interval: timeoutInterval)
+                        conn = existingConnection
+                    } else {
+                        conn = try JPIPTCPConnection.connect(
+                            host: host,
+                            port: port,
+                            timeoutInterval: timeoutInterval,
+                            cancellationToken: cancelToken
+                        )
+                    }
+                } catch {
+                    continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+                    return
+                }
+
+                do {
+                    try conn.writeHTTPRequest(
+                        method: "GET",
+                        pathAndQuery: pathAndQuery,
+                        hostHeader: hostHeader,
+                        headers: headers
+                    )
+                    let resp = try conn.readHTTPResponse(maxBodyBytes: maxBodyBytes)
+                    if cancelToken.cancelled {
+                        conn.close()
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    continuation.resume(returning: (resp, conn))
+                } catch let limitErr as CodecError {
+                    conn.close()
+                    continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : limitErr)
+                } catch {
+                    conn.close()
+                    if cancelToken.cancelled || !hadExisting {
+                        continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+                        return
+                    }
+                    // Stale idle keep-alive socket broke on server side: reconnect once cleanly
+                    do {
+                        let retryConn = try JPIPTCPConnection.connect(
+                            host: host,
+                            port: port,
+                            timeoutInterval: timeoutInterval,
+                            cancellationToken: cancelToken
+                        )
+                        do {
+                            try retryConn.writeHTTPRequest(
+                                method: "GET",
+                                pathAndQuery: pathAndQuery,
+                                hostHeader: hostHeader,
+                                headers: headers
+                            )
+                            let resp = try retryConn.readHTTPResponse(maxBodyBytes: maxBodyBytes)
+                            if cancelToken.cancelled {
+                                retryConn.close()
+                                continuation.resume(throwing: CancellationError())
+                                return
+                            }
+                            continuation.resume(returning: (resp, retryConn))
+                        } catch {
+                            retryConn.close()
+                            continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+                        }
+                    } catch {
+                        continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - HTTPS Fallback via URLSession (Streaming Pre-Buffer Limit Enforcement)
 
     private func sendViaHTTPS(
         _ request: JPIPRequest,
@@ -243,21 +337,54 @@ public actor JPIPTransport {
             forHTTPHeaderField: "Accept"
         )
 
-        let (data, response) = try await session.data(for: urlRequest)
+        let (asyncBytes, response) = try await session.bytes(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw J2KError.networkError("Invalid response type")
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw J2KError.networkError("HTTP error: \(httpResponse.statusCode)")
         }
-        guard data.count <= maxBodyBytes else {
+
+        let headers = JPIPResponseParser.parseHeaders(from: httpResponse)
+        if httpResponse.expectedContentLength > 0,
+           httpResponse.expectedContentLength > Int64(maxBodyBytes) {
             throw CodecError(
                 .resourceLimitExceeded,
-                "JPIP HTTPS response payload (\(data.count) bytes) exceeds limit (\(maxBodyBytes) bytes)."
+                "JPIP HTTPS Content-Length (\(httpResponse.expectedContentLength) bytes) exceeds limit (\(maxBodyBytes) bytes)."
+            )
+        }
+        if let clRaw = headers.first(where: { $0.key.lowercased() == "content-length" })?.value
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           let declaredLen = Int(clRaw),
+           declaredLen > maxBodyBytes {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "JPIP HTTPS Content-Length (\(declaredLen) bytes) exceeds limit (\(maxBodyBytes) bytes)."
             )
         }
 
-        let headers = JPIPResponseParser.parseHeaders(from: httpResponse)
+        let initialCap: Int
+        if httpResponse.expectedContentLength > 0 {
+            initialCap = min(maxBodyBytes, Int(clamping: httpResponse.expectedContentLength))
+        } else {
+            initialCap = min(maxBodyBytes, 64 * 1024)
+        }
+        var data = Data()
+        data.reserveCapacity(max(0, initialCap))
+
+        for try await byte in asyncBytes {
+            if (data.count & 0x3FFF) == 0 {
+                try Task.checkCancellation()
+            }
+            if data.count >= maxBodyBytes {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "JPIP HTTPS response payload exceeds limit (\(maxBodyBytes) bytes)."
+                )
+            }
+            data.append(byte)
+        }
+
         let channelID = JPIPResponseParser.extractChannelID(from: headers)
         if let negotiatedPath = JPIPResponseParser.extractChannelPath(from: headers) {
             setChannelPath(negotiatedPath)
@@ -295,10 +422,10 @@ public actor JPIPTransport {
             return effectivePath
         }
 
-        // Deterministic ordering (`target`, `tid`, `cid`, `cnew`, `cclose`, view-window, `type`, `len`, `model`)
+        // Deterministic ordering (`target`, `tid`, `cid`, `cnew`, `cclose`, 2D/3D view-window, `type`, `len`, `model`)
         let preferredOrder = [
             "target", "tid", "cid", "cnew", "cclose",
-            "fsiz", "roff", "rsiz", "zoff", "zsiz",
+            "fsiz", "roff", "rsiz", "fvsiz", "rvoff", "rvsiz", "zoff", "zsiz",
             "comps", "layers", "reslevels",
             "type", "len", "model", "meta", "pref"
         ]
