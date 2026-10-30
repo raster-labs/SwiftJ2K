@@ -1,8 +1,12 @@
 === SwiftJ2K Phase R2 Verification & Gate Summary ===
 branch: antigravity/r2-semantics-remediation
-accepted_r1_base_commit: c4706d58cc5dde4828ea71f324817590f0671e78
+accepted_r1_base_commit: c4706d58cc5dde4828ea71f324817590f0671e78 (source_tree 8684e709a632f868f2b320911e797ad2fb5201ee)
+verified_upstream_integration:
+  - PR #28 merged into antigravity/milestone12-cli-consumer-breadth at af21c5c7d6ac13fd1934cb5bbd3705d0d2ccf1b6
+  - PR #27 merged into main at 7ffdc6e2245c3af5c07ea99d008e3effa687241c (GitHub Actions run 40869282446 passed 7/7 jobs; main tree 8684e709a632f868f2b320911e797ad2fb5201ee == accepted R1)
 r1_doc_reconciliation_commit: 57d7398938f36f0324a3689badacd794d5f9f462
-developer_phase_state: submitted (Codex acceptance: pending independent audit)
+initial_r2_submitted_commit: ffa9dc0bdb76ebff0e273671b5a10ee8e967d3ac (historical baseline: 13/13 focused R2 tests & 1,192 total tests passed; Codex independent audit verdict R2_REWORK on F07/F08)
+developer_phase_state: submitted (Codex acceptance: pending independent audit; F07–F12 and M12-CX-03/04 remain submitted, not independently accepted)
 
 1. Primary Toolchain
 command: swift --version
@@ -13,19 +17,19 @@ target: arm64-apple-macosx27.0.0 (package deployment floor preserved at macOS 26
 command: swift test --filter R2
 exit_code: 0
 targets:
-  - SwiftJ2KTests / R2RemediationTests: 6/6 @Test passed (F07, F08, F12, M12-CX-03, M12-CX-04, CLI F09/F10/F11)
-  - SwiftJ2KJPIPTests / R2JPIPRemediationTests: 4/4 @Test passed (F07, F09, F10 view window, F10 session cache/deliveryMode)
+  - SwiftJ2KTests / R2RemediationTests: 8/8 @Test passed (F07 container/legacy/transcoder semantics, F07 public premultiplied/straight/absent alpha preservation, F08 Table M.14 codes/masks/evaluation, F08 normative T.801 M.6.2 undefined-DCM rejection & verified Kakadu v8.x JPX fixtures, F12 duplicate jp2c rejection, M12-CX-03 PNG sBIT, M12-CX-04 TIFF PhotometricInterpretation, CLI F09/F10/F11)
+  - SwiftJ2KJPIPTests / R2JPIPRemediationTests: 5/5 @Test passed (F07 pclr/cmap/cdef/ICC preservation, F07 premultiplied & absent alpha preservation across delivered.image and delivered.legacyImage.toContractImage, F09 CopyPolicy/ExecutionPolicy/telemetry, F10 combined view window, F10 session cache/deliveryMode)
   - SwiftJ2K3DTests / R2VolumeRemediationTests: 3/3 @Test passed (F09 CopyPolicy/OperationReport, F09 ExecutionPolicy/unavailability, F11 volume geometry)
-total_focused_r2_tests: 13/13 passed, 0 failures
+total_focused_r2_tests: 16/16 passed, 0 failures
 
 3. Full Package Test Suite
 command: swift test
 exit_code: 0
 results_by_target:
-  - SwiftJ2KTests: 138 Swift Testing @Test declarations in 5 suites passed (0 XCTest, 0 failures)
-  - SwiftJ2KJPIPTests: 544 XCTest + 8 Swift Testing @Test declarations in 2 suites = 552 tests passed (0 failures)
+  - SwiftJ2KTests: 140 Swift Testing @Test declarations in 5 suites passed (0 XCTest, 0 failures)
+  - SwiftJ2KJPIPTests: 544 XCTest + 9 Swift Testing @Test declarations in 2 suites = 553 tests passed (0 failures)
   - SwiftJ2K3DTests: 490 XCTest + 12 Swift Testing @Test declarations in 2 suites = 502 tests passed (0 failures)
-combined_executed_tests: 1,034 XCTest + 158 Swift Testing = 1,192 tests passed, 0 failures
+combined_executed_tests: 1,034 XCTest + 161 Swift Testing = 1,195 tests passed, 0 failures
 
 4. Black-Box CLI & Staged Installation Regression Suite
 command: python3 Scripts/test-cli.py --binary <bin_path>/swiftj2k-cli --output <temp_dir>/evidence
@@ -41,9 +45,10 @@ output: Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; 106-byte P
 - Common contract SHA-256 check (`cd Documentation && shasum -a 256 -c COMMON_CONTRACT_SHA256.txt`): 7/7 OK
   (CLI_CONTRACT.md, COMMON_API.md, MEMORY_CONTRACT.md, PERFORMANCE.md, PLATFORMS.md, SUITE_POLICY.md, TESTING.md)
 - Swift 6.4 historical pack (`git status --short Documentation/Engineering/Swift64/`): clean (0 modifications)
+- Independent container fixtures (`git status --short Tests/SwiftJ2KTests/Fixtures/Containers/`) & original Milestone 6 record (`Documentation/MILESTONE6.md`): clean (0 modifications)
 - Frozen Phase R1 branch (`antigravity/m1-m12-remediation`): preserved untouched at c4706d58cc5dde4828ea71f324817590f0671e78
 
 7. Retained Unexecuted / Deferred Gates
 - Linux build/test (`x86_64` / `aarch64`) and macOS ASan/TSan for Phase R2: not executed locally; deferred to GitHub Actions CI and independent Codex audit.
-- Hosted GitHub Actions external-oracle installation (`openjpeg`, `openjph`, `kakadu`): remains unprovisioned in hosted CI (external-oracle tests self-skip when binaries are absent on hosted runners).
-- Phase R3 (`F01` JPIP real networking/framing, `F04` JP3D standards-interoperable 3D vs private `J3DS`/`J3DI` labelling) and Phase R4 (`M6-AUD-007` multi-tile mixed-COD transcoding + broad qualification): out of Phase R2 scope and retained `open`.
+- Hosted GitHub Actions external-oracle installation (`openjpeg`, `openjph`, `kakadu`): remains unprovisioned in hosted CI (five external-oracle test declarations self-skip as `SKIPPED / UNEXECUTED` when binaries are absent on hosted runners).
+- Phase R3 (`F01`: emitted JP3D format lacks normative ISO/IEC 15444-10 signalling and uses private `J3DS`/raw-coefficient payloads, including false HT-in-JP3D claims; `F04`: simulated 3D/WebSocket responses and incomplete real ISO/IEC 15444-9 JPIP network/data-bin exchange) and Phase R4 (`M6-AUD-007`: coefficient transcoding `HTJ2K -> J2K` small `64x64` case median latency `+5.619%` / repeated `+6.649%` (~`0.14 ms`) at `5941aa8` and candidate source/binary provenance linkage at `1ef8a25` (`PERF-03`), plus broad end-to-end qualification): out of Phase R2 scope and retained `open`.

@@ -565,6 +565,195 @@ struct R2RemediationTests {
         let rgbaData = try Data(contentsOf: containerFixtureURL("jp2_rgba8_cdef.kdu.jp2"))
         let legacyRGBA = try await J2KDecoder().decode(rgbaData)
         #expect(legacyRGBA.componentCount == 4)
+        #expect(legacyRGBA.alpha == .straight)
+        #expect(try legacyRGBA.toContractImage().descriptor.alpha == .straight)
+    }
+
+    @Test("F07: Public J2KImage, J2KDecoder, and toContractImage preserve straight, premultiplied, and absent alpha without altering samples")
+    func publicLegacyAdaptersPreserveAlphaInterpretationAndSamples() async throws {
+        // 1. Premultiplied and straight RGBA (8-bit and 16-bit), including exact [64, 64, 64, 128] probe vector
+        for (alphaMode, storageBits) in [
+            (AlphaInterpretation.premultiplied, 8),
+            (AlphaInterpretation.premultiplied, 16),
+            (AlphaInterpretation.straight, 8)
+        ] {
+            let desc = try ImageDescriptor.rgbPlanar(
+                width: 4,
+                height: 4,
+                storageBits: storageBits,
+                meaningfulBits: storageBits,
+                alpha: alphaMode
+            )
+            let dest = try ImageDestination.allocate(descriptor: desc)
+            let scale = (storageBits == 16) ? 257 : 1
+            let source = try dest.writeSamples { c, x, y in
+                if x == 0 && y == 0 {
+                    return (c == 3 ? 128 : 64) * scale
+                }
+                switch c {
+                case 0: return (32 + x * 11 + y * 5) * scale
+                case 1: return (48 + x * 7 + y * 9) * scale
+                case 2: return (20 + x * 13 + y * 3) * scale
+                default: return (140 + x * 15 + y * 6) * scale
+                }
+            }
+
+            // Direct public adapter round-trip: Image -> J2KImage -> Image
+            let legacy = try J2KImage(contractImage: source)
+            #expect(legacy.alpha == alphaMode)
+            let roundTripped = try legacy.toContractImage()
+            #expect(roundTripped.descriptor.alpha == alphaMode)
+            #expect(roundTripped.descriptor.colour == .rgb)
+            #expect(roundTripped.descriptor.components == [.red, .green, .blue, .alpha])
+            for y in 0..<4 {
+                for x in 0..<4 {
+                    for c in 0..<4 {
+                        #expect(
+                            try roundTripped.sampleInt(component: c, x: x, y: y)
+                            == source.sampleInt(component: c, x: x, y: y)
+                        )
+                    }
+                }
+            }
+
+            // Container encode -> public J2KDecoder.decode -> J2KImage.toContractImage across JP2, JPH, JPX
+            for fmt in [CodecOptions.ContainerFormat.jp2, .jph, .jpx] {
+                let blockCoding: CodecOptions.BlockCoding = (fmt == .jph) ? .htj2k : .part1
+                let encoded = try await Encoder(
+                    configuration: EncoderConfiguration(
+                        mode: .lossless,
+                        codecOptions: CodecOptions(blockCoding: blockCoding, containerFormat: fmt)
+                    )
+                ).encode(source).data
+
+                let decodedLegacy = try await J2KDecoder().decode(encoded)
+                #expect(decodedLegacy.alpha == alphaMode)
+                let decodedContract = try decodedLegacy.toContractImage()
+                #expect(decodedContract.descriptor.alpha == alphaMode)
+                #expect(decodedContract.descriptor.colour == .rgb)
+                #expect(decodedContract.descriptor.components == [.red, .green, .blue, .alpha])
+                for c in 0..<4 {
+                    #expect(
+                        try decodedContract.sampleInt(component: c, x: 0, y: 0)
+                        == (c == 3 ? 128 : 64) * scale
+                    )
+                }
+
+                // Region + downsample decode via J2KDecoder.decodeSync must also preserve AlphaInterpretation
+                let windowedLegacy = try J2KDecoder.decodeSync(
+                    encoded,
+                    resolutionLevel: 1,
+                    region: (x: 0, y: 0, width: 4, height: 4)
+                )
+                #expect(windowedLegacy.alpha == alphaMode)
+                #expect(try windowedLegacy.toContractImage().descriptor.alpha == alphaMode)
+            }
+        }
+
+        // 2. Premultiplied and straight 2-channel Grey-Alpha (with and without Restricted ICC profile)
+        let iccFixture = try await Decoder().decode(
+            Data(contentsOf: containerFixtureURL("jp2_rgb8_icc_res_meta.kdu.jp2"))
+        ).image.descriptor.iccProfile
+        let gaPlanes = [
+            try PlaneDescriptor(width: 4, height: 4, components: [0], offset: 0, sampleStride: 1, pixelStride: 1, rowBytes: 4, byteCount: 16),
+            try PlaneDescriptor(width: 4, height: 4, components: [1], offset: 16, sampleStride: 1, pixelStride: 1, rowBytes: 4, byteCount: 32)
+        ]
+        for (alphaMode, icc) in [
+            (AlphaInterpretation.premultiplied, nil),
+            (AlphaInterpretation.premultiplied, iccFixture),
+            (AlphaInterpretation.straight, nil)
+        ] {
+            let gaDesc = try ImageDescriptor(
+                width: 4,
+                height: 4,
+                sampleType: .unsignedInteger,
+                storageBits: 8,
+                meaningfulBits: 8,
+                byteOrder: .littleEndian,
+                components: [.grey, .alpha],
+                colour: .greyscale,
+                alpha: alphaMode,
+                planes: gaPlanes,
+                iccProfile: icc
+            )
+            let gaSource = try ImageDestination.allocate(descriptor: gaDesc).writeSamples { c, x, y in
+                c == 0 ? (40 + x * 9 + y * 4) : (160 + x * 7 + y * 5)
+            }
+            let legacyGA = try J2KImage(contractImage: gaSource)
+            #expect(legacyGA.alpha == alphaMode)
+            let roundTrippedGA = try legacyGA.toContractImage()
+            #expect(roundTrippedGA.descriptor.alpha == alphaMode)
+            #expect(roundTrippedGA.descriptor.colour == .greyscale)
+            #expect(roundTrippedGA.descriptor.components == [.grey, .alpha])
+            #expect(roundTrippedGA.descriptor.iccProfile == icc)
+            for y in 0..<4 {
+                for x in 0..<4 {
+                    #expect(try roundTrippedGA.sampleInt(component: 0, x: x, y: y) == 40 + x * 9 + y * 4)
+                    #expect(try roundTrippedGA.sampleInt(component: 1, x: x, y: y) == 160 + x * 7 + y * 5)
+                }
+            }
+
+            let encodedGA = try await Encoder(
+                configuration: EncoderConfiguration(
+                    mode: .lossless,
+                    codecOptions: CodecOptions(containerFormat: .jp2)
+                )
+            ).encode(gaSource).data
+            let decodedLegacyGA = try await J2KDecoder().decode(encodedGA)
+            #expect(decodedLegacyGA.alpha == alphaMode)
+            let decodedContractGA = try decodedLegacyGA.toContractImage()
+            #expect(decodedContractGA.descriptor.alpha == alphaMode)
+            #expect(decodedContractGA.descriptor.colour == .greyscale)
+            #expect(decodedContractGA.descriptor.components == [.grey, .alpha])
+            #expect(decodedContractGA.descriptor.iccProfile == icc)
+            #expect(try decodedContractGA.sampleInt(component: 0, x: 2, y: 1) == 40 + 18 + 4)
+            #expect(try decodedContractGA.sampleInt(component: 1, x: 2, y: 1) == 160 + 14 + 5)
+        }
+
+        // 3. Non-alpha 2-channel and 4-channel images: alpha MUST remain .absent (never inferred from channel count)
+        for compCount in [2, 4] {
+            let nonAlphaDesc = try ImageDescriptor.multiComponentPlanar(
+                width: 4,
+                height: 4,
+                componentCount: compCount,
+                storageBits: 8,
+                meaningfulBits: 8
+            )
+            let nonAlphaSrc = try ImageDestination.allocate(descriptor: nonAlphaDesc).writeSamples { c, x, y in
+                (c * 41 + x * 13 + y * 7) & 0xFF
+            }
+            let legacyNonAlpha = try J2KImage(contractImage: nonAlphaSrc)
+            #expect(legacyNonAlpha.alpha == .absent)
+            let contractNonAlpha = try legacyNonAlpha.toContractImage()
+            #expect(contractNonAlpha.descriptor.alpha == .absent)
+            #expect(!contractNonAlpha.descriptor.components.contains(.alpha))
+            for c in 0..<compCount {
+                #expect(
+                    try contractNonAlpha.sampleInt(component: c, x: 3, y: 2)
+                    == ((c * 41 + 3 * 13 + 2 * 7) & 0xFF)
+                )
+            }
+
+            // Encode non-alpha 2-channel / 4-channel image to JP2 (no `cdef`) and verify both Decoder and J2KDecoder keep alpha == .absent
+            let encodedNonAlphaJP2 = try await Encoder(
+                configuration: EncoderConfiguration(
+                    mode: .lossless,
+                    codecOptions: CodecOptions(colourTransform: .none, containerFormat: .jp2)
+                )
+            ).encode(nonAlphaSrc).data
+            let directNonAlpha = try await Decoder().decode(encodedNonAlphaJP2).image
+            #expect(directNonAlpha.descriptor.alpha == .absent)
+            let decodedLegacyNonAlpha = try await J2KDecoder().decode(encodedNonAlphaJP2)
+            #expect(decodedLegacyNonAlpha.alpha == .absent)
+            let roundTripNonAlpha = try decodedLegacyNonAlpha.toContractImage()
+            #expect(roundTripNonAlpha.descriptor.alpha == .absent)
+            #expect(!roundTripNonAlpha.descriptor.components.contains(.alpha))
+
+            // Direct public legacy convenience initialiser without alpha must also keep alpha == .absent
+            let manualLegacy = J2KImage(width: 4, height: 4, components: compCount, bitDepth: 8)
+            #expect(manualLegacy.alpha == .absent)
+            #expect(try manualLegacy.toContractImage().descriptor.alpha == .absent)
+        }
     }
 
     // MARK: F08 — Normative ISO/IEC 15444-2 Table M.14 JPX `rreq` Semantics
@@ -708,6 +897,142 @@ struct R2RemediationTests {
         }
         await #expect(throws: J2KError.self) {
             _ = try await J2KDecoder().decode(unsupportedJPX)
+        }
+    }
+
+    @Test("F08: Normative T.801 M.6.2 rejects undefined DCM bits and unverified shifted-DCM masks while preserving verified Kakadu v8.x JPX fixtures")
+    func normativeRreqRejectsUndefinedDecodeMaskBits() async throws {
+        func replaceRreqBox(in containerData: Data, with payload: [UInt8]) throws -> Data {
+            let srcBytes = [UInt8](containerData)
+            var reader = try JP2BoxReader(bytes: srcBytes, limits: .default)
+            var rebuilt: [UInt8] = []
+            while let box = try reader.nextBox() {
+                if box.type == .readerRequirements {
+                    rebuilt.append(contentsOf: makeJP2Box("rreq", payload: payload))
+                } else {
+                    let start = box.payloadRange.lowerBound - box.headerSize
+                    rebuilt.append(contentsOf: srcBytes[start..<box.payloadRange.upperBound])
+                }
+            }
+            return Data(rebuilt)
+        }
+
+        // 1. Exact normative T.801 M.6.2 probe: ML=1, FUAM=0x80, DCM=0x40, [(SF=45, SM=0x80)]
+        // Bit 0x40 in DCM is not defined by any SM^i or VM^j and MUST remain unsatisfied.
+        let undefinedDecodeBit = try JP2ReaderRequirementsBox(
+            maskLength: 1,
+            fuam: 0x80,
+            dcm: 0x40,
+            standardFeatures: [
+                .init(feature: .sRGBEnumeratedColourSpace, mask: 0x80)
+            ]
+        )
+        let eval = undefinedDecodeBit.evaluate()
+        #expect(eval.satisfiedMask == 0x80)
+        #expect(!eval.canDecodeCompletely)
+        #expect(eval.unsatisfiedDecodeMask == 0x40)
+        #expect(eval.understandsAllAspects)
+        #expect(eval.unsatisfiedUnderstandMask == 0x00)
+
+        let kduJPXPart1 = try Data(contentsOf: containerFixtureURL("jpx_rgb8_part1.kdu.jpx"))
+        let kduJPXHT = try Data(contentsOf: containerFixtureURL("jpx_rgb8_htj2k.kdu.jpx"))
+
+        // Splicing `undefinedDecodeBit` into `jpx_rgb8_part1.kdu.jpx` (which carries `"Kakadu-v8.4.1"` COM)
+        // MUST still be rejected with `.unsupportedFeature`.
+        let kduWithUndefinedDCM = try replaceRreqBox(in: kduJPXPart1, with: undefinedDecodeBit.serialise())
+        do {
+            _ = try Decoder().inspect(kduWithUndefinedDCM)
+            Issue.record("Expected Decoder.inspect to reject undefined DCM requirement bit")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
+        }
+        do {
+            _ = try await Decoder().decode(kduWithUndefinedDCM)
+            Issue.record("Expected Decoder.decode to reject undefined DCM requirement bit")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
+        }
+        do {
+            _ = try await Transcoder().transcode(kduWithUndefinedDCM, to: .htj2k)
+            Issue.record("Expected Transcoder.transcode to reject undefined DCM requirement bit")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
+        }
+        await #expect(throws: J2KError.self) {
+            _ = try await J2KDecoder().decode(kduWithUndefinedDCM)
+        }
+
+        // 2. Direct `JP2ReaderRequirementsBox.evaluate()` on Kakadu's raw `rreq` has ZERO heuristics
+        // (truthfully reports `!canDecodeCompletely` and `unsatisfiedDecodeMask == 0x00FF`), while
+        // `Decoder().inspect` and `Decoder().decode` succeed on unmodified Kakadu JPX fixtures via
+        // provenance + full 7-category container reconciliation.
+        let parsedKduPart1 = try JP2Container.parse([UInt8](kduJPXPart1), limits: .default, metadataPolicy: .preserve)
+        let rawKduRreq = try #require(parsedKduPart1.readerRequirements)
+        let rawKduEval = rawKduRreq.evaluate()
+        #expect(!rawKduEval.canDecodeCompletely)
+        #expect(rawKduEval.understandsAllAspects)
+        #expect(rawKduEval.satisfiedMask == 0xFF00)
+        #expect(rawKduEval.unsatisfiedDecodeMask == 0x00FF)
+
+        let decodedKduPart1 = try await Decoder().decode(kduJPXPart1)
+        #expect(decodedKduPart1.image.descriptor.colour == .rgb)
+        let decodedKduHT = try await Decoder().decode(kduJPXHT)
+        #expect(decodedKduHT.image.descriptor.colour == .rgb)
+
+        // 3. A non-Kakadu JPX container carrying Kakadu's exact 8-feature shifted `FUAM=0xFF00, DCM=0x00FF`
+        // `rreq` MUST be rejected (mask shape and feature list alone without Kakadu v8.x provenance fail).
+        let rgbDesc = try ImageDescriptor.rgbPlanar(width: 4, height: 4, storageBits: 8, meaningfulBits: 8)
+        let rgbImg = try ImageDestination.allocate(descriptor: rgbDesc).writeSamples { c, x, y in c * 40 + x + y }
+        let nonKakaduJPX = try await Encoder(
+            configuration: EncoderConfiguration(
+                mode: .lossless,
+                codecOptions: CodecOptions(containerFormat: .jpx)
+            )
+        ).encode(rgbImg).data
+        let nonKakaduWithShiftedDCM = try replaceRreqBox(in: nonKakaduJPX, with: rawKduRreq.serialise())
+        do {
+            _ = try Decoder().inspect(nonKakaduWithShiftedDCM)
+            Issue.record("Expected non-Kakadu JPX with shifted undefined DCM bits to be rejected")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
+        }
+
+        // 4. Kakadu JPX with an extra undefined bit in DCM (`ML=4, FUAM=0xFF00_0000, DCM=0x00FF_0001`)
+        // or mismatched opacity feature (`SF=9` opacity without `cdef`) MUST be rejected.
+        let extraUndefinedBit = try JP2ReaderRequirementsBox(
+            maskLength: 4,
+            fuam: 0xFF00_0000,
+            dcm: 0x00FF_0001,
+            standardFeatures: rawKduRreq.standardFeatures.map {
+                .init(code: $0.code, mask: $0.mask << 16)
+            }
+        )
+        let kduWithExtraDCMBit = try replaceRreqBox(in: kduJPXPart1, with: extraUndefinedBit.serialise())
+        do {
+            _ = try Decoder().inspect(kduWithExtraDCMBit)
+            Issue.record("Expected Kakadu JPX with extra undefined DCM bit 0x1 to be rejected")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
+        }
+
+        let mismatchedOpacityFeatures = rawKduRreq.standardFeatures.map { entry -> JP2ReaderRequirementsBox.StandardFeatureEntry in
+            if entry.knownFeature == .noOpacity {
+                return .init(feature: .opacityChannel, mask: entry.mask)
+            }
+            return entry
+        }
+        let mismatchedOpacityRreq = try JP2ReaderRequirementsBox(
+            maskLength: rawKduRreq.maskLength,
+            fuam: rawKduRreq.fuam,
+            dcm: rawKduRreq.dcm,
+            standardFeatures: mismatchedOpacityFeatures
+        )
+        let kduWithMismatchedOpacity = try replaceRreqBox(in: kduJPXPart1, with: mismatchedOpacityRreq.serialise())
+        do {
+            _ = try Decoder().inspect(kduWithMismatchedOpacity)
+            Issue.record("Expected Kakadu JPX whose rreq declares opacityChannel without cdef to be rejected")
+        } catch let err as CodecError {
+            #expect(err.category == .unsupportedFeature)
         }
     }
 

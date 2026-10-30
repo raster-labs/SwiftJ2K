@@ -42,3 +42,16 @@ swiftj2k.meaningfulbits:=8
 [M12-CX-04] TIFF Palette (tag 262=3) 2x1 indexed (expected components=3 RGB [255, 10, 20, 30, 200, 240]): rc=0 samples=[255, 10, 20, 30, 200, 240] report={"bitDepth":8,"command":"convert","components":3,"elapsedSeconds":0.0013711249999999999,"height":1,"inputBytes":1672,"meaningfulBits":8,"outputBytes":204,"outputFormat":"nrrd","sourceFormat":"tiff","targetFormat":"nrrd","width":2}
 [M12-CX-04] TIFF YCbCr (tag 262=6) (expected rejection rc=4): rc=4 err='swiftj2k-cli: unsupported: Unsupported TIFF PhotometricInterpretation (6).'
 [M12-CX-04] TIFF missing PhotometricInterpretation (tag 262) (expected rejection rc=3): rc=3 err='swiftj2k-cli: malformed input: TIFF missing required PhotometricInterpretation tag (262).'
+
+
+=== SwiftJ2K Phase R2 Targeted Rework Verification Receipts (F07 & F08) ===
+timestamp_utc: 2026-10-30T05:31:17.964368+00:00
+audited_r2_commit: ffa9dc0bdb76ebff0e273671b5a10ee8e967d3ac
+verified_main_commit: 7ffdc6e2245c3af5c07ea99d008e3effa687241c (tree 8684e709a632f868f2b320911e797ad2fb5201ee == accepted R1 c4706d58cc5dde4828ea71f324817590f0671e78)
+cli_sha256: 64cfab8a7df915d3086e74b16d3b6e3dbc8e22fab5fb0a2e9baa24c70ef98bea
+
+[F07 Rework] SwiftJ2KTests/R2RemediationTests.swift:572 ("F07: Public J2KImage, J2KDecoder, and toContractImage preserve straight, premultiplied, and absent alpha without altering samples"): passed (J2KImage(contractImage:).toContractImage(), J2KDecoder.decode(...).toContractImage(), and J2KDecoder.decodeSync windowed/component-selected paths preserve .premultiplied, .straight, and .absent across 8-bit/16-bit 2-channel grey-alpha, 4-channel RGBA including [64, 64, 64, 128], and 2-channel/4-channel non-alpha images with exact sample values)
+[F07 Rework] SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift:124 ("F07: JPIPStreamingSession preserves premultiplied and absent alpha across delivered.image and delivered.legacyImage.toContractImage"): passed (full-resolution and view-windowed premultiplied RGBA, premultiplied grey-alpha, and 4-channel non-alpha JP2 delivery under .none and .htj2k codingPreference preserve exact samples and AlphaInterpretation)
+[F08 Rework] SwiftJ2KTests/R2RemediationTests.swift:903 ("F08: Normative T.801 M.6.2 rejects undefined DCM bits and unverified shifted-DCM masks while preserving verified Kakadu v8.x JPX fixtures"): passed (ML=1, FUAM=0x80, DCM=0x40, [(SF=45, SM=0x80)] evaluates to satisfiedMask=0x80, canDecodeCompletely=false, unsatisfiedDecodeMask=0x40, understandsAllAspects=true, unsatisfiedUnderstandMask=0x00 and throws CodecError(.unsupportedFeature) when spliced into jpx_rgb8_part1.kdu.jpx)
+[F08 Rework] Validate independent Kakadu JPX fixtures (jpx_rgb8_part1.kdu.jpx, jpx_rgb8_htj2k.kdu.jpx): kdu_p1_rc=0 kdu_ht_rc=0
+[F08 Rework] Validate jpx_rgb8_part1.kdu.jpx with 'rreq' replaced by ML=1, FUAM=0x80, DCM=0x40, [(SF=45, SM=0x80)]: undefined_dcm_rc=4 err="swiftj2k-cli: unsupported: Container Reader Requirements ('rreq') cannot be satisfied: unsatisfied DCM mask 0x40."

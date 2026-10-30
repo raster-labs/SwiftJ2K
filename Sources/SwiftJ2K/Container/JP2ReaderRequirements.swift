@@ -252,57 +252,31 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
 
     /// Evaluates whether a reader supporting `supportedFeatures` and `supportedVendorUUIDs`
     /// can completely decode (`DCM`) and fully understand (`FUAM`) the container under
-    /// ISO/IEC 15444-2 (ITU-T T.801) Annex M.6.
+    /// ISO/IEC 15444-2 (ITU-T T.801) Clause M.6.2.
     public func evaluate(
         supportedFeatures: Set<StandardFeature> = Self.swiftJ2KSupportedFeatures,
         supportedVendorUUIDs: Set<[UInt8]> = []
     ) -> SupportEvaluation {
         var satisfiedMask: UInt64 = 0
-        var definedMask: UInt64 = 0
         for entry in standardFeatures {
-            definedMask |= entry.mask
             if let feature = entry.knownFeature, supportedFeatures.contains(feature) {
                 satisfiedMask |= entry.mask
             }
         }
         for vendor in vendorFeatures {
-            definedMask |= vendor.mask
             if supportedVendorUUIDs.contains(vendor.uuid) {
                 satisfiedMask |= vendor.mask
             }
         }
 
-        // Note on Kakadu v8.4.1 JPX output compatibility:
-        // Kakadu's `jpx_target` allocates `NSF` high bits in `FUAM` and the immediately adjacent
-        // `NSF` lower bits in `DCM` (`dcm == fuam >> NSF`), while populating `SM^i` only in the
-        // `FUAM` bit positions (`definedMask == fuam`, `(dcm & definedMask) == 0`). When that exact
-        // 1-to-1 shifted layout is present, bit `(b - NSF)` in `DCM` represents the same feature
-        // requirement as bit `b` in `FUAM`. Any unsupported feature in `FUAM` leaves its projected
-        // `DCM` bit unsatisfied; inconsistent masks (e.g. `NSF != fuam.nonzeroBitCount` or
-        // `definedMask != fuam`) do not match and remain unsatisfied as required by T.801 M.6.
-        let nsf = standardFeatures.count
-        let isKakaduShiftedDCM = nsf > 0
-            && nsf < 64
-            && vendorFeatures.isEmpty
-            && fuam != 0
-            && definedMask == fuam
-            && (dcm & definedMask) == 0
-            && fuam.nonzeroBitCount == nsf
-            && (fuam >> nsf) == dcm
-
-        let effectiveDecodeMask: UInt64 = isKakaduShiftedDCM
-            ? (satisfiedMask | (satisfiedMask >> nsf))
-            : satisfiedMask
-
-        let unsatisfiedDecode = dcm & ~effectiveDecodeMask
+        let unsatisfiedDecode = dcm & ~satisfiedMask
         let unsatisfiedUnderstand = fuam & ~satisfiedMask
 
         var unsupportedRequired: [UInt16] = []
         if unsatisfiedDecode != 0 {
-            let probeMask = isKakaduShiftedDCM ? unsatisfiedUnderstand : unsatisfiedDecode
             for entry in standardFeatures {
                 let isSupported = entry.knownFeature.map(supportedFeatures.contains) ?? false
-                if !isSupported && (entry.mask & probeMask) != 0 && !unsupportedRequired.contains(entry.code) {
+                if !isSupported && (entry.mask & unsatisfiedDecode) != 0 && !unsupportedRequired.contains(entry.code) {
                     unsupportedRequired.append(entry.code)
                 }
             }
@@ -310,7 +284,7 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
 
         return SupportEvaluation(
             canDecodeCompletely: unsatisfiedDecode == 0,
-            understandsAllAspects: unsatisfiedUnderstand == 0 && unsatisfiedDecode == 0,
+            understandsAllAspects: unsatisfiedUnderstand == 0,
             satisfiedMask: satisfiedMask,
             unsatisfiedDecodeMask: unsatisfiedDecode,
             unsatisfiedUnderstandMask: unsatisfiedUnderstand,

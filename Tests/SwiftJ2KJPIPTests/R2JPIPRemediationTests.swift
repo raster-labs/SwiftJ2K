@@ -88,11 +88,19 @@ struct R2JPIPRemediationTests {
             let jpipRGBA = try await session.deliverImage(imageID: "rgba.jp2")
             #expect(jpipRGBA.image.descriptor.components == directRGBA.descriptor.components)
             #expect(jpipRGBA.image.descriptor.alpha == directRGBA.descriptor.alpha)
+            #expect(jpipRGBA.legacyImage.alpha == directRGBA.descriptor.alpha)
+            let roundTrippedLegacyRGBA = try jpipRGBA.legacyImage.toContractImage()
+            #expect(roundTrippedLegacyRGBA.descriptor.alpha == directRGBA.descriptor.alpha)
+            #expect(roundTrippedLegacyRGBA.descriptor.components == directRGBA.descriptor.components)
             for y in 0..<min(4, directRGBA.descriptor.height) {
                 for x in 0..<min(4, directRGBA.descriptor.width) {
                     for c in 0..<4 {
                         #expect(
                             try jpipRGBA.image.sampleInt(component: c, x: x, y: y)
+                            == directRGBA.sampleInt(component: c, x: x, y: y)
+                        )
+                        #expect(
+                            try roundTrippedLegacyRGBA.sampleInt(component: c, x: x, y: y)
                             == directRGBA.sampleInt(component: c, x: x, y: y)
                         )
                     }
@@ -108,6 +116,146 @@ struct R2JPIPRemediationTests {
             } else {
                 Issue.record("Expected JPIP legacyImage.colorSpace to carry Restricted ICC profile")
             }
+
+            try await session.close()
+        }
+    }
+
+    @Test("F07: JPIPStreamingSession preserves premultiplied and absent alpha across delivered.image and delivered.legacyImage.toContractImage")
+    func jpipPreservesPremultipliedAndAbsentAlphaThroughLegacyBridge() async throws {
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swiftj2k-r2-jpip-premul-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        // 1. Premultiplied 4-channel RGBA JP2 (`cdef` Typ=2)
+        let premulRGBADesc = try ImageDescriptor.rgbPlanar(
+            width: 8,
+            height: 8,
+            storageBits: 8,
+            meaningfulBits: 8,
+            alpha: .premultiplied
+        )
+        let premulRGBASrc = try ImageDestination.allocate(descriptor: premulRGBADesc).writeSamples { c, x, y in
+            if x == 0 && y == 0 {
+                return c == 3 ? 128 : 64
+            }
+            return (c * 25 + x * 6 + y * 4 + 16) & 0xFF
+        }
+        let premulRGBAData = try await Encoder(
+            configuration: EncoderConfiguration(
+                mode: .lossless,
+                codecOptions: CodecOptions(containerFormat: .jp2)
+            )
+        ).encode(premulRGBASrc).data
+        let premulRGBAURL = tmpDir.appendingPathComponent("premul_rgba.jp2")
+        try premulRGBAData.write(to: premulRGBAURL)
+
+        // 2. Premultiplied 2-channel Grey-Alpha JP2 (`cdef` Typ=2)
+        let gaPlanes = [
+            try PlaneDescriptor(width: 8, height: 8, components: [0], offset: 0, sampleStride: 1, pixelStride: 1, rowBytes: 8, byteCount: 64),
+            try PlaneDescriptor(width: 8, height: 8, components: [1], offset: 64, sampleStride: 1, pixelStride: 1, rowBytes: 8, byteCount: 128)
+        ]
+        let premulGADesc = try ImageDescriptor(
+            width: 8,
+            height: 8,
+            sampleType: .unsignedInteger,
+            storageBits: 8,
+            meaningfulBits: 8,
+            byteOrder: .littleEndian,
+            components: [.grey, .alpha],
+            colour: .greyscale,
+            alpha: .premultiplied,
+            planes: gaPlanes
+        )
+        let premulGASrc = try ImageDestination.allocate(descriptor: premulGADesc).writeSamples { c, x, y in
+            c == 0 ? (32 + x * 5 + y * 3) : (128 + x * 8 + y * 4)
+        }
+        let premulGAData = try await Encoder(
+            configuration: EncoderConfiguration(
+                mode: .lossless,
+                codecOptions: CodecOptions(containerFormat: .jp2)
+            )
+        ).encode(premulGASrc).data
+        let premulGAURL = tmpDir.appendingPathComponent("premul_ga.jp2")
+        try premulGAData.write(to: premulGAURL)
+
+        // 3. Non-alpha 4-channel JP2 (no `cdef` -> alpha == .absent)
+        let nonAlpha4Desc = try ImageDescriptor.multiComponentPlanar(
+            width: 8,
+            height: 8,
+            componentCount: 4,
+            storageBits: 8,
+            meaningfulBits: 8
+        )
+        let nonAlpha4Src = try ImageDestination.allocate(descriptor: nonAlpha4Desc).writeSamples { c, x, y in
+            (c * 37 + x * 9 + y * 5) & 0xFF
+        }
+        let nonAlpha4Data = try await Encoder(
+            configuration: EncoderConfiguration(
+                mode: .lossless,
+                codecOptions: CodecOptions(colourTransform: .none, containerFormat: .jp2)
+            )
+        ).encode(nonAlpha4Src).data
+        let nonAlpha4URL = tmpDir.appendingPathComponent("nonalpha4.jp2")
+        try nonAlpha4Data.write(to: nonAlpha4URL)
+
+        let server = JPIPServer(port: 19_414)
+        try await server.registerImage(name: "premul_rgba.jp2", at: premulRGBAURL)
+        try await server.registerImage(name: "premul_ga.jp2", at: premulGAURL)
+        try await server.registerImage(name: "nonalpha4.jp2", at: nonAlpha4URL)
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+
+        for codingPref in [JPIPCodingPreference.none, JPIPCodingPreference.htj2k] {
+            let session = JPIPStreamingSession(
+                server: server,
+                port: 19_414,
+                configuration: try JPIPSessionConfiguration(codingPreference: codingPref)
+            )
+
+            // Full-resolution premultiplied RGBA delivery + legacyImage.toContractImage()
+            let deliveredRGBA = try await session.deliverImage(imageID: "premul_rgba.jp2")
+            #expect(deliveredRGBA.image.descriptor.alpha == .premultiplied)
+            #expect(deliveredRGBA.legacyImage.alpha == .premultiplied)
+            let contractFromLegacyRGBA = try deliveredRGBA.legacyImage.toContractImage()
+            #expect(contractFromLegacyRGBA.descriptor.alpha == .premultiplied)
+            #expect(contractFromLegacyRGBA.descriptor.components == [.red, .green, .blue, .alpha])
+            for c in 0..<4 {
+                #expect(try contractFromLegacyRGBA.sampleInt(component: c, x: 0, y: 0) == (c == 3 ? 128 : 64))
+            }
+
+            // View-windowed (cropped + downsampled) premultiplied RGBA delivery + legacyImage.toContractImage()
+            let windowedRGBA = try await session.deliverImage(
+                imageID: "premul_rgba.jp2",
+                viewWindow: try JPIPViewWindow(region: (x: 0, y: 0, width: 4, height: 4), resolutionLevel: 1)
+            )
+            #expect(windowedRGBA.image.descriptor.alpha == .premultiplied)
+            #expect(windowedRGBA.legacyImage.alpha == .premultiplied)
+            let windowedContractRGBA = try windowedRGBA.legacyImage.toContractImage()
+            #expect(windowedContractRGBA.descriptor.alpha == .premultiplied)
+            for c in 0..<4 {
+                #expect(try windowedContractRGBA.sampleInt(component: c, x: 0, y: 0) == (c == 3 ? 128 : 64))
+            }
+
+            // Premultiplied Grey-Alpha delivery + legacyImage.toContractImage()
+            let deliveredGA = try await session.deliverImage(imageID: "premul_ga.jp2")
+            #expect(deliveredGA.image.descriptor.alpha == .premultiplied)
+            #expect(deliveredGA.legacyImage.alpha == .premultiplied)
+            let contractFromLegacyGA = try deliveredGA.legacyImage.toContractImage()
+            #expect(contractFromLegacyGA.descriptor.alpha == .premultiplied)
+            #expect(contractFromLegacyGA.descriptor.colour == .greyscale)
+            #expect(contractFromLegacyGA.descriptor.components == [.grey, .alpha])
+            #expect(try contractFromLegacyGA.sampleInt(component: 0, x: 2, y: 3) == 32 + 10 + 9)
+            #expect(try contractFromLegacyGA.sampleInt(component: 1, x: 2, y: 3) == 128 + 16 + 12)
+
+            // Non-alpha 4-channel delivery + legacyImage.toContractImage() -> alpha remains .absent
+            let deliveredNonAlpha4 = try await session.deliverImage(imageID: "nonalpha4.jp2")
+            #expect(deliveredNonAlpha4.image.descriptor.alpha == .absent)
+            #expect(deliveredNonAlpha4.legacyImage.alpha == .absent)
+            let contractFromLegacyNonAlpha4 = try deliveredNonAlpha4.legacyImage.toContractImage()
+            #expect(contractFromLegacyNonAlpha4.descriptor.alpha == .absent)
+            #expect(!contractFromLegacyNonAlpha4.descriptor.components.contains(.alpha))
 
             try await session.close()
         }

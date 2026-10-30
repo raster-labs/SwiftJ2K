@@ -162,6 +162,17 @@ public struct J2KImage: Sendable, Equatable {
     /// The colour space of the image.
     public let colorSpace: J2KColorSpace
 
+    /// The alpha interpretation of the image (`.absent`, `.straight`, or `.premultiplied`).
+    ///
+    /// Alpha semantics are carried explicitly and are never inferred solely from component count.
+    public let alpha: AlphaInterpretation
+
+    /// Preserved contract colour interpretation when bridged from an ``Image`` or container decode.
+    package let preservedColourInterpretation: ColourInterpretation?
+
+    /// Preserved contract component roles when bridged from an ``Image`` or container decode.
+    package let preservedComponentRoles: [ComponentRole]?
+
     /// Creates a new image with the specified parameters.
     public init(
         width: Int,
@@ -173,7 +184,40 @@ public struct J2KImage: Sendable, Equatable {
         tileHeight: Int = 0,
         tileOffsetX: Int = 0,
         tileOffsetY: Int = 0,
-        colorSpace: J2KColorSpace = .sRGB
+        colorSpace: J2KColorSpace = .sRGB,
+        alpha: AlphaInterpretation = .absent
+    ) {
+        self.init(
+            width: width,
+            height: height,
+            components: components,
+            offsetX: offsetX,
+            offsetY: offsetY,
+            tileWidth: tileWidth,
+            tileHeight: tileHeight,
+            tileOffsetX: tileOffsetX,
+            tileOffsetY: tileOffsetY,
+            colorSpace: colorSpace,
+            alpha: alpha,
+            preservedColourInterpretation: nil,
+            preservedComponentRoles: nil
+        )
+    }
+
+    package init(
+        width: Int,
+        height: Int,
+        components: [J2KComponent],
+        offsetX: Int = 0,
+        offsetY: Int = 0,
+        tileWidth: Int = 0,
+        tileHeight: Int = 0,
+        tileOffsetX: Int = 0,
+        tileOffsetY: Int = 0,
+        colorSpace: J2KColorSpace = .sRGB,
+        alpha: AlphaInterpretation = .absent,
+        preservedColourInterpretation: ColourInterpretation?,
+        preservedComponentRoles: [ComponentRole]?
     ) {
         self.width = width
         self.height = height
@@ -185,6 +229,9 @@ public struct J2KImage: Sendable, Equatable {
         self.tileOffsetX = tileOffsetX
         self.tileOffsetY = tileOffsetY
         self.colorSpace = colorSpace
+        self.alpha = alpha
+        self.preservedColourInterpretation = preservedColourInterpretation
+        self.preservedComponentRoles = preservedComponentRoles
     }
 
     /// Convenience initialiser for simple images without tiling.
@@ -193,7 +240,8 @@ public struct J2KImage: Sendable, Equatable {
         height: Int,
         components: Int,
         bitDepth: Int = 8,
-        signed: Bool = false
+        signed: Bool = false,
+        alpha: AlphaInterpretation = .absent
     ) {
         let validWidth = max(1, width)
         let validHeight = max(1, height)
@@ -213,12 +261,20 @@ public struct J2KImage: Sendable, Equatable {
             )
         }
 
-        let cs: J2KColorSpace = validComponents == 1 ? .grayscale : .sRGB
+        let cs: J2KColorSpace
+        if validComponents == 1 || (validComponents == 2 && alpha != .absent) {
+            cs = .grayscale
+        } else if validComponents == 3 || (validComponents == 4 && alpha != .absent) {
+            cs = .sRGB
+        } else {
+            cs = .unknown
+        }
         self.init(
             width: validWidth,
             height: validHeight,
             components: imageComponents,
-            colorSpace: cs
+            colorSpace: cs,
+            alpha: alpha
         )
     }
 
@@ -330,153 +386,172 @@ public struct J2KImage: Sendable, Equatable {
             effectiveICC = nil
         }
 
-        let descriptor: ImageDescriptor
-        if compCount == 1 {
-            let baseDesc: ImageDescriptor
-            if signed {
-                baseDesc = try ImageDescriptor.signedGreyscale16(
-                    width: width, height: height, meaningfulBits: clampedBitDepth, limits: limits
-                )
-            } else {
-                baseDesc = try ImageDescriptor.greyscale16(
-                    width: width, height: height, meaningfulBits: clampedBitDepth, limits: limits
-                )
-            }
-            if let icc = effectiveICC {
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: 16,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: [.grey],
-                    colour: .greyscale,
-                    alpha: .absent,
-                    planes: baseDesc.planes,
-                    iccProfile: icc,
-                    limits: limits
-                )
-            } else {
-                descriptor = baseDesc
-            }
-        } else if compCount == 2 {
-            let baseDesc = try ImageDescriptor.multiComponentPlanar(
-                width: width, height: height, componentCount: 2,
-                storageBits: storageBits, meaningfulBits: clampedBitDepth,
-                sampleType: sampleType, limits: limits
-            )
-            let isGreyAlpha = (alphaOverride != nil && alphaOverride != .absent)
-                || colourOverride == .greyscale
-                || colorSpace == .grayscale
-            if isGreyAlpha {
-                let resolvedAlpha: AlphaInterpretation = (alphaOverride == .premultiplied) ? .premultiplied : .straight
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: storageBits,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: [.grey, .alpha],
-                    colour: .greyscale,
-                    alpha: resolvedAlpha,
-                    planes: baseDesc.planes,
-                    iccProfile: effectiveICC,
-                    limits: limits
-                )
-            } else if let icc = effectiveICC {
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: storageBits,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: baseDesc.components,
-                    colour: .unknown,
-                    alpha: .absent,
-                    planes: baseDesc.planes,
-                    iccProfile: icc,
-                    limits: limits
-                )
-            } else {
-                descriptor = baseDesc
-            }
-        } else if compCount == 3 && (colourOverride ?? (colorSpace == .unknown ? .unknown : .rgb)) == .rgb {
-            let baseDesc = try ImageDescriptor.rgbPlanar(
-                width: width, height: height, storageBits: storageBits,
-                meaningfulBits: clampedBitDepth, signed: signed, limits: limits
-            )
-            if let icc = effectiveICC {
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: storageBits,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: baseDesc.components,
-                    colour: .rgb,
-                    alpha: .absent,
-                    planes: baseDesc.planes,
-                    iccProfile: icc,
-                    limits: limits
-                )
-            } else {
-                descriptor = baseDesc
-            }
-        } else if compCount == 4 && (colourOverride ?? (colorSpace == .unknown ? .unknown : .rgb)) == .rgb {
-            let resolvedAlpha: AlphaInterpretation = (alphaOverride == .premultiplied) ? .premultiplied : .straight
-            let baseDesc = try ImageDescriptor.rgbPlanar(
-                width: width, height: height, storageBits: storageBits,
-                meaningfulBits: clampedBitDepth, signed: signed,
-                alpha: resolvedAlpha, limits: limits
-            )
-            if let icc = effectiveICC {
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: storageBits,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: baseDesc.components,
-                    colour: .rgb,
-                    alpha: resolvedAlpha,
-                    planes: baseDesc.planes,
-                    iccProfile: icc,
-                    limits: limits
-                )
-            } else {
-                descriptor = baseDesc
-            }
+        let effectiveAlpha: AlphaInterpretation = alphaOverride ?? self.alpha
+        let resolvedColour: ColourInterpretation
+        let resolvedAlpha: AlphaInterpretation
+        let resolvedRoles: [ComponentRole]
+
+        if let preservedRoles = self.preservedComponentRoles,
+           preservedRoles.count == compCount,
+           let preservedColour = self.preservedColourInterpretation,
+           (colourOverride == nil || colourOverride == preservedColour),
+           (alphaOverride == nil || alphaOverride == self.alpha),
+           (effectiveAlpha == .absent) == !preservedRoles.contains(.alpha) {
+            resolvedColour = preservedColour
+            resolvedAlpha = effectiveAlpha
+            resolvedRoles = preservedRoles
         } else {
-            let baseDesc = try ImageDescriptor.multiComponentPlanar(
-                width: width, height: height, componentCount: compCount,
-                storageBits: storageBits, meaningfulBits: clampedBitDepth,
-                sampleType: sampleType, limits: limits
-            )
-            if colourOverride == .unknown || effectiveICC != nil {
-                let roles: [ComponentRole] = (0..<compCount).map { .uninterpreted("c\($0)") }
-                descriptor = try ImageDescriptor(
-                    width: width,
-                    height: height,
-                    sampleType: sampleType,
-                    storageBits: storageBits,
-                    meaningfulBits: clampedBitDepth,
-                    byteOrder: baseDesc.byteOrder,
-                    components: colourOverride == .unknown ? roles : baseDesc.components,
-                    colour: colourOverride == .unknown ? .unknown : baseDesc.colour,
-                    alpha: colourOverride == .unknown ? .absent : baseDesc.alpha,
-                    planes: baseDesc.planes,
-                    iccProfile: effectiveICC,
-                    limits: limits
-                )
+            let rawColour: ColourInterpretation
+            if let explicitColour = colourOverride {
+                rawColour = explicitColour
+            } else if let preservedColour = self.preservedColourInterpretation {
+                rawColour = preservedColour
             } else {
-                descriptor = baseDesc
+                switch colorSpace {
+                case .grayscale:
+                    rawColour = .greyscale
+                case .sRGB, .yCbCr:
+                    rawColour = .rgb
+                case .unknown:
+                    rawColour = .unknown
+                case .iccProfile:
+                    if compCount == 1 || (compCount == 2 && effectiveAlpha != .absent) {
+                        rawColour = .greyscale
+                    } else if compCount == 3 || (compCount == 4 && effectiveAlpha != .absent) {
+                        rawColour = .rgb
+                    } else {
+                        rawColour = .unknown
+                    }
+                }
+            }
+
+            if compCount == 1 {
+                if effectiveAlpha != .absent {
+                    resolvedColour = .unknown
+                    resolvedAlpha = effectiveAlpha
+                    resolvedRoles = [.alpha]
+                } else if rawColour == .unknown {
+                    resolvedColour = .unknown
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.uninterpreted("c0")]
+                } else {
+                    resolvedColour = .greyscale
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.grey]
+                }
+            } else if compCount == 2 {
+                if effectiveAlpha != .absent {
+                    if rawColour == .unknown {
+                        resolvedColour = .unknown
+                        resolvedAlpha = effectiveAlpha
+                        resolvedRoles = [.uninterpreted("c0"), .alpha]
+                    } else {
+                        resolvedColour = .greyscale
+                        resolvedAlpha = effectiveAlpha
+                        resolvedRoles = [.grey, .alpha]
+                    }
+                } else if rawColour == .greyscale {
+                    resolvedColour = .greyscale
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.grey, .uninterpreted("c1")]
+                } else {
+                    resolvedColour = .unknown
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.uninterpreted("c0"), .uninterpreted("c1")]
+                }
+            } else if compCount == 3 {
+                if effectiveAlpha != .absent {
+                    if rawColour == .greyscale {
+                        resolvedColour = .greyscale
+                        resolvedAlpha = effectiveAlpha
+                        resolvedRoles = [.grey, .uninterpreted("c1"), .alpha]
+                    } else {
+                        resolvedColour = .unknown
+                        resolvedAlpha = effectiveAlpha
+                        resolvedRoles = [.uninterpreted("c0"), .uninterpreted("c1"), .alpha]
+                    }
+                } else if rawColour == .rgb {
+                    resolvedColour = .rgb
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.red, .green, .blue]
+                } else if rawColour == .greyscale {
+                    resolvedColour = .greyscale
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.grey, .uninterpreted("c1"), .uninterpreted("c2")]
+                } else {
+                    resolvedColour = .unknown
+                    resolvedAlpha = .absent
+                    resolvedRoles = [.uninterpreted("c0"), .uninterpreted("c1"), .uninterpreted("c2")]
+                }
+            } else {
+                resolvedAlpha = effectiveAlpha
+                let colourSlotCount = (effectiveAlpha == .absent) ? compCount : (compCount - 1)
+                if rawColour == .rgb && colourSlotCount >= 3 {
+                    resolvedColour = .rgb
+                    var roles: [ComponentRole] = [.red, .green, .blue]
+                    for idx in 3..<colourSlotCount {
+                        roles.append(.uninterpreted("c\(idx)"))
+                    }
+                    if effectiveAlpha != .absent {
+                        roles.append(.alpha)
+                    }
+                    resolvedRoles = roles
+                } else if rawColour == .greyscale && colourSlotCount >= 1 {
+                    resolvedColour = .greyscale
+                    var roles: [ComponentRole] = [.grey]
+                    for idx in 1..<colourSlotCount {
+                        roles.append(.uninterpreted("c\(idx)"))
+                    }
+                    if effectiveAlpha != .absent {
+                        roles.append(.alpha)
+                    }
+                    resolvedRoles = roles
+                } else {
+                    resolvedColour = .unknown
+                    var roles: [ComponentRole] = (0..<colourSlotCount).map { .uninterpreted("c\($0)") }
+                    if effectiveAlpha != .absent {
+                        roles.append(.alpha)
+                    }
+                    resolvedRoles = roles
+                }
             }
         }
+
+        let rowBytes = try checkedMultiply(width, dstBytesPerSample)
+        let planeBytes = try checkedMultiply(rowBytes, height)
+        var planes: [PlaneDescriptor] = []
+        planes.reserveCapacity(compCount)
+        for index in 0..<compCount {
+            let planeOffset = try checkedMultiply(index, planeBytes)
+            let planeEnd = try checkedAdd(planeOffset, planeBytes)
+            planes.append(
+                try PlaneDescriptor(
+                    width: width,
+                    height: height,
+                    components: [index],
+                    offset: planeOffset,
+                    sampleStride: dstBytesPerSample,
+                    pixelStride: dstBytesPerSample,
+                    rowBytes: rowBytes,
+                    byteCount: planeEnd
+                )
+            )
+        }
+
+        let descriptor = try ImageDescriptor(
+            width: width,
+            height: height,
+            sampleType: sampleType,
+            storageBits: storageBits,
+            meaningfulBits: clampedBitDepth,
+            byteOrder: .littleEndian,
+            components: resolvedRoles,
+            colour: resolvedColour,
+            alpha: resolvedAlpha,
+            planes: planes,
+            iccProfile: effectiveICC,
+            limits: limits
+        )
 
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let pixelCount = width * height
@@ -639,7 +714,15 @@ public struct J2KImage: Sendable, Equatable {
         } else {
             cs = .unknown
         }
-        self.init(width: w, height: h, components: builtComponents, colorSpace: cs)
+        self.init(
+            width: w,
+            height: h,
+            components: builtComponents,
+            colorSpace: cs,
+            alpha: desc.alpha,
+            preservedColourInterpretation: desc.colour,
+            preservedComponentRoles: desc.components
+        )
     }
 }
 
@@ -1292,11 +1375,17 @@ public struct J2KDecoder: Sendable {
                 } else {
                     resolvedCS = .unknown
                 }
+                let preservedRoles: [ComponentRole]? = (selectedComponents == Array(0..<image.components.count))
+                    ? contractImage.descriptor.components
+                    : nil
                 image = J2KImage(
                     width: image.width,
                     height: image.height,
                     components: reindexed,
-                    colorSpace: resolvedCS
+                    colorSpace: resolvedCS,
+                    alpha: outAlpha,
+                    preservedColourInterpretation: outColour,
+                    preservedComponentRoles: preservedRoles
                 )
             }
 
@@ -1394,7 +1483,10 @@ public struct J2KDecoder: Sendable {
             width: newW,
             height: newH,
             components: newComponents,
-            colorSpace: image.colorSpace
+            colorSpace: image.colorSpace,
+            alpha: image.alpha,
+            preservedColourInterpretation: image.preservedColourInterpretation,
+            preservedComponentRoles: image.preservedComponentRoles
         )
     }
 
@@ -1450,7 +1542,10 @@ public struct J2KDecoder: Sendable {
             components: croppedComponents,
             offsetX: x0,
             offsetY: y0,
-            colorSpace: image.colorSpace
+            colorSpace: image.colorSpace,
+            alpha: image.alpha,
+            preservedColourInterpretation: image.preservedColourInterpretation,
+            preservedComponentRoles: image.preservedComponentRoles
         )
     }
 }

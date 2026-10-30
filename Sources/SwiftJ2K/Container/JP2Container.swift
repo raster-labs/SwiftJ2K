@@ -248,7 +248,13 @@ enum JP2Container {
         let container = try parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
         if let rreq = container.readerRequirements {
             let eval = rreq.evaluate()
-            if !eval.canDecodeCompletely {
+            if !eval.canDecodeCompletely
+                && !isVerifiedKakaduV8BaselineRreqWriterBug(
+                    bytes: bytes,
+                    container: container,
+                    rreq: rreq,
+                    evaluation: eval
+                ) {
                 let codes = eval.unsupportedRequiredFeatures.map(String.init).joined(separator: ", ")
                 let detail = codes.isEmpty
                     ? String(format: "unsatisfied DCM mask 0x%llx", eval.unsatisfiedDecodeMask)
@@ -405,11 +411,9 @@ enum JP2Container {
                     channelPermutation = perm
                 }
             }
-        } else if outputComponentCount == 4 {
-            alphaMode = .straight
         }
 
-        // Determine ColourInterpretation and ComponentRoles.
+        // Determine ColourInterpretation and ComponentRoles without inferring alpha from component count.
         let colour: ColourInterpretation
         let roles: [ComponentRole]
         let isRGBEnum = enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.sRGB.rawValue
@@ -426,12 +430,18 @@ enum JP2Container {
         } else if outputComponentCount == 2 && alphaMode != .absent {
             colour = .greyscale
             roles = [.grey, .alpha]
+        } else if outputComponentCount == 2 && alphaMode == .absent && !ihdr.unknownColourspace && (isGreyEnum || iccProfile != nil) {
+            colour = .greyscale
+            roles = [.grey, .uninterpreted("c1")]
         } else if outputComponentCount == 3 && (isRGBEnum || !ihdr.unknownColourspace || iccProfile != nil) {
             colour = .rgb
             roles = [.red, .green, .blue]
         } else if outputComponentCount == 4 && alphaMode != .absent {
             colour = .rgb
             roles = [.red, .green, .blue, .alpha]
+        } else if outputComponentCount == 4 && alphaMode == .absent && (isRGBEnum || !ihdr.unknownColourspace || iccProfile != nil) {
+            colour = .rgb
+            roles = [.red, .green, .blue, .uninterpreted("c3")]
         } else {
             colour = .unknown
             var customRoles = (0..<outputComponentCount).map { ComponentRole.uninterpreted("c\($0)") }
@@ -925,5 +935,253 @@ enum JP2Container {
             throw CodecError(.resourceLimitExceeded, "Container output (\(writer.bytes.count) bytes) exceeds maximumCompressedBytes (\(limits.maximumCompressedBytes)).")
         }
         return writer.bytes
+    }
+
+    // MARK: - Kakadu v8.x JPX 'rreq' Writer-Defect Verification
+
+    /// Supported colour-specification standard feature codes in ITU-T T.801 Table M.14.
+    private static let supportedColourSpecificationFeatures: Set<JP2ReaderRequirementsBox.StandardFeature> = [
+        .restrictedICCProfile,
+        .anyICCProfile,
+        .sRGBEnumeratedColourSpace,
+        .greyscaleEnumeratedColourSpace,
+        .biLevel1EnumeratedColourSpace,
+        .biLevel2EnumeratedColourSpace,
+        .yCbCr1EnumeratedColourSpace,
+        .yCbCr2EnumeratedColourSpace,
+        .yCbCr3EnumeratedColourSpace,
+        .eSRGBEnumeratedColourSpace,
+        .rommRGBEnumeratedColourSpace,
+        .sYCCEnumeratedColourSpace
+    ]
+
+    private static func expectedRreqColourFeature(
+        for colr: JP2ColourSpecificationBox
+    ) -> JP2ReaderRequirementsBox.StandardFeature? {
+        switch colr.method {
+        case .restrictedICC:
+            return .restrictedICCProfile
+        case .anyICC:
+            return .anyICCProfile
+        case .vendor:
+            return nil
+        case .enumerated(let cs):
+            switch JP2ColourSpecificationBox.EnumeratedColourSpace(rawValue: cs) {
+            case .sRGB:      return .sRGBEnumeratedColourSpace
+            case .greyscale: return .greyscaleEnumeratedColourSpace
+            case .bilevel1:  return .biLevel1EnumeratedColourSpace
+            case .bilevel2:  return .biLevel2EnumeratedColourSpace
+            case .yCbCr1:    return .yCbCr1EnumeratedColourSpace
+            case .yCbCr2:    return .yCbCr2EnumeratedColourSpace
+            case .yCbCr3:    return .yCbCr3EnumeratedColourSpace
+            case .sYCC:      return .sYCCEnumeratedColourSpace
+            case .eSRGB:     return .eSRGBEnumeratedColourSpace
+            case .rommRGB:   return .rommRGBEnumeratedColourSpace
+            default:         return nil
+            }
+        }
+    }
+
+    /// Detects the upstream Kakadu v8.x `jpx_target` `'rreq'` writer defect without weakening
+    /// normative ITU-T T.801 Clause M.6.2 mask evaluation in ``JP2ReaderRequirementsBox/evaluate``.
+    ///
+    /// Kakadu v8.x's `jpx_target` allocates the top `NSF` bits of the `ML`-byte mask to `FUAM`
+    /// (`SM^i = 1 << (8 * ML - 1 - i)`) and the immediately adjacent `D` lower bits to `DCM`,
+    /// omitting the `DCM` bits from every `SM^i` (`(SM^i & DCM) == 0`). Because mask geometry
+    /// alone cannot distinguish a writer defect from a genuinely undefined `DCM` requirement bit,
+    /// container inspection admits this pattern only when:
+    /// 1. `FUAM` is completely satisfied, `vendorFeatures` is empty, and every `SF^i` is a
+    ///    distinct supported standard feature;
+    /// 2. the codestream main header contains a Latin-1 `COM` marker (`Rcom == 1`) explicitly
+    ///    identifying `"Kakadu-v8."`;
+    /// 3. `'ftyp'` declares baseline JPX (`brand == "jpx "` with `["jp2 ", "jpxb"]` for Part 1 or
+    ///    `["jph ", "jhxb"/"jpxb"]` for HTJ2K);
+    /// 4. all seven baseline JPX requirement categories (codestream coding, contiguous codestream,
+    ///    no compositing, single-codestream layer, no scaling, opacity matching `'cdef'`, and
+    ///    colour specification matching every `'colr'` box) are explicitly present in `SF^i`; and
+    /// 5. `SM^i`, `FUAM`, and `DCM` match Kakadu v8.x's exact MSB-packed bit positions.
+    private static func isVerifiedKakaduV8BaselineRreqWriterBug(
+        bytes: [UInt8],
+        container: JP2ParsedContainer,
+        rreq: JP2ReaderRequirementsBox,
+        evaluation: JP2ReaderRequirementsBox.SupportEvaluation
+    ) -> Bool {
+        let nsf = rreq.standardFeatures.count
+        guard evaluation.understandsAllAspects,
+              rreq.vendorFeatures.isEmpty,
+              rreq.maskLength >= 2,
+              nsf >= 7 else {
+            return false
+        }
+
+        var declaredFeatures: Set<JP2ReaderRequirementsBox.StandardFeature> = []
+        declaredFeatures.reserveCapacity(nsf)
+        var colourFeatureCount = 0
+        for entry in rreq.standardFeatures {
+            guard let feature = entry.knownFeature,
+                  JP2ReaderRequirementsBox.swiftJ2KSupportedFeatures.contains(feature),
+                  declaredFeatures.insert(feature).inserted else {
+                return false
+            }
+            if supportedColourSpecificationFeatures.contains(feature) {
+                colourFeatureCount += 1
+            }
+        }
+        guard colourFeatureCount >= 1 else {
+            return false
+        }
+
+        // Scan codestream main header (SOC up to first SOT/SOD/EOC) for Kakadu v8.x COM provenance
+        // and CAP/COD HTJ2K signalling without copying the codestream.
+        let csRange = container.codestreamRange
+        guard csRange.lowerBound >= 0,
+              csRange.upperBound <= bytes.count,
+              csRange.count >= 4,
+              bytes[csRange.lowerBound] == 0xFF,
+              bytes[csRange.lowerBound + 1] == 0x4F else {
+            return false
+        }
+
+        let kakaduPrefix = Array("Kakadu-v8.".utf8)
+        var hasKakaduV8Comment = false
+        var hasHTJ2KMarker = false
+        var pos = csRange.lowerBound + 2
+
+        while pos + 2 <= csRange.upperBound {
+            let marker = (UInt16(bytes[pos]) << 8) | UInt16(bytes[pos + 1])
+            if marker == 0xFF90 || marker == 0xFF93 || marker == 0xFFD9 {
+                break
+            }
+            if (0xFF30...0xFF3F).contains(marker) {
+                pos += 2
+                continue
+            }
+            guard (marker & 0xFF00) == 0xFF00, pos + 4 <= csRange.upperBound else {
+                return false
+            }
+            let segLen = Int((UInt16(bytes[pos + 2]) << 8) | UInt16(bytes[pos + 3]))
+            guard segLen >= 2 else { return false }
+            let (segEnd, ov) = (pos + 2).addingReportingOverflow(segLen)
+            guard !ov, segEnd <= csRange.upperBound else { return false }
+
+            let payloadStart = pos + 4
+            let payloadLen = segEnd - payloadStart
+            if marker == 0xFF64 && payloadLen >= 2 + kakaduPrefix.count {
+                let rcom = (UInt16(bytes[payloadStart]) << 8) | UInt16(bytes[payloadStart + 1])
+                if rcom == 1 {
+                    let textStart = payloadStart + 2
+                    if bytes[textStart..<(textStart + kakaduPrefix.count)].elementsEqual(kakaduPrefix) {
+                        hasKakaduV8Comment = true
+                    }
+                }
+            } else if marker == 0xFF50 && payloadLen >= 4 {
+                let pcap = (UInt32(bytes[payloadStart]) << 24)
+                    | (UInt32(bytes[payloadStart + 1]) << 16)
+                    | (UInt32(bytes[payloadStart + 2]) << 8)
+                    | UInt32(bytes[payloadStart + 3])
+                if (pcap & 0x0002_0000) != 0 {
+                    hasHTJ2KMarker = true
+                }
+            } else if marker == 0xFF52 && payloadLen >= 1 {
+                if (bytes[payloadStart] & 0x40) != 0 {
+                    hasHTJ2KMarker = true
+                }
+            }
+            pos = segEnd
+        }
+
+        guard hasKakaduV8Comment else {
+            return false
+        }
+
+        // Reconcile 'ftyp' brand and compatibility list against codestream coding.
+        let ftyp = container.fileType
+        guard ftyp.brand == JP2FileTypeBox.brandJPX else {
+            return false
+        }
+        if hasHTJ2KMarker {
+            guard ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPH),
+                  ftyp.compatibleBrands.contains("jhxb") || ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else {
+                return false
+            }
+        } else {
+            guard ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJP2),
+                  ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else {
+                return false
+            }
+        }
+
+        // Reconcile all 7 baseline JPX requirement categories against the parsed container & codestream.
+        guard declaredFeatures.contains(.codestreamContiguous),
+              declaredFeatures.contains(.noCompositingRequired),
+              declaredFeatures.contains(.compositingLayerSingleCodestream),
+              declaredFeatures.contains(.noScalingRequired) else {
+            return false
+        }
+
+        if hasHTJ2KMarker {
+            guard declaredFeatures.contains(.htj2kCodestream),
+                  !declaredFeatures.contains(.codestreamContainsNoExtensions) else {
+                return false
+            }
+        } else {
+            let hasPart1Profile = declaredFeatures.contains(.unrestrictedJPEG2000Part1)
+                || declaredFeatures.contains(.profile0Codestream)
+                || declaredFeatures.contains(.profile1Codestream)
+            guard declaredFeatures.contains(.codestreamContainsNoExtensions),
+                  hasPart1Profile,
+                  !declaredFeatures.contains(.htj2kCodestream) else {
+                return false
+            }
+        }
+
+        var hasStraightOpacity = false
+        var hasPremultipliedOpacity = false
+        if let cdef = container.header.channelDefinition {
+            for entry in cdef.entries {
+                if entry.channelType == 1 { hasStraightOpacity = true }
+                if entry.channelType == 2 { hasPremultipliedOpacity = true }
+            }
+        }
+        if hasPremultipliedOpacity {
+            guard declaredFeatures.contains(.premultipliedOpacityChannel) else { return false }
+        } else if hasStraightOpacity {
+            guard declaredFeatures.contains(.opacityChannel) else { return false }
+        } else {
+            guard declaredFeatures.contains(.noOpacity) else { return false }
+        }
+
+        guard !container.header.colourSpecifications.isEmpty else {
+            return false
+        }
+        for colr in container.header.colourSpecifications {
+            guard let expectedFeature = expectedRreqColourFeature(for: colr),
+                  declaredFeatures.contains(expectedFeature) else {
+                return false
+            }
+        }
+
+        // Verify exact MSB-packed Kakadu v8.x FUAM and adjacent DCM bit layout.
+        let totalBits = Int(rreq.maskLength) * 8
+        let decodeClauses = nsf - max(0, colourFeatureCount - 1)
+        guard decodeClauses > 0,
+              decodeClauses < 64,
+              nsf + decodeClauses <= totalBits,
+              totalBits <= 64 else {
+            return false
+        }
+
+        for (index, entry) in rreq.standardFeatures.enumerated() {
+            let expectedMask = UInt64(1) << (totalBits - 1 - index)
+            guard entry.mask == expectedMask else {
+                return false
+            }
+        }
+        guard rreq.fuam == evaluation.satisfiedMask else {
+            return false
+        }
+        let dcmShift = totalBits - nsf - decodeClauses
+        let expectedDCM = ((UInt64(1) << decodeClauses) - 1) << dcmShift
+        return rreq.dcm == expectedDCM
     }
 }
