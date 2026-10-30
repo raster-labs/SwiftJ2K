@@ -20,7 +20,10 @@ Executed:
    EXIT0:246 process checks, including staged installation in temporary output.
 4. swift build --disable-sandbox --build-system native -c release --product swiftj2k-cli -j2
    EXIT0. Bounded scalar/one-worker release measurements:5 warmups +20 interleaved timed runs each for palette container decode, small JPIP view, full volume decode and odd-ROI/reduced volume decode. Synthetic volume full and ROI samples checked exactly. Candidate-only cold-process timings include startup; no comparative speedup or R4 performance acceptance claim.
-5. Seven common contracts match their SHA256 manifest. Independent fixtures, historical M6 and Swift6.4 records unchanged.
+5. Additional affected legacy volume regression run on documentation-only head 03d50300fe05fd041e450bc44502bd1d7ae4a496:
+   swift test --disable-sandbox --build-system native --scratch-path <isolated> -j2 --filter 'JP3DDecoderTests|JP3DROIDecoderTests|JP3DTranscoderTests|JP3DEncoderTests|JP3DSliceStack|JPIPSessionManagerTests'
+   EXIT0:127 XCTest cases in JP3DDecoderTests and JP3DEncoderTests; no failures, tracked inputs unchanged. Other filter alternatives matched no additional tests. Combined native total229 tests/declarations; no duplicate total inferred from nested XCTest summaries.
+6. Seven common contracts match their SHA256 manifest. Independent fixtures, historical M6 and Swift6.4 records unchanged.
 
 Preserved failures:
 - b6b101c: first build EXIT1, new ICC test expression exceeded type-check complexity; corrected by typed locals.
@@ -32,6 +35,7 @@ Raw audit evidence (outside original repository):
   first-focused.log, first-exit.json, source-identity-first.json
   second-focused.log, second-focused-identity.json, second-focused-exit.json
   third-focused-regressions.log, third-focused-regressions-identity.json, third-focused-regressions-exit.json
+  volume-affected-regressions.log, volume-affected-regressions-identity.json, volume-affected-regressions-exit.json
   cli-regressions/report.json; release-build.log; release-command.json; release-exit.json
   release-benchmark/results.json; contract-identity.json
 
