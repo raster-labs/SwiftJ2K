@@ -655,6 +655,7 @@ func parsePNG(
     var colorType = 0
     var headerParsed = false
     var sbitSeen = false
+    var plteSeen = false
     var idatSeen = false
     var sbitDepth: Int?
     var idatCompressed = Data()
@@ -743,7 +744,7 @@ func parsePNG(
 
             case "sBIT":
                 // W3C PNG §11.3.2.4: sBIT must appear after IHDR, before PLTE/IDAT, and at most once.
-                guard headerParsed, !idatSeen, !sbitSeen else {
+                guard headerParsed, !plteSeen, !idatSeen, !sbitSeen else {
                     throw CodecError(.malformedInput, "Invalid or misplaced PNG sBIT chunk.")
                 }
                 let expectedSbitBytes: Int
@@ -779,6 +780,15 @@ func parsePNG(
                 }
                 sbitDepth = firstSig
                 sbitSeen = true
+
+            case "PLTE":
+                // A suggested palette is optional for truecolour PNG, but must precede IDAT.
+                guard headerParsed, !plteSeen, !idatSeen,
+                      colorType == 2 || colorType == 6,
+                      chunkLen > 0, chunkLen <= 768, chunkLen % 3 == 0 else {
+                    throw CodecError(.malformedInput, "Invalid or misplaced PNG PLTE chunk.")
+                }
+                plteSeen = true
 
             case "IDAT":
                 guard headerParsed else {
@@ -982,13 +992,19 @@ func formatPNG(_ image: Image) throws -> Data {
     }
     let channels = d.components.count
     let colorType: UInt8
+    let expectedRoles: [ComponentRole]
     switch channels {
-    case 1: colorType = 0
-    case 2: colorType = 4
-    case 3: colorType = 2
-    case 4: colorType = 6
+    case 1: (colorType, expectedRoles) = (0, [.grey])
+    case 2: (colorType, expectedRoles) = (4, [.grey, .alpha])
+    case 3: (colorType, expectedRoles) = (2, [.red, .green, .blue])
+    case 4: (colorType, expectedRoles) = (6, [.red, .green, .blue, .alpha])
     default:
         throw CodecError(.unsupportedFeature, "PNG output supports 1, 2, 3, or 4 components.")
+    }
+    let expectedColour: ColourInterpretation = channels <= 2 ? .greyscale : .rgb
+    let expectedAlpha: AlphaInterpretation = channels == 2 || channels == 4 ? .straight : .absent
+    guard d.components == expectedRoles, d.colour == expectedColour, d.alpha == expectedAlpha else {
+        throw CodecError(.unsupportedFeature, "PNG output requires ordered greyscale or RGB channels with optional straight alpha.")
     }
 
     let pngBitDepth = (d.meaningfulBits <= 8) ? 8 : 16
@@ -1431,7 +1447,7 @@ private func decodeTIFFLogicalSample(
             )
         }
         // Invert luminance channel 0 (0 = white -> maxSample, maxSample = black -> 0);
-        // preserve any extra alpha channel (c == 1) uninverted.
+        // preserve any extra channel (alpha or unspecified data) uninverted.
         return (c == 0) ? (maxSample - raw) : raw
 
     case .palette(let fileBytes, let colorMapValPos, let paletteEntries, let mapIsLE, let output8Bit):
@@ -1674,6 +1690,7 @@ func parseTIFF(
         var planarConfig = 1
         var colorMapInfo: (valPos: Int, fieldType: UInt16, count: Int)?
         var extraSampleTypes: [Int] = []
+        var extraSamplesSeen = false
         var sampleFormat = 1
         var sMaxSampleValue: Int?
 
@@ -1744,10 +1761,11 @@ func parseTIFF(
                 }
                 colorMapInfo = (valPos: span.valPos, fieldType: fieldType, count: count)
             case 338:
-                guard count <= 16,
+                guard !extraSamplesSeen, fieldType == 3, count > 0, count <= 16,
                       let span = try resolveTagSpan(entryOffset: entryPos, fieldType: fieldType, count: count) else {
                     throw CodecError(.malformedInput, "Invalid TIFF ExtraSamples tag (338).")
                 }
+                extraSamplesSeen = true
                 extraSampleTypes = []
                 extraSampleTypes.reserveCapacity(count)
                 for idx in 0..<count {
@@ -1801,17 +1819,17 @@ func parseTIFF(
         }
 
         func resolveAlphaMode() throws -> AlphaInterpretation {
-            if extraSampleTypes.isEmpty {
-                return .straight
-            }
+            // TIFF 6.0 pp. 31–32 requires ExtraSamples when SamplesPerPixel includes
+            // extra channels. A missing tag is malformed, not implicit opacity.
             guard extraSampleTypes.count == 1 else {
-                throw CodecError(.unsupportedFeature, "Multiple TIFF ExtraSamples channels (\(extraSampleTypes.count)) are not supported.")
+                throw CodecError(.malformedInput, "TIFF ExtraSamples must describe exactly one extra channel.")
             }
             switch extraSampleTypes[0] {
+            case 0: return .absent
             case 1: return .premultiplied
-            case 0, 2: return .straight
+            case 2: return .straight
             default:
-                throw CodecError(.unsupportedFeature, "Unsupported TIFF ExtraSamples value (\(extraSampleTypes[0])).")
+                throw CodecError(.malformedInput, "Invalid TIFF ExtraSamples value (\(extraSampleTypes[0])).")
             }
         }
 
@@ -1846,7 +1864,7 @@ func parseTIFF(
             }
             outputAlpha = (samplesPerPixel == 2) ? try resolveAlphaMode() : .absent
             if samplesPerPixel == 2 && signed {
-                throw CodecError(.unsupportedFeature, "Signed greyscale+alpha TIFF is not supported.")
+                throw CodecError(.unsupportedFeature, "Signed greyscale TIFF with extra channels is not supported.")
             }
 
             let inferredBits: Int
@@ -2018,7 +2036,7 @@ func parseTIFF(
 
         // Build actual ImageDescriptor BEFORE any strip allocation so 1-component 8-bit greyscale's
         // 16-bit contract storage (requiredByteCount) is admitted against maximumDecodedBytes upfront.
-        let descriptor = try makeContractImageDescriptor(
+        let baseDescriptor = try makeContractImageDescriptor(
             width: w,
             height: h,
             componentCount: outputComponentCount,
@@ -2027,6 +2045,22 @@ func parseTIFF(
             alpha: outputAlpha,
             limits: limits
         )
+        let descriptor: ImageDescriptor
+        if outputAlpha == .absent && (outputComponentCount == 2 || outputComponentCount == 4) {
+            // Unspecified extras do not erase the known photometric meaning of the
+            // colour channels, and they must never acquire an alpha role.
+            let colourRoles: [ComponentRole] = photo == 2 ? [.red, .green, .blue] : [.grey]
+            descriptor = try ImageDescriptor(
+                width: w, height: h, sampleType: baseDescriptor.sampleType,
+                storageBits: baseDescriptor.storageBits, meaningfulBits: outputMeaningfulBits,
+                byteOrder: baseDescriptor.byteOrder,
+                components: colourRoles + [.uninterpreted("c\(outputComponentCount - 1)")],
+                colour: photo == 2 ? .rgb : .greyscale, alpha: .absent,
+                planes: baseDescriptor.planes, limits: limits
+            )
+        } else {
+            descriptor = baseDescriptor
+        }
         let destBytes = descriptor.requiredByteCount
         guard destBytes <= limits.maximumDecodedBytes else {
             throw CodecError(.resourceLimitExceeded, "TIFF decoded image size (\(destBytes) B) exceeds decoded byte limit (\(limits.maximumDecodedBytes) B).")
@@ -2104,6 +2138,31 @@ func formatTIFF(_ image: Image) throws -> Data {
     guard (1...4).contains(channels) else {
         throw CodecError(.unsupportedFeature, "TIFF output supports 1 to 4 components.")
     }
+    let colourRoles: [ComponentRole]
+    let photometric: UInt32
+    switch d.colour {
+    case .greyscale: (colourRoles, photometric) = ([.grey], 1)
+    case .rgb: (colourRoles, photometric) = ([.red, .green, .blue], 2)
+    case .unknown:
+        throw CodecError(.unsupportedFeature, "TIFF output requires known greyscale or RGB component meaning.")
+    }
+    guard Array(d.components.prefix(colourRoles.count)) == colourRoles,
+          channels == colourRoles.count || channels == colourRoles.count + 1 else {
+        throw CodecError(.unsupportedFeature, "TIFF output requires ordered greyscale or RGB channels with at most one extra channel.")
+    }
+    let includeExtraSamples = channels == colourRoles.count + 1
+    let extraSampleType: UInt32
+    if includeExtraSamples {
+        switch d.components[channels - 1] {
+        case .uninterpreted where d.alpha == .absent: extraSampleType = 0
+        case .alpha where d.alpha == .premultiplied: extraSampleType = 1
+        case .alpha where d.alpha == .straight: extraSampleType = 2
+        default:
+            throw CodecError(.unsupportedFeature, "TIFF output cannot represent the extra channel's meaning.")
+        }
+    } else {
+        extraSampleType = 0
+    }
     let signed = (d.sampleType == .signedInteger)
     let tiffBitDepth = (d.meaningfulBits <= 8) ? 8 : 16
     let bytesPerSample = tiffBitDepth / 8
@@ -2135,7 +2194,6 @@ func formatTIFF(_ image: Image) throws -> Data {
         }
     }
 
-    let includeExtraSamples = (channels == 2 || channels == 4)
     let includeSMax = (d.meaningfulBits != tiffBitDepth)
     let tagCount: UInt16 = 11 + (includeExtraSamples ? 1 : 0) + (includeSMax ? 1 : 0)
     let ifdOffset = 8
@@ -2174,7 +2232,6 @@ func formatTIFF(_ image: Image) throws -> Data {
     // 259 Compression = 1 (Uncompressed)
     writeTag(259, type: 3, count: 1, valueOrOffset: 1)
     // 262 PhotometricInterpretation (1 = BlackIsZero, 2 = RGB)
-    let photometric: UInt32 = (channels >= 3) ? 2 : 1
     writeTag(262, type: 3, count: 1, valueOrOffset: photometric)
     // 273 StripOffsets (LONG)
     writeTag(273, type: 4, count: 1, valueOrOffset: UInt32(stripOffset))
@@ -2187,8 +2244,7 @@ func formatTIFF(_ image: Image) throws -> Data {
     // 284 PlanarConfiguration = 1 (Chunky)
     writeTag(284, type: 3, count: 1, valueOrOffset: 1)
     if includeExtraSamples {
-        // 338 ExtraSamples (SHORT: 1 = Associated/premultiplied alpha, 2 = Unassociated/straight alpha)
-        let extraSampleType: UInt32 = (d.alpha == .premultiplied) ? 1 : 2
+        // 338 ExtraSamples: 0 = unspecified, 1 = associated, 2 = unassociated alpha.
         writeTag(338, type: 3, count: 1, valueOrOffset: extraSampleType)
     }
     // 339 SampleFormat (SHORT: 1 = unsigned, 2 = signed)

@@ -405,52 +405,51 @@ public actor JP3DTranscoder {
     ) async throws -> JP3DTranscoderResult {
         let toHTJ2K = configuration.direction == .standardToHTJ2K
         let preservedComments: [JP3DCommentSegment] = (metadataPolicy == .preserve) ? source.comments : []
+        let (retainedSourceWorkspace, sourceWorkspaceOverflow) = source.retainedTileBytes.addingReportingOverflow(source.commentPayloadBytes)
+        guard !sourceWorkspaceOverflow else {
+            throw CodecError(.resourceLimitExceeded, "Retained transcode source workspace overflows Int")
+        }
         if source.cod.isLossless && source.tiles.allSatisfy({ JP3DSliceStackCodec.hasMagic($0.data) }) {
             do {
                 var transcodedTiles: [Data] = []
                 transcodedTiles.reserveCapacity(source.tiles.count)
                 let sliceStackCodec = JP3DSliceStackCodec()
+                var retainedOutputBytes = 0
+                var peakSliceWorkspace = estimatedWorkspace
                 for parsedTile in source.tiles {
                     try work.check()
-                    let tileData = try await sliceStackCodec.transcodeTile(
+                    let (outerWorkspace, wsOverflow) = retainedSourceWorkspace.addingReportingOverflow(retainedOutputBytes)
+                    let (outerMemory, memOverflow) = sourceData.count.addingReportingOverflow(outerWorkspace)
+                    guard !wsOverflow, !memOverflow else {
+                        throw CodecError(.resourceLimitExceeded, "Retained transcode buffers overflow Int")
+                    }
+                    let tileLimits = try (limits ?? .default).reserving(
+                        workspaceBytes: outerWorkspace, memoryBytes: outerMemory
+                    )
+                    let tileResult = try await sliceStackCodec.transcodeTile(
                         parsedTile.data,
                         toHTJ2K: toHTJ2K,
-                        limits: limits ?? .default,
+                        limits: tileLimits,
                         executionPolicy: executionPolicy
                     )
-                    transcodedTiles.append(tileData)
+                    let (tilePeak, peakOverflow) = outerWorkspace.addingReportingOverflow(tileResult.peakWorkspaceBytes)
+                    let (nextOutputBytes, outputOverflow) = retainedOutputBytes.addingReportingOverflow(tileResult.data.count)
+                    guard !peakOverflow, !outputOverflow else {
+                        throw CodecError(.resourceLimitExceeded, "Transcode workspace peak overflows Int")
+                    }
+                    peakSliceWorkspace = max(peakSliceWorkspace, tilePeak)
+                    retainedOutputBytes = nextOutputBytes
+                    transcodedTiles.append(tileResult.data)
                 }
 
-                let builder = JP3DCodestreamBuilder()
-                let codestream = builder.build(
+                let publication = try JP3DCodestreamBuilder().buildTranscodePublication(
+                    sourceDataBytes: sourceData.count, source: source,
                     tileData: transcodedTiles,
-                    width: source.siz.width,
-                    height: source.siz.height,
-                    depth: source.siz.depth,
-                    components: source.siz.componentCount,
-                    bitDepth: source.siz.bitDepth,
-                    signed: source.siz.signed,
-                    levelsX: source.cod.levelsX,
-                    levelsY: source.cod.levelsY,
-                    levelsZ: source.cod.levelsZ,
-                    tileSizeX: source.siz.tileSizeX,
-                    tileSizeY: source.siz.tileSizeY,
-                    tileSizeZ: source.siz.tileSizeZ,
-                    isLossless: source.cod.isLossless,
                     htj2kConfiguration: toHTJ2K ? configuration.htj2kConfiguration : nil,
-                    comments: preservedComments
+                    comments: preservedComments, limits: limits ?? .default
                 )
-                if let limits {
-                    let (liveMem, mOv) = sourceData.count.addingReportingOverflow(codestream.count)
-                    guard !mOv,
-                          codestream.count <= limits.maximumCompressedBytes,
-                          liveMem <= limits.maximumMemoryBytes else {
-                        throw CodecError(
-                            .resourceLimitExceeded,
-                            "Transcoded volume codestream exceeds compressed or memory limit"
-                        )
-                    }
-                }
+                let codestream = publication.data
+                let measuredPeak = max(peakSliceWorkspace, publication.peakWorkspaceBytes)
 
                 if configuration.verifyRoundTrip {
                     let origVol = try await JP3DDecoder().decodeAdmitted(
@@ -468,7 +467,6 @@ public actor JP3DTranscoder {
                     }
                 }
 
-                let measuredPeak = max(estimatedWorkspace, source.retainedTileBytes + codestream.count)
                 return JP3DTranscoderResult(
                     data: codestream,
                     tilesTranscoded: transcodedTiles.count,
@@ -773,6 +771,50 @@ public actor JP3DTranscoder {
 // MARK: - JP3DCodestreamBuilder + HTJ2K extension
 
 extension JP3DCodestreamBuilder {
+    /// Admit all retained source/output buffers and final serialization before the
+    /// output allocation. This path writes HT markers directly into one reserved buffer.
+    internal func buildTranscodePublication(
+        sourceDataBytes: Int, source: JP3DParsedCodestream, tileData: [Data],
+        htj2kConfiguration: JP3DHTJ2KConfiguration?, comments: [JP3DCommentSegment],
+        limits: ResourceLimits
+    ) throws -> (data: Data, peakWorkspaceBytes: Int) {
+        let outputBytes = try projectedByteCount(
+            tileData: tileData, components: source.siz.componentCount,
+            levelsX: source.cod.levelsX, levelsY: source.cod.levelsY, levelsZ: source.cod.levelsZ,
+            isLossless: source.cod.isLossless, includesHTMarkers: htj2kConfiguration != nil,
+            comments: comments
+        )
+        func add(_ a: Int, _ b: Int) throws -> Int {
+            let (sum, overflow) = a.addingReportingOverflow(b)
+            guard a >= 0, b >= 0, !overflow else {
+                throw CodecError(.resourceLimitExceeded, "Transcode publication memory overflows Int")
+            }
+            return sum
+        }
+        var retainedBytes = try add(source.retainedTileBytes, source.commentPayloadBytes)
+        for tile in tileData { retainedBytes = try add(retainedBytes, tile.count) }
+        // Marker append helpers hold at most one four-byte scalar array alongside output.
+        let serializationBytes = try add(outputBytes, MemoryLayout<UInt32>.size)
+        let peakWorkspaceBytes = try add(retainedBytes, serializationBytes)
+        let liveMemoryBytes = try add(sourceDataBytes, peakWorkspaceBytes)
+        guard outputBytes <= limits.maximumCompressedBytes,
+              peakWorkspaceBytes <= limits.maximumWorkspaceBytes,
+              liveMemoryBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcode publication exceeds compressed, workspace, or memory limit")
+        }
+        StorageTelemetry.recordStage("volume-transcode-publication", bytes: outputBytes)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: outputBytes)
+        let data = buildPreallocated(
+            tileData: tileData, width: source.siz.width, height: source.siz.height, depth: source.siz.depth,
+            components: source.siz.componentCount, bitDepth: source.siz.bitDepth, signed: source.siz.signed,
+            levelsX: source.cod.levelsX, levelsY: source.cod.levelsY, levelsZ: source.cod.levelsZ,
+            tileSizeX: source.siz.tileSizeX, tileSizeY: source.siz.tileSizeY, tileSizeZ: source.siz.tileSizeZ,
+            isLossless: source.cod.isLossless, comments: comments,
+            htj2kConfiguration: htj2kConfiguration, capacity: outputBytes
+        )
+        return (data, peakWorkspaceBytes)
+    }
+
     /// Builds a JP3D codestream with optional HTJ2K marker segments and optional `COM` segments.
     public func build(
         tileData: [Data],

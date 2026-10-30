@@ -727,24 +727,47 @@ package enum Slice2DBridge {
         maxQualityLayers: Int? = nil,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) throws -> (samples: [Int32], width: Int, height: Int, bitDepth: Int, signed: Bool) {
+    ) throws -> (samples: [Int32], width: Int, height: Int, bitDepth: Int, signed: Bool, peakWorkspaceBytes: Int) {
+        // The caller reserves its slice Data; the copied byte array belongs to this bridge.
+        let inspectionLimits = try limits.reserving(workspaceBytes: data.count, memoryBytes: 0)
+        guard data.count <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Slice input copy exceeds memory limit")
+        }
         let bytes = [UInt8](data)
         let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
-        let profile = try Part1Pipeline.inspect(bytes, limits: limits, metadataPolicy: .preserve)
+        let profile = try Part1Pipeline.inspect(bytes, limits: inspectionLimits, metadataPolicy: .preserve)
+        guard profile.componentCount == 1 else {
+            throw CodecError(.malformedInput, "A volume slice must contain exactly one component")
+        }
         let descriptor = try profile.defaultDescriptor(limits: limits)
+        let count = try checkedMultiply(profile.width, profile.height)
+        let sampleBytes = try checkedMultiply(count, MemoryLayout<Int32>.stride)
+        let bridgeBytes = try checkedAdd(checkedAdd(bytes.count, descriptor.requiredByteCount), sampleBytes)
+        let coreWorkspace = try checkedAdd(
+            try Part1Pipeline.workspaceBytes(
+                planePixels: profile.largestTilePixels, componentCount: profile.componentCount,
+                bytesPerCoeff: profile.isReversibleLossless ? 4 : 8, joinedBytes: profile.largestTileBytes
+            ), profile.retainedMetadataBytes
+        )
+        let peakWorkspace = try checkedAdd(bridgeBytes, coreWorkspace)
+        guard peakWorkspace <= limits.maximumWorkspaceBytes,
+              peakWorkspace <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Slice decode buffers exceed operation limits")
+        }
+        // The core includes its input array and destination in its memory check.
+        let coreLimits = try limits.reserving(workspaceBytes: bridgeBytes, memoryBytes: sampleBytes)
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let (image, _) = try Part1Pipeline.decode(
             bytes: bytes,
             profile: profile,
             into: destination,
-            limits: limits,
+            limits: coreLimits,
             backend: resolvedBackend.backend,
             progress: nil,
             maxQualityLayers: maxQualityLayers
         )
         let w = profile.width
         let h = profile.height
-        let count = w * h
         var out = [Int32](repeating: 0, count: count)
         try image.storage.withUnsafeBytes { raw in
             if descriptor.storageBits == 8 {
@@ -773,7 +796,7 @@ package enum Slice2DBridge {
                 }
             }
         }
-        return (out, w, h, profile.precision, profile.signed)
+        return (out, w, h, profile.precision, profile.signed, peakWorkspace)
     }
 
     /// Transcodes a lossless single-component 2D slice codestream (unsigned or signed, 1–16 bits)
@@ -783,12 +806,17 @@ package enum Slice2DBridge {
         to target: TranscodeTarget,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) throws -> Data {
+    ) throws -> (data: Data, peakWorkspaceBytes: Int) {
         let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
+        // The caller's Data and the codec's copied byte array overlap. The codec
+        // accounts its own coefficient/output workspace, excluding its input array.
+        let codecLimits = try limits.reserving(
+            workspaceBytes: sliceData.count, memoryBytes: sliceData.count
+        )
         let bytes = [UInt8](sliceData)
         let profile = try ScalarLosslessCodec.inspect(
             bytes,
-            limits: limits,
+            limits: codecLimits,
             metadataPolicy: .preserve,
             allowSignedWaveletTranscode: true
         )
@@ -800,16 +828,17 @@ package enum Slice2DBridge {
             codeBlockHeight: max(4, min(1024, cbHeight)),
             blockCoding: (target == .htj2k) ? .htj2k : .part1
         )
-        let (transcoded, _) = try ScalarLosslessCodec.transcode(
+        let (transcoded, peakWorkspace) = try ScalarLosslessCodec.transcode(
             bytes: bytes,
             profile: profile,
             to: target,
             codecOptions: codecOptions,
             metadataPolicy: .preserve,
-            limits: limits,
+            limits: codecLimits,
             backend: resolvedBackend.backend,
             progress: nil
         )
-        return transcoded
+        return (transcoded, try checkedAdd(bytes.count, peakWorkspace))
     }
+
 }

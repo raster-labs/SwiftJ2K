@@ -298,13 +298,25 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
         colour: ColourInterpretation,
         hasAlpha: Bool,
         isPremultipliedAlpha: Bool = false,
-        hasRestrictedICC: Bool = false
+        hasRestrictedICC: Bool = false,
+        colourFeatures: [StandardFeature]? = nil
     ) throws -> JP2ReaderRequirementsBox {
         _ = isLossless // T.801 SF=5 covers both reversible and irreversible Part 1 codestreams.
+        let fallbackEnumFeature: StandardFeature = (colour == .rgb)
+            ? .sRGBEnumeratedColourSpace : .greyscaleEnumeratedColourSpace
+        let requestedColours = colourFeatures ?? (hasRestrictedICC
+            ? [.restrictedICCProfile, fallbackEnumFeature] : [fallbackEnumFeature])
+        var colours: [StandardFeature] = []
+        for feature in requestedColours where !colours.contains(feature) { colours.append(feature) }
+        let bitCount = (isHTJ2K ? 6 : 7) + colours.count + (colours.count > 1 ? 1 : 0)
+        guard bitCount <= 64 else {
+            throw CodecError(.unsupportedFeature, "Too many independent JPX reader requirements.")
+        }
+        let maskLength: UInt8 = bitCount <= 16 ? 2 : (bitCount <= 32 ? 4 : 8)
         var entries: [StandardFeatureEntry] = []
         var fuam: UInt64 = 0
         var dcm: UInt64 = 0
-        var nextBit: UInt64 = 0x8000
+        var nextBit: UInt64 = UInt64(1) << (Int(maskLength) * 8 - 1)
 
         func allocateBit() -> UInt64 {
             let b = nextBit
@@ -333,27 +345,23 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
             addRequired(.noOpacity)
         }
 
-        let fallbackEnumFeature: StandardFeature = (colour == .rgb)
-            ? .sRGBEnumeratedColourSpace
-            : .greyscaleEnumeratedColourSpace
-
-        if hasRestrictedICC {
-            // Two colour specifications are written (Restricted ICC + enumerated fallback):
-            // understanding all aspects (`FUAM`) requires both bits, while complete decoding
-            // (`DCM`) requires either Restricted ICC OR the enumerated colourspace (shared bit).
-            let iccUnderstandBit = allocateBit()
-            let enumUnderstandBit = allocateBit()
+        if colours.count > 1 {
+            // Every colour description is an aspect; any complete colour description suffices
+            // for decoding. All masks describe real clauses; none rely on shifted-mask inference.
+            let understandingBits = colours.map { _ in allocateBit() }
             let sharedDecodeBit = allocateBit()
-            fuam |= iccUnderstandBit | enumUnderstandBit | sharedDecodeBit
             dcm |= sharedDecodeBit
-            entries.append(StandardFeatureEntry(feature: .restrictedICCProfile, mask: iccUnderstandBit | sharedDecodeBit))
-            entries.append(StandardFeatureEntry(feature: fallbackEnumFeature, mask: enumUnderstandBit | sharedDecodeBit))
-        } else {
-            addRequired(fallbackEnumFeature)
+            fuam |= sharedDecodeBit
+            for (index, feature) in colours.enumerated() {
+                fuam |= understandingBits[index]
+                entries.append(StandardFeatureEntry(feature: feature, mask: understandingBits[index] | sharedDecodeBit))
+            }
+        } else if let feature = colours.first {
+            addRequired(feature)
         }
 
         return try JP2ReaderRequirementsBox(
-            maskLength: 2,
+            maskLength: maskLength,
             fuam: fuam,
             dcm: dcm,
             standardFeatures: entries

@@ -307,6 +307,8 @@ public struct VolumeDecodeOptions: Sendable {
     /// Metadata preservation policy.
     public var metadataPolicy: MetadataPolicy
     /// Optional 3D region of interest to decode.
+    /// At reduced resolution, selects volume-grid points at multiples of `2^resolutionLevel`.
+    /// The returned origin is the first selected point; an intersecting ROI containing no such points fails.
     public var regionOfInterest: JP3DRegion?
     /// Optional progress callback.
     public var progress: (@Sendable (ProgressUpdate) -> Void)?
@@ -618,8 +620,13 @@ public struct VolumeDecoder: Sendable {
             let cz0 = max(0, roi.z.lowerBound)
             let cz1 = min(info.depth, roi.z.upperBound)
             if cx0 < cx1 && cy0 < cy1 && cz0 < cz1 {
-                outW = jp3dDownsampleDimension(cx1 - cx0, resolutionLevel: configuration.resolutionLevel)
-                outH = jp3dDownsampleDimension(cy1 - cy0, resolutionLevel: configuration.resolutionLevel)
+                outW = jp3dDownsampleOrigin(cx1, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                    - jp3dDownsampleOrigin(cx0, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                outH = jp3dDownsampleOrigin(cy1, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                    - jp3dDownsampleOrigin(cy0, resolutionLevel: configuration.resolutionLevel, roundUp: true)
+                guard outW > 0, outH > 0 else {
+                    throw CodecError(.invalidArgument, "Requested ROI contains no samples at the requested resolution level")
+                }
                 outD = cz1 - cz0
             } else {
                 outW = info.width

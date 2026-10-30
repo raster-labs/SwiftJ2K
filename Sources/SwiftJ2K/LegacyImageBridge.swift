@@ -173,6 +173,9 @@ public struct J2KImage: Sendable, Equatable {
     /// Preserved contract component roles when bridged from an ``Image`` or container decode.
     package let preservedComponentRoles: [ComponentRole]?
 
+    /// Required sample interpretation and ancillary metadata retained across public adapters.
+    package let preservedMetadata: ImageMetadata
+
     /// Creates a new image with the specified parameters.
     public init(
         width: Int,
@@ -217,7 +220,8 @@ public struct J2KImage: Sendable, Equatable {
         colorSpace: J2KColorSpace = .sRGB,
         alpha: AlphaInterpretation = .absent,
         preservedColourInterpretation: ColourInterpretation?,
-        preservedComponentRoles: [ComponentRole]?
+        preservedComponentRoles: [ComponentRole]?,
+        preservedMetadata: ImageMetadata = .empty
     ) {
         self.width = width
         self.height = height
@@ -232,6 +236,7 @@ public struct J2KImage: Sendable, Equatable {
         self.alpha = alpha
         self.preservedColourInterpretation = preservedColourInterpretation
         self.preservedComponentRoles = preservedComponentRoles
+        self.preservedMetadata = preservedMetadata
     }
 
     /// Convenience initialiser for simple images without tiling.
@@ -353,7 +358,7 @@ public struct J2KImage: Sendable, Equatable {
             colourOverride: nil,
             alphaOverride: nil,
             iccProfileOverride: nil,
-            metadata: .empty,
+            metadata: preservedMetadata,
             limits: limits
         )
     }
@@ -365,7 +370,8 @@ public struct J2KImage: Sendable, Equatable {
         alphaOverride: AlphaInterpretation?,
         iccProfileOverride: Data?,
         metadata: ImageMetadata,
-        limits: ResourceLimits = .default
+        limits: ResourceLimits = .default,
+        retainedBytes: Int = 0
     ) throws -> Image {
         try validate()
         let compCount = components.count
@@ -410,8 +416,10 @@ public struct J2KImage: Sendable, Equatable {
                 switch colorSpace {
                 case .grayscale:
                     rawColour = .greyscale
-                case .sRGB, .yCbCr:
+                case .sRGB:
                     rawColour = .rgb
+                case .yCbCr:
+                    throw CodecError(.unsupportedFeature, "The legacy YCbCr label does not identify an enumerated colour model. Supply a container with its colour specification; YCbCr samples are not RGB.")
                 case .unknown:
                     rawColour = .unknown
                 case .iccProfile:
@@ -553,62 +561,68 @@ public struct J2KImage: Sendable, Equatable {
             limits: limits
         )
 
+        let metadataBytes = try metadata.validate(limits: limits, additionalBytes: effectiveICC?.count ?? 0)
+        guard retainedBytes >= 0,
+              try checkedAdd(retainedBytes, checkedAdd(descriptor.requiredByteCount, metadataBytes)) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Legacy image conversion exceeds the combined live-storage budget.")
+        }
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let pixelCount = width * height
         let rawImage = try destination.write { dst in
             for (cIdx, comp) in components.enumerated() {
                 let plane = descriptor.planes[cIdx]
-                let compBytes = [UInt8](comp.data)
-                for i in 0..<pixelCount {
-                    let sampleValue: Int
-                    if srcBytesPerSample == 1 {
-                        if i < compBytes.count {
-                            if comp.signed {
-                                sampleValue = Int(Int8(bitPattern: compBytes[i]))
+                comp.data.withUnsafeBytes { (compBytes: UnsafeRawBufferPointer) in
+                    for i in 0..<pixelCount {
+                        let sampleValue: Int
+                        if srcBytesPerSample == 1 {
+                            if i < compBytes.count {
+                                if comp.signed {
+                                    sampleValue = Int(Int8(bitPattern: compBytes[i]))
+                                } else {
+                                    sampleValue = Int(compBytes[i])
+                                }
                             } else {
-                                sampleValue = Int(compBytes[i])
+                                sampleValue = 0
                             }
                         } else {
-                            sampleValue = 0
-                        }
-                    } else {
-                        let byteIdx = i * 2
-                        if byteIdx + 1 < compBytes.count {
-                            let lo = UInt16(compBytes[byteIdx])
-                            let hi = UInt16(compBytes[byteIdx + 1]) << 8
-                            let word = lo | hi
-                            if comp.signed {
-                                sampleValue = Int(Int16(bitPattern: word))
+                            let byteIdx = i * 2
+                            if byteIdx + 1 < compBytes.count {
+                                let lo = UInt16(compBytes[byteIdx])
+                                let hi = UInt16(compBytes[byteIdx + 1]) << 8
+                                let word = lo | hi
+                                if comp.signed {
+                                    sampleValue = Int(Int16(bitPattern: word))
+                                } else {
+                                    sampleValue = Int(word)
+                                }
+                            } else if i < compBytes.count {
+                                sampleValue = comp.signed ? Int(Int8(bitPattern: compBytes[i])) : Int(compBytes[i])
                             } else {
-                                sampleValue = Int(word)
+                                sampleValue = 0
                             }
-                        } else if i < compBytes.count {
-                            sampleValue = comp.signed ? Int(Int8(bitPattern: compBytes[i])) : Int(compBytes[i])
-                        } else {
-                            sampleValue = 0
                         }
-                    }
 
-                    let dstOffset = plane.offset + (i / width) * plane.rowBytes + (i % width) * plane.pixelStride
-                    if dstBytesPerSample == 1 {
-                        if signed {
-                            dst[dstOffset] = UInt8(bitPattern: Int8(clamping: sampleValue))
+                        let dstOffset = plane.offset + (i / width) * plane.rowBytes + (i % width) * plane.pixelStride
+                        if dstBytesPerSample == 1 {
+                            if signed {
+                                dst[dstOffset] = UInt8(bitPattern: Int8(clamping: sampleValue))
+                            } else {
+                                dst[dstOffset] = UInt8(clamping: max(0, sampleValue))
+                            }
                         } else {
-                            dst[dstOffset] = UInt8(clamping: max(0, sampleValue))
-                        }
-                    } else {
-                        let word: UInt16
-                        if signed {
-                            word = UInt16(bitPattern: Int16(clamping: sampleValue))
-                        } else {
-                            word = UInt16(clamping: max(0, sampleValue))
-                        }
-                        if descriptor.byteOrder == .littleEndian {
-                            dst[dstOffset] = UInt8(truncatingIfNeeded: word & 0xFF)
-                            dst[dstOffset + 1] = UInt8(truncatingIfNeeded: word >> 8)
-                        } else {
-                            dst[dstOffset] = UInt8(truncatingIfNeeded: word >> 8)
-                            dst[dstOffset + 1] = UInt8(truncatingIfNeeded: word & 0xFF)
+                            let word: UInt16
+                            if signed {
+                                word = UInt16(bitPattern: Int16(clamping: sampleValue))
+                            } else {
+                                word = UInt16(clamping: max(0, sampleValue))
+                            }
+                            if descriptor.byteOrder == .littleEndian {
+                                dst[dstOffset] = UInt8(truncatingIfNeeded: word & 0xFF)
+                                dst[dstOffset + 1] = UInt8(truncatingIfNeeded: word >> 8)
+                            } else {
+                                dst[dstOffset] = UInt8(truncatingIfNeeded: word >> 8)
+                                dst[dstOffset + 1] = UInt8(truncatingIfNeeded: word & 0xFF)
+                            }
                         }
                     }
                 }
@@ -649,7 +663,7 @@ public struct J2KImage: Sendable, Equatable {
                 } else {
                     compSampleOffset = 0
                 }
-                var outBytes = [UInt8](repeating: 0, count: w * h * outBytesPerSample)
+                var outBytes = Data(count: w * h * outBytesPerSample)
                 for y in 0..<h {
                     let rowStart = plane.offset + y * plane.rowBytes
                     for x in 0..<w {
@@ -698,7 +712,7 @@ public struct J2KImage: Sendable, Equatable {
                         signed: signed,
                         width: w,
                         height: h,
-                        data: Data(outBytes)
+                        data: outBytes
                     )
                 )
             }
@@ -721,7 +735,8 @@ public struct J2KImage: Sendable, Equatable {
             colorSpace: cs,
             alpha: desc.alpha,
             preservedColourInterpretation: desc.colour,
-            preservedComponentRoles: desc.components
+            preservedComponentRoles: desc.components,
+            preservedMetadata: contractImage.metadata
         )
     }
 }
@@ -1140,7 +1155,14 @@ public struct J2KDecoder: Sendable {
         package let totalComponents: Int
         package let backend: Backend
         package let fallbackReason: String?
-        package let peakWorkspaceBytes: Int
+        package private(set) var peakWorkspaceBytes: Int
+        package let pixelAccounting: LegacyPixelAccounting
+
+        package func includingAdditionalWorkspacePeak(_ bytes: Int) -> Self {
+            var result = self
+            result.peakWorkspaceBytes = max(result.peakWorkspaceBytes, bytes)
+            return result
+        }
     }
 
     /// Synchronous helper for decoding a JPEG 2000 codestream or container with optional JPIP view-window parameters.
@@ -1176,7 +1198,8 @@ public struct J2KDecoder: Sendable {
         region: (x: Int, y: Int, width: Int, height: Int)? = nil,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic,
-        metadataPolicy: MetadataPolicy = .preserve
+        metadataPolicy: MetadataPolicy = .preserve,
+        retainedExternalBytes: Int = 0
     ) throws -> DecodedCodestreamInfo {
         guard !data.isEmpty else {
             throw J2KError.decodingError("Cannot decode empty data")
@@ -1186,7 +1209,8 @@ public struct J2KDecoder: Sendable {
             let work = WorkGuard(limits: limits)
             try work.check()
             let resolvedBackend = try AccelerationRuntime.resolve(executionPolicy)
-            guard data.count <= limits.maximumCompressedBytes,
+            guard retainedExternalBytes >= 0,
+                  data.count <= limits.maximumCompressedBytes,
                   data.count <= limits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Compressed input exceeds operation limits.")
             }
@@ -1205,9 +1229,13 @@ public struct J2KDecoder: Sendable {
 
             let inputCopyBytes = try checkedAdd(32, data.count)
             guard inputCopyBytes <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(data.count, inputCopyBytes) <= limits.maximumMemoryBytes else {
+                  try checkedAdd(retainedExternalBytes, checkedAdd(data.count, inputCopyBytes)) <= limits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Compressed input workspace copy exceeds operation limits.")
             }
+
+            let outerWorkspace = try checkedAdd(inputCopyBytes, retainedExternalBytes)
+            let pipelineLimits = try limits.reserving(workspaceBytes: outerWorkspace,
+                memoryBytes: checkedAdd(data.count, outerWorkspace))
 
             let effectiveLayers: Int?
             if let q = maxQualityLayers, q > 0 {
@@ -1229,30 +1257,25 @@ public struct J2KDecoder: Sendable {
             if JP2Container.isContainer(rawBytes) {
                 let reconciled = try JP2Container.inspectReconciled(
                     rawBytes,
-                    limits: limits,
+                    limits: pipelineLimits,
                     metadataPolicy: metadataPolicy
                 )
                 let profile = reconciled.part1Profile
                 let descriptor = reconciled.outputDescriptor
                 let minDecodedBytes = descriptor.requiredByteCount
-                let estWorkspace = try checkedAdd(
-                    try Part1Pipeline.workspaceBytes(
-                        planePixels: profile.largestTilePixels,
-                        componentCount: max(profile.componentCount, descriptor.components.count),
-                        bytesPerCoeff: profile.isReversibleLossless ? 4 : 8,
-                        joinedBytes: profile.largestTileBytes
-                    ),
-                    reconciled.container.totalMetadataBytes
-                )
+                let containerWorkspace = try JP2Container.decodeWorkspaceBytes(
+                    reconciled: reconciled, limits: pipelineLimits,
+                    metadataPolicy: metadataPolicy, maxQualityLayers: effectiveLayers)
+                let combinedWorkspace = try checkedAdd(outerWorkspace, containerWorkspace)
                 guard minDecodedBytes <= limits.maximumDecodedBytes,
-                      estWorkspace <= limits.maximumWorkspaceBytes,
-                      try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
+                      combinedWorkspace <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(data.count, checkedAdd(minDecodedBytes, combinedWorkspace)) <= limits.maximumMemoryBytes else {
                     throw CodecError(.resourceLimitExceeded, "Decoded container image and workspace exceed operation limits.")
                 }
 
-                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
+                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: pipelineLimits)
                 let decodeOpts = DecodeOptions(
-                    resourceLimits: limits,
+                    resourceLimits: pipelineLimits,
                     executionPolicy: executionPolicy,
                     copyPolicy: .allowCopy,
                     metadataPolicy: metadataPolicy
@@ -1265,7 +1288,7 @@ public struct J2KDecoder: Sendable {
                     maxQualityLayers: effectiveLayers
                 )
                 contractImage = decoded.image
-                workspace = max(decoded.report.peakWorkspaceBytes ?? 0, estWorkspace)
+                workspace = try checkedAdd(outerWorkspace, decoded.report.peakWorkspaceBytes ?? 0)
                 isReversibleLossless = profile.isReversibleLossless
                 totalLayers = max(1, profile.tiles.map(\.defaultCodingStyle.layers).max() ?? 1)
                 totalComponents = descriptor.components.count
@@ -1276,9 +1299,13 @@ public struct J2KDecoder: Sendable {
                 guard let socOffset = findSOCOffset(in: rawBytes) else {
                     throw J2KError.decodingError("No JPEG 2000 SOC marker (0xFF4F) found in input data")
                 }
+                let codestreamCopyBytes = try checkedAdd(32, rawBytes.count - socOffset)
+                // The core includes its codestream payload in memory admission; reserve only
+                // this array's header there, and its whole copied payload in workspace.
+                let rawLimits = try pipelineLimits.reserving(workspaceBytes: codestreamCopyBytes, memoryBytes: 32)
                 let codestreamBytes = Array(rawBytes[socOffset...])
-                let profile = try Part1Pipeline.inspect(codestreamBytes, limits: limits, metadataPolicy: metadataPolicy)
-                let descriptor = try profile.defaultDescriptor(limits: limits)
+                let profile = try Part1Pipeline.inspect(codestreamBytes, limits: rawLimits, metadataPolicy: metadataPolicy)
+                let descriptor = try profile.defaultDescriptor(limits: rawLimits)
                 let minDecodedBytes = descriptor.requiredByteCount
                 let estWorkspace = try checkedAdd(
                     try Part1Pipeline.workspaceBytes(
@@ -1289,23 +1316,26 @@ public struct J2KDecoder: Sendable {
                     ),
                     profile.retainedMetadataBytes
                 )
+                let combinedWorkspace = try checkedAdd(outerWorkspace, checkedAdd(codestreamCopyBytes, estWorkspace))
                 guard minDecodedBytes <= limits.maximumDecodedBytes,
-                      estWorkspace <= limits.maximumWorkspaceBytes,
-                      try checkedAdd(data.count, try checkedAdd(minDecodedBytes, estWorkspace)) <= limits.maximumMemoryBytes else {
+                      combinedWorkspace <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(data.count, checkedAdd(minDecodedBytes, combinedWorkspace)) <= limits.maximumMemoryBytes else {
                     throw CodecError(.resourceLimitExceeded, "Decoded image and workspace exceed operation limits.")
                 }
 
-                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
+                let destination = try ImageDestination.allocate(descriptor: descriptor, limits: rawLimits)
                 do {
-                    (contractImage, workspace) = try Part1Pipeline.decode(
+                    let decoded = try Part1Pipeline.decode(
                         bytes: codestreamBytes,
                         profile: profile,
                         into: destination,
-                        limits: limits,
+                        limits: rawLimits,
                         backend: resolvedBackend.backend,
                         progress: nil,
                         maxQualityLayers: effectiveLayers
                     )
+                    contractImage = decoded.0
+                    workspace = try checkedAdd(outerWorkspace, checkedAdd(codestreamCopyBytes, decoded.1))
                 } catch {
                     destination.invalidateAfterFailure()
                     throw error
@@ -1319,11 +1349,27 @@ public struct J2KDecoder: Sendable {
             }
 
             try work.check()
-            var image = try J2KImage(contractImage: contractImage)
+            let fullLegacyBytes = try checkedMultiply(
+                checkedMultiply(contractImage.descriptor.width, contractImage.descriptor.height),
+                checkedMultiply(contractImage.descriptor.components.count, (contractImage.descriptor.meaningfulBits + 7) / 8)
+            )
+            let metadataBytes = try contractImage.metadata.validate(limits: limits, additionalBytes: contractImage.descriptor.iccProfile?.count ?? 0)
+            let bridgeResidentBytes = try checkedAdd(retainedExternalBytes, checkedAdd(data.count, checkedAdd(inputCopyBytes, metadataBytes)))
+            var pixelAccounting = LegacyPixelAccounting(decodedBytes: contractImage.storage.byteCount)
+            try pixelAccounting.recordAllocation(bytes: fullLegacyBytes, count: contractImage.descriptor.components.count,
+                liveBefore: contractImage.storage.byteCount, residentBytes: bridgeResidentBytes,
+                reason: "Materialise decoded contract samples as legacy component buffers", limits: limits)
+            let fullLegacyImage = try J2KImage(contractImage: contractImage)
+            // These explicit owners make the accounted live set independent of optimiser lifetime shortening.
+            defer { withExtendedLifetime((contractImage, fullLegacyImage, rawBytes)) {} }
+            let retainedPixelBytes = try checkedAdd(contractImage.storage.byteCount, fullLegacyBytes)
+            var projectedPixelBytes = 0
+            var image = fullLegacyImage
             var wasViewWindowTransformed = false
             var outColour = contractImage.descriptor.colour
             var outAlpha = contractImage.descriptor.alpha
             var outICC = contractImage.descriptor.iccProfile
+            var outMetadata = contractImage.metadata
 
             // 1. Apply strict component validation & selection if requested.
             if let selectedComponents = components, !selectedComponents.isEmpty {
@@ -1338,20 +1384,50 @@ public struct J2KDecoder: Sendable {
                     }
                     filtered.append(image.components[idx])
                 }
+                guard Set(selectedComponents).count == selectedComponents.count else {
+                    throw CodecError(.invalidArgument, "Component selections must not repeat a component.")
+                }
+                let mappedRoles = selectedComponents.map { contractImage.descriptor.components[$0] }
+                let keepsAlpha = mappedRoles.contains(.alpha)
+                let keepsAllComponents = selectedComponents.count == image.components.count
+                let selectsColour = mappedRoles.contains { role in
+                    if role == .alpha { return false }
+                    if case .uninterpreted = role {
+                        return contractImage.descriptor.colour == .unknown
+                    }
+                    return true
+                }
+                if contractImage.descriptor.alpha == .premultiplied && !keepsAlpha && selectsColour {
+                    throw CodecError(.unsupportedFeature, "A premultiplied colour view must retain its opacity component; removing it would change sample interpretation.")
+                }
                 if selectedComponents != Array(0..<image.components.count) {
                     wasViewWindowTransformed = true
-                    if filtered.count == 1 {
-                        outColour = .greyscale
-                        outAlpha = .absent
-                        outICC = nil
-                    } else if selectedComponents == [0, 1, 2] && contractImage.descriptor.colour == .rgb {
+                    outAlpha = keepsAlpha ? contractImage.descriptor.alpha : .absent
+                    if mappedRoles.contains(.red), mappedRoles.contains(.green), mappedRoles.contains(.blue) {
                         outColour = .rgb
-                        outAlpha = .absent
+                    } else if mappedRoles.contains(.grey),
+                              !mappedRoles.contains(.red), !mappedRoles.contains(.green), !mappedRoles.contains(.blue) {
+                        outColour = .greyscale
                     } else {
                         outColour = .unknown
-                        outAlpha = .absent
-                        outICC = nil
                     }
+                    if !keepsAllComponents {
+                        // An ICC profile describes its complete colour tuple, never an arbitrary subset.
+                        let sourceColourRoles = contractImage.descriptor.components.filter { $0 != .alpha }
+                        if !sourceColourRoles.allSatisfy(mappedRoles.contains) { outICC = nil }
+                    }
+                    var entries = outMetadata.entries
+                    var required = outMetadata.requiredKeys
+                    // Reader requirements describe the source container; the encoder regenerates them.
+                    entries.removeValue(forKey: "rreq")
+                    required.remove("rreq")
+                    if mappedRoles.allSatisfy({ $0 == .alpha }) {
+                        for key in entries.keys.filter({ $0 == "colr" || $0.hasPrefix("colr.") }) {
+                            entries.removeValue(forKey: key)
+                            required.remove(key)
+                        }
+                    }
+                    outMetadata = ImageMetadata(entries: entries, requiredKeys: required)
                 }
                 let reindexed = filtered.enumerated().map { newIdx, comp in
                     J2KComponent(
@@ -1375,9 +1451,6 @@ public struct J2KDecoder: Sendable {
                 } else {
                     resolvedCS = .unknown
                 }
-                let preservedRoles: [ComponentRole]? = (selectedComponents == Array(0..<image.components.count))
-                    ? contractImage.descriptor.components
-                    : nil
                 image = J2KImage(
                     width: image.width,
                     height: image.height,
@@ -1385,7 +1458,8 @@ public struct J2KDecoder: Sendable {
                     colorSpace: resolvedCS,
                     alpha: outAlpha,
                     preservedColourInterpretation: outColour,
-                    preservedComponentRoles: preservedRoles
+                    preservedComponentRoles: mappedRoles,
+                    preservedMetadata: outMetadata
                 )
             }
 
@@ -1404,7 +1478,12 @@ public struct J2KDecoder: Sendable {
                 }
                 if reg.x != 0 || reg.y != 0 || reg.width != image.width || reg.height != image.height {
                     wasViewWindowTransformed = true
+                    let nextBytes = try image.pixelBytes(width: reg.width, height: reg.height)
+                    try pixelAccounting.recordAllocation(bytes: nextBytes, count: image.components.count,
+                        liveBefore: checkedAdd(retainedPixelBytes, projectedPixelBytes), residentBytes: bridgeResidentBytes,
+                        reason: "Materialise cropped legacy component buffers", limits: limits)
                     image = try cropImage(image, region: reg)
+                    projectedPixelBytes = nextBytes
                 }
             }
 
@@ -1414,7 +1493,14 @@ public struct J2KDecoder: Sendable {
             if let resLevel = resolutionLevel, resLevel > 0 {
                 wasViewWindowTransformed = true
                 let factor = 1 << min(30, resLevel)
+                let nextWidth = max(1, (image.width + factor - 1) / factor)
+                let nextHeight = max(1, (image.height + factor - 1) / factor)
+                let nextBytes = try image.pixelBytes(width: nextWidth, height: nextHeight)
+                try pixelAccounting.recordAllocation(bytes: nextBytes, count: image.components.count,
+                    liveBefore: checkedAdd(retainedPixelBytes, projectedPixelBytes), residentBytes: bridgeResidentBytes,
+                    reason: "Materialise reduced-resolution legacy component buffers", limits: limits)
                 image = downsampleImage(image, factor: factor)
+                projectedPixelBytes = nextBytes
             }
 
             return DecodedCodestreamInfo(
@@ -1423,7 +1509,7 @@ public struct J2KDecoder: Sendable {
                 colourInterpretation: outColour,
                 alphaInterpretation: outAlpha,
                 iccProfile: outICC,
-                metadata: contractImage.metadata,
+                metadata: outMetadata,
                 discardedMetadataCount: discardedCount,
                 discardedMetadataBytes: discardedBytes,
                 discardedMetadataKinds: discardedKinds,
@@ -1432,7 +1518,8 @@ public struct J2KDecoder: Sendable {
                 totalComponents: totalComponents,
                 backend: resolvedBackend.backend,
                 fallbackReason: resolvedBackend.fallbackReason,
-                peakWorkspaceBytes: workspace
+                peakWorkspaceBytes: workspace,
+                pixelAccounting: pixelAccounting
             )
         } catch let error as J2KError {
             throw error
@@ -1455,16 +1542,17 @@ public struct J2KDecoder: Sendable {
         let newH = max(1, (image.height + factor - 1) / factor)
         let newComponents = image.components.map { comp -> J2KComponent in
             let bps = comp.bytesPerSample
-            let srcBytes = [UInt8](comp.data)
-            var dstBytes = [UInt8](repeating: 0, count: newW * newH * bps)
-            for y in 0..<newH {
-                let srcY = min(comp.height - 1, y * factor)
-                for x in 0..<newW {
-                    let srcX = min(comp.width - 1, x * factor)
-                    let srcIdx = (srcY * comp.width + srcX) * bps
-                    let dstIdx = (y * newW + x) * bps
-                    for b in 0..<bps where srcIdx + b < srcBytes.count {
-                        dstBytes[dstIdx + b] = srcBytes[srcIdx + b]
+            var dstBytes = Data(count: newW * newH * bps)
+            comp.data.withUnsafeBytes { (srcBytes: UnsafeRawBufferPointer) in
+                for y in 0..<newH {
+                    let srcY = min(comp.height - 1, y * factor)
+                    for x in 0..<newW {
+                        let srcX = min(comp.width - 1, x * factor)
+                        let srcIdx = (srcY * comp.width + srcX) * bps
+                        let dstIdx = (y * newW + x) * bps
+                        for b in 0..<bps where srcIdx + b < srcBytes.count {
+                            dstBytes[dstIdx + b] = srcBytes[srcIdx + b]
+                        }
                     }
                 }
             }
@@ -1476,7 +1564,7 @@ public struct J2KDecoder: Sendable {
                 height: newH,
                 subsamplingX: comp.subsamplingX,
                 subsamplingY: comp.subsamplingY,
-                data: Data(dstBytes)
+                data: dstBytes
             )
         }
         return J2KImage(
@@ -1486,7 +1574,8 @@ public struct J2KDecoder: Sendable {
             colorSpace: image.colorSpace,
             alpha: image.alpha,
             preservedColourInterpretation: image.preservedColourInterpretation,
-            preservedComponentRoles: image.preservedComponentRoles
+            preservedComponentRoles: image.preservedComponentRoles,
+            preservedMetadata: image.preservedMetadata
         )
     }
 
@@ -1512,16 +1601,17 @@ public struct J2KDecoder: Sendable {
 
         let croppedComponents = image.components.map { comp -> J2KComponent in
             let bps = comp.bytesPerSample
-            let srcBytes = [UInt8](comp.data)
-            var dstBytes = [UInt8](repeating: 0, count: cropW * cropH * bps)
-            for row in 0..<cropH {
-                let srcRow = y0 + row
-                for col in 0..<cropW {
-                    let srcCol = x0 + col
-                    let srcIdx = (srcRow * comp.width + srcCol) * bps
-                    let dstIdx = (row * cropW + col) * bps
-                    for b in 0..<bps where srcIdx + b < srcBytes.count {
-                        dstBytes[dstIdx + b] = srcBytes[srcIdx + b]
+            var dstBytes = Data(count: cropW * cropH * bps)
+            comp.data.withUnsafeBytes { (srcBytes: UnsafeRawBufferPointer) in
+                for row in 0..<cropH {
+                    let srcRow = y0 + row
+                    for col in 0..<cropW {
+                        let srcCol = x0 + col
+                        let srcIdx = (srcRow * comp.width + srcCol) * bps
+                        let dstIdx = (row * cropW + col) * bps
+                        for b in 0..<bps where srcIdx + b < srcBytes.count {
+                            dstBytes[dstIdx + b] = srcBytes[srcIdx + b]
+                        }
                     }
                 }
             }
@@ -1533,7 +1623,7 @@ public struct J2KDecoder: Sendable {
                 height: cropH,
                 subsamplingX: comp.subsamplingX,
                 subsamplingY: comp.subsamplingY,
-                data: Data(dstBytes)
+                data: dstBytes
             )
         }
         return J2KImage(
@@ -1545,7 +1635,8 @@ public struct J2KDecoder: Sendable {
             colorSpace: image.colorSpace,
             alpha: image.alpha,
             preservedColourInterpretation: image.preservedColourInterpretation,
-            preservedComponentRoles: image.preservedComponentRoles
+            preservedComponentRoles: image.preservedComponentRoles,
+            preservedMetadata: image.preservedMetadata
         )
     }
 }

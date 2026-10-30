@@ -389,9 +389,10 @@ public actor JP3DDecoder {
         let (tWH, tOv1) = maxTileW.multipliedReportingOverflow(by: maxTileH)
         let (maxTileVox, tOv2) = tWH.multipliedReportingOverflow(by: maxTileD)
         let (perTileSamples, tOv3) = maxTileVox.multipliedReportingOverflow(by: siz.componentCount)
-        let (perWorkerTileBuf, tOv4) = perTileSamples.multipliedReportingOverflow(by: elementStride * 2)
+        let (perWorkerTileBuf, tOv4) = perTileSamples.multipliedReportingOverflow(by: max(elementStride * 2, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride))
         let (allWorkersBuf, tOv5) = perWorkerTileBuf.multipliedReportingOverflow(by: activeDecodeWorkers)
-        let (ws1, tOv6) = codestream.retainedTileBytes.addingReportingOverflow(bufferWorkspaceBytes)
+        let retainedSourceBytes = try jp3dDecodeAdd(codestream.retainedTileBytes, codestream.commentPayloadBytes)
+        let (ws1, tOv6) = retainedSourceBytes.addingReportingOverflow(bufferWorkspaceBytes)
         let (peakDecodeWorkspace, tOv7) = ws1.addingReportingOverflow(allWorkersBuf)
         guard !tOv1, !tOv2, !tOv3, !tOv4, !tOv5, !tOv6, !tOv7 else {
             throw J2KError.decodingError("Decode worker workspace overflows integer arithmetic")
@@ -441,6 +442,13 @@ public actor JP3DDecoder {
             }
         }
 
+        let workerLimits = try limits.map {
+            try jp3dDecodeWorkerLimits($0, retainedWorkspace: ws1,
+                retainedMemory: jp3dDecodeAdd(jp3dDecodeAdd(data.count, outDecodedBytes), ws1),
+                workers: activeDecodeWorkers)
+        }
+        let decodeWorkspace = JP3DDecodeWorkspace()
+
         try work.check()
         reportProgress(.parsing, stageProgress: 1.0, tilesDone: 0, tilesTotal: codestream.tiles.count)
 
@@ -475,8 +483,8 @@ public actor JP3DDecoder {
             filter: filter,
             mode: .separable,
             boundary: .symmetric,
-            levelsX: max(0, cod.levelsX - K),
-            levelsY: max(0, cod.levelsY - K),
+            levelsX: cod.levelsX,
+            levelsY: cod.levelsY,
             levelsZ: cod.levelsZ
         )
 
@@ -509,8 +517,8 @@ public actor JP3DDecoder {
             let outX0 = jp3dDownsampleOrigin(tile.region.x.lowerBound, resolutionLevel: K, roundUp: true)
             let outY0 = jp3dDownsampleOrigin(tile.region.y.lowerBound, resolutionLevel: K, roundUp: true)
             let outZ0 = tile.region.z.lowerBound
-            let tileW = max(1, jp3dDownsampleDimension(tile.region.x.upperBound, resolutionLevel: K) - outX0)
-            let tileH = max(1, jp3dDownsampleDimension(tile.region.y.upperBound, resolutionLevel: K) - outY0)
+            let tileW = jp3dDownsampleOrigin(tile.region.x.upperBound, resolutionLevel: K, roundUp: true) - outX0
+            let tileH = jp3dDownsampleOrigin(tile.region.y.upperBound, resolutionLevel: K, roundUp: true) - outY0
             let tileD = tile.depth
             jobs.append(ValidTileJob(
                 seqIdx: seqIdx,
@@ -631,8 +639,9 @@ public actor JP3DDecoder {
                                     componentCount: compCount,
                                     maxQualityLayers: maxQLayers,
                                     resolutionLevel: K,
-                                    limits: limits,
-                                    executionPolicy: executionPolicy
+                                    limits: workerLimits,
+                                    executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                                 )
                                 decoded = .integer(ints)
                             } else {
@@ -647,8 +656,9 @@ public actor JP3DDecoder {
                                     transformConfig: transformConfig,
                                     maxQualityLayers: maxQLayers,
                                     resolutionLevel: K,
-                                    limits: limits,
-                                    executionPolicy: executionPolicy
+                                    limits: workerLimits,
+                                    executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                                 )
                                 decoded = .float(floats)
                             }
@@ -721,8 +731,9 @@ public actor JP3DDecoder {
                             componentCount: compCount,
                             maxQualityLayers: maxQLayers,
                             resolutionLevel: K,
-                            limits: limits,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         result = .success(.integer(ints))
                     } else {
@@ -737,8 +748,9 @@ public actor JP3DDecoder {
                             transformConfig: transformConfig,
                             maxQualityLayers: maxQLayers,
                             resolutionLevel: K,
-                            limits: limits,
-                            executionPolicy: executionPolicy
+                            limits: workerLimits,
+                            executionPolicy: executionPolicy,
+                            workspace: decodeWorkspace
                         )
                         result = .success(.float(floats))
                     }
@@ -817,6 +829,7 @@ public actor JP3DDecoder {
             originY: outOriginY,
             originZ: outOriginZ
         )
+        try volume.validate()
 
         try work.check()
         reportProgress(.volumeAssembly, stageProgress: 1.0, tilesDone: tilesDecoded, tilesTotal: tilesExpected)
@@ -828,7 +841,8 @@ public actor JP3DDecoder {
             tilesDecoded: tilesDecoded,
             tilesTotal: tilesExpected,
             isLossless: isStreamLossless && !isPartial && K == 0 && maxQLayers == nil,
-            peakWorkspaceBytes: peakDecodeWorkspace,
+            peakWorkspaceBytes: max(peakDecodeWorkspace, try jp3dDecodeAdd(ws1,
+                jp3dDecodeMultiply(decodeWorkspace.peak, activeDecodeWorkers))),
             commentCount: codestream.comments.count,
             commentPayloadBytes: codestream.commentPayloadBytes,
             hadVolumeGeometry: codestream.geometry != nil
@@ -844,8 +858,31 @@ public actor JP3DDecoder {
         maxQualityLayers: Int?,
         resolutionLevel: Int,
         limits: ResourceLimits? = nil,
-        executionPolicy: ExecutionPolicy = .automatic
+        executionPolicy: ExecutionPolicy = .automatic,
+        workspace: JP3DDecodeWorkspace? = nil
     ) throws -> [[Int64]] {
+        let sampleCount = try jp3dDecodeMultiply(jp3dDecodeMultiply(
+            jp3dDecodeMultiply(tile.width, tile.height), tile.depth), componentCount)
+        let tileBuffers = try jp3dDecodeMultiply(sampleCount, MemoryLayout<Int64>.stride * 2)
+        if let limits {
+            guard tileBuffers <= limits.maximumWorkspaceBytes, tileBuffers <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Decoded tile buffers exceed worker limits")
+            }
+        }
+        workspace?.record(tileBuffers)
+        if resolutionLevel > 0 {
+            // Reconstruct before selecting the volume-wide grid. Reducing each tile
+            // from its local origin misaligns tiles whose origins are odd.
+            let full = try decodeTilePayloadIntegerStatic(
+                data, tile: tile, componentCount: componentCount,
+                maxQualityLayers: maxQualityLayers, resolutionLevel: 0,
+                limits: limits, executionPolicy: executionPolicy, workspace: workspace
+            )
+            return try jp3dSampleReducedTile(
+                full, xRange: tile.region.x, yRange: tile.region.y, depth: tile.depth,
+                resolutionLevel: resolutionLevel
+            )
+        }
         if JP3DLosslessIntegerTileCodec.hasMagic(data) {
             return try JP3DLosslessIntegerTileCodec.decodeTileInteger(
                 data,
@@ -864,7 +901,7 @@ public actor JP3DDecoder {
                 maxQualityLayers: maxQualityLayers,
                 resolutionLevel: resolutionLevel,
                 limits: limits ?? .default,
-                executionPolicy: executionPolicy
+                executionPolicy: executionPolicy, workspace: workspace
             )
         }
         throw J2KError.decodingError("Unsupported integer lossless tile payload format")
@@ -882,8 +919,31 @@ public actor JP3DDecoder {
         maxQualityLayers: Int?,
         resolutionLevel: Int,
         limits: ResourceLimits? = nil,
-        executionPolicy: ExecutionPolicy = .automatic
+        executionPolicy: ExecutionPolicy = .automatic,
+        workspace: JP3DDecodeWorkspace? = nil
     ) async throws -> [[Float]] {
+        let sampleCount = try jp3dDecodeMultiply(jp3dDecodeMultiply(
+            jp3dDecodeMultiply(tile.width, tile.height), tile.depth), componentCount)
+        let tileBuffers = try jp3dDecodeMultiply(sampleCount, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride)
+        if let limits {
+            guard tileBuffers <= limits.maximumWorkspaceBytes, tileBuffers <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Decoded tile buffers exceed worker limits")
+            }
+        }
+        workspace?.record(tileBuffers)
+        if resolutionLevel > 0 {
+            let full = try await decodeTilePayloadStatic(
+                data, tile: tile, componentCount: componentCount,
+                tileW: tile.width, tileH: tile.height, tileD: tile.depth,
+                isLossless: isLossless, transformConfig: transformConfig,
+                maxQualityLayers: maxQualityLayers, resolutionLevel: 0,
+                limits: limits, executionPolicy: executionPolicy, workspace: workspace
+            )
+            return try jp3dSampleReducedTile(
+                full, xRange: tile.region.x, yRange: tile.region.y, depth: tile.depth,
+                resolutionLevel: resolutionLevel
+            )
+        }
         if JP3DLosslessIntegerTileCodec.hasMagic(data) {
             let ints = try JP3DLosslessIntegerTileCodec.decodeTileInteger(
                 data,
@@ -903,7 +963,7 @@ public actor JP3DDecoder {
                 maxQualityLayers: maxQualityLayers,
                 resolutionLevel: resolutionLevel,
                 limits: limits ?? .default,
-                executionPolicy: executionPolicy
+                executionPolicy: executionPolicy, workspace: workspace
             )
         }
 

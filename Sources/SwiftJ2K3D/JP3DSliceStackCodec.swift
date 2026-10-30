@@ -20,6 +20,39 @@ import Foundation
 import Synchronization
 import SwiftJ2K
 
+/// Accounted per-worker buffer peaks; callers reserve disjoint worker budgets.
+internal final class JP3DDecodeWorkspace: Sendable {
+    private let state = Mutex(0)
+    var peak: Int { state.withLock { $0 } }
+    func record(_ bytes: Int) { state.withLock { $0 = max($0, bytes) } }
+}
+
+internal func jp3dDecodeAdd(_ a: Int, _ b: Int) throws -> Int {
+    let (value, overflow) = a.addingReportingOverflow(b)
+    guard a >= 0, b >= 0, !overflow else {
+        throw CodecError(.resourceLimitExceeded, "Volume decode buffer sum overflows Int")
+    }
+    return value
+}
+
+internal func jp3dDecodeMultiply(_ a: Int, _ b: Int) throws -> Int {
+    let (value, overflow) = a.multipliedReportingOverflow(by: b)
+    guard a >= 0, b >= 0, !overflow else {
+        throw CodecError(.resourceLimitExceeded, "Volume decode buffer size overflows Int")
+    }
+    return value
+}
+
+internal func jp3dDecodeWorkerLimits(
+    _ limits: ResourceLimits, retainedWorkspace: Int, retainedMemory: Int, workers: Int
+) throws -> ResourceLimits {
+    let remaining = try limits.reserving(workspaceBytes: retainedWorkspace, memoryBytes: retainedMemory)
+    return try remaining.reserving(
+        workspaceBytes: remaining.maximumWorkspaceBytes - remaining.maximumWorkspaceBytes / workers,
+        memoryBytes: remaining.maximumMemoryBytes - remaining.maximumMemoryBytes / workers
+    )
+}
+
 /// Cooperative cancellation and monotonic deadline guard for volumetric operations.
 internal struct VolumeWorkGuard: Sendable {
     private let deadline: ContinuousClock.Instant?
@@ -864,28 +897,60 @@ internal func jp3dValidateResolutionLevel(_ resolutionLevel: Int) throws {
 @inline(__always)
 internal func jp3dDownsampleDimension(_ n: Int, resolutionLevel: Int) -> Int {
     guard resolutionLevel > 0 else { return max(1, n) }
-    guard resolutionLevel < 31 else { return 1 }
-    let scale = 1 << resolutionLevel
-    let (sum, ov) = n.addingReportingOverflow(scale - 1)
-    if ov {
-        return max(1, (n / scale) + ((n % scale) != 0 ? 1 : 0))
-    }
-    return max(1, sum / scale)
+    let scale = jp3dReductionStride(resolutionLevel)
+    return max(1, (n / scale) + ((n % scale) != 0 ? 1 : 0))
 }
 
 @inline(__always)
 internal func jp3dDownsampleOrigin(_ coord: Int, resolutionLevel: Int, roundUp: Bool) -> Int {
     guard resolutionLevel > 0 else { return coord }
-    guard resolutionLevel < 31 else { return (roundUp && coord > 0) ? 1 : 0 }
-    let scale = 1 << resolutionLevel
+    let scale = jp3dReductionStride(resolutionLevel)
     if roundUp {
-        let (sum, ov) = coord.addingReportingOverflow(scale - 1)
-        if ov {
-            return (coord / scale) + ((coord % scale) != 0 ? 1 : 0)
-        }
-        return sum / scale
+        return (coord / scale) + ((coord % scale) != 0 ? 1 : 0)
     } else {
         return coord / scale
+    }
+}
+
+/// The supported resolution range is 0...32 on the suite's 64-bit platforms.
+/// Keep the stride explicit: `sourceSize / reducedSize` is wrong for odd sizes.
+internal func jp3dReductionStride(_ resolutionLevel: Int) -> Int {
+    1 << min(32, max(0, resolutionLevel))
+}
+
+/// Selects the points of the volume-wide reduced grid that lie within a tile.
+/// Tile origins need not be multiples of the reduction stride.
+internal func jp3dSampleReducedTile<Sample>(
+    _ components: [[Sample]],
+    xRange: Range<Int>, yRange: Range<Int>, depth: Int,
+    resolutionLevel: Int
+) throws -> [[Sample]] {
+    let stride = jp3dReductionStride(resolutionLevel)
+    let x0 = jp3dDownsampleOrigin(xRange.lowerBound, resolutionLevel: resolutionLevel, roundUp: true)
+    let x1 = jp3dDownsampleOrigin(xRange.upperBound, resolutionLevel: resolutionLevel, roundUp: true)
+    let y0 = jp3dDownsampleOrigin(yRange.lowerBound, resolutionLevel: resolutionLevel, roundUp: true)
+    let y1 = jp3dDownsampleOrigin(yRange.upperBound, resolutionLevel: resolutionLevel, roundUp: true)
+    let (sliceCount, o1) = xRange.count.multipliedReportingOverflow(by: yRange.count)
+    let (fullCount, o2) = sliceCount.multipliedReportingOverflow(by: depth)
+    let (outSliceCount, o3) = (x1 - x0).multipliedReportingOverflow(by: y1 - y0)
+    let (outCount, o4) = outSliceCount.multipliedReportingOverflow(by: depth)
+    guard !o1, !o2, !o3, !o4, depth > 0,
+          components.allSatisfy({ $0.count == fullCount }) else {
+        throw J2KError.decodingError("Reduced tile samples do not match the full tile geometry")
+    }
+    return components.map { component in
+        var selected: [Sample] = []
+        selected.reserveCapacity(outCount)
+        for z in 0..<depth {
+            for y in y0..<y1 {
+                let localY = y * stride - yRange.lowerBound
+                for x in x0..<x1 {
+                    let localX = x * stride - xRange.lowerBound
+                    selected.append(component[z * sliceCount + localY * xRange.count + localX])
+                }
+            }
+        }
+        return selected
     }
 }
 
@@ -1246,7 +1311,8 @@ internal struct JP3DSliceStackCodec: Sendable {
         zRange: Range<Int>? = nil,
         xyROI: (x: Range<Int>, y: Range<Int>)? = nil,
         limits: ResourceLimits = .default,
-        executionPolicy: ExecutionPolicy = .automatic
+        executionPolicy: ExecutionPolicy = .automatic,
+        workspace: JP3DDecodeWorkspace? = nil
     ) throws -> [[Float]] {
         let intComponents = try decodeTileInteger(
             data,
@@ -1259,8 +1325,15 @@ internal struct JP3DSliceStackCodec: Sendable {
             zRange: zRange,
             xyROI: xyROI,
             limits: limits,
-            executionPolicy: executionPolicy
+            executionPolicy: executionPolicy,
+            workspace: workspace
         )
+        let sampleCount = try intComponents.reduce(0) { try jp3dDecodeAdd($0, $1.count) }
+        let conversionBytes = try jp3dDecodeMultiply(sampleCount, MemoryLayout<Int64>.stride + MemoryLayout<Float>.stride)
+        guard conversionBytes <= limits.maximumWorkspaceBytes, conversionBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Volume Float conversion exceeds operation limits")
+        }
+        workspace?.record(conversionBytes)
         return intComponents.map { comp in
             comp.map { Float($0) }
         }
@@ -1277,7 +1350,8 @@ internal struct JP3DSliceStackCodec: Sendable {
         zRange: Range<Int>? = nil,
         xyROI: (x: Range<Int>, y: Range<Int>)? = nil,
         limits: ResourceLimits = .default,
-        executionPolicy: ExecutionPolicy = .automatic
+        executionPolicy: ExecutionPolicy = .automatic,
+        workspace: JP3DDecodeWorkspace? = nil
     ) throws -> [[Int64]] {
         try jp3dValidateResolutionLevel(resolutionLevel)
         var offset = 0
@@ -1313,7 +1387,9 @@ internal struct JP3DSliceStackCodec: Sendable {
         let bitDepth = Int(data[data.startIndex + offset]); offset += 1
         let signed = data[data.startIndex + offset] != 0; offset += 1
 
-        guard compCount > 0 && tileW > 0 && tileH > 0 && tileD > 0 else {
+        guard compCount > 0 && tileW > 0 && tileH > 0 && tileD > 0,
+              compCount == expectedComponents, tileW == expectedWidth,
+              tileH == expectedHeight, tileD == expectedDepth else {
             throw J2KError.decodingError("Invalid J3DS tile dimensions")
         }
         let (wh, o1) = tileW.multipliedReportingOverflow(by: tileH)
@@ -1349,6 +1425,25 @@ internal struct JP3DSliceStackCodec: Sendable {
         let zRequiredMin = (zDeltaMode == 1) ? 0 : zStart
         let zRequiredMax = zEnd
 
+        let resultBytes = try jp3dDecodeMultiply(
+            jp3dDecodeMultiply(jp3dDecodeMultiply(outSlicePixels, outD), compCount), MemoryLayout<Int64>.stride
+        )
+        let decodedSliceBytes = try jp3dDecodeMultiply(
+            jp3dDecodeMultiply(fullSlicePixels, zRequiredMax - zRequiredMin), MemoryLayout<Int32>.stride
+        )
+        // Retained component slices plus previous/reconstructed/cropped slice buffers.
+        let reconstructionBytes = try jp3dDecodeMultiply(fullSlicePixels, 3 * MemoryLayout<Int32>.stride)
+        let tableBytes = try jp3dDecodeMultiply(
+            jp3dDecodeMultiply(compCount, tileD), MemoryLayout<Range<Int>>.stride + MemoryLayout<Bool>.stride
+        )
+        let retainedBytes = try jp3dDecodeAdd(
+            jp3dDecodeAdd(resultBytes, decodedSliceBytes), jp3dDecodeAdd(reconstructionBytes, tableBytes)
+        )
+        guard retainedBytes <= limits.maximumWorkspaceBytes, retainedBytes <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Volume slice buffers exceed operation limits")
+        }
+        workspace?.record(retainedBytes)
+
         var sliceTable = [[Range<Int>]]()
         sliceTable.reserveCapacity(compCount)
         for _ in 0..<compCount {
@@ -1382,13 +1477,19 @@ internal struct JP3DSliceStackCodec: Sendable {
 
             for idx in 0..<decodeSliceCount {
                 let z = zRequiredMin + idx
+                let outerBytes = try jp3dDecodeAdd(retainedBytes, compRanges[z].count)
+                let sliceLimits = try limits.reserving(workspaceBytes: outerBytes, memoryBytes: outerBytes)
                 let sliceData = data.subdata(in: compRanges[z])
-                let (samples, w, h, _, sliceSigned) = try Slice2DBridge.decodeSlice(
+                let (samples, w, h, _, sliceSigned, slicePeak) = try Slice2DBridge.decodeSlice(
                     data: sliceData,
                     maxQualityLayers: maxQualityLayers,
-                    limits: limits,
+                    limits: sliceLimits,
                     executionPolicy: executionPolicy
                 )
+                guard w == tileW, h == tileH else {
+                    throw CodecError(.malformedInput, "Volume slice dimensions do not match its tile")
+                }
+                workspace?.record(try jp3dDecodeAdd(outerBytes, slicePeak))
                 decodedSignedFlags[idx] = sliceSigned
                 if zDeltaMode == 1 {
                     decodedSlices[idx] = samples
@@ -1400,7 +1501,8 @@ internal struct JP3DSliceStackCodec: Sendable {
                     decodedSlices[idx] = samples
                 } else {
                     decodedSlices[idx] = Self.downsampleSlice(
-                        samples, srcW: w, srcH: h, dstW: outW, dstH: outH
+                        samples, srcW: w, srcH: h, dstW: outW, dstH: outH,
+                        stride: jp3dReductionStride(resolutionLevel)
                     )
                 }
             }
@@ -1463,7 +1565,8 @@ internal struct JP3DSliceStackCodec: Sendable {
                         } else {
                             outSlice = Self.downsampleSlice(
                                 reconstructed, srcW: tileW, srcH: tileH,
-                                dstW: outW, dstH: outH
+                                dstW: outW, dstH: outH,
+                                stride: jp3dReductionStride(resolutionLevel)
                             )
                         }
                         let dstBase = (z - zStart) * outSlicePixels
@@ -1497,7 +1600,7 @@ internal struct JP3DSliceStackCodec: Sendable {
         toHTJ2K: Bool,
         limits: ResourceLimits = .default,
         executionPolicy: ExecutionPolicy = .automatic
-    ) async throws -> Data {
+    ) async throws -> (data: Data, peakWorkspaceBytes: Int) {
         var offset = 0
         guard data.count >= Self.v1HeaderSize else {
             throw J2KError.decodingError("J3DS tile header truncated (\(data.count) bytes)")
@@ -1530,8 +1633,7 @@ internal struct JP3DSliceStackCodec: Sendable {
         let bitDepth = data[data.startIndex + offset]; offset += 1
         let signed = data[data.startIndex + offset]; offset += 1
 
-        var out = Data()
-        out.reserveCapacity(data.count)
+        var out = Data(capacity: Self.v2HeaderSize)
         out.append(contentsOf: Self.magic)
         out.append(Self.formatVersion)
         let transcodedFlags: UInt8 = (zDeltaMode & 0x7F) | (toHTJ2K ? 0x80 : 0x00)
@@ -1544,6 +1646,7 @@ internal struct JP3DSliceStackCodec: Sendable {
         out.append(signed)
 
         let target: TranscodeTarget = toHTJ2K ? .htj2k : .jpeg2000
+        var peakWorkspace = out.count
 
         for _ in 0..<compCount {
             for _ in 0..<tileD {
@@ -1555,20 +1658,46 @@ internal struct JP3DSliceStackCodec: Sendable {
                 guard !ov, sliceLen >= 0, endPos <= data.count else {
                     throw J2KError.decodingError("Truncated J3DS slice payload")
                 }
+                let (retainedSliceWorkspace, retainedOverflow) = out.count.addingReportingOverflow(sliceLen)
+                guard !retainedOverflow else {
+                    throw CodecError(.resourceLimitExceeded, "Slice transcode workspace overflows Int")
+                }
+                let sliceLimits = try limits.reserving(
+                    workspaceBytes: retainedSliceWorkspace, memoryBytes: out.count
+                )
                 let sliceData = data.subdata(in: (data.startIndex + offset)..<(data.startIndex + endPos))
                 offset = endPos
 
                 let transcodedSlice = try Slice2DBridge.transcodeLosslessSliceCoefficients(
                     sliceData,
                     to: target,
-                    limits: limits,
+                    limits: sliceLimits,
                     executionPolicy: executionPolicy
                 )
-                appendUInt32BE(&out, UInt32(transcodedSlice.count))
-                out.append(transcodedSlice)
+                let (slicePeak, peakOverflow) = retainedSliceWorkspace.addingReportingOverflow(transcodedSlice.peakWorkspaceBytes)
+                let (addedBytes, addedOverflow) = transcodedSlice.data.count.addingReportingOverflow(4)
+                let (newCount, countOverflow) = out.count.addingReportingOverflow(addedBytes)
+                let (oldAndNew, growthOverflow) = out.count.addingReportingOverflow(newCount)
+                let (withSlice, sliceOverflow) = oldAndNew.addingReportingOverflow(sliceData.count)
+                let (appendPeak, appendOverflow) = withSlice.addingReportingOverflow(transcodedSlice.data.count)
+                guard !peakOverflow, !addedOverflow, !countOverflow, !growthOverflow,
+                      !sliceOverflow, !appendOverflow,
+                      transcodedSlice.data.count <= Int(UInt32.max),
+                      newCount <= limits.maximumCompressedBytes,
+                      max(slicePeak, appendPeak) <= limits.maximumWorkspaceBytes,
+                      max(slicePeak, appendPeak) <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Growing the transcoded slice stack exceeds operation limits")
+                }
+                peakWorkspace = max(peakWorkspace, max(slicePeak, appendPeak))
+                // Explicit growth makes the old/output overlap part of the budget.
+                var grown = Data(capacity: newCount)
+                grown.append(out)
+                appendUInt32BE(&grown, UInt32(transcodedSlice.data.count))
+                grown.append(transcodedSlice.data)
+                out = grown
             }
         }
-        return out
+        return (out, peakWorkspace)
     }
 
     // MARK: - Private Helpers
@@ -1771,15 +1900,14 @@ internal struct JP3DSliceStackCodec: Sendable {
         srcW: Int,
         srcH: Int,
         dstW: Int,
-        dstH: Int
+        dstH: Int,
+        stride: Int
     ) -> [Int32] {
         var out = [Int32](repeating: 0, count: dstW * dstH)
-        let scaleX = max(1, srcW / dstW)
-        let scaleY = max(1, srcH / dstH)
         for dy in 0..<dstH {
-            let sy = min(srcH - 1, dy * scaleY)
+            let sy = min(srcH - 1, dy * stride)
             for dx in 0..<dstW {
-                let sx = min(srcW - 1, dx * scaleX)
+                let sx = min(srcW - 1, dx * stride)
                 let idx = sy * srcW + sx
                 if idx < slice.count {
                     out[dy * dstW + dx] = slice[idx]
@@ -2076,9 +2204,9 @@ internal enum JP3DLosslessIntegerTileCodec {
                 let outSliceStride = outW * outH
                 for z in 0..<tileD {
                     for dy in 0..<outH {
-                        let sy = min(tileH - 1, (dy * tileH) / max(1, outH))
+                        let sy = min(tileH - 1, dy * jp3dReductionStride(resolutionLevel))
                         for dx in 0..<outW {
-                            let sx = min(tileW - 1, (dx * tileW) / max(1, outW))
+                            let sx = min(tileW - 1, dx * jp3dReductionStride(resolutionLevel))
                             downsampled[z * outSliceStride + dy * outW + dx] =
                                 fullReconstructed[z * sliceStride + sy * tileW + sx]
                         }

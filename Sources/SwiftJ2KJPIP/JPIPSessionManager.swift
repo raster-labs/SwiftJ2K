@@ -210,7 +210,10 @@ public struct JPIPCacheModel: Sendable {
         let dataBin: JPIPDataBin
 
         /// Timestamp when the entry was added or last accessed.
-        let timestamp: Date
+        var timestamp: Date
+
+        /// Monotonic access order used for eviction, independent of wall-clock changes.
+        var accessOrder: UInt64 = 0
 
         /// Number of times this entry has been accessed.
         var accessCount: Int
@@ -256,6 +259,8 @@ public struct JPIPCacheModel: Sendable {
 
     /// Cache statistics.
     public private(set) var statistics: Statistics
+
+    private var accessOrder: UInt64 = 0
 
     /// Maximum cache size in bytes (default: 100 MB).
     private let maxCacheSize: Int
@@ -313,11 +318,12 @@ public struct JPIPCacheModel: Sendable {
             evictLRU()
         }
 
-        let entry = CacheEntry(
+        var entry = CacheEntry(
             dataBin: dataBin,
             timestamp: Date(),
             accessCount: previousAccessCount
         )
+        entry.accessOrder = nextAccessOrder()
         cachedBins[key] = entry
         statistics.totalSize += newSize
         statistics.entryCount += 1
@@ -337,6 +343,8 @@ public struct JPIPCacheModel: Sendable {
         if var entry = cachedBins[key] {
             statistics.hits += 1
             entry.accessCount += 1
+            entry.timestamp = Date()
+            entry.accessOrder = nextAccessOrder()
             cachedBins[key] = entry
             return entry.dataBin
         } else {
@@ -358,9 +366,22 @@ public struct JPIPCacheModel: Sendable {
         return cachedBins[key] != nil
     }
 
+    /// Renumbers the bounded cache only when the sequence is exhausted.
+    private mutating func nextAccessOrder() -> UInt64 {
+        if accessOrder == UInt64.max {
+            let keys = cachedBins.sorted { $0.value.accessOrder < $1.value.accessOrder }.map(\.key)
+            for (index, key) in keys.enumerated() {
+                cachedBins[key]?.accessOrder = UInt64(index)
+            }
+            accessOrder = UInt64(keys.count)
+        }
+        accessOrder += 1
+        return accessOrder
+    }
+
     /// Evicts the least recently used entry from the cache.
     private mutating func evictLRU() {
-        guard let oldestKey = cachedBins.min(by: { $0.value.timestamp < $1.value.timestamp })?.key else {
+        guard let oldestKey = cachedBins.min(by: { $0.value.accessOrder < $1.value.accessOrder })?.key else {
             return
         }
 
@@ -405,5 +426,6 @@ public struct JPIPCacheModel: Sendable {
     mutating func clear() {
         cachedBins.removeAll()
         statistics = Statistics()
+        accessOrder = 0
     }
 }

@@ -421,7 +421,27 @@ public struct JP3DCodestreamBuilder: Sendable {
         geometry: JP3DVolumeGeometry? = nil,
         comments: [JP3DCommentSegment] = []
     ) -> Data {
-        var stream = Data()
+        buildPreallocated(
+            tileData: tileData, width: width, height: height, depth: depth,
+            components: components, bitDepth: bitDepth, signed: signed,
+            levelsX: levelsX, levelsY: levelsY, levelsZ: levelsZ,
+            tileSizeX: tileSizeX, tileSizeY: tileSizeY, tileSizeZ: tileSizeZ,
+            isLossless: isLossless, geometry: geometry, comments: comments,
+            htj2kConfiguration: nil, capacity: 0
+        )
+    }
+
+    /// The caller admits `capacity` before allocating this single output buffer.
+    /// HT markers are emitted in place, avoiding a second full codestream copy.
+    internal func buildPreallocated(
+        tileData: [Data], width: Int, height: Int, depth: Int,
+        components: Int, bitDepth: Int, signed: Bool,
+        levelsX: Int, levelsY: Int, levelsZ: Int,
+        tileSizeX: Int, tileSizeY: Int, tileSizeZ: Int, isLossless: Bool,
+        geometry: JP3DVolumeGeometry? = nil, comments: [JP3DCommentSegment],
+        htj2kConfiguration: JP3DHTJ2KConfiguration?, capacity: Int
+    ) -> Data {
+        var stream = Data(capacity: capacity)
 
         appendMarker(&stream, .soc)
         appendSIZ(
@@ -434,6 +454,17 @@ public struct JP3DCodestreamBuilder: Sendable {
 
         let maxLevels = max(levelsX, max(levelsY, levelsZ))
         appendQCD(&stream, bitDepth: bitDepth, levels: maxLevels, isLossless: isLossless)
+
+        if let htj2kConfiguration {
+            // CAP (10 bytes) and CPF (6 bytes), as in JP3DHTMarkers.
+            appendUInt16BE(&stream, JP3DHTMarkers.capMarkerCode)
+            appendUInt16BE(&stream, 8)
+            appendUInt32BE(&stream, 1 << 14)
+            appendUInt16BE(&stream, htj2kConfiguration.allowMixedTiles ? 3 : 1)
+            appendUInt16BE(&stream, JP3DHTMarkers.cpfMarkerCode)
+            appendUInt16BE(&stream, 4)
+            appendUInt16BE(&stream, isLossless ? 0x8000 : 0x8001)
+        }
 
         var emittedGeometry = false
         if let geometry, geometry.hasNonDefaultValues, let payload = try? geometry.encodePayload() {
@@ -456,6 +487,44 @@ public struct JP3DCodestreamBuilder: Sendable {
         appendMarker(&stream, .eoc)
 
         return stream
+    }
+
+    /// Exact serialized size for an existing stream's comments and replacement tiles.
+    /// This route preserves geometry through its existing COM payload, so it does not
+    /// allocate or re-encode a separate geometry payload during publication.
+    internal func projectedByteCount(
+        tileData: [Data], components: Int, levelsX: Int, levelsY: Int, levelsZ: Int,
+        isLossless: Bool, includesHTMarkers: Bool, comments: [JP3DCommentSegment]
+    ) throws -> Int {
+        guard components > 0, components <= (Int(UInt16.max) - 46) / 3,
+              (0...255).contains(levelsX), (0...255).contains(levelsY),
+              (0...255).contains(levelsZ), tileData.count <= Int(UInt16.max) + 1 else {
+            throw CodecError(.resourceLimitExceeded, "Codestream marker dimensions exceed their serialized range")
+        }
+        // SOC + SIZ + COD + QCD fixed fields + EOC; variable SIZ/QCD follow.
+        var count = 73 + 3 * components
+        func add(_ bytes: Int) throws {
+            let (next, overflow) = count.addingReportingOverflow(bytes)
+            guard bytes >= 0, !overflow else {
+                throw CodecError(.resourceLimitExceeded, "Codestream publication size overflows Int")
+            }
+            count = next
+        }
+        try add((3 * max(levelsX, max(levelsY, levelsZ)) + 1) * (isLossless ? 1 : 2))
+        if includesHTMarkers { try add(16) }
+        for comment in comments {
+            guard comment.payload.count <= 65_531 else {
+                throw CodecError(.resourceLimitExceeded, "Comment exceeds COM marker capacity")
+            }
+            try add(6 + comment.payload.count)
+        }
+        for tile in tileData {
+            guard tile.count <= Int(UInt32.max) - 14 else {
+                throw CodecError(.resourceLimitExceeded, "Tile exceeds SOT marker capacity")
+            }
+            try add(14 + tile.count)
+        }
+        return count
     }
 
     // MARK: - Private Helpers

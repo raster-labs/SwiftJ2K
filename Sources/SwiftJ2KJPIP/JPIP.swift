@@ -444,22 +444,35 @@ public actor JPIPClient {
             )
         }
 
-        if let currentSession = activeSession {
-            let (binWorkspace, bwOv) = response.data.count.addingReportingOverflow(64)
-            let (liveBinMem, bmOv) = response.data.count.addingReportingOverflow(binWorkspace)
-            if !bwOv, !bmOv,
-               binWorkspace <= limits.maximumWorkspaceBytes,
-               liveBinMem <= limits.maximumMemoryBytes {
-                let generator = JPIPDataBinGenerator()
-                if let bins = try? generator.generateDataBins(from: response.data) {
-                    for bin in bins {
-                        await currentSession.recordDataBin(bin)
-                    }
-                }
+        func cacheStorageBytes(_ statistics: JPIPCacheModel.Statistics) throws -> Int {
+            let (descriptors, overflow) = statistics.entryCount.multipliedReportingOverflow(by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride)
+            let (total, sumOverflow) = statistics.totalSize.addingReportingOverflow(descriptors)
+            guard !overflow, !sumOverflow else {
+                throw CodecError(.resourceLimitExceeded, "JPIP retained cache storage overflows Int.")
+            }
+            return total
+        }
+        var generationWorkspacePeak = 0
+        if let currentSession = activeSession, maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
+            let cacheStatistics = await currentSession.getCacheStatistics()
+            let generated = try JPIPDataBinGenerator().generateDataBins(
+                from: response.data, limits: limits,
+                retainedBytes: cacheStorageBytes(cacheStatistics),
+                maximumAdditionalCacheEntries: max(0, maxCachedDataBins - cacheStatistics.entryCount))
+            generationWorkspacePeak = generated.peakWorkspaceBytes
+            for bin in generated.bins {
+                try checkDeadline()
+                await currentSession.recordDataBin(bin)
             }
         }
 
         try checkDeadline()
+        let retainedCacheBytes: Int
+        if let activeSession {
+            retainedCacheBytes = try cacheStorageBytes(await activeSession.getCacheStatistics())
+        } else {
+            retainedCacheBytes = 0
+        }
         let decoded = try J2KDecoder.decodeWithInfo(
             response.data,
             maxQualityLayers: viewWindow?.maxQualityLayers,
@@ -468,10 +481,11 @@ public actor JPIPClient {
             region: regionTuple,
             limits: limits,
             executionPolicy: executionPolicy,
-            metadataPolicy: metadataPolicy
+            metadataPolicy: metadataPolicy,
+            retainedExternalBytes: retainedCacheBytes
         )
         try checkDeadline()
-        return decoded
+        return decoded.includingAdditionalWorkspacePeak(generationWorkspacePeak)
     }
 
     /// Records received data bins in the session cache model and decodes the codestream.

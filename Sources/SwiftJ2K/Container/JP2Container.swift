@@ -231,6 +231,8 @@ enum JP2Container {
         let part1Profile: Part1Profile
         let outputDescriptor: ImageDescriptor
         let combinedMetadata: ImageMetadata
+        /// Owned codestream copy and retained container metadata, excluding the caller input.
+        let containerWorkspaceBytes: Int
         /// For palettised images, maps each output channel (`0..<outputChannels`) from codestream component & palette column.
         let paletteMapping: (palette: JP2PaletteBox, cmap: JP2ComponentMappingBox)?
         /// For `cdef` reordered channels, `channelPermutation[outputChannel] = sourceChannel`.
@@ -249,11 +251,12 @@ enum JP2Container {
         if let rreq = container.readerRequirements {
             let eval = rreq.evaluate()
             if !eval.canDecodeCompletely
-                && !isVerifiedKakaduV8BaselineRreqWriterBug(
+                && !permitsBaselineShiftedReaderRequirements(
                     bytes: bytes,
                     container: container,
                     rreq: rreq,
-                    evaluation: eval
+                    evaluation: eval,
+                    limits: limits
                 ) {
                 let codes = eval.unsupportedRequiredFeatures.map(String.init).joined(separator: ", ")
                 let detail = codes.isEmpty
@@ -264,6 +267,12 @@ enum JP2Container {
                     "Container Reader Requirements ('rreq') cannot be satisfied: \(detail)."
                 )
             }
+        }
+        let codestreamCopyBytes = container.codestreamRange.count
+        let preliminaryContainerBytes = try checkedAdd(codestreamCopyBytes, container.totalMetadataBytes)
+        guard codestreamCopyBytes <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, preliminaryContainerBytes) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Container codestream and metadata copies exceed the inspection budget.")
         }
         let csBytes = Array(bytes[container.codestreamRange])
 
@@ -321,11 +330,14 @@ enum JP2Container {
         for colr in container.header.colourSpecifications {
             switch colr.method {
             case .enumerated(let cs):
+                guard expectedRreqColourFeature(for: colr) != nil else {
+                    throw CodecError(.unsupportedFeature, "This enumerated colour model is not supported; samples are not relabelled as RGB.")
+                }
                 if enumColourSpace == nil { enumColourSpace = cs }
             case .restrictedICC(let data), .anyICC(let data):
                 if iccProfile == nil { iccProfile = data }
             case .vendor:
-                break
+                throw CodecError(.unsupportedFeature, "Vendor colour interpretation cannot be discarded or inferred from channel count.")
             }
         }
 
@@ -364,92 +376,78 @@ enum JP2Container {
             outputSigned = part1.signed
         }
 
-        // Apply Channel Definition ('cdef') roles, alpha mode, and channel permutation.
-        var alphaMode: AlphaInterpretation = .absent
-        var channelPermutation: [Int]?
-
-        if let cdef = container.header.channelDefinition {
-            for entry in cdef.entries {
-                guard Int(entry.channelIndex) < outputComponentCount else {
-                    throw CodecError(.malformedInput, "JP2 'cdef' references channel \(entry.channelIndex) >= \(outputComponentCount).")
-                }
-                if entry.channelType == 1 {
-                    alphaMode = .straight
-                } else if entry.channelType == 2 {
-                    alphaMode = .premultiplied
-                }
-            }
-            // Build permutation to canonical order (Asoc 1, 2, 3 colour channels, then Typ 1/2 alpha channel).
-            if outputComponentCount == 3 || outputComponentCount == 4 {
-                var perm = [Int](repeating: -1, count: outputComponentCount)
-                for entry in cdef.entries {
-                    let cn = Int(entry.channelIndex)
-                    if entry.channelType == 0 && entry.association >= 1 && Int(entry.association) <= 3 {
-                        let targetIdx = Int(entry.association) - 1
-                        if targetIdx < outputComponentCount {
-                            perm[targetIdx] = cn
-                        }
-                    } else if (entry.channelType == 1 || entry.channelType == 2) && outputComponentCount == 4 {
-                        perm[3] = cn
-                    }
-                }
-                if !perm.contains(-1) && Set(perm).count == outputComponentCount && perm != Array(0..<outputComponentCount) {
-                    channelPermutation = perm
-                }
-            } else if outputComponentCount == 2 && alphaMode != .absent {
-                // 2-channel greyscale + alpha: ensure colour (Asoc=1) is channel 0 and opacity (Typ=1/2) is channel 1.
-                var perm = [-1, -1]
-                for entry in cdef.entries {
-                    let cn = Int(entry.channelIndex)
-                    if entry.channelType == 0 {
-                        perm[0] = cn
-                    } else if entry.channelType == 1 || entry.channelType == 2 {
-                        perm[1] = cn
-                    }
-                }
-                if !perm.contains(-1) && Set(perm).count == 2 && perm != [0, 1] {
-                    channelPermutation = perm
-                }
-            }
-        }
-
-        // Determine ColourInterpretation and ComponentRoles without inferring alpha from component count.
+        // Resolve colour channels from the declared model; channel count never invents alpha.
+        let effectiveEnum = ihdr.unknownColourspace ? nil : enumColourSpace
+        let modelRoles: [ComponentRole]
         let colour: ColourInterpretation
-        let roles: [ComponentRole]
-        let isRGBEnum = enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.sRGB.rawValue
-            || enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.sYCC.rawValue
-            || enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.eSRGB.rawValue
-            || enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.rommRGB.rawValue
-        let isGreyEnum = enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.greyscale.rawValue
-            || enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.bilevel1.rawValue
-            || enumColourSpace == JP2ColourSpecificationBox.EnumeratedColourSpace.bilevel2.rawValue
-
-        if outputComponentCount == 1 {
-            colour = (ihdr.unknownColourspace && !isGreyEnum && iccProfile == nil) ? .unknown : .greyscale
-            roles = (colour == .greyscale) ? [.grey] : [.uninterpreted("c0")]
-        } else if outputComponentCount == 2 && alphaMode != .absent {
+        if effectiveEnum == JP2ColourSpecificationBox.EnumeratedColourSpace.sRGB.rawValue {
+            colour = .rgb
+            modelRoles = [.red, .green, .blue]
+        } else if effectiveEnum == JP2ColourSpecificationBox.EnumeratedColourSpace.greyscale.rawValue {
             colour = .greyscale
-            roles = [.grey, .alpha]
-        } else if outputComponentCount == 2 && alphaMode == .absent && !ihdr.unknownColourspace && (isGreyEnum || iccProfile != nil) {
-            colour = .greyscale
-            roles = [.grey, .uninterpreted("c1")]
-        } else if outputComponentCount == 3 && (isRGBEnum || !ihdr.unknownColourspace || iccProfile != nil) {
-            colour = .rgb
-            roles = [.red, .green, .blue]
-        } else if outputComponentCount == 4 && alphaMode != .absent {
-            colour = .rgb
-            roles = [.red, .green, .blue, .alpha]
-        } else if outputComponentCount == 4 && alphaMode == .absent && (isRGBEnum || !ihdr.unknownColourspace || iccProfile != nil) {
-            colour = .rgb
-            roles = [.red, .green, .blue, .uninterpreted("c3")]
+            modelRoles = [.grey]
+        } else if let cs = effectiveEnum {
+            colour = .unknown
+            modelRoles = enumeratedColourRoles(cs, fallbackCount: outputComponentCount)
+        } else if let icc = iccProfile {
+            let model = try iccColourModel(icc)
+            colour = model.colour
+            modelRoles = model.roles
         } else {
             colour = .unknown
-            var customRoles = (0..<outputComponentCount).map { ComponentRole.uninterpreted("c\($0)") }
-            if alphaMode != .absent && !customRoles.isEmpty {
-                customRoles[customRoles.count - 1] = .alpha
-            }
-            roles = customRoles
+            modelRoles = []
         }
+
+        var alphaMode: AlphaInterpretation = .absent
+        var alphaIndex: Int?
+        var sourceRoles = (0..<outputComponentCount).map { ComponentRole.uninterpreted("c\($0)") }
+        var explicitChannels = Set<Int>()
+        var assignedColourSlots = Set<Int>()
+        if let cdef = container.header.channelDefinition {
+            for entry in cdef.entries {
+                let cn = Int(entry.channelIndex)
+                guard cn < outputComponentCount else {
+                    throw CodecError(.malformedInput, "JP2 'cdef' references an unavailable channel.")
+                }
+                explicitChannels.insert(cn)
+                if entry.channelType == 1 || entry.channelType == 2 {
+                    guard alphaIndex == nil, entry.association == 0 else {
+                        throw CodecError(.unsupportedFeature, "Multiple or per-colour opacity associations cannot be represented by one image alpha interpretation.")
+                    }
+                    alphaIndex = cn
+                    alphaMode = entry.channelType == 2 ? .premultiplied : .straight
+                    sourceRoles[cn] = .alpha
+                } else if entry.channelType == 0, entry.association > 0, entry.association != 0xFFFF,
+                          !modelRoles.isEmpty {
+                    let slot = Int(entry.association) - 1
+                    guard slot < modelRoles.count, assignedColourSlots.insert(slot).inserted else {
+                        throw CodecError(.malformedInput, "JP2 'cdef' has an invalid or duplicate colour association.")
+                    }
+                    sourceRoles[cn] = modelRoles[slot]
+                }
+            }
+        }
+        // Channels absent from cdef retain the default colour association. Explicitly unspecified
+        // channels remain unspecified, even when the total count resembles grey-alpha or RGBA.
+        var available = (0..<outputComponentCount).filter { !explicitChannels.contains($0) }
+        for slot in modelRoles.indices where !assignedColourSlots.contains(slot) {
+            guard !available.isEmpty else {
+                throw CodecError(.malformedInput, "Container has fewer defined colour channels than its colour specification.")
+            }
+            sourceRoles[available.removeFirst()] = modelRoles[slot]
+        }
+        var permutation: [Int] = []
+        for role in modelRoles {
+            guard let index = sourceRoles.firstIndex(of: role) else {
+                throw CodecError(.malformedInput, "Container colour association is incomplete.")
+            }
+            permutation.append(index)
+        }
+        let colourIndices = Set(permutation)
+        permutation.append(contentsOf: (0..<outputComponentCount).filter { !colourIndices.contains($0) && $0 != alphaIndex })
+        if let alphaIndex { permutation.append(alphaIndex) }
+        let roles = permutation.map { sourceRoles[$0] }
+        let channelPermutation: [Int]? = permutation == Array(0..<outputComponentCount) ? nil : permutation
 
         let storageBits = (outputPrecision <= 8 && !(outputComponentCount == 1 && !outputSigned)) ? 8 : 16
         let sampleBytes = storageBits / 8
@@ -500,8 +498,25 @@ enum JP2Container {
             }
         }
 
-        let metadata = ImageMetadata(entries: container.metadataEntries)
-        _ = try metadata.validate(limits: limits, additionalBytes: iccProfile?.count ?? 0)
+        var metadataEntries = container.metadataEntries
+        var requiredKeys: Set<String> = []
+        let hasNativeEnumeration = effectiveEnum.map { $0 != 16 && $0 != 17 } ?? false
+        if hasNativeEnumeration || (enumColourSpace == nil && iccProfile != nil) {
+            // These are the standard colr payload bytes, not a private colour format. They remain
+            // required even under discardAncillary, and are restored inside jp2h on encoding.
+            for (index, colr) in container.header.colourSpecifications.enumerated() {
+                let key = index == 0 ? "colr" : "colr.\(index)"
+                metadataEntries[key] = Data(colr.serialise())
+                requiredKeys.insert(key)
+            }
+        }
+        let metadata = ImageMetadata(entries: metadataEntries, requiredKeys: requiredKeys)
+        let retainedMetadataBytes = try metadata.validate(limits: limits, additionalBytes: iccProfile?.count ?? 0)
+        let containerWorkspaceBytes = try checkedAdd(csBytes.count, max(container.totalMetadataBytes, retainedMetadataBytes))
+        guard containerWorkspaceBytes <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, containerWorkspaceBytes) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Required container interpretation exceeds the inspection budget.")
+        }
 
         return ReconciledContainerProfile(
             container: container,
@@ -509,6 +524,7 @@ enum JP2Container {
             part1Profile: part1,
             outputDescriptor: descriptor,
             combinedMetadata: metadata,
+            containerWorkspaceBytes: containerWorkspaceBytes,
             paletteMapping: paletteMapping,
             channelPermutation: channelPermutation,
             discardedMetadataCount: discardedCount,
@@ -518,6 +534,58 @@ enum JP2Container {
     }
 
     // MARK: - Container Decoding
+
+    private static func containerCodecLimits(
+        reconciled: ReconciledContainerProfile, limits: ResourceLimits
+    ) throws -> ResourceLimits {
+        try limits.reserving(
+            workspaceBytes: reconciled.containerWorkspaceBytes,
+            // The codec already admits its codestream input; reserve the other retained owners.
+            memoryBytes: reconciled.containerWorkspaceBytes - reconciled.codestreamBytes.count
+        )
+    }
+
+    private static func scalarDecodeProfile(
+        reconciled: ReconciledContainerProfile, descriptor: ImageDescriptor,
+        codecLimits: ResourceLimits, metadataPolicy: MetadataPolicy, maxQualityLayers: Int?
+    ) -> LosslessProfile? {
+        guard maxQualityLayers == nil,
+              reconciled.paletteMapping == nil,
+              reconciled.channelPermutation == nil,
+              descriptor.sampleType == .unsignedInteger,
+              descriptor.storageBits == 16,
+              descriptor.components == [.grey],
+              descriptor.planes.count == 1,
+              descriptor.alpha == .absent else { return nil }
+        return try? ScalarLosslessCodec.inspect(
+            reconciled.codestreamBytes, limits: codecLimits, metadataPolicy: metadataPolicy
+        )
+    }
+
+    /// Workspace for decoding into the reconciled descriptor, using the same core
+    /// selection and retained-container allowance as the actual decode operation.
+    static func decodeWorkspaceBytes(
+        reconciled: ReconciledContainerProfile, limits: ResourceLimits,
+        metadataPolicy: MetadataPolicy, maxQualityLayers: Int? = nil
+    ) throws -> Int {
+        let codecLimits = try containerCodecLimits(reconciled: reconciled, limits: limits)
+        let coreWorkspace: Int
+        if let profile = scalarDecodeProfile(
+            reconciled: reconciled, descriptor: reconciled.outputDescriptor,
+            codecLimits: codecLimits, metadataPolicy: metadataPolicy, maxQualityLayers: maxQualityLayers
+        ) {
+            coreWorkspace = try ScalarLosslessCodec.workspaceBytes(profile: profile)
+        } else {
+            let profile = reconciled.part1Profile
+            coreWorkspace = try checkedAdd(
+                try Part1Pipeline.workspaceBytes(
+                    planePixels: profile.largestTilePixels, componentCount: profile.componentCount,
+                    bytesPerCoeff: profile.isReversibleLossless ? 4 : 8, joinedBytes: profile.largestTileBytes
+                ), profile.retainedMetadataBytes
+            )
+        }
+        return try checkedAdd(coreWorkspace, reconciled.containerWorkspaceBytes)
+    }
 
     static func decode(
         reconciled: ReconciledContainerProfile,
@@ -546,29 +614,20 @@ enum JP2Container {
             throw error
         }
 
+        let codecLimits = try containerCodecLimits(reconciled: reconciled, limits: options.resourceLimits)
         let sealedImage: Image
         let peakWorkspace: Int
 
-        let isDefaultGreyscale16 = maxQualityLayers == nil &&
-            reconciled.paletteMapping == nil &&
-            reconciled.channelPermutation == nil &&
-            destDesc.sampleType == .unsignedInteger &&
-            destDesc.storageBits == 16 &&
-            destDesc.components == [.grey] &&
-            destDesc.planes.count == 1 &&
-            destDesc.alpha == .absent
         let rawImage: Image
-        if isDefaultGreyscale16,
-           let losslessProfile = try? ScalarLosslessCodec.inspect(
-               reconciled.codestreamBytes,
-               limits: options.resourceLimits,
-               metadataPolicy: options.metadataPolicy
-           ) {
+        if let losslessProfile = scalarDecodeProfile(
+            reconciled: reconciled, descriptor: destDesc, codecLimits: codecLimits,
+            metadataPolicy: options.metadataPolicy, maxQualityLayers: maxQualityLayers
+        ) {
             (rawImage, peakWorkspace) = try ScalarLosslessCodec.decode(
                 bytes: reconciled.codestreamBytes,
                 profile: losslessProfile,
                 into: destination,
-                limits: options.resourceLimits,
+                limits: codecLimits,
                 backend: resolvedBackend.backend,
                 progress: options.progress
             )
@@ -577,7 +636,7 @@ enum JP2Container {
                 bytes: reconciled.codestreamBytes,
                 profile: reconciled.part1Profile,
                 into: destination,
-                limits: options.resourceLimits,
+                limits: codecLimits,
                 backend: resolvedBackend.backend,
                 progress: options.progress,
                 paletteMapping: reconciled.paletteMapping,
@@ -609,7 +668,7 @@ enum JP2Container {
             copyEvents: [],
             pixelAllocationCount: allocations,
             peakPixelBytes: sealedImage.storage.byteCount,
-            peakWorkspaceBytes: peakWorkspace,
+            peakWorkspaceBytes: try checkedAdd(peakWorkspace, reconciled.containerWorkspaceBytes),
             elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
             discardedMetadataCount: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataCount : nil,
             discardedMetadataBytes: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataBytes : nil,
@@ -628,6 +687,98 @@ enum JP2Container {
         let discardedMetadataCount: Int
         let discardedMetadataBytes: Int
         let discardedMetadataKinds: [String]
+    }
+
+    /// Roles for a native enumerated model outside the shared grey/RGB enum. The numeric model
+    /// and association are retained in the role name and standard colr metadata, without conversion.
+    private static func enumeratedColourRoles(_ code: UInt32, fallbackCount: Int) -> [ComponentRole] {
+        let count: Int
+        switch JP2ColourSpecificationBox.EnumeratedColourSpace(rawValue: code) {
+        case .bilevel1, .bilevel2, .greyscale: count = 1
+        case .cmyk, .ycck: count = 4
+        case .sRGB, .sYCC, .yCbCr1, .yCbCr2, .yCbCr3, .photoYCC, .cmy,
+             .cieLab, .cieJab, .eSRGB, .rommRGB, .yPbPr1125, .yPbPr1250, .eSYCC: count = 3
+        case nil: count = fallbackCount
+        }
+        return (0..<count).map { .uninterpreted("colr.\(code).\($0 + 1)") }
+    }
+
+    /// ICC.1 header bytes 16...19 identify the device-side model. Opaque profiles
+    /// retain their exact bytes; recognizing the tuple does not perform a colour conversion.
+    private static func iccColourModel(_ profile: Data) throws -> (colour: ColourInterpretation, roles: [ComponentRole]) {
+        guard profile.count >= 128 else {
+            throw CodecError(.malformedInput, "ICC-only colour specification has a truncated profile header.")
+        }
+        let signature = profile.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            String(decoding: bytes[16..<20], as: UTF8.self)
+        }
+        if signature == "RGB " { return (.rgb, [.red, .green, .blue]) }
+        if signature == "GRAY" { return (.greyscale, [.grey]) }
+        let count: Int
+        switch signature {
+        case "CMYK": count = 4
+        case "XYZ ", "Lab ", "Luv ", "YCbr", "Yxy ", "HSV ", "HLS ", "CMY ": count = 3
+        default:
+            guard signature.hasSuffix("CLR"), let first = signature.first,
+                  let channels = Int(String(first), radix: 16), (2...15).contains(channels) else {
+                throw CodecError(.unsupportedFeature, "ICC device colour signature cannot be represented without guessing its channel tuple.")
+            }
+            count = channels
+        }
+        let name = signature.trimmingCharacters(in: .whitespaces)
+        return (.unknown, (1...count).map { .uninterpreted("icc.\(name).\($0)") })
+    }
+
+    private static func permitsJP2Colour(_ boxes: [JP2ColourSpecificationBox]) -> Bool {
+        !boxes.isEmpty && boxes.allSatisfy { box in
+            switch box.method {
+            case .enumerated(let code): return [UInt32(16), 17, 18].contains(code)
+            case .restrictedICC: return true
+            case .anyICC, .vendor: return false
+            }
+        }
+    }
+
+    private static func permitsBaselineJPXColour(_ boxes: [JP2ColourSpecificationBox]) -> Bool {
+        boxes.contains { box in
+            switch box.method {
+            case .enumerated(let code): return [UInt32(14), 16, 17, 18, 19, 20, 21, 24].contains(code)
+            case .restrictedICC, .anyICC: return true
+            case .vendor: return false
+            }
+        }
+    }
+
+    private static func colourBoxesForOutput(
+        _ boxes: [JP2ColourSpecificationBox], format: CodecOptions.ContainerFormat
+    ) throws -> [JP2ColourSpecificationBox] {
+        guard !boxes.isEmpty else {
+            throw CodecError(.unsupportedFeature, "Container output requires an explicit colour specification or ICC profile; an unknown component tuple cannot supply one.")
+        }
+        if format == .jp2, !permitsJP2Colour(boxes) {
+            throw CodecError(.unsupportedFeature, "This colour specification requires JPX output; JP2 supports only enumerated sRGB, greyscale, sYCC and restricted ICC profiles.")
+        }
+        return try boxes.map {
+            try JP2ColourSpecificationBox(method: $0.method, precedence: $0.precedence,
+                approximation: format == .jpx ? max(1, $0.approximation) : 0)
+        }
+    }
+
+    private static func retainedColourBoxes(_ metadata: ImageMetadata, limits: ResourceLimits) throws -> [JP2ColourSpecificationBox] {
+        let keys = metadata.entries.keys.filter { $0 == "colr" || $0.hasPrefix("colr.") }.sorted {
+            let lhs = $0 == "colr" ? 0 : (Int($0.dropFirst(5)) ?? Int.max)
+            let rhs = $1 == "colr" ? 0 : (Int($1.dropFirst(5)) ?? Int.max)
+            return lhs < rhs
+        }
+        var retainedBytes = 0
+        return try keys.map { key in
+            guard let payload = metadata.entries[key] else {
+                throw CodecError(.invalidArgument, "Missing retained colour specification.")
+            }
+            let bytes = [UInt8](payload)
+            return try JP2ColourSpecificationBox.parse(bytes: bytes, range: 0..<bytes.count,
+                                                      limits: limits, runningMetadataBytes: &retainedBytes)
+        }
     }
 
     static func wrap(
@@ -658,6 +809,28 @@ enum JP2Container {
             }
         }
 
+        var colrBoxes = try retainedColourBoxes(metadata, limits: limits)
+        if colrBoxes.isEmpty {
+            if let icc = descriptor.iccProfile {
+                let isOtherICC: Bool
+                if descriptor.colour == .unknown {
+                    isOtherICC = try iccColourModel(icc).colour == .unknown
+                } else {
+                    isOtherICC = false
+                }
+                colrBoxes.append(try JP2ColourSpecificationBox(method: isOtherICC ? .anyICC(icc) : .restrictedICC(icc)))
+            }
+            if descriptor.colour == .rgb {
+                colrBoxes.append(try JP2ColourSpecificationBox(method: .enumerated(16)))
+            } else if descriptor.colour == .greyscale {
+                colrBoxes.append(try JP2ColourSpecificationBox(method: .enumerated(17)))
+            }
+        }
+        // UnkC=1 does not exempt JP2/JPX from the mandatory colr box. Extended
+        // enumerations and unrestricted ICC profiles retain a functional JPX route.
+        colrBoxes = try colourBoxesForOutput(colrBoxes, format: containerFormat)
+        let jp2Colour = permitsJP2Colour(colrBoxes)
+
         var writer = JP2BoxWriter(capacity: codestream.count + 256)
 
         // 1. Signature box ('jP  ')
@@ -678,14 +851,13 @@ enum JP2Container {
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPH,
                 minorVersion: 0,
-                compatibleBrands: [JP2FileTypeBox.brandJPH, JP2FileTypeBox.brandJP2]
+                compatibleBrands: [JP2FileTypeBox.brandJPH]
             )
             formatName = jphFormat
         case .jpx:
-            var cl = [JP2FileTypeBox.brandJPX, JP2FileTypeBox.brandJPXB]
-            if !isHTJ2K {
-                cl.insert(JP2FileTypeBox.brandJP2, at: 1)
-            }
+            var cl = [JP2FileTypeBox.brandJPX]
+            if !isHTJ2K && jp2Colour { cl.append(JP2FileTypeBox.brandJP2) }
+            if permitsBaselineJPXColour(colrBoxes) { cl.append(JP2FileTypeBox.brandJPXB) }
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPX,
                 minorVersion: 0,
@@ -697,26 +869,38 @@ enum JP2Container {
         }
         try writer.appendBox(type: .fileType, payload: ftyp.serialise())
 
+        let colourRoles: [ComponentRole]
+        if descriptor.colour == .rgb {
+            colourRoles = [.red, .green, .blue]
+        } else if descriptor.colour == .greyscale {
+            colourRoles = [.grey]
+        } else if let enumBox = colrBoxes.first(where: { if case .enumerated = $0.method { return true }; return false }),
+                  case .enumerated(let code) = enumBox.method {
+            colourRoles = enumeratedColourRoles(code, fallbackCount: descriptor.components.filter { $0 != .alpha }.count)
+        } else if let icc = descriptor.iccProfile {
+            colourRoles = try iccColourModel(icc).roles
+        } else {
+            colourRoles = []
+        }
+        guard colourRoles.allSatisfy(descriptor.components.contains) else {
+            throw CodecError(.unsupportedFeature, "The selected view does not contain the complete tuple required by its colour specification.")
+        }
+
         // 3. Reader Requirements box ('rreq') for JPX (or if supplied in metadata)
         if containerFormat == .jpx {
-            let rreqPayload: [UInt8]
-            if metadataPolicy == .preserve,
-               let customRreq = metadata.entries["rreq"],
-               let parsed = try? JP2ReaderRequirementsBox.parse(bytes: [UInt8](customRreq), range: 0..<customRreq.count),
-               parsed.standardFeatures.contains(where: { $0.knownFeature == .htj2kCodestream }) == isHTJ2K,
-               parsed.evaluate().canDecodeCompletely {
-                rreqPayload = parsed.serialise()
-            } else {
-                let defaultRreq = try JP2ReaderRequirementsBox.defaultJPX(
-                    isLossless: isLossless,
-                    isHTJ2K: isHTJ2K,
-                    colour: descriptor.colour,
-                    hasAlpha: descriptor.alpha != .absent,
-                    isPremultipliedAlpha: descriptor.alpha == .premultiplied,
-                    hasRestrictedICC: descriptor.iccProfile != nil
-                )
-                rreqPayload = defaultRreq.serialise()
+            let features = try colrBoxes.map { box -> JP2ReaderRequirementsBox.StandardFeature in
+                guard let feature = expectedRreqColourFeature(for: box) else {
+                    throw CodecError(.unsupportedFeature, "JPX requirements cannot describe this colour specification.")
+                }
+                return feature
             }
+            let rreqPayload = try JP2ReaderRequirementsBox.defaultJPX(
+                isLossless: isLossless, isHTJ2K: isHTJ2K, colour: descriptor.colour,
+                hasAlpha: descriptor.alpha != .absent,
+                isPremultipliedAlpha: descriptor.alpha == .premultiplied,
+                hasRestrictedICC: descriptor.iccProfile != nil,
+                colourFeatures: features
+            ).serialise()
             try writer.appendBox(type: .readerRequirements, payload: rreqPayload)
         }
 
@@ -732,45 +916,22 @@ enum JP2Container {
             numComponents: UInt16(descriptor.components.count),
             uniformBitDepth: compDepth,
             compressionType: 7,
-            unknownColourspace: descriptor.colour == .unknown && descriptor.iccProfile == nil,
+            unknownColourspace: false,
             hasIntellectualProperty: hasIPR
         )
 
-        var colrBoxes: [JP2ColourSpecificationBox] = []
-        if let icc = descriptor.iccProfile {
-            colrBoxes.append(try JP2ColourSpecificationBox(method: .restrictedICC(icc), precedence: 0, approximation: 0))
-        }
-        if descriptor.colour == .rgb {
-            colrBoxes.append(try JP2ColourSpecificationBox(
-                method: .enumerated(JP2ColourSpecificationBox.EnumeratedColourSpace.sRGB.rawValue),
-                precedence: 0,
-                approximation: 0
-            ))
-        } else if descriptor.colour == .greyscale || colrBoxes.isEmpty {
-            colrBoxes.append(try JP2ColourSpecificationBox(
-                method: .enumerated(JP2ColourSpecificationBox.EnumeratedColourSpace.greyscale.rawValue),
-                precedence: 0,
-                approximation: 0
-            ))
-        }
-
-        // Channel Definition ('cdef') when alpha is present
+        // cdef also distinguishes uninterpreted extras and non-canonical component ordering.
         var cdefBox: JP2ChannelDefinitionBox?
-        if descriptor.alpha != .absent {
+        if descriptor.alpha != .absent || descriptor.components != colourRoles {
             let alphaType: UInt16 = (descriptor.alpha == .premultiplied) ? 2 : 1
             var entries: [JP2ChannelDefinitionBox.Entry] = []
             for (idx, role) in descriptor.components.enumerated() {
                 let cn = UInt16(idx)
-                switch role {
-                case .grey, .red:
-                    entries.append(.init(channelIndex: cn, channelType: 0, association: 1))
-                case .green:
-                    entries.append(.init(channelIndex: cn, channelType: 0, association: 2))
-                case .blue:
-                    entries.append(.init(channelIndex: cn, channelType: 0, association: 3))
-                case .alpha:
+                if let association = colourRoles.firstIndex(of: role) {
+                    entries.append(.init(channelIndex: cn, channelType: 0, association: UInt16(association + 1)))
+                } else if role == .alpha {
                     entries.append(.init(channelIndex: cn, channelType: alphaType, association: 0))
-                case .uninterpreted:
+                } else {
                     entries.append(.init(channelIndex: cn, channelType: 0xFFFF, association: 0xFFFF))
                 }
             }
@@ -804,7 +965,7 @@ enum JP2Container {
         var discardedKinds: [String] = []
 
         for key in metadata.entries.keys.sorted() {
-            guard key != "rreq" && key != "res" else { continue }
+            guard key != "rreq" && key != "res" && key != "colr" && !key.hasPrefix("colr.") else { continue }
             guard let payloadData = metadata.entries[key] else { continue }
             let baseKey = key.split(separator: ".").first.map(String.init) ?? key
             let boxType: JP2BoxType?
@@ -866,16 +1027,24 @@ enum JP2Container {
         targetIsHT: Bool,
         limits: ResourceLimits
     ) throws -> [UInt8] {
+        let sourceFormat = reconciled.container.format
+        let outputFormat: CodecOptions.ContainerFormat = sourceFormat == jpxFormat ? .jpx : (targetIsHT ? .jph : .jp2)
+        let sourceHeader = reconciled.container.header
+        let outputColour = try colourBoxesForOutput(sourceHeader.colourSpecifications, format: outputFormat)
+        let outputHeader = try JP2HeaderSuperbox(
+            imageHeader: sourceHeader.imageHeader, bitsPerComponent: sourceHeader.bitsPerComponent,
+            colourSpecifications: outputColour, palette: sourceHeader.palette,
+            componentMapping: sourceHeader.componentMapping, channelDefinition: sourceHeader.channelDefinition,
+            resolution: sourceHeader.resolution
+        )
         var writer = JP2BoxWriter(capacity: codestream.count + 256)
         try writer.appendBox(type: .signature, payload: JP2SignatureBox.expectedPayload)
 
-        let sourceFormat = reconciled.container.format
         let ftyp: JP2FileTypeBox
         if sourceFormat == jpxFormat {
-            var cl = [JP2FileTypeBox.brandJPX, JP2FileTypeBox.brandJPXB]
-            if !targetIsHT {
-                cl.insert(JP2FileTypeBox.brandJP2, at: 1)
-            }
+            var cl = [JP2FileTypeBox.brandJPX]
+            if !targetIsHT && permitsJP2Colour(outputColour) { cl.append(JP2FileTypeBox.brandJP2) }
+            if permitsBaselineJPXColour(outputColour) { cl.append(JP2FileTypeBox.brandJPXB) }
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPX,
                 minorVersion: reconciled.container.fileType.minorVersion,
@@ -885,7 +1054,7 @@ enum JP2Container {
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPH,
                 minorVersion: 0,
-                compatibleBrands: [JP2FileTypeBox.brandJPH, JP2FileTypeBox.brandJP2]
+                compatibleBrands: [JP2FileTypeBox.brandJPH]
             )
         } else {
             ftyp = try JP2FileTypeBox(
@@ -904,15 +1073,21 @@ enum JP2Container {
                 colour: desc.colour,
                 hasAlpha: desc.alpha != .absent,
                 isPremultipliedAlpha: desc.alpha == .premultiplied,
-                hasRestrictedICC: desc.iccProfile != nil
+                hasRestrictedICC: desc.iccProfile != nil,
+                colourFeatures: try outputColour.map { box in
+                    guard let feature = expectedRreqColourFeature(for: box) else {
+                        throw CodecError(.unsupportedFeature, "JPX requirements cannot describe this colour specification.")
+                    }
+                    return feature
+                }
             )
             try writer.appendBox(type: .readerRequirements, payload: rreq.serialise())
         }
 
-        try writer.appendBox(type: .jp2Header, payload: try reconciled.container.header.serialise())
+        try writer.appendBox(type: .jp2Header, payload: try outputHeader.serialise())
 
         for key in reconciled.container.metadataEntries.keys.sorted() {
-            guard key != "rreq" && key != "res" else { continue }
+            guard key != "rreq" && key != "res" && key != "colr" && !key.hasPrefix("colr.") else { continue }
             guard let payloadData = reconciled.container.metadataEntries[key] else { continue }
             let baseKey = key.split(separator: ".").first.map(String.init) ?? key
             let boxType: JP2BoxType?
@@ -937,23 +1112,7 @@ enum JP2Container {
         return writer.bytes
     }
 
-    // MARK: - Kakadu v8.x JPX 'rreq' Writer-Defect Verification
-
-    /// Supported colour-specification standard feature codes in ITU-T T.801 Table M.14.
-    private static let supportedColourSpecificationFeatures: Set<JP2ReaderRequirementsBox.StandardFeature> = [
-        .restrictedICCProfile,
-        .anyICCProfile,
-        .sRGBEnumeratedColourSpace,
-        .greyscaleEnumeratedColourSpace,
-        .biLevel1EnumeratedColourSpace,
-        .biLevel2EnumeratedColourSpace,
-        .yCbCr1EnumeratedColourSpace,
-        .yCbCr2EnumeratedColourSpace,
-        .yCbCr3EnumeratedColourSpace,
-        .eSRGBEnumeratedColourSpace,
-        .rommRGBEnumeratedColourSpace,
-        .sYCCEnumeratedColourSpace
-    ]
+    // MARK: - Bounded JPX 'rreq' Compatibility
 
     private static func expectedRreqColourFeature(
         for colr: JP2ColourSpecificationBox
@@ -982,206 +1141,136 @@ enum JP2Container {
         }
     }
 
-    /// Detects the upstream Kakadu v8.x `jpx_target` `'rreq'` writer defect without weakening
-    /// normative ITU-T T.801 Clause M.6.2 mask evaluation in ``JP2ReaderRequirementsBox/evaluate``.
-    ///
-    /// Kakadu v8.x's `jpx_target` allocates the top `NSF` bits of the `ML`-byte mask to `FUAM`
-    /// (`SM^i = 1 << (8 * ML - 1 - i)`) and the immediately adjacent `D` lower bits to `DCM`,
-    /// omitting the `DCM` bits from every `SM^i` (`(SM^i & DCM) == 0`). Because mask geometry
-    /// alone cannot distinguish a writer defect from a genuinely undefined `DCM` requirement bit,
-    /// container inspection admits this pattern only when:
-    /// 1. `FUAM` is completely satisfied, `vendorFeatures` is empty, and every `SF^i` is a
-    ///    distinct supported standard feature;
-    /// 2. the codestream main header contains a Latin-1 `COM` marker (`Rcom == 1`) explicitly
-    ///    identifying `"Kakadu-v8."`;
-    /// 3. `'ftyp'` declares baseline JPX (`brand == "jpx "` with `["jp2 ", "jpxb"]` for Part 1 or
-    ///    `["jph ", "jhxb"/"jpxb"]` for HTJ2K);
-    /// 4. all seven baseline JPX requirement categories (codestream coding, contiguous codestream,
-    ///    no compositing, single-codestream layer, no scaling, opacity matching `'cdef'`, and
-    ///    colour specification matching every `'colr'` box) are explicitly present in `SF^i`; and
-    /// 5. `SM^i`, `FUAM`, and `DCM` match Kakadu v8.x's exact MSB-packed bit positions.
-    private static func isVerifiedKakaduV8BaselineRreqWriterBug(
+    /// Compatibility for the complete single-codestream baseline layout exhibited by the
+    /// independent Kakadu fixtures. This is deliberately separate from normative rreq evaluation.
+    /// A writer comment grants no authority: actual box structure, coding, colour and opacity
+    /// must fully match an exact feature set before the known disjoint-mask layout is admitted.
+    private static func permitsBaselineShiftedReaderRequirements(
         bytes: [UInt8],
         container: JP2ParsedContainer,
         rreq: JP2ReaderRequirementsBox,
-        evaluation: JP2ReaderRequirementsBox.SupportEvaluation
+        evaluation: JP2ReaderRequirementsBox.SupportEvaluation,
+        limits: ResourceLimits
     ) -> Bool {
-        let nsf = rreq.standardFeatures.count
-        guard evaluation.understandsAllAspects,
-              rreq.vendorFeatures.isEmpty,
-              rreq.maskLength >= 2,
-              nsf >= 7 else {
-            return false
-        }
+        guard evaluation.understandsAllAspects, rreq.vendorFeatures.isEmpty,
+              rreq.maskLength >= 2, rreq.standardFeatures.count >= 7,
+              hasBaselineSingleLayerStructure(bytes, limits: limits) else { return false }
 
-        var declaredFeatures: Set<JP2ReaderRequirementsBox.StandardFeature> = []
-        declaredFeatures.reserveCapacity(nsf)
-        var colourFeatureCount = 0
-        for entry in rreq.standardFeatures {
+        let entries = rreq.standardFeatures
+        var declared: Set<JP2ReaderRequirementsBox.StandardFeature> = []
+        for entry in entries {
             guard let feature = entry.knownFeature,
                   JP2ReaderRequirementsBox.swiftJ2KSupportedFeatures.contains(feature),
-                  declaredFeatures.insert(feature).inserted else {
-                return false
-            }
-            if supportedColourSpecificationFeatures.contains(feature) {
-                colourFeatureCount += 1
-            }
-        }
-        guard colourFeatureCount >= 1 else {
-            return false
+                  declared.insert(feature).inserted else { return false }
         }
 
-        // Scan codestream main header (SOC up to first SOT/SOD/EOC) for Kakadu v8.x COM provenance
-        // and CAP/COD HTJ2K signalling without copying the codestream.
-        let csRange = container.codestreamRange
-        guard csRange.lowerBound >= 0,
-              csRange.upperBound <= bytes.count,
-              csRange.count >= 4,
-              bytes[csRange.lowerBound] == 0xFF,
-              bytes[csRange.lowerBound + 1] == 0x4F else {
-            return false
-        }
-
-        let kakaduPrefix = Array("Kakadu-v8.".utf8)
-        var hasKakaduV8Comment = false
-        var hasHTJ2KMarker = false
-        var pos = csRange.lowerBound + 2
-
-        while pos + 2 <= csRange.upperBound {
+        // Read coding identity from the actual main header, not COM text or declared features.
+        let range = container.codestreamRange
+        guard range.count >= 4, bytes[range.lowerBound] == 0xFF, bytes[range.lowerBound + 1] == 0x4F else { return false }
+        var pos = range.lowerBound + 2
+        var hasHT = false
+        var rsiz: UInt16?
+        while pos + 2 <= range.upperBound {
             let marker = (UInt16(bytes[pos]) << 8) | UInt16(bytes[pos + 1])
-            if marker == 0xFF90 || marker == 0xFF93 || marker == 0xFFD9 {
-                break
+            if marker == 0xFF90 || marker == 0xFF93 || marker == 0xFFD9 { break }
+            if (0xFF30...0xFF3F).contains(marker) { pos += 2; continue }
+            guard marker & 0xFF00 == 0xFF00, pos + 4 <= range.upperBound else { return false }
+            let length = Int((UInt16(bytes[pos + 2]) << 8) | UInt16(bytes[pos + 3]))
+            let (end, overflow) = (pos + 2).addingReportingOverflow(length)
+            guard length >= 2, !overflow, end <= range.upperBound else { return false }
+            let payload = pos + 4
+            if marker == 0xFF51, end - payload >= 2 {
+                rsiz = (UInt16(bytes[payload]) << 8) | UInt16(bytes[payload + 1])
+            } else if marker == 0xFF50, end - payload >= 4 {
+                let pcap = (UInt32(bytes[payload]) << 24) | (UInt32(bytes[payload + 1]) << 16)
+                    | (UInt32(bytes[payload + 2]) << 8) | UInt32(bytes[payload + 3])
+                hasHT = hasHT || (pcap & 0x0002_0000) != 0
+            } else if marker == 0xFF52, end - payload >= 1 {
+                hasHT = hasHT || (bytes[payload] & 0x40) != 0
             }
-            if (0xFF30...0xFF3F).contains(marker) {
-                pos += 2
-                continue
-            }
-            guard (marker & 0xFF00) == 0xFF00, pos + 4 <= csRange.upperBound else {
-                return false
-            }
-            let segLen = Int((UInt16(bytes[pos + 2]) << 8) | UInt16(bytes[pos + 3]))
-            guard segLen >= 2 else { return false }
-            let (segEnd, ov) = (pos + 2).addingReportingOverflow(segLen)
-            guard !ov, segEnd <= csRange.upperBound else { return false }
-
-            let payloadStart = pos + 4
-            let payloadLen = segEnd - payloadStart
-            if marker == 0xFF64 && payloadLen >= 2 + kakaduPrefix.count {
-                let rcom = (UInt16(bytes[payloadStart]) << 8) | UInt16(bytes[payloadStart + 1])
-                if rcom == 1 {
-                    let textStart = payloadStart + 2
-                    if bytes[textStart..<(textStart + kakaduPrefix.count)].elementsEqual(kakaduPrefix) {
-                        hasKakaduV8Comment = true
-                    }
-                }
-            } else if marker == 0xFF50 && payloadLen >= 4 {
-                let pcap = (UInt32(bytes[payloadStart]) << 24)
-                    | (UInt32(bytes[payloadStart + 1]) << 16)
-                    | (UInt32(bytes[payloadStart + 2]) << 8)
-                    | UInt32(bytes[payloadStart + 3])
-                if (pcap & 0x0002_0000) != 0 {
-                    hasHTJ2KMarker = true
-                }
-            } else if marker == 0xFF52 && payloadLen >= 1 {
-                if (bytes[payloadStart] & 0x40) != 0 {
-                    hasHTJ2KMarker = true
-                }
-            }
-            pos = segEnd
+            pos = end
         }
-
-        guard hasKakaduV8Comment else {
-            return false
-        }
-
-        // Reconcile 'ftyp' brand and compatibility list against codestream coding.
+        guard let rsiz else { return false }
         let ftyp = container.fileType
-        guard ftyp.brand == JP2FileTypeBox.brandJPX else {
-            return false
-        }
-        if hasHTJ2KMarker {
+        guard ftyp.brand == JP2FileTypeBox.brandJPX else { return false }
+        if hasHT {
             guard ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPH),
-                  ftyp.compatibleBrands.contains("jhxb") || ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else {
-                return false
-            }
+                  ftyp.compatibleBrands.contains("jhxb") || ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else { return false }
         } else {
             guard ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJP2),
-                  ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else {
-                return false
-            }
+                  ftyp.compatibleBrands.contains(JP2FileTypeBox.brandJPXB) else { return false }
         }
 
-        // Reconcile all 7 baseline JPX requirement categories against the parsed container & codestream.
-        guard declaredFeatures.contains(.codestreamContiguous),
-              declaredFeatures.contains(.noCompositingRequired),
-              declaredFeatures.contains(.compositingLayerSingleCodestream),
-              declaredFeatures.contains(.noScalingRequired) else {
-            return false
-        }
-
-        if hasHTJ2KMarker {
-            guard declaredFeatures.contains(.htj2kCodestream),
-                  !declaredFeatures.contains(.codestreamContainsNoExtensions) else {
-                return false
-            }
+        var expected: Set<JP2ReaderRequirementsBox.StandardFeature> = [
+            .codestreamContiguous, .noCompositingRequired, .compositingLayerSingleCodestream, .noScalingRequired
+        ]
+        if hasHT {
+            expected.insert(.htj2kCodestream)
         } else {
-            let hasPart1Profile = declaredFeatures.contains(.unrestrictedJPEG2000Part1)
-                || declaredFeatures.contains(.profile0Codestream)
-                || declaredFeatures.contains(.profile1Codestream)
-            guard declaredFeatures.contains(.codestreamContainsNoExtensions),
-                  hasPart1Profile,
-                  !declaredFeatures.contains(.htj2kCodestream) else {
-                return false
-            }
+            guard rsiz <= 2 else { return false }
+            expected.insert(.codestreamContainsNoExtensions)
+            expected.insert(rsiz == 1 ? .profile0Codestream : (rsiz == 2 ? .profile1Codestream : .unrestrictedJPEG2000Part1))
         }
-
-        var hasStraightOpacity = false
-        var hasPremultipliedOpacity = false
-        if let cdef = container.header.channelDefinition {
-            for entry in cdef.entries {
-                if entry.channelType == 1 { hasStraightOpacity = true }
-                if entry.channelType == 2 { hasPremultipliedOpacity = true }
-            }
-        }
-        if hasPremultipliedOpacity {
-            guard declaredFeatures.contains(.premultipliedOpacityChannel) else { return false }
-        } else if hasStraightOpacity {
-            guard declaredFeatures.contains(.opacityChannel) else { return false }
+        let opacityEntries = container.header.channelDefinition?.entries.filter { $0.channelType == 1 || $0.channelType == 2 } ?? []
+        guard opacityEntries.count <= 1, opacityEntries.allSatisfy({ $0.association == 0 }) else { return false }
+        if let opacity = opacityEntries.first {
+            expected.insert(opacity.channelType == 2 ? .premultipliedOpacityChannel : .opacityChannel)
         } else {
-            guard declaredFeatures.contains(.noOpacity) else { return false }
+            expected.insert(.noOpacity)
         }
-
-        guard !container.header.colourSpecifications.isEmpty else {
-            return false
-        }
+        guard !container.header.colourSpecifications.isEmpty else { return false }
+        var colourFeatures: Set<JP2ReaderRequirementsBox.StandardFeature> = []
         for colr in container.header.colourSpecifications {
-            guard let expectedFeature = expectedRreqColourFeature(for: colr),
-                  declaredFeatures.contains(expectedFeature) else {
-                return false
-            }
+            guard let feature = expectedRreqColourFeature(for: colr) else { return false }
+            colourFeatures.insert(feature)
+            expected.insert(feature)
         }
+        // Equality excludes extra, contradictory or invented declarations. A feature's presence
+        // alone never proves the matching structure exists.
+        guard declared == expected else { return false }
 
-        // Verify exact MSB-packed Kakadu v8.x FUAM and adjacent DCM bit layout.
-        let totalBits = Int(rreq.maskLength) * 8
-        let decodeClauses = nsf - max(0, colourFeatureCount - 1)
-        guard decodeClauses > 0,
-              decodeClauses < 64,
-              nsf + decodeClauses <= totalBits,
-              totalBits <= 64 else {
-            return false
+        let nsf = entries.count
+        let bits = Int(rreq.maskLength) * 8
+        let decodeClauses = nsf - max(0, colourFeatures.count - 1)
+        guard decodeClauses > 0, decodeClauses < 64, nsf + decodeClauses <= bits, bits <= 64 else { return false }
+        for (index, entry) in entries.enumerated() {
+            guard entry.mask == UInt64(1) << (bits - 1 - index) else { return false }
         }
+        guard rreq.fuam == evaluation.satisfiedMask else { return false }
+        return rreq.dcm == ((UInt64(1) << decodeClauses) - 1) << (bits - nsf - decodeClauses)
+    }
 
-        for (index, entry) in rreq.standardFeatures.enumerated() {
-            let expectedMask = UInt64(1) << (totalBits - 1 - index)
-            guard entry.mask == expectedMask else {
-                return false
+    /// The compatibility layout has exactly one empty codestream header and one empty layer
+    /// header. Nonempty overrides, registration/scaling, compositions and unknown boxes are
+    /// excluded. Ordinary normative rreq inputs do not use this compatibility path.
+    private static func hasBaselineSingleLayerStructure(_ bytes: [UInt8], limits: ResourceLimits) -> Bool {
+        do {
+            var reader = try JP2BoxReader(bytes: bytes, limits: limits)
+            var codestreamHeaders = 0
+            var layerHeaders = 0
+            while let box = try reader.nextBox() {
+                switch box.type {
+                case .codestreamHeader:
+                    guard box.payloadRange.isEmpty else { return false }
+                    codestreamHeaders += 1
+                case .compositingLayerHdr:
+                    guard box.payloadRange.isEmpty else { return false }
+                    layerHeaders += 1
+                case .jp2Header:
+                    var header = try reader.childReader(for: box)
+                    while let child = try header.nextBox() {
+                        switch child.type {
+                        case .imageHeader, .bitsPerComponent, .colourSpecification, .palette,
+                             .componentMapping, .channelDefinition, .resolution: break
+                        default: return false
+                        }
+                    }
+                case .signature, .fileType, .readerRequirements, .contiguousCodestream,
+                     .free, .xml, .uuid, .uuidInfo, .ipr, .label: break
+                default: return false
+                }
             }
-        }
-        guard rreq.fuam == evaluation.satisfiedMask else {
-            return false
-        }
-        let dcmShift = totalBits - nsf - decodeClauses
-        let expectedDCM = ((UInt64(1) << decodeClauses) - 1) << dcmShift
-        return rreq.dcm == expectedDCM
+            return codestreamHeaders == 1 && layerHeaders == 1
+        } catch { return false }
     }
 }

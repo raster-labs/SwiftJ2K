@@ -336,39 +336,35 @@ public actor JPIPStreamingSession {
         try checkWork()
         try validateDeliveredLegacyImage(legacyImage, limits: options.resourceLimits)
 
-        let legacyPixelBytes = legacyImage.components.reduce(0) { $0 + $1.data.count }
+        let legacyPixelBytes = try legacyImage.pixelBytes()
+        let stats = await client.getSessionStats()
+        let cachedBytes = stats?.cacheSize ?? 0
+        let cachedStorageBytes = try jpipCheckedSum(cachedBytes,
+            jpipCheckedProduct([stats?.cachedBins ?? 0, MemoryLayout<JPIPCacheModel.CacheEntry>.stride]))
+        var accounting = decodedInfo.pixelAccounting
         let contractImage: Image
-        let pixelAllocations: Int
-        let copyEvent: CopyEvent
         if let directContract = decodedInfo.contractImage {
             contractImage = directContract
-            pixelAllocations = 1 + legacyImage.components.count
-            copyEvent = try CopyEvent(
-                reason: "Materialise legacy J2KImage planar components from decoded contract Image",
-                bytesMoved: legacyPixelBytes,
-                sourceLayout: jpipDescriptorLayoutName(directContract.descriptor),
-                destinationLayout: "j2kimage-planar-components"
-            )
         } else {
+            let componentCount = legacyImage.components.count
+            let storageBytes = componentCount == 1 ? 2 : ((legacyImage.components[0].bitDepth <= 8) ? 1 : 2)
+            let contractBytes = try jpipCheckedProduct([legacyImage.width, legacyImage.height, componentCount, storageBytes])
+            let metadataBytes = try decodedInfo.metadata.entries.reduce(0) {
+                try jpipCheckedSum($0, jpipCheckedSum($1.key.utf8.count, $1.value.count))
+            }
+            try accounting.recordAllocation(bytes: contractBytes, count: 1,
+                liveBefore: legacyPixelBytes,
+                residentBytes: jpipCheckedSum(cachedStorageBytes, jpipCheckedSum(metadataBytes, decodedInfo.iccProfile?.count ?? 0)),
+                reason: "Materialise projected legacy samples as contract Image", limits: options.resourceLimits)
             contractImage = try legacyImage.toContractImage(
                 colourOverride: decodedInfo.colourInterpretation,
                 alphaOverride: decodedInfo.alphaInterpretation,
                 iccProfileOverride: decodedInfo.iccProfile,
                 metadata: decodedInfo.metadata,
-                limits: options.resourceLimits
-            )
-            pixelAllocations = 2 + legacyImage.components.count
-            let (totalMoved, ovMoved) = legacyPixelBytes.addingReportingOverflow(contractImage.descriptor.requiredByteCount)
-            let movedBytes = ovMoved ? contractImage.descriptor.requiredByteCount : totalMoved
-            copyEvent = try CopyEvent(
-                reason: "Materialise view-window J2KImage and contract Image buffers",
-                bytesMoved: movedBytes,
-                sourceLayout: "j2kimage-planar-components",
-                destinationLayout: jpipDescriptorLayoutName(contractImage.descriptor)
+                limits: options.resourceLimits,
+                retainedBytes: jpipCheckedSum(legacyPixelBytes, cachedStorageBytes)
             )
         }
-
-        let stats = await client.getSessionStats()
 
         try checkWork()
         if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
@@ -376,8 +372,6 @@ public actor JPIPStreamingSession {
         }
         try checkWork()
 
-        let (combinedPixelBytes, ovPix) = legacyPixelBytes.addingReportingOverflow(contractImage.storage.byteCount)
-        let peakPixelBytes = ovPix ? contractImage.storage.byteCount : combinedPixelBytes
         let hasReducedResolution = (viewWindow?.resolutionLevel ?? 0) > 0
         let hasReducedLayers: Bool
         if let reqLayers = viewWindow?.maxQualityLayers {
@@ -395,16 +389,16 @@ public actor JPIPStreamingSession {
             && !hasReducedResolution
             && !hasReducedLayers
             && !hasSubsetComponents
-        let peakWorkspace = max(decodedInfo.peakWorkspaceBytes, stats?.cacheSize ?? 0)
+        let peakWorkspace = max(decodedInfo.peakWorkspaceBytes, cachedStorageBytes)
         let elapsed = clock.now - started
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
             backend: decodedInfo.backend,
             fallbackReason: decodedInfo.fallbackReason,
             fidelity: isExact ? .exactSamples : .lossy,
-            copyEvents: [copyEvent],
-            pixelAllocationCount: pixelAllocations,
-            peakPixelBytes: peakPixelBytes,
+            copyEvents: accounting.copyEvents,
+            pixelAllocationCount: accounting.allocationCount,
+            peakPixelBytes: accounting.peakBytes,
             peakWorkspaceBytes: peakWorkspace,
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataCount : nil,
@@ -585,4 +579,19 @@ private func jpipDescriptorLayoutName(_ descriptor: ImageDescriptor) -> String {
         return descriptor.planes.count == 1 ? "rgb-interleaved" : "rgb-planar"
     }
     return "multicomponent-planar"
+}
+
+/// Checked admission arithmetic for the streaming adapter's simultaneously retained buffers.
+private func jpipCheckedSum(_ a: Int, _ b: Int) throws -> Int {
+    let (result, overflow) = a.addingReportingOverflow(b)
+    guard a >= 0, b >= 0, !overflow else { throw CodecError(.resourceLimitExceeded, "JPIP live-storage arithmetic overflow.") }
+    return result
+}
+
+private func jpipCheckedProduct(_ values: [Int]) throws -> Int {
+    try values.reduce(1) { value, next in
+        let (result, overflow) = value.multipliedReportingOverflow(by: next)
+        guard next >= 0, !overflow else { throw CodecError(.resourceLimitExceeded, "JPIP pixel-storage arithmetic overflow.") }
+        return result
+    }
 }
