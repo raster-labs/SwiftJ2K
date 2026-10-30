@@ -180,14 +180,13 @@ struct R2JPIPRemediationTests {
         let premulGAURL = tmpDir.appendingPathComponent("premul_ga.jp2")
         try premulGAData.write(to: premulGAURL)
 
-        // 3. Non-alpha 4-channel JP2 (no `cdef` -> alpha == .absent)
-        let nonAlpha4Desc = try ImageDescriptor.multiComponentPlanar(
-            width: 8,
-            height: 8,
-            componentCount: 4,
-            storageBits: 8,
-            meaningfulBits: 8
-        )
+        // 3. RGB plus an explicitly unspecified extra channel: alpha stays absent.
+        let nonAlpha4Layout = try ImageDescriptor.multiComponentPlanar(
+            width: 8, height: 8, componentCount: 4, storageBits: 8, meaningfulBits: 8)
+        let nonAlpha4Desc = try ImageDescriptor(width: 8, height: 8,
+            storageBits: 8, meaningfulBits: 8,
+            components: [.red, .green, .blue, .uninterpreted("c3")],
+            colour: .rgb, alpha: .absent, planes: nonAlpha4Layout.planes)
         let nonAlpha4Src = try ImageDestination.allocate(descriptor: nonAlpha4Desc).writeSamples { c, x, y in
             (c * 37 + x * 9 + y * 5) & 0xFF
         }
@@ -255,7 +254,11 @@ struct R2JPIPRemediationTests {
             #expect(deliveredNonAlpha4.legacyImage.alpha == .absent)
             let contractFromLegacyNonAlpha4 = try deliveredNonAlpha4.legacyImage.toContractImage()
             #expect(contractFromLegacyNonAlpha4.descriptor.alpha == .absent)
-            #expect(!contractFromLegacyNonAlpha4.descriptor.components.contains(.alpha))
+            #expect(contractFromLegacyNonAlpha4.descriptor.components == [.red, .green, .blue, .uninterpreted("c3")])
+            for c in 0..<4 {
+                #expect(try contractFromLegacyNonAlpha4.sampleInt(component: c, x: 3, y: 2)
+                    == (c * 37 + 3 * 9 + 2 * 5) & 0xFF)
+            }
 
             try await session.close()
         }
@@ -345,7 +348,12 @@ struct R2JPIPRemediationTests {
         #expect((metaDelivered.report.discardedMetadataCount ?? 0) > 2)
         #expect((metaDelivered.report.discardedMetadataBytes ?? 0) > 105)
         #expect(!metaDelivered.report.discardedMetadataKinds.isEmpty)
-        #expect(metaDelivered.image.metadata.entries.isEmpty)
+        // Essential colour meaning survives discardAncillary; only ancillary entries disappear.
+        #expect(Set(metaDelivered.image.metadata.entries.keys) == metaDelivered.image.metadata.requiredKeys)
+        #expect(metaDelivered.image.metadata.requiredKeys == ["colr"])
+        let originalICC = try await Decoder().decode(Data(contentsOf: metaURL)).image.descriptor.iccProfile
+        #expect(metaDelivered.image.descriptor.iccProfile == originalICC)
+        #expect(originalICC != nil)
 
         // 4. Simulated backend unavailability enforces `.required(.accelerated)` and `.preferred(.accelerated)`
         try await AccelerationRuntime.$forceUnavailable.withValue(true) {

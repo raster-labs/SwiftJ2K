@@ -377,7 +377,9 @@ enum JP2Container {
         }
 
         // Resolve colour channels from the declared model; channel count never invents alpha.
-        let effectiveEnum = ihdr.unknownColourspace ? nil : enumColourSpace
+        // T.800 I.5.3.1: UnkC marks uncertainty about the original colourspace;
+        // readers still use the supplied colr interpretation as if it were accurate.
+        let effectiveEnum = enumColourSpace
         let modelRoles: [ComponentRole]
         let colour: ColourInterpretation
         if effectiveEnum == JP2ColourSpecificationBox.EnumeratedColourSpace.sRGB.rawValue {
