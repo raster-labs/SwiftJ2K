@@ -519,6 +519,12 @@ public actor JP3DTranscoder {
                 "Lossy volumetric transcoding fallback decodes and re-encodes intermediate J2KVolume buffers; pass copyPolicy: .allowCopy."
             )
         }
+        // This parsed source remains live while the nested decoder parses its own
+        // tile payloads. The shared sourceData is already counted by that decoder.
+        let retainedWorkspace = try jp3dDecodeAdd(source.retainedTileBytes, source.commentPayloadBytes)
+        let decodeLimits = try limits.map {
+            try $0.reserving(workspaceBytes: retainedWorkspace, memoryBytes: retainedWorkspace)
+        }
         let decoder = JP3DDecoder(configuration: JP3DDecoderConfiguration(
             tolerateErrors: false,
             parallelTileDecoding: (limits?.maximumWorkers ?? 8) > 1,
@@ -526,7 +532,7 @@ public actor JP3DTranscoder {
         ))
         let decoded = try await decoder.decodeAdmitted(
             sourceData,
-            limits: limits,
+            limits: decodeLimits,
             executionPolicy: executionPolicy,
             metadataPolicy: metadataPolicy,
             work: work
@@ -555,16 +561,23 @@ public actor JP3DTranscoder {
             parallelTileEncoding: (limits?.maximumWorkers ?? 8) > 1,
             maximumWorkers: limits?.maximumWorkers ?? 8
         ))
+        // The encoder already counts decoded.volume as its input. Reserve the
+        // original compressed input and parsed source, which it cannot observe.
+        let encodeLimits = try limits.map {
+            try $0.reserving(workspaceBytes: retainedWorkspace,
+                             memoryBytes: jp3dDecodeAdd(sourceData.count, retainedWorkspace))
+        }
         let result = try await encoder.encodeAdmitted(
             decoded.volume,
-            limits: limits,
+            limits: encodeLimits,
             executionPolicy: executionPolicy,
             metadataPolicy: metadataPolicy,
             work: work
         )
 
         let roundTripPixelBytes = (try? decoded.volume.sizeInBytes) ?? decoded.volume.estimatedMemorySize
-        let measuredPeak = max(estimatedWorkspace, max(decoded.peakWorkspaceBytes, result.peakWorkspaceBytes))
+        let measuredPeak = max(estimatedWorkspace,
+            try jp3dDecodeAdd(retainedWorkspace, max(decoded.peakWorkspaceBytes, result.peakWorkspaceBytes)))
         return JP3DTranscoderResult(
             data: result.data,
             tilesTranscoded: result.tileCount,

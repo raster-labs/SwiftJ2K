@@ -651,9 +651,35 @@ struct R2RemediationTests {
         }
 
         // 2. Premultiplied and straight 2-channel Grey-Alpha (with and without Restricted ICC profile)
-        let iccFixture = try await Decoder().decode(
-            Data(contentsOf: containerFixtureURL("jp2_rgb8_icc_res_meta.kdu.jp2"))
-        ).image.descriptor.iccProfile
+        // A GRAY ICC v2 input profile: D50 media white point and a gamma-2.2
+        // monochrome TRC. The independent Kakadu fixture's RGB profile cannot
+        // describe this one-colour tuple; its external fixture bytes stay unchanged.
+        var grayProfile = [UInt8](repeating: 0, count: 340)
+        grayProfile[0..<4] = [0, 0, 1, 84]
+        grayProfile[8..<12] = [2, 0x10, 0, 0]
+        grayProfile[12..<16] = ArraySlice("scnr".utf8)
+        grayProfile[16..<20] = ArraySlice("GRAY".utf8)
+        grayProfile[20..<24] = ArraySlice("XYZ ".utf8)
+        grayProfile[24..<36] = [7, 0xEA, 0, 10, 0, 30, 0, 0, 0, 0, 0, 0]
+        grayProfile[36..<40] = ArraySlice("acsp".utf8)
+        grayProfile[68..<80] = [0, 0, 0xF6, 0xD6, 0, 1, 0, 0, 0, 0, 0xD3, 0x2D]
+        grayProfile[128..<180] = [
+            0, 0, 0, 4,
+            0x77, 0x74, 0x70, 0x74, 0, 0, 0, 180, 0, 0, 0, 20,
+            0x6B, 0x54, 0x52, 0x43, 0, 0, 0, 200, 0, 0, 0, 14,
+            0x64, 0x65, 0x73, 0x63, 0, 0, 0, 216, 0, 0, 0, 98,
+            0x63, 0x70, 0x72, 0x74, 0, 0, 1, 60, 0, 0, 0, 22
+        ]
+        grayProfile[180..<200] = [
+            0x58, 0x59, 0x5A, 0x20, 0, 0, 0, 0,
+            0, 0, 0xF6, 0xD6, 0, 1, 0, 0, 0, 0, 0xD3, 0x2D
+        ]
+        grayProfile[200..<214] = [0x63, 0x75, 0x72, 0x76, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0x33]
+        grayProfile[216..<228] = [0x64, 0x65, 0x73, 0x63, 0, 0, 0, 0, 0, 0, 0, 8]
+        grayProfile[228..<236] = ArraySlice("R2 Grey\0".utf8)
+        grayProfile[316..<324] = [0x74, 0x65, 0x78, 0x74, 0, 0, 0, 0]
+        grayProfile[324..<338] = ArraySlice("Public domain\0".utf8)
+        let iccFixture: Data? = Data(grayProfile)
         let gaPlanes = [
             try PlaneDescriptor(width: 4, height: 4, components: [0], offset: 0, sampleStride: 1, pixelStride: 1, rowBytes: 4, byteCount: 16),
             try PlaneDescriptor(width: 4, height: 4, components: [1], offset: 16, sampleStride: 1, pixelStride: 1, rowBytes: 4, byteCount: 32)
@@ -734,20 +760,45 @@ struct R2RemediationTests {
                 )
             }
 
-            // Encode non-alpha 2-channel / 4-channel image to JP2 (no `cdef`) and verify both Decoder and J2KDecoder keep alpha == .absent
+            // A bare unknown tuple has no mandatory JP2 colour specification.
+            // Preserve the generic bridge assertions above, and independently
+            // exercise valid grey/RGB plus unspecified-extra container output.
+            do {
+                _ = try await Encoder(configuration: EncoderConfiguration(mode: .lossless,
+                    codecOptions: CodecOptions(colourTransform: .none, containerFormat: .jp2)))
+                    .encode(nonAlphaSrc)
+                Issue.record("An unspecified tuple without colour metadata produced JP2")
+            } catch let error as CodecError {
+                #expect(error.category == .unsupportedFeature)
+            }
+            let representedRoles: [ComponentRole] = compCount == 2
+                ? [.grey, .uninterpreted("c1")]
+                : [.red, .green, .blue, .uninterpreted("c3")]
+            let representedDescriptor = try ImageDescriptor(
+                width: 4, height: 4, sampleType: .unsignedInteger,
+                storageBits: 8, meaningfulBits: 8, byteOrder: nonAlphaDesc.byteOrder,
+                components: representedRoles, colour: compCount == 2 ? .greyscale : .rgb,
+                alpha: .absent, planes: nonAlphaDesc.planes
+            )
+            let representedSource = try Image(descriptor: representedDescriptor, storage: nonAlphaSrc.storage)
             let encodedNonAlphaJP2 = try await Encoder(
                 configuration: EncoderConfiguration(
                     mode: .lossless,
                     codecOptions: CodecOptions(colourTransform: .none, containerFormat: .jp2)
                 )
-            ).encode(nonAlphaSrc).data
+            ).encode(representedSource).data
             let directNonAlpha = try await Decoder().decode(encodedNonAlphaJP2).image
             #expect(directNonAlpha.descriptor.alpha == .absent)
+            #expect(directNonAlpha.descriptor.components == representedRoles)
             let decodedLegacyNonAlpha = try await J2KDecoder().decode(encodedNonAlphaJP2)
             #expect(decodedLegacyNonAlpha.alpha == .absent)
             let roundTripNonAlpha = try decodedLegacyNonAlpha.toContractImage()
             #expect(roundTripNonAlpha.descriptor.alpha == .absent)
             #expect(!roundTripNonAlpha.descriptor.components.contains(.alpha))
+            #expect(roundTripNonAlpha.descriptor.components == representedRoles)
+            for c in 0..<compCount {
+                #expect(try roundTripNonAlpha.sampleInt(component: c, x: 3, y: 2) == ((c * 41 + 3 * 13 + 2 * 7) & 0xFF))
+            }
 
             // Direct public legacy convenience initialiser without alpha must also keep alpha == .absent
             let manualLegacy = J2KImage(width: 4, height: 4, components: compCount, bitDepth: 8)

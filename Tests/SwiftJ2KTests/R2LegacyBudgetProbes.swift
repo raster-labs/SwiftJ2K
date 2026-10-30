@@ -62,6 +62,13 @@ struct R2LegacyBudgetProbes {
             // final pixels without the same compressed owner being charged twice.
             let workspace = baseline.peakWorkspaceBytes + retained
             let memory = input.count + descriptor.requiredByteCount + workspace
+            let bridgeMetadata = try baseline.metadata.validate(limits: .default,
+                additionalBytes: baseline.iccProfile?.count ?? 0)
+            let bridgeMemory = input.count + (32 + input.count) + retained
+                + bridgeMetadata + baseline.pixelAccounting.peakBytes
+            // This small fixture is codec-workspace dominated. The formula above
+            // is not a promise to combine peaks from non-overlapping stages.
+            try #require(memory >= bridgeMemory)
             let limits = try ResourceLimits(maximumWorkspaceBytes: workspace, maximumMemoryBytes: memory)
             let decoded = try J2KDecoder.decodeWithInfo(input, limits: limits, executionPolicy: .scalarCPU,
                 metadataPolicy: .discardAncillary, retainedExternalBytes: retained)

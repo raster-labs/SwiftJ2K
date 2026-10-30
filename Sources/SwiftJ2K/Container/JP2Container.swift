@@ -729,6 +729,11 @@ enum JP2Container {
         return (.unknown, (1...count).map { .uninterpreted("icc.\(name).\($0)") })
     }
 
+    /// The complete ICC device-side tuple, excluding alpha and unspecified extras.
+    static func iccComponentRoles(_ profile: Data) throws -> [ComponentRole] {
+        try iccColourModel(profile).roles
+    }
+
     private static func permitsJP2Colour(_ boxes: [JP2ColourSpecificationBox]) -> Bool {
         !boxes.isEmpty && boxes.allSatisfy { box in
             switch box.method {
@@ -830,6 +835,18 @@ enum JP2Container {
         // enumerations and unrestricted ICC profiles retain a functional JPX route.
         colrBoxes = try colourBoxesForOutput(colrBoxes, format: containerFormat)
         let jp2Colour = permitsJP2Colour(colrBoxes)
+        if descriptor.colour == .rgb || descriptor.colour == .greyscale {
+            let expectedRoles: [ComponentRole] = descriptor.colour == .rgb ? [.red, .green, .blue] : [.grey]
+            for box in colrBoxes {
+                switch box.method {
+                case .restrictedICC(let profile), .anyICC(let profile):
+                    guard try iccComponentRoles(profile) == expectedRoles else {
+                        throw CodecError(.unsupportedFeature, "The ICC device colour tuple conflicts with the image's explicit RGB or greyscale interpretation.")
+                    }
+                default: break
+                }
+            }
+        }
 
         var writer = JP2BoxWriter(capacity: codestream.count + 256)
 
@@ -869,6 +886,12 @@ enum JP2Container {
         }
         try writer.appendBox(type: .fileType, payload: ftyp.serialise())
 
+        let retainedICC = colrBoxes.lazy.compactMap { box -> Data? in
+            switch box.method {
+            case .restrictedICC(let profile), .anyICC(let profile): return profile
+            default: return nil
+            }
+        }.first
         let colourRoles: [ComponentRole]
         if descriptor.colour == .rgb {
             colourRoles = [.red, .green, .blue]
@@ -877,7 +900,7 @@ enum JP2Container {
         } else if let enumBox = colrBoxes.first(where: { if case .enumerated = $0.method { return true }; return false }),
                   case .enumerated(let code) = enumBox.method {
             colourRoles = enumeratedColourRoles(code, fallbackCount: descriptor.components.filter { $0 != .alpha }.count)
-        } else if let icc = descriptor.iccProfile {
+        } else if let icc = retainedICC ?? descriptor.iccProfile {
             colourRoles = try iccColourModel(icc).roles
         } else {
             colourRoles = []

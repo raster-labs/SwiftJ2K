@@ -441,15 +441,18 @@ public struct VolumeEncoder: Sendable {
         }
         try work.check()
 
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let result: JP3DEncoderResult
         do {
-            result = try await actorEncoder.encodeAdmitted(
-                volume,
-                limits: options.resourceLimits,
-                executionPolicy: options.executionPolicy,
-                metadataPolicy: options.metadataPolicy,
-                work: work
-            )
+            result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                try await actorEncoder.encodeAdmitted(
+                    volume,
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    metadataPolicy: options.metadataPolicy,
+                    work: work
+                )
+            }
         } catch let error as J2KError {
             throw error.asCodecError
         }
@@ -474,9 +477,10 @@ public struct VolumeEncoder: Sendable {
             backend: resolvedExec.backend,
             fallbackReason: resolvedExec.fallbackReason,
             fidelity: fidelity,
-            copyEvents: [copyEvent],
-            pixelAllocationCount: 0,
-            peakPixelBytes: volumeByteCount,
+            copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: pixelAccounting.allocationCount,
+            // Bridge pixel lifetimes across worker tasks are not measured.
+            peakPixelBytes: pixelAccounting.allocationCount == 0 ? volumeByteCount : nil,
             peakWorkspaceBytes: result.peakWorkspaceBytes,
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedGeometry ? 1 : 0,
@@ -663,6 +667,7 @@ public struct VolumeDecoder: Sendable {
         }
         try work.check()
 
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let volume: J2KVolume
         let isPartial: Bool
         let resultIsLossless: Bool
@@ -684,16 +689,18 @@ public struct VolumeDecoder: Sendable {
                     options.progress?(p)
                 }
                 try work.check()
-                let roiResult = try await roiDecoder.decodeAdmitted(
-                    data,
-                    region: roi,
-                    maxQualityLayers: configuration.maxQualityLayers > 0 ? configuration.maxQualityLayers : nil,
-                    resolutionLevel: configuration.resolutionLevel,
-                    limits: options.resourceLimits,
-                    executionPolicy: options.executionPolicy,
-                    metadataPolicy: options.metadataPolicy,
-                    work: work
-                )
+                let roiResult = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                    try await roiDecoder.decodeAdmitted(
+                        data,
+                        region: roi,
+                        maxQualityLayers: configuration.maxQualityLayers > 0 ? configuration.maxQualityLayers : nil,
+                        resolutionLevel: configuration.resolutionLevel,
+                        limits: options.resourceLimits,
+                        executionPolicy: options.executionPolicy,
+                        metadataPolicy: options.metadataPolicy,
+                        work: work
+                    )
+                }
                 volume = roiResult.volume
                 isPartial = !roiResult.warnings.isEmpty
                 resultIsLossless = info.isLossless
@@ -714,13 +721,15 @@ public struct VolumeDecoder: Sendable {
                     options.progress?(p)
                 }
                 try work.check()
-                let result = try await actorDecoder.decodeAdmitted(
-                    data,
-                    limits: options.resourceLimits,
-                    executionPolicy: options.executionPolicy,
-                    metadataPolicy: options.metadataPolicy,
-                    work: work
-                )
+                let result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                    try await actorDecoder.decodeAdmitted(
+                        data,
+                        limits: options.resourceLimits,
+                        executionPolicy: options.executionPolicy,
+                        metadataPolicy: options.metadataPolicy,
+                        work: work
+                    )
+                }
                 volume = result.volume
                 isPartial = result.isPartial
                 resultIsLossless = result.isLossless
@@ -773,9 +782,9 @@ public struct VolumeDecoder: Sendable {
             backend: resolvedExec.backend,
             fallbackReason: resolvedExec.fallbackReason,
             fidelity: fidelity,
-            copyEvents: [copyEvent],
-            pixelAllocationCount: volume.componentCount,
-            peakPixelBytes: decodedPixelBytes,
+            copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: try jp3dDecodeAdd(volume.componentCount, pixelAccounting.allocationCount),
+            peakPixelBytes: pixelAccounting.allocationCount == 0 ? decodedPixelBytes : nil,
             peakWorkspaceBytes: measuredPeakWorkspace,
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedCount,
@@ -842,20 +851,23 @@ public struct VolumeTranscoder: Sendable {
         try work.check()
 
         let jp3dTranscoder = JP3DTranscoder()
+        let pixelAccounting = VolumePixelAccounting.Recorder()
         let result: JP3DTranscoderResult
         do {
-            result = try await jp3dTranscoder.transcodeAdmitted(
-                data,
-                configuration: JP3DTranscoderConfiguration(
-                    direction: direction,
-                    verifyRoundTrip: false
-                ),
-                limits: options.resourceLimits,
-                executionPolicy: options.executionPolicy,
-                copyPolicy: options.copyPolicy,
-                metadataPolicy: options.metadataPolicy,
-                work: work
-            )
+            result = try await VolumePixelAccounting.$recorder.withValue(pixelAccounting) {
+                try await jp3dTranscoder.transcodeAdmitted(
+                    data,
+                    configuration: JP3DTranscoderConfiguration(
+                        direction: direction,
+                        verifyRoundTrip: false
+                    ),
+                    limits: options.resourceLimits,
+                    executionPolicy: options.executionPolicy,
+                    copyPolicy: options.copyPolicy,
+                    metadataPolicy: options.metadataPolicy,
+                    work: work
+                )
+            }
         } catch let error as J2KError {
             throw error.asCodecError
         }
@@ -873,7 +885,7 @@ public struct VolumeTranscoder: Sendable {
             ? [
                 try CopyEvent(
                     reason: "lossy volumetric transcoding fallback decoded and re-encoded transient J2KVolume buffers",
-                    bytesMoved: result.roundTripPixelBytes * 2,
+                    bytesMoved: jp3dDecodeMultiply(result.roundTripPixelBytes, 2),
                     sourceLayout: "jp3d-source-tiles",
                     destinationLayout: "jp3d-reencoded-tiles"
                 )
@@ -893,9 +905,11 @@ public struct VolumeTranscoder: Sendable {
             backend: resolvedExec.backend,
             fallbackReason: resolvedExec.fallbackReason,
             fidelity: isExact ? .exactSamples : .lossy,
-            copyEvents: copyEvents,
-            pixelAllocationCount: result.usedFullRoundTripCopy ? result.roundTripComponentCount : 0,
-            peakPixelBytes: result.usedFullRoundTripCopy ? result.roundTripPixelBytes : 0,
+            copyEvents: copyEvents + (try pixelAccounting.copyEvents),
+            pixelAllocationCount: try jp3dDecodeAdd(
+                result.usedFullRoundTripCopy ? result.roundTripComponentCount : 0, pixelAccounting.allocationCount),
+            peakPixelBytes: pixelAccounting.allocationCount == 0
+                ? (result.usedFullRoundTripCopy ? result.roundTripPixelBytes : 0) : nil,
             peakWorkspaceBytes: result.peakWorkspaceBytes,
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedCount,

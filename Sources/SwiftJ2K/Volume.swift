@@ -655,7 +655,10 @@ package enum Slice2DBridge {
         let minVal = signed ? -(1 << (clampedBitDepth - 1)) : 0
         let maxVal = signed ? ((1 << (clampedBitDepth - 1)) - 1) : ((1 << clampedBitDepth) - 1)
 
-        var rawBytes = [UInt8](repeating: 0, count: width * height * bytesPerSample)
+        let packedPixelBytes = try checkedMultiply(checkedMultiply(width, height), bytesPerSample)
+        try VolumePixelAccounting.recordAllocation()
+        StorageTelemetry.recordPixelAllocation(bytes: packedPixelBytes)
+        var rawBytes = [UInt8](repeating: 0, count: packedPixelBytes)
         if storageBits == 8 {
             if signed {
                 for i in 0..<(width * height) {
@@ -685,12 +688,15 @@ package enum Slice2DBridge {
             }
         }
 
+        try VolumePixelAccounting.recordConversion(.packEncoderSlice, bytes: packedPixelBytes)
+        try VolumePixelAccounting.recordAllocation()
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let image = try destination.write { dst in
             rawBytes.withUnsafeBytes { src in
                 dst.copyMemory(from: src)
             }
         }
+        try VolumePixelAccounting.recordConversion(.copyEncoderSlice, bytes: packedPixelBytes)
         let maxAllowedLevels = max(0, min(levels, Int(floor(log2(Double(max(1, min(width, height))))))))
 
         let mode: CompressionMode = (lossless || useHTJ2K) ? .lossless : .lossy
@@ -756,6 +762,7 @@ package enum Slice2DBridge {
         }
         // The core includes its input array and destination in its memory check.
         let coreLimits = try limits.reserving(workspaceBytes: bridgeBytes, memoryBytes: sampleBytes)
+        try VolumePixelAccounting.recordAllocation()
         let destination = try ImageDestination.allocate(descriptor: descriptor, limits: limits)
         let (image, _) = try Part1Pipeline.decode(
             bytes: bytes,
@@ -796,6 +803,7 @@ package enum Slice2DBridge {
                 }
             }
         }
+        try VolumePixelAccounting.recordConversion(.unpackDecoderSlice, bytes: sampleBytes)
         return (out, w, h, profile.precision, profile.signed, peakWorkspace)
     }
 

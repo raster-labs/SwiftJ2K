@@ -1389,14 +1389,25 @@ public struct J2KDecoder: Sendable {
                 }
                 let mappedRoles = selectedComponents.map { contractImage.descriptor.components[$0] }
                 let keepsAlpha = mappedRoles.contains(.alpha)
-                let keepsAllComponents = selectedComponents.count == image.components.count
-                let selectsColour = mappedRoles.contains { role in
-                    if role == .alpha { return false }
-                    if case .uninterpreted = role {
-                        return contractImage.descriptor.colour == .unknown
+                let sourceColourRoles: [ComponentRole]
+                if let profile = contractImage.descriptor.iccProfile {
+                    sourceColourRoles = try JP2Container.iccComponentRoles(profile)
+                } else if contractImage.descriptor.colour == .rgb {
+                    sourceColourRoles = [.red, .green, .blue]
+                } else if contractImage.descriptor.colour == .greyscale {
+                    sourceColourRoles = [.grey]
+                } else {
+                    let nativeRoles = contractImage.descriptor.components.filter { role in
+                        if case .uninterpreted(let name) = role {
+                            return name.hasPrefix("colr.") || name.hasPrefix("icc.")
+                        }
+                        return false
                     }
-                    return true
+                    sourceColourRoles = nativeRoles.isEmpty
+                        ? contractImage.descriptor.components.filter { $0 != .alpha } : nativeRoles
                 }
+                let keepsColourTuple = sourceColourRoles.allSatisfy(mappedRoles.contains)
+                let selectsColour = mappedRoles.contains { sourceColourRoles.contains($0) }
                 if contractImage.descriptor.alpha == .premultiplied && !keepsAlpha && selectsColour {
                     throw CodecError(.unsupportedFeature, "A premultiplied colour view must retain its opacity component; removing it would change sample interpretation.")
                 }
@@ -1411,17 +1422,14 @@ public struct J2KDecoder: Sendable {
                     } else {
                         outColour = .unknown
                     }
-                    if !keepsAllComponents {
-                        // An ICC profile describes its complete colour tuple, never an arbitrary subset.
-                        let sourceColourRoles = contractImage.descriptor.components.filter { $0 != .alpha }
-                        if !sourceColourRoles.allSatisfy(mappedRoles.contains) { outICC = nil }
-                    }
+                    // Profiles describe their colour tuple, not unrelated unspecified extras.
+                    if !keepsColourTuple { outICC = nil }
                     var entries = outMetadata.entries
                     var required = outMetadata.requiredKeys
                     // Reader requirements describe the source container; the encoder regenerates them.
                     entries.removeValue(forKey: "rreq")
                     required.remove("rreq")
-                    if mappedRoles.allSatisfy({ $0 == .alpha }) {
+                    if !keepsColourTuple {
                         for key in entries.keys.filter({ $0 == "colr" || $0.hasPrefix("colr.") }) {
                             entries.removeValue(forKey: key)
                             required.remove(key)
