@@ -128,14 +128,17 @@ final class JP3DHTJ2KTests: XCTestCase {
 
     // MARK: - JP3DHTJ2KCodec encoding tests
 
-    func testCodecEncodesTileWithHTMode() {
+    func testCodecEncodesTileWithHTMode() throws {
         let codec = JP3DHTJ2KCodec(configuration: .default)
         let coefficients: [Int32] = [1, 2, 3, 4, 5, 6, 7, 8]
         let encoded = codec.encodeTile(coefficients: coefficients, voxelCount: coefficients.count)
         let tileInfoSize = 4
-        let zbpSize = 4
-        XCTAssertGreaterThanOrEqual(encoded.count, tileInfoSize + zbpSize + coefficients.count * 4)
+        // Real Part 15 FBCOT (HTBlockEncoder) entropy-codes the block rather than dumping raw Int32 words.
+        XCTAssertGreaterThan(encoded.count, tileInfoSize)
+        XCTAssertLessThan(encoded.count, tileInfoSize + 4 + coefficients.count * 4)
         XCTAssertEqual(encoded[0], 0x01, "First byte should signal HT mode")
+        let decoded = try codec.decodeTile(tileData: encoded, expectedVoxels: coefficients.count)
+        XCTAssertEqual(decoded, coefficients.map { Float($0) })
     }
 
     func testCodecEncodesTileWithLegacyMode() {
@@ -221,7 +224,13 @@ final class JP3DHTJ2KTests: XCTestCase {
     func testCAPMarkerLengthForDefaultConfig() {
         let capData = JP3DHTMarkers.capMarkerData(for: .default)
         let len = (UInt16(capData[2]) << 8) | UInt16(capData[3])
-        XCTAssertEqual(len, 8)
+        // Reconciled Part 10 + Part 15 CAP: Lcap = 6 + 2 * 2 = 10 (Pcap = 0x0042_0000, Ccap^10, Ccap^15).
+        XCTAssertEqual(len, 10)
+        let pcap = (UInt32(capData[4]) << 24)
+            | (UInt32(capData[5]) << 16)
+            | (UInt32(capData[6]) << 8)
+            | UInt32(capData[7])
+        XCTAssertEqual(pcap, 0x0042_0000)
     }
 
     func testCPFMarkerLengthForLosslessConfig() {
@@ -233,8 +242,9 @@ final class JP3DHTJ2KTests: XCTestCase {
     func testCAPMarkerMixedModeBitSet() {
         let mixedConfig = JP3DHTJ2KConfiguration(allowMixedTiles: true)
         let capData = JP3DHTMarkers.capMarkerData(for: mixedConfig)
-        let ccap = (UInt16(capData[capData.count - 2]) << 8) | UInt16(capData[capData.count - 1])
-        XCTAssertNotEqual(ccap & 0x0002, 0, "Mixed-mode bit must be set")
+        let ccap15 = (UInt16(capData[capData.count - 2]) << 8) | UInt16(capData[capData.count - 1])
+        // ITU-T T.814 Table A.2 Ccap^15 bits 14..15 == 3 (0xC000) signals HTMIXED.
+        XCTAssertEqual(ccap15 & 0xC000, 0xC000, "ITU-T T.814 HTMIXED bits 14..15 must equal 3")
     }
 
     func testHTJ2KSignalledDetection() {
@@ -278,7 +288,7 @@ final class JP3DHTJ2KTests: XCTestCase {
         XCTAssertTrue(hasCPFMarker, "HTJ2K codestream should contain CPF marker")
     }
 
-    func testBuilderWithoutHTJ2KConfigOmitsCAPMarker() {
+    func testBuilderWithoutHTJ2KConfigOmitsCAPMarker() throws {
         let builder = JP3DCodestreamBuilder()
         let tileData = Data(repeating: 0xAB, count: 16)
         let stream = builder.build(
@@ -290,8 +300,12 @@ final class JP3DHTJ2KTests: XCTestCase {
             isLossless: true,
             htj2kConfiguration: nil
         )
-        let hasCAPMarker = findMarker(in: stream, high: 0xFF, low: 0x50)
-        XCTAssertFalse(hasCAPMarker, "Standard codestream must not contain CAP marker")
+        // Per ITU-T T.809 Clause A.2.8, Part 10 CAP (Pcap^10 = 0x0040_0000) is mandatory immediately
+        // after SIZ, while Part 15 HTJ2K capability bit Pcap^15 (0x0002_0000) and CPF must be omitted.
+        let parsed = try JP3DCodestreamParser().parse(stream)
+        XCTAssertTrue(parsed.hasPart10CAPMarker)
+        XCTAssertFalse(parsed.hasHTJ2KCAPMarker, "Non-HT Part 10 codestream must not set Pcap^15")
+        XCTAssertFalse(findMarker(in: stream, high: 0xFF, low: 0x59), "Non-HT codestream must not emit CPF")
     }
 
     // MARK: - JP3DEncoder HTJ2K presets

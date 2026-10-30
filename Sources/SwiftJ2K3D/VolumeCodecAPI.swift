@@ -568,7 +568,8 @@ public struct VolumeDecoder: Sendable {
             )
         }
 
-        let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) } ?? 1
+        let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) }
+            ?? max(1, cod.numLayers)
         let inspectedGeometry: JP3DVolumeGeometry? = (options.metadataPolicy == .preserve) ? parsed.geometry : nil
 
         return VolumeInfo(

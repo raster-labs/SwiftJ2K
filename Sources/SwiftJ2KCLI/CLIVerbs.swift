@@ -873,13 +873,13 @@ func runEncode3DCommand(_ context: CodecContext, started: ContinuousClock.Instan
     var progression: JP3DProgressionOrder = .lrcps
     if let pName = options.values["--progression"]?.lowercased() {
         switch pName {
-        case "lrcps": progression = .lrcps
-        case "rlcps": progression = .rlcps
-        case "pcrls", "pcrs": progression = .pcrls
-        case "slrcp": progression = .slrcp
-        case "cprls": progression = .cprls
+        case "lrcps", "lrcp": progression = .lrcps
+        case "rlcps", "rlcp": progression = .rlcps
+        case "pcrls", "pcrs", "pcrl": progression = .pcrls
+        case "slrcp", "rpcl", "rpcls": progression = .slrcp
+        case "cprls", "cprl": progression = .cprls
         default:
-            throw UsageError(message: "--progression for encode3d must be lrcps, rlcps, pcrls, slrcp or cprls.")
+            throw UsageError(message: "--progression for encode3d must be lrcps, rlcps, rpcl, pcrls, slrcp or cprls.")
         }
     }
 
@@ -1216,10 +1216,10 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
 
     let singleFile = options.values["--single-file"] ?? options.values["--input"]
     let dataDir = options.values["--data-dir"]
-    var ephemeralPort = 18_492
+    var ephemeralPort = 0
     if let pText = options.values["--port"] {
-        guard let p = Int(pText), (1...65535).contains(p) else {
-            throw UsageError(message: "--port must be in 1..65535.")
+        guard let p = Int(pText), (0...65535).contains(p) else {
+            throw UsageError(message: "--port must be in 0..65535.")
         }
         ephemeralPort = p
     }
@@ -1249,6 +1249,29 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
         regionTuple = (parts[0], parts[1], parts[2], parts[3])
     }
 
+    var boxTuple: (x: Int, y: Int, z: Int, w: Int, h: Int, d: Int)? = nil
+    if let boxText = options.values["--box"] {
+        let rawParts = boxText.split(separator: ",", omittingEmptySubsequences: false)
+        guard rawParts.count == 6 else {
+            throw UsageError(message: "--box must be X,Y,Z,W,H,D with non-negative origin and positive dimensions.")
+        }
+        var parts: [Int] = []
+        for token in rawParts {
+            guard let v = Int(token) else {
+                throw UsageError(message: "--box contains an invalid integer.")
+            }
+            parts.append(v)
+        }
+        guard parts[0] >= 0, parts[1] >= 0, parts[2] >= 0,
+              parts[3] > 0, parts[4] > 0, parts[5] > 0,
+              !parts[0].addingReportingOverflow(parts[3]).overflow,
+              !parts[1].addingReportingOverflow(parts[4]).overflow,
+              !parts[2].addingReportingOverflow(parts[5]).overflow else {
+            throw UsageError(message: "--box must have non-negative origin, positive dimensions, and non-overflowing bounds.")
+        }
+        boxTuple = (parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+    }
+
     var resLevel: Int? = nil
     if let rText = options.values["--resolution-level"] {
         guard let r = Int(rText), (0...32).contains(r) else {
@@ -1263,6 +1286,26 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
             throw UsageError(message: "--quality-layers/--layers must be >= 1.")
         }
         maxLayers = l
+    }
+
+    var byteCapLen: Int? = nil
+    if let lenText = options.values["--len"] {
+        guard let l = Int(lenText), l >= 1 else {
+            throw UsageError(message: "--len must be a positive byte budget.")
+        }
+        byteCapLen = l
+    }
+
+    var requestedStreamType: JPIPStreamType? = nil
+    if let stText = options.values["--stream"]?.lowercased() {
+        switch stText {
+        case "jpp", "jpp-stream", "image/jpp-stream":
+            requestedStreamType = .jppStream
+        case "jpt", "jpt-stream", "image/jpt-stream":
+            requestedStreamType = .jptStream
+        default:
+            throw UsageError(message: "--stream must be jpp or jpt.")
+        }
     }
 
     var compSubset: [Int]? = nil
@@ -1300,16 +1343,10 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
         throw UsageError(message: "jpip client requires --target <name> (or --single-file <path>).")
     }
 
-    let serverURLString = options.values["--server"] ?? "http://localhost:\(ephemeralPort)"
-    guard let serverURL = URL(string: serverURLString),
-          let scheme = serverURL.scheme?.lowercased(),
-          ["http", "https", "jpip", "ws", "wss"].contains(scheme) else {
-        throw UsageError(message: "Invalid JPIP --server URL.")
-    }
-
     var ephemeralServer: JPIPServer? = nil
+    var effectivePort = ephemeralPort
     if singleFile != nil || dataDir != nil {
-        let srv = JPIPServer(port: ephemeralPort)
+        let srv = JPIPServer(port: ephemeralPort, host: "127.0.0.1")
         let registered = try await registerJPIPTargets(server: srv, singleFile: singleFile, dataDir: dataDir, limits: lim)
         guard !registered.isEmpty else {
             throw ExitFailure(status: 3, message: "malformed input: no JPEG 2000 targets found to register for JPIP.")
@@ -1319,34 +1356,348 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
         } catch let error as J2KError {
             throw error.asCodecError
         }
+        effectivePort = await srv.listeningPort
         ephemeralServer = srv
     }
 
-    let sessionConfig = try JPIPSessionConfiguration(codingPreference: codingPref)
-    let session: JPIPStreamingSession
-    if let srv = ephemeralServer {
-        session = JPIPStreamingSession(server: srv, port: ephemeralPort, configuration: sessionConfig)
-    } else {
-        session = JPIPStreamingSession(serverURL: serverURL, configuration: sessionConfig)
+    let fallbackPort = effectivePort > 0 ? effectivePort : 8080
+    let serverURLString = options.values["--server"] ?? "http://127.0.0.1:\(fallbackPort)"
+    guard let rawServerURL = URL(string: serverURLString),
+          let rawScheme = rawServerURL.scheme?.lowercased(),
+          ["http", "https", "jpip", "ws", "wss"].contains(rawScheme) else {
+        if let srv = ephemeralServer { try? await srv.stop() }
+        throw UsageError(message: "Invalid JPIP --server URL.")
+    }
+    let normalizedURLString = rawScheme == "jpip"
+        ? serverURLString.replacingOccurrences(of: "jpip://", with: "http://")
+        : serverURLString
+    guard let serverURL = URL(string: normalizedURLString) else {
+        if let srv = ephemeralServer { try? await srv.stop() }
+        throw UsageError(message: "Invalid JPIP --server URL.")
+    }
+    let scheme = (serverURL.scheme ?? "http").lowercased()
+    let isWebSocket = (scheme == "ws" || scheme == "wss")
+    let targetExt = URL(fileURLWithPath: resolvedTarget).pathExtension.lowercased()
+    let is3DTarget = boxTuple != nil || targetExt == "jp3d" || targetExt == "j3d"
+
+    defer {
+        // Ephemeral server cleanup is performed explicitly below before exit.
     }
 
-    let viewWindow = try JPIPViewWindow(
-        region: regionTuple,
-        resolutionLevel: resLevel,
-        maxQualityLayers: maxLayers,
-        components: compSubset
-    )
-    let streamingOpts = JPIPStreamingOptions(
-        resourceLimits: lim,
-        executionPolicy: execPolicy,
-        copyPolicy: copyPolicy,
-        metadataPolicy: metadataPolicy
-    )
-
-    try context.diagnostic(2, "streaming JPIP target")
-    let delivered: JPIPDeliveredImage
     do {
-        delivered = try await session.deliverImage(
+        if is3DTarget {
+            let client3D = JP3DJPIPClient(serverURL: serverURL)
+            try await client3D.connect()
+            try await client3D.createSession(volumeID: resolvedTarget)
+            let region3D: JP3DStreamingRegion
+            if let b = boxTuple {
+                region3D = JP3DStreamingRegion(
+                    xRange: b.x..<(b.x + b.w),
+                    yRange: b.y..<(b.y + b.h),
+                    zRange: b.z..<(b.z + b.d),
+                    qualityLayer: maxLayers ?? 0,
+                    resolutionLevel: resLevel ?? 0
+                )
+            } else {
+                region3D = JP3DStreamingRegion(
+                    xRange: 0..<Int.max / 2,
+                    yRange: 0..<Int.max / 2,
+                    zRange: 0..<Int.max / 2,
+                    qualityLayer: maxLayers ?? 0,
+                    resolutionLevel: resLevel ?? 0
+                )
+            }
+            let bins = try await client3D.requestRegion(region3D)
+            let reconstructed = try await client3D.reconstructCodestream()
+            let decodedVol = try await client3D.decodeVolume(region: boxTuple != nil ? region3D : nil)
+            let chanID = await client3D.channelID ?? "none"
+            let wireBins = await client3D.cachedWireDataBins()
+            await client3D.disconnect()
+            if let srv = ephemeralServer {
+                try await srv.stop()
+                ephemeralServer = nil
+            }
+
+            var outputBytesWritten = 0
+            if let outPath = options.values["--output"] {
+                let outExt = (outPath == "-") ? "" : URL(fileURLWithPath: outPath).pathExtension.lowercased()
+                let declaredFmt = options.values["--output-format"].flatMap { CLIUncompressedFormat(cliName: $0) }
+                if outExt == "jp3d" || outExt == "j3d" {
+                    try publish(reconstructed, to: outPath, overwrite: options.overwrite)
+                    outputBytesWritten = reconstructed.count
+                } else if declaredFmt == .raw || outExt == "raw" {
+                    let rawData = try formatRAWVolume(decodedVol)
+                    try publish(rawData, to: outPath, overwrite: options.overwrite)
+                    outputBytesWritten = rawData.count
+                } else {
+                    let nrrdData = try formatNRRDVolume(decodedVol)
+                    try publish(nrrdData, to: outPath, overwrite: options.overwrite)
+                    outputBytesWritten = nrrdData.count
+                }
+            }
+
+            let elapsed = ContinuousClock.now - started
+            let cachedBytes = wireBins.reduce(0) { $0 + $1.data.count }
+            let reportPayload: [String: Any] = [
+                "bitDepth": decodedVol.components.first?.bitDepth ?? 8,
+                "cachedBytes": cachedBytes,
+                "cachedDataBins": wireBins.count,
+                "channelID": chanID,
+                "command": "jpip",
+                "components": decodedVol.components.count,
+                "deliveredBins": bins.count,
+                "depth": decodedVol.depth,
+                "elapsedSeconds": elapsedSeconds(elapsed),
+                "height": decodedVol.height,
+                "outputBytes": outputBytesWritten,
+                "role": "client",
+                "target": resolvedTarget,
+                "transport": isWebSocket ? "websocket" : "http",
+                "width": decodedVol.width
+            ]
+            if options.json {
+                let handle: FileHandle = (options.values["--output"] == "-") ? .standardError : .standardOutput
+                try report(reportPayload, json: true, to: handle)
+            } else if options.values["--output"] == nil {
+                try write(
+                    "target: \(resolvedTarget)\nwidth: \(decodedVol.width)\nheight: \(decodedVol.height)\ndepth: \(decodedVol.depth)\ncomponents: \(decodedVol.components.count)\ncached data bins: \(wireBins.count)\n",
+                    to: .standardOutput
+                )
+            }
+            return 0
+        }
+
+        // Custom low-level WebSocket, stateless `model=`, `--stream jpt`, or `--len` multi-round mode:
+        if isWebSocket || options.stateless || requestedStreamType != nil || byteCapLen != nil {
+            var rounds = 0
+            let reconstructedData: Data
+            let chanID: String
+            let cachedBinsCount: Int
+            let cachedBytesCount: Int
+
+            if isWebSocket {
+                let wsClient = JPIPWebSocketClient(
+                    serverURL: serverURL,
+                    configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+                )
+                try await wsClient.connect()
+                var activeCID: String? = nil
+                if !options.stateless {
+                    let sess = try await wsClient.createSession(target: resolvedTarget)
+                    activeCID = await sess.channelID
+                }
+                var statelessCache = JPIPCacheModel(maxCacheSize: 256 * 1024 * 1024, maxEntries: 100_000)
+                while rounds < 512 {
+                    rounds += 1
+                    var req = JPIPRequest(target: activeCID != nil ? "" : resolvedTarget)
+                    req.cid = activeCID
+                    let allCached = statelessCache.allDataBins()
+                    if options.stateless && !allCached.isEmpty {
+                        req.model = statelessCache.formatCacheModelField()
+                    }
+                    let cachedDims = allCached
+                        .first(where: { $0.binClass == .mainHeader && $0.isComplete })
+                        .flatMap { JPIPRequest.extractCodestreamDimensions(fromMainHeader: $0.data) }
+                    var didHeaderOnlyProbe = false
+                    if let dims = cachedDims {
+                        req.fsiz = dims
+                        if let reg = regionTuple {
+                            req.roff = (reg.x, reg.y)
+                            req.rsiz = (reg.width, reg.height)
+                        }
+                    } else if regionTuple != nil {
+                        req.fsiz = (1, 1)
+                        req.fsizRoundDirection = "closest"
+                        didHeaderOnlyProbe = true
+                    } else {
+                        req.fsiz = (1_048_576, 1_048_576)
+                        req.fsizRoundDirection = "round-down"
+                    }
+                    req.layers = didHeaderOnlyProbe ? 1 : maxLayers
+                    req.reslevels = resLevel
+                    req.comps = compSubset
+                    req.len = byteCapLen
+                    req.streamType = requestedStreamType ?? .jppStream
+                    if codingPref != .none { req.codingPreference = codingPref }
+
+                    let (_, parsed) = try await wsClient.sendStreamRequest(req)
+                    for b in parsed.bins { statelessCache.addDataBin(b) }
+                    if parsed.bins.isEmpty {
+                        break
+                    }
+                    if !didHeaderOnlyProbe && parsed.eor?.reason != .byteLimitReached {
+                        break
+                    }
+                }
+                if options.stateless {
+                    let allBins = statelessCache.allDataBins()
+                    reconstructedData = JPIPDataBinGenerator().reassembleCodestream(from: allBins)
+                    cachedBinsCount = allBins.count
+                    cachedBytesCount = allBins.reduce(0) { $0 + $1.data.count }
+                } else {
+                    reconstructedData = try await wsClient.reconstructCachedCodestream()
+                    let sessBins = await wsClient.getSession()?.cachedDataBins() ?? []
+                    cachedBinsCount = sessBins.count
+                    cachedBytesCount = sessBins.reduce(0) { $0 + $1.data.count }
+                }
+                chanID = activeCID ?? "stateless"
+                try await wsClient.close()
+            } else {
+                let httpClient = JPIPClient(serverURL: serverURL)
+                var activeCID: String? = nil
+                if !options.stateless {
+                    let sess = try await httpClient.createSession(target: resolvedTarget)
+                    activeCID = await sess.channelID
+                }
+                var statelessCache = JPIPCacheModel(maxCacheSize: 256 * 1024 * 1024, maxEntries: 100_000)
+                while rounds < 512 {
+                    rounds += 1
+                    var req = JPIPRequest(target: activeCID != nil ? "" : resolvedTarget)
+                    req.cid = activeCID
+                    let allCached = statelessCache.allDataBins()
+                    if options.stateless && !allCached.isEmpty {
+                        req.model = statelessCache.formatCacheModelField()
+                    }
+                    let cachedDims = allCached
+                        .first(where: { $0.binClass == .mainHeader && $0.isComplete })
+                        .flatMap { JPIPRequest.extractCodestreamDimensions(fromMainHeader: $0.data) }
+                    var didHeaderOnlyProbe = false
+                    if let dims = cachedDims {
+                        req.fsiz = dims
+                        if let reg = regionTuple {
+                            req.roff = (reg.x, reg.y)
+                            req.rsiz = (reg.width, reg.height)
+                        }
+                    } else if regionTuple != nil {
+                        req.fsiz = (1, 1)
+                        req.fsizRoundDirection = "closest"
+                        didHeaderOnlyProbe = true
+                    } else {
+                        req.fsiz = (1_048_576, 1_048_576)
+                        req.fsizRoundDirection = "round-down"
+                    }
+                    req.layers = didHeaderOnlyProbe ? 1 : maxLayers
+                    req.reslevels = resLevel
+                    req.comps = compSubset
+                    req.len = byteCapLen
+                    req.streamType = requestedStreamType ?? .jppStream
+                    if codingPref != .none { req.codingPreference = codingPref }
+
+                    let (_, parsed) = try await httpClient.sendStreamRequest(req)
+                    for b in parsed.bins { statelessCache.addDataBin(b) }
+                    if parsed.bins.isEmpty {
+                        break
+                    }
+                    if !didHeaderOnlyProbe && parsed.eor?.reason != .byteLimitReached {
+                        break
+                    }
+                }
+                if options.stateless {
+                    let allBins = statelessCache.allDataBins()
+                    reconstructedData = JPIPDataBinGenerator().reassembleCodestream(from: allBins)
+                    cachedBinsCount = allBins.count
+                    cachedBytesCount = allBins.reduce(0) { $0 + $1.data.count }
+                } else {
+                    let wantContainer = options.values["--output"].map {
+                        ["jp2", "jph", "jpx"].contains(URL(fileURLWithPath: $0).pathExtension.lowercased())
+                    } ?? true
+                    reconstructedData = try await httpClient.reconstructCachedCodestream(reconstructContainer: wantContainer)
+                    let stats = await httpClient.getSessionStats()
+                    cachedBinsCount = stats?.cachedBins ?? 0
+                    cachedBytesCount = stats?.cacheSize ?? 0
+                }
+                chanID = activeCID ?? "stateless"
+                try await httpClient.close()
+            }
+
+            if let srv = ephemeralServer {
+                try await srv.stop()
+                ephemeralServer = nil
+            }
+
+            // Decode reconstructed 2D image (and optionally crop to `regionTuple`).
+            let dec = try SwiftJ2K.Decoder()
+            let decRes = try await dec.decode(
+                reconstructedData,
+                options: DecodeOptions(
+                    resourceLimits: lim,
+                    executionPolicy: execPolicy,
+                    copyPolicy: copyPolicy,
+                    metadataPolicy: metadataPolicy
+                )
+            )
+            var outImage = decRes.image
+            if let reg = regionTuple {
+                let legacy = try await J2KDecoder().decode(reconstructedData)
+                let cropped = SelfCropLegacyImage(legacy, x: reg.x, y: reg.y, width: reg.width, height: reg.height)
+                outImage = try cropped.toContractImage(limits: lim)
+            }
+
+            var outputBytesWritten = 0
+            if let outPath = options.values["--output"] {
+                let outExt = (outPath == "-") ? "" : URL(fileURLWithPath: outPath).pathExtension.lowercased()
+                if ["j2k", "j2c", "jp2", "jph", "htj2k"].contains(outExt) {
+                    try publish(reconstructedData, to: outPath, overwrite: options.overwrite)
+                    outputBytesWritten = reconstructedData.count
+                } else {
+                    let declaredFmt = options.values["--output-format"].flatMap { CLIUncompressedFormat(cliName: $0) }
+                    let outFmt = declaredFmt ?? CLIUncompressedFormat.fromPathExtension(outPath) ?? .nrrd
+                    let formatted = try formatUncompressedImage(outImage, format: outFmt)
+                    try publish(formatted, to: outPath, overwrite: options.overwrite)
+                    outputBytesWritten = formatted.count
+                }
+            }
+
+            let d = outImage.descriptor
+            let elapsed = ContinuousClock.now - started
+            let reportPayload: [String: Any] = [
+                "cachedBytes": cachedBytesCount,
+                "cachedDataBins": cachedBinsCount,
+                "channelID": chanID,
+                "command": "jpip",
+                "components": d.components.count,
+                "elapsedSeconds": elapsedSeconds(elapsed),
+                "height": d.height,
+                "meaningfulBits": d.meaningfulBits,
+                "outputBytes": outputBytesWritten,
+                "role": "client",
+                "rounds": rounds,
+                "streamType": (requestedStreamType ?? .jppStream).rawValue,
+                "target": resolvedTarget,
+                "transport": isWebSocket ? "websocket" : "http",
+                "width": d.width
+            ]
+            if options.json {
+                let handle: FileHandle = (options.values["--output"] == "-") ? .standardError : .standardOutput
+                try report(reportPayload, json: true, to: handle)
+            } else if options.values["--output"] == nil {
+                try write(
+                    "target: \(resolvedTarget)\nwidth: \(d.width)\nheight: \(d.height)\ncomponents: \(d.components.count)\nmeaningful bits: \(d.meaningfulBits)\ncached data bins: \(cachedBinsCount)\ncached bytes: \(cachedBytesCount)\n",
+                    to: .standardOutput
+                )
+            }
+            return 0
+        }
+
+        // Standard Contract API-13 HTTP TCP `JPIPStreamingSession` path:
+        let sessionConfig = try JPIPSessionConfiguration(codingPreference: codingPref)
+        let session = JPIPStreamingSession(serverURL: serverURL, configuration: sessionConfig)
+
+        let viewWindow = try JPIPViewWindow(
+            region: regionTuple,
+            resolutionLevel: resLevel,
+            maxQualityLayers: maxLayers,
+            components: compSubset
+        )
+        let streamingOpts = JPIPStreamingOptions(
+            resourceLimits: lim,
+            executionPolicy: execPolicy,
+            copyPolicy: copyPolicy,
+            metadataPolicy: metadataPolicy
+        )
+
+        try context.diagnostic(2, "streaming JPIP target")
+        let delivered = try await session.deliverImage(
             imageID: resolvedTarget,
             viewWindow: viewWindow,
             options: streamingOpts
@@ -1354,54 +1705,104 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
         try await session.close()
         if let srv = ephemeralServer {
             try await srv.stop()
+            ephemeralServer = nil
         }
+
+        let d = delivered.image.descriptor
+        var outputBytesWritten = 0
+        if let outPath = options.values["--output"] {
+            let declaredFmt = options.values["--output-format"].flatMap { CLIUncompressedFormat(cliName: $0) }
+            let outFmt = declaredFmt ?? CLIUncompressedFormat.fromPathExtension(outPath) ?? .nrrd
+            let formatted = try formatUncompressedImage(delivered.image, format: outFmt)
+            try publish(formatted, to: outPath, overwrite: options.overwrite)
+            outputBytesWritten = formatted.count
+        }
+
+        let elapsed = ContinuousClock.now - started
+        let reportPayload: [String: Any] = [
+            "backend": backendString(delivered.report.backend),
+            "cachedBytes": delivered.cachedBytes,
+            "cachedDataBins": delivered.cachedDataBins,
+            "channelID": delivered.channelID ?? "none",
+            "command": "jpip",
+            "components": d.components.count,
+            "elapsedSeconds": elapsedSeconds(elapsed),
+            "fidelity": fidelityString(delivered.report.fidelity),
+            "height": d.height,
+            "meaningfulBits": d.meaningfulBits,
+            "outputBytes": outputBytesWritten,
+            "role": "client",
+            "target": resolvedTarget,
+            "width": d.width
+        ]
+        if options.json {
+            let handle: FileHandle = (options.values["--output"] == "-") ? .standardError : .standardOutput
+            try report(reportPayload, json: true, to: handle)
+        } else if options.values["--output"] == nil {
+            try write(
+                "target: \(resolvedTarget)\nwidth: \(d.width)\nheight: \(d.height)\ncomponents: \(d.components.count)\nmeaningful bits: \(d.meaningfulBits)\ncached data bins: \(delivered.cachedDataBins)\ncached bytes: \(delivered.cachedBytes)\n",
+                to: .standardOutput
+            )
+        }
+
+        try context.diagnostic(4, "elapsed seconds: \(elapsedSeconds(elapsed))")
+        try context.diagnostic(5, "jpip client completed")
+        return 0
     } catch {
         if let srv = ephemeralServer {
             try? await srv.stop()
         }
+        if let j2kErr = error as? J2KError {
+            throw j2kErr.asCodecError
+        }
         throw error
     }
+}
 
-    let d = delivered.image.descriptor
-    var outputBytesWritten = 0
-    if let outPath = options.values["--output"] {
-        let declaredFmt = options.values["--output-format"].flatMap { CLIUncompressedFormat(cliName: $0) }
-        let outFmt = declaredFmt ?? CLIUncompressedFormat.fromPathExtension(outPath) ?? .nrrd
-        let formatted = try formatUncompressedImage(delivered.image, format: outFmt)
-        try publish(formatted, to: outPath, overwrite: options.overwrite)
-        outputBytesWritten = formatted.count
-    }
+private func SelfCropLegacyImage(
+    _ image: J2KImage,
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int
+) -> J2KImage {
+    let x0 = min(max(0, x), image.width)
+    let y0 = min(max(0, y), image.height)
+    let x1 = min(image.width, x0 + max(0, width))
+    let y1 = min(image.height, y0 + max(0, height))
+    let cw = max(1, x1 - x0)
+    let ch = max(1, y1 - y0)
+    guard cw < image.width || ch < image.height else { return image }
 
-    let elapsed = ContinuousClock.now - started
-    let reportPayload: [String: Any] = [
-        "backend": backendString(delivered.report.backend),
-        "cachedBytes": delivered.cachedBytes,
-        "cachedDataBins": delivered.cachedDataBins,
-        "channelID": delivered.channelID ?? "none",
-        "command": "jpip",
-        "components": d.components.count,
-        "elapsedSeconds": elapsedSeconds(elapsed),
-        "fidelity": fidelityString(delivered.report.fidelity),
-        "height": d.height,
-        "meaningfulBits": d.meaningfulBits,
-        "outputBytes": outputBytesWritten,
-        "role": "client",
-        "target": resolvedTarget,
-        "width": d.width
-    ]
-    if options.json {
-        let handle: FileHandle = (options.values["--output"] == "-") ? .standardError : .standardOutput
-        try report(reportPayload, json: true, to: handle)
-    } else if options.values["--output"] == nil {
-        try write(
-            "target: \(resolvedTarget)\nwidth: \(d.width)\nheight: \(d.height)\ncomponents: \(d.components.count)\nmeaningful bits: \(d.meaningfulBits)\ncached data bins: \(delivered.cachedDataBins)\ncached bytes: \(delivered.cachedBytes)\n",
-            to: .standardOutput
+    let croppedComps = image.components.map { comp -> J2KComponent in
+        let bps = (comp.bitDepth + 7) / 8
+        var out = Data(count: cw * ch * bps)
+        comp.data.withUnsafeBytes { srcRaw in
+            out.withUnsafeMutableBytes { dstRaw in
+                guard let src = srcRaw.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                      let dst = dstRaw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                for row in 0..<ch {
+                    let srcOff = ((y0 + row) * comp.width + x0) * bps
+                    let dstOff = (row * cw) * bps
+                    let count = min(cw * bps, max(0, comp.data.count - srcOff))
+                    if count > 0 {
+                        dst.advanced(by: dstOff).update(from: src.advanced(by: srcOff), count: count)
+                    }
+                }
+            }
+        }
+        return J2KComponent(
+            index: comp.index,
+            bitDepth: comp.bitDepth,
+            signed: comp.signed,
+            width: cw,
+            height: ch,
+            subsamplingX: comp.subsamplingX,
+            subsamplingY: comp.subsamplingY,
+            data: out
         )
     }
-
-    try context.diagnostic(4, "elapsed seconds: \(elapsedSeconds(elapsed))")
-    try context.diagnostic(5, "jpip client completed")
-    return 0
+    return J2KImage(width: cw, height: ch, components: croppedComps, colorSpace: image.colorSpace)
 }
 
 private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Instant) async throws -> Int32 {
@@ -1413,8 +1814,8 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
     }
     var port = 8080
     if let pText = options.values["--port"] {
-        guard let p = Int(pText), (1...65535).contains(p) else {
-            throw UsageError(message: "--port must be in 1..65535.")
+        guard let p = Int(pText), (0...65535).contains(p) else {
+            throw UsageError(message: "--port must be in 0..65535.")
         }
         port = p
     }
@@ -1424,6 +1825,13 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
             throw UsageError(message: "--max-sessions must be >= 1.")
         }
         maxClients = mc
+    }
+    var maxRequests: Int? = nil
+    if let mrText = options.values["--max-requests"] {
+        guard let mr = Int(mrText), mr >= 1 else {
+            throw UsageError(message: "--max-requests must be >= 1.")
+        }
+        maxRequests = mr
     }
     var sessionTimeout = 300.0
     if let stText = options.values["--session-timeout"] {
@@ -1442,7 +1850,7 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
         maxClients: maxClients,
         sessionTimeout: sessionTimeout
     )
-    let server = JPIPServer(port: port, configuration: config)
+    let server = JPIPServer(port: port, host: host, configuration: config)
     let registered = try await registerJPIPTargets(server: server, singleFile: singleFile, dataDir: dataDir, limits: lim)
     guard !registered.isEmpty else {
         throw ExitFailure(status: 3, message: "malformed input: no JPEG 2000 targets found to register on JPIP server.")
@@ -1453,12 +1861,15 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
     } catch let error as J2KError {
         throw error.asCodecError
     }
+    let actualPort = await server.listeningPort
 
-    try context.diagnostic(2, "jpip server started on port \(port) (\(registered.count) targets)")
+    try context.diagnostic(2, "jpip server started on port \(actualPort) (\(registered.count) targets)")
 
     if options.once {
         let firstTarget = registered[0]
-        let verifyClient = JPIPClient(server: server)
+        let connectHost = (host == "0.0.0.0" || host == "*") ? "127.0.0.1" : host
+        let verifyURL = URL(string: "http://\(connectHost):\(actualPort)")!
+        let verifyClient = JPIPClient(serverURL: verifyURL)
         let session = try await verifyClient.createSession(target: firstTarget)
         let cid = await session.channelID ?? "verified"
         try await verifyClient.close()
@@ -1470,14 +1881,14 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
                 "elapsedSeconds": elapsedSeconds(elapsed),
                 "host": host,
                 "maxSessions": maxClients,
-                "port": port,
+                "port": actualPort,
                 "registeredTargets": registered.count,
                 "role": "server",
                 "status": "stopped",
                 "verifiedChannelID": cid
             ], json: true, to: .standardOutput)
         } else {
-            try write("jpip server verified on \(host):\(port) (\(registered.count) targets registered)\n", to: .standardOutput)
+            try write("jpip server verified on \(host):\(actualPort) (\(registered.count) targets registered)\n", to: .standardOutput)
         }
         try context.diagnostic(4, "elapsed seconds: \(elapsedSeconds(elapsed))")
         try context.diagnostic(5, "jpip server once check completed")
@@ -1489,13 +1900,26 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
             "command": "jpip",
             "host": host,
             "maxSessions": maxClients,
-            "port": port,
+            "port": actualPort,
             "registeredTargets": registered.count,
             "role": "server",
             "status": "running"
         ], json: true, to: .standardOutput)
     } else {
-        try write("jpip server listening on \(host):\(port) (\(registered.count) targets)\n", to: .standardOutput)
+        try write("jpip server listening on \(host):\(actualPort) (\(registered.count) targets)\n", to: .standardOutput)
+    }
+    fflush(stdout)
+
+    if let targetReqCount = maxRequests {
+        while !Task.isCancelled {
+            let stats = await server.getStatistics()
+            if stats.totalRequests >= targetReqCount {
+                try await Task.sleep(for: .milliseconds(30))
+                try await server.stop()
+                return 0
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
     }
 
     while !Task.isCancelled {
@@ -1511,7 +1935,7 @@ private func registerJPIPTargets(
     dataDir: String?,
     limits: ResourceLimits
 ) async throws -> [String] {
-    let validExts: Set<String> = ["j2k", "j2c", "jhc", "htj2k", "jp2", "jph", "jpx"]
+    let validExts: Set<String> = ["j2k", "j2c", "jhc", "htj2k", "jp2", "jph", "jpx", "jp3d", "j3d"]
     var names: [String] = []
     if let sf = singleFile {
         let url = URL(fileURLWithPath: sf)

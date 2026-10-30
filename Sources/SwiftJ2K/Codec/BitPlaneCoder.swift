@@ -23,16 +23,16 @@
 /// Result of coding one code-block: the codeword segment(s), the number of
 /// coding passes it contains, the number of missing most-significant
 /// bit-planes relative to the band's `Mb`, and optional per-pass/per-layer metadata.
-struct CodeBlockEncoding: Sendable {
-    var data: [UInt8]
-    var passCount: Int
-    let zeroBitPlanes: Int
-    var passByteOffsets: [Int]
-    var passTerminatedBytes: [Int]
-    var passDistortionReductions: [Double]
-    var layerPassCounts: [Int]
+package struct CodeBlockEncoding: Sendable {
+    package var data: [UInt8]
+    package var passCount: Int
+    package let zeroBitPlanes: Int
+    package var passByteOffsets: [Int]
+    package var passTerminatedBytes: [Int]
+    package var passDistortionReductions: [Double]
+    package var layerPassCounts: [Int]
 
-    init(
+    package init(
         data: [UInt8],
         passCount: Int,
         zeroBitPlanes: Int,
@@ -54,20 +54,20 @@ struct CodeBlockEncoding: Sendable {
 }
 
 /// Raw (bypass) bit writer: MSB first, seven bits after a 0xFF byte (D.6).
-struct RawEncoder: Sendable {
+package struct RawEncoder: Sendable {
     private var bytes: [UInt8] = []
     private var current: UInt8 = 0
     private var maxBits: Int = 8
     private var usedBits: Int = 0
     private let maximumOutputBytes: Int
-    private(set) var overflowed = false
+    package private(set) var overflowed = false
 
-    init(maximumOutputBytes: Int = Int.max) {
+    package init(maximumOutputBytes: Int = Int.max) {
         self.maximumOutputBytes = maximumOutputBytes
     }
 
     @inline(__always)
-    mutating func encode(_ bit: Bool) {
+    package mutating func encode(_ bit: Bool) {
         current = (current << 1) | (bit ? 1 : 0)
         usedBits += 1
         if usedBits == maxBits {
@@ -82,7 +82,7 @@ struct RawEncoder: Sendable {
         }
     }
 
-    mutating func finish() -> [UInt8] {
+    package mutating func finish() -> [UInt8] {
         if usedBits > 0 {
             let remaining = maxBits - usedBits
             // Pad remaining low bits with alternating 0101... (0x55 mask) per Annex D.6
@@ -103,22 +103,22 @@ struct RawEncoder: Sendable {
         return bytes
     }
 
-    var emittedByteCount: Int { bytes.count + (usedBits > 0 ? 1 : 0) }
+    package var emittedByteCount: Int { bytes.count + (usedBits > 0 ? 1 : 0) }
 }
 
 /// Raw (bypass) bit reader: MSB first, seven bits after a 0xFF byte, 0xFF fed
 /// past the end of the segment (D.6).
-struct RawDecoder: Sendable {
+package struct RawDecoder: Sendable {
     private let bytes: [UInt8]
     private var position: Int
     private let end: Int
     private var current: UInt32 = 0
     private var bitsLeft = 0
 
-    init(bytes: [UInt8]) { self.bytes = bytes; position = 0; end = bytes.count }
+    package init(bytes: [UInt8]) { self.bytes = bytes; position = 0; end = bytes.count }
 
     @inline(__always)
-    mutating func decode() -> Bool {
+    package mutating func decode() -> Bool {
         if bitsLeft == 0 {
             let previous = current
             if position < end {
@@ -138,13 +138,13 @@ struct RawDecoder: Sendable {
     }
 }
 
-enum BitPlaneCoder {
-    static let maximumCoefficients = 4096
-    static let maximumMagnitudeBitPlanes = 30
+package enum BitPlaneCoder {
+    package static let maximumCoefficients = 4096
+    package static let maximumMagnitudeBitPlanes = 30
 
     // MARK: - Encoder (default style)
 
-    static func encode(coefficients: [Int32], width: Int, height: Int,
+    package static func encode(coefficients: [Int32], width: Int, height: Int,
                        orientation: BandOrientation, magnitudeBitPlanes mb: Int,
                        maximumOutputBytes: Int = Int.max) throws -> CodeBlockEncoding {
         let count = width * height
@@ -292,7 +292,7 @@ enum BitPlaneCoder {
 
     /// Decodes one code-block from its codeword segments into sign-magnitude
     /// integer coefficients. `passCount` passes are consumed in total.
-    static func decode(segments: [CodewordSegment], width: Int, height: Int, orientation: BandOrientation,
+    package static func decode(segments: [CodewordSegment], width: Int, height: Int, orientation: BandOrientation,
                        zeroBitPlanes: Int, passCount: Int, magnitudeBitPlanes mb: Int,
                        style: CodeBlockStyle) throws -> [Int32] {
         let count = width * height
@@ -506,7 +506,7 @@ enum BitPlaneCoder {
 
     // MARK: - Extended 64-bit / Multi-Style / Rate-Distortion Encoder & Decoder (Milestone 7)
 
-    static let maximumExtendedBitPlanes = 62
+    package static let maximumExtendedBitPlanes = 62
 
     private enum EncodeCoder {
         case mq(MQEncoder)
@@ -518,7 +518,7 @@ enum BitPlaneCoder {
     /// - all Part 1 `CodeBlockStyle` bits (`bypass`, `reset`, `terminateAll`, `causal`, `segmentationSymbols`);
     /// - optional pass-count truncation (`maxPasses`);
     /// - optional per-pass byte offsets and squared-error distortion reduction tracking for PCRD-opt.
-    static func encodeRich(
+    package static func encodeRich(
         coefficients: [Int64],
         width: Int,
         height: Int,
@@ -874,7 +874,7 @@ enum BitPlaneCoder {
     /// Decodes one code-block into 64-bit signed integer coefficients and per-sample
     /// lowest updated bit-plane indices (`lastUpdatedPlanes[j] == -1` for zero samples,
     /// `0...(bitPlanes-1)` for significant samples). Supports `mb` up to 62 bit-planes.
-    static func decodeRich(
+    package static func decodeRich(
         segments: [CodewordSegment],
         width: Int,
         height: Int,

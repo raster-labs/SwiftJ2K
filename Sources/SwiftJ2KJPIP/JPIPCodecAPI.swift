@@ -277,7 +277,10 @@ public actor JPIPStreamingSession {
             serverURL: url,
             configuration: configuration
         )
-        self.jp3dClient = JP3DJPIPClient(serverURL: url)
+        self.jp3dClient = JP3DJPIPClient(
+            server: server,
+            serverURL: url
+        )
     }
 
     /// Delivers a full 2D image or a constrained ``JPIPViewWindow`` from the JPIP server.
@@ -416,7 +419,7 @@ public actor JPIPStreamingSession {
         )
     }
 
-    /// Delivers a 3D volumetric streaming region (`JP3DStreamingRegion`) as `JP3DDataBin` packets.
+    /// Delivers a 3D volumetric streaming region (`JP3DStreamingRegion`) as normative `JP3DDataBin` packets.
     public func deliverVolumeRegion(
         volumeID: String,
         region: JP3DStreamingRegion,
@@ -464,16 +467,6 @@ public actor JPIPStreamingSession {
                 "3D streaming region voxel count exceeds pixel limit \(limits.maximumPixels)"
             )
         }
-        let estimatedBins = min(max(1, depth), 8)
-        let estimatedBinBytes = estimatedBins * 64
-        guard estimatedBinBytes <= limits.maximumCompressedBytes,
-              estimatedBinBytes <= limits.maximumWorkspaceBytes,
-              estimatedBinBytes <= limits.maximumMemoryBytes else {
-            throw CodecError(
-                .resourceLimitExceeded,
-                "3D streaming region data-bin budget (\(estimatedBinBytes) bytes) exceeds resource limits"
-            )
-        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 2) {
             options.progress?(p)
@@ -487,6 +480,13 @@ public actor JPIPStreamingSession {
             bins = try await jp3dClient.requestRegion(region)
         } catch let error as J2KError {
             throw error.asCodecError
+        } catch let error as JP3DClientError {
+            switch error {
+            case .invalidRegion(let msg), .unknownVolume(let msg):
+                throw CodecError(.invalidArgument, msg)
+            case .notConnected, .noSession, .serverError, .networkError:
+                throw CodecError(.internalFailure, "\(error)")
+            }
         }
 
         let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
@@ -505,12 +505,23 @@ public actor JPIPStreamingSession {
         }
         try checkWork()
 
+        let isLossless3D: Bool = await {
+            let wireBins = await jp3dClient.cachedWireDataBins()
+            if let mh = wireBins.first(where: { $0.binClass == .mainHeader })?.data,
+               JP3DJPIPIndexer.isJP3DCodestream(mh),
+               let reconstructed = try? await jp3dClient.reconstructCodestream(),
+               let indexed = try? JP3DJPIPIndexer.index(reconstructed, limits: limits) {
+                return indexed.isReversibleLossless && region.resolutionLevel == 0
+            }
+            return region.resolutionLevel == 0
+        }()
+
         let elapsed = clock.now - started
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
             backend: resolvedBackend.backend,
             fallbackReason: resolvedBackend.fallbackReason,
-            fidelity: region.resolutionLevel > 0 ? .lossy : .exactSamples,
+            fidelity: isLossless3D ? .exactSamples : .lossy,
             copyEvents: [],
             pixelAllocationCount: 0,
             peakPixelBytes: 0,

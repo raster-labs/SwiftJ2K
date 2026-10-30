@@ -312,7 +312,16 @@ public actor JP3DDecoder {
         let tileW: Int
         let tileH: Int
         let tileD: Int
+        let wasTruncated: Bool
         let result: Result<DecodedTileSamples, any Error>
+    }
+
+    internal struct NormativeDecodeContext: Sendable {
+        let siz: JP3DSIZInfo
+        let cod: JP3DCODInfo
+        let qcd: JP3DQuantizationParameters
+        let roiShifts: [Int]
+        let tolerateTruncation: Bool
     }
 
     internal func decodeAdmitted(
@@ -360,17 +369,36 @@ public actor JP3DDecoder {
 
         let (outWH, vOv1) = outWidth.multipliedReportingOverflow(by: outHeight)
         let (outVoxelCount, vOv2) = outWH.multipliedReportingOverflow(by: outDepth)
-        let bytesPerSample = (siz.bitDepth + 7) / 8
-        let (compOutBytes, bOv1) = outVoxelCount.multipliedReportingOverflow(by: bytesPerSample)
-        let (outDecodedBytes, bOv2) = compOutBytes.multipliedReportingOverflow(by: siz.componentCount)
+        var totalBytesPerVoxel = 0
+        var bOv1 = false
+        for comp in 0..<siz.componentCount {
+            let compBytes = (siz.bitDepth(forComponent: comp) + 7) / 8
+            let (next, ov) = totalBytesPerVoxel.addingReportingOverflow(compBytes)
+            if ov { bOv1 = true }
+            totalBytesPerVoxel = next
+        }
+        let (outDecodedBytes, bOv2) = outVoxelCount.multipliedReportingOverflow(by: totalBytesPerVoxel)
         guard !vOv1, !vOv2, !bOv1, !bOv2 else {
             throw J2KError.decodingError("Decoded volume dimensions overflow integer arithmetic")
         }
 
         let isStreamLossless = cod.isLossless && codestream.isLosslessQuantization
-        let useExactIntegerPath = isStreamLossless && !codestream.tiles.isEmpty && codestream.tiles.allSatisfy {
+        let hasLegacyTilePayload = codestream.tiles.contains {
             JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
         }
+        let isNormativeCodestream = codestream.hasNSIMarker && !hasLegacyTilePayload
+        let useExactIntegerPath = isNormativeCodestream || (isStreamLossless && !codestream.tiles.isEmpty && codestream.tiles.allSatisfy {
+            JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
+        })
+        let normativeContext: NormativeDecodeContext? = isNormativeCodestream
+            ? NormativeDecodeContext(
+                siz: siz,
+                cod: cod,
+                qcd: codestream.qcd,
+                roiShifts: codestream.roiShifts,
+                tolerateTruncation: configuration.tolerateErrors
+            )
+            : nil
         let elementStride = useExactIntegerPath ? MemoryLayout<Int64>.stride : MemoryLayout<Float>.stride
         let (totalSamples, sOv1) = outVoxelCount.multipliedReportingOverflow(by: siz.componentCount)
         let (bufferWorkspaceBytes, sOv2) = totalSamples.multipliedReportingOverflow(by: elementStride)
@@ -590,6 +618,10 @@ public actor JP3DDecoder {
                     }
                 }
                 decodedCount += 1
+                if outcome.wasTruncated {
+                    partialFlag = true
+                    warningList.append("Tile \(outcome.tileIndex) packet stream truncated")
+                }
                 let tileProgress = Double(decodedCount) / Double(max(1, codestream.tiles.count))
                 reportProgress(
                     .tileReconstruction,
@@ -632,18 +664,22 @@ public actor JP3DDecoder {
                         }
                         do {
                             let decoded: DecodedTileSamples
+                            var wasTruncated = false
                             if useExactIntegerPath {
-                                let ints = try Self.decodeTilePayloadIntegerStatic(
+                                let (ints, trunc) = try Self.decodeTilePayloadIntegerWithStatusStatic(
                                     job.parsedTile.data,
                                     tile: job.tile,
                                     componentCount: compCount,
                                     maxQualityLayers: maxQLayers,
                                     resolutionLevel: K,
+                                    normativeContext: normativeContext,
                                     limits: workerLimits,
                                     executionPolicy: executionPolicy,
-                            workspace: decodeWorkspace
+                                    workspace: decodeWorkspace,
+                                    work: work
                                 )
                                 decoded = .integer(ints)
+                                wasTruncated = trunc
                             } else {
                                 let floats = try await Self.decodeTilePayloadStatic(
                                     job.parsedTile.data,
@@ -658,7 +694,7 @@ public actor JP3DDecoder {
                                     resolutionLevel: K,
                                     limits: workerLimits,
                                     executionPolicy: executionPolicy,
-                            workspace: decodeWorkspace
+                                    workspace: decodeWorkspace
                                 )
                                 decoded = .float(floats)
                             }
@@ -671,6 +707,7 @@ public actor JP3DDecoder {
                                 tileW: job.tileW,
                                 tileH: job.tileH,
                                 tileD: job.tileD,
+                                wasTruncated: wasTruncated,
                                 result: .success(decoded)
                             )
                         } catch {
@@ -683,6 +720,7 @@ public actor JP3DDecoder {
                                 tileW: job.tileW,
                                 tileH: job.tileH,
                                 tileD: job.tileD,
+                                wasTruncated: false,
                                 result: .failure(error)
                             )
                         }
@@ -723,19 +761,23 @@ public actor JP3DDecoder {
                     try await rec.enter()
                 }
                 let result: Result<DecodedTileSamples, any Error>
+                var wasTruncated = false
                 do {
                     if useExactIntegerPath {
-                        let ints = try Self.decodeTilePayloadIntegerStatic(
+                        let (ints, trunc) = try Self.decodeTilePayloadIntegerWithStatusStatic(
                             job.parsedTile.data,
                             tile: job.tile,
                             componentCount: compCount,
                             maxQualityLayers: maxQLayers,
                             resolutionLevel: K,
+                            normativeContext: normativeContext,
                             limits: workerLimits,
                             executionPolicy: executionPolicy,
-                            workspace: decodeWorkspace
+                            workspace: decodeWorkspace,
+                            work: work
                         )
                         result = .success(.integer(ints))
+                        wasTruncated = trunc
                     } else {
                         let floats = try await Self.decodeTilePayloadStatic(
                             job.parsedTile.data,
@@ -768,6 +810,7 @@ public actor JP3DDecoder {
                         tileW: job.tileW,
                         tileH: job.tileH,
                         tileD: job.tileD,
+                        wasTruncated: wasTruncated,
                         result: result
                     ),
                     intBuffers: &intComponentBuffers,
@@ -787,7 +830,10 @@ public actor JP3DDecoder {
         try work.check()
         reportProgress(.volumeAssembly, stageProgress: 0.5, tilesDone: tilesDecoded, tilesTotal: tilesExpected)
 
-        StorageTelemetry.recordPixelAllocation(bytes: outDecodedBytes)
+        for comp in 0..<siz.componentCount {
+            let compBytes = outVoxelCount * ((siz.bitDepth(forComponent: comp) + 7) / 8)
+            StorageTelemetry.recordPixelAllocation(bytes: compBytes)
+        }
         let volumeComponents: [J2KVolumeComponent]
         if useExactIntegerPath {
             volumeComponents = jp3dAssembleVolumeComponentsInteger(
@@ -796,7 +842,9 @@ public actor JP3DDecoder {
                 height: outHeight,
                 depth: outDepth,
                 bitDepth: siz.bitDepth,
-                signed: siz.signed
+                signed: siz.signed,
+                componentBitDepths: siz.componentBitDepths,
+                componentSigned: siz.componentSigned
             )
         } else {
             volumeComponents = assembleVolumeComponents(
@@ -857,10 +905,38 @@ public actor JP3DDecoder {
         componentCount: Int,
         maxQualityLayers: Int?,
         resolutionLevel: Int,
+        normativeContext: NormativeDecodeContext? = nil,
         limits: ResourceLimits? = nil,
         executionPolicy: ExecutionPolicy = .automatic,
-        workspace: JP3DDecodeWorkspace? = nil
+        workspace: JP3DDecodeWorkspace? = nil,
+        work: VolumeWorkGuard? = nil
     ) throws -> [[Int64]] {
+        try decodeTilePayloadIntegerWithStatusStatic(
+            data,
+            tile: tile,
+            componentCount: componentCount,
+            maxQualityLayers: maxQualityLayers,
+            resolutionLevel: resolutionLevel,
+            normativeContext: normativeContext,
+            limits: limits,
+            executionPolicy: executionPolicy,
+            workspace: workspace,
+            work: work
+        ).samples
+    }
+
+    internal static func decodeTilePayloadIntegerWithStatusStatic(
+        _ data: Data,
+        tile: JP3DTile,
+        componentCount: Int,
+        maxQualityLayers: Int?,
+        resolutionLevel: Int,
+        normativeContext: NormativeDecodeContext? = nil,
+        limits: ResourceLimits? = nil,
+        executionPolicy: ExecutionPolicy = .automatic,
+        workspace: JP3DDecodeWorkspace? = nil,
+        work: VolumeWorkGuard? = nil
+    ) throws -> (samples: [[Int64]], wasTruncated: Bool) {
         let sampleCount = try jp3dDecodeMultiply(jp3dDecodeMultiply(
             jp3dDecodeMultiply(tile.width, tile.height), tile.depth), componentCount)
         let tileBuffers = try jp3dDecodeMultiply(sampleCount, MemoryLayout<Int64>.stride * 2)
@@ -873,26 +949,29 @@ public actor JP3DDecoder {
         if resolutionLevel > 0 {
             // Reconstruct before selecting the volume-wide grid. Reducing each tile
             // from its local origin misaligns tiles whose origins are odd.
-            let full = try decodeTilePayloadIntegerStatic(
+            let (full, trunc) = try decodeTilePayloadIntegerWithStatusStatic(
                 data, tile: tile, componentCount: componentCount,
                 maxQualityLayers: maxQualityLayers, resolutionLevel: 0,
-                limits: limits, executionPolicy: executionPolicy, workspace: workspace
+                normativeContext: normativeContext,
+                limits: limits, executionPolicy: executionPolicy, workspace: workspace, work: work
             )
-            return try jp3dSampleReducedTile(
+            let reduced = try jp3dSampleReducedTile(
                 full, xRange: tile.region.x, yRange: tile.region.y, depth: tile.depth,
                 resolutionLevel: resolutionLevel
             )
+            return (reduced, trunc)
         }
         if JP3DLosslessIntegerTileCodec.hasMagic(data) {
-            return try JP3DLosslessIntegerTileCodec.decodeTileInteger(
+            let ints = try JP3DLosslessIntegerTileCodec.decodeTileInteger(
                 data,
                 expectedComponents: componentCount,
                 resolutionLevel: resolutionLevel
             )
+            return (ints, false)
         }
         if JP3DSliceStackCodec.isSliceStackTile(data) {
             let sliceCodec = JP3DSliceStackCodec()
-            return try sliceCodec.decodeTileInteger(
+            let ints = try sliceCodec.decodeTileInteger(
                 data,
                 expectedComponents: componentCount,
                 expectedWidth: tile.width,
@@ -903,6 +982,34 @@ public actor JP3DDecoder {
                 limits: limits ?? .default,
                 executionPolicy: executionPolicy, workspace: workspace
             )
+            return (ints, false)
+        }
+        if let ctx = normativeContext {
+            _ = try AccelerationRuntime.resolve(executionPolicy)
+            let decoded = try JP3DNormativeTileCodec.decodeTile(
+                tileData: data,
+                siz: ctx.siz,
+                cod: ctx.cod,
+                qcd: ctx.qcd,
+                roiShifts: ctx.roiShifts,
+                x0: tile.region.x.lowerBound,
+                x1: tile.region.x.upperBound,
+                y0: tile.region.y.lowerBound,
+                y1: tile.region.y.upperBound,
+                z0: tile.region.z.lowerBound,
+                z1: tile.region.z.upperBound,
+                maxQualityLayers: maxQualityLayers,
+                resolutionLevel: 0,
+                tolerateTruncation: ctx.tolerateTruncation,
+                cancellation: {
+                    if let work {
+                        try work.check()
+                    } else if Task.isCancelled {
+                        throw CancellationError()
+                    }
+                }
+            )
+            return (decoded.components, decoded.wasTruncated)
         }
         throw J2KError.decodingError("Unsupported integer lossless tile payload format")
     }
@@ -1132,16 +1239,24 @@ internal func jp3dAssembleVolumeComponentsInteger(
     height: Int,
     depth: Int,
     bitDepth: Int,
-    signed: Bool
+    signed: Bool,
+    componentBitDepths: [Int]? = nil,
+    componentSigned: [Bool]? = nil
 ) -> [J2KVolumeComponent] {
-    let clampedDepth = max(1, min(38, bitDepth))
-    let bytesPerSample = (clampedDepth + 7) / 8
-    let minVal: Int64 = signed ? -(Int64(1) << (clampedDepth - 1)) : 0
-    let maxVal: Int64 = signed
-        ? ((Int64(1) << (clampedDepth - 1)) - 1)
-        : ((Int64(1) << clampedDepth) - 1)
-
     return buffers.enumerated().map { index, buffer in
+        let compBitDepth = (componentBitDepths != nil && index < componentBitDepths!.count)
+            ? componentBitDepths![index]
+            : bitDepth
+        let compSigned = (componentSigned != nil && index < componentSigned!.count)
+            ? componentSigned![index]
+            : signed
+        let clampedDepth = max(1, min(38, compBitDepth))
+        let bytesPerSample = (clampedDepth + 7) / 8
+        let minVal: Int64 = compSigned ? -(Int64(1) << (clampedDepth - 1)) : 0
+        let maxVal: Int64 = compSigned
+            ? ((Int64(1) << (clampedDepth - 1)) - 1)
+            : ((Int64(1) << clampedDepth) - 1)
+
         let count = buffer.count
         var data = Data(count: count * bytesPerSample)
         data.withUnsafeMutableBytes { rawBuf in
@@ -1180,8 +1295,8 @@ internal func jp3dAssembleVolumeComponentsInteger(
         }
         return J2KVolumeComponent(
             index: index,
-            bitDepth: bitDepth,
-            signed: signed,
+            bitDepth: compBitDepth,
+            signed: compSigned,
             width: width,
             height: height,
             depth: depth,

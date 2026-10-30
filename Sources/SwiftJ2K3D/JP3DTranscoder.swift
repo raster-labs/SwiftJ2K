@@ -157,6 +157,7 @@ public actor JP3DTranscoder {
         work: VolumeWorkGuard
     ) async throws -> JP3DTranscoderResult {
         try work.check()
+        _ = try AccelerationRuntime.resolve(executionPolicy)
         if let limits {
             guard sourceData.count <= limits.maximumCompressedBytes,
                   sourceData.count <= limits.maximumMemoryBytes else {
@@ -299,6 +300,20 @@ public actor JP3DTranscoder {
             )
         }
 
+        if source.hasNSIMarker {
+            return try await transcodeNormative(
+                sourceData: sourceData,
+                source: source,
+                configuration: configuration,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                copyPolicy: copyPolicy,
+                metadataPolicy: metadataPolicy,
+                estimatedWorkspace: estimatedWorkspace,
+                work: work
+            )
+        }
+
         let builder = JP3DCodestreamBuilder()
         var warnings: [String] = []
         var transcodedTiles: [Data] = []
@@ -383,6 +398,211 @@ public actor JP3DTranscoder {
             direction: configuration.direction,
             metadataPreserved: metadataPolicy == .preserve,
             warnings: warnings,
+            peakWorkspaceBytes: measuredPeak,
+            sourceCommentCount: source.comments.count,
+            sourceCommentBytes: source.commentPayloadBytes,
+            sourceHadVolumeGeometry: source.geometry != nil
+        )
+    }
+
+    // MARK: - Normative Wavelet-Domain Transcoding Path (ITU-T T.809 <-> Reconciled T.814 HT-in-JP3D)
+
+    private func transcodeNormative(
+        sourceData: Data,
+        source: JP3DParsedCodestream,
+        configuration: JP3DTranscoderConfiguration,
+        limits: ResourceLimits?,
+        executionPolicy: ExecutionPolicy,
+        copyPolicy: CopyPolicy,
+        metadataPolicy: MetadataPolicy,
+        estimatedWorkspace: Int,
+        work: VolumeWorkGuard
+    ) async throws -> JP3DTranscoderResult {
+        guard source.cod.isLossless && source.qcd.isReversible else {
+            return try await transcodeViaFullRoundTrip(
+                sourceData: sourceData,
+                source: source,
+                configuration: configuration,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                copyPolicy: copyPolicy,
+                metadataPolicy: metadataPolicy,
+                estimatedWorkspace: estimatedWorkspace,
+                work: work
+            )
+        }
+
+        let toHTJ2K = configuration.direction == .standardToHTJ2K
+        let preservedComments: [JP3DCommentSegment] = (metadataPolicy == .preserve) ? source.comments : []
+        let (retainedSourceWorkspace, sourceWorkspaceOverflow) = source.retainedTileBytes.addingReportingOverflow(source.commentPayloadBytes)
+        guard !sourceWorkspaceOverflow else {
+            throw CodecError(.resourceLimitExceeded, "Retained transcode source workspace overflows Int")
+        }
+
+        let maxBitDepth = max(source.siz.bitDepth, source.siz.componentBitDepths.max() ?? source.siz.bitDepth)
+        let targetCOD: JP3DCODInfo
+        let targetHTConfig: JP3DHTJ2KConfiguration?
+        if toHTJ2K {
+            let requiresMixed = configuration.htj2kConfiguration.allowMixedTiles || maxBitDepth > 26
+            let cbStyle: UInt8 = requiresMixed ? 0xC0 : 0x40
+            targetCOD = JP3DCODInfo(
+                levelsX: source.cod.levelsX,
+                levelsY: source.cod.levelsY,
+                levelsZ: source.cod.levelsZ,
+                isLossless: true,
+                codeBlockStyle: cbStyle,
+                scod: source.cod.scod & ~0x01,
+                progressionOrderByte: source.cod.progressionOrderByte,
+                numLayers: source.cod.numLayers,
+                multipleComponentTransform: source.cod.multipleComponentTransform,
+                codeBlockWidthExponent: 6,
+                codeBlockHeightExponent: 6,
+                codeBlockDepthExponent: 0,
+                dwtX: source.cod.dwtX,
+                dwtY: source.cod.dwtY,
+                dwtZ: source.cod.dwtZ,
+                precinctSizes: []
+            )
+            targetHTConfig = JP3DHTJ2KConfiguration(
+                blockMode: requiresMixed ? .adaptive : configuration.htj2kConfiguration.blockMode,
+                passCount: configuration.htj2kConfiguration.passCount,
+                cleanupPassEnabled: configuration.htj2kConfiguration.cleanupPassEnabled,
+                allowMixedTiles: requiresMixed
+            )
+        } else {
+            targetCOD = JP3DCODInfo(
+                levelsX: source.cod.levelsX,
+                levelsY: source.cod.levelsY,
+                levelsZ: source.cod.levelsZ,
+                isLossless: true,
+                codeBlockStyle: 0x00,
+                scod: source.cod.scod & ~0x01,
+                progressionOrderByte: source.cod.progressionOrderByte,
+                numLayers: source.cod.numLayers,
+                multipleComponentTransform: source.cod.multipleComponentTransform,
+                codeBlockWidthExponent: 5,
+                codeBlockHeightExponent: 5,
+                codeBlockDepthExponent: 4,
+                dwtX: source.cod.dwtX,
+                dwtY: source.cod.dwtY,
+                dwtZ: source.cod.dwtZ,
+                precinctSizes: []
+            )
+            targetHTConfig = nil
+        }
+
+        let tilingConfig = JP3DTilingConfiguration(
+            tileSizeX: source.siz.tileSizeX,
+            tileSizeY: source.siz.tileSizeY,
+            tileSizeZ: source.siz.tileSizeZ
+        )
+        let allTiles = tilingConfig.allTiles(
+            volumeWidth: source.siz.width,
+            volumeHeight: source.siz.height,
+            volumeDepth: source.siz.depth
+        )
+
+        var transcodedTiles: [Data] = []
+        transcodedTiles.reserveCapacity(source.tiles.count)
+        var retainedOutputBytes = 0
+        var peakWaveletWorkspace = estimatedWorkspace
+
+        for parsedTile in source.tiles {
+            try work.check()
+            guard parsedTile.tileIndex >= 0, parsedTile.tileIndex < allTiles.count else {
+                throw CodecError(.malformedInput, "Tile index \(parsedTile.tileIndex) out of bounds in JP3D codestream.")
+            }
+            let tile = allTiles[parsedTile.tileIndex]
+            let (outerWorkspace, wsOverflow) = retainedSourceWorkspace.addingReportingOverflow(retainedOutputBytes)
+            let (outerMemory, memOverflow) = sourceData.count.addingReportingOverflow(outerWorkspace)
+            guard !wsOverflow, !memOverflow else {
+                throw CodecError(.resourceLimitExceeded, "Retained transcode buffers overflow Int")
+            }
+            let tileLimits = try (limits ?? .default).reserving(
+                workspaceBytes: outerWorkspace,
+                memoryBytes: outerMemory
+            )
+            let (voxXY, vOv1) = tile.width.multipliedReportingOverflow(by: tile.height)
+            let (voxXYZ, vOv2) = voxXY.multipliedReportingOverflow(by: tile.depth)
+            let (planeBytes, vOv3) = voxXYZ.multipliedReportingOverflow(by: MemoryLayout<Int64>.stride * 2)
+            guard !vOv1, !vOv2, !vOv3,
+                  planeBytes <= tileLimits.maximumWorkspaceBytes,
+                  planeBytes <= tileLimits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D tile transcoding workspace exceeds resource limits")
+            }
+
+            let tileResult = try JP3DNormativeTileCodec.transcodeTileWaveletDomain(
+                tileData: parsedTile.data,
+                siz: source.siz,
+                sourceCOD: source.cod,
+                targetCOD: targetCOD,
+                qcd: source.qcd,
+                roiShifts: source.roiShifts,
+                htConfiguration: targetHTConfig,
+                x0: tile.region.x.lowerBound,
+                x1: tile.region.x.upperBound,
+                y0: tile.region.y.lowerBound,
+                y1: tile.region.y.upperBound,
+                z0: tile.region.z.lowerBound,
+                z1: tile.region.z.upperBound,
+                cancellation: { try work.check() }
+            )
+            let (tilePeak, peakOverflow) = outerWorkspace.addingReportingOverflow(tileResult.peakWorkspaceBytes)
+            let (nextOutputBytes, outputOverflow) = retainedOutputBytes.addingReportingOverflow(tileResult.data.count)
+            guard !peakOverflow, !outputOverflow,
+                  tileResult.peakWorkspaceBytes <= tileLimits.maximumWorkspaceBytes,
+                  tileResult.data.count <= tileLimits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D transcode output exceeds resource limits")
+            }
+            peakWaveletWorkspace = max(peakWaveletWorkspace, tilePeak)
+            retainedOutputBytes = nextOutputBytes
+            transcodedTiles.append(tileResult.data)
+        }
+
+        let publication = try JP3DCodestreamBuilder().buildTranscodePublication(
+            sourceDataBytes: sourceData.count,
+            source: source,
+            tileData: transcodedTiles,
+            htj2kConfiguration: targetHTConfig,
+            comments: preservedComments,
+            limits: limits ?? .default,
+            codOverride: targetCOD,
+            qcdOverride: source.qcd,
+            roiShifts: source.roiShifts
+        )
+        let codestream = publication.data
+        let measuredPeak = max(peakWaveletWorkspace, publication.peakWorkspaceBytes)
+
+        if configuration.verifyRoundTrip {
+            let origVol = try await JP3DDecoder().decodeAdmitted(
+                sourceData,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                metadataPolicy: metadataPolicy,
+                work: work
+            ).volume
+            let transVol = try await JP3DDecoder().decodeAdmitted(
+                codestream,
+                limits: limits,
+                executionPolicy: executionPolicy,
+                metadataPolicy: metadataPolicy,
+                work: work
+            ).volume
+            for c in 0..<origVol.componentCount {
+                if origVol.components[c].data != transVol.components[c].data {
+                    throw J2KError.encodingError(
+                        "Normative wavelet-domain 3D round-trip verification failed on component \(c)"
+                    )
+                }
+            }
+        }
+
+        return JP3DTranscoderResult(
+            data: codestream,
+            tilesTranscoded: transcodedTiles.count,
+            direction: configuration.direction,
+            metadataPreserved: metadataPolicy == .preserve,
+            warnings: [],
             peakWorkspaceBytes: measuredPeak,
             sourceCommentCount: source.comments.count,
             sourceCommentBytes: source.commentPayloadBytes,
@@ -789,13 +1009,19 @@ extension JP3DCodestreamBuilder {
     internal func buildTranscodePublication(
         sourceDataBytes: Int, source: JP3DParsedCodestream, tileData: [Data],
         htj2kConfiguration: JP3DHTJ2KConfiguration?, comments: [JP3DCommentSegment],
-        limits: ResourceLimits
+        limits: ResourceLimits,
+        codOverride: JP3DCODInfo? = nil,
+        qcdOverride: JP3DQuantizationParameters? = nil,
+        roiShifts: [Int] = []
     ) throws -> (data: Data, peakWorkspaceBytes: Int) {
         let outputBytes = try projectedByteCount(
             tileData: tileData, components: source.siz.componentCount,
             levelsX: source.cod.levelsX, levelsY: source.cod.levelsY, levelsZ: source.cod.levelsZ,
             isLossless: source.cod.isLossless, includesHTMarkers: htj2kConfiguration != nil,
-            comments: comments
+            comments: comments,
+            codOverride: codOverride,
+            qcdOverride: qcdOverride,
+            roiShifts: roiShifts
         )
         func add(_ a: Int, _ b: Int) throws -> Int {
             let (sum, overflow) = a.addingReportingOverflow(b)
@@ -823,12 +1049,17 @@ extension JP3DCodestreamBuilder {
             levelsX: source.cod.levelsX, levelsY: source.cod.levelsY, levelsZ: source.cod.levelsZ,
             tileSizeX: source.siz.tileSizeX, tileSizeY: source.siz.tileSizeY, tileSizeZ: source.siz.tileSizeZ,
             isLossless: source.cod.isLossless, comments: comments,
-            htj2kConfiguration: htj2kConfiguration, capacity: outputBytes
+            htj2kConfiguration: htj2kConfiguration, capacity: outputBytes,
+            componentBitDepths: source.siz.componentBitDepths,
+            componentSigned: source.siz.componentSigned,
+            codOverride: codOverride,
+            qcdOverride: qcdOverride,
+            roiShifts: roiShifts
         )
         return (data, peakWorkspaceBytes)
     }
 
-    /// Builds a JP3D codestream with optional HTJ2K marker segments and optional `COM` segments.
+    /// Builds a normative Part 10 JP3D codestream with optional reconciled Part 15 HTJ2K `CAP`/`CPF` signalling and `COM` segments.
     public func build(
         tileData: [Data],
         width: Int,
@@ -848,28 +1079,7 @@ extension JP3DCodestreamBuilder {
         geometry: JP3DVolumeGeometry? = nil,
         comments: [JP3DCommentSegment] = []
     ) -> Data {
-        guard let htConfig = htj2kConfiguration else {
-            return build(
-                tileData: tileData,
-                width: width,
-                height: height,
-                depth: depth,
-                components: components,
-                bitDepth: bitDepth,
-                signed: signed,
-                levelsX: levelsX,
-                levelsY: levelsY,
-                levelsZ: levelsZ,
-                tileSizeX: tileSizeX,
-                tileSizeY: tileSizeY,
-                tileSizeZ: tileSizeZ,
-                isLossless: isLossless,
-                geometry: geometry,
-                comments: comments
-            )
-        }
-
-        let base = build(
+        buildPreallocated(
             tileData: tileData,
             width: width,
             height: height,
@@ -885,42 +1095,10 @@ extension JP3DCodestreamBuilder {
             tileSizeZ: tileSizeZ,
             isLossless: isLossless,
             geometry: geometry,
-            comments: comments
+            comments: comments,
+            htj2kConfiguration: htj2kConfiguration,
+            capacity: 0
         )
-
-        guard let insertOffset = findCAPInsertionOffset(in: base) else {
-            var result = base
-            result.append(JP3DHTMarkers.capMarkerData(for: htConfig))
-            result.append(JP3DHTMarkers.cpfMarkerData(for: htConfig, isLossless: isLossless))
-            return result
-        }
-
-        var result = Data()
-        result.append(base[..<insertOffset])
-        result.append(JP3DHTMarkers.capMarkerData(for: htConfig))
-        result.append(JP3DHTMarkers.cpfMarkerData(for: htConfig, isLossless: isLossless))
-        result.append(base[insertOffset...])
-        return result
-    }
-
-    /// Walks structured main-header marker segments from `SOC` (`0xFF4F`) so binary bytes inside `COM` payloads
-    /// are never mistaken for `SOT` (`0xFF90`). Inserts `CAP`/`CPF` immediately before the first `COM`, `SOT`, or `EOC`.
-    private func findCAPInsertionOffset(in data: Data) -> Int? {
-        guard data.count >= 4, data[data.startIndex] == 0xFF, data[data.startIndex + 1] == 0x4F else {
-            return nil
-        }
-        var offset = 2
-        while offset + 2 <= data.count {
-            let marker = (UInt16(data[data.startIndex + offset]) << 8) | UInt16(data[data.startIndex + offset + 1])
-            if marker == 0xFF64 || marker == 0xFF90 || marker == 0xFFD9 {
-                return offset
-            }
-            guard offset + 4 <= data.count else { return nil }
-            let segLen = Int((UInt16(data[data.startIndex + offset + 2]) << 8) | UInt16(data[data.startIndex + offset + 3]))
-            guard segLen >= 2, offset + 2 + segLen <= data.count else { return nil }
-            offset += 2 + segLen
-        }
-        return nil
     }
 }
 
@@ -929,12 +1107,16 @@ extension JP3DCodestreamBuilder {
 extension JP3DParsedCodestream {
     /// Whether this codestream was encoded with HTJ2K tile coding.
     public var containsHTJ2KTiles: Bool {
+        if hasHTJ2KCAPMarker || (cod.codeBlockStyle & 0x40) != 0 {
+            return true
+        }
         for tile in tiles {
             if JP3DLosslessIntegerTileCodec.hasMagic(tile.data) {
                 if JP3DLosslessIntegerTileCodec.usesHTJ2K(tile.data) { return true }
             } else if JP3DSliceStackCodec.hasMagic(tile.data) {
                 if Self.sliceStackUsesHTJ2K(tile.data) { return true }
-            } else if let info = JP3DHTTileInfo.deserialise(from: tile.data),
+            } else if !hasNSIMarker,
+                      let info = JP3DHTTileInfo.deserialise(from: tile.data),
                       info.isHT {
                 return true
             }
@@ -942,8 +1124,17 @@ extension JP3DParsedCodestream {
         return false
     }
 
-    /// Whether this codestream is a hybrid volume with both HT and legacy tiles.
+    /// Whether this codestream is a hybrid `HTMIXED` volume permitting both HT and Part 1 EBCOT code-blocks/tiles.
     public var isHybridHTJ2K: Bool {
+        let hasLegacyTile = tiles.contains {
+            JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.hasMagic($0.data)
+        }
+        if hasNSIMarker && !hasLegacyTile {
+            if let c15 = ccap15 {
+                return ((c15 >> 14) & 0x03) == 0x03
+            }
+            return (cod.codeBlockStyle & 0xC0) == 0xC0
+        }
         var hasHT = false
         var hasLegacy = false
         for tile in tiles {

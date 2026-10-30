@@ -6,19 +6,17 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPWebSocketTransport.swift
 //
-//
-// JPIPWebSocketTransport.swift
-// J2KSwift
-//
 /// # JPIPWebSocketTransport
 ///
-/// WebSocket transport layer for JPIP protocol.
+/// RFC 6455 WebSocket transport layer for the JPIP protocol over real POSIX TCP sockets.
 ///
 /// Provides WebSocket frame encapsulation, binary/text message support,
-/// connection establishment with handshake, and automatic reconnection
-/// with exponential backoff.
+/// RFC 6455 HTTP/1.1 `101 Switching Protocols` handshake (`Sec-WebSocket-Protocol: jpip`),
+/// full-duplex multiplexed request/response correlation, server-push data-bin reception,
+/// and automatic reconnection with exponential backoff.
 
 import Foundation
+import Dispatch
 @_exported import SwiftJ2K
 @_exported import SwiftJ2K3D
 
@@ -28,11 +26,7 @@ import FoundationNetworking
 
 // MARK: - WebSocket Frame Types
 
-/// Represents a WebSocket frame for JPIP message encapsulation.
-///
-/// JPIP messages are encapsulated in WebSocket frames with a type header
-/// to distinguish between different message categories (requests, responses,
-/// data bins, control messages).
+/// Represents an application-level JPIP frame carried inside an RFC 6455 WebSocket binary message.
 public struct JPIPWebSocketFrame: Sendable {
     /// The type of WebSocket frame.
     public let type: FrameType
@@ -74,12 +68,6 @@ public struct JPIPWebSocketFrame: Sendable {
     }
 
     /// Creates a new WebSocket frame.
-    ///
-    /// - Parameters:
-    ///   - type: The frame type.
-    ///   - payload: The frame payload data.
-    ///   - requestID: Optional request ID for multiplexing.
-    ///   - timestamp: Frame creation timestamp (defaults to now).
     public init(
         type: FrameType,
         payload: Data,
@@ -95,47 +83,53 @@ public struct JPIPWebSocketFrame: Sendable {
     /// Serializes the frame to binary data for WebSocket transmission.
     ///
     /// Frame format:
-    /// - Byte 0: Frame type (UInt8)
-    /// - Bytes 1-4: Request ID (UInt32, big-endian, 0 if none)
-    /// - Bytes 5-8: Payload length (UInt32, big-endian)
+    /// - Byte 0: Frame type (`UInt8`)
+    /// - Bytes 1-4: Request ID (`UInt32`, big-endian, 0 if none)
+    /// - Bytes 5-8: Payload length (`UInt32`, big-endian)
     /// - Bytes 9+: Payload data
-    ///
-    /// - Returns: The serialised frame data.
     public func serialize() -> Data {
-        var data = Data()
+        var data = Data(capacity: 9 + payload.count)
         data.append(type.rawValue)
 
-        var reqID = (requestID ?? 0).bigEndian
-        data.append(Data(bytes: &reqID, count: 4))
+        let reqID = requestID ?? 0
+        data.append(UInt8((reqID >> 24) & 0xFF))
+        data.append(UInt8((reqID >> 16) & 0xFF))
+        data.append(UInt8((reqID >> 8) & 0xFF))
+        data.append(UInt8(reqID & 0xFF))
 
-        var length = UInt32(payload.count).bigEndian
-        data.append(Data(bytes: &length, count: 4))
+        let length = UInt32(clamping: payload.count)
+        data.append(UInt8((length >> 24) & 0xFF))
+        data.append(UInt8((length >> 16) & 0xFF))
+        data.append(UInt8((length >> 8) & 0xFF))
+        data.append(UInt8(length & 0xFF))
 
         data.append(payload)
         return data
     }
 
     /// Deserializes a frame from binary data.
-    ///
-    /// - Parameter data: The binary data to deserialise.
-    /// - Returns: The deserialised frame, or nil if data is invalid.
     public static func deserialize(from data: Data) -> JPIPWebSocketFrame? {
-        // Minimum frame size: 9 bytes (type + requestID + length)
         guard data.count >= 9 else { return nil }
+        let base = data.startIndex
 
-        guard let frameType = FrameType(rawValue: data[data.startIndex]) else {
+        guard let frameType = FrameType(rawValue: data[base]) else {
             return nil
         }
 
-        let reqIDBytes = data.subdata(in: (data.startIndex + 1)..<(data.startIndex + 5))
-        let reqID = reqIDBytes.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let reqID = (UInt32(data[base + 1]) << 24)
+            | (UInt32(data[base + 2]) << 16)
+            | (UInt32(data[base + 3]) << 8)
+            | UInt32(data[base + 4])
 
-        let lengthBytes = data.subdata(in: (data.startIndex + 5)..<(data.startIndex + 9))
-        let length = lengthBytes.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let length = (UInt32(data[base + 5]) << 24)
+            | (UInt32(data[base + 6]) << 16)
+            | (UInt32(data[base + 7]) << 8)
+            | UInt32(data[base + 8])
 
-        guard data.count >= 9 + Int(length) else { return nil }
+        let (endOffset, overflow) = Int(9).addingReportingOverflow(Int(length))
+        guard !overflow, data.count >= endOffset else { return nil }
 
-        let payload = data.subdata(in: (data.startIndex + 9)..<(data.startIndex + 9 + Int(length)))
+        let payload = Data(data[(base + 9)..<(base + endOffset)])
 
         return JPIPWebSocketFrame(
             type: frameType,
@@ -148,26 +142,21 @@ public struct JPIPWebSocketFrame: Sendable {
 // MARK: - WebSocket Message Encoding
 
 /// Encodes and decodes JPIP messages for WebSocket transport.
-///
-/// Supports both binary encoding for data bins (efficient) and
-/// text encoding for requests/control messages (debuggable).
 public struct JPIPWebSocketMessageEncoder: Sendable {
     /// Creates a new message encoder.
     public init() {}
 
     /// Encodes a JPIP request as a WebSocket frame.
-    ///
-    /// - Parameters:
-    ///   - request: The JPIP request to encode.
-    ///   - requestID: The request ID for multiplexing.
-    /// - Returns: A WebSocket frame containing the encoded request.
     public func encodeRequest(
         _ request: JPIPRequest,
         requestID: UInt32
     ) -> JPIPWebSocketFrame {
         let queryItems = request.buildQueryItems()
-        let queryString = queryItems.map { "\($0.key)=\($0.value)" }
-            .joined(separator: "&")
+        let orderedKeys = queryItems.keys.sorted()
+        let queryString = orderedKeys.compactMap { key -> String? in
+            guard let val = queryItems[key] else { return nil }
+            return "\(key)=\(val)"
+        }.joined(separator: "&")
         let payload = Data(queryString.utf8)
 
         return JPIPWebSocketFrame(
@@ -178,83 +167,44 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
     }
 
     /// Decodes a JPIP request from a WebSocket frame.
-    ///
-    /// - Parameter frame: The WebSocket frame to decode.
-    /// - Returns: The decoded JPIP request, or nil if decoding fails.
     public func decodeRequest(from frame: JPIPWebSocketFrame) -> JPIPRequest? {
         guard frame.type == .request else { return nil }
-        guard let queryString = String(data: frame.payload, encoding: .utf8) else {
+        guard let queryString = String(data: frame.payload, encoding: .utf8),
+              !queryString.isEmpty else {
             return nil
         }
 
-        let pairs = queryString.split(separator: "&")
-        var params: [String: String] = [:]
-        for pair in pairs {
-            let kv = pair.split(separator: "=", maxSplits: 1)
-            if kv.count == 2 {
-                params[String(kv[0])] = String(kv[1])
-            }
+        let parsed = JPIPRequest.parseHTTPTarget("/jpip?\(queryString)")
+        guard !parsed.target.isEmpty
+                || parsed.cid != nil
+                || parsed.tid != nil
+                || parsed.cclose != nil else {
+            return nil
         }
-
-        guard let target = params["target"] else { return nil }
-
-        var request = JPIPRequest(target: target)
-        if let cid = params["cid"] { request.cid = cid }
-        if let cnew = params["cnew"] { request.cnew = JPIPChannelType(rawValue: cnew) }
-        if let len = params["len"] { request.len = Int(len) }
-        if let layers = params["layers"] { request.layers = Int(layers) }
-        if let meta = params["meta"], meta == "yes" { request.metadata = true }
-
-        if let fsiz = params["fsiz"] {
-            let parts = fsiz.split(separator: ",")
-            if parts.count == 2, let w = Int(parts[0]), let h = Int(parts[1]) {
-                request.fsiz = (w, h)
-            }
-        }
-
-        if let rsiz = params["rsiz"] {
-            let parts = rsiz.split(separator: ",")
-            if parts.count == 2, let w = Int(parts[0]), let h = Int(parts[1]) {
-                request.rsiz = (w, h)
-            }
-        }
-
-        if let roff = params["roff"] {
-            let parts = roff.split(separator: ",")
-            if parts.count == 2, let x = Int(parts[0]), let y = Int(parts[1]) {
-                request.roff = (x, y)
-            }
-        }
-
-        return request
+        return parsed
     }
 
     /// Encodes a JPIP response as a WebSocket frame.
-    ///
-    /// - Parameters:
-    ///   - response: The JPIP response to encode.
-    ///   - requestID: The request ID for multiplexing correlation.
-    /// - Returns: A WebSocket frame containing the encoded response.
     public func encodeResponse(
         _ response: JPIPResponse,
         requestID: UInt32
     ) -> JPIPWebSocketFrame {
-        // Encode response as: statusCode(2 bytes) + headerCount(2 bytes)
-        // + headers + data
         var payload = Data()
 
-        var status = UInt16(response.statusCode).bigEndian
-        payload.append(Data(bytes: &status, count: 2))
+        let status = UInt16(clamping: max(0, response.statusCode))
+        payload.append(UInt8((status >> 8) & 0xFF))
+        payload.append(UInt8(status & 0xFF))
 
-        // Encode headers
-        let headerString = response.headers.map { "\($0.key):\($0.value)" }
+        let headerString = response.headers
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key):\($0.value)" }
             .joined(separator: "\n")
         let headerData = Data(headerString.utf8)
-        var headerLen = UInt16(headerData.count).bigEndian
-        payload.append(Data(bytes: &headerLen, count: 2))
-        payload.append(headerData)
+        let headerLen = UInt16(clamping: headerData.count)
+        payload.append(UInt8((headerLen >> 8) & 0xFF))
+        payload.append(UInt8(headerLen & 0xFF))
+        payload.append(headerData.prefix(Int(headerLen)))
 
-        // Append response data
         payload.append(response.data)
 
         return JPIPWebSocketFrame(
@@ -265,29 +215,18 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
     }
 
     /// Decodes a JPIP response from a WebSocket frame.
-    ///
-    /// - Parameter frame: The WebSocket frame to decode.
-    /// - Returns: The decoded JPIP response, or nil if decoding fails.
     public func decodeResponse(from frame: JPIPWebSocketFrame) -> JPIPResponse? {
         guard frame.type == .response else { return nil }
         let data = frame.payload
         guard data.count >= 4 else { return nil }
+        let base = data.startIndex
 
-        let statusCode = Int(
-            data.subdata(in: data.startIndex..<(data.startIndex + 2))
-                .withUnsafeBytes { $0.load(as: UInt16.self).bigEndian }
-        )
-
-        let headerLen = Int(
-            data.subdata(in: (data.startIndex + 2)..<(data.startIndex + 4))
-                .withUnsafeBytes { $0.load(as: UInt16.self).bigEndian }
-        )
+        let statusCode = (Int(data[base]) << 8) | Int(data[base + 1])
+        let headerLen = (Int(data[base + 2]) << 8) | Int(data[base + 3])
 
         guard data.count >= 4 + headerLen else { return nil }
 
-        let headerData = data.subdata(
-            in: (data.startIndex + 4)..<(data.startIndex + 4 + headerLen)
-        )
+        let headerData = data[(base + 4)..<(base + 4 + headerLen)]
         let headerString = String(data: headerData, encoding: .utf8) ?? ""
         var headers: [String: String] = [:]
         for line in headerString.split(separator: "\n") {
@@ -297,10 +236,7 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
             }
         }
 
-        let responseData = data.subdata(
-            in: (data.startIndex + 4 + headerLen)..<data.endIndex
-        )
-
+        let responseData = Data(data[(base + 4 + headerLen)..<data.endIndex])
         let channelID = JPIPResponseParser.extractChannelID(from: headers)
 
         return JPIPResponse(
@@ -313,22 +249,53 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
 
     /// Encodes a data bin as a binary WebSocket frame for efficient delivery.
     ///
-    /// - Parameters:
-    ///   - dataBin: The data bin to encode.
-    ///   - requestID: Optional request ID if responding to a specific request.
-    /// - Returns: A WebSocket frame containing the binary-encoded data bin.
+    /// Preserves `isComplete`, `msgOffset`, `aux`, and `codestreamID` while remaining
+    /// byte-compatible with the compact 6-byte header when extended offsets are zero.
     public func encodeDataBin(
         _ dataBin: JPIPDataBin,
         requestID: UInt32? = nil
     ) -> JPIPWebSocketFrame {
-        // Binary encoding: binClass(1) + binID(4) + isComplete(1) + data
-        var payload = Data()
-        payload.append(UInt8(dataBin.binClass.rawValue))
+        var flags: UInt8 = dataBin.isComplete ? 0x01 : 0x00
+        let hasMsgOffset = dataBin.msgOffset > 0
+        let hasAux = dataBin.aux != nil
+        let hasCodestreamID = dataBin.codestreamID > 0
+        if hasMsgOffset { flags |= 0x02 }
+        if hasAux { flags |= 0x04 }
+        if hasCodestreamID { flags |= 0x08 }
 
-        var binID = UInt32(dataBin.binID).bigEndian
-        payload.append(Data(bytes: &binID, count: 4))
+        var payload = Data(capacity: 18 + dataBin.data.count)
+        payload.append(UInt8(clamping: dataBin.binClass.rawValue))
 
-        payload.append(dataBin.isComplete ? 1 : 0)
+        let binID = UInt32(clamping: max(0, dataBin.binID))
+        payload.append(UInt8((binID >> 24) & 0xFF))
+        payload.append(UInt8((binID >> 16) & 0xFF))
+        payload.append(UInt8((binID >> 8) & 0xFF))
+        payload.append(UInt8(binID & 0xFF))
+
+        payload.append(flags)
+
+        if hasMsgOffset {
+            let off = UInt32(clamping: dataBin.msgOffset)
+            payload.append(UInt8((off >> 24) & 0xFF))
+            payload.append(UInt8((off >> 16) & 0xFF))
+            payload.append(UInt8((off >> 8) & 0xFF))
+            payload.append(UInt8(off & 0xFF))
+        }
+        if let auxVal = dataBin.aux {
+            let a = UInt32(clamping: max(0, auxVal))
+            payload.append(UInt8((a >> 24) & 0xFF))
+            payload.append(UInt8((a >> 16) & 0xFF))
+            payload.append(UInt8((a >> 8) & 0xFF))
+            payload.append(UInt8(a & 0xFF))
+        }
+        if hasCodestreamID {
+            let cs = UInt32(clamping: dataBin.codestreamID)
+            payload.append(UInt8((cs >> 24) & 0xFF))
+            payload.append(UInt8((cs >> 16) & 0xFF))
+            payload.append(UInt8((cs >> 8) & 0xFF))
+            payload.append(UInt8(cs & 0xFF))
+        }
+
         payload.append(dataBin.data)
 
         return JPIPWebSocketFrame(
@@ -339,34 +306,65 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
     }
 
     /// Decodes a data bin from a binary WebSocket frame.
-    ///
-    /// - Parameter frame: The WebSocket frame to decode.
-    /// - Returns: The decoded data bin, or nil if decoding fails.
     public func decodeDataBin(from frame: JPIPWebSocketFrame) -> JPIPDataBin? {
         guard frame.type == .dataBin else { return nil }
         let data = frame.payload
         guard data.count >= 6 else { return nil }
+        let base = data.startIndex
 
-        guard let binClass = JPIPDataBinClass(rawValue: Int(data[data.startIndex])) else {
+        guard let binClass = JPIPDataBinClass(rawValue: Int(data[base])) else {
             return nil
         }
 
-        let binID = Int(
-            data.subdata(in: (data.startIndex + 1)..<(data.startIndex + 5))
-                .withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        )
+        let binID = (Int(data[base + 1]) << 24)
+            | (Int(data[base + 2]) << 16)
+            | (Int(data[base + 3]) << 8)
+            | Int(data[base + 4])
 
-        let isComplete = data[data.startIndex + 5] != 0
+        let flags = data[base + 5]
+        let isComplete = (flags & 0x01) != 0
+        var cursor = base + 6
 
-        let binData = data.subdata(
-            in: (data.startIndex + 6)..<data.endIndex
-        )
+        var msgOffset = 0
+        if (flags & 0x02) != 0 {
+            guard cursor + 4 <= data.endIndex else { return nil }
+            msgOffset = (Int(data[cursor]) << 24)
+                | (Int(data[cursor + 1]) << 16)
+                | (Int(data[cursor + 2]) << 8)
+                | Int(data[cursor + 3])
+            cursor += 4
+        }
+
+        var aux: Int?
+        if (flags & 0x04) != 0 {
+            guard cursor + 4 <= data.endIndex else { return nil }
+            aux = (Int(data[cursor]) << 24)
+                | (Int(data[cursor + 1]) << 16)
+                | (Int(data[cursor + 2]) << 8)
+                | Int(data[cursor + 3])
+            cursor += 4
+        }
+
+        var codestreamID = 0
+        if (flags & 0x08) != 0 {
+            guard cursor + 4 <= data.endIndex else { return nil }
+            codestreamID = (Int(data[cursor]) << 24)
+                | (Int(data[cursor + 1]) << 16)
+                | (Int(data[cursor + 2]) << 8)
+                | Int(data[cursor + 3])
+            cursor += 4
+        }
+
+        let binData = Data(data[cursor..<data.endIndex])
 
         return JPIPDataBin(
             binClass: binClass,
             binID: binID,
             data: binData,
-            isComplete: isComplete
+            isComplete: isComplete,
+            codestreamID: codestreamID,
+            msgOffset: msgOffset,
+            aux: aux
         )
     }
 }
@@ -407,21 +405,13 @@ public struct JPIPWebSocketReconnectionConfig: Sendable {
     /// Multiplier for exponential backoff.
     public let backoffMultiplier: Double
 
-    /// Maximum number of reconnection attempts (nil = unlimited).
+    /// Maximum number of reconnection attempts (`nil` = unlimited).
     public let maxAttempts: Int?
 
-    /// Jitter factor (0.0 to 1.0) to randomize backoff delays.
+    /// Jitter factor (`0.0` to `1.0`) to randomise backoff delays.
     public let jitterFactor: Double
 
     /// Creates a new reconnection configuration.
-    ///
-    /// - Parameters:
-    ///   - enabled: Whether auto-reconnect is enabled (default: true).
-    ///   - initialDelay: Initial delay in seconds (default: 1.0).
-    ///   - maxDelay: Maximum delay in seconds (default: 60.0).
-    ///   - backoffMultiplier: Backoff multiplier (default: 2.0).
-    ///   - maxAttempts: Maximum attempts, nil for unlimited (default: 10).
-    ///   - jitterFactor: Jitter factor 0.0-1.0 (default: 0.1).
     public init(
         enabled: Bool = true,
         initialDelay: TimeInterval = 1.0,
@@ -444,10 +434,7 @@ public struct JPIPWebSocketReconnectionConfig: Sendable {
     /// Configuration with no automatic reconnection.
     public static let disabled = JPIPWebSocketReconnectionConfig(enabled: false)
 
-    /// Calculates the delay for a given attempt number.
-    ///
-    /// - Parameter attempt: The attempt number (0-based).
-    /// - Returns: The calculated delay in seconds.
+    /// Calculates the delay for a given attempt number (`0`-based).
     public func delay(forAttempt attempt: Int) -> TimeInterval {
         let baseDelay = initialDelay * pow(backoffMultiplier, Double(attempt))
         let clampedDelay = min(baseDelay, maxDelay)
@@ -458,25 +445,9 @@ public struct JPIPWebSocketReconnectionConfig: Sendable {
 
 // MARK: - WebSocket Transport
 
-/// WebSocket transport layer for JPIP protocol communication.
-///
-/// Provides full-duplex communication between JPIP clients and servers
-/// over a single WebSocket connection, supporting:
-/// - Binary and text message encoding
-/// - Multiplexed request/response correlation
-/// - Automatic reconnection with exponential backoff
-/// - Connection health monitoring via keepalive
-///
-/// Example usage:
-/// ```swift
-/// let transport = JPIPWebSocketTransport(
-///     url: URL(string: "ws://localhost:8080/jpip")!
-/// )
-/// try await transport.connect()
-/// let response = try await transport.sendRequest(request)
-/// ```
+/// RFC 6455 WebSocket transport layer for JPIP protocol communication over real TCP sockets.
 public actor JPIPWebSocketTransport {
-    /// The WebSocket URL to connect to.
+    /// The WebSocket URL to connect to (`ws://host:port/path`).
     private let url: URL
 
     /// Current connection state.
@@ -494,10 +465,10 @@ public actor JPIPWebSocketTransport {
     /// Next request ID for multiplexing.
     private var nextRequestID: UInt32
 
-    /// Pending responses keyed by request ID.
+    /// Pending responses keyed by request ID (when response arrives ahead of registration).
     private var pendingResponses: [UInt32: JPIPResponse]
 
-    /// Pending response continuations for async/await.
+    /// Pending response continuations for async/await multiplexed requests.
     private var pendingContinuations: [UInt32: CheckedContinuation<JPIPResponse, any Error>]
 
     /// Received data bins pushed by the server.
@@ -511,6 +482,12 @@ public actor JPIPWebSocketTransport {
 
     /// Measured round-trip latency in seconds.
     public private(set) var measuredLatency: TimeInterval?
+
+    /// Active upgraded RFC 6455 TCP socket.
+    private var tcpConnection: JPIPTCPConnection?
+
+    /// Monotonic connection generation to isolate reader loops across reconnects.
+    private var connectionGeneration: UInt64 = 0
 
     /// Transport statistics.
     public private(set) var statistics: Statistics
@@ -543,11 +520,6 @@ public actor JPIPWebSocketTransport {
     }
 
     /// Creates a new WebSocket transport.
-    ///
-    /// - Parameters:
-    ///   - url: The WebSocket URL (ws:// or wss://).
-    ///   - reconnectionConfig: Reconnection configuration.
-    ///   - keepaliveInterval: Keepalive interval in seconds (default: 30).
     public init(
         url: URL,
         reconnectionConfig: JPIPWebSocketReconnectionConfig = .default,
@@ -563,14 +535,11 @@ public actor JPIPWebSocketTransport {
         self.pendingContinuations = [:]
         self.receivedDataBins = []
         self.keepaliveInterval = keepaliveInterval
+        self.tcpConnection = nil
         self.statistics = Statistics()
     }
 
-    /// Establishes the WebSocket connection.
-    ///
-    /// Performs the connection handshake including JPIP protocol negotiation.
-    ///
-    /// - Throws: ``J2KError`` if the connection cannot be established.
+    /// Establishes the real TCP RFC 6455 WebSocket connection (`Sec-WebSocket-Protocol: jpip`).
     public func connect() async throws {
         guard connectionState == .disconnected
                 || connectionState == .reconnecting else {
@@ -579,18 +548,153 @@ public actor JPIPWebSocketTransport {
             )
         }
 
+        let scheme = (url.scheme ?? "ws").lowercased()
+        guard scheme == "ws" || scheme == "wss" else {
+            throw J2KError.invalidParameter("Unsupported WebSocket URL scheme '\(scheme)'")
+        }
+        if scheme == "wss" {
+            throw J2KError.unsupportedFeature(
+                "TLS WebSocket (wss://) requires external TLS termination; use ws:// over TCP."
+            )
+        }
+        guard let host = url.host, !host.isEmpty else {
+            throw J2KError.invalidParameter("WebSocket URL missing host: \(url)")
+        }
+        let port = url.port ?? 80
+        let rawPath = url.path.isEmpty ? "/jpip" : url.path
+        let pathAndQuery = url.query.map { "\(rawPath)?\($0)" } ?? rawPath
+        let hostHeader = url.port != nil ? "\(host):\(port)" : host
+
         connectionState = .connecting
 
-        // Simulate WebSocket handshake with JPIP subprotocol
-        // In a real implementation, this would use URLSessionWebSocketTask
-        // or a WebSocket library with Sec-WebSocket-Protocol: jpip
-        connectionState = .connected
-        reconnectionAttempts = 0
+        let openedConn: JPIPTCPConnection
+        do {
+            openedConn = try await Self.openAndHandshakeOffPool(
+                host: host,
+                port: port,
+                pathAndQuery: pathAndQuery,
+                hostHeader: hostHeader
+            )
+        } catch {
+            connectionState = .disconnected
+            throw error
+        }
+
+        connectionGeneration &+= 1
+        let gen = connectionGeneration
+        self.tcpConnection = openedConn
+        self.connectionState = .connected
+        self.reconnectionAttempts = 0
+
+        let transportRef = self
+        let readerQueue = DispatchQueue(
+            label: "com.rasterlab.swiftj2k.jpip.wsreader.\(gen)",
+            qos: .userInitiated
+        )
+        readerQueue.async {
+            Self.runReaderLoop(connection: openedConn, generation: gen, transport: transportRef)
+        }
     }
 
-    /// Closes the WebSocket connection.
-    ///
-    /// - Parameter code: Optional close code.
+    nonisolated private static func openAndHandshakeOffPool(
+        host: String,
+        port: Int,
+        pathAndQuery: String,
+        hostHeader: String
+    ) async throws -> JPIPTCPConnection {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let conn = try JPIPTCPConnection.connect(host: host, port: port, timeoutSeconds: 10)
+                    do {
+                        _ = try conn.performWebSocketClientHandshake(
+                            pathAndQuery: pathAndQuery,
+                            hostHeader: hostHeader,
+                            subprotocol: "jpip"
+                        )
+                        conn.setReceiveTimeout(seconds: 0)
+                        continuation.resume(returning: conn)
+                    } catch {
+                        conn.close()
+                        continuation.resume(throwing: error)
+                    }
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    nonisolated private static func runReaderLoop(
+        connection: JPIPTCPConnection,
+        generation: UInt64,
+        transport: JPIPWebSocketTransport
+    ) {
+        while connection.isOpen {
+            let wireFrame: JPIPRFC6455WireFrame
+            do {
+                wireFrame = try connection.readWebSocketFrame(requireMasked: false)
+            } catch {
+                break
+            }
+
+            switch wireFrame.opcode {
+            case .close:
+                connection.close()
+            case .ping:
+                try? connection.writeWebSocketFrame(
+                    opcode: .pong,
+                    payload: wireFrame.payload,
+                    masked: true
+                )
+            case .pong:
+                let appPong = JPIPWebSocketFrame.deserialize(from: wireFrame.payload)
+                    ?? JPIPWebSocketFrame(type: .pong, payload: wireFrame.payload)
+                let sema = DispatchSemaphore(value: 0)
+                Task {
+                    await transport.handlePong(appPong)
+                    sema.signal()
+                }
+                sema.wait()
+            case .binary, .text:
+                if let appFrame = JPIPWebSocketFrame.deserialize(from: wireFrame.payload) {
+                    let sema = DispatchSemaphore(value: 0)
+                    Task {
+                        await transport.handleReceivedFrame(appFrame)
+                        sema.signal()
+                    }
+                    sema.wait()
+                }
+            case .continuation:
+                break
+            }
+        }
+
+        let sema = DispatchSemaphore(value: 0)
+        Task {
+            await transport.handleSocketClosed(generation: generation)
+            sema.signal()
+        }
+        sema.wait()
+    }
+
+    private func handleSocketClosed(generation: UInt64) {
+        guard generation == connectionGeneration else { return }
+        tcpConnection?.close()
+        tcpConnection = nil
+        if connectionState == .connected || connectionState == .connecting {
+            connectionState = .disconnected
+        }
+        for (_, continuation) in pendingContinuations {
+            continuation.resume(
+                throwing: J2KError.networkError("WebSocket connection closed by peer")
+            )
+        }
+        pendingContinuations.removeAll()
+        pendingResponses.removeAll()
+    }
+
+    /// Closes the WebSocket connection cleanly with an RFC 6455 close control frame.
     public func disconnect(code: Int = 1000) async {
         guard connectionState == .connected
                 || connectionState == .connecting else {
@@ -598,8 +702,16 @@ public actor JPIPWebSocketTransport {
         }
 
         connectionState = .closing
+        connectionGeneration &+= 1
 
-        // Cancel all pending requests
+        if let conn = tcpConnection {
+            let codeU16 = UInt16(clamping: max(1000, min(4999, code)))
+            let closePayload = Data([UInt8((codeU16 >> 8) & 0xFF), UInt8(codeU16 & 0xFF)])
+            try? conn.writeWebSocketFrame(opcode: .close, payload: closePayload, masked: true)
+            conn.close()
+            tcpConnection = nil
+        }
+
         for (_, continuation) in pendingContinuations {
             continuation.resume(
                 throwing: J2KError.networkError("Connection closed")
@@ -611,22 +723,18 @@ public actor JPIPWebSocketTransport {
         connectionState = .disconnected
     }
 
-    /// Sends a JPIP request and waits for the response.
-    ///
-    /// Uses multiplexed request/response over the single WebSocket connection.
-    ///
-    /// - Parameter request: The JPIP request to send.
-    /// - Returns: The JPIP response.
-    /// - Throws: ``J2KError`` if sending fails or connection is not established.
+    /// Sends a JPIP request as a masked RFC 6455 binary frame and awaits the matching `requestID` response.
     public func sendRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
-        guard connectionState == .connected else {
+        guard connectionState == .connected,
+              let conn = tcpConnection,
+              conn.isOpen else {
             throw J2KError.networkError(
                 "WebSocket not connected (state: \(connectionState.rawValue))"
             )
         }
 
         let requestID = nextRequestID
-        nextRequestID += 1
+        nextRequestID = nextRequestID == UInt32.max ? 1 : (nextRequestID + 1)
 
         let frame = encoder.encodeRequest(request, requestID: requestID)
         let serialized = frame.serialize()
@@ -634,25 +742,26 @@ public actor JPIPWebSocketTransport {
         statistics.framesSent += 1
         statistics.bytesSent += serialized.count
 
-        // If there's already a stored response (e.g., from simulation), return it
         if let response = pendingResponses.removeValue(forKey: requestID) {
             return response
         }
 
-        // In a real implementation, this would send via URLSessionWebSocketTask
-        // and use withCheckedThrowingContinuation to await the response
-        // For now, return a placeholder response indicating WebSocket transport
-        return JPIPResponse(
-            channelID: nil,
-            data: Data(),
-            statusCode: 200,
-            headers: ["X-JPIP-Transport": "websocket"]
-        )
+        return try await withCheckedThrowingContinuation { continuation in
+            pendingContinuations[requestID] = continuation
+            do {
+                try conn.writeWebSocketFrame(
+                    opcode: .binary,
+                    payload: serialized,
+                    masked: true
+                )
+            } catch {
+                pendingContinuations.removeValue(forKey: requestID)
+                continuation.resume(throwing: error)
+            }
+        }
     }
 
-    /// Sends a keepalive ping to the server.
-    ///
-    /// - Throws: ``J2KError`` if the ping cannot be sent.
+    /// Sends a keepalive ping frame over the live WebSocket connection.
     public func sendPing() async throws {
         guard connectionState == .connected else { return }
 
@@ -662,15 +771,16 @@ public actor JPIPWebSocketTransport {
         )
 
         let serialized = frame.serialize()
+        lastPingTime = Date()
+        if let conn = tcpConnection, conn.isOpen {
+            try conn.writeWebSocketFrame(opcode: .binary, payload: serialized, masked: true)
+        }
         statistics.framesSent += 1
         statistics.bytesSent += serialized.count
         statistics.keepalivePingsSent += 1
-        lastPingTime = Date()
     }
 
     /// Handles a received pong message for latency measurement.
-    ///
-    /// - Parameter frame: The pong frame received.
     public func handlePong(_ frame: JPIPWebSocketFrame) {
         guard frame.type == .pong, let pingTime = lastPingTime else { return }
         measuredLatency = Date().timeIntervalSince(pingTime)
@@ -679,11 +789,12 @@ public actor JPIPWebSocketTransport {
     }
 
     /// Handles a received frame from the WebSocket connection.
-    ///
-    /// Dispatches the frame to the appropriate handler based on type.
-    ///
-    /// - Parameter frame: The received WebSocket frame.
     public func handleReceivedFrame(_ frame: JPIPWebSocketFrame) {
+        if frame.type == .pong {
+            handlePong(frame)
+            return
+        }
+
         statistics.framesReceived += 1
         statistics.bytesReceived += frame.payload.count + 9
 
@@ -693,7 +804,7 @@ public actor JPIPWebSocketTransport {
         case .dataBin:
             handleDataBinFrame(frame)
         case .pong:
-            handlePong(frame)
+            break
         case .push:
             handlePushFrame(frame)
         case .error:
@@ -703,7 +814,6 @@ public actor JPIPWebSocketTransport {
         }
     }
 
-    /// Handles a response frame, resolving the pending request.
     private func handleResponseFrame(_ frame: JPIPWebSocketFrame) {
         guard let response = encoder.decodeResponse(from: frame) else { return }
 
@@ -715,16 +825,13 @@ public actor JPIPWebSocketTransport {
         }
     }
 
-    /// Handles a data bin frame pushed by the server.
     private func handleDataBinFrame(_ frame: JPIPWebSocketFrame) {
         guard let dataBin = encoder.decodeDataBin(from: frame) else { return }
         receivedDataBins.append(dataBin)
         statistics.dataBinsPushed += 1
     }
 
-    /// Handles a server push frame.
     private func handlePushFrame(_ frame: JPIPWebSocketFrame) {
-        // Push frames may contain data bins or notifications
         if let dataBin = encoder.decodeDataBin(from: JPIPWebSocketFrame(
             type: .dataBin,
             payload: frame.payload,
@@ -735,7 +842,6 @@ public actor JPIPWebSocketTransport {
         }
     }
 
-    /// Handles an error frame from the server.
     private func handleErrorFrame(_ frame: JPIPWebSocketFrame) {
         if let requestID = frame.requestID,
            let continuation = pendingContinuations.removeValue(forKey: requestID) {
@@ -748,8 +854,6 @@ public actor JPIPWebSocketTransport {
     }
 
     /// Retrieves and clears all received data bins.
-    ///
-    /// - Returns: Array of data bins received via server push.
     public func drainReceivedDataBins() -> [JPIPDataBin] {
         let bins = receivedDataBins
         receivedDataBins.removeAll()
@@ -757,8 +861,6 @@ public actor JPIPWebSocketTransport {
     }
 
     /// Attempts reconnection using exponential backoff.
-    ///
-    /// - Throws: ``J2KError`` if reconnection fails after all attempts.
     public func attemptReconnection() async throws {
         guard reconnectionConfig.enabled else {
             throw J2KError.networkError("Reconnection is disabled")
@@ -771,6 +873,11 @@ public actor JPIPWebSocketTransport {
             )
         }
 
+        if let conn = tcpConnection {
+            conn.close()
+            tcpConnection = nil
+        }
+
         connectionState = .reconnecting
         let delay = reconnectionConfig.delay(forAttempt: reconnectionAttempts)
         reconnectionAttempts += 1
@@ -778,13 +885,8 @@ public actor JPIPWebSocketTransport {
 
         try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 
-        do {
-            try await connect()
-            statistics.successfulReconnections += 1
-        } catch {
-            // If connection fails, the caller can retry
-            throw error
-        }
+        try await connect()
+        statistics.successfulReconnections += 1
     }
 
     /// Gets the current reconnection attempt count.

@@ -358,17 +358,36 @@ public actor JP3DROIDecoder {
         let outD = roiD
         let (outWH, vOv1) = outW.multipliedReportingOverflow(by: outH)
         let (outVoxels, vOv2) = outWH.multipliedReportingOverflow(by: outD)
-        let bytesPerSample = (siz.bitDepth + 7) / 8
-        let (compOutBytes, bOv1) = outVoxels.multipliedReportingOverflow(by: bytesPerSample)
-        let (outDecodedBytes, bOv2) = compOutBytes.multipliedReportingOverflow(by: siz.componentCount)
+        var totalBytesPerVoxel = 0
+        var bOv1 = false
+        for comp in 0..<siz.componentCount {
+            let compBytes = (siz.bitDepth(forComponent: comp) + 7) / 8
+            let (next, ov) = totalBytesPerVoxel.addingReportingOverflow(compBytes)
+            if ov { bOv1 = true }
+            totalBytesPerVoxel = next
+        }
+        let (outDecodedBytes, bOv2) = outVoxels.multipliedReportingOverflow(by: totalBytesPerVoxel)
         guard !vOv1, !vOv2, !bOv1, !bOv2 else {
             throw J2KError.decodingError("ROI output volume dimensions overflow integer arithmetic")
         }
 
         let isStreamLossless = cod.isLossless && codestream.isLosslessQuantization
-        let useExactIntegerPath = isStreamLossless && !codestream.tiles.isEmpty && codestream.tiles.allSatisfy {
+        let hasLegacyTilePayload = codestream.tiles.contains {
             JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
         }
+        let isNormativeCodestream = codestream.hasNSIMarker && !hasLegacyTilePayload
+        let useExactIntegerPath = isNormativeCodestream || (isStreamLossless && !codestream.tiles.isEmpty && codestream.tiles.allSatisfy {
+            JP3DLosslessIntegerTileCodec.hasMagic($0.data) || JP3DSliceStackCodec.isSliceStackTile($0.data)
+        })
+        let normativeContext: JP3DDecoder.NormativeDecodeContext? = isNormativeCodestream
+            ? JP3DDecoder.NormativeDecodeContext(
+                siz: siz,
+                cod: cod,
+                qcd: codestream.qcd,
+                roiShifts: codestream.roiShifts,
+                tolerateTruncation: configuration.tolerateErrors
+            )
+            : nil
         let elementStride = useExactIntegerPath ? MemoryLayout<Int64>.stride : MemoryLayout<Float>.stride
         let (totalSamples, sOv1) = outVoxels.multipliedReportingOverflow(by: siz.componentCount)
         let (bufferWorkspaceBytes, sOv2) = totalSamples.multipliedReportingOverflow(by: elementStride)
@@ -516,16 +535,22 @@ public actor JP3DROIDecoder {
                         decodedStrideW = isSubTileXY ? max(1, localXRange.count) : tileW
                         decodedStrideH = isSubTileXY ? max(1, localYRange.count) : tileH
                     } else {
-                        reconstructedPerCompInt = try JP3DDecoder.decodeTilePayloadIntegerStatic(
+                        let (samples, wasTrunc) = try JP3DDecoder.decodeTilePayloadIntegerWithStatusStatic(
                             parsedTile.data,
                             tile: tile,
                             componentCount: siz.componentCount,
                             maxQualityLayers: maxQualityLayers,
                             resolutionLevel: K,
+                            normativeContext: normativeContext,
                             limits: workerLimits,
                             executionPolicy: executionPolicy,
-                            workspace: decodeWorkspace
+                            workspace: decodeWorkspace,
+                            work: work
                         )
+                        reconstructedPerCompInt = samples
+                        if wasTrunc {
+                            warnings.append("Tile \(parsedTile.tileIndex) packet stream truncated")
+                        }
                         decodedZOffset = 0
                         decodedXOffset = 0
                         decodedYOffset = 0
@@ -689,13 +714,18 @@ public actor JP3DROIDecoder {
         try work.check()
         reportProgress(.volumeAssembly, stageProgress: 0.5, tilesDone: tilesDecoded, tilesTotal: intersectingIndices.count)
 
-        StorageTelemetry.recordPixelAllocation(bytes: outDecodedBytes)
+        for comp in 0..<siz.componentCount {
+            let compBytes = (outW * outH * outD) * ((siz.bitDepth(forComponent: comp) + 7) / 8)
+            StorageTelemetry.recordPixelAllocation(bytes: compBytes)
+        }
         let components: [J2KVolumeComponent]
         if useExactIntegerPath {
             components = jp3dAssembleVolumeComponentsInteger(
                 buffers: intComponentBuffers,
                 width: outW, height: outH, depth: outD,
-                bitDepth: siz.bitDepth, signed: siz.signed
+                bitDepth: siz.bitDepth, signed: siz.signed,
+                componentBitDepths: siz.componentBitDepths,
+                componentSigned: siz.componentSigned
             )
         } else {
             components = assembleROIComponents(

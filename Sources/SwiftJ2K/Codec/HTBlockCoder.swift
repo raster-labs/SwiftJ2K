@@ -535,10 +535,10 @@ internal enum HTBlockLayout {
 
 // MARK: - HT Block Encoder (ISO/IEC 15444-15 Clause 7.3)
 
-internal enum HTBlockEncoder {
+package enum HTBlockEncoder {
     /// Reversible 5-3 subband log2 gain `G_b` per ISO/IEC 15444-1 Annex E:
     /// LL = 0, HL = 1, LH = 1, HH = 2.
-    internal static func reversibleGain(subband: BandOrientation) -> Int {
+    package static func reversibleGain(subband: BandOrientation) -> Int {
         switch subband {
         case .ll: return 0
         case .hl, .lh: return 1
@@ -555,7 +555,7 @@ internal enum HTBlockEncoder {
     ///   - bandShift: Bit-plane index of the cleanup pass (`0` for lossless full-precision coding).
     ///   - maximumOutputBytes: Upper bound on retained cleanup segment bytes (`Int.max` when unbounded).
     /// - Returns: Assembled Part 15 cleanup-pass segment bytes (`Lcup` bytes), or empty array if all coefficients are zero at `bandShift`.
-    internal static func encodeCleanup(
+    package static func encodeCleanup(
         coefficients: [Int32],
         width: Int,
         height: Int,
@@ -930,7 +930,7 @@ internal enum HTBlockEncoder {
 
 // MARK: - HT Block Decoder (ISO/IEC 15444-15 Clause 7.3)
 
-internal enum HTBlockDecoder {
+package enum HTBlockDecoder {
     /// Decode a Part 15 code-block cleanup pass into signed `Int32` wavelet coefficients.
     ///
     /// - Parameters:
@@ -939,7 +939,7 @@ internal enum HTBlockDecoder {
     ///   - height: Code-block height in samples (`1...64`).
     ///   - kMax: Subband bit-plane count $K_{\max} = M_b = \text{guardBits} + \varepsilon_b - 1$.
     ///   - missingMSBs: Effective missing MSBs $K_{\text{msbs}} = \text{zeroBitPlanes} + \lfloor (\text{totalPasses} - 1) / 3 \rfloor$.
-    internal static func decodeCleanup(
+    package static func decodeCleanup(
         block: [UInt8],
         width: Int,
         height: Int,

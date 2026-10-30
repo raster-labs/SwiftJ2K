@@ -6,66 +6,51 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPDataBinGenerator.swift
 //
-//
-// JPIPDataBinGenerator.swift
-// J2KSwift
-//
-/// # JPIPDataBinGenerator
-///
-/// Generates JPIP data bins from JPEG 2000 codestreams with HTJ2K support.
-///
-/// Extracts main headers, tile headers, and precinct data from JPEG 2000
-/// codestreams (both legacy and HTJ2K) and packages them as JPIP data bins
-/// for progressive streaming.
+// Extended in Phase R3 (F04) with normative ITU-T Rec. T.808 (12/2022) V2 |
+// ISO/IEC 15444-9 Annex A data-bin generation (`image/jpp-stream` Class 8/6/2/0
+// and `image/jpt-stream` Class 8/6/4, 2D Part 1/15 and 3D Part 10 JP3D),
+// ISO/IEC 15444-9 `phld` placeholder box construction/reassembly, and full
+// progression-aware JPP/JPT codestream reconstruction.
 
 import Foundation
 @_exported import SwiftJ2K
 @_exported import SwiftJ2K3D
 
-/// Generates JPIP data bins from JPEG 2000 codestream data.
-///
-/// Parses codestream markers to extract structural components and packages
-/// them into JPIP data bins suitable for progressive streaming. Supports
-/// both legacy JPEG 2000 and HTJ2K codestreams.
-///
-/// Example:
-/// ```swift
-/// let generator = JPIPDataBinGenerator()
-/// let bins = try generator.generateDataBins(from: codestreamData)
-/// ```
+/// Result of normative ITU-T Rec. T.808 wire data-bin generation for a view-window request.
+public struct JPIPWireWindowGeneration: Sendable {
+    /// Ordered normative data-bins for the requested view window and stream type.
+    public let bins: [JPIPDataBin]
+    /// Effective return media type (`jpp-stream` or `jpt-stream`).
+    public let streamType: JPIPStreamType
+    /// `true` when the generated window covers all components, layers, resolutions, and spatial extents.
+    public let coversFullTarget: Bool
+
+    public init(bins: [JPIPDataBin], streamType: JPIPStreamType, coversFullTarget: Bool) {
+        self.bins = bins
+        self.streamType = streamType
+        self.coversFullTarget = coversFullTarget
+    }
+}
+
+/// Generates JPIP data bins from JPEG 2000 codestream data and reconstructs
+/// valid JPEG 2000 / JP2 / JP3D streams from cached JPIP data bins.
 public struct JPIPDataBinGenerator: Sendable {
     /// Creates a new data bin generator.
     public init() {}
 
     /// Generates JPIP data bins from a JPEG 2000 file.
-    ///
-    /// Reads the file, parses the codestream structure, and produces
-    /// data bins for the main header, tile headers, and precinct data.
-    ///
-    /// - Parameter url: The file URL to read.
-    /// - Returns: Array of generated data bins.
-    /// - Throws: ``J2KError`` if the file cannot be read or parsed.
     public func generateDataBins(from url: URL) throws -> [JPIPDataBin] {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         return try generateDataBins(from: data)
     }
 
     /// Generates JPIP data bins from codestream data.
-    ///
-    /// Parses the codestream structure and produces data bins for the
-    /// main header, tile headers, and tile/precinct data.
-    ///
-    /// - Parameter data: The codestream data.
-    /// - Returns: Array of generated data bins.
-    /// - Throws: ``J2KError`` if the data cannot be parsed.
     public func generateDataBins(from data: Data) throws -> [JPIPDataBin] {
         try generateDataBins(from: data, limits: .default, retainedBytes: 0).bins
     }
 
     package struct BoundedGeneration: Sendable {
         package let bins: [JPIPDataBin]
-        /// Computed upper bound from bin payload/descriptor counts, retained external
-        /// workspace and reserved cache entries. Excludes allocator/hash capacity overhead.
         package let peakWorkspaceBytes: Int
     }
 
@@ -133,108 +118,664 @@ public struct JPIPDataBinGenerator: Sendable {
         }
     }
 
+    // MARK: - Normative ITU-T Rec. T.808 Wire Data-Bin Generation (2D & 3D, JPP & JPT)
+
+    /// Generates normative ITU-T Rec. T.808 Annex A data-bins for a 2D (`.j2k`/`.jph`/`.jp2`)
+    /// or 3D Part 10 (`.jp3d`) target filtered to the view window in `request`.
+    public func generateWireDataBins(
+        from fileData: Data,
+        request: JPIPRequest? = nil,
+        defaultStreamType: JPIPStreamType = .jppStream,
+        limits: ResourceLimits = .default
+    ) throws -> JPIPWireWindowGeneration {
+        let streamType = request?.streamType ?? defaultStreamType
+        if JP3DJPIPIndexer.isJP3DCodestream(fileData) {
+            return try generate3DWireDataBins(from: fileData, streamType: streamType, request: request, limits: limits)
+        }
+        return try generate2DWireDataBins(from: fileData, streamType: streamType, request: request, limits: limits)
+    }
+
+    private static func buildPlaceholderBox(codestreamLength: Int) -> Data {
+        // ISO/IEC 15444-9 Annex A.3.6.3 placeholder box (`phld`):
+        // LBox(4) = 28, TBox(4) = "phld", Flags(4) = 1, OrigID(8) = 0,
+        // OrigBH(8) = [UInt32BE(8 + codestreamLength), "jp2c"]
+        let jp2cBoxLen = UInt32(min(UInt64(UInt32.max), UInt64(max(0, codestreamLength)) + 8))
+        var phld = Data()
+        phld.reserveCapacity(28)
+        // LBox = 28
+        phld.append(contentsOf: [0x00, 0x00, 0x00, 0x1C])
+        // TBox = "phld"
+        phld.append(contentsOf: [0x70, 0x68, 0x6C, 0x64])
+        // Flags = 1
+        phld.append(contentsOf: [0x00, 0x00, 0x00, 0x01])
+        // OrigID = 0 (64-bit)
+        phld.append(contentsOf: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        // OrigBH = [jp2cBoxLen, "jp2c"]
+        phld.append(contentsOf: [
+            UInt8((jp2cBoxLen >> 24) & 0xFF),
+            UInt8((jp2cBoxLen >> 16) & 0xFF),
+            UInt8((jp2cBoxLen >> 8) & 0xFF),
+            UInt8(jp2cBoxLen & 0xFF),
+            0x6A, 0x70, 0x32, 0x63
+        ])
+        return phld
+    }
+
+    private func generate2DWireDataBins(
+        from fileData: Data,
+        streamType: JPIPStreamType,
+        request: JPIPRequest?,
+        limits: ResourceLimits
+    ) throws -> JPIPWireWindowGeneration {
+        let idx = try JPIPCodestreamIndexer.index(fileData, limits: limits)
+        var bins: [JPIPDataBin] = []
+
+        // 1. Metadata-bin 0 (Class 8):
+        // - For JP2 containers: prefix boxes + 28-byte `phld` box (+ optional suffix boxes).
+        //   Notice `libopenjpip` expects `phld` in its own message starting at `"phld"` at offset+4,
+        //   or inside metadata-bin 0; emitting prefix at offset 0 (c=0) and `phld` at offset=prefix.count (c=1)
+        //   satisfies BOTH ITU-T T.808 Annex A.3.6 AND OpenJPEG `v2.4.0` `parse_metadata`!
+        // - For raw `.j2k`/`.jph`: empty 0-byte complete metadata-bin 0 (matching `kdu_server`).
+        if let prefix = idx.jp2PrefixBeforeCodestream {
+            let phld = Self.buildPlaceholderBox(codestreamLength: idx.codestreamByteCount)
+            let suffix = idx.jp2SuffixAfterCodestream ?? Data()
+            if !prefix.isEmpty {
+                bins.append(JPIPDataBin(
+                    binClass: .metadata,
+                    binID: 0,
+                    data: prefix,
+                    isComplete: false,
+                    msgOffset: 0
+                ))
+            }
+            bins.append(JPIPDataBin(
+                binClass: .metadata,
+                binID: 0,
+                data: phld,
+                isComplete: suffix.isEmpty,
+                msgOffset: prefix.count
+            ))
+            if !suffix.isEmpty {
+                bins.append(JPIPDataBin(
+                    binClass: .metadata,
+                    binID: 0,
+                    data: suffix,
+                    isComplete: true,
+                    msgOffset: prefix.count + phld.count
+                ))
+            }
+        } else {
+            bins.append(JPIPDataBin(
+                binClass: .metadata,
+                binID: 0,
+                data: Data(),
+                isComplete: true,
+                msgOffset: 0
+            ))
+        }
+
+        // If metadata-only was requested, stop after metadata-bin 0 + main header.
+        bins.append(JPIPDataBin(
+            binClass: .mainHeader,
+            binID: 0,
+            data: idx.mainHeader,
+            isComplete: true,
+            msgOffset: 0
+        ))
+        if request?.metadata == true {
+            return JPIPWireWindowGeneration(bins: bins, streamType: streamType, coversFullTarget: false)
+        }
+
+        // 2. View-window filtering parameters
+        let maxDecomp = idx.maxDecompositionLevels
+        var maxResIndex = maxDecomp
+        if let reslevels = request?.reslevels, reslevels > 0 {
+            maxResIndex = max(0, maxDecomp - reslevels)
+        } else if let fsiz = request?.fsiz, fsiz.width > 0, fsiz.height > 0 {
+            let fullW = max(1, idx.width - idx.originX)
+            let fullH = max(1, idx.height - idx.originY)
+            if fsiz.width < fullW || fsiz.height < fullH {
+                for r in 0...maxDecomp {
+                    let shift = maxDecomp - r
+                    let rw = (fullW + (1 << shift) - 1) >> shift
+                    let rh = (fullH + (1 << shift) - 1) >> shift
+                    if rw >= fsiz.width && rh >= fsiz.height {
+                        maxResIndex = r
+                        break
+                    }
+                }
+            }
+        }
+
+        let totalLayers = max(1, idx.totalLayers)
+        let keptLayers: Int
+        if let reqLayers = request?.layers, reqLayers > 0 {
+            keptLayers = min(totalLayers, reqLayers)
+        } else {
+            keptLayers = totalLayers
+        }
+
+        var spatialROI: (x0: Int, y0: Int, x1: Int, y1: Int)?
+        if request?.roff != nil || request?.rsiz != nil {
+            let fullW = max(1, idx.width - idx.originX)
+            let fullH = max(1, idx.height - idx.originY)
+            let roff = request?.roff ?? (x: 0, y: 0)
+            let rsiz = request?.rsiz ?? (width: fullW, height: fullH)
+            let scaleX: Double
+            let scaleY: Double
+            if let fsiz = request?.fsiz, fsiz.width > 0, fsiz.height > 0 {
+                let effW = (request?.fsizRoundDirection == "round-down") ? min(fullW, fsiz.width) : fsiz.width
+                let effH = (request?.fsizRoundDirection == "round-down") ? min(fullH, fsiz.height) : fsiz.height
+                scaleX = Double(fullW) / Double(max(1, effW))
+                scaleY = Double(fullH) / Double(max(1, effH))
+            } else {
+                scaleX = 1.0
+                scaleY = 1.0
+            }
+            let x0 = idx.originX + max(0, Int(floor(Double(roff.x) * scaleX)))
+            let y0 = idx.originY + max(0, Int(floor(Double(roff.y) * scaleY)))
+            let x1 = min(idx.width, idx.originX + max(1, Int(ceil(Double(roff.x + rsiz.width) * scaleX))))
+            let y1 = min(idx.height, idx.originY + max(1, Int(ceil(Double(roff.y + rsiz.height) * scaleY))))
+            if x0 > idx.originX || y0 > idx.originY || x1 < idx.width || y1 < idx.height {
+                spatialROI = (x0, y0, x1, y1)
+            }
+        }
+
+        let requestedComps: Set<Int>?
+        if let comps = request?.comps, !comps.isEmpty {
+            // Preserve MCT triad (0, 1, 2) if colour transform may be active on >=3 components.
+            var set = Set(comps)
+            if idx.componentCount >= 3 && (!set.isDisjoint(with: [0, 1, 2])) {
+                set.formUnion([0, 1, 2])
+            }
+            requestedComps = set.count < idx.componentCount ? set : nil
+        } else {
+            requestedComps = nil
+        }
+
+        let coversFull = (maxResIndex >= maxDecomp)
+            && (keptLayers >= totalLayers)
+            && (spatialROI == nil)
+            && (requestedComps == nil)
+
+        switch streamType {
+        case .jptStream:
+            for tile in idx.tiles {
+                if let roi = spatialROI {
+                    let halo = 8 << max(0, maxDecomp)
+                    if tile.refX1 + halo <= roi.x0 || tile.refX0 - halo >= roi.x1
+                        || tile.refY1 + halo <= roi.y0 || tile.refY0 - halo >= roi.y1 {
+                        continue
+                    }
+                }
+                bins.append(JPIPDataBin(
+                    binClass: .tile,
+                    binID: tile.tileIndex,
+                    data: tile.completeTilePartsData,
+                    isComplete: true,
+                    tileIndex: tile.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+
+        case .jppStream:
+            var activeTileIDs = Set<Int>()
+            var precinctBins: [JPIPDataBin] = []
+            for prc in idx.precincts {
+                guard prc.resolutionLevel <= maxResIndex else { continue }
+                if let comps = requestedComps, !comps.contains(prc.componentIndex) {
+                    continue
+                }
+                if let roi = spatialROI {
+                    let shift = max(0, maxDecomp - prc.resolutionLevel)
+                    let halo = 4 << shift
+                    if prc.refX1 + halo <= roi.x0 || prc.refX0 - halo >= roi.x1
+                        || prc.refY1 + halo <= roi.y0 || prc.refY0 - halo >= roi.y1 {
+                        continue
+                    }
+                }
+                activeTileIDs.insert(prc.tileIndex)
+                var payload = Data()
+                let layerLim = min(keptLayers, prc.layerPackets.count)
+                for l in 0..<layerLim {
+                    payload.append(prc.layerPackets[l])
+                }
+                let binComplete = (layerLim >= prc.layerPackets.count)
+                precinctBins.append(JPIPDataBin(
+                    binClass: .precinct,
+                    binID: prc.inClassID,
+                    data: payload,
+                    isComplete: binComplete,
+                    qualityLayer: keptLayers,
+                    tileIndex: prc.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+
+            for tile in idx.tiles where activeTileIDs.contains(tile.tileIndex) || spatialROI == nil {
+                bins.append(JPIPDataBin(
+                    binClass: .tileHeader,
+                    binID: tile.tileIndex,
+                    data: tile.tileHeaderMarkers,
+                    isComplete: true,
+                    tileIndex: tile.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+            bins.append(contentsOf: precinctBins)
+        }
+
+        return JPIPWireWindowGeneration(
+            bins: bins,
+            streamType: streamType,
+            coversFullTarget: coversFull
+        )
+    }
+
+    private func generate3DWireDataBins(
+        from fileData: Data,
+        streamType: JPIPStreamType,
+        request: JPIPRequest?,
+        limits: ResourceLimits
+    ) throws -> JPIPWireWindowGeneration {
+        let idx = try JP3DJPIPIndexer.index(fileData, limits: limits)
+        var bins: [JPIPDataBin] = [
+            JPIPDataBin(binClass: .metadata, binID: 0, data: Data(), isComplete: true, msgOffset: 0),
+            JPIPDataBin(binClass: .mainHeader, binID: 0, data: idx.mainHeader, isComplete: true, msgOffset: 0)
+        ]
+        if request?.metadata == true {
+            return JPIPWireWindowGeneration(bins: bins, streamType: streamType, coversFullTarget: false)
+        }
+
+        let maxNL = idx.maxLevels
+        var maxResIndex = maxNL
+        if let reslevels = request?.reslevels, reslevels > 0 {
+            maxResIndex = max(0, maxNL - reslevels)
+        }
+        let totalLayers = max(1, idx.totalLayers)
+        let keptLayers = request?.layers.map { min(totalLayers, max(1, $0)) } ?? totalLayers
+
+        var roiX: Range<Int>?
+        var roiY: Range<Int>?
+        if request?.roff != nil || request?.rsiz != nil {
+            let roff = request?.roff ?? (0, 0)
+            let rsiz = request?.rsiz ?? (idx.width, idx.height)
+            let x0 = max(idx.originX, idx.originX + roff.x)
+            let y0 = max(idx.originY, idx.originY + roff.y)
+            let x1 = min(idx.width, x0 + max(1, rsiz.width))
+            let y1 = min(idx.height, y0 + max(1, rsiz.height))
+            if x0 > idx.originX || x1 < idx.width { roiX = x0..<x1 }
+            if y0 > idx.originY || y1 < idx.height { roiY = y0..<y1 }
+        }
+        var roiZ: Range<Int>?
+        if let zr = request?.zRange {
+            let z0 = max(idx.originZ, idx.originZ + zr.offset)
+            let z1 = min(idx.depth, z0 + max(1, zr.size))
+            if z0 > idx.originZ || z1 < idx.depth { roiZ = z0..<z1 }
+        }
+
+        let coversFull = (maxResIndex >= maxNL)
+            && (keptLayers >= totalLayers)
+            && roiX == nil && roiY == nil && roiZ == nil
+
+        switch streamType {
+        case .jptStream:
+            for tile in idx.tiles {
+                let halo = 4 << max(0, maxNL)
+                if let rx = roiX, tile.refX1 + halo <= rx.lowerBound || tile.refX0 - halo >= rx.upperBound { continue }
+                if let ry = roiY, tile.refY1 + halo <= ry.lowerBound || tile.refY0 - halo >= ry.upperBound { continue }
+                if let rz = roiZ, tile.refZ1 + halo <= rz.lowerBound || tile.refZ0 - halo >= rz.upperBound { continue }
+                bins.append(JPIPDataBin(
+                    binClass: .tile,
+                    binID: tile.tileIndex,
+                    data: tile.completeTilePartsData,
+                    isComplete: true,
+                    tileIndex: tile.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+
+        case .jppStream:
+            var activeTiles = Set<Int>()
+            var precinctBins: [JPIPDataBin] = []
+            for prc in idx.precincts {
+                guard prc.resolutionLevel <= maxResIndex else { continue }
+                let shift = max(0, maxNL - prc.resolutionLevel)
+                let halo = 4 << shift
+                if let rx = roiX, prc.refX1 + halo <= rx.lowerBound || prc.refX0 - halo >= rx.upperBound { continue }
+                if let ry = roiY, prc.refY1 + halo <= ry.lowerBound || prc.refY0 - halo >= ry.upperBound { continue }
+                if let rz = roiZ, prc.refZ1 + halo <= rz.lowerBound || prc.refZ0 - halo >= rz.upperBound { continue }
+                activeTiles.insert(prc.tileIndex)
+
+                var payload = Data()
+                let lim = min(keptLayers, prc.layerPackets.count)
+                for l in 0..<lim {
+                    payload.append(prc.layerPackets[l])
+                }
+                precinctBins.append(JPIPDataBin(
+                    binClass: .precinct,
+                    binID: prc.inClassID,
+                    data: payload,
+                    isComplete: lim >= prc.layerPackets.count,
+                    qualityLayer: keptLayers,
+                    tileIndex: prc.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+            for tile in idx.tiles where activeTiles.contains(tile.tileIndex) || (roiX == nil && roiY == nil && roiZ == nil) {
+                bins.append(JPIPDataBin(
+                    binClass: .tileHeader,
+                    binID: tile.tileIndex,
+                    data: tile.tileHeaderMarkers,
+                    isComplete: true,
+                    tileIndex: tile.tileIndex,
+                    msgOffset: 0
+                ))
+            }
+            bins.append(contentsOf: precinctBins)
+        }
+
+        return JPIPWireWindowGeneration(
+            bins: bins,
+            streamType: streamType,
+            coversFullTarget: coversFull
+        )
+    }
+
     /// Checks whether the given data is an HTJ2K codestream.
-    ///
-    /// - Parameter data: The codestream data to check.
-    /// - Returns: `true` if the data contains HTJ2K markers.
     public func isHTJ2KCodestream(_ data: Data) -> Bool {
         let transcoder = J2KTranscoder()
         return (try? transcoder.isHTJ2K(data)) ?? false
     }
 
-    /// Reassembles a JPEG 2000 codestream (or JP2/JPH/JPX container when metadata bins are present)
-    /// from an array of JPIP data bins.
-    ///
-    /// Combines the `.mainHeader` bin, `.tileHeader` bins, `.tile` / `.precinct` bins,
-    /// restores `SOD` (`0xFF93`) and `EOC` (`0xFFD9`) markers when needed, and wraps
-    /// the codestream back into its container boxes when `.metadata` bin 0 is present.
-    ///
-    /// - Parameter bins: The JPIP data bins to reassemble.
-    /// - Returns: A reassembled JPEG 2000 codestream or container.
-    public func reassembleCodestream(from bins: [JPIPDataBin]) -> Data {
+    // MARK: - Codestream & JP2 Container Reassembly
+
+    /// Reassembles a JPEG 2000 codestream (or JP2 container when metadata bins are present)
+    /// from an array of JPIP data bins (supporting partial `Msg-Offset` chunks, normative
+    /// `image/jpp-stream` 2D & 3D precinct bins, normative `image/jpt-stream` tile bins,
+    /// `phld` placeholder boxes, and local structural `generateDataBins` slices).
+    public func reassembleCodestream(
+        from bins: [JPIPDataBin],
+        reconstructContainer: Bool = true,
+        limits: ResourceLimits = .default
+    ) -> Data {
         guard !bins.isEmpty else { return Data() }
 
-        var output = Data()
-        if let mainHeader = bins.first(where: { $0.binClass == .mainHeader }) {
-            output.append(mainHeader.data)
+        // 1. Merge any partial/segmented `Msg-Offset` bins via a local JPIPCacheModel.
+        let totalInputBytes = bins.reduce(0) { $0 + max(0, $1.msgOffset) + $1.data.count }
+        var merger = JPIPCacheModel(
+            maxCacheSize: max(128 * 1024 * 1024, totalInputBytes + 1024 * 1024),
+            maxEntries: max(65536, bins.count + 16)
+        )
+        for bin in bins {
+            merger.addDataBin(bin)
+        }
+        let mergedBins = merger.allDataBins()
+
+        guard let mainHeader = mergedBins.first(where: { $0.binClass == .mainHeader })?.data,
+              !mainHeader.isEmpty else {
+            return Data()
         }
 
-        let tileHeaders = bins
-            .filter { $0.binClass == .tileHeader }
-            .sorted { $0.binID < $1.binID }
-        let tileDataByID = Dictionary(
-            bins.filter { $0.binClass == .tile }.map { ($0.binID, $0) },
-            uniquingKeysWith: { first, _ in first }
+        let tileHeaders = mergedBins.filter { $0.binClass == .tileHeader }.sorted { $0.binID < $1.binID }
+        let tileBins = mergedBins.filter { $0.binClass == .tile || $0.binClass == .extendedTile }.sorted { $0.binID < $1.binID }
+        let precinctBins = mergedBins.filter { $0.binClass == .precinct || $0.binClass == .extendedPrecinct }
+        let metaBins = Dictionary(
+            mergedBins.filter { $0.binClass == .metadata }.map { ($0.binID, $0.data) },
+            uniquingKeysWith: { a, _ in a }
         )
 
-        var handledTileIDs = Set<Int>()
-        for th in tileHeaders {
-            output.append(th.data)
-            let thBytes = [UInt8](th.data)
-            let endsWithSOD = thBytes.count >= 2
-                && thBytes[thBytes.count - 2] == 0xFF
-                && thBytes[thBytes.count - 1] == 0x93
-            if !endsWithSOD {
-                output.append(contentsOf: [0xFF, 0x93] as [UInt8])
-            }
-            if let tileBin = tileDataByID[th.binID] {
-                output.append(tileBin.data)
-                handledTileIDs.insert(th.binID)
-            }
-        }
+        // Distinguish legacy `generateDataBins` (where `.tileHeader` begins with `0xFF 0x90` SOT)
+        // from normative ITU-T T.808 JPP (`.precinct` present or `.tileHeader` excludes SOT)
+        // and normative JPT (`.tile` begins with `0xFF 0x90` SOT).
+        let firstTHStartsWithSOT: Bool = {
+            guard let firstTH = tileHeaders.first?.data, firstTH.count >= 2 else { return false }
+            return firstTH[firstTH.startIndex] == 0xFF && firstTH[firstTH.startIndex + 1] == 0x90
+        }()
+        let firstTileStartsWithSOT: Bool = {
+            guard let firstT = tileBins.first?.data, firstT.count >= 2 else { return false }
+            return firstT[firstT.startIndex] == 0xFF && firstT[firstT.startIndex + 1] == 0x90
+        }()
 
-        // Append any remaining tile bins that had no separate tileHeader bin
-        let remainingTiles = bins
-            .filter { $0.binClass == .tile && !handledTileIDs.contains($0.binID) }
-            .sorted { $0.binID < $1.binID }
-        for tileBin in remainingTiles {
-            output.append(tileBin.data)
-        }
+        let codestream: Data
+        if !precinctBins.isEmpty || (!firstTHStartsWithSOT && tileBins.isEmpty) {
+            // Normative JPP-stream (2D or 3D Part 10 JP3D)
+            var thDict: [Int: Data] = [:]
+            for th in tileHeaders { thDict[th.binID] = th.data }
+            var prcDict: [Int: Data] = [:]
+            for prc in precinctBins { prcDict[prc.binID] = prc.data }
 
-        // If we had tile headers/data, ensure the codestream terminates with EOC (0xFFD9)
-        if !tileHeaders.isEmpty {
-            let outBytes = [UInt8](output.suffix(2))
-            if outBytes.count < 2 || outBytes[0] != 0xFF || outBytes[1] != 0xD9 {
-                output.append(contentsOf: [0xFF, 0xD9] as [UInt8])
-            }
-        }
-
-        if let prefixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 0 }) {
-            var containerData = Data()
-            containerData.reserveCapacity(prefixMeta.data.count + 16 + output.count)
-            containerData.append(prefixMeta.data)
-            if output.count <= Int(UInt32.max) - 8 {
-                let boxLen = UInt32(output.count + 8)
-                containerData.append(contentsOf: [
-                    UInt8((boxLen >> 24) & 0xFF),
-                    UInt8((boxLen >> 16) & 0xFF),
-                    UInt8((boxLen >> 8) & 0xFF),
-                    UInt8(boxLen & 0xFF),
-                    0x6A, 0x70, 0x32, 0x63 // "jp2c"
-                ])
+            if JP3DJPIPIndexer.isJP3DCodestream(mainHeader) {
+                codestream = (try? JP3DJPIPIndexer.reassembleJPP3D(
+                    mainHeader: mainHeader,
+                    tileHeaders: thDict,
+                    precinctBins: prcDict,
+                    limits: limits
+                )) ?? Data()
             } else {
-                let xlBoxLen = UInt64(output.count) + 16
-                containerData.append(contentsOf: [
-                    0x00, 0x00, 0x00, 0x01,
-                    0x6A, 0x70, 0x32, 0x63, // "jp2c"
-                    UInt8((xlBoxLen >> 56) & 0xFF),
-                    UInt8((xlBoxLen >> 48) & 0xFF),
-                    UInt8((xlBoxLen >> 40) & 0xFF),
-                    UInt8((xlBoxLen >> 32) & 0xFF),
-                    UInt8((xlBoxLen >> 24) & 0xFF),
-                    UInt8((xlBoxLen >> 16) & 0xFF),
-                    UInt8((xlBoxLen >> 8) & 0xFF),
-                    UInt8(xlBoxLen & 0xFF)
-                ])
+                codestream = (try? JPIPCodestreamIndexer.reassembleJPP(
+                    mainHeader: mainHeader,
+                    tileHeaders: thDict,
+                    precinctBins: prcDict,
+                    limits: limits
+                )) ?? Data()
             }
-            containerData.append(output)
-            if let suffixMeta = bins.first(where: { $0.binClass == .metadata && $0.binID == 1 }) {
-                containerData.append(suffixMeta.data)
+        } else if firstTileStartsWithSOT && tileHeaders.isEmpty {
+            // Normative JPT-stream (`Class 6` + `Class 4`/`5` starting with SOT)
+            var out = Data()
+            out.append(mainHeader)
+            let tileDict = Dictionary(tileBins.map { ($0.binID, $0.data) }, uniquingKeysWith: { a, _ in a })
+            let totalTiles = Self.inferTotalTiles(fromMainHeader: mainHeader) ?? ((tileDict.keys.max() ?? -1) + 1)
+            for tid in 0..<max(totalTiles, (tileDict.keys.max() ?? -1) + 1) {
+                if let tData = tileDict[tid], !tData.isEmpty {
+                    out.append(Self.repairTruncatedTilePartIfNeeded(tData, tileIndex: tid))
+                } else {
+                    // Valid 14-byte empty tile-part for omitted tile
+                    out.append(contentsOf: [
+                        0xFF, 0x90, 0x00, 0x0A,
+                        UInt8((tid >> 8) & 0xFF), UInt8(tid & 0xFF),
+                        0x00, 0x00, 0x00, 0x0E,
+                        0x00, 0x01,
+                        0xFF, 0x93
+                    ])
+                }
             }
-            return containerData
+            let tail = [UInt8](out.suffix(2))
+            if tail.count < 2 || tail[0] != 0xFF || tail[1] != 0xD9 {
+                out.append(contentsOf: [0xFF, 0xD9])
+            }
+            codestream = out
+        } else {
+            // Legacy structural `generateDataBins` layout (`SOT` inside `.tileHeader` + raw body in `.tile`)
+            var output = Data()
+            output.append(mainHeader)
+            let tileDataByID = Dictionary(tileBins.map { ($0.binID, $0) }, uniquingKeysWith: { first, _ in first })
+            var handledTileIDs = Set<Int>()
+            for th in tileHeaders {
+                output.append(th.data)
+                let thBytes = [UInt8](th.data)
+                let endsWithSOD = thBytes.count >= 2
+                    && thBytes[thBytes.count - 2] == 0xFF
+                    && thBytes[thBytes.count - 1] == 0x93
+                if !endsWithSOD {
+                    output.append(contentsOf: [0xFF, 0x93] as [UInt8])
+                }
+                if let tileBin = tileDataByID[th.binID] {
+                    output.append(tileBin.data)
+                    handledTileIDs.insert(th.binID)
+                }
+            }
+            for tileBin in tileBins where !handledTileIDs.contains(tileBin.binID) {
+                output.append(tileBin.data)
+            }
+            if !tileHeaders.isEmpty {
+                let outBytes = [UInt8](output.suffix(2))
+                if outBytes.count < 2 || outBytes[0] != 0xFF || outBytes[1] != 0xD9 {
+                    output.append(contentsOf: [0xFF, 0xD9] as [UInt8])
+                }
+            }
+            codestream = output
         }
 
-        return output
+        guard !codestream.isEmpty else { return Data() }
+        guard reconstructContainer, let meta0 = metaBins[0], !meta0.isEmpty else {
+            return codestream
+        }
+        return Self.reconstructJP2Container(metaBins: metaBins, codestream: codestream)
+    }
+
+    private static func inferTotalTiles(fromMainHeader mainHeader: Data) -> Int? {
+        let bytes = [UInt8](mainHeader)
+        guard bytes.count >= 42, bytes[0] == 0xFF, bytes[1] == 0x4F else { return nil }
+        var cursor = 2
+        var sizTileCount: Int?
+        var tiles2D: Int?
+        while cursor + 4 <= bytes.count {
+            let m = UInt16(bytes[cursor]) << 8 | UInt16(bytes[cursor + 1])
+            let segLen = Int(UInt16(bytes[cursor + 2]) << 8 | UInt16(bytes[cursor + 3]))
+            guard segLen >= 2, cursor + 2 + segLen <= bytes.count else { break }
+            if m == 0xFF51 && segLen >= 38 {
+                let p = cursor + 2
+                func u32(_ off: Int) -> Int {
+                    Int(UInt32(bytes[p + off]) << 24 | UInt32(bytes[p + off + 1]) << 16
+                        | UInt32(bytes[p + off + 2]) << 8 | UInt32(bytes[p + off + 3]))
+                }
+                let xsiz = u32(4), ysiz = u32(8)
+                let xtsiz = max(1, u32(20)), ytsiz = max(1, u32(24))
+                let xtosiz = u32(28), ytosiz = u32(32)
+                let tw = max(1, (xsiz - xtosiz + xtsiz - 1) / xtsiz)
+                let th = max(1, (ysiz - ytosiz + ytsiz - 1) / ytsiz)
+                tiles2D = tw * th
+                sizTileCount = tiles2D
+            } else if m == 0xFF54 && segLen >= 19, let t2 = tiles2D {
+                let p = cursor + 2
+                func u32(_ off: Int) -> Int {
+                    Int(UInt32(bytes[p + off]) << 24 | UInt32(bytes[p + off + 1]) << 16
+                        | UInt32(bytes[p + off + 2]) << 8 | UInt32(bytes[p + off + 3]))
+                }
+                let zsiz = u32(3), ztsiz = max(1, u32(11)), ztosiz = u32(15)
+                let td = max(1, (zsiz - ztosiz + ztsiz - 1) / ztsiz)
+                sizTileCount = t2 * td
+            }
+            cursor += 2 + segLen
+        }
+        return sizTileCount
+    }
+
+    private static func repairTruncatedTilePartIfNeeded(_ tileData: Data, tileIndex: Int) -> Data {
+        var bytes = [UInt8](tileData)
+        guard bytes.count >= 14, bytes[0] == 0xFF, bytes[1] == 0x90 else {
+            return Data([
+                0xFF, 0x90, 0x00, 0x0A,
+                UInt8((tileIndex >> 8) & 0xFF), UInt8(tileIndex & 0xFF),
+                0x00, 0x00, 0x00, 0x0E,
+                0x00, 0x01,
+                0xFF, 0x93
+            ])
+        }
+        let declaredPsot = Int(UInt32(bytes[6]) << 24 | UInt32(bytes[7]) << 16 | UInt32(bytes[8]) << 8 | UInt32(bytes[9]))
+        if declaredPsot > bytes.count {
+            let actual = UInt32(bytes.count)
+            bytes[6] = UInt8((actual >> 24) & 0xFF)
+            bytes[7] = UInt8((actual >> 16) & 0xFF)
+            bytes[8] = UInt8((actual >> 8) & 0xFF)
+            bytes[9] = UInt8(actual & 0xFF)
+        }
+        return Data(bytes)
+    }
+
+    private static func reconstructJP2Container(metaBins: [Int: Data], codestream: Data) -> Data {
+        guard let meta0 = metaBins[0], !meta0.isEmpty else { return codestream }
+        let bytes = [UInt8](meta0)
+
+        // Check whether meta0 contains any ISO/IEC 15444-9 `phld` (`0x70686C64`) boxes.
+        var cursor = 0
+        var hasPhld = false
+        while cursor + 8 <= bytes.count {
+            let lbox = Int(UInt32(bytes[cursor]) << 24 | UInt32(bytes[cursor + 1]) << 16
+                | UInt32(bytes[cursor + 2]) << 8 | UInt32(bytes[cursor + 3]))
+            let tbox = UInt32(bytes[cursor + 4]) << 24 | UInt32(bytes[cursor + 5]) << 16
+                | UInt32(bytes[cursor + 6]) << 8 | UInt32(bytes[cursor + 7])
+            let boxLen = (lbox == 0) ? (bytes.count - cursor) : lbox
+            guard boxLen >= 8, cursor + boxLen <= bytes.count else { break }
+            if tbox == 0x7068_6C64 {
+                hasPhld = true
+                break
+            }
+            cursor += boxLen
+        }
+
+        if hasPhld {
+            var out = Data()
+            out.reserveCapacity(bytes.count + codestream.count + 64)
+            cursor = 0
+            var wroteCodestream = false
+            while cursor + 8 <= bytes.count {
+                let lbox = Int(UInt32(bytes[cursor]) << 24 | UInt32(bytes[cursor + 1]) << 16
+                    | UInt32(bytes[cursor + 2]) << 8 | UInt32(bytes[cursor + 3]))
+                let tbox = UInt32(bytes[cursor + 4]) << 24 | UInt32(bytes[cursor + 5]) << 16
+                    | UInt32(bytes[cursor + 6]) << 8 | UInt32(bytes[cursor + 7])
+                let boxLen = (lbox == 0) ? (bytes.count - cursor) : lbox
+                guard boxLen >= 8, cursor + boxLen <= bytes.count else { break }
+
+                if tbox == 0x7068_6C64 && boxLen >= 28 {
+                    let flags = UInt32(bytes[cursor + 8]) << 24 | UInt32(bytes[cursor + 9]) << 16
+                        | UInt32(bytes[cursor + 10]) << 8 | UInt32(bytes[cursor + 11])
+                    var origID: UInt64 = 0
+                    for k in 12..<20 { origID = (origID << 8) | UInt64(bytes[cursor + k]) }
+                    let origTBox = UInt32(bytes[cursor + 24]) << 24 | UInt32(bytes[cursor + 25]) << 16
+                        | UInt32(bytes[cursor + 26]) << 8 | UInt32(bytes[cursor + 27])
+
+                    if origTBox == 0x6A70_3263 || (flags & 0x04) != 0 {
+                        appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &out)
+                        wroteCodestream = true
+                    } else if (flags & 0x01) != 0, origID <= UInt64(Int.max), let subPayload = metaBins[Int(origID)] {
+                        let tBytes = Array(bytes[(cursor + 24)..<(cursor + 28)])
+                        // Recursively expand any nested phld inside sub-metadata bins if needed
+                        appendJP2Box(typeBytes: tBytes, payload: subPayload, to: &out)
+                    }
+                } else {
+                    out.append(contentsOf: bytes[cursor..<(cursor + boxLen)])
+                }
+                cursor += boxLen
+            }
+            if !wroteCodestream {
+                appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &out)
+            }
+            return out
+        }
+
+        // Legacy `generateDataBins` prefix/suffix layout without `phld`
+        var containerData = Data()
+        containerData.reserveCapacity(meta0.count + 16 + codestream.count)
+        containerData.append(meta0)
+        appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &containerData)
+        if let suffixMeta = metaBins[1] {
+            containerData.append(suffixMeta)
+        }
+        return containerData
+    }
+
+    private static func appendJP2Box(typeBytes: [UInt8], payload: Data, to out: inout Data) {
+        if payload.count <= Int(UInt32.max) - 8 {
+            let boxLen = UInt32(payload.count + 8)
+            out.append(contentsOf: [
+                UInt8((boxLen >> 24) & 0xFF),
+                UInt8((boxLen >> 16) & 0xFF),
+                UInt8((boxLen >> 8) & 0xFF),
+                UInt8(boxLen & 0xFF)
+            ])
+            out.append(contentsOf: typeBytes)
+            out.append(payload)
+        } else {
+            let xlBoxLen = UInt64(payload.count) + 16
+            out.append(contentsOf: [0x00, 0x00, 0x00, 0x01])
+            out.append(contentsOf: typeBytes)
+            for shift in stride(from: 56, through: 0, by: -8) {
+                out.append(UInt8((xlBoxLen >> UInt64(shift)) & 0xFF))
+            }
+            out.append(payload)
+        }
     }
 
     // MARK: - Borrowed range scanner
@@ -370,8 +911,6 @@ public struct JPIPDataBinGenerator: Sendable {
             let dataStart = sod + 2
             var dataEnd = tileEnd
             if psot == 0 {
-                // Psot=0 denotes the final tile part. Stop only at EOC, never rescan
-                // an overlapping SOT/header as a second materialised tile part.
                 var cursor = dataStart
                 while end - cursor >= 2 {
                     if cursor & 0xFFFF == 0 { try checkWork() }
@@ -387,7 +926,7 @@ public struct JPIPDataBinGenerator: Sendable {
             try emit(.tileHeader, tileID, offset..<sod)
             try emit(.tile, tileID, dataStart..<dataEnd)
             tileID = try Self.add(tileID, 1)
-            offset = dataEnd // Always beyond the SOT and SOD; no overlapping/backwards scan.
+            offset = dataEnd
         }
         if foundTile {
             guard end - offset == 2, bytes[offset] == 0xFF, bytes[offset + 1] == 0xD9 else {
