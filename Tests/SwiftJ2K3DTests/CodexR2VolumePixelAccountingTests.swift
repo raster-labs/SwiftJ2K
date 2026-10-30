@@ -33,10 +33,19 @@ struct CodexR2VolumePixelAccountingTests {
         #expect(encodeRecorder.counts.pixelAllocations == 4)
         #expect(encoded.report.pixelAllocationCount == encodeRecorder.counts.pixelAllocations)
         #expect(encoded.report.peakPixelBytes == nil)
-        #expect(encoded.report.copyEvents.filter { $0.sourceLayout == "int32-slice-samples" }
-            .reduce(0) { $0 + $1.bytesMoved } == 64 * 64 * 2)
-        #expect(encoded.report.copyEvents.filter { $0.sourceLayout == "packed-slice-pixels" }
-            .reduce(0) { $0 + $1.bytesMoved } == 64 * 64 * 2)
+        var packedSliceBytes: Int = 0
+        var encoderDestinationBytes: Int = 0
+        for event in encoded.report.copyEvents {
+            if event.sourceLayout == "int32-slice-samples" {
+                packedSliceBytes += event.bytesMoved
+            }
+            if event.sourceLayout == "packed-slice-pixels" {
+                encoderDestinationBytes += event.bytesMoved
+            }
+        }
+        let expectedPackedBytes: Int = 64 * 64 * 2
+        #expect(packedSliceBytes == expectedPackedBytes)
+        #expect(encoderDestinationBytes == expectedPackedBytes)
 
         let decoding = try VolumeDecoder(configuration: VolumeDecoderConfiguration(resolutionLevel: 6))
         let decodeRecorder = StorageTelemetry.Recorder()
@@ -46,15 +55,31 @@ struct CodexR2VolumePixelAccountingTests {
         }
         #expect(decoded.volume.width == 1 && decoded.volume.height == 1 && decoded.volume.depth == 2)
         // Each 2D decoder materialises a full 16-bit mono slice before reduction.
-        #expect(decodeRecorder.events.filter { $0.stage == "pixel" && $0.bytes == 64 * 64 * 2 }.count == 2)
+        let slicePixelBytes: Int = 64 * 64 * 2
+        var slicePixelAllocationCount: Int = 0
+        for event in decodeRecorder.events {
+            if event.stage == "pixel" && event.bytes == slicePixelBytes {
+                slicePixelAllocationCount += 1
+            }
+        }
+        #expect(slicePixelAllocationCount == 2)
         #expect(decodeRecorder.counts.pixelAllocations == 3)
         #expect(decoded.report.pixelAllocationCount == decodeRecorder.counts.pixelAllocations)
         // The exact simultaneous peak is intentionally unknown, never claimed as two bytes.
         #expect(decoded.report.peakPixelBytes == nil)
-        #expect(decoded.report.copyEvents.filter { $0.sourceLayout == "image-destination" }
-            .reduce(0) { $0 + $1.bytesMoved } == 64 * 64 * 2 * MemoryLayout<Int32>.stride)
-        #expect(decoded.report.copyEvents.filter { $0.destinationLayout == "j2kvolume-component-data" }
-            .reduce(0) { $0 + $1.bytesMoved } == 2)
+        var reconstructedSampleBytes: Int = 0
+        var finalComponentBytes: Int = 0
+        for event in decoded.report.copyEvents {
+            if event.sourceLayout == "image-destination" {
+                reconstructedSampleBytes += event.bytesMoved
+            }
+            if event.destinationLayout == "j2kvolume-component-data" {
+                finalComponentBytes += event.bytesMoved
+            }
+        }
+        let expectedSampleBytes: Int = 64 * 64 * 2 * MemoryLayout<Int32>.stride
+        #expect(reconstructedSampleBytes == expectedSampleBytes)
+        #expect(finalComponentBytes == 2)
     }
 
     @Test("Lossy transcode reports both bridge directions and reserves the retained source")
@@ -73,8 +98,14 @@ struct CodexR2VolumePixelAccountingTests {
         #expect(result.report.pixelAllocationCount == recorder.counts.pixelAllocations)
         #expect(result.report.peakPixelBytes == nil)
         #expect(result.report.copyEvents.count == 4)
-        #expect(result.report.copyEvents.filter { $0.sourceLayout == "image-destination" }
-            .reduce(0) { $0 + $1.bytesMoved } == 64 * 64 * 2 * MemoryLayout<Int32>.stride)
+        var reconstructedSampleBytes: Int = 0
+        for event in result.report.copyEvents {
+            if event.sourceLayout == "image-destination" {
+                reconstructedSampleBytes += event.bytesMoved
+            }
+        }
+        let expectedSampleBytes: Int = 64 * 64 * 2 * MemoryLayout<Int32>.stride
+        #expect(reconstructedSampleBytes == expectedSampleBytes)
         let peak = try #require(result.report.peakWorkspaceBytes)
         for limits in [
             try ResourceLimits(maximumWorkspaceBytes: peak - 1, maximumWorkers: 1),

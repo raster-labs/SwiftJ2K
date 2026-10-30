@@ -27,17 +27,24 @@ private func makeSyntheticVolume(
     spacing: (Double, Double, Double) = (0, 0, 0),
     origin: (Double, Double, Double) = (0, 0, 0)
 ) -> J2KVolume {
-    let voxelCount = width * height * depth
+    let voxelCount: Int = width * height * depth
     var bytes = Data(count: voxelCount * 2)
-    bytes.withUnsafeMutableBytes { raw in
+    bytes.withUnsafeMutableBytes { (raw: UnsafeMutableRawBufferPointer) -> Void in
         guard let base = raw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
         for z in 0..<depth {
+            let sliceBase: Int = z * height * width
+            let zTerm: Int = z * 191
             for y in 0..<height {
+                let rowBase: Int = sliceBase + y * width
+                let yzTerm: Int = y * 53 + zTerm
                 for x in 0..<width {
-                    let idx = (z * height + y) * width + x
-                    let val = UInt16((x * 37 + y * 53 + z * 191) & 0x0FFF)
-                    base[idx * 2] = UInt8(val & 0xFF)
-                    base[idx * 2 + 1] = UInt8((val >> 8) & 0xFF)
+                    let idx: Int = rowBase + x
+                    let sample: Int = (x * 37 + yzTerm) & 0x0FFF
+                    let val: UInt16 = UInt16(sample)
+                    let lowByte: UInt8 = UInt8(val & 0x00FF)
+                    let highByte: UInt8 = UInt8((val >> 8) & 0x00FF)
+                    base[idx * 2] = lowByte
+                    base[idx * 2 + 1] = highByte
                 }
             }
         }

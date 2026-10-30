@@ -84,9 +84,17 @@ struct CodexR2VolumeGridTests {
             regionOfInterest: JP3DRegion(x: 1..<8, y: 1..<6, z: 1..<2)
         ))
         // Ceil bounds select x=[2,4,6], y=[2,4], z=[1]. No point before the ROI is returned.
-        let expected = [2, 4].flatMap { y in [2, 4, 6].map { x in
-            UInt32(x + 9 * y + 64) + (bits > 16 ? 0x8000_0000 : 0)
-        } }
+        let selectedX: [Int] = [2, 4, 6]
+        let selectedY: [Int] = [2, 4]
+        let bitOffset: UInt32 = bits > 16 ? 0x8000_0000 : 0
+        var expected: [UInt32] = []
+        for y in selectedY {
+            let rowBase: Int = 9 * y + 64
+            for x in selectedX {
+                let sample: UInt32 = UInt32(x + rowBase) + bitOffset
+                expected.append(sample)
+            }
+        }
         #expect(values(decoded.volume) == expected)
         #expect(decoded.volume.width == 3 && decoded.volume.height == 2 && decoded.volume.depth == 1)
         #expect(decoded.volume.originX == source.originX + 2 * source.spacingX)
@@ -130,7 +138,15 @@ struct CodexR2VolumeGridTests {
             regionOfInterest: JP3DRegion(x: 1..<8, y: 1..<6, z: 1..<2)
         ))
         let samples = values(full.volume)
-        let expected = [2, 4].flatMap { y in [2, 4, 6].map { x in samples[63 + y * 9 + x] } }
+        let selectedX: [Int] = [2, 4, 6]
+        let selectedY: [Int] = [2, 4]
+        var expected: [UInt32] = []
+        for y in selectedY {
+            let rowBase: Int = 63 + y * 9
+            for x in selectedX {
+                expected.append(samples[rowBase + x])
+            }
+        }
         #expect(values(roi.volume) == expected)
         #expect(roi.volume.originX == source.originX + 2 * source.spacingX)
         #expect(roi.volume.originY == source.originY + 2 * source.spacingY)
