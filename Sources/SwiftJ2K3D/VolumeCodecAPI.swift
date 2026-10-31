@@ -416,6 +416,13 @@ public struct VolumeEncoder: Sendable {
         }
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        if case .required(.accelerated) = options.executionPolicy,
+           volume.voxelCount < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(volume.voxelCount)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -457,10 +464,6 @@ public struct VolumeEncoder: Sendable {
             throw error.asCodecError
         }
 
-        try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
         try work.check()
 
         let elapsed = ContinuousClock.now - startedAt
@@ -509,6 +512,14 @@ public struct VolumeEncoder: Sendable {
             discardedMetadataBytes: discardedGeometry ? JP3DVolumeGeometry.payloadByteCount : 0,
             discardedMetadataKinds: discardedGeometry ? ["volumeGeometry"] : []
         )
+
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
         return EncodedVolume(
             data: result.data,
@@ -684,6 +695,13 @@ public struct VolumeDecoder: Sendable {
         }
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        if case .required(.accelerated) = options.executionPolicy,
+           voxels < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(voxels)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -769,10 +787,6 @@ public struct VolumeDecoder: Sendable {
         }
 
         try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
-        try work.check()
 
         let reducedResolution = configuration.resolutionLevel > 0
         let reducedQualityLayers = configuration.maxQualityLayers > 0
@@ -840,6 +854,14 @@ public struct VolumeDecoder: Sendable {
             discardedMetadataKinds: discardedKinds
         )
 
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
+
         return DecodedVolume(
             volume: volume,
             isPartial: isPartial,
@@ -879,6 +901,15 @@ public struct VolumeTranscoder: Sendable {
         )
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        let infoWH = try jp3dDecodeMultiply(info.width, info.height)
+        let infoVoxels = try jp3dDecodeMultiply(infoWH, info.depth)
+        if case .required(.accelerated) = options.executionPolicy,
+           infoVoxels < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(infoVoxels)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -920,10 +951,6 @@ public struct VolumeTranscoder: Sendable {
             throw error.asCodecError
         }
 
-        try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
         try work.check()
 
         let elapsed = ContinuousClock.now - startedAt
@@ -986,6 +1013,14 @@ public struct VolumeTranscoder: Sendable {
             discardedMetadataBytes: discardedBytes,
             discardedMetadataKinds: discardedKinds
         )
+
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
         return EncodedVolume(
             data: result.data,

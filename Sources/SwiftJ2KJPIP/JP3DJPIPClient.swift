@@ -87,7 +87,7 @@ public actor JP3DJPIPClient {
     private(set) var currentViewport: JP3DViewport?
     /// Active JPIP channel identifier (`cid`) returned by `JPIP-cnew`.
     public private(set) var channelID: String?
-    /// Byte length of the most recent wire response body.
+    /// Response-body and accepted push-payload bytes in the most recent transfer.
     public private(set) var lastWireResponseByteCount: Int = 0
     /// Number of newly delivered VBAS data-bin increments in the most recent wire response.
     public private(set) var lastWireNewlyDeliveredBins: Int = 0
@@ -95,7 +95,7 @@ public actor JP3DJPIPClient {
     public private(set) var lastEORReason: JPIPEORReason?
     /// Measured peak client cache workspace bytes (`payload + entry metadata`) across the active session.
     package private(set) var lastPeakWorkspaceBytes: Int = 0
-    /// Cumulative raw wire response bytes received across the active session.
+    /// Cumulative response-body and accepted push-payload bytes across the active session.
     package private(set) var cumulativeSessionWireBytes: Int = 0
 
     private let directServer: JPIPServer?
@@ -109,6 +109,11 @@ public actor JP3DJPIPClient {
     private var activeRequests: [String: JP3DViewWindowRequest] = [:]
     private var cancelledRequestIDs: Set<String> = []
     private var receivedBins: [JP3DDataBin] = []
+    private var transferBudget = JPIPTransferBudget(.default)
+    /// Consumed by the next session only; a reused connection cannot attribute
+    /// an earlier handshake's temporary storage to a later operation.
+    private var pendingConnectionWorkspacePeak = 0
+    private var transferInProgress = false
     private var statistics = JP3DStreamingStatistics()
     private var reconnectAttempts: Int = 0
 
@@ -143,7 +148,15 @@ public actor JP3DJPIPClient {
 
     /// Establishes a real TCP connection (HTTP/1.1 or RFC 6455 WebSocket) to the JPIP server.
     public func connect() async throws {
+        try await connect(deadline: nil)
+    }
+
+    package func connect(deadline: ContinuousClock.Instant?, limits: ResourceLimits? = nil) async throws {
+        if let deadline {
+            _ = try JPIPTransport.remainingSeconds(until: deadline)
+        }
         state = .connecting
+        pendingConnectionWorkspacePeak = 0
 
         if directServer != nil {
             reconnectAttempts = 0
@@ -156,9 +169,20 @@ public actor JP3DJPIPClient {
         case "ws", "wss":
             let ws = JPIPWebSocketTransport(url: serverURL)
             do {
-                try await ws.connect()
+                let retained = try await liveCacheStorageBytes()
+                let connectionLimits = limits ?? .default
+                try await ws.connect(deadline: deadline,
+                    maxBodyBytes: connectionLimits.maximumCompressedBytes,
+                    maximumStorageBytes: JPIPAdmission.remaining(connectionLimits, retaining: retained))
+                pendingConnectionWorkspacePeak = try JPIPAdmission.add(retained, await ws.takeHandshakeReceivePeakBytes())
                 self.wsTransport = ws
                 self.httpTransport = nil
+            } catch let codecErr as CodecError {
+                state = .failed("\(codecErr)")
+                throw codecErr
+            } catch let cancelErr as CancellationError {
+                state = .failed("cancelled")
+                throw cancelErr
             } catch {
                 state = .failed("\(error)")
                 throw JP3DClientError.networkError("WebSocket connection failed: \(error)")
@@ -175,9 +199,15 @@ public actor JP3DJPIPClient {
             }
             let port = serverURL.port ?? 80
             do {
-                try await Self.probeTCPReachability(host: host, port: port)
+                try await Self.probeTCPReachability(host: host, port: port, deadline: deadline)
                 self.httpTransport = JPIPTransport(baseURL: serverURL)
                 self.wsTransport = nil
+            } catch let codecErr as CodecError {
+                state = .failed("\(codecErr)")
+                throw codecErr
+            } catch let cancelErr as CancellationError {
+                state = .failed("cancelled")
+                throw cancelErr
             } catch {
                 state = .failed("\(error)")
                 throw JP3DClientError.networkError("HTTP TCP connection failed: \(error)")
@@ -192,34 +222,54 @@ public actor JP3DJPIPClient {
         state = .connected
     }
 
-    nonisolated private static func probeTCPReachability(host: String, port: Int) async throws {
+    nonisolated private static func probeTCPReachability(
+        host: String,
+        port: Int,
+        deadline: ContinuousClock.Instant? = nil
+    ) async throws {
+        let rem = try deadline.map { try JPIPTransport.remainingSeconds(until: $0) }
+        let timeout = rem.map { max(0.001, min(10.0, $0)) } ?? 10.0
         let cancelToken = JPIPSocketCancellationToken()
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        let probe = try JPIPTCPConnection.connect(
-                            host: host,
-                            port: port,
-                            timeoutInterval: 10.0,
-                            cancellationToken: cancelToken
-                        )
-                        probe.close()
-                        continuation.resume(returning: ())
-                    } catch {
-                        continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+        let watchdog = rem.map { seconds in
+            JPIPDeadlineWatchdog(after: seconds) { cancelToken.cancel() }
+        }
+        defer { watchdog?.cancel() }
+        do {
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+                    Thread.detachNewThread {
+                        do {
+                            let probe = try JPIPTCPConnection.connect(
+                                host: host,
+                                port: port,
+                                timeoutInterval: timeout,
+                                cancellationToken: cancelToken
+                            )
+                            probe.close()
+                            continuation.resume(returning: ())
+                        } catch {
+                            continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
+                        }
                     }
                 }
+            } onCancel: {
+                cancelToken.cancel()
             }
-        } onCancel: {
-            cancelToken.cancel()
+        } catch {
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            if let deadline, ContinuousClock.now >= deadline {
+                throw CodecError(.resourceLimitExceeded, "JPIP 3D TCP connection deadline elapsed.")
+            }
+            throw error
         }
     }
 
     /// Disconnects from the server, sends `cclose` if a channel is active, and releases session resources.
     public func disconnect() async {
         cancelAllRequests()
-        if let cid = channelID {
+        if let cid = channelID, !transferInProgress {
             var closeReq = JPIPRequest(target: "")
             closeReq.cid = cid
             closeReq.cclose = [cid]
@@ -239,6 +289,7 @@ public actor JP3DJPIPClient {
         state = .disconnected
         lastEORReason = nil
         lastPeakWorkspaceBytes = 0
+        pendingConnectionWorkspacePeak = 0
         cumulativeSessionWireBytes = 0
         receivedBins.removeAll()
         vbasCache.clear()
@@ -267,12 +318,29 @@ public actor JP3DJPIPClient {
     }
 
     /// Creates a new JPIP session (`cnew`) on the server for `volumeID` with optional resource-limit admission.
-    package func createSession(volumeID: String, limits: ResourceLimits?) async throws {
+    package func createSession(
+        volumeID: String,
+        limits: ResourceLimits?,
+        deadline: ContinuousClock.Instant? = nil
+    ) async throws {
+        guard !transferInProgress else {
+            throw CodecError(.invalidArgument, "A 3D JPIP transfer is already active on this client.")
+        }
+        transferInProgress = true
+        defer { transferInProgress = false }
         try Task.checkCancellation()
+        if let deadline {
+            _ = try JPIPTransport.remainingSeconds(until: deadline)
+        }
         guard case .connected = state else {
             throw JP3DClientError.notConnected
         }
 
+        transferBudget = JPIPTransferBudget(limits ?? .default)
+        cumulativeSessionWireBytes = 0
+        transferBudget.workspace.observe(pendingConnectionWorkspacePeak)
+        lastPeakWorkspaceBytes = pendingConnectionWorkspacePeak
+        pendingConnectionWorkspacePeak = 0
         var cnewReq = JPIPRequest(target: volumeID)
         cnewReq.cnew = (wsTransport != nil) ? .webSocket : .http
         cnewReq.streamType = .jppStream
@@ -286,7 +354,7 @@ public actor JP3DJPIPClient {
 
         let response: JPIPResponse
         do {
-            response = try await sendJPIPRequest(cnewReq, limits: limits)
+            response = try await sendJPIPRequest(cnewReq, limits: limits, deadline: deadline)
         } catch let codecErr as CodecError {
             throw codecErr
         } catch let cancelErr as CancellationError {
@@ -305,31 +373,29 @@ public actor JP3DJPIPClient {
         vbasCache.clear()
         receivedBins.removeAll()
         lastEORReason = nil
-        lastPeakWorkspaceBytes = 0
-        cumulativeSessionWireBytes = 0
         await cacheManager.clear()
 
         if !response.data.isEmpty {
-            cumulativeSessionWireBytes = response.data.count
-            if let limits, cumulativeSessionWireBytes > limits.maximumCompressedBytes {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "3D JPIP session wire payload (\(cumulativeSessionWireBytes) bytes) exceeds compressed limit (\(limits.maximumCompressedBytes) bytes)."
-                )
-            }
-            let parsed = try JPIPWireCodec.decodeStream(response.data)
+            let parsed = try await parseWireResponse(response, limits: limits, retainingAdditionalBytes: 0, deadline: deadline)
             lastEORReason = parsed.eor?.reason
-            try admitAndStoreWireBins(parsed.bins, limits: limits)
-            lastWireResponseByteCount = response.data.count
+            try await admitAndStoreWireBins(parsed.bins, limits: limits,
+                retainingAdditionalBytes: JPIPAdmission.add(JPIPAdmission.response(response), parsed.eorBody?.count ?? 0))
             lastWireNewlyDeliveredBins = parsed.bins.count
         } else {
-            lastWireResponseByteCount = 0
             lastWireNewlyDeliveredBins = 0
         }
+        lastWireResponseByteCount = transferBudget.cumulativeWireBytes
 
+        let suffix = response.channelID ?? String(UUID().uuidString.prefix(8))
+        let identifierBytes = try JPIPAdmission.add(9,
+            JPIPAdmission.add(JPIPAdmission.multiply(volumeID.utf8.count, 2),
+                JPIPAdmission.add(JPIPAdmission.multiply(suffix.utf8.count, 2), 3 * MemoryLayout<String>.stride)))
+        let retained = try await JPIPAdmission.add(liveCacheStorageBytes(), JPIPAdmission.response(response))
+        try JPIPAdmission.admit(JPIPAdmission.add(retained, identifierBytes),
+            limits: limits ?? transferBudget.limits, peak: transferBudget.workspace)
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, transferBudget.workspace.peak)
         self.activeVolumeID = volumeID
         self.channelID = response.channelID
-        let suffix = response.channelID ?? String(UUID().uuidString.prefix(8))
         self.sessionID = "session-\(volumeID)-\(suffix)"
     }
 
@@ -341,8 +407,15 @@ public actor JP3DJPIPClient {
     }
 
     /// Requests normative JPIP delivery of a 3D volumetric region with optional resource-limit admission.
-    package func requestRegion(_ region: JP3DStreamingRegion, limits: ResourceLimits?) async throws -> [JP3DDataBin] {
+    package func requestRegion(
+        _ region: JP3DStreamingRegion,
+        limits: ResourceLimits?,
+        deadline: ContinuousClock.Instant? = nil
+    ) async throws -> [JP3DDataBin] {
         try Task.checkCancellation()
+        if let deadline {
+            _ = try JPIPTransport.remainingSeconds(until: deadline)
+        }
         guard sessionID != nil, let volumeID = activeVolumeID else {
             throw JP3DClientError.noSession
         }
@@ -366,7 +439,8 @@ public actor JP3DJPIPClient {
             volumeID: volumeID,
             region: region,
             requestID: req.requestID,
-            limits: limits
+            limits: limits,
+            deadline: deadline
         )
     }
 
@@ -469,6 +543,21 @@ public actor JP3DJPIPClient {
         vbasCache.allDataBins()
     }
 
+    /// Admits every retained cache, returned-fragment and snapshot buffer before
+    /// materialising the verification snapshot. Payload aliases are conservatively
+    /// counted separately: an earlier fragment may coexist with its assembled bin.
+    package func verificationCacheSnapshot(
+        limits: ResourceLimits, retainingAdditionalBytes: Int
+    ) async throws -> (bins: [JPIPDataBin], retainedWorkspaceBytes: Int) {
+        let retained = try await JPIPAdmission.add(liveCacheStorageBytes(),
+            JPIPAdmission.add(retainingAdditionalBytes, vbasCache.snapshotStorageBytes()))
+        guard retained < limits.maximumWorkspaceBytes, retained < limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Retained 3D JPIP buffers leave no verification workspace before snapshot allocation.")
+        }
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, retained)
+        return (vbasCache.allDataBins(), retained)
+    }
+
     // MARK: - Viewport Management
 
     public func updateViewport(_ newViewport: JP3DViewport) {
@@ -499,64 +588,88 @@ public actor JP3DJPIPClient {
         activeRequests.removeAll()
     }
 
+    private func liveCacheStorageBytes() async throws -> Int {
+        let spatialCount = await cacheManager.entryCount
+        let spatialPayload = await cacheManager.memoryUsed
+        let spatial = try JPIPAdmission.add(spatialPayload, JPIPAdmission.multiply(spatialCount,
+            MemoryLayout<JP3DPrecinct3D>.stride + MemoryLayout<JP3DCacheEntry>.stride))
+        let received = try receivedBins.reduce(JPIPAdmission.multiply(receivedBins.count, MemoryLayout<JP3DDataBin>.stride)) {
+            try JPIPAdmission.add($0, $1.data.count)
+        }
+        let queued = await wsTransport?.receiveStorageSnapshot.queuedStorageBytes ?? 0
+        let identifiers = try JPIPAdmission.add(JPIPAdmission.string(sessionID),
+            JPIPAdmission.add(JPIPAdmission.string(channelID), JPIPAdmission.string(activeVolumeID)))
+        return try JPIPAdmission.add(vbasCache.retainedStorageBytes(),
+            JPIPAdmission.add(identifiers, JPIPAdmission.add(queued, JPIPAdmission.add(spatial, received))))
+    }
+
     private func sendJPIPRequest(
-        _ request: JPIPRequest,
-        limits: ResourceLimits?
+        _ request: JPIPRequest, limits: ResourceLimits?, deadline: ContinuousClock.Instant? = nil,
+        retainingAdditionalBytes: Int = 0
     ) async throws -> JPIPResponse {
         try Task.checkCancellation()
-        let maxBody = limits?.maximumCompressedBytes ?? (128 * 1024 * 1024)
+        let rem = try deadline.map { try JPIPTransport.remainingSeconds(until: $0) }
+        let retained = try await JPIPAdmission.add(liveCacheStorageBytes(), retainingAdditionalBytes)
+        let queueBefore = await wsTransport?.receiveStorageSnapshot.queuedStorageBytes ?? 0
+        let effectiveLimits = limits ?? transferBudget.limits
+        let maxBody = try JPIPAdmission.responseBodyLimit(limits: effectiveLimits, retaining: retained,
+            cumulativeWireBytes: transferBudget.cumulativeWireBytes)
+        let remainingStorage = try JPIPAdmission.remaining(effectiveLimits, retaining: retained)
         let response: JPIPResponse
         if let server = directServer {
             response = try await server.handleRequest(request)
         } else if let ws = wsTransport {
-            response = try await ws.sendRequest(request)
+            response = try await ws.sendRequest(request, timeout: rem,
+                maxBodyBytes: maxBody, maximumStorageBytes: remainingStorage)
         } else if let http = httpTransport {
-            response = try await http.send(request, maxBodyBytes: maxBody)
-        } else {
-            throw JP3DClientError.notConnected
+            response = try await http.send(request, maxBodyBytes: maxBody, deadline: deadline, maximumStorageBytes: remainingStorage)
+        } else { throw JP3DClientError.notConnected }
+        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }
+        let queueAfter = await wsTransport?.receiveStorageSnapshot.queuedStorageBytes ?? 0
+        if let wsTransport {
+            let receivePeak = await wsTransport.receiveStorageSnapshot.peakStorageBytes
+            transferBudget.workspace.observe(try JPIPAdmission.add(retained - queueBefore, receivePeak))
+        } else if let httpTransport {
+            let receivePeak = await httpTransport.receiveAdmissionSnapshot().peakBytes
+            transferBudget.workspace.observe(try JPIPAdmission.add(retained, receivePeak))
         }
-
-        if let limits, response.data.count > limits.maximumCompressedBytes {
-            throw CodecError(
-                .resourceLimitExceeded,
-                "3D JPIP response payload (\(response.data.count) bytes) exceeds compressed limit (\(limits.maximumCompressedBytes) bytes)."
-            )
-        }
+        let pushedPayload = await wsTransport?.takeUnaccountedPushPayloadBytes() ?? 0
+        try transferBudget.received(response.data.count, pushedPayloadBytes: pushedPayload,
+            retaining: JPIPAdmission.add(retained - queueBefore, JPIPAdmission.add(queueAfter, response.retainedHeaderStorageBytes)))
+        cumulativeSessionWireBytes = transferBudget.cumulativeWireBytes
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, transferBudget.workspace.peak)
         return response
     }
 
+    private func parseWireResponse(
+        _ response: JPIPResponse, limits: ResourceLimits?, retainingAdditionalBytes: Int,
+        deadline: ContinuousClock.Instant? = nil
+    ) async throws -> JPIPParsedStream {
+        let limits = limits ?? transferBudget.limits
+        let retained = try await JPIPAdmission.add(liveCacheStorageBytes(),
+            JPIPAdmission.add(retainingAdditionalBytes, JPIPAdmission.response(response)))
+        let budget = transferBudget
+        let parsed = try JPIPWireCodec.decodeStream(response.data,
+            maxPayloadBytes: limits.maximumCompressedBytes,
+            maximumStorageBytes: JPIPAdmission.remaining(limits, retaining: retained),
+            workspaceObserver: { budget.workspace.observe(retained + $0) }, deadline: deadline)
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, budget.workspace.peak)
+        return parsed
+    }
+
     private func admitAndStoreWireBins(
-        _ bins: [JPIPDataBin],
-        limits: ResourceLimits?
-    ) throws {
+        _ bins: [JPIPDataBin], limits: ResourceLimits?, retainingAdditionalBytes: Int = 0,
+        additionalDescriptorBytes: Int = 0
+    ) async throws {
         guard !bins.isEmpty else { return }
-        let projected = try vbasCache.projectedAllocation(adding: bins)
-        let (entryMeta, ov1) = projected.entryCount.multipliedReportingOverflow(
-            by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
-        )
-        let (totalWorkspaceBytes, ov2) = projected.totalPayloadBytes.addingReportingOverflow(entryMeta)
-        guard !ov1, !ov2 else {
-            throw CodecError(.resourceLimitExceeded, "3D JPIP cache workspace arithmetic overflow.")
-        }
-        if let limits {
-            guard projected.totalPayloadBytes <= limits.maximumCompressedBytes else {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "3D JPIP cached data-bin span (\(projected.totalPayloadBytes) bytes) exceeds compressed limit (\(limits.maximumCompressedBytes) bytes)."
-                )
-            }
-            guard totalWorkspaceBytes <= limits.maximumWorkspaceBytes,
-                  totalWorkspaceBytes <= limits.maximumMemoryBytes else {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "3D JPIP cache workspace (\(totalWorkspaceBytes) bytes) exceeds workspace/memory limits."
-                )
-            }
-        }
-        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, totalWorkspaceBytes)
-        for bin in bins {
-            vbasCache.addDataBin(bin)
-        }
+        let limits = limits ?? transferBudget.limits
+        let otherCaches = try await liveCacheStorageBytes() - vbasCache.retainedStorageBytes()
+        let external = try JPIPAdmission.add(otherCaches,
+            JPIPAdmission.add(retainingAdditionalBytes,
+                JPIPAdmission.add(JPIPAdmission.bins(bins), additionalDescriptorBytes)))
+        try vbasCache.addAdmitted(bins, limits: limits,
+            retainingExternalBytes: external, peak: transferBudget.workspace)
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, transferBudget.workspace.peak)
     }
 
     private func cached3DDimensions() -> (width: Int, height: Int, depth: Int, levelsX: Int, levelsY: Int, levelsZ: Int)? {
@@ -570,10 +683,16 @@ public actor JP3DJPIPClient {
         volumeID: String,
         region: JP3DStreamingRegion,
         requestID: String,
-        limits: ResourceLimits?
+        limits: ResourceLimits?,
+        deadline: ContinuousClock.Instant? = nil
     ) async throws -> [JP3DDataBin] {
+        guard !transferInProgress else {
+            throw CodecError(.invalidArgument, "A 3D JPIP transfer is already active on this client.")
+        }
+        transferInProgress = true
+        defer { transferInProgress = false }
         var accumulatedNew: [JPIPDataBin] = []
-        var totalWireBytes = 0
+        let initialWireBytes = transferBudget.cumulativeWireBytes
         var rounds = 0
 
         // Ensure Class 6 main header is cached when resolution discard or unconstrained slice axes
@@ -586,23 +705,18 @@ public actor JP3DJPIPClient {
             probeReq.cid = channelID
             probeReq.streamType = .jppStream
             probeReq.len = min(512, limits?.maximumCompressedBytes ?? 512)
-            let probeResp = try await sendJPIPRequest(probeReq, limits: limits)
+            let probeResp = try await sendJPIPRequest(probeReq, limits: limits, deadline: deadline,
+                retainingAdditionalBytes: JPIPAdmission.bins(accumulatedNew))
             if probeResp.statusCode == 200 && !probeResp.data.isEmpty {
-                let (sumWire, ov) = cumulativeSessionWireBytes.addingReportingOverflow(probeResp.data.count)
-                if ov {
-                    throw CodecError(.resourceLimitExceeded, "3D JPIP cumulative wire byte count overflow.")
-                }
-                cumulativeSessionWireBytes = sumWire
-                if let limits, cumulativeSessionWireBytes > limits.maximumCompressedBytes {
-                    throw CodecError(
-                        .resourceLimitExceeded,
-                        "3D JPIP cumulative wire payload (\(cumulativeSessionWireBytes) bytes) exceeds compressed limit (\(limits.maximumCompressedBytes) bytes)."
-                    )
-                }
-                totalWireBytes += probeResp.data.count
-                let parsedProbe = try JPIPWireCodec.decodeStream(probeResp.data)
+                let accumulatedStorage = try JPIPAdmission.bins(accumulatedNew)
+                let parsedProbe = try await parseWireResponse(probeResp, limits: limits,
+                    retainingAdditionalBytes: accumulatedStorage, deadline: deadline)
                 lastEORReason = parsedProbe.eor?.reason
-                try admitAndStoreWireBins(parsedProbe.bins, limits: limits)
+                let descriptors = try JPIPAdmission.multiply(JPIPAdmission.add(accumulatedNew.count, parsedProbe.bins.count),
+                    2 * MemoryLayout<JPIPDataBin>.stride)
+                try await admitAndStoreWireBins(parsedProbe.bins, limits: limits,
+                    retainingAdditionalBytes: JPIPAdmission.add(accumulatedStorage, JPIPAdmission.add(JPIPAdmission.response(probeResp), parsedProbe.eorBody?.count ?? 0)),
+                    additionalDescriptorBytes: descriptors)
                 accumulatedNew.append(contentsOf: parsedProbe.bins)
             }
         }
@@ -617,7 +731,13 @@ public actor JP3DJPIPClient {
 
             var jpipReq = JPIPRequest(target: channelID == nil ? volumeID : "")
             jpipReq.cid = channelID
-            if channelID == nil && !vbasCache.allDataBins().isEmpty {
+            var modelStorage = 0
+            if channelID == nil && vbasCache.statistics.entryCount > 0 {
+                modelStorage = try JPIPAdmission.multiply(vbasCache.statistics.entryCount, 128)
+                let sortedDescriptors = try JPIPAdmission.multiply(vbasCache.statistics.entryCount, MemoryLayout<JPIPCacheModel.CacheEntry>.stride)
+                let live = try await JPIPAdmission.add(liveCacheStorageBytes(), JPIPAdmission.bins(accumulatedNew))
+                try JPIPAdmission.admit(JPIPAdmission.add(live, JPIPAdmission.add(modelStorage, sortedDescriptors)),
+                    limits: limits ?? transferBudget.limits, peak: transferBudget.workspace)
                 jpipReq.model = vbasCache.formatCacheModelField()
             }
 
@@ -653,12 +773,12 @@ public actor JP3DJPIPClient {
                     jpipReq.rvoff = [max(0, region.xRange.lowerBound), max(0, region.yRange.lowerBound), max(0, region.zRange.lowerBound)]
                     jpipReq.rvsiz = [max(1, region.xRange.count), max(1, region.yRange.count), max(1, region.zRange.count)]
                 } else {
-                    let ox = (fullXLo * fx) / max(1, dims.width)
-                    let oy = (fullYLo * fy) / max(1, dims.height)
-                    let oz = (fullZLo * fz) / max(1, dims.depth)
-                    let endX = max(ox + 1, (fullXHi * fx + max(1, dims.width) - 1) / max(1, dims.width))
-                    let endY = max(oy + 1, (fullYHi * fy + max(1, dims.height) - 1) / max(1, dims.height))
-                    let endZ = max(oz + 1, (fullZHi * fz + max(1, dims.depth) - 1) / max(1, dims.depth))
+                    let ox = try JPIPAdmission.multiply(fullXLo, fx) / dims.width
+                    let oy = try JPIPAdmission.multiply(fullYLo, fy) / dims.height
+                    let oz = try JPIPAdmission.multiply(fullZLo, fz) / dims.depth
+                    let endX = max(ox + 1, try JPIPAdmission.add(JPIPAdmission.multiply(fullXHi, fx), dims.width - 1) / dims.width)
+                    let endY = max(oy + 1, try JPIPAdmission.add(JPIPAdmission.multiply(fullYHi, fy), dims.height - 1) / dims.height)
+                    let endZ = max(oz + 1, try JPIPAdmission.add(JPIPAdmission.multiply(fullZHi, fz), dims.depth - 1) / dims.depth)
                     let sx = max(1, min(fx, endX) - ox)
                     let sy = max(1, min(fy, endY) - oy)
                     let sz = max(1, min(fz, endZ) - oz)
@@ -683,7 +803,8 @@ public actor JP3DJPIPClient {
 
             let response: JPIPResponse
             do {
-                response = try await sendJPIPRequest(jpipReq, limits: limits)
+                response = try await sendJPIPRequest(jpipReq, limits: limits, deadline: deadline,
+                    retainingAdditionalBytes: JPIPAdmission.add(JPIPAdmission.bins(accumulatedNew), modelStorage))
             } catch let codecErr as CodecError {
                 throw codecErr
             } catch let cancelErr as CancellationError {
@@ -692,6 +813,8 @@ public actor JP3DJPIPClient {
                 throw JP3DClientError.networkError("3D JPIP request failed: \(error)")
             }
 
+            jpipReq.model = nil
+            modelStorage = 0
             if response.statusCode == 404 {
                 throw JP3DClientError.unknownVolume(volumeID)
             }
@@ -699,28 +822,26 @@ public actor JP3DJPIPClient {
                 throw JP3DClientError.serverError("Server returned HTTP \(response.statusCode)")
             }
 
-            let (sumWire, ov) = cumulativeSessionWireBytes.addingReportingOverflow(response.data.count)
-            if ov {
-                throw CodecError(.resourceLimitExceeded, "3D JPIP cumulative wire byte count overflow.")
-            }
-            cumulativeSessionWireBytes = sumWire
-            if let limits, cumulativeSessionWireBytes > limits.maximumCompressedBytes {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "3D JPIP cumulative wire payload (\(cumulativeSessionWireBytes) bytes) exceeds compressed limit (\(limits.maximumCompressedBytes) bytes)."
-                )
-            }
-
-            totalWireBytes += response.data.count
-            let parsed = try JPIPWireCodec.decodeStream(response.data)
+            let accumulatedStorage = try JPIPAdmission.bins(accumulatedNew)
+            let parsed = try await parseWireResponse(response, limits: limits,
+                retainingAdditionalBytes: accumulatedStorage, deadline: deadline)
             lastEORReason = parsed.eor?.reason
-            try admitAndStoreWireBins(parsed.bins, limits: limits)
+            let descriptors = try JPIPAdmission.multiply(JPIPAdmission.add(accumulatedNew.count, parsed.bins.count),
+                2 * MemoryLayout<JPIPDataBin>.stride)
+            try await admitAndStoreWireBins(parsed.bins, limits: limits,
+                retainingAdditionalBytes: JPIPAdmission.add(accumulatedStorage, JPIPAdmission.add(JPIPAdmission.response(response), parsed.eorBody?.count ?? 0)),
+                additionalDescriptorBytes: descriptors)
             accumulatedNew.append(contentsOf: parsed.bins)
 
             if let ws = wsTransport {
                 let pushed = await ws.drainReceivedDataBins()
                 if !pushed.isEmpty {
-                    try admitAndStoreWireBins(pushed, limits: limits)
+                    try await admitAndStoreWireBins(pushed, limits: limits,
+                        retainingAdditionalBytes: JPIPAdmission.add(JPIPAdmission.response(response),
+                            JPIPAdmission.add(JPIPAdmission.bins(accumulatedNew),
+                                JPIPAdmission.multiply(parsed.bins.count, MemoryLayout<JPIPDataBin>.stride))),
+                        additionalDescriptorBytes: JPIPAdmission.multiply(JPIPAdmission.add(accumulatedNew.count, pushed.count),
+                            2 * MemoryLayout<JPIPDataBin>.stride))
                     accumulatedNew.append(contentsOf: pushed)
                 }
             }
@@ -730,12 +851,30 @@ public actor JP3DJPIPClient {
             }
         }
 
+        let totalWireBytes = transferBudget.cumulativeWireBytes - initialWireBytes
         lastWireResponseByteCount = totalWireBytes
         lastWireNewlyDeliveredBins = accumulatedNew.count
 
         // Map newly delivered VBAS bins (or already-cached bins when stateful delta satisfied the window)
         // to `JP3DDataBin` carrying real normative data-bin bytes.
+        let effectiveLimits = limits ?? transferBudget.limits
+        let retainedBeforeMapping = try await JPIPAdmission.add(liveCacheStorageBytes(), JPIPAdmission.bins(accumulatedNew))
+        let snapshotBytes = accumulatedNew.isEmpty ? try vbasCache.snapshotStorageBytes() : 0
+        try JPIPAdmission.admit(JPIPAdmission.add(retainedBeforeMapping, snapshotBytes),
+            limits: effectiveLimits, peak: transferBudget.workspace)
         let sourceBins = accumulatedNew.isEmpty ? vbasCache.allDataBins() : accumulatedNew
+        let sourcePayload = try sourceBins.reduce(0) { try JPIPAdmission.add($0, $1.data.count) }
+        let mappingDescriptors = try JPIPAdmission.multiply(sourceBins.count,
+            3 * (MemoryLayout<JP3DPrecinct3D>.stride + MemoryLayout<JP3DCacheEntry>.stride)
+                + 3 * MemoryLayout<JP3DDataBin>.stride)
+        let spatialGrowth = try JPIPAdmission.multiply(await cacheManager.entryCount,
+            2 * (MemoryLayout<JP3DPrecinct3D>.stride + MemoryLayout<JP3DCacheEntry>.stride))
+        let receivedGrowth = try JPIPAdmission.multiply(receivedBins.count, MemoryLayout<JP3DDataBin>.stride)
+        let mappingStorage = try JPIPAdmission.add(JPIPAdmission.multiply(sourcePayload, 2),
+            JPIPAdmission.add(mappingDescriptors, JPIPAdmission.add(receivedGrowth, spatialGrowth)))
+        try JPIPAdmission.admit(JPIPAdmission.add(retainedBeforeMapping,
+            JPIPAdmission.add(snapshotBytes, mappingStorage)), limits: effectiveLimits, peak: transferBudget.workspace)
+        lastPeakWorkspaceBytes = max(lastPeakWorkspaceBytes, transferBudget.workspace.peak)
         var out: [JP3DDataBin] = []
         out.reserveCapacity(sourceBins.count)
 
@@ -762,10 +901,14 @@ public actor JP3DJPIPClient {
             await cacheManager.store(key: key, bin: jp3dBin, region: region)
         }
 
-        receivedBins.append(contentsOf: out)
+        var combinedReceived: [JP3DDataBin] = []
+        combinedReceived.reserveCapacity(try JPIPAdmission.add(receivedBins.count, out.count))
+        combinedReceived.append(contentsOf: receivedBins)
+        combinedReceived.append(contentsOf: out)
+        receivedBins = combinedReceived
         statistics = JP3DStreamingStatistics(
-            bytesDelivered: statistics.bytesDelivered + totalWireBytes,
-            binsDelivered: statistics.binsDelivered + out.count,
+            bytesDelivered: try JPIPAdmission.add(statistics.bytesDelivered, totalWireBytes),
+            binsDelivered: try JPIPAdmission.add(statistics.binsDelivered, out.count),
             averageBandwidthBPS: statistics.averageBandwidthBPS,
             elapsedSeconds: statistics.elapsedSeconds
         )

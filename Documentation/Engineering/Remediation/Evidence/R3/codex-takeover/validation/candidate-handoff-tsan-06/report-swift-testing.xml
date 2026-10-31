@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="TestResults" errors="0" tests="4" failures="0" skipped="0" time="0.581735208">
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests" name="workerErrorAndCancellationDoNotPublishAReusableConnection()" time="0.052379458" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests" name="workerCreatedConnectionsPublishBeforeCloseAndReuse()" time="0.287446292" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests" name="staleCleanupCannotCloseReplacementHandshake(_:)" time="0.578467166" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests" name="obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:)" time="0.046238417" />
+  </testsuite>
+</testsuites>

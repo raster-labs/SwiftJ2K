@@ -13,66 +13,8 @@ import Testing
 
 // MARK: - Helper to locate the built swiftj2k-cli binary
 
-private func locateCLIBinary() throws -> URL {
-    let repoRoot = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-    let candidates = [
-        repoRoot.appendingPathComponent(".build/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/arm64-apple-macosx/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/x86_64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/aarch64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/release/swiftj2k-cli")
-    ]
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    // Build the CLI product on demand if running via `swift test` before `swift build --product swiftj2k-cli`
-    let buildProc = Process()
-    buildProc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    buildProc.arguments = ["swift", "build", "--product", "swiftj2k-cli"]
-    buildProc.currentDirectoryURL = repoRoot
-    try buildProc.run()
-    buildProc.waitUntilExit()
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    throw CodecError(.internalFailure, "Could not locate or build swiftj2k-cli binary for Milestone 12 tests.")
-}
-
-private struct CLIInvocationResult: Sendable {
-    let status: Int32
-    let stdout: Data
-    let stderr: Data
-    var stdoutText: String { String(data: stdout, encoding: .utf8) ?? "" }
-    var stderrText: String { String(data: stderr, encoding: .utf8) ?? "" }
-}
-
-private func invokeCLI(_ args: [String], stdinData: Data? = nil) throws -> CLIInvocationResult {
-    let binary = try locateCLIBinary()
-    let proc = Process()
-    proc.executableURL = binary
-    proc.arguments = args
-    let outPipe = Pipe()
-    let errPipe = Pipe()
-    proc.standardOutput = outPipe
-    proc.standardError = errPipe
-    if stdinData != nil {
-        let inPipe = Pipe()
-        proc.standardInput = inPipe
-        try proc.run()
-        if let stdinData {
-            inPipe.fileHandleForWriting.write(stdinData)
-        }
-        try? inPipe.fileHandleForWriting.close()
-    } else {
-        try proc.run()
-    }
-    let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-    proc.waitUntilExit()
-    return CLIInvocationResult(status: proc.terminationStatus, stdout: outData, stderr: errData)
+private func invokeCLI(_ args: [String], stdinData: Data? = nil) async throws -> CLITestProcessResult {
+    try await CLITestProcess.run(args, stdinData: stdinData)
 }
 
 @Suite("Milestone 12 — CLI & Consumer Breadth Tests")
@@ -153,7 +95,7 @@ struct CLIBreadthAndConsumerTests {
     }
 
     @Test("M12-AUD-001 & M12-AUD-003: CLI 16-bit PNG, TIFF, PGM, RAW, and compare endian/signedness accuracy")
-    func cliMultiFormat16BitAndCompareMetrics() throws {
+    func cliMultiFormat16BitAndCompareMetrics() async throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("m12-aud001-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
@@ -178,16 +120,16 @@ struct CLIBreadthAndConsumerTests {
         let j2kURL = tmp.appendingPathComponent("encoded12.j2k")
 
         // Convert PGM -> PNG -> TIFF -> RAW
-        #expect(try invokeCLI(["convert", "-i", pgmURL.path, "-o", pngURL.path]).status == 0)
-        #expect(try invokeCLI(["convert", "-i", pngURL.path, "-o", tiffURL.path]).status == 0)
-        #expect(try invokeCLI(["convert", "-i", tiffURL.path, "-o", rawURL.path]).status == 0)
+        #expect(try await invokeCLI(["convert", "-i", pgmURL.path, "-o", pngURL.path]).status == 0)
+        #expect(try await invokeCLI(["convert", "-i", pngURL.path, "-o", tiffURL.path]).status == 0)
+        #expect(try await invokeCLI(["convert", "-i", tiffURL.path, "-o", rawURL.path]).status == 0)
 
         // Encode from TIFF -> J2K
-        #expect(try invokeCLI(["encode", "-i", tiffURL.path, "-o", j2kURL.path]).status == 0)
+        #expect(try await invokeCLI(["encode", "-i", tiffURL.path, "-o", j2kURL.path]).status == 0)
 
         // Compare PGM against PNG, TIFF, and J2K (M12-AUD-001 regression check)
         for candidate in [pngURL, tiffURL, j2kURL] {
-            let cmp = try invokeCLI(["compare", "-i", pgmURL.path, "-r", candidate.path, "--bit-exact", "--json"])
+            let cmp = try await invokeCLI(["compare", "-i", pgmURL.path, "-r", candidate.path, "--bit-exact", "--json"])
             #expect(cmp.status == 0)
             let json = try JSONSerialization.jsonObject(with: cmp.stdout) as? [String: Any]
             #expect(json?["bitExact"] as? Bool == true)
@@ -197,7 +139,7 @@ struct CLIBreadthAndConsumerTests {
     }
 
     @Test("M12-AUD-002: CLI batch parallel worker pool (--threads) and 3D/JPIP/benchmark/completions")
-    func cliBatch3DJPIPBenchmarkAndCompletions() throws {
+    func cliBatch3DJPIPBenchmarkAndCompletions() async throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("m12-aud002-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
@@ -216,7 +158,7 @@ struct CLIBreadthAndConsumerTests {
 
         // 2. Batch encode with --threads 2 (M12-AUD-002 regression check)
         let batchOut = tmp.appendingPathComponent("batch_jph", isDirectory: true)
-        let batchRes = try invokeCLI([
+        let batchRes = try await invokeCLI([
             "batch", "encode",
             "-i", sliceDir.path,
             "-o", batchOut.path,
@@ -233,14 +175,14 @@ struct CLIBreadthAndConsumerTests {
         // 3. 3D encode3d & decode3d & 3D compare
         let volJ3D = tmp.appendingPathComponent("volume.j3d")
         let volNRRD = tmp.appendingPathComponent("volume.nrrd")
-        #expect(try invokeCLI([
+        #expect(try await invokeCLI([
             "encode3d", "-i", sliceDir.path, "-o", volJ3D.path,
             "--codec", "htj2k-lossless", "--levels", "1,1,1", "--json"
         ]).status == 0)
-        #expect(try invokeCLI([
+        #expect(try await invokeCLI([
             "decode3d", "-i", volJ3D.path, "-o", volNRRD.path, "--json"
         ]).status == 0)
-        let cmp3D = try invokeCLI([
+        let cmp3D = try await invokeCLI([
             "compare", "-i", sliceDir.path, "-r", volNRRD.path,
             "--mode", "3d", "--bit-exact", "--json"
         ])
@@ -249,7 +191,7 @@ struct CLIBreadthAndConsumerTests {
         // 4. JPIP loopback client on one of the batch-encoded JPH files
         let jphFile = batchOut.appendingPathComponent("slice_0000.jph")
         let jpipOut = tmp.appendingPathComponent("jpip_decoded.png")
-        let jpipRes = try invokeCLI([
+        let jpipRes = try await invokeCLI([
             "jpip", "client",
             "--single-file", jphFile.path,
             "--port", "18511",
@@ -260,7 +202,7 @@ struct CLIBreadthAndConsumerTests {
         #expect(FileManager.default.fileExists(atPath: jpipOut.path))
 
         // 5. In-process benchmark (M12-AUD-004 regression check: zero external shell-outs)
-        let benchRes = try invokeCLI([
+        let benchRes = try await invokeCLI([
             "benchmark", "-i", jphFile.path,
             "--runs", "1", "--warmup", "0", "--json"
         ])
@@ -270,12 +212,12 @@ struct CLIBreadthAndConsumerTests {
 
         // 6. Shell completions & CLI-08 path hygiene (M12-AUD-005)
         for sh in ["bash", "zsh", "fish"] {
-            let comp = try invokeCLI(["completions", sh])
+            let comp = try await invokeCLI(["completions", sh])
             #expect(comp.status == 0)
             #expect(comp.stdoutText.contains("encode3d"))
         }
         let secretPath = tmp.appendingPathComponent("sensitive-patient-name.j2k")
-        let failRes = try invokeCLI(["validate", "-i", secretPath.path, "-vvvvv"])
+        let failRes = try await invokeCLI(["validate", "-i", secretPath.path, "-vvvvv"])
         #expect(failRes.status == 6)
         #expect(!failRes.stderrText.contains("sensitive-patient-name"))
     }

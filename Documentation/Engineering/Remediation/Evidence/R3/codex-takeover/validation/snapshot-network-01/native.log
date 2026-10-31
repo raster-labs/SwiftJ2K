@@ -1,0 +1,76 @@
+[0/1] Planning build
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Phase R3 — F04 Normative JPIP HTTP/1.1, Data-Bin, 3D, and RFC 6455 WebSocket" started.
+◇ Suite "R3 takeover JPIP cache and deadline regressions" started.
+◇ Suite "Codex R3 normative wire model grammar" started.
+◇ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" started.
+◇ Test inventedFormsAreRejectedWithoutPartialMutation() started.
+◇ Test layerHintsCannotSuppressUndeliveredPackets() started.
+◇ Test "Stateful cid= delta deduplication, cclose teardown, stateless model=, and len= byte-limited partial-bin resumption" started.
+◇ Test reassemblyRejectsBudgetThatFitsEachBufferButNotTheirOverlap() started.
+◇ Test "RA2-01: Multi-codestream ranges [0-1], HTTP query [1;3],Hm top-level splitting, and Clause C.8.1.3 implicit precinct selectors" started.
+◇ Test normativeQualifierSeparatorAndBoundedRanges() started.
+◇ Test additiveRectangleDoesNotMarkOutsidePrecinctsCached() started.
+◇ Test "Real TCP 3D JP3D JPIP over http:// and ws:// delivers normative VBAS bins and bit-exact 3D voxels" started.
+◇ Test standardCodestreamQualifierParses() started.
+◇ Test "Malformed VBAS, bb == 0, <3-byte EOR, trailing bytes after EOR, and truncated payloads fail deterministically" started.
+◇ Test emitsBracketedCodestreamQualifier() started.
+◇ Test reassemblyAccountsForLargeBinBeforeSmallerReplacement() started.
+◇ Test sessionRestrictionsApplyToSubtractiveAndImplicitSelectors() started.
+◇ Test "Clause C.8.1 model= grammar and out-of-order / overlapping / partial Msg-Offset merging" started.
+◇ Test "ITU-T T.808 Table A.2 wire class IDs, multi-byte VBAS, and Clause D.3 EOR round-trip cleanly" started.
+◇ Test "Real TCP HTTP/1.1 jpp-stream and jpt-stream over .j2k, .jph (HTJ2K), and .jp2 (phld) reconstruct bit-exact pixels" started.
+◇ Test "Real TCP RFC 6455 WebSocket 101 upgrade, multiplexed requests, live server push, and ping/pong latency" started.
+◇ Test "T.808 V3 HTTP/3 transport throws CodecError(.unsupportedFeature) and offline TCP ports fail without synthetic fallback" started.
+◇ Test codestreamsDoNotReplaceEachOther() started.
+◇ Test "F04-06: RFC 6455 fragmented binary message survives interleaved FIN=1 ping control frame" started.
+◇ Test "F04-10: Corrupt or truncated JPEG 2000 target propagates error / HTTP 422 instead of raw octet-stream" started.
+◇ Test "RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace" started.
+◇ Test normalAndExtendedMessagesMergeIntoOnePrecinct() started.
+◇ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" started.
+◇ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" started.
+◇ Test "F04-01/02 & RA2-01: Extended tile merges with tile, sticky [<csn>] model qualifiers round-trip, -c1 subtracts component 1 precincts only, and [1],-P* clears codestream 1 precincts" started.
+◇ Test "F04-07/08: Normative fvsiz/rvoff/rvsiz 3D JPIP query grammar and substantiated 3D fidelity/workspace reporting" started.
+◇ Test "F04-04: Sparse Msg-Offset amplification and multi-round cumulative responses fail pre-allocation against ResourceLimits" started.
+◇ Test "F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping" started.
+◇ Test "F04-05: len=0..3 and len=64 always emit a complete decodable 3-byte EOR excluded from len" started.
+◇ Test subtractiveLengthIsRemainingPrefix() started.
+✔ Test standardCodestreamQualifierParses() passed after 0.001 seconds.
+✔ Test additiveRectangleDoesNotMarkOutsidePrecinctsCached() passed after 0.001 seconds.
+✔ Test reassemblyRejectsBudgetThatFitsEachBufferButNotTheirOverlap() passed after 0.001 seconds.
+✔ Test normativeQualifierSeparatorAndBoundedRanges() passed after 0.001 seconds.
+✔ Test warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+layerHintsCannotSuppressUndeliveredPackets() passed after 0.006 seconds.
+✔ Test reassemblyAccountsForLargeBinBeforeSmallerReplacement() passed after 0.006 seconds.
+✔ Test emitsBracketedCodestreamQualifier() passed after 0.006 seconds.
+✔ Test "RA2-01: Multi-codestream ranges [0-1], HTTP query [1;3],Hm top-level splitting, and Clause C.8.1.3 implicit precinct selectors" passed after 0.006 seconds.
+✔ Test "Malformed VBAS, bb == 0, <3-byte EOR, trailing bytes after EOR, and truncated payloads fail deterministically" passed after 0.006 seconds.
+✔ Test "ITU-T T.808 Table A.2 wire class IDs, multi-byte VBAS, and Clause D.3 EOR round-trip cleanly" passed after 0.006 seconds.
+✔ Test codestreamsDoNotReplaceEachOther() passed after 0.006 seconds.
+✔ Test "Clause C.8.1 model= grammar and out-of-order / overlapping / partial Msg-Offset merging" passed after 0.006 seconds.
+✔ Test sessionRestrictionsApplyToSubtractiveAndImplicitSelectors() passed after 0.006 seconds.
+✔ Test normalAndExtendedMessagesMergeIntoOnePrecinct() passed after 0.006 seconds.
+✔ Test inventedFormsAreRejectedWithoutPartialMutation() passed after 0.006 seconds.
+✔ Test "F04-01/02 & RA2-01: Extended tile merges with tile, sticky [<csn>] model qualifiers round-trip, -c1 subtracts component 1 precincts only, and [1],-P* clears codestream 1 precincts" passed after 0.006 seconds.
+✔ Test "F04-06: RFC 6455 fragmented binary message survives interleaved FIN=1 ping control frame" passed after 0.006 seconds.
+✔ Test "F04-10: Corrupt or truncated JPEG 2000 target propagates error / HTTP 422 instead of raw octet-stream" passed after 0.006 seconds.
+✔ Test subtractiveLengthIsRemainingPrefix() passed after 0.006 seconds.
+✔ Suite "Codex R3 normative wire model grammar" passed after 0.007 seconds.
+✔ Suite "R3 takeover JPIP cache and deadline regressions" passed after 0.007 seconds.
+✔ Test "T.808 V3 HTTP/3 transport throws CodecError(.unsupportedFeature) and offline TCP ports fail without synthetic fallback" passed after 0.007 seconds.
+✔ Test "RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace" passed after 0.028 seconds.
+✔ Test "F04-05: len=0..3 and len=64 always emit a complete decodable 3-byte EOR excluded from len" passed after 0.038 seconds.
+✔ Test "F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping" passed after 0.043 seconds.
+✔ Test "F04-07/08: Normative fvsiz/rvoff/rvsiz 3D JPIP query grammar and substantiated 3D fidelity/workspace reporting" passed after 0.043 seconds.
+✔ Test "F04-04: Sparse Msg-Offset amplification and multi-round cumulative responses fail pre-allocation against ResourceLimits" passed after 0.043 seconds.
+✔ Test "Real TCP RFC 6455 WebSocket 101 upgrade, multiplexed requests, live server push, and ping/pong latency" passed after 0.080 seconds.
+✔ Test "Stateful cid= delta deduplication, cclose teardown, stateless model=, and len= byte-limited partial-bin resumption" passed after 0.118 seconds.
+✔ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" passed after 0.134 seconds.
+✔ Test "Real TCP 3D JP3D JPIP over http:// and ws:// delivers normative VBAS bins and bit-exact 3D voxels" passed after 0.147 seconds.
+✔ Test "Real TCP HTTP/1.1 jpp-stream and jpt-stream over .j2k, .jph (HTJ2K), and .jp2 (phld) reconstruct bit-exact pixels" passed after 0.154 seconds.
+✔ Suite "Phase R3 — F04 Normative JPIP HTTP/1.1, Data-Bin, 3D, and RFC 6455 WebSocket" passed after 0.154 seconds.
+✔ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" passed after 0.377 seconds.
+✔ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" passed after 0.378 seconds.
+✔ Test run with 31 tests in 4 suites passed after 0.378 seconds.

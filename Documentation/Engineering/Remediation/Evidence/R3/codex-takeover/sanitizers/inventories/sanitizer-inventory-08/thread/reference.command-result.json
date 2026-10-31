@@ -1,0 +1,24 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "list",
+    "--skip-build",
+    "--scratch-path",
+    "../candidate-build-08",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "f840f2e7480fb78a5a9e9706c70d44ce9d993d19017538e69a5e94f457d1253e",
+  "stderr_sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922"
+}

@@ -751,17 +751,6 @@ public actor JPIPServer {
             return try await handleChannelClose(request, ccloseList: ccloseList)
         }
 
-        // Enforce ITU-T Rec. T.808 Clause C.8.1.2: additive wildcard `model=` items (`*`, `H*`, `P*`, `T*`, `M*`)
-        // are stateless-only and forbidden on stateful `cid=` requests.
-        if request.cid != nil, let modelItems = request.model, !modelItems.isEmpty {
-            let directives = try JPIPCacheModel.parseValidatedModelItems(modelItems)
-            if directives.contains(where: { $0.isAdditive && $0.binID == nil }) {
-                throw J2KError.invalidParameter(
-                    "ITU-T T.808 Clause C.8.1.2 forbids additive wildcard model= descriptors on stateful cid= requests."
-                )
-            }
-        }
-
         // Enqueue the request
         try await requestQueue.enqueue(request, priority: determinePriority(request))
         stats.queuedRequests = await requestQueue.size

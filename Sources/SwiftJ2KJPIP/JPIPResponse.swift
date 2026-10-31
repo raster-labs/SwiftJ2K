@@ -32,6 +32,30 @@ public struct JPIPResponse: Sendable {
     /// All HTTP headers.
     public let headers: [String: String]
 
+    /// Conservative retained header owners/descriptors, independent of body bytes.
+    /// Saturation makes an overflow fail any finite caller admission budget.
+    package var retainedHeaderStorageBytes: Int {
+        let headersBytes = Self.headerStorageBytes(headers)
+        let (channelBytes, channelOverflow) = (channelID?.utf8.count ?? 0).addingReportingOverflow(MemoryLayout<String?>.stride)
+        guard !channelOverflow else { return Int.max }
+        let (total, overflow) = headersBytes.addingReportingOverflow(channelBytes)
+        return overflow ? Int.max : total
+    }
+
+    package static func headerStorageBytes(_ headers: [String: String]) -> Int {
+        let (descriptors, overflow) = headers.count.multipliedReportingOverflow(
+            by: 2 * MemoryLayout<(String, String)>.stride)
+        guard !overflow else { return Int.max }
+        var total = descriptors
+        for (key, value) in headers {
+            let (bytes, pairOverflow) = key.utf8.count.addingReportingOverflow(value.utf8.count)
+            let (next, overflow) = total.addingReportingOverflow(bytes)
+            guard !pairOverflow, !overflow else { return Int.max }
+            total = next
+        }
+        return total
+    }
+
     /// Creates a new JPIP response.
     ///
     /// - Parameters:
@@ -107,7 +131,25 @@ public struct JPIPResponseParser: Sendable {
     ///
     /// Example header: `"cid=1942302,path=/jp2,transport=http"`
     public static func parseChannelID(from header: String) -> String? {
-        parseCNewParameters(from: header)["cid"]
+        cnewValue("cid", from: header)
+    }
+
+    /// Read one scalar without allocating descriptors for every comma in an
+    /// untrusted header. Preserve the existing last-value semantics.
+    private static func cnewValue(_ name: String, from header: String) -> String? {
+        var remainder = header[...]
+        var result: String?
+        while !remainder.isEmpty {
+            let end = remainder.firstIndex(of: ",") ?? remainder.endIndex
+            let field = remainder[..<end]
+            if let equals = field.firstIndex(of: "="),
+               field[..<equals].trimmingCharacters(in: .whitespaces) == name {
+                result = field[field.index(after: equals)...].trimmingCharacters(in: .whitespaces)
+            }
+            if end == remainder.endIndex { break }
+            remainder = remainder[remainder.index(after: end)...]
+        }
+        return result
     }
 
     /// Parses all comma-separated `key=value` parameters from a `JPIP-cnew` header.
@@ -147,7 +189,7 @@ public struct JPIPResponseParser: Sendable {
     /// Extracts optional channel request `path` from a `JPIP-cnew` response header.
     public static func extractChannelPath(from headers: [String: String]) -> String? {
         for (key, value) in headers where key.lowercased() == "jpip-cnew" {
-            return parseCNewParameters(from: value)["path"]
+            return cnewValue("path", from: value)
         }
         return nil
     }
@@ -287,6 +329,18 @@ public struct JPIPDataBin: Sendable, Equatable {
     /// Tile index for tile-based data bins.
     public var tileIndex: Int
 
+    /// Optional component index when known for precinct data-bins (ITU-T Rec. T.808 Clause C.8.1.3).
+    package var componentIndex: Int?
+
+    /// Optional resolution level when known for precinct data-bins (ITU-T Rec. T.808 Clause C.8.1.3).
+    package var resolutionLevel: Int?
+
+    /// Optional precinct index within resolution level when known (ITU-T Rec. T.808 Clause C.8.1.3).
+    package var precinctInResolution: Int?
+
+    /// Optional sequence number within tile-component when known (ITU-T Rec. T.808 Annex A.3.2).
+    package var sequenceInTileComponent: Int?
+
     /// Creates a new data bin.
     public init(
         binClass: JPIPDataBinClass,
@@ -297,7 +351,11 @@ public struct JPIPDataBin: Sendable, Equatable {
         tileIndex: Int = 0,
         codestreamID: Int = 0,
         msgOffset: Int = 0,
-        aux: Int? = nil
+        aux: Int? = nil,
+        componentIndex: Int? = nil,
+        resolutionLevel: Int? = nil,
+        precinctInResolution: Int? = nil,
+        sequenceInTileComponent: Int? = nil
     ) {
         self.binClass = binClass
         self.binID = binID
@@ -308,6 +366,10 @@ public struct JPIPDataBin: Sendable, Equatable {
         self.codestreamID = codestreamID
         self.msgOffset = msgOffset
         self.aux = aux
+        self.componentIndex = componentIndex
+        self.resolutionLevel = resolutionLevel
+        self.precinctInResolution = precinctInResolution
+        self.sequenceInTileComponent = sequenceInTileComponent
     }
 
     /// Convenience initializer accepting explicit `codestreamID` before `data`.
@@ -489,149 +551,219 @@ public enum JPIPWireCodec {
 
     /// Decodes a normative `image/jpp-stream` or `image/jpt-stream` byte sequence with
     /// checked arithmetic and `maxPayloadBytes` resource enforcement.
+    private static func decodeVBAS(from bytes: UnsafeRawBufferPointer, offset: inout Int) throws -> UInt64 {
+        guard offset < bytes.count else {
+            throw J2KError.invalidData("Truncated JPIP VBAS at end of stream.")
+        }
+        var value: UInt64 = 0
+        var count = 0
+        while true {
+            guard offset < bytes.count else {
+                throw J2KError.invalidData("Truncated multi-byte JPIP VBAS.")
+            }
+            let byte = bytes[offset]
+            offset += 1
+            count += 1
+            // Prevent 64-bit left-shift overflow (> 9 full 7-bit groups with non-zero top bits).
+            if count > 10 || (count == 10 && (value >> 57) != 0) {
+                throw J2KError.invalidData("JPIP VBAS exceeds 64-bit integer range.")
+            }
+            value = (value << 7) | UInt64(byte & 0x7F)
+            if (byte & 0x80) == 0 {
+                return value
+            }
+        }
+    }
+
     public static func decodeStream(
         _ data: Data,
         maxPayloadBytes: Int = 128 * 1024 * 1024
     ) throws -> JPIPParsedStream {
-        guard data.count <= maxPayloadBytes else {
-            throw CodecError(.resourceLimitExceeded, "JPIP stream (\(data.count) bytes) exceeds limit (\(maxPayloadBytes) bytes).")
-        }
-        let bytes = [UInt8](data)
-        var offset = 0
-        // Per ITU-T Rec. T.808 Annex A.2.1, initial default Class is 0 (precinct) and CSn is 0.
-        var currentWireClass = 0
-        var currentCSn = 0
-        var bins: [JPIPDataBin] = []
-        var totalDecodedPayload = 0
-        var parsedEORReason: JPIPEORReason?
-        var parsedEORRaw: UInt8?
-        var parsedEORBody: Data?
+        try decodeStream(data, maxPayloadBytes: maxPayloadBytes, maximumStorageBytes: ResourceLimits.default.maximumWorkspaceBytes)
+    }
 
-        while offset < bytes.count {
-            let b0 = bytes[offset]
-
-            // Clause D.3 End of Response (EOR): single-byte `0x00` followed by 1-byte reason
-            // and VBAS `Msg-Length` + optional body (minimum 3 bytes total).
-            if b0 == 0x00 {
-                guard offset + 3 <= bytes.count else {
-                    throw J2KError.invalidData("Truncated JPIP EOR message (must be at least 3 bytes per ITU-T T.808 Clause D.3).")
+    /// Counts every payload, descriptor and EOR byte before materialising any bin.
+    /// maximumStorageBytes excludes the caller-retained input Data.
+    package static func decodeStream(
+        _ data: Data, maxPayloadBytes: Int, maximumStorageBytes: Int,
+        workspaceObserver: (@Sendable (Int) -> Void)? = nil,
+        deadline: ContinuousClock.Instant? = nil
+    ) throws -> JPIPParsedStream {
+        try data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            func copyPayload(at offset: Int, count: Int) throws -> Data {
+                guard count > 0 else { return Data() }
+                guard let base = bytes.baseAddress else {
+                    throw CodecError(.internalFailure, "Missing borrowed JPIP payload storage.")
                 }
-                offset += 1
-                let reasonByte = bytes[offset]
-                offset += 1
-                let bodyLenU64 = try decodeVBAS(from: bytes, offset: &offset)
-                guard bodyLenU64 <= UInt64(bytes.count - offset) else {
-                    throw J2KError.invalidData("Truncated JPIP EOR body (\(bodyLenU64) bytes declared, \(bytes.count - offset) available).")
-                }
-                let bodyLen = Int(bodyLenU64)
-                parsedEORRaw = reasonByte
-                parsedEORReason = JPIPEORReason(rawValue: reasonByte) ?? .nonSpecified
-                parsedEORBody = bodyLen > 0 ? Data(bytes[offset..<(offset + bodyLen)]) : Data()
-                offset += bodyLen
-                guard offset == bytes.count else {
-                    throw J2KError.invalidData("Unexpected trailing bytes after JPIP EOR message.")
-                }
-                break
+                return Data(bytes: base.advanced(by: offset), count: count)
             }
+            func scan(materialise: Bool, plannedCount: Int = 0) throws -> (JPIPParsedStream, Int, Int) {
+                guard data.count <= maxPayloadBytes else {
+                    throw CodecError(.resourceLimitExceeded, "JPIP stream (\(data.count) bytes) exceeds limit (\(maxPayloadBytes) bytes).")
+                }
+                var offset = 0
+                // Per ITU-T Rec. T.808 Annex A.2.1, initial default Class is 0 (precinct) and CSn is 0.
+                var currentWireClass = 0
+                var currentCSn = 0
+                var bins: [JPIPDataBin] = []
+                var totalDecodedPayload = 0
+                var storageBytes = 0
+                if materialise { bins.reserveCapacity(plannedCount) }
+                var binCount = 0
+                var parsedEORReason: JPIPEORReason?
+                var parsedEORRaw: UInt8?
+                var parsedEORBody: Data?
 
-            let bb = (b0 >> 5) & 0x03
-            guard bb != 0 else {
-                throw J2KError.invalidData("Invalid JPIP Bin-ID VBAS indicator bb=0 on non-EOR byte 0x\(String(b0, radix: 16)).")
-            }
-            let isComplete = ((b0 >> 4) & 0x01) == 1
-            var inClassU64 = UInt64(b0 & 0x0F)
-            offset += 1
-            if (b0 & 0x80) != 0 {
-                var contCount = 0
-                while true {
-                    guard offset < bytes.count else {
-                        throw J2KError.invalidData("Truncated JPIP Bin-ID VBAS continuation.")
+                while offset < bytes.count {
+                    if (binCount & 1023) == 0 {
+                        try Task.checkCancellation()
+                        if let deadline, ContinuousClock.now >= deadline {
+                            throw CodecError(.resourceLimitExceeded, "JPIP wire parsing deadline elapsed.")
+                        }
                     }
-                    let cb = bytes[offset]
+                    let b0 = bytes[offset]
+
+                    // Clause D.3 End of Response (EOR): single-byte `0x00` followed by 1-byte reason
+                    // and VBAS `Msg-Length` + optional body (minimum 3 bytes total).
+                    if b0 == 0x00 {
+                        guard offset + 3 <= bytes.count else {
+                            throw J2KError.invalidData("Truncated JPIP EOR message (must be at least 3 bytes per ITU-T T.808 Clause D.3).")
+                        }
+                        offset += 1
+                        let reasonByte = bytes[offset]
+                        offset += 1
+                        let bodyLenU64 = try decodeVBAS(from: bytes, offset: &offset)
+                        guard bodyLenU64 <= UInt64(bytes.count - offset) else {
+                            throw J2KError.invalidData("Truncated JPIP EOR body (\(bodyLenU64) bytes declared, \(bytes.count - offset) available).")
+                        }
+                        let bodyLen = Int(bodyLenU64)
+                        parsedEORRaw = reasonByte
+                        parsedEORReason = JPIPEORReason(rawValue: reasonByte) ?? .nonSpecified
+                        storageBytes = try JPIPAdmission.add(storageBytes, bodyLen)
+                        guard storageBytes <= maximumStorageBytes else {
+                            throw CodecError(.resourceLimitExceeded, "JPIP EOR storage exceeds remaining budget before allocation.")
+                        }
+                        if materialise {
+                            parsedEORBody = try copyPayload(at: offset, count: bodyLen)
+                        }
+                        offset += bodyLen
+                        guard offset == bytes.count else {
+                            throw J2KError.invalidData("Unexpected trailing bytes after JPIP EOR message.")
+                        }
+                        break
+                    }
+
+                    let bb = (b0 >> 5) & 0x03
+                    guard bb != 0 else {
+                        throw J2KError.invalidData("Invalid JPIP Bin-ID VBAS indicator bb=0 on non-EOR byte 0x\(String(b0, radix: 16)).")
+                    }
+                    let isComplete = ((b0 >> 4) & 0x01) == 1
+                    var inClassU64 = UInt64(b0 & 0x0F)
                     offset += 1
-                    contCount += 1
-                    if contCount > 9 || (inClassU64 >> 57) != 0 {
-                        throw J2KError.invalidData("JPIP Bin-ID VBAS overflows 64-bit integer.")
+                    if (b0 & 0x80) != 0 {
+                        var contCount = 0
+                        while true {
+                            guard offset < bytes.count else {
+                                throw J2KError.invalidData("Truncated JPIP Bin-ID VBAS continuation.")
+                            }
+                            let cb = bytes[offset]
+                            offset += 1
+                            contCount += 1
+                            if contCount > 9 || (inClassU64 >> 57) != 0 {
+                                throw J2KError.invalidData("JPIP Bin-ID VBAS overflows 64-bit integer.")
+                            }
+                            inClassU64 = (inClassU64 << 7) | UInt64(cb & 0x7F)
+                            if (cb & 0x80) == 0 { break }
+                        }
                     }
-                    inClassU64 = (inClassU64 << 7) | UInt64(cb & 0x7F)
-                    if (cb & 0x80) == 0 { break }
+                    guard inClassU64 <= UInt64(Int.max) else {
+                        throw J2KError.invalidData("JPIP In-Class-ID overflows Int.")
+                    }
+
+                    if bb >= 2 {
+                        let clsU64 = try decodeVBAS(from: bytes, offset: &offset)
+                        guard clsU64 <= UInt64(Int.max) else {
+                            throw J2KError.invalidData("JPIP Class VBAS overflows Int.")
+                        }
+                        currentWireClass = Int(clsU64)
+                    }
+                    if bb == 3 {
+                        let csnU64 = try decodeVBAS(from: bytes, offset: &offset)
+                        guard csnU64 <= UInt64(Int.max) else {
+                            throw J2KError.invalidData("JPIP CSn VBAS overflows Int.")
+                        }
+                        currentCSn = Int(csnU64)
+                    }
+
+                    let msgOffsetU64 = try decodeVBAS(from: bytes, offset: &offset)
+                    let msgLenU64 = try decodeVBAS(from: bytes, offset: &offset)
+                    guard msgOffsetU64 <= UInt64(Int.max), msgLenU64 <= UInt64(Int.max) else {
+                        throw J2KError.invalidData("JPIP Msg-Offset or Msg-Length overflows Int.")
+                    }
+                    let msgOffset = Int(msgOffsetU64)
+                    let msgLen = Int(msgLenU64)
+
+                    var auxVal: Int?
+                    if (currentWireClass & 1) == 1 {
+                        let auxU64 = try decodeVBAS(from: bytes, offset: &offset)
+                        guard auxU64 <= UInt64(Int.max) else {
+                            throw J2KError.invalidData("JPIP Aux VBAS overflows Int.")
+                        }
+                        auxVal = Int(auxU64)
+                    }
+
+                    guard msgLen <= (bytes.count - offset) else {
+                        throw J2KError.invalidData("Truncated JPIP message payload (\(msgLen) bytes declared, \(bytes.count - offset) remaining).")
+                    }
+                    let (nextPayload, ov) = totalDecodedPayload.addingReportingOverflow(msgLen)
+                    guard !ov, nextPayload <= maxPayloadBytes else {
+                        throw CodecError(.resourceLimitExceeded, "Cumulative JPIP message payloads exceed limit (\(maxPayloadBytes) bytes).")
+                    }
+                    totalDecodedPayload = nextPayload
+
+                    storageBytes = try JPIPAdmission.add(storageBytes,
+                        JPIPAdmission.add(msgLen, MemoryLayout<JPIPDataBin>.stride))
+                    guard storageBytes <= maximumStorageBytes else {
+                        throw CodecError(.resourceLimitExceeded, "JPIP payload and descriptor storage exceeds remaining budget before allocation.")
+                    }
+                    binCount = try JPIPAdmission.add(binCount, 1)
+                    let payload: Data
+                    if materialise { payload = try copyPayload(at: offset, count: msgLen) }
+                    else { payload = Data() }
+                    offset += msgLen
+
+                    guard let binClass = JPIPDataBinClass(wireClassID: currentWireClass) else {
+                        throw J2KError.invalidData("Unknown JPIP data-bin wire class identifier \(currentWireClass) (ITU-T T.808 Table A.2).")
+                    }
+
+                    let tileIdx = (binClass == .tile || binClass == .extendedTile || binClass == .tileHeader)
+                        ? Int(inClassU64) : 0
+
+                    if materialise { bins.append(
+                        JPIPDataBin(
+                            binClass: binClass,
+                            binID: Int(inClassU64),
+                            data: payload,
+                            isComplete: isComplete,
+                            qualityLayer: 0,
+                            tileIndex: tileIdx,
+                            codestreamID: currentCSn,
+                            msgOffset: msgOffset,
+                            aux: auxVal
+                        )
+                    ) }
                 }
-            }
-            guard inClassU64 <= UInt64(Int.max) else {
-                throw J2KError.invalidData("JPIP In-Class-ID overflows Int.")
-            }
 
-            if bb >= 2 {
-                let clsU64 = try decodeVBAS(from: bytes, offset: &offset)
-                guard clsU64 <= UInt64(Int.max) else {
-                    throw J2KError.invalidData("JPIP Class VBAS overflows Int.")
-                }
-                currentWireClass = Int(clsU64)
+                return (JPIPParsedStream(
+                    bins: bins,
+                    eorReason: parsedEORReason,
+                    eorReasonRawValue: parsedEORRaw,
+                    eorBody: parsedEORBody
+                ), storageBytes, binCount)
             }
-            if bb == 3 {
-                let csnU64 = try decodeVBAS(from: bytes, offset: &offset)
-                guard csnU64 <= UInt64(Int.max) else {
-                    throw J2KError.invalidData("JPIP CSn VBAS overflows Int.")
-                }
-                currentCSn = Int(csnU64)
-            }
-
-            let msgOffsetU64 = try decodeVBAS(from: bytes, offset: &offset)
-            let msgLenU64 = try decodeVBAS(from: bytes, offset: &offset)
-            guard msgOffsetU64 <= UInt64(Int.max), msgLenU64 <= UInt64(Int.max) else {
-                throw J2KError.invalidData("JPIP Msg-Offset or Msg-Length overflows Int.")
-            }
-            let msgOffset = Int(msgOffsetU64)
-            let msgLen = Int(msgLenU64)
-
-            var auxVal: Int?
-            if (currentWireClass & 1) == 1 {
-                let auxU64 = try decodeVBAS(from: bytes, offset: &offset)
-                guard auxU64 <= UInt64(Int.max) else {
-                    throw J2KError.invalidData("JPIP Aux VBAS overflows Int.")
-                }
-                auxVal = Int(auxU64)
-            }
-
-            guard msgLen <= (bytes.count - offset) else {
-                throw J2KError.invalidData("Truncated JPIP message payload (\(msgLen) bytes declared, \(bytes.count - offset) remaining).")
-            }
-            let (nextPayload, ov) = totalDecodedPayload.addingReportingOverflow(msgLen)
-            guard !ov, nextPayload <= maxPayloadBytes else {
-                throw CodecError(.resourceLimitExceeded, "Cumulative JPIP message payloads exceed limit (\(maxPayloadBytes) bytes).")
-            }
-            totalDecodedPayload = nextPayload
-
-            let payload = msgLen > 0 ? Data(bytes[offset..<(offset + msgLen)]) : Data()
-            offset += msgLen
-
-            guard let binClass = JPIPDataBinClass(wireClassID: currentWireClass) else {
-                throw J2KError.invalidData("Unknown JPIP data-bin wire class identifier \(currentWireClass) (ITU-T T.808 Table A.2).")
-            }
-
-            let tileIdx = (binClass == .tile || binClass == .extendedTile || binClass == .tileHeader)
-                ? Int(inClassU64) : 0
-
-            bins.append(
-                JPIPDataBin(
-                    binClass: binClass,
-                    binID: Int(inClassU64),
-                    data: payload,
-                    isComplete: isComplete,
-                    qualityLayer: 0,
-                    tileIndex: tileIdx,
-                    codestreamID: currentCSn,
-                    msgOffset: msgOffset,
-                    aux: auxVal
-                )
-            )
+            let (_, storage, count) = try scan(materialise: false)
+            workspaceObserver?(storage)
+            return try scan(materialise: true, plannedCount: count).0
         }
-
-        return JPIPParsedStream(
-            bins: bins,
-            eorReason: parsedEORReason,
-            eorReasonRawValue: parsedEORRaw,
-            eorBody: parsedEORBody
-        )
     }
 }

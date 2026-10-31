@@ -1,0 +1,12 @@
+{
+  "status": "source_frozen_native_unexecuted",
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "comparison": "work/candidate-snapshot-04",
+  "normalized_existing_test_bodies_identical": true,
+  "files": {
+    "Tests/SwiftJ2KTests/CLIBreadthAndConsumerTests.swift": "11d07069ea2ef4dcadffa94a7182da08161c157c3bee97908e5e0ad011521486",
+    "Tests/SwiftJ2KTests/R1RemediationTests.swift": "f12fca3308e302901673ed4266e7b8e75c1d2330b455f9ac12a9f5189cf3dd9a",
+    "Tests/SwiftJ2KTests/R2RemediationTests.swift": "0674a1351166b601a1a651980fa56def857eb40e956e36537f7691bd1e2db75b",
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "fc2fcc5a075eb560213d21f4a5c4d4689176f58daa21f540426c7abc2c1f4dc5"
+  }
+}

@@ -1,0 +1,1436 @@
+{
+  "finished_at": "2026-10-31T07:12:48.218611+00:00",
+  "all_samples_exact": true,
+  "rows": [
+    {
+      "case": "odd8",
+      "operation": "encode-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0011387295,
+          "p95": 0.001193583,
+          "minimum": 0.001089708,
+          "maximum": 0.001262,
+          "stddev": 4.1808132211329426e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 2241976.0879414743,
+          "p95": 2340054.995417048,
+          "minimum": 2022979.3977812994,
+          "maximum": 2342829.4552302086,
+          "stddev": 79159.16788455429
+        },
+        "peak_rss_bytes": {
+          "median": 8486912.0,
+          "p95": 8503296,
+          "minimum": 8486912,
+          "maximum": 8536064,
+          "stddev": 12352.50438021205
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          13631
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "344c3f64058605bfe62ef4c36543ab44f668e81217ee74649ca2c4c7f11e00de"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0012014375,
+          "p95": 0.0013977920000000001,
+          "minimum": 0.0011406250000000001,
+          "maximum": 0.001930084,
+          "stddev": 0.00017091839627922012
+        },
+        "throughput_voxels_per_second": {
+          "median": 2125013.927548311,
+          "p95": 2215584.244271417,
+          "minimum": 1322740.357414496,
+          "maximum": 2238246.5753424657,
+          "stddev": 201134.1992967432
+        },
+        "peak_rss_bytes": {
+          "median": 8519680.0,
+          "p95": 8536064,
+          "minimum": 8486912,
+          "maximum": 8568832,
+          "stddev": 16188.816329409894
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          70638
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "344c3f64058605bfe62ef4c36543ab44f668e81217ee74649ca2c4c7f11e00de"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 5.506838981514051,
+      "median_rss_change_percent": 0.38610038610038533,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": true,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "encode-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.00038737450000000007,
+          "p95": 0.000404458,
+          "minimum": 0.00036012500000000004,
+          "maximum": 0.00040950000000000003,
+          "stddev": 1.637553670723497e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 6591656.738256147,
+          "p95": 7049253.657162737,
+          "minimum": 6234432.2344322335,
+          "maximum": 7089205.137105171,
+          "stddev": 283094.1812697855
+        },
+        "peak_rss_bytes": {
+          "median": 8634368.0,
+          "p95": 8650752,
+          "minimum": 8617984,
+          "maximum": 8650752,
+          "stddev": 12579.1747432434
+        },
+        "encoded_bytes": [
+          2829
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          13786
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "d2c5c05b288c5b30602968150daa7e1afc1179dfe831e3fb0d18d2b1642e96ec"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.000456333,
+          "p95": 0.00048137500000000003,
+          "minimum": 0.00043075000000000003,
+          "maximum": 0.000482166,
+          "stddev": 1.5156529585071836e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 5594604.316779745,
+          "p95": 5863344.793611641,
+          "minimum": 5294856.957977128,
+          "maximum": 5926871.735345327,
+          "stddev": 185215.58542541837
+        },
+        "peak_rss_bytes": {
+          "median": 8642560.0,
+          "p95": 8667136,
+          "minimum": 8617984,
+          "maximum": 8667136,
+          "stddev": 17142.5255843626
+        },
+        "encoded_bytes": [
+          2823
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          70872
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "5459e7d6725e026d6a5dfc2a4becfd195d8d4dcd2426461c5e968351a48ba745"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 17.801507326889077,
+      "median_rss_change_percent": 0.0948766603415585,
+      "encoded_size_change_percent": -0.21208907741251393,
+      "investigate_over_5_percent": true,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "decode-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0015002500000000003,
+          "p95": 0.0018037090000000001,
+          "minimum": 0.001407625,
+          "maximum": 0.0018878330000000002,
+          "stddev": 0.00011496782409072231
+        },
+        "throughput_voxels_per_second": {
+          "median": 1701716.5696198405,
+          "p95": 1772505.5438530229,
+          "minimum": 1352344.1956995134,
+          "maximum": 1813693.2776840422,
+          "stddev": 108841.79941372757
+        },
+        "peak_rss_bytes": {
+          "median": 8683520.0,
+          "p95": 8716288,
+          "minimum": 8667136,
+          "maximum": 8716288,
+          "stddev": 14460.18990339011
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          35925
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "c1126b26f3636f2c9f69bf501eb374409e1aa71e0d71b32949cf47ec87355686"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0015049785,
+          "p95": 0.001577084,
+          "minimum": 0.0014415410000000002,
+          "maximum": 0.00160675,
+          "stddev": 4.33645921966176e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 1696376.773279524,
+          "p95": 1754639.1752577317,
+          "minimum": 1588921.7364244591,
+          "maximum": 1771021.427763761,
+          "stddev": 47994.49479238156
+        },
+        "peak_rss_bytes": {
+          "median": 8683520.0,
+          "p95": 8716288,
+          "minimum": 8683520,
+          "maximum": 8716288,
+          "stddev": 12004.476470313723
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          64189
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "c1126b26f3636f2c9f69bf501eb374409e1aa71e0d71b32949cf47ec87355686"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 0.3151808031994552,
+      "median_rss_change_percent": 0.0,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "decode-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.00042054150000000003,
+          "p95": 0.000463959,
+          "minimum": 0.00038233300000000005,
+          "maximum": 0.00046916600000000003,
+          "stddev": 2.636131724660806e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 6071227.38207323,
+          "p95": 6601163.542340012,
+          "minimum": 5441570.7873119535,
+          "maximum": 6677425.17648228,
+          "stddev": 374426.6255846921
+        },
+        "peak_rss_bytes": {
+          "median": 8781824.0,
+          "p95": 8798208,
+          "minimum": 8781824,
+          "maximum": 8814592,
+          "stddev": 8017.68218508645
+        },
+        "encoded_bytes": [
+          2829
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          36414
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "c1126b26f3636f2c9f69bf501eb374409e1aa71e0d71b32949cf47ec87355686"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.00042333350000000003,
+          "p95": 0.00046462500000000003,
+          "minimum": 0.000406208,
+          "maximum": 0.00048025000000000005,
+          "stddev": 2.0028209786448713e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 6031934.803426057,
+          "p95": 6240787.321888222,
+          "minimum": 5315981.259760541,
+          "maximum": 6284957.460217426,
+          "stddev": 267296.118216203
+        },
+        "peak_rss_bytes": {
+          "median": 8830976.0,
+          "p95": 8863744,
+          "minimum": 8814592,
+          "maximum": 8863744,
+          "stddev": 12437.98985959421
+        },
+        "encoded_bytes": [
+          2829
+        ],
+        "reported_peak_pixel_bytes": [
+          2553
+        ],
+        "reported_peak_workspace_bytes": [
+          64678
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          2553
+        ],
+        "output_sha256": [
+          "c1126b26f3636f2c9f69bf501eb374409e1aa71e0d71b32949cf47ec87355686"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 0.6639059403174219,
+      "median_rss_change_percent": 0.5597014925373234,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "transcode-to-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0015618960000000001,
+          "p95": 0.001765459,
+          "minimum": 0.00148575,
+          "maximum": 0.001796667,
+          "stddev": 8.618434618694424e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 1634558.8384258463,
+          "p95": 1716686.828042849,
+          "minimum": 1420964.4859064033,
+          "maximum": 1718324.078748107,
+          "stddev": 82970.64843855952
+        },
+        "peak_rss_bytes": {
+          "median": 8953856.0,
+          "p95": 8962048,
+          "minimum": 8929280,
+          "maximum": 8978432,
+          "stddev": 11276.242151205852
+        },
+        "encoded_bytes": [
+          2829
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          17039
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "d2c5c05b288c5b30602968150daa7e1afc1179dfe831e3fb0d18d2b1642e96ec"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0016083960000000002,
+          "p95": 0.001796833,
+          "minimum": 0.0015181250000000002,
+          "maximum": 0.0018028750000000002,
+          "stddev": 7.605648981887359e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 1587296.8617499606,
+          "p95": 1678960.1889800234,
+          "minimum": 1416071.5523816126,
+          "maximum": 1681679.7035817206,
+          "stddev": 71024.65237025423
+        },
+        "peak_rss_bytes": {
+          "median": 8880128.0,
+          "p95": 8912896,
+          "minimum": 8863744,
+          "maximum": 8912896,
+          "stddev": 13526.269091543392
+        },
+        "encoded_bytes": [
+          2823
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          104653
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "5459e7d6725e026d6a5dfc2a4becfd195d8d4dcd2426461c5e968351a48ba745"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 2.9771508474315977,
+      "median_rss_change_percent": -0.8234217749313766,
+      "encoded_size_change_percent": -0.21208907741251393,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "transcode-to-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0012205625,
+          "p95": 0.0013565410000000002,
+          "minimum": 0.001173791,
+          "maximum": 0.0014305000000000001,
+          "stddev": 6.198222496343951e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 2091658.5887892847,
+          "p95": 2171610.845295056,
+          "minimum": 1784690.6675987416,
+          "maximum": 2175003.897627431,
+          "stddev": 95513.28753930179
+        },
+        "peak_rss_bytes": {
+          "median": 8880128.0,
+          "p95": 8912896,
+          "minimum": 8863744,
+          "maximum": 8912896,
+          "stddev": 11400.845294607718
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          17373
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "344c3f64058605bfe62ef4c36543ab44f668e81217ee74649ca2c4c7f11e00de"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0012854585,
+          "p95": 0.001419167,
+          "minimum": 0.001200375,
+          "maximum": 0.0015992500000000002,
+          "stddev": 8.791732100395895e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 1986065.823164042,
+          "p95": 2090909.0909090908,
+          "minimum": 1596373.2999843676,
+          "maximum": 2126835.363948766,
+          "stddev": 118701.64577904691
+        },
+        "peak_rss_bytes": {
+          "median": 8888320.0,
+          "p95": 8929280,
+          "minimum": 8880128,
+          "maximum": 8929280,
+          "stddev": 17849.10366730822
+        },
+        "encoded_bytes": [
+          2332
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          105136
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "344c3f64058605bfe62ef4c36543ab44f668e81217ee74649ca2c4c7f11e00de"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 5.316892826053543,
+      "median_rss_change_percent": 0.09225092250921829,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": true,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "encode-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0200525205,
+          "p95": 0.021314666000000003,
+          "minimum": 0.019283416,
+          "maximum": 0.022690166,
+          "stddev": 0.0007368074300447757
+        },
+        "throughput_voxels_per_second": {
+          "median": 2451194.5484885187,
+          "p95": 2523111.583008174,
+          "minimum": 2166224.786544091,
+          "maximum": 2548925.9786751475,
+          "stddev": 83067.56120178684
+        },
+        "peak_rss_bytes": {
+          "median": 8798208.0,
+          "p95": 8814592,
+          "minimum": 8781824,
+          "maximum": 8830976,
+          "stddev": 13937.808330316197
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          140270
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "2cd3b0f66d4e1007f6f5ed92f797d75f46e035b267be3f54bef19f5ac91abf59"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.020390417,
+          "p95": 0.022110666,
+          "minimum": 0.019599750000000003,
+          "maximum": 0.022157792000000003,
+          "stddev": 0.0006368350575622595
+        },
+        "throughput_voxels_per_second": {
+          "median": 2410551.906760404,
+          "p95": 2480362.535020133,
+          "minimum": 2218271.5678529697,
+          "maximum": 2507787.0891210344,
+          "stddev": 71395.40670414724
+        },
+        "peak_rss_bytes": {
+          "median": 8945664.0,
+          "p95": 8962048,
+          "minimum": 8912896,
+          "maximum": 8994816,
+          "stddev": 17630.08796586706
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          221933
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "2cd3b0f66d4e1007f6f5ed92f797d75f46e035b267be3f54bef19f5ac91abf59"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 1.6850574968867438,
+      "median_rss_change_percent": 1.6759776536312776,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "encode-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.003077125,
+          "p95": 0.0031407920000000003,
+          "minimum": 0.003014,
+          "maximum": 0.003141542,
+          "stddev": 4.073952966459121e-05
+        },
+        "throughput_voxels_per_second": {
+          "median": 15973422.105217882,
+          "p95": 16250383.92656117,
+          "minimum": 15645819.791681917,
+          "maximum": 16307896.483078964,
+          "stddev": 211053.95749630083
+        },
+        "peak_rss_bytes": {
+          "median": 8912896.0,
+          "p95": 8929280,
+          "minimum": 8896512,
+          "maximum": 8929280,
+          "stddev": 9801.613993838491
+        },
+        "encoded_bytes": [
+          48468
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          154141
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "975d527f9248d96168dc0abcba23481a4585cbbbb1c47b504268161f06d58b8d"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0033891255000000004,
+          "p95": 0.0035220420000000004,
+          "minimum": 0.003192125,
+          "maximum": 0.0038985000000000005,
+          "stddev": 0.0001389953992786036
+        },
+        "throughput_voxels_per_second": {
+          "median": 14502859.433815386,
+          "p95": 15249796.393251888,
+          "minimum": 12607926.125432856,
+          "maximum": 15397893.252927125,
+          "stddev": 548981.3793396637
+        },
+        "peak_rss_bytes": {
+          "median": 9011200.0,
+          "p95": 9027584,
+          "minimum": 8978432,
+          "maximum": 9043968,
+          "stddev": 17306.572629160895
+        },
+        "encoded_bytes": [
+          48462
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          271188
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "ad69091c35adb863207946b140ad2867d472792ac6485931c96dbc0b377304a1"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 10.139350855100137,
+      "median_rss_change_percent": 1.1029411764705843,
+      "encoded_size_change_percent": -0.012379301807374787,
+      "investigate_over_5_percent": true,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "decode-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0321570835,
+          "p95": 0.034299708000000005,
+          "minimum": 0.030811042000000004,
+          "maximum": 0.038082625,
+          "stddev": 0.0015522186768556433
+        },
+        "throughput_voxels_per_second": {
+          "median": 1528498.82942076,
+          "p95": 1585637.8989136482,
+          "minimum": 1290667.331886917,
+          "maximum": 1595272.2403870663,
+          "stddev": 65485.803472881285
+        },
+        "peak_rss_bytes": {
+          "median": 9453568.0,
+          "p95": 9551872,
+          "minimum": 9437184,
+          "maximum": 9732096,
+          "stddev": 64973.077117736764
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          504822
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "637a7a93f6aa8e50bb21ca17e96baaa9c31663b8f09f9528106f42cd86cd0d7a"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.031861771000000004,
+          "p95": 0.033972875,
+          "minimum": 0.030655458000000003,
+          "maximum": 0.034238500000000005,
+          "stddev": 0.0010954508955403229
+        },
+        "throughput_voxels_per_second": {
+          "median": 1542665.4847472296,
+          "p95": 1589768.5045162952,
+          "minimum": 1435576.9090351502,
+          "maximum": 1603368.6399335477,
+          "stddev": 50998.8963198506
+        },
+        "peak_rss_bytes": {
+          "median": 9469952.0,
+          "p95": 10190848,
+          "minimum": 9453568,
+          "maximum": 10207232,
+          "stddev": 223700.73819985017
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          548518
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "637a7a93f6aa8e50bb21ca17e96baaa9c31663b8f09f9528106f42cd86cd0d7a"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": -0.9183435431885489,
+      "median_rss_change_percent": 0.17331022530329143,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "decode-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0026864790000000003,
+          "p95": 0.002788084,
+          "minimum": 0.0026197910000000002,
+          "maximum": 0.003166625,
+          "stddev": 0.00011675182533655917
+        },
+        "throughput_voxels_per_second": {
+          "median": 18296068.00743746,
+          "p95": 18665021.123083495,
+          "minimum": 15521888.445900602,
+          "maximum": 18761801.99107486,
+          "stddev": 695889.7681148107
+        },
+        "peak_rss_bytes": {
+          "median": 9568256.0,
+          "p95": 9601024,
+          "minimum": 9568256,
+          "maximum": 9633792,
+          "stddev": 16035.3643701729
+        },
+        "encoded_bytes": [
+          48468
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          513725
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "637a7a93f6aa8e50bb21ca17e96baaa9c31663b8f09f9528106f42cd86cd0d7a"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.0027392915,
+          "p95": 0.0031060410000000004,
+          "minimum": 0.002653542,
+          "maximum": 0.0032800000000000004,
+          "stddev": 0.0001552634628082216
+        },
+        "throughput_voxels_per_second": {
+          "median": 17943372.499077834,
+          "p95": 18439493.349109743,
+          "minimum": 14985365.853658535,
+          "maximum": 18523166.394200657,
+          "stddev": 892049.8874498314
+        },
+        "peak_rss_bytes": {
+          "median": 9617408.0,
+          "p95": 9633792,
+          "minimum": 9601024,
+          "maximum": 9682944,
+          "stddev": 19092.068847671027
+        },
+        "encoded_bytes": [
+          48468
+        ],
+        "reported_peak_pixel_bytes": [
+          98304
+        ],
+        "reported_peak_workspace_bytes": [
+          573045
+        ],
+        "reported_pixel_allocation_count": [
+          1
+        ],
+        "copy_count": [
+          1
+        ],
+        "copy_bytes": [
+          98304
+        ],
+        "output_sha256": [
+          "637a7a93f6aa8e50bb21ca17e96baaa9c31663b8f09f9528106f42cd86cd0d7a"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 1.9658631241859625,
+      "median_rss_change_percent": 0.5136986301369939,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "transcode-to-ht",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.030837438000000002,
+          "p95": 0.033243875,
+          "minimum": 0.030180834000000004,
+          "maximum": 0.047699875,
+          "stddev": 0.0037923437269763915
+        },
+        "throughput_voxels_per_second": {
+          "median": 1593910.1284906701,
+          "p95": 1616436.6667899908,
+          "minimum": 1030442.951894528,
+          "maximum": 1628583.2260301353,
+          "stddev": 129434.42866174366
+        },
+        "peak_rss_bytes": {
+          "median": 9306112.0,
+          "p95": 9355264,
+          "minimum": 9289728,
+          "maximum": 9437184,
+          "stddev": 31492.830438220797
+        },
+        "encoded_bytes": [
+          48468
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          138139
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "975d527f9248d96168dc0abcba23481a4585cbbbb1c47b504268161f06d58b8d"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.031361,
+          "p95": 0.031973416000000004,
+          "minimum": 0.029933541,
+          "maximum": 0.032758041,
+          "stddev": 0.0006430215551171282
+        },
+        "throughput_voxels_per_second": {
+          "median": 1567306.3583130622,
+          "p95": 1628302.3003910978,
+          "minimum": 1500456.025438151,
+          "maximum": 1642037.6059083687,
+          "stddev": 32421.31901530861
+        },
+        "peak_rss_bytes": {
+          "median": 9330688.0,
+          "p95": 9502720,
+          "minimum": 9289728,
+          "maximum": 9551872,
+          "stddev": 68508.2624610461
+        },
+        "encoded_bytes": [
+          48462
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          354707
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "ad69091c35adb863207946b140ad2867d472792ac6485931c96dbc0b377304a1"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 1.6978128987239494,
+      "median_rss_change_percent": 0.2640845070422504,
+      "encoded_size_change_percent": -0.012379301807374787,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "transcode-to-ebcot",
+      "baseline": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.018777625,
+          "p95": 0.020694333000000002,
+          "minimum": 0.018079417,
+          "maximum": 0.020778708,
+          "stddev": 0.0007560538882121174
+        },
+        "throughput_voxels_per_second": {
+          "median": 2617583.4531829692,
+          "p95": 2711747.1083966177,
+          "minimum": 2365498.374586139,
+          "maximum": 2718671.735930423,
+          "stddev": 98898.61870240697
+        },
+        "peak_rss_bytes": {
+          "median": 9273344.0,
+          "p95": 9289728,
+          "minimum": 9256960,
+          "maximum": 9289728,
+          "stddev": 11244.875631055007
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          133331
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "2cd3b0f66d4e1007f6f5ed92f797d75f46e035b267be3f54bef19f5ac91abf59"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "candidate": {
+        "timed_samples": 20,
+        "warmups": 100,
+        "latency_seconds": {
+          "median": 0.018984563000000003,
+          "p95": 0.01988975,
+          "minimum": 0.017675209,
+          "maximum": 0.020479083000000002,
+          "stddev": 0.0007139727454529544
+        },
+        "throughput_voxels_per_second": {
+          "median": 2589073.2144586686,
+          "p95": 2773488.872611645,
+          "minimum": 2400107.4657493206,
+          "maximum": 2780844.0624379604,
+          "stddev": 98644.60895010375
+        },
+        "peak_rss_bytes": {
+          "median": 9420800.0,
+          "p95": 9420800,
+          "minimum": 9404416,
+          "maximum": 9453568,
+          "stddev": 11400.845294607718
+        },
+        "encoded_bytes": [
+          41093
+        ],
+        "reported_peak_pixel_bytes": [
+          0
+        ],
+        "reported_peak_workspace_bytes": [
+          331840
+        ],
+        "reported_pixel_allocation_count": [
+          0
+        ],
+        "copy_count": [
+          0
+        ],
+        "copy_bytes": [
+          0
+        ],
+        "output_sha256": [
+          "2cd3b0f66d4e1007f6f5ed92f797d75f46e035b267be3f54bef19f5ac91abf59"
+        ],
+        "low_power_mode": [
+          false
+        ],
+        "thermal_state": [
+          0
+        ],
+        "maximum_workers": [
+          1
+        ]
+      },
+      "median_latency_change_percent": 1.102045652738326,
+      "median_rss_change_percent": 1.590106007067127,
+      "encoded_size_change_percent": 0.0,
+      "investigate_over_5_percent": false,
+      "investigate_size_over_1_percent": false
+    }
+  ],
+  "power_after": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded\n",
+  "interpretation": "Latency/memory increases above5% and encoded-size increases above1% require investigation and repeated controlled evidence. No automatic acceptance or waiver; reports are admission/accounting values, not measured heap allocation."
+}

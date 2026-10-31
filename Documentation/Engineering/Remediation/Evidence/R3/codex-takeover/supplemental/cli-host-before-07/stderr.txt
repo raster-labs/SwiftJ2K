@@ -1,0 +1,1 @@
+SwiftJ2KCLI/CLIVerbs.swift:1871: Fatal error: Unexpectedly found nil while unwrapping an Optional value

@@ -1,0 +1,105 @@
+SwiftJ2K R3 — independent peer options
+31 October 2026
+
+Recommendation: use the already installed Kakadu 8.4.1 for bounded Part2/Part15
+investigations. Ask a historical Part10 reference supplier to confirm the exact
+combined capability before considering another product. No currently documented,
+available peer was established for all required combinations. Do not purchase
+software on the strength of a general JPEG2000, HTJ2K, JPIP or “3D” claim.
+
+1. Existing Kakadu: useful now, with demonstrated limits
+
+Kakadu documents Parts1,2,3,9 and15. It provides component transforms, HTJ2K,
+JPIP and Part1-to-HT transcoding. Its documented 3D-volume presentation through
+JPX imagery does not establish Part10 volumetric codestream support.
+https://kakadusoftware.com/
+https://kakadusoftware.com/wp-content/uploads/kdu_show.pdf
+
+Use the installed tools for the current bounded refinement campaign. T.803
+C.1.10 recommends transcoding reversibly transformed but lossy Part1 data to
+HT while preserving truncation boundaries, then comparing decoded samples.
+Multiple quality layers alone do not establish SigProp, MagRef or multiple
+active HT sets; retain actual segment/pass evidence.
+https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.803-202402-I%21%21PDF-E&lang=e&type=items
+
+High-precision Part2 remains unresolved. The installed Overview documents
+precision restrictions. Both current signed/unsigned logical38 diagnostic
+streams passed local header validation but kdu_expand crashed when asked for
+codestream components. That crash does not prove invalid metadata or its cause.
+The derived Part1/15 signed-limb fallback now passes all 64 samples in each
+signed/unsigned38 fixture after separately implemented exact matrix synthesis.
+This is narrower evidence; it does not prove direct Part2-marker processing
+or direct logical38 output. Receipts are retained in work/part2-limbs-01.
+
+Exact questions for Kakadu, if the owner later chooses to contact the vendor:
+- Does a supported release decode unchanged Part10 NSI/COD syntax together with
+  Part15 CAP and HT blocks, including nontrivial depth and Z wavelet levels?
+- Can kdu_expand bypass an AnnexJ matrix with CBD precision38 and return the
+  original signed <=20-bit codestream components? Which documented command and
+  output format should work? Can the supplied crash reproduce from our receipt?
+- Is exact signed/unsigned38 logical output supported through an API or file
+  path, rather than conversion to <=32-bit integers or floating-point samples?
+- Which encoder option or supplied fixture produces two or more transmitted,
+  nonempty HT sets for one block, as distinct from placeholder quality layers?
+
+2. IRIS-JP3D / VUB: credible historical Part10 inquiry
+
+The authors' research identifies IRIS-JP3D as Part1/Part10 reference software.
+That establishes historical relevance, not present availability, Part15 support,
+or a maintained 3D JPIP service. VUB's current technology-transfer route is a
+reasonable place to request a referral to the reference-software maintainers.
+https://researchportal.vub.be/files/29598865/ijhpca_final_accepted_version.pdf
+https://techtransfer.research.vub.be/for-researchers/intellectual-property-rights
+
+Exact questions:
+- Is the IRIS-JP3D source or a supported executable available for independent
+  conformance testing, and under what license and reproducible version identity?
+- Does any available branch support Part10 and Part15 in the same unchanged
+  codestream? If so, can it supply a native volumetric fixture plus exact decoded
+  samples, encoder options and hashes?
+- Does it implement 3D JPIP requests and data-bin reconstruction for Part10
+  content? Which specification/profile, client/server versions and fixtures?
+- If not, is there a reference implementation or research group that does?
+
+3. Other HT products: insufficient evidence for these missing combinations
+
+Comprimato documents HTJ2K encoding/decoding; Grok documents JPEG2000/HTJ2K.
+Neither official source reviewed establishes the combined Part10+15, native
+3D JPIP or repository-specific WebSocket gate. They are capability-confirmation
+candidates only, not recommended purchases for closing R3.
+https://comprimato.com/products/comprimato-jpeg2000/
+https://comprimato.com/blog/2022/08/24/jpeg2000-sdk-2-8-release-with-new-high-throughput-jpeg-2000/
+https://github.com/GrokImageCompression/grok
+
+OpenHTJ2K provides useful independent HT fixtures and documents a 2D HTTP JPIP
+implementation. Its current advertised Parts1/15 and partial Part2 scope does
+not establish Part10 or the exact WebSocket extension.
+https://github.com/osamu620/OpenHTJ2K/blob/main/README.md
+https://github.com/osamu620/OpenHTJ2K/blob/main/docs/jpip.md
+
+4. The two protocol gaps need exact confirmation or independent authoring
+
+For 3D JPIP, require a peer that accepts the exact volumetric request/profile,
+serves native Part10 content, and reconstructs the requested region/depth with
+independent expected samples. A 2D JPIP server serving image slices is insufficient
+to establish that combination. No suitable available peer was found in this
+bounded investigation; this is not a claim that nobody implements it.
+
+For WebSocket JPIP, the required extension is this repository's particular
+subprotocol, request/response framing and semantics. A general WebSocket library
+can independently exercise RFC6455 transport but does not implement that extension.
+Freeze and supply its wire specification when asking any prospective author:
+- Does your independent implementation use this exact subprotocol and framing?
+- Does it preserve request identity, binary data-bin semantics, flow control,
+  cancellation, errors and closure behavior across the required exchanges?
+- Can both directions be tested with retained messages and independently
+  reconstructed samples, using an implementation authored separately from ours?
+
+If no existing implementation confirms those requirements, commissioning or
+separately authoring an independent reference peer is a validation project. A
+self-authored adapter is not silently equivalent to the existing independent
+peer gate. The owner must decide how to obtain that peer; the gate stays open.
+
+No outreach, purchase, installation, or gate waiver was performed. All required
+independent gates remain unwaived. Research links and candidate products are
+not successful interoperability receipts.

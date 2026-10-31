@@ -22,62 +22,8 @@ import Testing
 
 // MARK: - CLI Subprocess Helpers
 
-private struct R1CLIResult: Sendable {
-    let status: Int32
-    let reason: Process.TerminationReason
-    let stdout: Data
-    let stderr: Data
-    var stdoutText: String { String(data: stdout, encoding: .utf8) ?? "" }
-    var stderrText: String { String(data: stderr, encoding: .utf8) ?? "" }
-}
-
-private func locateSwiftJ2KCLI() throws -> URL {
-    let repoRoot = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-    let candidates = [
-        repoRoot.appendingPathComponent(".build/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/arm64-apple-macosx/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/out/Products/Debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/x86_64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/aarch64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        repoRoot.appendingPathComponent(".build/release/swiftj2k-cli")
-    ]
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    let buildProc = Process()
-    buildProc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    buildProc.arguments = ["swift", "build", "--product", "swiftj2k-cli"]
-    buildProc.currentDirectoryURL = repoRoot
-    try buildProc.run()
-    buildProc.waitUntilExit()
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    throw CodecError(.internalFailure, "Unable to locate swiftj2k-cli executable for R1 regression tests.")
-}
-
-private func runSwiftJ2KCLI(_ args: [String]) throws -> R1CLIResult {
-    let binary = try locateSwiftJ2KCLI()
-    let proc = Process()
-    proc.executableURL = binary
-    proc.arguments = args
-    let outPipe = Pipe()
-    let errPipe = Pipe()
-    proc.standardOutput = outPipe
-    proc.standardError = errPipe
-    try proc.run()
-    let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-    proc.waitUntilExit()
-    return R1CLIResult(
-        status: proc.terminationStatus,
-        reason: proc.terminationReason,
-        stdout: outData,
-        stderr: errData
-    )
+private func runSwiftJ2KCLI(_ args: [String]) async throws -> CLITestProcessResult {
+    try await CLITestProcess.run(args)
 }
 
 private func makeGray16Image(width: Int = 4, height: Int = 4) throws -> Image {
@@ -1407,7 +1353,7 @@ struct R1RemediationTests {
     }
 
     @Test("M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions")
-    func cliRemediationSubprocessRegressions() throws {
+    func cliRemediationSubprocessRegressions() async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("r1-cli-remediation-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -1419,13 +1365,13 @@ struct R1RemediationTests {
         let craftedTIFF = makeSyntheticLittleEndianTIFF(width: 256, height: 256, bitsPerSample: 8, stripPayload: [0x7F])
         try craftedTIFF.write(to: badTIFF)
 
-        let badTIFFLowMem = try runSwiftJ2KCLI([
+        let badTIFFLowMem = try await runSwiftJ2KCLI([
             "encode", "-i", badTIFF.path, "-o", badOutJ2K.path, "--max-memory", "512"
         ])
         #expect(badTIFFLowMem.reason == .exit)
         #expect(badTIFFLowMem.status == 5, "Expected exit 5 under --max-memory 512, got \(badTIFFLowMem.status): \(badTIFFLowMem.stderrText)")
 
-        let badTIFFDefault = try runSwiftJ2KCLI([
+        let badTIFFDefault = try await runSwiftJ2KCLI([
             "encode", "-i", badTIFF.path, "-o", badOutJ2K.path
         ])
         #expect(badTIFFDefault.reason == .exit)
@@ -1443,9 +1389,9 @@ struct R1RemediationTests {
         let goodTIFFOut = tempDir.appendingPathComponent("good16-out.tiff")
         try makeSyntheticLittleEndianTIFF(width: 4, height: 4, bitsPerSample: 16, stripPayload: validStrip16)
             .write(to: goodTIFF)
-        let encGoodTIFF = try runSwiftJ2KCLI(["encode", "-i", goodTIFF.path, "-o", goodTIFFJ2K.path, "--mode", "lossless"])
+        let encGoodTIFF = try await runSwiftJ2KCLI(["encode", "-i", goodTIFF.path, "-o", goodTIFFJ2K.path, "--mode", "lossless"])
         #expect(encGoodTIFF.reason == .exit && encGoodTIFF.status == 0, "TIFF encode failed: \(encGoodTIFF.stderrText)")
-        let decGoodTIFF = try runSwiftJ2KCLI(["decode", "-i", goodTIFFJ2K.path, "-o", goodTIFFOut.path])
+        let decGoodTIFF = try await runSwiftJ2KCLI(["decode", "-i", goodTIFFJ2K.path, "-o", goodTIFFOut.path])
         #expect(decGoodTIFF.reason == .exit && decGoodTIFF.status == 0, "TIFF decode failed: \(decGoodTIFF.stderrText)")
 
         // --- CLI F02: 32-bit unsigned NRRD containing 16,777,217 (2^24 + 1) lossless round-trip ---
@@ -1461,56 +1407,56 @@ struct R1RemediationTests {
         }
         try nrrd32Data.write(to: nrrd32In)
 
-        let enc32 = try runSwiftJ2KCLI(["encode3d", "-i", nrrd32In.path, "-o", j3d32.path, "--mode", "lossless"])
+        let enc32 = try await runSwiftJ2KCLI(["encode3d", "-i", nrrd32In.path, "-o", j3d32.path, "--mode", "lossless"])
         #expect(enc32.reason == .exit && enc32.status == 0, "encode3d 32-bit failed: \(enc32.stderrText)")
-        let dec32 = try runSwiftJ2KCLI(["decode3d", "-i", j3d32.path, "-o", nrrd32Out.path])
+        let dec32 = try await runSwiftJ2KCLI(["decode3d", "-i", j3d32.path, "-o", nrrd32Out.path])
         #expect(dec32.reason == .exit && dec32.status == 0, "decode3d 32-bit failed: \(dec32.stderrText)")
-        let cmp32 = try runSwiftJ2KCLI([
+        let cmp32 = try await runSwiftJ2KCLI([
             "compare", "-i", nrrd32Out.path, "-r", nrrd32In.path, "--mode", "3d", "--max-error", "0"
         ])
         #expect(cmp32.reason == .exit && cmp32.status == 0, "compare 3d 32-bit max-error 0 failed: \(cmp32.stderrText)")
 
         // --- M12-CX-02: decode3d --region Int.max overflow & out-of-bounds, --slice-range, encode --roi, jpip --region ---
-        let roiOverflow3D = try runSwiftJ2KCLI([
+        let roiOverflow3D = try await runSwiftJ2KCLI([
             "decode3d", "-i", j3d32.path, "-o", nrrd32Out.path,
             "--region", "9223372036854775807,0,0,1,1,1", "--overwrite"
         ])
         #expect(roiOverflow3D.reason == .exit, "decode3d --region Int.max must exit cleanly, not trap with signal")
         #expect(roiOverflow3D.status == 2)
 
-        let roiOOB3D = try runSwiftJ2KCLI([
+        let roiOOB3D = try await runSwiftJ2KCLI([
             "decode3d", "-i", j3d32.path, "-o", nrrd32Out.path,
             "--region", "0,0,0,99,99,99", "--overwrite"
         ])
         #expect(roiOOB3D.reason == .exit && roiOOB3D.status == 2)
 
-        let sliceOOB3D = try runSwiftJ2KCLI([
+        let sliceOOB3D = try await runSwiftJ2KCLI([
             "decode3d", "-i", j3d32.path, "-o", nrrd32Out.path,
             "--slice-range", "0:99", "--overwrite"
         ])
         #expect(sliceOOB3D.reason == .exit && sliceOOB3D.status == 2)
 
         // --- CLI F03: --resolution-level 64 rejected cleanly with exit 2 ---
-        let res64Decode3D = try runSwiftJ2KCLI([
+        let res64Decode3D = try await runSwiftJ2KCLI([
             "decode3d", "-i", j3d32.path, "-o", nrrd32Out.path,
             "--resolution-level", "64", "--overwrite"
         ])
         #expect(res64Decode3D.reason == .exit && res64Decode3D.status == 2)
 
-        let res64JPIP = try runSwiftJ2KCLI([
+        let res64JPIP = try await runSwiftJ2KCLI([
             "jpip", "client", "--single-file", goodTIFFJ2K.path,
             "--resolution-level", "64", "-o", tempDir.appendingPathComponent("jpip64.tiff").path
         ])
         #expect(res64JPIP.reason == .exit && res64JPIP.status == 2)
 
-        let jpipROIOverflow = try runSwiftJ2KCLI([
+        let jpipROIOverflow = try await runSwiftJ2KCLI([
             "jpip", "client", "--single-file", goodTIFFJ2K.path,
             "--region", "9223372036854775807,0,1,1",
             "-o", tempDir.appendingPathComponent("jpip-roi.tiff").path
         ])
         #expect(jpipROIOverflow.reason == .exit && jpipROIOverflow.status == 2)
 
-        let encROIOverflow = try runSwiftJ2KCLI([
+        let encROIOverflow = try await runSwiftJ2KCLI([
             "encode", "-i", goodTIFF.path,
             "-o", tempDir.appendingPathComponent("roi-ov.j2k").path,
             "--roi", "9223372036854775807,0,1,1"
@@ -1518,21 +1464,21 @@ struct R1RemediationTests {
         #expect(encROIOverflow.reason == .exit && encROIOverflow.status == 2)
 
         // --- CLI F05: --max-memory 64 enforced on encode3d, decode3d, and jpip client ---
-        let lowMemEnc3D = try runSwiftJ2KCLI([
+        let lowMemEnc3D = try await runSwiftJ2KCLI([
             "encode3d", "-i", nrrd32In.path,
             "-o", tempDir.appendingPathComponent("lowmem.j3d").path,
             "--max-memory", "64"
         ])
         #expect(lowMemEnc3D.reason == .exit && lowMemEnc3D.status == 5)
 
-        let lowMemDec3D = try runSwiftJ2KCLI([
+        let lowMemDec3D = try await runSwiftJ2KCLI([
             "decode3d", "-i", j3d32.path,
             "-o", tempDir.appendingPathComponent("lowmem-out.nrrd").path,
             "--max-memory", "64"
         ])
         #expect(lowMemDec3D.reason == .exit && lowMemDec3D.status == 5)
 
-        let lowMemJPIP = try runSwiftJ2KCLI([
+        let lowMemJPIP = try await runSwiftJ2KCLI([
             "jpip", "client", "--single-file", goodTIFFJ2K.path,
             "-o", tempDir.appendingPathComponent("lowmem-jpip.tiff").path,
             "--max-memory", "64"
@@ -1548,13 +1494,13 @@ struct R1RemediationTests {
         for i in 0..<16 { pgmBytes.append(UInt8(i * 15)) }
         try pgmBytes.write(to: pgmIn)
 
-        let toPNG = try runSwiftJ2KCLI(["convert", "-i", pgmIn.path, "-o", pngIn.path])
+        let toPNG = try await runSwiftJ2KCLI(["convert", "-i", pgmIn.path, "-o", pngIn.path])
         #expect(toPNG.reason == .exit && toPNG.status == 0, "PGM->PNG convert failed: \(toPNG.stderrText)")
-        let encPNG = try runSwiftJ2KCLI(["encode", "-i", pngIn.path, "-o", pngJ2K.path, "--mode", "lossless"])
+        let encPNG = try await runSwiftJ2KCLI(["encode", "-i", pngIn.path, "-o", pngJ2K.path, "--mode", "lossless"])
         #expect(encPNG.reason == .exit && encPNG.status == 0, "PNG->J2K encode failed: \(encPNG.stderrText)")
-        let decPNG = try runSwiftJ2KCLI(["decode", "-i", pngJ2K.path, "-o", pngOut.path])
+        let decPNG = try await runSwiftJ2KCLI(["decode", "-i", pngJ2K.path, "-o", pngOut.path])
         #expect(decPNG.reason == .exit && decPNG.status == 0, "J2K->PNG decode failed: \(decPNG.stderrText)")
-        let cmpPNG = try runSwiftJ2KCLI(["compare", "-i", pngOut.path, "-r", pngIn.path, "--max-error", "0"])
+        let cmpPNG = try await runSwiftJ2KCLI(["compare", "-i", pngOut.path, "-r", pngIn.path, "--max-error", "0"])
         #expect(cmpPNG.reason == .exit && cmpPNG.status == 0, "PNG max-error 0 compare failed: \(cmpPNG.stderrText)")
     }
 }

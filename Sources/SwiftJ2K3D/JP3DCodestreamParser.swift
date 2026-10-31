@@ -345,35 +345,52 @@ package struct JP3DTileHeaderOverrides: Sendable {
 }
 
 /// Normative ITU-T T.809 Table A.1 / ITU-T T.801 `CBD` (`0xFF78`) + `MCT` (`0xFF74`) + `MCC` (`0xFF75`) + `MCO` (`0xFF77`)
-/// reversible `19 + (B - 19)` multi-component synthesis descriptor for extreme-range `35...38`-bit lossless volumes
+/// exact integer `2 -> 1` matrix synthesis descriptor for extreme-range `34...38`-bit lossless volumes
 /// whose wavelet sub-band magnitudes exceed the single-component `G + eps_b - 1 <= 37` Part 10 `QCD` ceiling.
 package struct JP3DPart2BitSplitDescriptor: Sendable, Equatable {
     package static let defaultSplitLowBits = 19
 
     package let logicalComponentBitDepths: [Int]
     package let logicalComponentSigned: [Bool]
+    package let coeffLow: Int64
+    package let coeffHigh: Int64
     package let rawMarkerSegments: Data
 
     package init(
         logicalComponentBitDepths: [Int],
         logicalComponentSigned: [Bool],
+        coeffLow: Int64 = 1,
+        coeffHigh: Int64 = 524_288,
         rawMarkerSegments: Data
     ) {
         self.logicalComponentBitDepths = logicalComponentBitDepths
         self.logicalComponentSigned = logicalComponentSigned
+        self.coeffLow = coeffLow
+        self.coeffHigh = coeffHigh
         self.rawMarkerSegments = rawMarkerSegments
     }
 
     package var logicalComponentCount: Int { logicalComponentBitDepths.count }
 
     /// Builds normative `CBD` (`0xFF78`), `MCT` (`0xFF74`), `MCC` (`0xFF75`), and `MCO` (`0xFF77`) main-header marker segments
-    /// mapping `2 * N` codestream components `(lo_19bit_unsigned, hi_(B-19)bit)` into `N` reconstructed `B`-bit output components
-    /// via integer decorrelation matrix `[1, 2^19]`.
+    /// mapping `2 * N` signed codestream limb components `(lo_20bit_signed, hi_signed)` (zero Part 1 DC level shift per
+    /// ITU-T T.801 Annex J, zero offset array) into `N` reconstructed `B`-bit output components via exact integer `2 -> 1`
+    /// matrix decorrelation `[1, 2^19]`.
     package static func buildMarkerSegments(
         logicalBitDepths: [Int],
         logicalSigned: [Bool]
-    ) -> JP3DPart2BitSplitDescriptor {
+    ) throws -> JP3DPart2BitSplitDescriptor {
         let n = logicalBitDepths.count
+        guard n >= 1, n <= 8_192, logicalSigned.count == n,
+              logicalBitDepths.allSatisfy({ (1...38).contains($0) }) else {
+            throw J2KError.encodingError("Invalid Part 2 bit-split component description")
+        }
+        let inputIndexBytes = n > 128 ? 2 : 1
+        let outputIndexBytes = n > 256 ? 2 : 1
+        let lmcc = 9 + (8 + 2 * inputIndexBytes + outputIndexBytes) * n
+        guard lmcc <= 65_535 else {
+            throw J2KError.encodingError("Part 2 bit-split collections exceed a single MCC segment")
+        }
         var buf = Data()
 
         func appendU16(_ v: UInt16) {
@@ -392,8 +409,8 @@ package struct JP3DPart2BitSplitDescriptor: Sendable, Equatable {
         appendU16(UInt16(4 + n))
         appendU16(UInt16(n))
         for i in 0..<n {
-            let depth = max(1, min(38, logicalBitDepths[i]))
-            let sgn = i < logicalSigned.count ? logicalSigned[i] : false
+            let depth = logicalBitDepths[i]
+            let sgn = logicalSigned[i]
             buf.append((sgn ? 0x80 : 0x00) | UInt8(depth - 1))
         }
 
@@ -407,25 +424,32 @@ package struct JP3DPart2BitSplitDescriptor: Sendable, Equatable {
         appendU32(1)
         appendU32(524_288)
 
-        // 3. MCC (0xFF75, ITU-T T.801 A.3.9): stage Imcc = 1, Qmcc = N collections, each 11 bytes:
-        //    Xmcc = 0x09 (reversible matrix decorrelation), Nmcc = 2 (`2*c`, `2*c+1`), Mmcc = 1 (`c`), Tmcc = 0x000001 (array #1).
-        let lmcc = 9 + 11 * n
+        // 3. MCC: array decorrelation (Xmcc=1; all reserved bits zero).
+        // Nmcc/Mmcc bit 15 selects index width, independent of the transform type.
+        // Tmcc=1 selects irreversible array form, no offsets, matrix #1.
         appendU16(0xFF75)
         appendU16(UInt16(lmcc))
-        appendU16(0)      // Zmcc = 0
-        buf.append(1)     // Imcc = 1
-        appendU16(0)      // Ymcc = 0
-        appendU16(UInt16(n)) // Qmcc = N
+        appendU16(0)
+        buf.append(1)
+        appendU16(0)
+        appendU16(UInt16(n))
         for c in 0..<n {
-            buf.append(0x09) // Xmcc: reversible matrix decorrelation
-            appendU16(2)     // Nmcc = 2 (8-bit indices)
-            buf.append(UInt8(2 * c))
-            buf.append(UInt8(2 * c + 1))
-            appendU16(1)     // Mmcc = 1 (8-bit index)
-            buf.append(UInt8(c))
-            buf.append(0x00) // Tmcc (24 bits): reversible=0, offset=0, decorrelation=1
-            buf.append(0x00)
             buf.append(0x01)
+            appendU16(inputIndexBytes == 2 ? 0x8002 : 2)
+            if inputIndexBytes == 2 {
+                appendU16(UInt16(2 * c))
+                appendU16(UInt16(2 * c + 1))
+            } else {
+                buf.append(UInt8(2 * c))
+                buf.append(UInt8(2 * c + 1))
+            }
+            appendU16(outputIndexBytes == 2 ? 0x8001 : 1)
+            if outputIndexBytes == 2 {
+                appendU16(UInt16(c))
+            } else {
+                buf.append(UInt8(c))
+            }
+            buf.append(contentsOf: [0, 0, 1])
         }
 
         // 4. MCO (0xFF77, ITU-T T.801 A.3.10): Lmco = 4, Nmco = 1, Imco^1 = 1
@@ -437,6 +461,8 @@ package struct JP3DPart2BitSplitDescriptor: Sendable, Equatable {
         return JP3DPart2BitSplitDescriptor(
             logicalComponentBitDepths: logicalBitDepths,
             logicalComponentSigned: logicalSigned,
+            coeffLow: 1,
+            coeffHigh: 524_288,
             rawMarkerSegments: buf
         )
     }
@@ -497,7 +523,7 @@ public struct JP3DParsedCodestream: Sendable {
     package let mainRGNByComponent: [Int: Int]
     /// First-tile-part (`TPsot == 0`) functional marker overrides keyed by tile index.
     package let tileOverrides: [Int: JP3DTileHeaderOverrides]
-    /// Optional Part 2 `CBD`/`MCT`/`MCC`/`MCO` reversible bit-split synthesis descriptor.
+    /// Optional Part 2 `CBD`/`MCT`/`MCC`/`MCO` exact integer bit-split synthesis descriptor.
     package let part2BitSplit: JP3DPart2BitSplitDescriptor?
     /// Total bytes retained across parsed tile subdata buffers.
     internal let retainedTileBytes: Int
@@ -763,8 +789,7 @@ public struct JP3DCodestreamParser: Sendable {
         var hasNSI = false
         var roiShifts = [Int](repeating: 0, count: sizInfo.componentCount)
         var parsedCBD: (depths: [Int], signed: [Bool], raw: Data)?
-        var parsedMCTValid = false
-        var parsedMCTRaw = Data()
+        var parsedMCT: (coeffLow: Int64, coeffHigh: Int64, raw: Data)?
         var parsedMCCValidCount: Int?
         var parsedMCCRaw = Data()
         var parsedMCOValid = false
@@ -871,11 +896,10 @@ public struct JP3DCodestreamParser: Sendable {
                 parsedCBD = try parseCBD(data, markerStart: markerStart, at: &offset, codestreamComponents: sizInfo.componentCount)
 
             case 0xFF74: // MCT (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.8)
-                guard !parsedMCTValid else {
+                guard parsedMCT == nil else {
                     throw J2KError.decodingError("Duplicate MCT (0xFF74) marker in main header")
                 }
-                parsedMCTRaw = try parsePart2BitSplitMCT(data, markerStart: markerStart, at: &offset)
-                parsedMCTValid = true
+                parsedMCT = try parsePart2BitSplitMCT(data, markerStart: markerStart, at: &offset)
 
             case 0xFF75: // MCC (ITU-T T.809 Table A.1 / ITU-T T.801 A.3.9)
                 guard parsedMCCValidCount == nil else {
@@ -982,30 +1006,30 @@ public struct JP3DCodestreamParser: Sendable {
             throw J2KError.decodingError("Codestream contains no tile data")
         }
 
-        // Validate optional Part 2 CBD/MCT/MCC/MCO reversible bit-split synthesis group.
+        // Validate optional Part 2 CBD/MCT/MCC/MCO exact integer 2->1 bit-split synthesis group.
         var part2Descriptor: JP3DPart2BitSplitDescriptor?
-        let anyPart2MCTMarkers = (parsedCBD != nil) || parsedMCTValid || (parsedMCCValidCount != nil) || parsedMCOValid
+        let anyPart2MCTMarkers = (parsedCBD != nil) || (parsedMCT != nil) || (parsedMCCValidCount != nil) || parsedMCOValid
         if anyPart2MCTMarkers {
             guard let cbd = parsedCBD,
-                  parsedMCTValid,
+                  let mct = parsedMCT,
                   let mccLogical = parsedMCCValidCount,
                   parsedMCOValid,
                   cbd.depths.count == mccLogical else {
                 throw J2KError.decodingError("Incomplete or mismatched Part 2 CBD/MCT/MCC/MCO marker set in main header")
             }
-            if let pcap = parsedPcap {
-                guard (pcap & 0x4000_0000) != 0 || (sizInfo.rsiz & 0x8010) != 0 else {
-                    throw J2KError.decodingError("Part 2 CBD/MCT/MCC/MCO markers present without Pcap^2 or Part 2 Rsiz signalling")
-                }
+            guard (sizInfo.rsiz & 0x8100) == 0x8100 else {
+                throw J2KError.decodingError("Part 2 transform markers require the Rsiz Part 2 and MCT capability bits")
             }
             var rawAll = Data()
             rawAll.append(cbd.raw)
-            rawAll.append(parsedMCTRaw)
+            rawAll.append(mct.raw)
             rawAll.append(parsedMCCRaw)
             rawAll.append(parsedMCORaw)
             part2Descriptor = JP3DPart2BitSplitDescriptor(
                 logicalComponentBitDepths: cbd.depths,
                 logicalComponentSigned: cbd.signed,
+                coeffLow: mct.coeffLow,
+                coeffHigh: mct.coeffHigh,
                 rawMarkerSegments: rawAll
             )
         }
@@ -1099,6 +1123,9 @@ public struct JP3DCodestreamParser: Sendable {
         for tile in parsedTiles {
             let tIdx = tile.tileIndex
             let tileSGcod = assembled.effectiveTileCOD(tileIndex: tIdx)
+            guard (tileSGcod.multipleComponentTransform == 2) == (part2Descriptor != nil) else {
+                throw J2KError.decodingError("COD array transform usage must match the Part 2 synthesis markers")
+            }
             for c in 0..<sizInfo.componentCount {
                 let effCOD = assembled.effectiveCOD(tileIndex: tIdx, component: c)
                 let effQCD = assembled.effectiveQCD(tileIndex: tIdx, component: c)
@@ -1431,7 +1458,7 @@ public struct JP3DCodestreamParser: Sendable {
                 throw J2KError.decodingError("COD: number of layers must be >= 1")
             }
             let mct = data[data.startIndex + offset]; offset += 1
-            guard mct <= 1 else {
+            guard mct <= 2 else {
                 throw J2KError.decodingError("COD: unsupported MCT value \(mct)")
             }
             let nlx = Int(data[data.startIndex + offset]); offset += 1
@@ -1847,9 +1874,9 @@ public struct JP3DCodestreamParser: Sendable {
         }
         let segEnd = offset + len - 2
         let ncbd = Int(try readUInt16BE(data, at: &offset))
-        let count = ncbd & 0x3FFF
+        let count = ncbd & 0x7FFF
         let shared = (ncbd & 0x8000) != 0
-        guard count >= 1, codestreamComponents == 2 * count else {
+        guard (1...16_384).contains(count), codestreamComponents == 2 * count else {
             throw J2KError.decodingError("CBD (0xFF78) output component count \(count) unsupported for \(codestreamComponents) codestream components")
         }
         let expectedLen = 4 + (shared ? 1 : count)
@@ -1885,7 +1912,11 @@ public struct JP3DCodestreamParser: Sendable {
         return (depths, signedFlags, raw)
     }
 
-    private func parsePart2BitSplitMCT(_ data: Data, markerStart: Int, at offset: inout Int) throws -> Data {
+    private func parsePart2BitSplitMCT(
+        _ data: Data,
+        markerStart: Int,
+        at offset: inout Int
+    ) throws -> (coeffLow: Int64, coeffHigh: Int64, raw: Data) {
         let len = Int(try readUInt16BE(data, at: &offset))
         guard len == 16, offset + (len - 2) <= data.count else {
             throw J2KError.decodingError("MCT (0xFF74) unsupported length \(len)")
@@ -1896,11 +1927,14 @@ public struct JP3DCodestreamParser: Sendable {
         let ymct = try readUInt16BE(data, at: &offset)
         let c0 = try readUInt32BE(data, at: &offset)
         let c1 = try readUInt32BE(data, at: &offset)
-        guard zmct == 0, imct == 0x0501, ymct == 0, c0 == 1, c1 == 524_288 else {
+        let coeffLow = Int64(Int32(bitPattern: c0))
+        let coeffHigh = Int64(Int32(bitPattern: c1))
+        guard zmct == 0, imct == 0x0501, ymct == 0, coeffLow == 1, coeffHigh == 524_288 else {
             throw J2KError.decodingError("MCT (0xFF74) unsupported Part 2 transform parameters")
         }
         offset = segEnd
-        return Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)])
+        let raw = Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)])
+        return (coeffLow, coeffHigh, raw)
     }
 
     private func parsePart2BitSplitMCC(
@@ -1918,27 +1952,53 @@ public struct JP3DCodestreamParser: Sendable {
         let imcc = data[data.startIndex + offset]; offset += 1
         let ymcc = try readUInt16BE(data, at: &offset)
         let qmcc = Int(try readUInt16BE(data, at: &offset))
-        guard zmcc == 0, imcc == 1, ymcc == 0, qmcc >= 1,
-              codestreamComponents == 2 * qmcc,
-              len == 9 + 11 * qmcc else {
+        guard zmcc == 0, imcc == 1, ymcc == 0, (1...8_192).contains(qmcc),
+              codestreamComponents == 2 * qmcc else {
             throw J2KError.decodingError("MCC (0xFF75) unsupported Part 2 collection layout")
         }
+        func requireBytes(_ count: Int) throws {
+            guard count <= segEnd - offset else {
+                throw J2KError.decodingError("MCC (0xFF75) truncated component collection")
+            }
+        }
         for c in 0..<qmcc {
+            try requireBytes(3)
             let xmcc = data[data.startIndex + offset]; offset += 1
             let nmcc = try readUInt16BE(data, at: &offset)
-            let in0 = Int(data[data.startIndex + offset]); offset += 1
-            let in1 = Int(data[data.startIndex + offset]); offset += 1
+            let inputWide = (nmcc & 0x8000) != 0
+            guard xmcc == 0x01, (nmcc & 0x7FFF) == 2 else {
+                throw J2KError.decodingError("MCC (0xFF75) unsupported transform or input count")
+            }
+            try requireBytes((inputWide ? 4 : 2) + 2)
+            let in0: Int
+            let in1: Int
+            if inputWide {
+                in0 = Int(try readUInt16BE(data, at: &offset))
+                in1 = Int(try readUInt16BE(data, at: &offset))
+            } else {
+                in0 = Int(data[data.startIndex + offset]); offset += 1
+                in1 = Int(data[data.startIndex + offset]); offset += 1
+            }
             let mmcc = try readUInt16BE(data, at: &offset)
-            let out0 = Int(data[data.startIndex + offset]); offset += 1
+            let outputWide = (mmcc & 0x8000) != 0
+            try requireBytes((outputWide ? 2 : 1) + 3)
+            let out0: Int
+            if outputWide {
+                out0 = Int(try readUInt16BE(data, at: &offset))
+            } else {
+                out0 = Int(data[data.startIndex + offset]); offset += 1
+            }
             let t0 = data[data.startIndex + offset]; offset += 1
             let t1 = data[data.startIndex + offset]; offset += 1
             let t2 = data[data.startIndex + offset]; offset += 1
-            guard xmcc == 0x09, nmcc == 2, in0 == 2 * c, in1 == 2 * c + 1,
-                  mmcc == 1, out0 == c, t0 == 0, t1 == 0, t2 == 1 else {
+            guard in0 == 2 * c, in1 == 2 * c + 1,
+                  (mmcc & 0x7FFF) == 1, out0 == c, t0 == 0, t1 == 0, t2 == 1 else {
                 throw J2KError.decodingError("MCC (0xFF75) unsupported Part 2 component binding on collection \(c)")
             }
         }
-        offset = segEnd
+        guard offset == segEnd else {
+            throw J2KError.decodingError("MCC (0xFF75) trailing collection bytes")
+        }
         return (qmcc, Data(data[(data.startIndex + markerStart)..<(data.startIndex + segEnd)]))
     }
 

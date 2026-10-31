@@ -1,0 +1,93 @@
+{
+  "state": "PARSER_COMPONENT_CHECKS_ONLY",
+  "helper_sha256": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+  "inventory06_sha256": "bbb1da8c666f47846672b84b05dfb703bb7861ab233a761c887bb54468e8d9e1",
+  "runs": [
+    {
+      "label": "candidate-handoff-tsan-06",
+      "native_exit_code": 0,
+      "derived_component_inventory_count": 1328,
+      "added_from_xml_for_format_checks_only": [],
+      "custom_title_bindings": 130,
+      "xctest_declarations": 0,
+      "swift_log_completions": 4,
+      "swift_xml_declarations": 4,
+      "strict_log_rejected": false,
+      "strict_xml_rejected": false,
+      "diagnostic_gaps": [],
+      "files": {
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-handoff-tsan-06/report-swift-testing.xml": "a325eff7d1fc1d978f290a2b28f1d3d5f13bbd5ae8f7742ff3910d4cfd149b1a",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-handoff-tsan-06/native.log": "14971d49e94b68d68ce21dedac1da2d3afb40d2775987afddabda1dbe163b529",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-handoff-tsan-06/result.json": "1c3e46e72183b0f678e89f48f28e6d63d1ad9c59dabf1a00bce40dfd97901f7b"
+      }
+    },
+    {
+      "label": "candidate-full-07",
+      "native_exit_code": 1,
+      "derived_component_inventory_count": 1334,
+      "added_from_xml_for_format_checks_only": [
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/chunkLineScanVisitsEachByteOnceAndPreservesLineEndings()",
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/headerAndChunkCapsStillRejectBeforeAnAbsentBodyRead()",
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/headerDelimitersSurviveEveryTrailingFragmentBoundary()",
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/headerScanWorkRemainsLinearAsInputQuadruples()",
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/immediateAndTruncatedHeaderEOFRemainDistinct()",
+        "SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests/twoThousandHeaderHandshakeHasLinearDelimiterWork()"
+      ],
+      "custom_title_bindings": 130,
+      "xctest_declarations": 1034,
+      "swift_log_completions": 299,
+      "swift_xml_declarations": 300,
+      "strict_log_rejected": true,
+      "strict_xml_rejected": true,
+      "diagnostic_gaps": [
+        "Failed Swift Testing events in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/native.log: [{'line': 3278, 'text': '✘ Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() recorded an issue at CodexR3WebSocketBudgetTests.swift:218:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket request deadline elapsed.\")'}, {'line': 3287, 'text': '✘ Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() failed after 13.086 seconds with 1 issue.'}]",
+        "Unresolved/interleaved runtime events in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/native.log: [{'line': 3358, 'text': \"✔ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) with 4 test cases passed after 14.097 secowarning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.\"}]",
+        "Swift Testing started without completion in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/native.log",
+        "Parameter case has no declaration completion in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/native.log"
+      ],
+      "files": {
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/report-swift-testing.xml": "1c08fb80f45743071b419976c005f745e772a57514c0d988c41fe2fb33bb29ef",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/native.log": "d826c3c0afa13a283fdb0e68579e8031a111a1ebceabbcde9c4a95a7717fac6a",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-07/result.json": "48ce3ad189450f1cb3d186e006f22193b5cf3844a615a6b0c192aeb432dbef37"
+      }
+    },
+    {
+      "label": "candidate-focused-08",
+      "native_exit_code": 0,
+      "derived_component_inventory_count": 1336,
+      "added_from_xml_for_format_checks_only": [
+        "SwiftJ2KTests.CodexR3CLIHostTests/invalidBindAddressFailsWithoutATrap()",
+        "SwiftJ2KTests.CodexR3CLIHostTests/onceVerificationUsesTheAcceptedBindAddress(host:)"
+      ],
+      "custom_title_bindings": 130,
+      "xctest_declarations": 0,
+      "swift_log_completions": 6,
+      "swift_xml_declarations": 6,
+      "strict_log_rejected": true,
+      "strict_xml_rejected": false,
+      "diagnostic_gaps": [
+        "Unresolved/interleaved runtime events in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-08/native.log: [{'line': 292, 'text': '◇ Test case passing 1 argument name → \"g12_129x67_gradient\" to independentOraclesVerifyTranscodedOutputsIwarning: \\'--build-system native\\' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.\\nnBothDirections(name:) started.', 'problem': 'Parameter terminal display missing or ambiguous'}]",
+        "Parameter case count differs for SwiftJ2KTests.independentOraclesVerifyTranscodedOutputsInBothDirections(name:): 3 starts/4 completed"
+      ],
+      "files": {
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-08/report-swift-testing.xml": "ff3708f60e94d833389cba4d3a53abd0f46d7bbfe82a7e9aefd38ee19f00a8eb",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-08/native.log": "9c8dc800f82bd8b13191363bd49ca1892b02c5887374fe0058b5d557d4ffed71",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-08/result.json": "b47fd2d1365857cb33920310c8d63cbb28350eaf34d198f919e94fa29c7552c2"
+      },
+      "literal_multiline_host_cases": {
+        "1 arguments host → \" \t\n \"": 1,
+        "1 arguments host → \" * \"": 1,
+        "1 arguments host → \" 0.0.0.0 \"": 1,
+        "1 arguments host → \" 127.0.0.1 \"": 1,
+        "1 arguments host → \"\"": 1
+      }
+    }
+  ],
+  "boundaries": [
+    "No native code, test binary, build or test runner was executed.",
+    "Derived07/08 component inventories extend real06 with XML identities only for parser checks; they do not prove discovery completeness or final runtime coverage.",
+    "Failed07 is rejected. Successful focused08 has an unresolved warning-spliced parameter start and is rejected by strict log reconciliation.",
+    "Only literal multiline argument records are joined; no native receipt is altered or repaired.",
+    "No R3 acceptance or independent peer gate is closed."
+  ]
+}

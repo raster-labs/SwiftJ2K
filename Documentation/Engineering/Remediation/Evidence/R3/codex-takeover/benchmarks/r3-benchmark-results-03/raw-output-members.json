@@ -1,0 +1,2242 @@
+[
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-00-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-00-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-00-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-00-baseline.stdout",
+    "sha256": "40b89d6dbac8194ba86581ab35dd12d4ec97c9e1588c60922d16049745035ff2"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-00-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-00-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-00-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-00-candidate.stdout",
+    "sha256": "128cf37e1df827c6691f4a6f1bfffa6564dbcbac2be1565a61090f8d103540de"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-01-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-01-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-01-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-01-baseline.stdout",
+    "sha256": "8c6749157d85fd348e2e4ff773a0f6dee76127366107b7fe719528b01487212c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-01-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-01-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-01-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-01-candidate.stdout",
+    "sha256": "20ee083e2b423b22ed4a35e6613095608cb69d23b0b1dee8c7a7af5dd67720c3"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-02-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-02-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-02-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-02-baseline.stdout",
+    "sha256": "33ee40f04f249124324eb83c51649a7ab154f9663b15f6b73a7d10a95e522b1a"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-02-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-02-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-02-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-02-candidate.stdout",
+    "sha256": "0b3510f785981357d4a0c4604bf3aa0d0bda22303de8bf38fb00d7c4d49d72b8"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-03-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-03-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-03-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-03-baseline.stdout",
+    "sha256": "ed6255b2fc5e703cc4dc7e74670e287226adaa12b39eb92368ffbc45d645409b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-03-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-03-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-03-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-03-candidate.stdout",
+    "sha256": "a96bc124267b80ae390f9926e2ed806ba8cc575db2a55f0cd95e46040f93c1ef"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-04-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-04-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-04-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-04-baseline.stdout",
+    "sha256": "5fa9aaaf544dae55755418eec57b1d88ea44ae4be942644c41340e4d294b9f45"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-04-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-04-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-04-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-04-candidate.stdout",
+    "sha256": "0de9f64916e9aa6aab684bee2028d28e813e0f6ea8816a2608c6cd19bfcfa80f"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-05-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-05-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-05-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-05-baseline.stdout",
+    "sha256": "1c539ac0fcc27fa2b29a3a5b00e63f6386fd0d3537812836b456fb3b2afb9430"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-05-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-05-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-05-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-05-candidate.stdout",
+    "sha256": "d5ab0048829ef2ea623bac188126b3256768464911f518746d5777bae87c1c24"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-06-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-06-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-06-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-06-baseline.stdout",
+    "sha256": "9e51495eb002ac9cf98c05257c9a3623628d2f45cec3fbded7e14c263f1fd9be"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-06-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-06-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-06-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-06-candidate.stdout",
+    "sha256": "73ca95da243ec1ff43ad9a8728b0cb6fea3bb45efc2dc4face488f812a57b446"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-07-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-07-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-07-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-07-baseline.stdout",
+    "sha256": "9727932cb36090b0b6a5a86c4a9f15081bcc62b4297834f6b8de044dd8cc0dfa"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-07-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-07-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-07-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-07-candidate.stdout",
+    "sha256": "5b3a438643adb2288427265ea64b65d40e6011f1a34a4ead21191811d060ee2e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-08-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-08-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-08-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-08-baseline.stdout",
+    "sha256": "c0ac794b42d6e41a4de3490733ada68b8aa8f4043e255c7a28f3266c628effaf"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-08-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-08-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-08-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-08-candidate.stdout",
+    "sha256": "ac46dcf2191b2d3ac18b4eabb143c902b4b47d5b461de31169fdd98f0c1c3322"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-09-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-09-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-09-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-09-baseline.stdout",
+    "sha256": "db053443446dd4eb10312423b58fb3c9d8c9d52aa47755be89103d23cda39224"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-09-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-09-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-09-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-09-candidate.stdout",
+    "sha256": "30c377c11268885e4e1b62f26755209ec00fb3740b807516c42f178a255f2841"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-10-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-10-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-10-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-10-baseline.stdout",
+    "sha256": "0c3fb85ccc8a4a3bfa30c8ebcee30b9cddb1e469c3a866cec870e64ecdd77998"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-10-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-10-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-10-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-10-candidate.stdout",
+    "sha256": "87455819f0f7b462bcbbf2abcebf0e1969220d5253a9438b50f104399e0847a0"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-11-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-11-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-11-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-11-baseline.stdout",
+    "sha256": "3a27d5843def033135a1423c053c6d833c83b3d57c9344ae777484290955427d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-11-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-11-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-11-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-11-candidate.stdout",
+    "sha256": "4734e066f89659b3672faf359b7d61420a8e067b6659493dbbffc34a43174892"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-12-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-12-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-12-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-12-baseline.stdout",
+    "sha256": "74d566c3be74bc89811a003b45615ef14a5aa0fdf9cc7ba6deec0e3ad072e664"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-12-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-12-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-12-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-12-candidate.stdout",
+    "sha256": "b5f5f6435edc234115311c1b081e1ddfb4ca89c6df9155837d666fbc687a1549"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-13-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-13-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-13-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-13-baseline.stdout",
+    "sha256": "8454bbd75f75d5167c2f97d0875c3f7af6b344815a7b26346e62608b4753ccc4"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-13-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-13-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-13-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-13-candidate.stdout",
+    "sha256": "4525a4c988010646e781f344a9fe41213d74b42ca93bae541b90f3c7de511e36"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-14-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-14-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-14-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-14-baseline.stdout",
+    "sha256": "2505db6591a32a3ab22180cade0d4319c9e0dcdd56a0fed5f306e605b458077c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-14-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-14-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-14-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-14-candidate.stdout",
+    "sha256": "9cda0c9fec1c77d59cff26e3ade23ffb88131a66993674943a25b9d4763d7b98"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-15-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-15-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-15-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-15-baseline.stdout",
+    "sha256": "19afe2087937cc10d1b0e1556078970b3feb66e0baf0576ce247c5c9e103cfad"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-15-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-15-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-15-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-15-candidate.stdout",
+    "sha256": "5334e3cc1b3253d9f61463b27015b417d72189c37d5a0fcfea5b752a797054f1"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-16-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-16-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 570,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-16-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-16-baseline.stdout",
+    "sha256": "be24c3fc636d4891fb361fedc6195ad2c12a9b4dfcdeb3a6422d341c64879ab9"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-16-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-16-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-16-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-16-candidate.stdout",
+    "sha256": "c6f340237209dc923c94eb06b5d71cc14ca311cc5c179008327af25543bd6406"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-17-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-17-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-17-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-17-baseline.stdout",
+    "sha256": "75b8c5b09de4d574a2500d77d5f02ac541881459c870a8a4898d2b1790cdb1ab"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-17-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-17-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-17-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-17-candidate.stdout",
+    "sha256": "32d2fdf37f4071593d6c508a6a4818a286a816f709d77f3ae08bd0da33913a4d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-18-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-18-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-18-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-18-baseline.stdout",
+    "sha256": "33b7b52cb3dec6e65dde575fabb8b07bfc83b35461a2cb2c2f9f9dbc04123d83"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-18-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-18-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-18-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-18-candidate.stdout",
+    "sha256": "65297166d682e6974cfd609806b3da6dc2cf547686c0596c9dad79266a19cb99"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-19-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-19-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-19-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-19-baseline.stdout",
+    "sha256": "aea95ab617f8859898fe6e65e107b8ffd24bbe98708c977e96e79854c2105313"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-19-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-19-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 579,
+    "mode": "0644",
+    "name": "medium16-encode-ebcot-19-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ebcot-19-candidate.stdout",
+    "sha256": "173957a9084a8c36128bba93c5149b42b604395e6b534b64aefc7f0742489a67"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-00-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-00-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-00-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-00-baseline.stdout",
+    "sha256": "cf28a02bca93e5cdbc940ba8ffa91a00175501fa2121656a1cfa00ce6e13c846"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-00-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-00-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-00-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-00-candidate.stdout",
+    "sha256": "fa58cfb21f928994147cc975de54ec63f715a761ddfeafd9ce371d96060d0941"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-01-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-01-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-01-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-01-baseline.stdout",
+    "sha256": "955fe00c9bf5e64e9cfb0f7bc58d7a4c4f59a0bbc7cc968a5c1b13a803bbe59d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-01-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-01-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-01-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-01-candidate.stdout",
+    "sha256": "778db0841cf0b935a0aa4381d2f006053170f18dce6c62b5db2de1773f41bdb1"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-02-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-02-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-02-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-02-baseline.stdout",
+    "sha256": "a940c5cc9c83f68918913bcaae7842c6b5c0947bd5461abcbcbeeea823d2a4c1"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-02-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-02-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-02-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-02-candidate.stdout",
+    "sha256": "cc770a53da49f2377c6327a83fc7ab8845f2258f295614f9ee08207e93e2d46d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-03-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-03-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-03-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-03-baseline.stdout",
+    "sha256": "442d159275af180d1e829e80b8e152eb667c43d8ca88396fa4c9e37176f0d8e8"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-03-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-03-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-03-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-03-candidate.stdout",
+    "sha256": "007ba7ce9b0af391e006129d16c3e46714959c8622ddcabc56b7bcbb0313b634"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-04-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-04-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-04-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-04-baseline.stdout",
+    "sha256": "25fad93a23e80ad476b60b0ed5139a02338c7b6aeb280083001246f86c10e78b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-04-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-04-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-04-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-04-candidate.stdout",
+    "sha256": "bae0571ea9044554a6de96504ac431ae88b344cb74341ac7b248257780632c7c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-05-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-05-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 567,
+    "mode": "0644",
+    "name": "medium16-encode-ht-05-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-05-baseline.stdout",
+    "sha256": "1d81e5a60a1bfd5b317dc776c294dde3a9ecb038fc02a9375dc6afe216859604"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-05-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-05-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-05-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-05-candidate.stdout",
+    "sha256": "473ad64eaa0a951726b368c1f9bf2cb4c80b26de8b5d3c623578a84423993b58"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-06-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-06-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-06-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-06-baseline.stdout",
+    "sha256": "b145af68e998d1a5f5a9791be6221fd96aee28099fa4cf3044c7499dcd0a14ea"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-06-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-06-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-06-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-06-candidate.stdout",
+    "sha256": "06143e9fcececbbad65ac9659d44a7c0882ab93ed88f81a7af73c5480c36a2a0"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-07-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-07-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-07-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-07-baseline.stdout",
+    "sha256": "dba825005d87a773acc7865816b5f26ec377a4c095494f65b6afaab8cdb82452"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-07-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-07-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-07-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-07-candidate.stdout",
+    "sha256": "4211ec8d0273ff700e1bb9a86aef72c03d287234ff8a1a7b796f7bda2ca4f52c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-08-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-08-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-08-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-08-baseline.stdout",
+    "sha256": "5052be8bbc7739158079d995dfe7cb94912b91ba69bf55776d63626582e8c8b5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-08-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-08-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-08-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-08-candidate.stdout",
+    "sha256": "18d0956b5fee0a7bad88e11392a3b8cd5c36876191d8d68269ee1b930cd89dfa"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-09-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-09-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-09-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-09-baseline.stdout",
+    "sha256": "46e1956cc120ad3b7b5bb490d5982c7cab782a19689980bee6af731f2140cf97"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-09-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-09-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-09-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-09-candidate.stdout",
+    "sha256": "d87e1568643097e29a8ecd1315920a5cf3d0a0d32b03dfcb25189c62398ca959"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-10-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-10-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-10-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-10-baseline.stdout",
+    "sha256": "13eed5b8f7d12e52de17c6e0a65223f1100d6b8aecd827f1e37065e6a1ea8035"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-10-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-10-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-10-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-10-candidate.stdout",
+    "sha256": "fcbf8756caec369192404ee84aadcb65fcbe28adb22a9986ec14aa2ba500d8ae"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-11-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-11-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-11-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-11-baseline.stdout",
+    "sha256": "f7ddf27caa9672001d2e320a3d8d1a461dba5d0639f997bb048483b3a4563af7"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-11-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-11-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-11-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-11-candidate.stdout",
+    "sha256": "f43079266790728dd99353cb2cc023b53bb70291a76cd26155637b79d9889cb9"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-12-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-12-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-12-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-12-baseline.stdout",
+    "sha256": "32b4db89734958e2b57d7123974167127735fd7a8614a532d645ae34ad29daa3"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-12-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-12-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-12-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-12-candidate.stdout",
+    "sha256": "402e421eebb6f5d471ecde1427f982b2c6565fd5c1694e33b4e6e24454b630ce"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-13-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-13-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-13-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-13-baseline.stdout",
+    "sha256": "c742976169b0f0890c2e311709ca6926ab6fbff2ef85b7c7c9370f152278b360"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-13-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-13-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-13-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-13-candidate.stdout",
+    "sha256": "fabb80b3fec420b00f91e537a43551ac1ac0f194074a43b28a76559028a81fbc"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-14-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-14-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-14-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-14-baseline.stdout",
+    "sha256": "a0631b5af58eae03e8139347dd51f20b8ab8bcee16abc24c4e765806ceef4fd5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-14-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-14-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-14-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-14-candidate.stdout",
+    "sha256": "a111d565c3803c566744545e0e7006c2d2cc4fd2448568f16d47cbea47fd8173"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-15-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-15-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 576,
+    "mode": "0644",
+    "name": "medium16-encode-ht-15-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-15-baseline.stdout",
+    "sha256": "6cb5a6368931fb83b4c9ad94e3800246e0e838c2c7b9d0482991eb00ba6564db"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-15-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-15-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-15-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-15-candidate.stdout",
+    "sha256": "39f28b5661e21abbb55ed91a0cc742ef32dac077e373c012eae045570de4cfb2"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-16-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-16-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-16-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-16-baseline.stdout",
+    "sha256": "901bd1d9668ea80f9a912d0aabda24c4fe584cd99256048ca96abe1e6ce938ea"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-16-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-16-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-16-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-16-candidate.stdout",
+    "sha256": "bed48e81983cad7dfe511279bd922390521ed6ed464a61418592e947df684f9a"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-17-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-17-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-17-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-17-baseline.stdout",
+    "sha256": "af7d98d1264f8808f1ac241a7676233415d206a7af39b8814043634db70b5a7f"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-17-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-17-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-17-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-17-candidate.stdout",
+    "sha256": "f0e9303d80b6eb592189613d07724caeac3cad0e0b581764a3ca2db18d89ea63"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-18-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-18-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 567,
+    "mode": "0644",
+    "name": "medium16-encode-ht-18-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-18-baseline.stdout",
+    "sha256": "a18f753e3ad3af0adb8c0c98283d24ef072aceafb2add32fb724f1e034a3e56e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-18-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-18-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-18-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-18-candidate.stdout",
+    "sha256": "99008f2995b10f4c3e8cd2cbbdcbbf799a6f5e289d54f9845fc8b6750ca1020b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-19-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-19-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-19-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-19-baseline.stdout",
+    "sha256": "4b46d07e8f94398e8075beef271388d5bc20224b0e8f412e67bbaffba2027ccb"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "medium16-encode-ht-19-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-19-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 577,
+    "mode": "0644",
+    "name": "medium16-encode-ht-19-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/medium16-encode-ht-19-candidate.stdout",
+    "sha256": "6254492c1a08386ec84686a8f18458eef6a532d5cb504f25514521112b95d64c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-00-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-00-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-00-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-00-baseline.stdout",
+    "sha256": "8af8b13fb809f43db32a3ae3686075ae06d220b57134eac0d0210af899af62f1"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-00-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-00-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-00-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-00-candidate.stdout",
+    "sha256": "d19a8a848949e4ee498c98dd9608ab411814b7ad9e1b734b332d61e8ea6cf2cc"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-01-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-01-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-01-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-01-baseline.stdout",
+    "sha256": "50e7599bff8d0b912dda2f00c72ded1013c73d6265aec8a69db625e0ba679554"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-01-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-01-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-01-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-01-candidate.stdout",
+    "sha256": "6371712202da5bae9dd0bc2861b8932cab8d7115087414741884ca47dd8cf8c0"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-02-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-02-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-02-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-02-baseline.stdout",
+    "sha256": "567382b889f2a68888d9192d4d1c2b30df3bc56ff37ee520b1c387360567b210"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-02-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-02-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-02-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-02-candidate.stdout",
+    "sha256": "0c2e071f0ad73d3639245ab504920cfd7e3788abdb0eada540b1dfa23b8dcdb6"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-03-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-03-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-03-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-03-baseline.stdout",
+    "sha256": "d1301fae7ec58a06ac053f0f524be450abbb47f83e7cf30cea0c9868c66b1d42"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-03-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-03-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-03-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-03-candidate.stdout",
+    "sha256": "0ecfca155f945f034042d409246ce0e9a06204bcd62cb39c78d93714bffe9c7e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-04-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-04-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-04-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-04-baseline.stdout",
+    "sha256": "ded231b8c87118ac0c7445754f3743fc381216e9cc6ed1c6d7e2cc8adbadaa32"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-04-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-04-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-04-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-04-candidate.stdout",
+    "sha256": "3bd9149ecdf12871b1c6d34fd4dddf9b4d4600c1b208886d45d8aa2d69c4b174"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-05-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-05-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-05-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-05-baseline.stdout",
+    "sha256": "afb1ba9acd81f771db30beb9568110a5928dbf56f03f5eaa9c7763cb96ca6ef4"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-05-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-05-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-05-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-05-candidate.stdout",
+    "sha256": "bdd724a3875cb13d0aae3055f622ebacd779aada73867ddb26e3ba0ef39fd640"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-06-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-06-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-06-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-06-baseline.stdout",
+    "sha256": "572bfb1016421b7a324a2e43e35ce09c7112881bd03e74afa1d654cd0740d7f7"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-06-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-06-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-06-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-06-candidate.stdout",
+    "sha256": "5d726a2761b5d3a0c4b5ec4c2f7d888e82665896b3cef4ccb0703d59af293c11"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-07-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-07-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-07-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-07-baseline.stdout",
+    "sha256": "c8a21cdfca3611a363525d9d733d5cb0293e669129ec55ac514762bcae324b7b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-07-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-07-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-07-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-07-candidate.stdout",
+    "sha256": "63c26d9924a48c73b6a79cbc5d2f19cf1d9735734aeca9a6ec3a6427f5107715"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-08-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-08-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-08-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-08-baseline.stdout",
+    "sha256": "374d7231817eb212b138845ae63d6a2adeb393b1a047559ca688c3a1706c7272"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-08-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-08-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-08-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-08-candidate.stdout",
+    "sha256": "1ccb1defb0c8fd420e5454f686bc332eecb3e14b5cb25ab9a512776e701929ab"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-09-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-09-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-09-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-09-baseline.stdout",
+    "sha256": "562f279636aa639f76565e3810b8b37bead785bf723d5e537dbd117ee1c49c96"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-09-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-09-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-09-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-09-candidate.stdout",
+    "sha256": "3404c43944691d421386089c74e66f53f7b94463a4d6d9fe2f5feb36ed4c7b01"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-10-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-10-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-10-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-10-baseline.stdout",
+    "sha256": "9ce188e47133bed41db063c3c40fa371c49ca921650c372adb746262ce71bc3a"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-10-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-10-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-10-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-10-candidate.stdout",
+    "sha256": "ebfcb0d44d4246bdbd3bd13e398c1fadee21fc60aeb0a1e14bf788ab5841dc52"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-11-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-11-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-11-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-11-baseline.stdout",
+    "sha256": "34d983902917ec832c9146a5a7fe47c05d4eb37806501986c77dffc49bf1daf8"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-11-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-11-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-11-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-11-candidate.stdout",
+    "sha256": "85290c644bc5864eebff4e1e2c7b631d6580ae96f33283ac0e28117ca6f009ba"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-12-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-12-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 558,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-12-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-12-baseline.stdout",
+    "sha256": "b5a04aa4f2b34d32515740b89959aa0c6b1ab6e83d58147e6e90b16db4d8bc35"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-12-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-12-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-12-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-12-candidate.stdout",
+    "sha256": "84499948f89f7c45c9865c7b5329b79e7d3aa10429856e8df080b6aaa92837a8"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-13-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-13-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-13-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-13-baseline.stdout",
+    "sha256": "65d39aa51548986eb5d8e207d5c3862a0607f8ae259ef642c744c5365c218a3b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-13-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-13-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-13-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-13-candidate.stdout",
+    "sha256": "d22038164df6c95feef29080ea0929ca94064da4a72f7fe4a618d13aa9b0179d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-14-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-14-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-14-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-14-baseline.stdout",
+    "sha256": "575deb06f4a4cd2dfdccf976cbfccf552e707d300998d1471adce40cb322add7"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-14-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-14-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 559,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-14-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-14-candidate.stdout",
+    "sha256": "cd45f3f9ddeeb6218913c5842352994bacf227dbfcc22e7ef35d9e92be889183"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-15-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-15-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-15-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-15-baseline.stdout",
+    "sha256": "91e92666632593e8c5279840ee7028d83428e042518c15f4907acf921a7cb517"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-15-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-15-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-15-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-15-candidate.stdout",
+    "sha256": "1cf3d9af9ad87b81168c539311f0378cbf9e53ccca7967ba58a874e1692c76b7"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-16-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-16-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-16-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-16-baseline.stdout",
+    "sha256": "76b11f5fb3ef67f5a4b00c211ce08dc5ae951b4a4de4b793d1a213bb33cd3b37"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-16-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-16-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-16-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-16-candidate.stdout",
+    "sha256": "4856d58a5854085fc3854b0d56130660fa65dcbe120428727db8722ec0c46b19"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-17-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-17-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 561,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-17-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-17-baseline.stdout",
+    "sha256": "85231802490decbabf8a5c0f637e1a0b69559cb3df7fe9c89caaf4ac5dad31b8"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-17-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-17-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-17-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-17-candidate.stdout",
+    "sha256": "b21c5ff5f7e8909e81c222cfe9772fe117c32d3d0f59519538abddb496d6189e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-18-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-18-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-18-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-18-baseline.stdout",
+    "sha256": "331621e604f94233383b6171af32b66b61eb35a87db73bb68e7c7919effa3306"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-18-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-18-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-18-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-18-candidate.stdout",
+    "sha256": "744f594bf1595783829d7a38c4517f7c805c774dcaf21030337e423151a8a76f"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-19-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-19-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-19-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-19-baseline.stdout",
+    "sha256": "e678a810f8966648ec3c68fa4cb37e8b6c03d89f6e899875f3ed3ad666cb2820"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-19-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-19-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 571,
+    "mode": "0644",
+    "name": "odd8-encode-ebcot-19-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ebcot-19-candidate.stdout",
+    "sha256": "da9a83ddf09497ea2baed339060ecc033a66be07944992329770f4f89c075264"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-00-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-00-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 558,
+    "mode": "0644",
+    "name": "odd8-encode-ht-00-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-00-baseline.stdout",
+    "sha256": "560dcaa21b5fe0cddce9165390e8b1d4f55ba20a1f9816f26da834dde3d0a278"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-00-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-00-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-00-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-00-candidate.stdout",
+    "sha256": "db562f32fc078618518a7aad02ca6f64f7ab5d52c3e4fc1a5efff9374d8d8da3"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-01-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-01-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-01-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-01-baseline.stdout",
+    "sha256": "87ad9a7735723d2bbcf016ceea55bb12f67e36760b0630a8f60a5f4d6bbf0716"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-01-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-01-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-01-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-01-candidate.stdout",
+    "sha256": "66c0e178b19fd61f3ccd29c3b605e5a82d8c24e6df09516cb43fd5da4d4b31e5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-02-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-02-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 558,
+    "mode": "0644",
+    "name": "odd8-encode-ht-02-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-02-baseline.stdout",
+    "sha256": "102b9838514f9dc79e115277784dc37248106bcc2e3455feb95bafefd068a22c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-02-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-02-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-02-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-02-candidate.stdout",
+    "sha256": "105b02fe17e3f4f4ccba4d483fdb494233eaf6babb60ea7ffc613dbaeffb96bd"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-03-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-03-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-03-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-03-baseline.stdout",
+    "sha256": "21700084332b4af7e08ad6606f2f24f231970703a3c78269d78df5a6b2dde417"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-03-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-03-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-03-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-03-candidate.stdout",
+    "sha256": "9ae91174a67b673a8ea86042290f2d539e1925d5748a206cf9f825ac2b0a8648"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-04-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-04-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-04-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-04-baseline.stdout",
+    "sha256": "c5240420fb07e2bbf13af358aac7c75143d51e826d6cdfd4526422d1a5450d3e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-04-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-04-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-04-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-04-candidate.stdout",
+    "sha256": "19accfd5676355cf4afd1e278ceb1e0c8e4bca653c1d746eb7caac24db90629c"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-05-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-05-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 555,
+    "mode": "0644",
+    "name": "odd8-encode-ht-05-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-05-baseline.stdout",
+    "sha256": "666f60a8b3b6ff8ff0fd1b3ccbd5aa0b11e3455de32459fbc9a5d9276da2259d"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-05-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-05-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-05-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-05-candidate.stdout",
+    "sha256": "e10d8617f5c70e20aedc685af2b8143e44655bccd96f6e37d34c8378d0cb60b2"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-06-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-06-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-06-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-06-baseline.stdout",
+    "sha256": "3abe3783459c18439a09a6d81aa4abbaa8a874c416255c870925c024ee87ef3b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-06-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-06-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-06-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-06-candidate.stdout",
+    "sha256": "0d9c2dd25db3105144afcaa7a86b8b4dd6180f1e9c44554750ffdd5d4834410e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-07-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-07-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-07-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-07-baseline.stdout",
+    "sha256": "8262f566b8b3c72217511fa171d267b16212d42d9b79aeba8d4425c6de5e6c85"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-07-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-07-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-07-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-07-candidate.stdout",
+    "sha256": "f5d90676cd21bc6c8b8ab9807e5af05465fe3023f90edcc9678074f5eda54b41"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-08-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-08-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-08-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-08-baseline.stdout",
+    "sha256": "5950a9636b0ec1c34b5ec4578d1c4eb198685b8136a547157b25d3c740844e06"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-08-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-08-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-08-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-08-candidate.stdout",
+    "sha256": "c00be5a985376e72af04b48318954d0fbaeccf9fdbb3a5b87dab882d09fa644a"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-09-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-09-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-09-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-09-baseline.stdout",
+    "sha256": "ed80f0a215739cf4cc13ead7aabfe89a9e747d326ca79fd723d36fce1a096c54"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-09-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-09-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 558,
+    "mode": "0644",
+    "name": "odd8-encode-ht-09-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-09-candidate.stdout",
+    "sha256": "4a99a2ba13f7da8ea8598a32b8a6c01b8bbeccf1c4ae742344ab67e5efa0397f"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-10-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-10-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-10-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-10-baseline.stdout",
+    "sha256": "2f709e37c577883fe0bbf0d50c3e04ce4675f38ae8fd6cd445dc50c7b87cc892"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-10-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-10-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-10-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-10-candidate.stdout",
+    "sha256": "645a537694a05d59d2e4c004d532d3d37e66713e44151c398e7378a7010b393a"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-11-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-11-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-11-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-11-baseline.stdout",
+    "sha256": "01049f0d75945dbc47d3795a939f85ccad347e378318481a2c5a723f5ca9189b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-11-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-11-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-11-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-11-candidate.stdout",
+    "sha256": "6162543929e2eeb99a1bca54b9dec2513cfc0e631ea5d1c7e3f81a5010501f5b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-12-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-12-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-12-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-12-baseline.stdout",
+    "sha256": "3b2c1df008478dd2536a2e8a5df27631587fbe4e89978c172fac7000fd4ee6f6"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-12-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-12-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-12-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-12-candidate.stdout",
+    "sha256": "1b2e9da811d5fa170ecd2ba10f300396b292b9003c23831fa11b39530853e56b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-13-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-13-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-13-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-13-baseline.stdout",
+    "sha256": "97348114cf289498abc979ddbcd65476bd7f3fd008fa4b0a5ffe4d80198306dd"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-13-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-13-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-13-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-13-candidate.stdout",
+    "sha256": "d297abeb0bb8115fd9b3a88ffd362effbe4b5e245966f5e3916723522741020f"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-14-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-14-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-14-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-14-baseline.stdout",
+    "sha256": "e466e94a3c847fb32257c687a2ba319d41e6112edf0b41af62c913b05e13a5e5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-14-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-14-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-14-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-14-candidate.stdout",
+    "sha256": "58f21fb8020ed4b121222b4113b6fdbfa600b590db55af799e754d42aa03cc9b"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-15-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-15-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-15-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-15-baseline.stdout",
+    "sha256": "aa6323864d1c310400a663d105c6fd52fd0039a827d251dd0abff2855e8a15d5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-15-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-15-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-15-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-15-candidate.stdout",
+    "sha256": "cddb58b9ac9019f750c4c8e6ccae49609850974cee89e79af6c060f41c8e8357"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-16-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-16-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-16-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-16-baseline.stdout",
+    "sha256": "fa41f51cd7118813d90339a3737cf02c0acdba69858eb751e89c41c1d5ac3ca5"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-16-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-16-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-16-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-16-candidate.stdout",
+    "sha256": "a3d7c92906a7494077aee964aef2b1f9598641d5a7d3a00b79a9ff73105677da"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-17-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-17-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-17-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-17-baseline.stdout",
+    "sha256": "f629cb7baed0df5209f93d3e19db276e7f2ff351d48018e406461897cf5cb54e"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-17-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-17-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-17-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-17-candidate.stdout",
+    "sha256": "b55bab978101011b6fe4fdab9de7b8fa1926702f1780af09010fca49f3066903"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-18-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-18-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-18-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-18-baseline.stdout",
+    "sha256": "8ffa8327521e83c0599197424e30daf2a485f7339be9930acc2e72b9613533be"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-18-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-18-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-18-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-18-candidate.stdout",
+    "sha256": "f3ba46f4defaf463af78c9fac4dd0758e904b0e79f98fb26034c7b40fb5faa21"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-19-baseline.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-19-baseline.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-19-baseline.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-19-baseline.stdout",
+    "sha256": "c7e28395bf85a555574ede0157f97ee22ebe918f988676b3af878714290872d1"
+  },
+  {
+    "bytes": 0,
+    "mode": "0644",
+    "name": "odd8-encode-ht-19-candidate.stderr",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-19-candidate.stderr",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "bytes": 569,
+    "mode": "0644",
+    "name": "odd8-encode-ht-19-candidate.stdout",
+    "original_location": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-03/odd8-encode-ht-19-candidate.stdout",
+    "sha256": "f456e71295771be36d9bdd9d19e3b3f93b6cb8a2f39861aec0652724e2f88d7e"
+  }
+]

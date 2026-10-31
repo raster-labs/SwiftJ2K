@@ -1,0 +1,20 @@
+{
+  "scope": "Bounded odd8 HT-to-EBCOT diagnostic only; no performance acceptance timing",
+  "original_benchmark_sha256": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a",
+  "packages": {
+    "baseline": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile2-baseline",
+      "dependency": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/performance-baseline-source",
+      "manifest_sha256": "a01f368c4d0682b244d10928337437607587dfe39ac9281a19eb430e7e046cc0",
+      "harness_sha256": "78de763016ec131a1b97d2a574bbea30d9c783af6388e53a499f42209b07b2f3",
+      "scratch_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile2-baseline-build"
+    },
+    "candidate": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile2-candidate",
+      "dependency": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03",
+      "manifest_sha256": "525d54cb79e61e54b68b3f8d4770f5b45bc5167cce81aebc809c39e978377d94",
+      "harness_sha256": "78de763016ec131a1b97d2a574bbea30d9c783af6388e53a499f42209b07b2f3",
+      "scratch_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile2-candidate-build"
+    }
+  }
+}

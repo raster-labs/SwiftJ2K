@@ -88,23 +88,62 @@ package struct MQEncoder: Sendable {
     private var buffer = -1
     private var output: [UInt8] = []
     private let maximumOutputBytes: Int
+    private let chunkSize: Int
+    private let budget: EntropyOutputBudget?
+    package private(set) var reservedBudgetBytes: Int = 0
     package private(set) var overflowed = false
 
-    package init(capacityHint: Int = 256, maximumOutputBytes: Int = Int.max) {
+    package init(
+        capacityHint: Int = 256,
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
+    ) {
         self.maximumOutputBytes = maximumOutputBytes
-        let reserved = min(max(capacityHint, 16), max(0, maximumOutputBytes))
-        if reserved > 0 {
-            output.reserveCapacity(reserved)
+        self.chunkSize = min(64, max(8, capacityHint))
+        self.budget = budget
+        if budget == nil {
+            let reserved = min(max(capacityHint, 16), max(0, maximumOutputBytes))
+            if reserved > 0 {
+                output.reserveCapacity(reserved)
+            }
         }
     }
 
     @inline(__always)
     private mutating func emitByte(_ byte: UInt8) {
-        guard output.count < maximumOutputBytes else {
+        guard !overflowed, output.count < maximumOutputBytes else {
             overflowed = true
             return
         }
+        if let budget, output.count >= reservedBudgetBytes {
+            let chunk = min(chunkSize, max(1, maximumOutputBytes - reservedBudgetBytes))
+            do {
+                try budget.reserve(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "mq-encoder-growth-overlap")
+                defer { budget.release(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "mq-encoder-growth-overlap") }
+                try budget.reserve(chunk, countsTowardCompressedOutput: true, site: "mq-encoder-chunk")
+                budget.recordActualAllocation(chunk, site: "mq-encoder-chunk")
+                output.reserveCapacity(reservedBudgetBytes + chunk)
+            } catch {
+                overflowed = true
+                return
+            }
+            reservedBudgetBytes += chunk
+        }
         output.append(byte)
+    }
+
+    package mutating func releaseAllReservedBudget() {
+        if let budget, reservedBudgetBytes > 0 {
+            budget.release(reservedBudgetBytes, countsTowardCompressedOutput: true, site: "mq-encoder-rollback")
+            reservedBudgetBytes = 0
+        }
+    }
+
+    /// Drops the coder's alias after its finished array and reservation have been
+    /// transferred to a retained code-block result.
+    package mutating func discardFinishedStorage() {
+        output = []
+        reservedBudgetBytes = 0
     }
 
     /// CODEMPS / CODELPS (C.2.4, C.2.6).
@@ -178,6 +217,13 @@ package struct MQEncoder: Sendable {
         c <<= UInt32(ct); byteOut()
         if buffer >= 0 && buffer != 0xFF { emitByte(UInt8(buffer & 0xFF)) }
         while let last = output.last, last == 0xFF { output.removeLast() }
+        if !overflowed, let budget, reservedBudgetBytes > output.count {
+            do {
+                try budget.compactOutput(&output, reservedBytes: &reservedBudgetBytes, site: "mq-encoder-finish-compact")
+            } catch {
+                overflowed = true
+            }
+        }
         return output
     }
 

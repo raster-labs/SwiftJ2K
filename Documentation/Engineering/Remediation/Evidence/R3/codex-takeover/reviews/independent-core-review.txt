@@ -1,0 +1,63 @@
+SwiftJ2K R3 independent core/3D source audit — first frozen candidate
+
+Decision: NOT ACCEPTED. Two confirmed source-level admission defects remain, and mandatory native/independent/performance gates are not satisfied by this read-only audit.
+
+Identity and scope
+------------------
+Auditor: /root/independent_core_review, separate from implementation. No source edits, commits, native builds, tests, servers, or claim changes were performed. Root retains claim 1ce94f4b-ebfa-4309-98f6-5530103803d9 and exclusive native execution.
+
+Initially reviewed work/SwiftJ2K on codex/r3-standards-takeover, HEAD 67c8f7ed05379113b1fd41897b289c48a541266c plus frozen WIP. On root instruction, switched to immutable work/audit-snapshot-01. All 52 scoped source files in that snapshot exactly match initial SHA-256 hashes. Before/snapshot/after hashes and timestamps are in work/independent-core-review-source.json. The mutable checkout may subsequently change; findings below reference snapshot line numbers.
+
+Scope: Sources/SwiftJ2K3D/**; Sources/SwiftJ2K/Telemetry.swift; Sources/SwiftJ2K/Codec/** except JPIPCodestreamIndexer.swift; Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift. Read AGENTS, relevant common contract requirements (SUITE_POLICY declares0.10.0; MEMORY/PERFORMANCE declare0.7.0), implementation/transcoding guidance, previous F01/regression audit, implementation reports, and new relevant tests. Core JPIPCodestreamIndexer was deliberately excluded.
+
+C1 — P1: Continued codeword segments allocate a full COW replacement after admitting only the suffix
+-------------------------------------------------------------------------------------------------
+Primary location: Sources/SwiftJ2K3D/JP3DTier12Coder.swift:3638–3644.
+Ownership evidence: local outSt copies result[c][r][p][band][block] at3600; result retains its old segment until the assignment at3654. Appending to outSt.segments[last].data therefore detaches shared array storage when an existing segment is continued. The admitted delta is only length for nonempty data, omitting the complete previously retained segment during replacement. appendEmptySegment at3375–3377 has the analogous retained-segment-array capacity/COW issue for successive terminated segments.
+
+Concrete trigger: tiny 1x1x1 EBCOT tile, two retained quality layers for one unterminated codeword segment, a large first contribution A (e.g.1MiB) and a short second contribution B. Packet header Lblock can encode these lengths. Before Tier-1 validity is examined, layer2 can allocate A+B while the original A remains live; admission charges only B on top of A. Set remaining worker allowance between A+small geometry and 2A. This is an input-caused pre-allocation-limit violation regardless of whether the later entropy decode accepts the payload. The small fixed block scratch/geometry allowance cannot cover an arbitrarily large declared compressed contribution. Whole decode, ROI, coefficient transcode and indexer share this parser.
+
+This is confirmed from source ownership and allocation order; no native reproducer was run by this auditor. A useful native regression must observe the continuation allocation, not just eventual resourceLimitExceeded. Fix by moving out the retained segment before unique mutation and charging actual replacement/growth overlap/capacity, or by reserving that overlap explicitly before append. Preserve malformed-input rejection and cancellation.
+
+C2 — P1: 3D indexing admits only one tile-body staging copy but the new forwarding overload allocates another
+------------------------------------------------------------------------------------------------------------
+Primary locations: Sources/SwiftJ2K3D/JP3DTier12Coder.swift:3303–3307; Sources/SwiftJ2K3D/JP3DJPIPIndexer.swift:251–264,319–329.
+
+The indexer retains tileBitstream:[UInt8], charges bitstreamBytesCount once at252, then calls decodePackets(bytes:tileBitstream). The new bytes overload immediately constructs Data(bytes) at3307 and holds it through packet parsing. This allocates a second complete tile body before admitWorkspaceBytes is called. The array input remains needed at347 to copy indexed packet slices. Thus the additional Data is a concrete unadmitted overlap, even if every later packet callback is denied.
+
+Concrete trigger: a large Part10 tile body under a workspace cap that admits retained tile data, one bitstream staging array and geometry but not an additional tile-sized Data. The conversion occurs before the first dynamic packet admission, exceeding the cap before rejection. Use the Data overload directly from an admitted Data owner, eliminate the conversion, or reserve and retain the duplicate-buffer lease before creating it.
+
+Related existing aggregate omission in this same indexer: parse(data,limits:) at96 retains parsed tile payloads, [UInt8](data) at97 copies the entire input, and rawPartsByTile/allTiles live at the same time. Yet the indexer's wsCap at207 and retainedIndexBytes initialized to mainHeader.count at208 do not reserve any of these live owners. The parser's checks are separate and do not deduct its retained allocations from this next stage. At minimum source input, retained parsed payloads, whole-input array and indexer-owned staging must be reconciled in one live-memory admission. The precise new forwarding-copy regression above is independently sufficient; this paragraph does not claim measured process RSS.
+
+T1 — Required test repair: stale <=16-byte visited-table assertion
+----------------------------------------------------------------
+Tests/SwiftJ2K3DTests/CodexR3LayerBudgetTests.swift:197 expects admittedSequencerBytes<=16. New source includes the outer/nested array overhead at JP3DTier12Coder.swift:2773–2784. With one component, one resolution and one precinct, expected admission is113bytes on this64-bit Array layout, so progressions2/3/4 fail this assertion despite remaining O(totalPrecincts) and independent of layer count. Replace the old fixed bound with a justified small structural bound/exact expectation. Keep the131072-byte end-to-end cap and65535-layer coverage unchanged. This was established by source arithmetic; not executed here.
+
+Narrow repair assessment
+------------------------
+RA2-02: Production whole/ROI/transcode packet traversal now streams addresses. LRCP/RLCP have no layer-dependent sequence array; spatial modes retain only a precinct-sized visited table and request its admission. Optional packet-range retention is explicit. Encoder per-block layer arrays are now counted in geometry. This removes the previous confirmed eager65535-layer sequence defect in source; C1/C2 remain distinct resource issues.
+
+RA2-03 / F01-05: Signed20-bit low limb and signed high limb coding removes the old hidden unsigned DC offsets. Normative decode context disables Part1 shift/clamp before Part2 synthesis for whole and ROI decode. Reconstruction applies descriptor coefficients directly into final sample Data; transcode retains the synthesis marker group and coefficient semantics. No new confirmed arithmetic/marker mismatch was found in this bounded review.
+
+Marker builder/parser agree on Xmcc=1, Nmcc/Mmcc bit15 index widths, CBD count mask0x7fff, Rsiz0xc100 and CODMCT2. Builder rejects single-segment overlength before UInt16 conversion and handles128/129 and256/257 index boundaries. MCC collection reads are segment-bounded. The rectangular irreversible2->1 array is legal; the withdrawn rectangular objection is not reinstated. New index-boundary tests currently round-trip marker parsing; external normative/semantic qualification remains mandatory.
+
+Primary standard independently checked: ITU-T T.801(V3)(08/2023), AnnexA tablesA34–A38 and AnnexJ, official epublication:
+https://www.itu.int/epublications/publication/itu-t-t-801-v3-2023-08-information-technology-jpeg-2000-image-coding-system-extensions
+The source follows these collection index/type fields. This read-only check is not direct independent decoding.
+
+RA2-05: Whole and ROI paths no longer allocate a complete additional logical Int64 plane while all wire planes are retained. The new packing helper writes logical samples directly to final component Data and releases each wire pair. Existing decoded-output admission covers those final Data planes. No new merge overlap defect found.
+
+RA2-08: All three facade .completed callbacks are after backend qualification and fallible report construction, with the final work check before completion. No further fallible work follows the callback. New tests cover late required-backend failure and callback-induced cancellation for encode/decode/transcode. No new terminal-success defect found; execution remains required.
+
+CPF: Builder omits the unsupported corresponding-profile claim and adjusts projected capacity. The deprecated public helper returns empty Data; its signature remains compatible. This is consistent with the explicitly chosen omission of an optional unestablished profile.
+
+Further bounded verification, not additional confirmed findings
+--------------------------------------------------------------
+- HT SigProp-only output at HTBlockCoder.swift:1195–1208 transfers spBytes to the caller while its scratch reservation is released by defer and only count is reserved as output. The returned buffer may retain the requested64-byte chunk capacity. Unlike MQ/raw finish, this branch does not compact. This is a bookkeeping/capacity concern worth closing or demonstrating covered by the block scratch bound; I have not established an end-to-end cap violation from this bounded<=63-byte tail alone, so do not count it as a separate confirmed P1.
+- MQ/raw/HT growth now calls reserveCapacity in64-byte increments on budgeted paths, with multiple locking/telemetry calls per chunk. Byte-writing logic was largely preserved, but this is a hot-path allocation-policy change. Required controlled release benchmarks and byte comparisons must assess it; no runtime regression percentage or byte parity is claimed from source inspection.
+- New derived Kakadu tests preserve tile/packet/entropy bytes while adapting dimensional headers and compare retained expected samples. They are useful narrow integration evidence after execution. They do not constitute a direct combined Part10+15 peer, and nominal multilayer fixtures do not alone prove every refinement/MULTIHT branch executed.
+- Resource tests currently cover header denial, raw compaction, huge encoder layer metadata and optional verification accounting. They do not cover C1 continuation COW, C2 forwarding copies, or independent allocator-observed peak. Allocation telemetry records logical requested allocation at instrumentation sites; it is not a general allocator oracle.
+
+Acceptance boundary
+-------------------
+No native execution was performed by this auditor. Root reported the first compilation stopped at a JPIP duplicate-local error, outside this source review's ownership; this is not a passing native result. Direct independent combined Part10+15 and direct full38 Part2 peer qualification remain UNEXECUTED/UNWAIVED. Narrow Kakadu-derived HT and signed-limb-plus-separate-synthesis diagnostics cannot silently close those gates. Required race/cancellation/security/performance and final-source validation also remain owned by root. R3 must remain unaccepted until repairs and mandatory gates are resolved.

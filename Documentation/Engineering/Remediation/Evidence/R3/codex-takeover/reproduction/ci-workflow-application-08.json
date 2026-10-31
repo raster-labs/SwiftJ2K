@@ -1,0 +1,15 @@
+{
+  "local_proofs": [
+    "r3-sanitizer-execution-proof-thread-08.json",
+    "r3-sanitizer-execution-proof-address-08.json"
+  ],
+  "workflow_before_sha256": "14e6bcc87df16ad0634353a51cb11da5e327474f32da4e50d804182de9a52969",
+  "combined_proposal_sha256": "304dfb8f2c77f2e8c834ea9c28fe0ae14ac227448d8d38d83232089184f638ee",
+  "workflow_after_sha256": "4e79bfd26401e342233ebf8e6c903d0c0472bcb5e6f50e32c7431556ec59f18f",
+  "helper_sha256": "b94b52ce0d76db2035eaa6726d3c06d7cb603632e027bf27f8aa6f6687e45f13",
+  "proposal_only_difference": "Trailing whitespace removed from blank YAML heredoc lines; no command semantics changed.",
+  "ordinary_concurrency": "unchanged",
+  "sanitizers": "complete sequential JPIP/complement partitions; each runner retains default internal concurrency",
+  "jobs": "same seven expanded jobs and timeouts",
+  "hosted_status": "UNEXECUTED at application; exact tested head/tree and reconstructed log evidence required"
+}

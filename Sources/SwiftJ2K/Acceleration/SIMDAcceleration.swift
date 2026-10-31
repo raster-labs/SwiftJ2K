@@ -1131,7 +1131,8 @@ package enum SIMDHTBlockCoder {
         height: Int,
         bandShift: Int = 0,
         maximumOutputBytes: Int = Int.max,
-        preclassifiedQuads: [PreclassifiedQuad]? = nil
+        preclassifiedQuads: [PreclassifiedQuad]? = nil,
+        budget: EntropyOutputBudget? = nil
     ) throws -> [UInt8] {
         guard width >= 1, height >= 1, coefficients.count == width * height else {
             throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
@@ -1189,9 +1190,14 @@ package enum SIMDHTBlockCoder {
             )
         }
 
-        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes)
-        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes))
-        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes))
+        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes, budget: budget)
+        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        defer {
+            magsgnEnc.releaseScratch()
+            melEnc.releaseScratch()
+            vlcEnc.releaseScratch()
+        }
 
         encodeClassifiedQuads(
             quads: quads,
@@ -1210,7 +1216,8 @@ package enum SIMDHTBlockCoder {
             magsgn: magsgnBytes,
             mel: &melEnc,
             vlc: vlcEnc,
-            maximumOutputBytes: maximumOutputBytes
+            maximumOutputBytes: maximumOutputBytes,
+            budget: budget
         )
     }
 

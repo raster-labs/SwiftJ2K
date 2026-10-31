@@ -1,0 +1,228 @@
+Building for debugging...
+[0/18] /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/native-build/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[1/18] Write sources
+[5/18] Write swiftj2k-cli-entitlement.plist
+[5/18] Write sources
+[10/18] Copying Fixtures
+[11/18] Write swift-version--58304C5D6DBC2206.txt
+[12/48] Compiling CZlibShim CZlibShim.c
+[14/48] Emitting module SwiftJ2K
+[15/57] Compiling SwiftJ2K Wavelet53.swift
+[16/57] Compiling SwiftJ2K Wavelet97.swift
+[17/57] Compiling SwiftJ2K CodecAPI.swift
+[18/57] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[19/57] Compiling SwiftJ2K JP2Boxes.swift
+[20/57] Compiling SwiftJ2K JP2Container.swift
+[21/57] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[22/57] Compiling SwiftJ2K Errors.swift
+[23/57] Compiling SwiftJ2K Image.swift
+[24/57] Compiling SwiftJ2K AcceleratedCodec.swift
+[25/57] Compiling SwiftJ2K AccelerationRuntime.swift
+[26/57] Compiling SwiftJ2K MetalAcceleration.swift
+[27/57] Compiling SwiftJ2K SIMDAcceleration.swift
+[28/57] Compiling SwiftJ2K BitIO.swift
+[29/57] Compiling SwiftJ2K BitPlaneCoder.swift
+[30/57] Compiling SwiftJ2K BoundedByteWriter.swift
+[31/57] Compiling SwiftJ2K Codestream.swift
+[32/57] Compiling SwiftJ2K ColourTransform.swift
+[33/57] Compiling SwiftJ2K ContextModeling.swift
+[34/57] Compiling SwiftJ2K ImageDescriptor.swift
+[35/57] Compiling SwiftJ2K ImageStorage.swift
+[36/57] Compiling SwiftJ2K LegacyImageBridge.swift
+[37/57] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[38/57] Compiling SwiftJ2K Options.swift
+[39/57] Compiling SwiftJ2K Telemetry.swift
+[40/57] Compiling SwiftJ2K Transcoding.swift
+[41/57] Compiling SwiftJ2K Volume.swift
+[42/57] Compiling SwiftJ2K VolumePixelAccounting.swift
+[43/57] Compiling SwiftJ2K HTBlockCoder.swift
+[44/57] Compiling SwiftJ2K HTTables.swift
+[45/57] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[46/57] Compiling SwiftJ2K LosslessPipeline.swift
+[47/57] Compiling SwiftJ2K MQCoder.swift
+[48/57] Compiling SwiftJ2K Part1Pipeline.swift
+[49/57] Compiling SwiftJ2K Quantization.swift
+[50/57] Compiling SwiftJ2K ROI.swift
+[51/57] Compiling SwiftJ2K TagTree.swift
+[52/57] Compiling SwiftJ2K Tier2.swift
+[53/83] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[54/83] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[55/83] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[56/83] Compiling SwiftJ2K3D JP3DDecoder.swift
+[57/83] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[58/83] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[59/83] Compiling SwiftJ2K3D JP3DEncoder.swift
+[60/83] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[61/83] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[62/83] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[63/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[64/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[65/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[66/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[67/83] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[68/83] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[69/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[70/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[71/83] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[72/83] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[73/83] Compiling SwiftJ2K3D JP3DRateControl.swift
+[74/83] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[75/83] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[76/83] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[77/83] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[78/83] Emitting module SwiftJ2K3D
+[79/91] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[80/91] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[81/91] Compiling SwiftJ2K3D JP3DTiling.swift
+[82/91] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[83/91] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[84/91] Compiling SwiftJ2K3D JP3DTypes.swift
+[85/91] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[86/91] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[87/132] Emitting module SwiftJ2KJPIP
+[88/140] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[89/140] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[90/140] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[91/140] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[92/140] Compiling SwiftJ2KJPIP JPIPTransport.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[93/140] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[94/140] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[95/140] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift:469:23: error: invalid redeclaration of 'ov'
+ 452 |                 throw CodecError(.malformedInput, "Negative JPIP Msg-Offset (\(bin.msgOffset)).")
+ 453 |             }
+ 454 |             let (segEnd, ov) = bin.msgOffset.addingReportingOverflow(bin.data.count)
+     |                          `- note: 'ov' previously declared here
+ 455 |             guard !ov else {
+ 456 |                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
+     :
+ 467 |                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
+ 468 |             }
+ 469 |             let (sum, ov) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+     |                       `- error: invalid redeclaration of 'ov'
+ 470 |             guard !ov else {
+ 471 |                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
+[96/140] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[97/140] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[98/140] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[99/140] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[100/140] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[101/140] Compiling SwiftJ2KJPIP JPIP.swift
+[102/140] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[103/140] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[104/140] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+[105/140] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[106/140] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+[107/140] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+[108/140] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+[109/140] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+[110/140] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+[111/140] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+[112/140] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+[113/140] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+[114/140] Compiling SwiftJ2KJPIP JPIPRequest.swift
+[115/140] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[116/140] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[117/140] Compiling SwiftJ2KJPIP JPIPServer.swift
+[118/140] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+[119/140] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+error: fatalError

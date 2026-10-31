@@ -419,17 +419,25 @@ struct R1VolumeRemediationTests {
         let multiTileEncoder = try VolumeEncoder(configuration: multiTileEncConfig)
         let decoder = try VolumeDecoder()
 
-        // Measure normative Part 10 tile byte size and per-worker scratch (384 B for 2x2x2 Int64 3D DWT + Tier-1/2):
+        // Measure normative Part 10 tile byte size and per-worker scratch (384 B sample/DWT + non-zero 3D tile geometry/Tier-2 state):
         let control16 = try await multiTileEncoder.encode(
             vol32,
             options: VolumeEncodeOptions(resourceLimits: ResourceLimits(maximumWorkers: 1))
         )
-        let normativeTileBytes16 = try #require(try JP3DCodestreamParser().parse(control16.data).tiles.first?.data.count)
-        let twoWorkerScratchFloor = 2 * 384
+        let parsedControl16 = try JP3DCodestreamParser().parse(control16.data)
+        let normativeTileBytes16 = try #require(parsedControl16.tiles.first?.data.count)
+        let geomBytes2x2x2 = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+            x0: 0, x1: 2, y0: 0, y1: 2, z0: 0, z1: 2,
+            cod: parsedControl16.cod,
+            maximumWorkspaceBytes: nil,
+            includeEncodeState: true
+        ).totalBytes
+        let perWorkerScratch2x2x2 = 384 + geomBytes2x2x2
+        let twoWorkerScratchFloor = 2 * perWorkerScratch2x2x2
 
-        // 1. Global preflight denial (512 B < 768 B preflight floor) before any worker task starts:
+        // 1. Global preflight denial (twoWorkerScratchFloor - 1 < twoWorkerScratchFloor) before any worker task starts:
         let denyPreflightLimits = try ResourceLimits(
-            maximumWorkspaceBytes: 512,
+            maximumWorkspaceBytes: twoWorkerScratchFloor - 1,
             maximumWorkers: 2
         )
         let denyPreflightRecorder = StorageTelemetry.Recorder()
@@ -450,17 +458,33 @@ struct R1VolumeRemediationTests {
         #expect(denyPreflightConcurrency.totalTasksStarted == 0)
         #expect(!denyPreflightRecorder.parserEvents.map(\.stage).contains("jp3d-tile-output"))
 
-        // 2. Runtime simultaneous 2-worker + retained-output boundary & full task/reservation cleanup on failure:
-        // Budget admits 2 concurrent workers (768 B) + 4 retained normative tiles, then fails when simultaneous
-        // transient worker leases + retained tiles collide before all 16 tiles complete.
+        // 2. Runtime simultaneous worker + retained-output boundary. Entry
+        // rendezvous guarantees two live tasks, but these tiny synchronous worker
+        // bodies can still serialize their scratch leases. Derive enough tiles to
+        // force retained output plus even one worker above the unchanged cap.
+        let runtimeTileCount = ((perWorkerScratch2x2x2 / max(1, normativeTileBytes16) + 13) / 2) * 2
+        let runtimeWidth = runtimeTileCount * 2
+        let runtimeSamples = (0..<(runtimeWidth * 2 * 2)).map { idx -> Int64 in
+            let x = idx % runtimeWidth
+            let y = (idx / runtimeWidth) % 2
+            let z = idx / (runtimeWidth * 2)
+            return tilePattern8[z * 4 + y * 2 + (x % 2)]
+        }
+        let runtimeVolume = J2KVolume(width: runtimeWidth, height: 2, depth: 2, components: [
+            J2KVolumeComponent(index: 0, bitDepth: 32, signed: false,
+                width: runtimeWidth, height: 2, depth: 2,
+                data: packLittleEndianSamples(runtimeSamples, bitDepth: 32, signed: false))
+        ])
+        #expect((runtimeTileCount - 2) * normativeTileBytes16 + perWorkerScratch2x2x2
+            > twoWorkerScratchFloor + 4 * normativeTileBytes16)
         let runtimeBoundaryLimits = try ResourceLimits(
             maximumWorkspaceBytes: twoWorkerScratchFloor + 4 * normativeTileBytes16,
             maximumWorkers: 2
         )
         let runtimeFailStorage = StorageTelemetry.Recorder()
-        let waveBarriers = (0..<8).map { _ in VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2) }
-        let waveParentGates = (0..<8).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
-        let waveExitCounts = Mutex(Array(repeating: 0, count: 8))
+        let waveBarriers = (0..<(runtimeTileCount / 2)).map { _ in VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2) }
+        let waveParentGates = (0..<(runtimeTileCount / 2)).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
+        let waveExitCounts = Mutex(Array(repeating: 0, count: runtimeTileCount / 2))
         let runtimeFailConcurrency = VolumeConcurrencyTelemetry.Recorder(
             onWorkerEnter: { tileIdx, _ in
                 if let idx = tileIdx, idx / 2 < waveBarriers.count {
@@ -490,16 +514,17 @@ struct R1VolumeRemediationTests {
             _ = try await StorageTelemetry.$recorder.withValue(runtimeFailStorage) {
                 try await VolumeConcurrencyTelemetry.$recorder.withValue(runtimeFailConcurrency) {
                     try await multiTileEncoder.encode(
-                        vol32,
+                        runtimeVolume,
                         options: VolumeEncodeOptions(resourceLimits: runtimeBoundaryLimits)
                     )
                 }
             }
-            Issue.record("Expected 1650 B workspace budget to fail at runtime simultaneous worker + retained-output boundary")
+            Issue.record("Expected the unchanged worker/retained-output cap to fail before every runtime tile completes")
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
         }
         #expect(runtimeFailConcurrency.totalTasksStarted >= 2)
+        #expect(runtimeFailConcurrency.totalTasksStarted < runtimeTileCount)
         #expect(runtimeFailConcurrency.peakInFlight == 2)
         #expect(runtimeFailConcurrency.retainedBytes > 0)
         #expect(runtimeFailStorage.parserEvents.map(\.stage).contains("jp3d-retained-tile"))
@@ -509,7 +534,7 @@ struct R1VolumeRemediationTests {
 
         // 3. Deterministic 2-worker overlap control with sufficient workspace budget (peakInFlight == 2, never serial 1):
         let twoWorkerControlLimits = try ResourceLimits(
-            maximumWorkspaceBytes: 8192,
+            maximumWorkspaceBytes: twoWorkerScratchFloor + 24 * normativeTileBytes16,
             maximumWorkers: 2
         )
         let encFirstTwo = VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2)
@@ -876,7 +901,6 @@ struct R1VolumeRemediationTests {
         )
         let tileBytes = try #require(try JP3DCodestreamParser().parse(control3.data).tiles.first?.data.count)
         let compressedMidLimit = 2 * tileBytes + max(1, tileBytes / 2)
-        let workerScratchBytes = 384
 
         // 1a. maximumCompressedBytes = compressedMidLimit (admits 2 * tileBytes unconsumed child outputs,
         // then rejects Worker 2's tileBytes at 3 * tileBytes > compressedMidLimit BEFORE parent consumes anything).
@@ -1060,42 +1084,71 @@ struct R1VolumeRemediationTests {
         #expect(unconsumedDeinitRec.authoritativeRetainedBytes == 0)
         #expect(unconsumedDeinitRec.authoritativeReleasedOutputBytes == 3 * tileBytes)
 
-        // --- 2. maximumWorkspaceBytes boundary on 24-tile 32-bit normative Part 10 (48x2x2, 2x2x2 tiling -> 24 tiles, maximumWorkers = 2) ---
-        let tileSampleBlock8: [Int64] = (0..<8).map {
+        // --- 2. Late queued-output boundary for normative Part 10, two workers.
+        // Derive enough tiles for retained outputs to exceed the worker scratch
+        // allowance, so stricter preflight cannot move this test to wave zero. ---
+        let tileSampleBlock128: [Int64] = (0..<128).map {
             Int64(((UInt64($0 &+ 1) &* 0x9E37_79B9_7F4A_7C15) >> 32) & 0xFFFF_FFFF)
         }
-        let samples192: [Int64] = (0..<192).map { idx in
-            let x = idx % 48
-            let y = (idx / 48) % 2
-            let z = idx / 96
-            let localIdx = z * 4 + y * 2 + (x % 2)
-            return tileSampleBlock8[localIdx]
-        }
-        let vol24Tiles = J2KVolume(
-            width: 48,
-            height: 2,
+        let j3diWaveEncoder = try VolumeEncoder(
+            configuration: try VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                tiling: JP3DTilingConfiguration(tileSizeX: 8, tileSizeY: 8, tileSizeZ: 2),
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        )
+        let oneTileVol = J2KVolume(
+            width: 8,
+            height: 8,
             depth: 2,
             components: [
                 J2KVolumeComponent(
                     index: 0,
                     bitDepth: 32,
                     signed: false,
-                    width: 48,
-                    height: 2,
+                    width: 8,
+                    height: 8,
                     depth: 2,
-                    data: packLittleEndianSamples(samples192, bitDepth: 32, signed: false)
+                    data: packLittleEndianSamples(tileSampleBlock128, bitDepth: 32, signed: false)
                 )
             ]
         )
-        let control24 = try await j3diEncoder.encode(
-            vol24Tiles,
+        let singleTileControl = try await j3diWaveEncoder.encode(
+            oneTileVol,
             options: VolumeEncodeOptions(resourceLimits: ResourceLimits(maximumWorkers: 1))
         )
-        let waveTileBytes = try #require(try JP3DCodestreamParser().parse(control24.data).tiles.first?.data.count)
-        #expect(22 * waveTileBytes + workerScratchBytes > 2 * workerScratchBytes)
+        let singleTilePeakWS = try #require(singleTileControl.report.peakWorkspaceBytes)
+        let parsedSingle = try JP3DCodestreamParser().parse(singleTileControl.data)
+        let waveTileBytes = try #require(parsedSingle.tiles.first?.data.count)
+        let waveGeomBytes = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+            x0: 0, x1: 8, y0: 0, y1: 8, z0: 0, z1: 2,
+            cod: parsedSingle.cod,
+            maximumWorkspaceBytes: nil,
+            includeEncodeState: true
+        ).totalBytes
+        let waveWorkerScratchBytes = (8 * 8 * 2) * (3 * MemoryLayout<Int64>.stride) + (8 * 32) + 128 + waveGeomBytes
+        let waveTileCount = ((waveWorkerScratchBytes / max(1, waveTileBytes) + 7) / 2) * 2
+        let priorTileCount = waveTileCount - 2
+        let finalTileIndex = waveTileCount - 1
+        let volumeWidth = waveTileCount * 8
+        let samples: [Int64] = (0..<(volumeWidth * 8 * 2)).map { idx in
+            let x = idx % volumeWidth
+            let y = (idx / volumeWidth) % 8
+            let z = idx / (volumeWidth * 8)
+            return tileSampleBlock128[z * 64 + y * 8 + (x % 8)]
+        }
+        let waveVolume = J2KVolume(width: volumeWidth, height: 8, depth: 2, components: [
+            J2KVolumeComponent(index: 0, bitDepth: 32, signed: false,
+                width: volumeWidth, height: 8, depth: 2,
+                data: packLittleEndianSamples(samples, bitDepth: 32, signed: false))
+        ])
+        #expect(priorTileCount * waveTileBytes + waveWorkerScratchBytes > 2 * waveWorkerScratchBytes)
+        #expect(singleTilePeakWS >= waveWorkerScratchBytes + waveTileBytes)
 
-        func makeTwentyFourTileWaveRecorder() -> VolumeConcurrencyTelemetry.Recorder {
-            let tileExited = (0..<24).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
+        func makeQueuedTileWaveRecorder() -> VolumeConcurrencyTelemetry.Recorder {
+            let tileExited = (0..<waveTileCount).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
             return VolumeConcurrencyTelemetry.Recorder(
                 onWorkerEnter: { tileIdx, _ in
                     if let idx = tileIdx, idx % 2 == 1, idx - 1 < tileExited.count {
@@ -1115,14 +1168,16 @@ struct R1VolumeRemediationTests {
             )
         }
 
-        // In Wave 11 (`retainedBytes == 22 * waveTileBytes`), Tile 22 completes (`retained + output = 23 * waveTileBytes`) and sits unconsumed (`waveTileBytes`) while Tile 23 enters (`workerScratchBytes`) and reserves output (`waveTileBytes`):
-        // Admitting Tile 22 (`23 * waveTileBytes + workerScratchBytes`) while rejecting Tile 23's output growth (`24 * waveTileBytes + workerScratchBytes`) proves unconsumed Tile 22 stays charged in `liveOutputBytes`!
-        let waveWorkspaceLimit = 23 * waveTileBytes + workerScratchBytes + max(1, waveTileBytes / 2)
-        let denyQueuedWSRec = makeTwentyFourTileWaveRecorder()
+        // At the final wave, priorTileCount outputs are retained and the even
+        // worker's output is queued while the final worker runs. The half-tile
+        // margin admits that worker only if the queued output were omitted.
+        let waveWorkspaceLimit = priorTileCount * waveTileBytes + singleTilePeakWS + max(1, waveTileBytes / 2)
+        #expect(waveWorkspaceLimit > 2 * waveWorkerScratchBytes)
+        let denyQueuedWSRec = makeQueuedTileWaveRecorder()
         do {
             _ = try await VolumeConcurrencyTelemetry.$recorder.withValue(denyQueuedWSRec) {
-                try await j3diEncoder.encode(
-                    vol24Tiles,
+                try await j3diWaveEncoder.encode(
+                    waveVolume,
                     options: VolumeEncodeOptions(
                         resourceLimits: try ResourceLimits(
                             maximumWorkspaceBytes: waveWorkspaceLimit,
@@ -1131,41 +1186,41 @@ struct R1VolumeRemediationTests {
                     )
                 )
             }
-            Issue.record("Expected 22 retained + 1 unconsumed Tile 22 + active Tile 23 scratch to fail workspace limit")
+            Issue.record("Expected retained outputs plus the final queued output and active worker to exceed the workspace limit")
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
         }
-        let snapTile23 = try #require(denyQueuedWSRec.snapshotAfterEnterDelay(forTile: 23))
-        #expect(snapTile23.currentInFlight == 1)
-        #expect(snapTile23.retainedBytes == 22 * waveTileBytes)
-        #expect(snapTile23.liveOutputBytes == waveTileBytes)
-        #expect(denyQueuedWSRec.retainedBytes + denyQueuedWSRec.releasedOutputBytes == 23 * waveTileBytes)
+        let finalTileSnapshot = try #require(denyQueuedWSRec.snapshotAfterEnterDelay(forTile: finalTileIndex))
+        #expect(finalTileSnapshot.currentInFlight == 1)
+        #expect(finalTileSnapshot.retainedBytes == priorTileCount * waveTileBytes)
+        #expect(finalTileSnapshot.liveOutputBytes == waveTileBytes)
+        #expect(denyQueuedWSRec.retainedBytes + denyQueuedWSRec.releasedOutputBytes == (waveTileCount - 1) * waveTileBytes)
         #expect(denyQueuedWSRec.currentInFlight == 0)
         #expect(denyQueuedWSRec.liveOutputBytes == 0)
         #expect(denyQueuedWSRec.liveScratchBytes == 0)
         #expect(denyQueuedWSRec.liveTransientBytes == 0)
         #expect(denyQueuedWSRec.authoritativeLiveOutputBytes == 0)
         #expect(denyQueuedWSRec.authoritativeLiveScratchBytes == 0)
-        #expect((denyQueuedWSRec.authoritativeRetainedBytes ?? 0) + (denyQueuedWSRec.authoritativeReleasedOutputBytes ?? 0) == 23 * waveTileBytes)
+        #expect((denyQueuedWSRec.authoritativeRetainedBytes ?? 0) + (denyQueuedWSRec.authoritativeReleasedOutputBytes ?? 0) == (waveTileCount - 1) * waveTileBytes)
 
-        // Larger-budget control (8192 B) with the exact same barrier schedule succeeds cleanly:
-        let passQueuedWSRec = makeTwentyFourTileWaveRecorder()
-        let encoded24 = try await VolumeConcurrencyTelemetry.$recorder.withValue(passQueuedWSRec) {
-            try await j3diEncoder.encode(
-                vol24Tiles,
+        // A derived larger-budget control keeps the identical barriers and tile count.
+        let passQueuedWSRec = makeQueuedTileWaveRecorder()
+        let encodedWave = try await VolumeConcurrencyTelemetry.$recorder.withValue(passQueuedWSRec) {
+            try await j3diWaveEncoder.encode(
+                waveVolume,
                 options: VolumeEncodeOptions(
                     resourceLimits: try ResourceLimits(
-                        maximumWorkspaceBytes: 8192,
+                        maximumWorkspaceBytes: 2 * (waveTileCount * waveTileBytes + singleTilePeakWS + 4096),
                         maximumWorkers: 2
                     )
                 )
             )
         }
-        #expect(passQueuedWSRec.retainedBytes == 24 * waveTileBytes)
+        #expect(passQueuedWSRec.retainedBytes == waveTileCount * waveTileBytes)
         #expect(passQueuedWSRec.liveOutputBytes == 0)
         #expect(passQueuedWSRec.liveTransientBytes == 0)
-        let decoded24 = try await VolumeDecoder().decode(encoded24.data)
-        #expect(decoded24.volume.components[0].data == vol24Tiles.components[0].data)
+        let decodedWave = try await VolumeDecoder().decode(encodedWave.data)
+        #expect(decodedWave.volume.components[0].data == waveVolume.components[0].data)
 
         // --- 3. Equivalent J3DS slice-stack (12x4x2 16-bit lossless, 4x4x2 tiling -> 3 tiles)
         //     and lossy 3D wavelet (6x2x2 8-bit lossy, 2x2x2 tiling -> 3 tiles) reservation transfer via explicit barriers ---

@@ -70,11 +70,127 @@ jobs:
       - run: swift --version
       - run: xcodebuild -version
       - run: swift build
-      - run: swift test
+      - name: Ordinary tests
+        id: ordinary_tests
+        run: |
+          set -euo pipefail
+          mkdir -p .build/sanitizer-evidence/ordinary
+          swift test --xunit-output .build/sanitizer-evidence/ordinary/full.xml
+      # Keep the ordinary full-suite run above. Each sanitizer still executes
+      # every test; only JPIP and its exact complement run in separate processes.
       - name: Address sanitizer
-        run: swift test --scratch-path .build/asan --sanitize address
+        id: address_tests
+        run: |
+          set -euo pipefail
+          python3 Scripts/verify-sanitizer-inventory.py --sanitizer address --scratch-path .build/asan --output .build/sanitizer-evidence/address
+          swift test --scratch-path .build/asan --sanitize address --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/jpip.xml
+          swift test --scratch-path .build/asan --sanitize address --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/complement.xml
       - name: Thread sanitizer
-        run: swift test --scratch-path .build/tsan --sanitize thread
+        id: thread_tests
+        run: |
+          set -euo pipefail
+          python3 Scripts/verify-sanitizer-inventory.py --sanitizer thread --scratch-path .build/tsan --output .build/sanitizer-evidence/thread
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/jpip.xml
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/complement.xml
+
+      - name: Retain exact test evidence in downloadable logs
+        if: always()
+        env:
+          EVIDENCE_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_PR_BASE: ${{ github.event.pull_request.base.sha }}
+          EVIDENCE_ORDINARY: ${{ steps.ordinary_tests.outcome }}
+          EVIDENCE_ASAN: ${{ steps.address_tests.outcome }}
+          EVIDENCE_TSAN: ${{ steps.thread_tests.outcome }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_EVIDENCE'
+          import hashlib, json, os, stat, subprocess
+          from pathlib import Path
+
+          FORMAT = "swiftj2k-ci-evidence-v1"
+          ROOT = Path(".build/sanitizer-evidence")
+          MAX_FILE = 8 * 1024 * 1024
+          MAX_TOTAL = 16 * 1024 * 1024
+          CHARS_PER_CHUNK = 4096
+          problems = []
+          retained = set()
+          total = 0
+
+          def emit(kind, **fields):
+              print(json.dumps({"format": FORMAT, "kind": kind, **fields},
+                               ensure_ascii=True, separators=(",", ":")), flush=True)
+
+          def git(*args):
+              return subprocess.check_output(["git", *args], text=True).strip()
+
+          try:
+              head, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
+              clean = subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], check=False).returncode == 0
+              identity = {name: os.environ.get(name) for name in (
+                  "GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB",
+                  "GITHUB_EVENT_NAME", "GITHUB_REF", "GITHUB_SHA", "EVIDENCE_PR_HEAD",
+                  "EVIDENCE_PR_BASE", "EVIDENCE_ORDINARY", "EVIDENCE_ASAN", "EVIDENCE_TSAN")}
+              emit("begin", identity=identity, checkout_head=head, checkout_tree=tree,
+                   tracked_tree_clean=clean, max_file_bytes=MAX_FILE, max_total_bytes=MAX_TOTAL)
+              if not clean or head != os.environ.get("GITHUB_SHA"):
+                  problems.append("Checkout identity differs from the workflow SHA or tracked files changed")
+          except (OSError, subprocess.CalledProcessError) as error:
+              emit("identity_error", error=str(error))
+              problems.append("Checkout identity unavailable")
+
+          inventory_names = ["reference.stdout", "reference.stderr", "reference.command-result.json",
+                             "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",
+                             "inventory.json", "all.ids", "jpip.ids", "complement.ids"]
+          xml_groups = [["ordinary/full.xml", "ordinary/full-swift-testing.xml"]]
+          required = []
+          optional = []
+          for mode in ("address", "thread"):
+              required += [f"{mode}/{name}" for name in inventory_names]
+              optional.append(f"{mode}/inventory-mismatch.json")
+              for part in ("jpip", "complement"):
+                  xml_groups.append([f"{mode}/{part}.xml", f"{mode}/{part}-swift-testing.xml"])
+          paths = sorted(set(required + optional + [path for group in xml_groups for path in group]))
+          for relative in paths:
+              path = ROOT / relative
+              try:
+                  # The fixed allowlist cannot disclose arbitrary files under .build. Reject
+                  # symlinked ancestors and files instead of following them outside the tree.
+                  if any(parent.is_symlink() for parent in [path, *path.parents]):
+                      raise ValueError("Symlinked evidence path refused")
+                  if not path.exists():
+                      emit("missing", path=relative)
+                      continue
+                  info = path.stat()
+                  if not stat.S_ISREG(info.st_mode):
+                      raise ValueError("Evidence path is not a regular file")
+                  if info.st_size > MAX_FILE or total + info.st_size > MAX_TOTAL:
+                      raise ValueError("Evidence size limit exceeded; no silent truncation")
+                  data = path.read_bytes()
+                  if len(data) > MAX_FILE or total + len(data) > MAX_TOTAL:
+                      raise ValueError("Evidence grew past the size limit")
+                  content = data.decode("utf-8")  # Strict: malformed UTF-8 is not rewritten.
+                  chunks = [content[i:i + CHARS_PER_CHUNK] for i in range(0, len(content), CHARS_PER_CHUNK)]
+                  emit("file", path=relative, sha256=hashlib.sha256(data).hexdigest(),
+                       bytes=len(data), encoding="utf-8", chunks=len(chunks))
+                  for index, chunk in enumerate(chunks):
+                      emit("chunk", path=relative, index=index, content_utf8=chunk)
+                  retained.add(relative)
+                  total += len(data)
+              except (OSError, UnicodeError, ValueError) as error:
+                  emit("file_error", path=relative, error=str(error))
+                  problems.append(relative + ": evidence could not be retained")
+
+          for relative in required:
+              if relative not in retained:
+                  problems.append("Missing inventory evidence: " + relative)
+          for group in xml_groups:
+              if not any(relative in retained for relative in group):
+                  problems.append("No XML retained for invocation: " + group[0])
+          emit("end", files=len(retained), bytes=total, problems=problems,
+               retention_complete=not problems,
+               scope="Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately")
+          raise SystemExit(1 if problems else 0)
+          PY_EVIDENCE
 
   independent-consumer:
     name: Independent consumer resolves at tools 6.2

@@ -1,0 +1,8 @@
+{
+  "state": "PASS",
+  "raw_bytes_exact": true,
+  "merged_lines_exact_once": 202,
+  "raw_hashes_match": true,
+  "joined": true,
+  "probe": "validation/stream-capture-probe-08"
+}

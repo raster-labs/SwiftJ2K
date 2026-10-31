@@ -242,19 +242,20 @@ public struct JP3DHTMarkers: Sendable {
         return data
     }
 
-    /// Generates the `CPF` (Corresponding Profile, `0xFF59`) marker segment data.
+    /// Omits the optional corresponding-profile marker and returns empty data.
+    ///
+    /// The block configuration and lossless flag do not establish conformance to
+    /// a corresponding codestream profile. ITU-T T.814 A.4 encodes `CPFnum + 1`
+    /// in the `Pcpf` words; those words are not lossless/lossy capability flags.
+    /// This overload remains source-compatible but cannot make a profile claim.
+    @available(*, deprecated, message: "A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.")
     public static func cpfMarkerData(
         for configuration: JP3DHTJ2KConfiguration,
         isLossless: Bool
     ) -> Data {
         _ = configuration
-        var data = Data(capacity: 6)
-        appendUInt16(&data, cpfMarkerCode)
-        appendUInt16(&data, 4)
-        var pcpf: UInt16 = 0x8000
-        pcpf |= (isLossless ? 0x0000 : 0x0001)
-        appendUInt16(&data, pcpf)
-        return data
+        _ = isLossless
+        return Data()
     }
 
     /// Returns `true` when a JP3D parsed codestream declares HTJ2K capability via a `COD` coding-style byte.

@@ -215,10 +215,12 @@ final class JP3DHTJ2KTests: XCTestCase {
         XCTAssertEqual(capData[1], 0x50)
     }
 
-    func testCPFMarkerContainsCorrectMagicBytes() {
-        let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: true)
-        XCTAssertEqual(cpfData[0], 0xFF)
-        XCTAssertEqual(cpfData[1], 0x59)
+    func testLosslessConfigurationDoesNotClaimCorrespondingProfile() {
+        for configuration in [JP3DHTJ2KConfiguration.default,
+                              JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+            let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+            XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+        }
     }
 
     func testCAPMarkerLengthForDefaultConfig() {
@@ -233,10 +235,9 @@ final class JP3DHTJ2KTests: XCTestCase {
         XCTAssertEqual(pcap, 0x0042_0000)
     }
 
-    func testCPFMarkerLengthForLosslessConfig() {
-        let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: true)
-        let len = (UInt16(cpfData[2]) << 8) | UInt16(cpfData[3])
-        XCTAssertEqual(len, 4)
+    func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+        let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+        XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
     }
 
     func testCAPMarkerMixedModeBitSet() {
@@ -272,7 +273,7 @@ final class JP3DHTJ2KTests: XCTestCase {
         XCTAssertTrue(hasCAPMarker, "HTJ2K codestream should contain CAP marker")
     }
 
-    func testBuilderWithHTJ2KConfigInsertsCPFMarker() {
+    func testBuilderWithHTJ2KConfigOmitsUnestablishedCPFMarker() {
         let builder = JP3DCodestreamBuilder()
         let tileData = Data(repeating: 0xAB, count: 16)
         let stream = builder.build(
@@ -285,7 +286,7 @@ final class JP3DHTJ2KTests: XCTestCase {
             htj2kConfiguration: .default
         )
         let hasCPFMarker = findMarker(in: stream, high: 0xFF, low: 0x59)
-        XCTAssertTrue(hasCPFMarker, "HTJ2K codestream should contain CPF marker")
+        XCTAssertFalse(hasCPFMarker, "HTJ2K configuration does not establish a corresponding profile")
     }
 
     func testBuilderWithoutHTJ2KConfigOmitsCAPMarker() throws {

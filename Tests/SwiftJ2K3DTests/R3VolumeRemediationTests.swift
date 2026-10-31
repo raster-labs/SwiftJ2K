@@ -8,6 +8,7 @@
 // ITU-T T.814 HTJ2K-in-JP3D.
 
 import Foundation
+import Synchronization
 import Testing
 @testable import SwiftJ2K
 @testable import SwiftJ2K3D
@@ -300,6 +301,7 @@ struct R3VolumeRemediationTests {
                 geometries: geoms,
                 cod: parsed.cod,
                 bytes: [UInt8](parsed.tiles[0].data),
+                recordPacketRanges: true,
                 cancellation: {}
             )
             let actualSequence = indexed.map(\.address)
@@ -1027,5 +1029,418 @@ struct R3VolumeRemediationTests {
         } catch let err as CodecError {
             #expect(err.category == .backendUnavailable)
         }
+    }
+
+    // MARK: - Phase R3 Second Rework Regression Suite (RA2-03, RA2-04, RA2-05, RA2-08)
+
+    private func stripPart2MCTMarkers(_ codestream: Data) -> Data {
+        let bytes = [UInt8](codestream)
+        guard bytes.count >= 4, bytes[0] == 0xFF, bytes[1] == 0x4F else { return codestream }
+        var out: [UInt8] = [0xFF, 0x4F]
+        var cursor = 2
+        while cursor + 2 <= bytes.count {
+            let marker = UInt16(bytes[cursor]) << 8 | UInt16(bytes[cursor + 1])
+            if marker == 0xFF90 || marker == 0xFFD9 {
+                out.append(contentsOf: bytes[cursor..<bytes.count])
+                break
+            }
+            if (0xFF30...0xFF3F).contains(marker) {
+                out.append(bytes[cursor])
+                out.append(bytes[cursor + 1])
+                cursor += 2
+                continue
+            }
+            guard cursor + 4 <= bytes.count else { break }
+            let segLen = Int(UInt16(bytes[cursor + 2]) << 8 | UInt16(bytes[cursor + 3]))
+            guard segLen >= 2, cursor + 2 + segLen <= bytes.count else { break }
+            let totalSeg = 2 + segLen
+            if marker != 0xFF74 && marker != 0xFF75 && marker != 0xFF77 && marker != 0xFF78 {
+                var segment = Array(bytes[cursor..<(cursor + totalSeg)])
+                // This test derives a wire-component stream: remove the usage
+                // signals as well as the synthesis marker payloads.
+                if marker == 0xFF51 { segment[4] &= 0x7E }
+                if marker == 0xFF52 { segment[8] = 0 }
+                out.append(contentsOf: segment)
+            }
+            cursor += totalSeg
+        }
+        return Data(out)
+    }
+
+    @Test("RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis")
+    func part2SignedWireLimbsZeroDCOffsetSynthesis() async throws {
+        let w = 8, h = 8, d = 4
+        let count = w * h * d
+
+        for isSigned in [false, true] {
+            let minVal: Int64 = isSigned ? -(Int64(1) << 37) : 0
+            let maxVal: Int64 = isSigned ? ((Int64(1) << 37) - 1) : ((Int64(1) << 38) - 1)
+            var samples = [Int64](repeating: 0, count: count)
+            samples[0] = 0
+            samples[1] = minVal
+            samples[2] = maxVal
+            samples[3] = isSigned ? -1 : 1
+            samples[4] = isSigned ? -524_288 : 524_288
+            samples[5] = isSigned ? 524_287 : 524_287
+            for idx in 6..<count {
+                let frac = UInt64(idx) &* 0x9E37_79B9_7F4A_7C15
+                if isSigned {
+                    let span = UInt64(1) << 38
+                    let mapped = Int64(bitPattern: frac % span) - (Int64(1) << 37)
+                    samples[idx] = max(minVal, min(maxVal, mapped))
+                } else {
+                    let span = UInt64(1) << 38
+                    samples[idx] = Int64(frac % span)
+                }
+            }
+
+            let vol = makeTestVolume(
+                width: w, height: h, depth: d,
+                bitDepth: 38, signed: isSigned,
+                componentSamples: [samples]
+            )
+            let enc = try VolumeEncoder(
+                configuration: VolumeEncoderConfiguration(
+                    compressionMode: .losslessHTJ2K,
+                    tiling: JP3DTilingConfiguration(tileSizeX: 4, tileSizeY: 4, tileSizeZ: 2),
+                    levelsX: 1, levelsY: 1, levelsZ: 0
+                )
+            )
+            let encoded = try await enc.encode(vol)
+            let parsed = try JP3DCodestreamParser().parse(encoded.data)
+            let split = try #require(parsed.part2BitSplit)
+            #expect(parsed.siz.componentCount == 2)
+            #expect(parsed.siz.componentSigned == [true, true])
+            #expect(split.coeffLow == 1)
+            #expect(split.coeffHigh == 524_288)
+            #expect(split.logicalComponentBitDepths == [38])
+            #expect(split.logicalComponentSigned == [isSigned])
+
+            // 1. Whole-volume decode
+            let dec = try await VolumeDecoder().decode(encoded.data)
+            #expect(dec.volume.components.count == 1)
+            #expect(dec.volume.components[0].bitDepth == 38)
+            #expect(dec.volume.components[0].signed == isSigned)
+            let wholeUnpacked = unpackSamples(dec.volume.components[0].data, count: count, bitDepth: 38, signed: isSigned)
+            #expect(wholeUnpacked == samples)
+
+            // 2. Sub-volume ROI decode
+            let roi = JP3DRegion(x: 0..<6, y: 0..<5, z: 0..<3)
+            let roiRes = try await JP3DROIDecoder().decode(encoded.data, region: roi)
+            #expect(roiRes.volume.components.count == 1)
+            let roiUnpacked = unpackSamples(
+                roiRes.volume.components[0].data,
+                count: 6 * 5 * 3,
+                bitDepth: 38,
+                signed: isSigned
+            )
+            for rz in 0..<3 {
+                for ry in 0..<5 {
+                    for rx in 0..<6 {
+                        let expected = samples[rz * (w * h) + ry * w + rx]
+                        let actual = roiUnpacked[rz * (6 * 5) + ry * 6 + rx]
+                        #expect(actual == expected)
+                    }
+                }
+            }
+
+            // 3. HT -> EBCOT wavelet-domain transcode
+            let toStd = try await VolumeTranscoder().transcode(
+                encoded.data,
+                to: .jpeg2000
+            )
+            let stdDec = try await VolumeDecoder().decode(toStd.data)
+            #expect(unpackSamples(stdDec.volume.components[0].data, count: count, bitDepth: 38, signed: isSigned) == samples)
+
+            // 4. Stripped-Part-2 independent wire-limb decode + pure `[1, 524288]` matrix synthesis with zero DC offset
+            let stripped = stripPart2MCTMarkers(encoded.data)
+            let strippedParsed = try JP3DCodestreamParser().parse(stripped)
+            #expect(strippedParsed.part2BitSplit == nil)
+            #expect(strippedParsed.siz.componentCount == 2)
+            #expect(strippedParsed.siz.componentSigned == [true, true])
+
+            let rawLimbsDecoded = try await VolumeDecoder().decode(stripped)
+            #expect(rawLimbsDecoded.volume.components.count == 2)
+            let loDepth = rawLimbsDecoded.volume.components[0].bitDepth
+            let hiDepth = rawLimbsDecoded.volume.components[1].bitDepth
+            let loLimb = unpackSamples(rawLimbsDecoded.volume.components[0].data, count: count, bitDepth: loDepth, signed: true)
+            let hiLimb = unpackSamples(rawLimbsDecoded.volume.components[1].data, count: count, bitDepth: hiDepth, signed: true)
+            for idx in 0..<count {
+                let synthesized = loLimb[idx] * split.coeffLow + hiLimb[idx] * split.coeffHigh
+                #expect(synthesized == samples[idx])
+            }
+        }
+    }
+
+    @Test("RA2-04: Pre-allocation Tier-1/Tier-2 entropy budget rejects incompressible tiled 3D encode before allocating rejected output buffer")
+    func preAllocationEntropyBudgetRejectsBeforeAllocating() async throws {
+        let w = 16, h = 16, d = 4
+        let count = w * h * d
+        let noisy: [Int64] = (0..<count).map { idx in
+            Int64(((UInt64(idx &+ 1) &* 0x9E37_79B9_7F4A_7C15) >> 32) & 0xFFFF_FFFF)
+        }
+        let vol = makeTestVolume(
+            width: w, height: h, depth: d,
+            bitDepth: 32, signed: false,
+            componentSamples: [noisy]
+        )
+
+        for mode: JP3DCompressionMode in [.lossless, .losslessHTJ2K] {
+            let encoder = try VolumeEncoder(
+                configuration: VolumeEncoderConfiguration(
+                    compressionMode: mode,
+                    tiling: JP3DTilingConfiguration(tileSizeX: 8, tileSizeY: 8, tileSizeZ: 2),
+                    levelsX: 1, levelsY: 1, levelsZ: 1
+                )
+            )
+            let control = try await encoder.encode(
+                vol,
+                options: VolumeEncodeOptions(resourceLimits: ResourceLimits(maximumWorkers: 1))
+            )
+            let parsed = try JP3DCodestreamParser().parse(control.data)
+            let firstTileBytes = try #require(parsed.tiles.first?.data.count)
+            #expect(parsed.tiles.count == 8)
+
+            // 1. Single-worker tight compressed budget (< firstTileBytes / 2): zero `.bufferAllocated` events follow `.reserveRejected`!
+            let singleRec = EntropyAllocationTelemetry.Recorder()
+            do {
+                _ = try await EntropyAllocationTelemetry.$recorder.withValue(singleRec) {
+                    try await encoder.encode(
+                        vol,
+                        options: VolumeEncodeOptions(
+                            resourceLimits: try ResourceLimits(
+                                maximumCompressedBytes: max(16, firstTileBytes / 2),
+                                maximumWorkers: 1
+                            )
+                        )
+                    )
+                }
+                Issue.record("Expected tight compressed allowance to reject \(mode) pre-allocation")
+            } catch let err as CodecError {
+                #expect(err.category == .resourceLimitExceeded)
+            }
+            let singleEvents = singleRec.events
+            let firstReject = try #require(singleEvents.first { $0.kind == .reserveRejected })
+            let allocationsAfterReject = singleEvents.filter {
+                $0.kind == .bufferAllocated && $0.sequence > firstReject.sequence
+            }
+            #expect(allocationsAfterReject.isEmpty)
+
+            // 2. Concurrent 2-worker tight workspace/compressed budget: rejects cleanly as `.resourceLimitExceeded` with `.reserveRejected` recorded and every `.bufferAllocated` preceded by a matching `.reserveAdmitted`!
+            let twoWorkerRec = EntropyAllocationTelemetry.Recorder()
+            do {
+                _ = try await EntropyAllocationTelemetry.$recorder.withValue(twoWorkerRec) {
+                    try await encoder.encode(
+                        vol,
+                        options: VolumeEncodeOptions(
+                            resourceLimits: try ResourceLimits(
+                                maximumCompressedBytes: 3 * firstTileBytes,
+                                maximumWorkers: 2
+                            )
+                        )
+                    )
+                }
+                Issue.record("Expected 2-worker tight compressed allowance to reject \(mode)")
+            } catch let err as CodecError {
+                #expect(err.category == .resourceLimitExceeded)
+            }
+            let twoEvents = twoWorkerRec.events
+            #expect(twoEvents.contains { $0.kind == .reserveRejected })
+            let admittedCount = twoEvents.filter { $0.kind == .reserveAdmitted }.count
+            let allocatedCount = twoEvents.filter { $0.kind == .bufferAllocated }.count
+            #expect(allocatedCount <= admittedCount)
+        }
+    }
+
+    @Test("RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap")
+    func part2BitSplitDecodeWithinFloorAndBoundedPacketWorkspace() async throws {
+        let w = 256, h = 256, d = 4
+        let count = w * h * d
+        var samples = [Int64](repeating: 0, count: count)
+        samples[0] = (Int64(1) << 38) - 1 // Forces Part 2 bit-split across the codestream
+        for i in stride(from: 1, to: count, by: 257) {
+            samples[i] = Int64(i) * 1_048_579
+        }
+        let vol = makeTestVolume(
+            width: w, height: h, depth: d,
+            bitDepth: 38, signed: false,
+            componentSamples: [samples]
+        )
+        let enc = try VolumeEncoder(
+            configuration: VolumeEncoderConfiguration(
+                compressionMode: .losslessHTJ2K,
+                tiling: JP3DTilingConfiguration(tileSizeX: 8, tileSizeY: 8, tileSizeZ: 2),
+                levelsX: 1, levelsY: 1, levelsZ: 0
+            )
+        )
+        let encoded = try await enc.encode(vol)
+        let parsed = try JP3DCodestreamParser().parse(encoded.data)
+        #expect(parsed.part2BitSplit != nil)
+        #expect(parsed.siz.componentCount == 2)
+
+        // Initial geometry/sample preflight is a floor. Packet contributions and
+        // their old/replacement capacity allowances are admitted separately at runtime.
+        let retainedSourceBytes = parsed.retainedTileBytes + parsed.commentPayloadBytes
+        let bufferWorkspaceBytes = count * 2 * MemoryLayout<Int64>.stride // 4,194,304 B
+        let perWorkerSampleBuf = (8 * 8 * 2 * 2) * (MemoryLayout<Int64>.stride * 2) // 4,096 B
+        let compFootprint = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+            x0: 0, x1: 8, y0: 0, y1: 8, z0: 0, z1: 2,
+            cod: parsed.cod,
+            maximumWorkspaceBytes: nil,
+            includeDecodeState: true
+        )
+        let compGeom = compFootprint.totalBytes
+        // This fixture emits one HT cleanup segment per codeblock in one layer.
+        // Bound payload capacity by three times the entire encoded tile (which
+        // also includes packet headers), and allow table/data growth plus the
+        // minimum payload allocation for every block, even an empty one.
+        #expect(parsed.cod.numLayers == 1)
+        #expect(parsed.cod.codeBlockStyle & 0x40 != 0)
+        let largestTileBytes = try #require(parsed.tiles.map { $0.data.count }.max())
+        let segmentStructureAllowance = 128 + 3 * MemoryLayout<CodewordSegment>.stride + 3 * 8
+        let packetWorkspaceBound = 3 * largestTileBytes
+            + 2 * compFootprint.codeBlockCount * segmentStructureAllowance
+        let exactFullPreflightWS = retainedSourceBytes + bufferWorkspaceBytes + perWorkerSampleBuf + 2 * compGeom
+
+        let boundedFullWorkspace = exactFullPreflightWS + packetWorkspaceBound
+        let fullLogicalPlaneBytes = count * MemoryLayout<Int64>.stride
+        #expect(packetWorkspaceBound < fullLogicalPlaneBytes / 4)
+
+        // One byte below the initial floor still rejects before worker allocation.
+        // Success uses a separate bounded packet allowance, far below the extra
+        // 2 MiB that a complete logical Int64 plane would need.
+        do {
+            _ = try await VolumeDecoder().decode(
+                encoded.data,
+                options: VolumeDecodeOptions(
+                    resourceLimits: try ResourceLimits(maximumWorkspaceBytes: exactFullPreflightWS - 1, maximumWorkers: 1)
+                )
+            )
+            Issue.record("Expected exactFullPreflightWS - 1 to reject preflight")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+
+        let fullStorage = StorageTelemetry.Recorder()
+        let fullDec = try await StorageTelemetry.$recorder.withValue(fullStorage) {
+            try await VolumeDecoder().decode(encoded.data, options: VolumeDecodeOptions(
+                resourceLimits: try ResourceLimits(maximumWorkspaceBytes: boundedFullWorkspace, maximumWorkers: 1)))
+        }
+        #expect(fullDec.volume.components[0].data == vol.components[0].data)
+        let fullPeak = try #require(fullDec.report.peakWorkspaceBytes)
+        #expect(fullPeak >= exactFullPreflightWS)
+        #expect(fullPeak <= boundedFullWorkspace)
+        #expect(fullStorage.events.contains { $0.stage == "volume-decode-buffers" && $0.bytes == bufferWorkspaceBytes })
+        let fullSourceCopies = fullStorage.parserEvents.filter { $0.stage == "jp3d-tile-subdata" }
+        #expect(fullSourceCopies.suffix(parsed.tiles.count).reduce(0) { $0 + $1.bytes } == parsed.retainedTileBytes)
+
+        // ROI decode uses the same bounded packet allowance and its smaller wire planes:
+        let roi = JP3DRegion(x: 0..<128, y: 0..<128, z: 0..<2)
+        let roiVoxels = 128 * 128 * 2
+        let roiBufferWS = roiVoxels * 2 * MemoryLayout<Int64>.stride
+        let exactROIPreflightWS = retainedSourceBytes + roiBufferWS + perWorkerSampleBuf + 2 * compGeom
+        let boundedROIWorkspace = exactROIPreflightWS + packetWorkspaceBound
+        #expect(packetWorkspaceBound < roiVoxels * MemoryLayout<Int64>.stride / 4)
+        let roiGuard = VolumeWorkGuard(limits: nil)
+        do {
+            _ = try await JP3DROIDecoder(configuration: JP3DDecoderConfiguration(parallelTileDecoding: false, maximumWorkers: 1))
+                .decodeAdmitted(
+                    encoded.data,
+                    region: roi,
+                    maxQualityLayers: nil,
+                    resolutionLevel: 0,
+                    limits: try ResourceLimits(maximumWorkspaceBytes: exactROIPreflightWS - 1, maximumWorkers: 1),
+                    executionPolicy: .automatic,
+                    work: roiGuard
+                )
+            Issue.record("Expected exactROIPreflightWS - 1 to reject ROI preflight")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+        let roiStorage = StorageTelemetry.Recorder()
+        let roiDec = try await StorageTelemetry.$recorder.withValue(roiStorage) {
+            try await JP3DROIDecoder(configuration: JP3DDecoderConfiguration(parallelTileDecoding: false, maximumWorkers: 1))
+            .decodeAdmitted(
+                encoded.data,
+                region: roi,
+                maxQualityLayers: nil,
+                resolutionLevel: 0,
+                limits: try ResourceLimits(maximumWorkspaceBytes: boundedROIWorkspace, maximumWorkers: 1),
+                executionPolicy: .automatic,
+                work: roiGuard
+            )
+        }
+        #expect(roiDec.peakWorkspaceBytes >= exactROIPreflightWS)
+        #expect(roiDec.peakWorkspaceBytes <= boundedROIWorkspace)
+        #expect(roiStorage.events.contains { $0.stage == "volume-roi-decode-buffers" && $0.bytes == roiBufferWS })
+        #expect(roiStorage.parserEvents.filter { $0.stage == "jp3d-tile-subdata" }.reduce(0) { $0 + $1.bytes }
+            == parsed.retainedTileBytes)
+        #expect(roiDec.volume.width == 128)
+        #expect(roiDec.volume.height == 128)
+        #expect(roiDec.volume.depth == 2)
+        var expectedROI: [Int64] = []
+        expectedROI.reserveCapacity(roiVoxels)
+        for z in 0..<2 {
+            for y in 0..<128 {
+                expectedROI.append(contentsOf: samples[(z * w * h + y * w)..<(z * w * h + y * w + 128)])
+            }
+        }
+        #expect(unpackSamples(roiDec.volume.components[0].data,
+            count: roiVoxels, bitDepth: 38, signed: false) == expectedROI)
+    }
+
+    @Test("RA2-08: Required accelerated backend failure on <4-voxel 3D encode, decode, and transcode never emits .completed progress")
+    func requiredAcceleratedFailureNeverEmitsCompletedProgress() async throws {
+        let tinyVol = makeTestVolume(
+            width: 1, height: 1, depth: 2,
+            bitDepth: 8, signed: false,
+            componentSamples: [[19, 211]]
+        )
+        let autoEnc = try await VolumeEncoder(
+            configuration: VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                levelsX: 0, levelsY: 0, levelsZ: 0
+            )
+        ).encode(tinyVol)
+
+        // 1. VolumeEncoder
+        let encPhases = Mutex<[ProgressUpdate.Phase]>([])
+        await #expect(throws: CodecError.self) {
+            _ = try await VolumeEncoder(configuration: VolumeEncoderConfiguration(compressionMode: .lossless)).encode(
+                tinyVol,
+                options: VolumeEncodeOptions(
+                    executionPolicy: .required(.accelerated),
+                    progress: { p in encPhases.withLock { $0.append(p.phase) } }
+                )
+            )
+        }
+        #expect(!encPhases.withLock { $0 }.contains(.completed))
+
+        // 2. VolumeDecoder
+        let decPhases = Mutex<[ProgressUpdate.Phase]>([])
+        await #expect(throws: CodecError.self) {
+            _ = try await VolumeDecoder().decode(
+                autoEnc.data,
+                options: VolumeDecodeOptions(
+                    executionPolicy: .required(.accelerated),
+                    progress: { p in decPhases.withLock { $0.append(p.phase) } }
+                )
+            )
+        }
+        #expect(!decPhases.withLock { $0 }.contains(.completed))
+
+        // 3. VolumeTranscoder (`zcb == 0` 2D-plane lossless codestream eligible for HT transcoding, <4 voxels so no SIMD vector kernel)
+        let transPhases = Mutex<[ProgressUpdate.Phase]>([])
+        await #expect(throws: CodecError.self) {
+            _ = try await VolumeTranscoder().transcode(
+                autoEnc.data,
+                to: .htj2k,
+                options: TranscodeOptions(
+                    executionPolicy: .required(.accelerated),
+                    progress: { p in transPhases.withLock { $0.append(p.phase) } }
+                )
+            )
+        }
+        #expect(!transPhases.withLock { $0 }.contains(.completed))
     }
 }

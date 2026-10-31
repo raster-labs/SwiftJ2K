@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="TestResults" errors="0" tests="6" failures="0" skipped="0" time="1.00646425">
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest()" time="0.008691375" />
+    <testcase classname="SwiftJ2KTests" name="independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)" time="0.356504208" />
+    <testcase classname="SwiftJ2KTests.CodexR3CLIHostTests" name="onceVerificationUsesTheAcceptedBindAddress(host:)" time="0.453588792" />
+    <testcase classname="SwiftJ2KTests.CodexR3CLIHostTests" name="invalidBindAddressFailsWithoutATrap()" time="0.446372125" />
+    <testcase classname="SwiftJ2KTests" name="independentOraclesVerifyTranscodedOutputsInBothDirections(name:)" time="0.416061042" />
+    <testcase classname="SwiftJ2KTests" name="independentDecodersReadSuccessorCodestreams(name:)" time="1.006247459" />
+  </testsuite>
+</testsuites>

@@ -113,7 +113,8 @@ public actor JPIPWebSocketClient {
         self.webSocketTransport = JPIPWebSocketTransport(
             url: serverURL,
             reconnectionConfig: configuration.reconnectionConfig,
-            keepaliveInterval: configuration.keepaliveInterval
+            keepaliveInterval: configuration.keepaliveInterval,
+            requestTimeout: configuration.requestTimeout
         )
         self.httpTransport = nil
         self.isUsingHTTPFallback = false

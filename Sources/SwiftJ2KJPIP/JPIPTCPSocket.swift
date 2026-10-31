@@ -142,6 +142,8 @@ package struct JPIPHTTPWireResponse: Sendable {
     package let reasonPhrase: String
     package let headers: [String: String]
     package let body: Data
+    package let retainedHeaderStorageBytes: Int
+    package let peakWorkspaceBytes: Int
 
     package func header(_ name: String) -> String? {
         let lower = name.lowercased()
@@ -452,6 +454,16 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     private var readOffset: Int = 0
     private var wsFragmentedOpcode: JPIPRFC6455Opcode?
     private var wsFragmentedPayload = Data()
+    // Deterministic algorithm-work evidence, protected by readLock. Counters
+    // saturate across arbitrarily many messages instead of overflowing.
+    private var headerScanPositions = 0
+    private var lineScanBytes = 0
+
+    package var httpDelimiterScanWork: (headerPositions: Int, lineBytes: Int) {
+        readLock.lock()
+        defer { readLock.unlock() }
+        return (headerScanPositions, lineScanBytes)
+    }
 
     package init(connectedFD: Int32, timeoutSeconds: Int = 30) {
         self.fd = connectedFD
@@ -659,7 +671,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     private func compactReadBufferLocked() {
         if readOffset > 0 {
             if readOffset >= readBuffer.count {
-                readBuffer.removeAll(keepingCapacity: true)
+                readBuffer.removeAll(keepingCapacity: false)
                 readOffset = 0
             } else if readOffset >= 16384 {
                 readBuffer.removeFirst(readOffset)
@@ -668,9 +680,12 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private func fillOnceLocked() throws -> Int {
+    private func fillOnceLocked(maxReadBytes: Int = 16384) throws -> Int {
+        guard maxReadBytes > 0 else {
+            throw CodecError(.resourceLimitExceeded, "TCP read allowance exhausted before allocation.")
+        }
         let sock = try currentFD()
-        var scratch = [UInt8](repeating: 0, count: 16384)
+        var scratch = [UInt8](repeating: 0, count: min(16384, maxReadBytes))
         while true {
             let n = scratch.withUnsafeMutableBytes { buf in
                 recv(sock, buf.baseAddress!, buf.count, 0)
@@ -703,45 +718,82 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         readLock.lock()
         defer { readLock.unlock() }
 
-        while (readBuffer.count - readOffset) < count {
-            let got = try fillOnceLocked()
-            if got == 0 {
-                throw J2KError.networkError("Unexpected EOF while reading \(count) bytes (have \(readBuffer.count - readOffset)).")
+        return try readExactLocked(count: count)
+    }
+
+    /// The announced length is admitted by the caller before this one allocation.
+    private func readExactLocked(count: Int) throws -> Data {
+        var output = Data(count: count)
+        let buffered = min(count, readBuffer.count - readOffset)
+        if buffered > 0 {
+            output.replaceSubrange(0..<buffered, with: readBuffer[readOffset..<(readOffset + buffered)])
+            readOffset += buffered
+            compactReadBufferLocked()
+        }
+        let socket = try currentFD()
+        try output.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+            guard let base = bytes.baseAddress else { return }
+            var offset = buffered
+            while offset < count {
+                let received = recv(socket, base.advanced(by: offset), count - offset, 0)
+                if received > 0 { offset += received }
+                else if received < 0 && currentPOSIXErrno() == EINTR { continue }
+                else { throw J2KError.networkError("TCP read failed before the complete admitted payload arrived.") }
             }
         }
-        let slice = Data(readBuffer[readOffset..<(readOffset + count)])
-        readOffset += count
-        compactReadBufferLocked()
-        return slice
+        return output
     }
 
     private func readToEOF(maxAllowedBytes: Int) throws -> Data {
         readLock.lock()
         defer { readLock.unlock() }
-
-        while true {
-            let buffered = readBuffer.count - readOffset
-            if buffered > maxAllowedBytes {
-                throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body exceeds limit (\(maxAllowedBytes) bytes).")
-            }
-            let got = try fillOnceLocked()
-            if got == 0 { break }
-        }
         let buffered = readBuffer.count - readOffset
         guard buffered <= maxAllowedBytes else {
-            throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body (\(buffered) bytes) exceeds limit (\(maxAllowedBytes) bytes).")
+            throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body exceeds limit before allocation.")
         }
-        let out = Data(readBuffer[readOffset..<readBuffer.count])
+        var output = Data(readBuffer[readOffset..<readBuffer.count])
         readOffset = readBuffer.count
         compactReadBufferLocked()
-        return out
+        let socket = try currentFD()
+        while true {
+            let remaining = maxAllowedBytes - output.count
+            if remaining == 0 {
+                var extra: UInt8 = 0
+                let count = withUnsafeMutablePointer(to: &extra) { recv(socket, $0, 1, 0) }
+                if count == 0 { return output }
+                if count < 0 && currentPOSIXErrno() == EINTR { continue }
+                if count > 0 { throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body exceeds limit before allocation.") }
+                throw J2KError.networkError("TCP read failed at the EOF-delimited body limit.")
+            }
+            // Grow the read window with observed data, so a short response never
+            // allocates a large speculative scratch buffer.
+            var scratch = [UInt8](repeating: 0, count: min(16384, min(remaining, max(1, output.count))))
+            let count = scratch.withUnsafeMutableBytes { recv(socket, $0.baseAddress, $0.count, 0) }
+            if count == 0 { return output }
+            if count < 0 {
+                if currentPOSIXErrno() == EINTR { continue }
+                throw J2KError.networkError("TCP read failed inside an EOF-delimited body.")
+            }
+            let nextCount = output.count + count // count is bounded by remaining.
+            var replacement = Data(count: nextCount)
+            replacement.replaceSubrange(0..<output.count, with: output)
+            replacement.replaceSubrange(output.count..<nextCount, with: scratch.prefix(count))
+            output = replacement
+        }
     }
 
     private func readLineCRLFLocked(maxLineBytes: Int) throws -> String {
+        // readOffset and buffer indices stay fixed until a complete line returns.
+        // A new fill therefore only requires examining newly appended bytes.
+        var scanIndex = readOffset
         while true {
             let available = readBuffer.count - readOffset
             if available > 0 {
-                for idx in readOffset..<readBuffer.count where readBuffer[idx] == 0x0A {
+                while scanIndex < readBuffer.count {
+                    let idx = scanIndex
+                    scanIndex += 1
+                    if lineScanBytes < Int.max { lineScanBytes += 1 }
+                    guard readBuffer[idx] == 0x0A else { continue }
                     let lineLen = idx - readOffset
                     guard lineLen <= maxLineBytes else {
                         throw CodecError(.resourceLimitExceeded, "HTTP chunk line exceeds maximum length.")
@@ -762,7 +814,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                     throw CodecError(.resourceLimitExceeded, "HTTP line exceeds \(maxLineBytes) bytes without CRLF.")
                 }
             }
-            let got = try fillOnceLocked()
+            let got = try fillOnceLocked(maxReadBytes: 1)
             if got == 0 {
                 throw J2KError.networkError("Unexpected EOF while reading HTTP line.")
             }
@@ -771,11 +823,13 @@ package final class JPIPTCPConnection: @unchecked Sendable {
 
     /// Reads until `\r\n\r\n` (or `\n\n`). Returns `nil` cleanly on immediate EOF before any byte.
     private func readHeaderBlockLocked(maxHeaderBytes: Int) throws -> [UInt8]? {
+        var scanIndex = readOffset
         while true {
             let available = readBuffer.count - readOffset
             if available >= 2 {
-                var i = readOffset
+                var i = scanIndex
                 while i < readBuffer.count {
+                    if headerScanPositions < Int.max { headerScanPositions += 1 }
                     if i + 3 < readBuffer.count,
                        readBuffer[i] == 0x0D, readBuffer[i + 1] == 0x0A,
                        readBuffer[i + 2] == 0x0D, readBuffer[i + 3] == 0x0A {
@@ -793,11 +847,16 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                     }
                     i += 1
                 }
+                // Only a delimiter beginning in the final three bytes could
+                // become complete after the next fill. Preserve that overlap
+                // for CRLFCRLF (and LF-LF), without revisiting the entire prefix.
+                // No compaction occurs until this method returns.
+                scanIndex = max(readOffset, readBuffer.count - 3)
             }
             if available > maxHeaderBytes {
                 throw CodecError(.resourceLimitExceeded, "HTTP header block exceeds \(maxHeaderBytes) bytes.")
             }
-            let got = try fillOnceLocked()
+            let got = try fillOnceLocked(maxReadBytes: 1)
             if got == 0 {
                 if (readBuffer.count - readOffset) == 0 {
                     return nil
@@ -828,15 +887,13 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             guard !ov, nextTotal <= maxBodyBytes else {
                 throw CodecError(.resourceLimitExceeded, "Chunked HTTP body exceeds limit (\(maxBodyBytes) bytes).")
             }
-            while (readBuffer.count - readOffset) < chunkSize {
-                let got = try fillOnceLocked()
-                if got == 0 {
-                    throw J2KError.networkError("Unexpected EOF inside HTTP chunk payload.")
-                }
-            }
-            out.append(contentsOf: readBuffer[readOffset..<(readOffset + chunkSize)])
-            readOffset += chunkSize
-            compactReadBufferLocked()
+            let chunk = try readExactLocked(count: chunkSize)
+            // Old output + chunk + replacement equal twice nextTotal, rather
+            // than relying on an untracked Array/Data growth capacity.
+            var replacement = Data(count: nextTotal)
+            replacement.replaceSubrange(0..<out.count, with: out)
+            replacement.replaceSubrange(out.count..<nextTotal, with: chunk)
+            out = replacement
             // Consume trailing CRLF after chunk payload
             _ = try readLineCRLFLocked(maxLineBytes: 16)
         }
@@ -955,51 +1012,136 @@ package final class JPIPTCPConnection: @unchecked Sendable {
 
     package func readHTTPResponse(
         maxHeaderBytes: Int = 65536,
-        maxBodyBytes: Int = 128 * 1024 * 1024
+        maxBodyBytes: Int = 128 * 1024 * 1024,
+        maximumStorageBytes: Int = Int.max
     ) throws -> JPIPHTTPWireResponse {
+        guard maxHeaderBytes >= 0, maxBodyBytes >= 0, maximumStorageBytes > 0 else {
+            throw CodecError(.invalidArgument, "Invalid HTTP response admission limits.")
+        }
         readLock.lock()
         var unlocked = false
         defer { if !unlocked { readLock.unlock() } }
 
-        guard let headerBytes = try readHeaderBlockLocked(maxHeaderBytes: maxHeaderBytes) else {
-            throw J2KError.networkError("Server closed connection before sending HTTP response headers.")
+        func add(_ a: Int, _ b: Int) throws -> Int {
+            let (value, overflow) = a.addingReportingOverflow(b)
+            guard a >= 0, b >= 0, !overflow else { throw CodecError(.resourceLimitExceeded, "HTTP response storage overflow.") }
+            return value
         }
-        guard let headerText = String(bytes: headerBytes, encoding: .utf8) ?? String(bytes: headerBytes, encoding: .isoLatin1) else {
-            throw J2KError.invalidData("Malformed HTTP response header encoding.")
+        func multiply(_ a: Int, _ b: Int) throws -> Int {
+            let (value, overflow) = a.multipliedReportingOverflow(by: b)
+            guard a >= 0, b >= 0, !overflow else { throw CodecError(.resourceLimitExceeded, "HTTP response storage overflow.") }
+            return value
         }
-        let rawLines = headerText.components(separatedBy: "\n").map {
-            $0.hasSuffix("\r") ? String($0.dropLast()) : $0
-        }
-        guard let statusLine = rawLines.first, !statusLine.isEmpty else {
-            throw J2KError.invalidData("Empty HTTP status line.")
-        }
-        let parts = statusLine.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
-        guard parts.count >= 2, let code = Int(parts[1]) else {
-            throw J2KError.invalidData("Malformed HTTP status line '\(statusLine)'.")
-        }
-        let version = String(parts[0])
-        let reason = parts.count >= 3 ? String(parts[2]) : ""
-
-        var headers: [String: String] = [:]
-        for line in rawLines.dropFirst() where !line.isEmpty {
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let key = String(line[..<colon]).trimmingCharacters(in: .whitespaces)
-            let val = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
-            if let existing = headers[key] {
-                headers[key] = "\(existing), \(val)"
-            } else {
-                headers[key] = val
+        // Reading the raw block can retain the growable input plus its returned
+        // byte copy. No text or descriptor arrays are created until the scan admits them.
+        let rawCap = min(65_536, min(maxHeaderBytes, max(0, (maximumStorageBytes - 4) / 3)))
+        func parseHeaders() throws -> (String, Int, String, [String: String], Int) {
+            guard let bytes = try readHeaderBlockLocked(maxHeaderBytes: rawCap) else {
+                throw J2KError.networkError("Server closed connection before sending HTTP response headers.")
             }
+            var start = 0
+            var headerCount = 0
+            var longestLine = 0
+            var firstLine = true
+            for end in 0...bytes.count where end == bytes.count || bytes[end] == 0x0A {
+                longestLine = max(longestLine, end - start)
+                if !firstLine, bytes[start..<end].contains(0x3A) { headerCount += 1 }
+                firstLine = false
+                start = end + 1
+            }
+            // Raw bytes + retained Latin-1-expanded strings + duplicate-value
+            // replacement; current line/trim copies; dictionary growth and status split.
+            let descriptorBytes = try multiply(headerCount, 4 * MemoryLayout<(String, String)>.stride)
+            let workspace = try add(multiply(bytes.count, 5), add(multiply(longestLine, 6),
+                add(descriptorBytes, 4 * MemoryLayout<Substring>.stride + 2 * MemoryLayout<String>.stride)))
+            guard workspace <= maximumStorageBytes else {
+                throw CodecError(.resourceLimitExceeded, "HTTP header descriptors exceed remaining storage before text parsing.")
+            }
+            var headers: [String: String] = [:]
+            var version = ""
+            var reason = ""
+            var status = 0
+            start = 0
+            firstLine = true
+            for end in 0...bytes.count where end == bytes.count || bytes[end] == 0x0A {
+                let trimmedEnd = end > start && bytes[end - 1] == 0x0D ? end - 1 : end
+                guard let line = String(bytes: bytes[start..<trimmedEnd], encoding: .utf8)
+                    ?? String(bytes: bytes[start..<trimmedEnd], encoding: .isoLatin1) else {
+                    throw J2KError.invalidData("Malformed HTTP response header encoding.")
+                }
+                if firstLine {
+                    let parts = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+                    guard parts.count >= 2, let code = Int(parts[1]) else { throw J2KError.invalidData("Malformed HTTP status line.") }
+                    version = String(parts[0]); status = code
+                    reason = parts.count >= 3 ? String(parts[2]) : ""
+                    firstLine = false
+                } else if let colon = line.firstIndex(of: ":") {
+                    let key = String(line[..<colon]).trimmingCharacters(in: .whitespaces)
+                    let value = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
+                    if let existing = headers[key] { headers[key] = "\(existing), \(value)" }
+                    else { headers[key] = value }
+                }
+                start = end + 1
+            }
+            return (version, status, reason, headers, workspace)
+        }
+        let (version, code, reason, headers, headerPeak) = try parseHeaders()
+        let retainedHeaders = try add(JPIPResponse.headerStorageBytes(headers),
+            add(version.utf8.count, add(reason.utf8.count, 2 * MemoryLayout<String>.stride)))
+        guard retainedHeaders <= maximumStorageBytes else {
+            throw CodecError(.resourceLimitExceeded, "Retained HTTP headers exceed response storage.")
+        }
+        let remainingStorage = maximumStorageBytes - retainedHeaders
+        var peak = headerPeak
+        func response(_ body: Data, bufferFactor: Int) throws -> JPIPHTTPWireResponse {
+            peak = max(peak, try add(retainedHeaders, multiply(body.count, bufferFactor)))
+            return JPIPHTTPWireResponse(version: version, statusCode: code, reasonPhrase: reason,
+                headers: headers, body: body, retainedHeaderStorageBytes: retainedHeaders, peakWorkspaceBytes: peak)
         }
 
         if code == 101 || code == 204 || code == 304 {
-            return JPIPHTTPWireResponse(version: version, statusCode: code, reasonPhrase: reason, headers: headers, body: Data())
+            return try response(Data(), bufferFactor: 0)
         }
 
-        let te = headers.first { $0.key.lowercased() == "transfer-encoding" }?.value.lowercased() ?? ""
-        if te.contains("chunked") {
-            let body = try readChunkedBodyLocked(maxBodyBytes: maxBodyBytes)
-            return JPIPHTTPWireResponse(version: version, statusCode: code, reasonPhrase: reason, headers: headers, body: body)
+        let isChunked: Bool = {
+            let encoding = headers.first { $0.key.lowercased() == "transfer-encoding" }?.value.lowercased() ?? ""
+            return encoding.contains("chunked")
+        }()
+        if isChunked {
+            let bodyCap = min(maxBodyBytes, max(0, remainingStorage - 4) / 2)
+            var output = Data()
+            func chunkLine(maximum: Int) throws -> String {
+                let fixed = 4 * MemoryLayout<Substring>.stride
+                let available = remainingStorage - output.count
+                guard available > fixed else { throw CodecError(.resourceLimitExceeded, "HTTP chunk framing exceeds remaining storage.") }
+                let line = try readLineCRLFLocked(maxLineBytes: min(maximum, (available - fixed) / 12))
+                peak = max(peak, try add(retainedHeaders, add(output.count, add(multiply(line.utf8.count, 6), fixed))))
+                return line
+            }
+            func nextChunkSize() throws -> Int {
+                let line = try chunkLine(maximum: 4096)
+                let raw = line.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
+                guard let size = Int(raw.trimmingCharacters(in: .whitespaces), radix: 16), size >= 0 else {
+                    throw J2KError.invalidData("Malformed HTTP chunk size.")
+                }
+                return size
+            }
+            while true {
+                let count = try nextChunkSize()
+                if count == 0 {
+                    while !(try chunkLine(maximum: 8192)).isEmpty {}
+                    return try response(output, bufferFactor: 2)
+                }
+                let next = try add(output.count, count)
+                guard next <= bodyCap else { throw CodecError(.resourceLimitExceeded, "Chunked HTTP body exceeds remaining header/body storage before allocation.") }
+                peak = max(peak, try add(retainedHeaders, add(multiply(next, 2), 4)))
+                let chunk = try readExactLocked(count: count)
+                var replacement = Data(count: next)
+                replacement.replaceSubrange(0..<output.count, with: output)
+                replacement.replaceSubrange(output.count..<next, with: chunk)
+                output = replacement
+                guard try readExactLocked(count: 2) == Data([0x0D, 0x0A]) else { throw J2KError.invalidData("Missing HTTP chunk terminator.") }
+            }
         }
 
         if let clStr = headers.first(where: { $0.key.lowercased() == "content-length" })?.value {
@@ -1008,15 +1150,15 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             }
             unlocked = true
             readLock.unlock()
-            let body = try readExact(count: cl, maxAllowedBytes: maxBodyBytes)
-            return JPIPHTTPWireResponse(version: version, statusCode: code, reasonPhrase: reason, headers: headers, body: body)
+            let body = try readExact(count: cl, maxAllowedBytes: min(maxBodyBytes, remainingStorage / 2))
+            return try response(body, bufferFactor: 2)
         }
 
         // Connection: close EOF-delimited body
         unlocked = true
         readLock.unlock()
-        let body = try readToEOF(maxAllowedBytes: maxBodyBytes)
-        return JPIPHTTPWireResponse(version: version, statusCode: code, reasonPhrase: reason, headers: headers, body: body)
+        let body = try readToEOF(maxAllowedBytes: min(maxBodyBytes, remainingStorage / 3))
+        return try response(body, bufferFactor: 3)
     }
 
     // MARK: - RFC 6455 WebSocket Handshake & Framing
@@ -1024,8 +1166,11 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     package func performWebSocketClientHandshake(
         pathAndQuery: String,
         hostHeader: String,
-        subprotocol: String = "jpip"
-    ) throws -> String? {
+        subprotocol: String = "jpip",
+        maxHeaderBytes: Int = 65_536,
+        maxBodyBytes: Int = 0,
+        maximumStorageBytes: Int = Int.max
+    ) throws -> (subprotocol: String?, peakWorkspaceBytes: Int) {
         let clientKey = JPIPRFC6455Crypto.randomClientKey()
         let expectedAccept = JPIPRFC6455Crypto.computeAcceptKey(for: clientKey)
         try writeHTTPRequest(
@@ -1040,7 +1185,8 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 "Sec-WebSocket-Protocol": subprotocol
             ]
         )
-        let resp = try readHTTPResponse()
+        let resp = try readHTTPResponse(maxHeaderBytes: maxHeaderBytes, maxBodyBytes: maxBodyBytes,
+                                        maximumStorageBytes: maximumStorageBytes)
         guard resp.statusCode == 101 else {
             throw J2KError.networkError("WebSocket upgrade rejected with HTTP \(resp.statusCode)")
         }
@@ -1049,7 +1195,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
               accept.trimmingCharacters(in: .whitespaces) == expectedAccept else {
             throw J2KError.invalidData("RFC 6455 Sec-WebSocket-Accept verification failed.")
         }
-        return resp.header("Sec-WebSocket-Protocol")
+        return (resp.header("Sec-WebSocket-Protocol"), resp.peakWorkspaceBytes)
     }
 
     package func writeWebSocketServerHandshake(
@@ -1122,13 +1268,23 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     /// connection instance across interleaved `FIN=1` control frames `ping`/`pong`/`close` per RFC 6455 §5.4).
     package func readWebSocketFrame(
         maxFrameBytes: Int = 64 * 1024 * 1024,
-        requireMasked: Bool? = nil
+        requireMasked: Bool? = nil,
+        budget: JPIPWebSocketReadBudget? = nil
     ) throws -> JPIPRFC6455WireFrame {
         wsReadLock.lock()
         defer { wsReadLock.unlock() }
+        var returnedMessage = false
+        defer {
+            if !returnedMessage {
+                wsFragmentedOpcode = nil
+                wsFragmentedPayload = Data()
+                budget?.resetReading()
+            }
+        }
 
         while true {
-            let hdr2 = try readExact(count: 2)
+            try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: 0, control: true)
+            let hdr2 = try readWebSocketExact(count: 2)
             let b0 = hdr2[hdr2.startIndex]
             let b1 = hdr2[hdr2.startIndex + 1]
             let fin = (b0 & 0x80) != 0
@@ -1157,10 +1313,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             if len7 < 126 {
                 payloadLen = len7
             } else if len7 == 126 {
-                let ext = try readExact(count: 2)
+                let ext = try readWebSocketExact(count: 2)
                 payloadLen = (Int(ext[ext.startIndex]) << 8) | Int(ext[ext.startIndex + 1])
             } else {
-                let ext = try readExact(count: 8)
+                let ext = try readWebSocketExact(count: 8)
                 var u64: UInt64 = 0
                 for idx in ext.indices {
                     u64 = (u64 << 8) | UInt64(ext[idx])
@@ -1185,15 +1341,13 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 guard payloadLen <= maxFrameBytes else {
                     throw CodecError(.resourceLimitExceeded, "RFC 6455 control frame exceeds limit (\(maxFrameBytes) bytes).")
                 }
-                let maskKey = isMasked ? [UInt8](try readExact(count: 4)) : []
-                var chunk = try readExact(count: payloadLen, maxAllowedBytes: maxFrameBytes)
-                if isMasked && !chunk.isEmpty {
-                    var arr = [UInt8](chunk)
-                    for i in 0..<arr.count {
-                        arr[i] ^= maskKey[i & 3]
-                    }
-                    chunk = Data(arr)
-                }
+                try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: payloadLen, control: true)
+                let maskKey = isMasked ? try readWebSocketExact(count: 4) : Data()
+                if payloadLen > 0 { budget?.willAllocatePayload() }
+                var chunk = try readWebSocketExact(count: payloadLen)
+                Self.unmaskWebSocketPayload(&chunk, maskKey: maskKey)
+                budget?.didReadMessage(bytes: chunk.count, retainedFragments: wsFragmentedPayload.count)
+                returnedMessage = true
                 return JPIPRFC6455WireFrame(fin: true, opcode: opcode, payload: chunk)
             }
 
@@ -1204,27 +1358,35 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 throw CodecError(.resourceLimitExceeded, "RFC 6455 message exceeds limit (\(maxFrameBytes) bytes).")
             }
 
-            let maskKey = isMasked ? [UInt8](try readExact(count: 4)) : []
-            var chunk = try readExact(count: payloadLen, maxAllowedBytes: maxFrameBytes)
-            if isMasked && !chunk.isEmpty {
-                var arr = [UInt8](chunk)
-                for i in 0..<arr.count {
-                    arr[i] ^= maskKey[i & 3]
-                }
-                chunk = Data(arr)
-            }
-
             if opcode == .continuation {
                 guard wsFragmentedOpcode != nil else {
                     throw J2KError.invalidData("Unexpected RFC 6455 continuation frame without initial data frame.")
                 }
-                wsFragmentedPayload.append(chunk)
             } else {
                 guard wsFragmentedOpcode == nil else {
                     wsFragmentedOpcode = nil
                     wsFragmentedPayload.removeAll(keepingCapacity: false)
                     throw J2KError.invalidData("New RFC 6455 data frame started before fragmented message finished.")
                 }
+            }
+
+            try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: payloadLen, control: false)
+            let maskKey = isMasked ? try readWebSocketExact(count: 4) : Data()
+            let prefixCount = budget == nil ? 0 : min(payloadLen, max(0, 27 - wsFragmentedPayload.count))
+            var prefix = try readWebSocketExact(count: prefixCount)
+            Self.unmaskWebSocketPayload(&prefix, maskKey: maskKey)
+            if let budget {
+                var applicationPrefix = Data(wsFragmentedPayload.prefix(27))
+                applicationPrefix.append(prefix)
+                try budget.admitApplicationPrefix(applicationPrefix, announcedBytes: nextTotal, final: fin)
+            }
+            // The announced application body and every simultaneous receive/
+            // fragment buffer have been admitted before this owning allocation.
+            if payloadLen > 0 { budget?.willAllocatePayload() }
+            var chunk = try readWebSocketExact(count: payloadLen, prefix: prefix)
+            Self.unmaskWebSocketPayload(&chunk, maskKey: maskKey, startingAt: prefixCount)
+            if opcode == .continuation { wsFragmentedPayload.append(chunk) }
+            else {
                 wsFragmentedOpcode = opcode
                 wsFragmentedPayload = chunk
             }
@@ -1233,8 +1395,57 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 let completed = wsFragmentedPayload
                 wsFragmentedOpcode = nil
                 wsFragmentedPayload = Data()
+                budget?.didReadMessage(bytes: completed.count, retainedFragments: 0)
+                returnedMessage = true
                 return JPIPRFC6455WireFrame(fin: true, opcode: finalOpcode, payload: completed)
             }
+        }
+    }
+
+    /// Reads exactly the admitted bytes, without the HTTP reader's scratch buffer
+    /// or read-ahead. Existing handshake bytes are consumed under the same lock.
+    private func readWebSocketExact(count: Int, prefix: Data = Data()) throws -> Data {
+        guard count >= prefix.count else { throw J2KError.invalidData("Invalid WebSocket prefix length.") }
+        if count == 0 { return Data() }
+        readLock.lock()
+        defer { readLock.unlock() }
+        let sock = try currentFD()
+        var output = Data(count: count)
+        try output.withUnsafeMutableBytes { (destination: UnsafeMutableRawBufferPointer) in
+            guard let base = destination.baseAddress else { return }
+            if !prefix.isEmpty {
+                prefix.withUnsafeBytes { source in
+                    base.copyMemory(from: source.baseAddress!, byteCount: source.count)
+                }
+            }
+            var filled = prefix.count
+            let buffered = min(count - filled, readBuffer.count - readOffset)
+            if buffered > 0 {
+                readBuffer.withUnsafeBytes { source in
+                    base.advanced(by: filled).copyMemory(from: source.baseAddress!.advanced(by: readOffset), byteCount: buffered)
+                }
+                filled += buffered
+                readOffset += buffered
+            }
+            if readOffset == readBuffer.count {
+                readBuffer.removeAll(keepingCapacity: false)
+                readOffset = 0
+            }
+            while filled < count {
+                let n = recv(sock, base.advanced(by: filled), count - filled, 0)
+                if n > 0 { filled += n }
+                else if n < 0 && currentPOSIXErrno() == EINTR { continue }
+                else if n == 0 { throw J2KError.networkError("Unexpected EOF in WebSocket payload.") }
+                else { throw J2KError.networkError("TCP recv failed while reading WebSocket payload (errno=\(currentPOSIXErrno())).") }
+            }
+        }
+        return output
+    }
+
+    private static func unmaskWebSocketPayload(_ payload: inout Data, maskKey: Data, startingAt: Int = 0) {
+        guard maskKey.count == 4, startingAt < payload.count else { return }
+        payload.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+            for i in startingAt..<bytes.count { bytes[i] ^= maskKey[maskKey.startIndex + (i & 3)] }
         }
     }
 }

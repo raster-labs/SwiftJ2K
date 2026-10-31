@@ -60,10 +60,48 @@ package struct RawEncoder: Sendable {
     private var maxBits: Int = 8
     private var usedBits: Int = 0
     private let maximumOutputBytes: Int
+    private let budget: EntropyOutputBudget?
+    package private(set) var reservedBudgetBytes: Int = 0
     package private(set) var overflowed = false
 
-    package init(maximumOutputBytes: Int = Int.max) {
+    package init(maximumOutputBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
         self.maximumOutputBytes = maximumOutputBytes
+        self.budget = budget
+    }
+
+    @inline(__always)
+    private mutating func appendAdmittedByte(_ byte: UInt8) {
+        guard !overflowed, bytes.count < maximumOutputBytes else {
+            overflowed = true
+            return
+        }
+        if let budget, bytes.count >= reservedBudgetBytes {
+            let chunk = min(64, max(1, maximumOutputBytes - reservedBudgetBytes))
+            do {
+                try budget.reserve(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "raw-encoder-growth-overlap")
+                defer { budget.release(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "raw-encoder-growth-overlap") }
+                try budget.reserve(chunk, countsTowardCompressedOutput: true, site: "raw-encoder-chunk")
+                budget.recordActualAllocation(chunk, site: "raw-encoder-chunk")
+                bytes.reserveCapacity(reservedBudgetBytes + chunk)
+            } catch {
+                overflowed = true
+                return
+            }
+            reservedBudgetBytes += chunk
+        }
+        bytes.append(byte)
+    }
+
+    package mutating func releaseAllReservedBudget() {
+        if let budget, reservedBudgetBytes > 0 {
+            budget.release(reservedBudgetBytes, countsTowardCompressedOutput: true, site: "raw-encoder-rollback")
+            reservedBudgetBytes = 0
+        }
+    }
+
+    package mutating func discardFinishedStorage() {
+        bytes = []
+        reservedBudgetBytes = 0
     }
 
     @inline(__always)
@@ -71,11 +109,7 @@ package struct RawEncoder: Sendable {
         current = (current << 1) | (bit ? 1 : 0)
         usedBits += 1
         if usedBits == maxBits {
-            if bytes.count < maximumOutputBytes {
-                bytes.append(current)
-            } else {
-                overflowed = true
-            }
+            appendAdmittedByte(current)
             maxBits = current == 0xFF ? 7 : 8
             current = 0
             usedBits = 0
@@ -88,17 +122,20 @@ package struct RawEncoder: Sendable {
             // Pad remaining low bits with alternating 0101... (0x55 mask) per Annex D.6
             let padMask = UInt8((1 << remaining) - 1) & 0x55
             let finalByte = (current << UInt8(remaining)) | padMask
-            if bytes.count < maximumOutputBytes {
-                bytes.append(finalByte)
-            } else {
-                overflowed = true
-            }
+            appendAdmittedByte(finalByte)
             current = 0
             usedBits = 0
             maxBits = 8
         }
         while let last = bytes.last, last == 0xFF {
             bytes.removeLast()
+        }
+        if !overflowed, let budget, reservedBudgetBytes > bytes.count {
+            do {
+                try budget.compactOutput(&bytes, reservedBytes: &reservedBudgetBytes, site: "raw-encoder-finish-compact")
+            } catch {
+                overflowed = true
+            }
         }
         return bytes
     }

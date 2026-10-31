@@ -758,36 +758,25 @@ public actor JP3DROIDecoder {
         }
         let components: [J2KVolumeComponent]
         if useExactIntegerPath {
-            var assembledBuffers = intComponentBuffers
-            var assembledBitDepths = siz.componentBitDepths
-            var assembledSigned = siz.componentSigned
             if let split = codestream.part2BitSplit,
-               assembledBuffers.count == split.logicalComponentCount * 2 {
-                let shift = JP3DPart2BitSplitDescriptor.defaultSplitLowBits
-                var merged: [[Int64]] = []
-                merged.reserveCapacity(split.logicalComponentCount)
-                for c in 0..<split.logicalComponentCount {
-                    let lo = assembledBuffers[2 * c]
-                    let hi = assembledBuffers[2 * c + 1]
-                    let cnt = min(lo.count, hi.count)
-                    var plane = [Int64](repeating: 0, count: cnt)
-                    for idx in 0..<cnt {
-                        plane[idx] = lo[idx] &+ (hi[idx] << shift)
-                    }
-                    merged.append(plane)
-                }
-                assembledBuffers = merged
-                assembledBitDepths = split.logicalComponentBitDepths
-                assembledSigned = split.logicalComponentSigned
+               intComponentBuffers.count == split.logicalComponentCount * 2 {
+                components = jp3dAssemblePart2BitSplitVolumeComponentsInteger(
+                    wireBuffers: &intComponentBuffers,
+                    split: split,
+                    width: outW,
+                    height: outH,
+                    depth: outD
+                )
+            } else {
+                components = jp3dAssembleVolumeComponentsInteger(
+                    buffers: intComponentBuffers,
+                    width: outW, height: outH, depth: outD,
+                    bitDepth: siz.componentBitDepths.first ?? siz.bitDepth,
+                    signed: siz.componentSigned.first ?? siz.signed,
+                    componentBitDepths: siz.componentBitDepths,
+                    componentSigned: siz.componentSigned
+                )
             }
-            components = jp3dAssembleVolumeComponentsInteger(
-                buffers: assembledBuffers,
-                width: outW, height: outH, depth: outD,
-                bitDepth: assembledBitDepths.first ?? siz.bitDepth,
-                signed: assembledSigned.first ?? siz.signed,
-                componentBitDepths: assembledBitDepths,
-                componentSigned: assembledSigned
-            )
         } else {
             components = assembleROIComponents(
                 buffers: componentBuffers,

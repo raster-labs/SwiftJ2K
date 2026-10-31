@@ -496,8 +496,8 @@ public struct JPIPRequest: Sendable {
             if modelVal.isEmpty {
                 recordParseError("Empty JPIP model= parameter.")
             } else {
-                req.model = modelVal.split(separator: ",", omittingEmptySubsequences: false)
-                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                req.model = JPIPCacheModel.splitTopLevelModelTokens(modelVal)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
             }
         }
 
@@ -599,7 +599,7 @@ public struct JPIPRequest: Sendable {
             }
         }
         if let modelItems = model {
-            _ = try JPIPCacheModel.parseValidatedModelItems(modelItems)
+            _ = try JPIPCacheModel.parseValidatedModelItems(modelItems, sessionBased: cid != nil)
         }
     }
 }
@@ -690,29 +690,30 @@ extension JPIPRequest {
     /// Extracts full-resolution reference grid dimensions `(Xsiz - XOsiz, Ysiz - YOsiz)`
     /// from a JPEG 2000 `Class 6` main header (`SIZ` marker `0xFF51`).
     public static func extractCodestreamDimensions(fromMainHeader mainHeader: Data) -> (width: Int, height: Int)? {
-        let bytes = [UInt8](mainHeader)
-        guard bytes.count >= 42, bytes[0] == 0xFF, bytes[1] == 0x4F else { return nil }
-        var cursor = 2
-        while cursor + 4 <= bytes.count {
-            let m = UInt16(bytes[cursor]) << 8 | UInt16(bytes[cursor + 1])
-            let segLen = Int(UInt16(bytes[cursor + 2]) << 8 | UInt16(bytes[cursor + 3]))
-            guard segLen >= 2, cursor + 2 + segLen <= bytes.count else { break }
-            if m == 0xFF51 && segLen >= 38 {
-                let p = cursor + 2
-                func u32(_ off: Int) -> Int {
-                    Int(UInt32(bytes[p + off]) << 24 | UInt32(bytes[p + off + 1]) << 16
-                        | UInt32(bytes[p + off + 2]) << 8 | UInt32(bytes[p + off + 3]))
+        return mainHeader.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            guard bytes.count >= 42, bytes[0] == 0xFF, bytes[1] == 0x4F else { return nil }
+            var cursor = 2
+            while cursor + 4 <= bytes.count {
+                let m = UInt16(bytes[cursor]) << 8 | UInt16(bytes[cursor + 1])
+                let segLen = Int(UInt16(bytes[cursor + 2]) << 8 | UInt16(bytes[cursor + 3]))
+                guard segLen >= 2, cursor + 2 + segLen <= bytes.count else { break }
+                if m == 0xFF51 && segLen >= 38 {
+                    let p = cursor + 2
+                    func u32(_ off: Int) -> Int {
+                        Int(UInt32(bytes[p + off]) << 24 | UInt32(bytes[p + off + 1]) << 16
+                            | UInt32(bytes[p + off + 2]) << 8 | UInt32(bytes[p + off + 3]))
+                    }
+                    let xsiz = u32(4), ysiz = u32(8), xosiz = u32(12), yosiz = u32(16)
+                    let w = xsiz - xosiz
+                    let h = ysiz - yosiz
+                    if w > 0 && h > 0 {
+                        return (w, h)
+                    }
                 }
-                let xsiz = u32(4), ysiz = u32(8), xosiz = u32(12), yosiz = u32(16)
-                let w = xsiz - xosiz
-                let h = ysiz - yosiz
-                if w > 0 && h > 0 {
-                    return (w, h)
-                }
+                cursor += 2 + segLen
             }
-            cursor += 2 + segLen
+            return nil
         }
-        return nil
     }
 
     /// Extracts full-resolution 3D reference-grid extents and decomposition levels from a Part 10 JP3D
@@ -720,20 +721,37 @@ extension JPIPRequest {
     public static func extract3DCodestreamDimensions(
         fromMainHeader mainHeader: Data
     ) -> (width: Int, height: Int, depth: Int, levelsX: Int, levelsY: Int, levelsZ: Int)? {
-        guard JP3DJPIPIndexer.isJP3DCodestream(mainHeader) else { return nil }
-        var synthetic = mainHeader
-        // Append one minimal empty 14-byte tile-part + EOC so `JP3DCodestreamParser` validates the full main header.
-        synthetic.append(contentsOf: [
-            0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x0E, 0x00, 0x01,
-            0xFF, 0x93, 0xFF, 0xD9
-        ])
-        guard let parsed = try? JP3DCodestreamParser().parse(synthetic) else { return nil }
-        let w = parsed.siz.width - parsed.siz.originX
-        let h = parsed.siz.height - parsed.siz.originY
-        let d = parsed.siz.depth - parsed.siz.originZ
-        guard w > 0, h > 0, d > 0 else { return nil }
-        return (w, h, d, parsed.cod.levelsX, parsed.cod.levelsY, parsed.cod.levelsZ)
+        // This is a request hint, not codestream validation. Read only SIZ,
+        // NSI and COD scalar fields; reconstruction/decode performs validation.
+        return mainHeader.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            guard bytes.count >= 2, bytes[0] == 0xFF, bytes[1] == 0x4F else { return nil }
+            func u32(_ p: Int) -> Int {
+                Int(UInt32(bytes[p]) << 24 | UInt32(bytes[p + 1]) << 16
+                    | UInt32(bytes[p + 2]) << 8 | UInt32(bytes[p + 3]))
+            }
+            var width: Int?, height: Int?, depth: Int?
+            var levels: (Int, Int, Int)?
+            var cursor = 2
+            while cursor <= bytes.count - 4 {
+                let marker = UInt16(bytes[cursor]) << 8 | UInt16(bytes[cursor + 1])
+                let p = cursor + 2
+                let length = Int(UInt16(bytes[p]) << 8 | UInt16(bytes[p + 1]))
+                guard length >= 2, length <= bytes.count - p else { return nil }
+                if marker == 0xFF51, length >= 38 {
+                    width = u32(p + 4) - u32(p + 12)
+                    height = u32(p + 8) - u32(p + 16)
+                } else if marker == 0xFF54, length >= 19, bytes[p + 2] == 3 {
+                    depth = u32(p + 3) - u32(p + 7)
+                } else if marker == 0xFF52, length >= 17 {
+                    levels = (Int(bytes[p + 7]), Int(bytes[p + 8]), Int(bytes[p + 9]))
+                }
+                cursor = p + length
+            }
+            guard let width, let height, let depth, let levels,
+                  width > 0, height > 0, depth > 0,
+                  levels.0 <= 32, levels.1 <= 32, levels.2 <= 32 else { return nil }
+            return (width, height, depth, levels.0, levels.1, levels.2)
+        }
     }
 
     /// Computes ITU-T Rec. T.808 Clause C.4.5 3D frame size `[fx, fy, fz]` at `resolutionLevel`

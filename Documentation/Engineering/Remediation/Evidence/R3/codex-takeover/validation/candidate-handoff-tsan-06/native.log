@@ -1,0 +1,23 @@
+[0/1] Planning build
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "R3 WebSocket connection-generation barriers" started.
+◇ Suite "R3 blocking-worker result publication" started.
+◇ Test staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+◇ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() started.
+◇ Test workerErrorAndCancellationDoNotPublishAReusableConnection() started.
+◇ Test case passing 1 argument scenario → .duplicateReaderClose to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test case passing 1 argument scenario → .timeout to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test case passing 1 argument scenario → .cancellation to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test case passing 1 argument rejected → false to obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+◇ Test case passing 1 argument rejected → true to obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+✔ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) with 2 test cases passed after 0.046 seconds.
+✔ Test workerErrorAndCancellationDoNotPublishAReusableConnection() passed after 0.052 seconds.
+✔ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() passed after 0.287 seconds.
+✔ Suite "R3 blocking-worker result publication" passed after 0.288 seconds.
+✔ Test staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases passed after 0.578 seconds.
+✔ Suite "R3 WebSocket connection-generation barriers" passed after 0.578 seconds.
+✔ Test run with 4 tests in 2 suites passed after 0.581 seconds.

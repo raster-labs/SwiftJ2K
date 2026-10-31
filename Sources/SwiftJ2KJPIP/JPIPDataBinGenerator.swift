@@ -357,7 +357,7 @@ public struct JPIPDataBinGenerator: Sendable {
                     payload.append(prc.layerPackets[l])
                 }
                 let binComplete = (layerLim >= prc.layerPackets.count)
-                precinctBins.append(JPIPDataBin(
+                var pBin = JPIPDataBin(
                     binClass: .precinct,
                     binID: prc.inClassID,
                     data: payload,
@@ -365,7 +365,12 @@ public struct JPIPDataBinGenerator: Sendable {
                     qualityLayer: keptLayers,
                     tileIndex: prc.tileIndex,
                     msgOffset: 0
-                ))
+                )
+                pBin.componentIndex = prc.componentIndex
+                pBin.resolutionLevel = prc.resolutionLevel
+                pBin.precinctInResolution = prc.precinctInResolution
+                pBin.sequenceInTileComponent = prc.sequenceInTileComponent
+                precinctBins.append(pBin)
             }
 
             for tile in idx.tiles where activeTileIDs.contains(tile.tileIndex) || spatialROI == nil {
@@ -620,7 +625,7 @@ public struct JPIPDataBinGenerator: Sendable {
                 for l in 0..<lim {
                     payload.append(prc.layerPackets[l])
                 }
-                precinctBins.append(JPIPDataBin(
+                var pBin = JPIPDataBin(
                     binClass: .precinct,
                     binID: prc.inClassID,
                     data: payload,
@@ -628,7 +633,12 @@ public struct JPIPDataBinGenerator: Sendable {
                     qualityLayer: keptLayers,
                     tileIndex: prc.tileIndex,
                     msgOffset: 0
-                ))
+                )
+                pBin.componentIndex = prc.componentIndex
+                pBin.resolutionLevel = prc.resolutionLevel
+                pBin.precinctInResolution = prc.precinctInResolution
+                pBin.sequenceInTileComponent = prc.sequenceInTileComponent
+                precinctBins.append(pBin)
             }
             for tile in idx.tiles where activeTiles.contains(tile.tileIndex) || (roiX == nil && roiY == nil && roiZ == nil) {
                 bins.append(JPIPDataBin(
@@ -677,32 +687,66 @@ public struct JPIPDataBinGenerator: Sendable {
     /// Throwing bounded variant of ``reassembleCodestream(from:reconstructContainer:limits:)``
     /// enforcing pre-allocation sparse `Msg-Offset` span and descriptor admission against `limits`.
     public func reassembleCodestreamThrowing(
-        from bins: [JPIPDataBin],
-        reconstructContainer: Bool = true,
+        from bins: [JPIPDataBin], reconstructContainer: Bool = true,
         limits: ResourceLimits = .default
     ) throws -> Data {
-        guard !bins.isEmpty else { return Data() }
+        try reassembleCodestreamBounded(from: bins, reconstructContainer: reconstructContainer, limits: limits).data
+    }
+
+    package func reassembleCodestreamBounded(
+        from bins: [JPIPDataBin], reconstructContainer: Bool = true,
+        limits: ResourceLimits = .default
+    ) throws -> (data: Data, peakWorkspaceBytes: Int) {
+        guard !bins.isEmpty else { return (Data(), 0) }
+        let highWater = JPIPWorkspaceHighWater()
+
+        func multiply(_ count: Int, _ stride: Int) throws -> Int {
+            let (value, overflow) = count.multipliedReportingOverflow(by: stride)
+            guard count >= 0, !overflow else {
+                throw CodecError(.resourceLimitExceeded, "JPIP reassembly descriptor storage overflows Int.")
+            }
+            return value
+        }
+        // The projection itself owns a temporary dictionary. Admit its descriptors
+        // before constructing it, then reserve all merge/snapshot/filter/dictionary
+        // descriptors that may coexist with downstream reconstruction. Capacity is
+        // conservatively doubled for growable collections; payload aliases are also
+        // charged separately because fragmented bins can require copied prefixes.
+        let keyBytes = 3 * String(Int.min).utf8.count + 2
+        let projectionBytes = try multiply(bins.count,
+            2 * (MemoryLayout<(String, (Int, Bool))>.stride + keyBytes))
+        guard projectionBytes < limits.maximumWorkspaceBytes,
+              projectionBytes < limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "JPIP reassembly projection descriptors exceed resource limits.")
+        }
+
+        highWater.observe(projectionBytes)
 
         // 1. Pre-flight sparse `Msg-Offset + data.count` spans and descriptor storage BEFORE allocation.
         let probeCache = JPIPCacheModel(maxCacheSize: limits.maximumWorkspaceBytes, maxEntries: Int.max)
         let projected = try probeCache.projectedAllocation(adding: bins)
-        let (descBytes, ovDesc) = projected.entryCount.multipliedReportingOverflow(
-            by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
+        let descriptorsPerEntry = 2 * (
+            2 * MemoryLayout<JPIPCacheModel.CacheEntry>.stride
+            + 4 * MemoryLayout<JPIPDataBin>.stride
+            + 2 * MemoryLayout<(Int, Data)>.stride
+            + MemoryLayout<String>.stride + MemoryLayout<Int>.stride + keyBytes
         )
-        let (mergeWorkspace, ovWs) = projected.totalPayloadBytes.addingReportingOverflow(descBytes)
-        guard !ovDesc, !ovWs,
-              mergeWorkspace <= limits.maximumWorkspaceBytes,
-              mergeWorkspace <= limits.maximumMemoryBytes else {
-            throw CodecError(
-                .resourceLimitExceeded,
-                "JPIP reassembly cache span (\(mergeWorkspace) bytes) exceeds resource limits."
-            )
+        let descriptorBytes = try Self.add(
+            multiply(projected.entryCount, descriptorsPerEntry),
+            multiply(bins.count, 3 * MemoryLayout<Range<Int>>.stride)
+        )
+        let mergeWorkspace = try Self.add(multiply(projected.peakPayloadBytes, 2), descriptorBytes)
+        let reconstructionLimits = try limits.reserving(workspaceBytes: mergeWorkspace, memoryBytes: mergeWorkspace)
+        highWater.observe(mergeWorkspace)
+        let observeReconstruction: @Sendable (Int) -> Void = { local in
+            let (total, overflow) = mergeWorkspace.addingReportingOverflow(local)
+            highWater.observe(overflow ? Int.max : total)
         }
 
         // 2. Merge any partial/segmented `Msg-Offset` bins via a bounded JPIPCacheModel.
         var merger = JPIPCacheModel(
-            maxCacheSize: min(limits.maximumWorkspaceBytes, max(1024, projected.totalPayloadBytes)),
-            maxEntries: max(16, projected.entryCount + 16)
+            maxCacheSize: max(1, projected.peakPayloadBytes),
+            maxEntries: max(1, projected.entryCount)
         )
         for bin in bins {
             merger.addDataBin(bin)
@@ -711,7 +755,7 @@ public struct JPIPDataBinGenerator: Sendable {
 
         guard let mainHeader = mergedBins.first(where: { $0.binClass == .mainHeader })?.data,
               !mainHeader.isEmpty else {
-            return Data()
+            return (Data(), highWater.peak)
         }
 
         let tileHeaders = mergedBins.filter { $0.binClass == .tileHeader }.sorted { $0.binID < $1.binID }
@@ -747,23 +791,40 @@ public struct JPIPDataBinGenerator: Sendable {
                     mainHeader: mainHeader,
                     tileHeaders: thDict,
                     precinctBins: prcDict,
-                    limits: limits
+                    limits: reconstructionLimits, workspaceObserver: observeReconstruction
                 )
             } else {
                 codestream = try JPIPCodestreamIndexer.reassembleJPP(
                     mainHeader: mainHeader,
                     tileHeaders: thDict,
                     precinctBins: prcDict,
-                    limits: limits
+                    limits: reconstructionLimits, workspaceObserver: observeReconstruction
                 )
             }
         } else if firstTileStartsWithSOT && tileHeaders.isEmpty {
             // Normative JPT-stream (`Class 6` + `Class 4`/`5` starting with SOT)
-            var out = Data()
-            out.append(mainHeader)
             let tileDict = Dictionary(tileBins.map { ($0.binID, $0.data) }, uniquingKeysWith: { a, _ in a })
-            let totalTiles = Self.inferTotalTiles(fromMainHeader: mainHeader) ?? ((tileDict.keys.max() ?? -1) + 1)
-            for tid in 0..<max(totalTiles, (tileDict.keys.max() ?? -1) + 1) {
+            let largestTile = tileDict.keys.max() ?? -1
+            guard largestTile < 65_536, tileDict.keys.allSatisfy({ $0 >= 0 }) else {
+                throw CodecError(.malformedInput, "JPIP JPT tile index is outside the SOT range.")
+            }
+            let totalTiles = max(Self.inferTotalTiles(fromMainHeader: mainHeader) ?? 0, largestTile + 1)
+            guard totalTiles <= 65_536 else {
+                throw CodecError(.resourceLimitExceeded, "JPIP JPT tile count exceeds the SOT range.")
+            }
+            var outputBytes = try Self.add(mainHeader.count, 2)
+            var repairBytes = 0
+            for tid in 0..<totalTiles {
+                let tileBytes = max(14, tileDict[tid]?.count ?? 0)
+                outputBytes = try Self.add(outputBytes, tileBytes)
+                repairBytes = max(repairBytes, tileBytes)
+            }
+            try Self.admitReassemblyOutput(outputBytes, temporaryBytes: repairBytes, limits: reconstructionLimits)
+            observeReconstruction(try Self.add(outputBytes, repairBytes))
+            var out = Data()
+            out.reserveCapacity(outputBytes)
+            out.append(mainHeader)
+            for tid in 0..<totalTiles {
                 if let tData = tileDict[tid], !tData.isEmpty {
                     out.append(Self.repairTruncatedTilePartIfNeeded(tData, tileIndex: tid))
                 } else {
@@ -781,22 +842,34 @@ public struct JPIPDataBinGenerator: Sendable {
             if tail.count < 2 || tail[0] != 0xFF || tail[1] != 0xD9 {
                 out.append(contentsOf: [0xFF, 0xD9])
             }
-            guard out.count <= limits.maximumWorkspaceBytes, out.count <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Reassembled JPIP JPT codestream exceeds resource limits.")
-            }
             codestream = out
         } else {
             // Legacy structural `generateDataBins` layout (`SOT` inside `.tileHeader` + raw body in `.tile`)
-            var output = Data()
-            output.append(mainHeader)
             let tileDataByID = Dictionary(tileBins.map { ($0.binID, $0) }, uniquingKeysWith: { first, _ in first })
             var handledTileIDs = Set<Int>()
+            var outputBytes = try Self.add(mainHeader.count, tileHeaders.isEmpty ? 0 : 2)
+            for th in tileHeaders {
+                outputBytes = try Self.add(outputBytes, th.data.count)
+                if !th.data.suffix(2).elementsEqual([0xFF, 0x93]) {
+                    outputBytes = try Self.add(outputBytes, 2)
+                }
+                if let tile = tileDataByID[th.binID] {
+                    outputBytes = try Self.add(outputBytes, tile.data.count)
+                    handledTileIDs.insert(th.binID)
+                }
+            }
+            for tile in tileBins where !handledTileIDs.contains(tile.binID) {
+                outputBytes = try Self.add(outputBytes, tile.data.count)
+            }
+            try Self.admitReassemblyOutput(outputBytes, limits: reconstructionLimits)
+            observeReconstruction(outputBytes)
+            handledTileIDs.removeAll(keepingCapacity: true)
+            var output = Data()
+            output.reserveCapacity(outputBytes)
+            output.append(mainHeader)
             for th in tileHeaders {
                 output.append(th.data)
-                let thBytes = [UInt8](th.data)
-                let endsWithSOD = thBytes.count >= 2
-                    && thBytes[thBytes.count - 2] == 0xFF
-                    && thBytes[thBytes.count - 1] == 0x93
+                let endsWithSOD = th.data.suffix(2).elementsEqual([0xFF, 0x93])
                 if !endsWithSOD {
                     output.append(contentsOf: [0xFF, 0x93] as [UInt8])
                 }
@@ -814,21 +887,32 @@ public struct JPIPDataBinGenerator: Sendable {
                     output.append(contentsOf: [0xFF, 0xD9] as [UInt8])
                 }
             }
-            guard output.count <= limits.maximumWorkspaceBytes, output.count <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Reassembled JPIP codestream exceeds resource limits.")
-            }
             codestream = output
         }
 
-        guard !codestream.isEmpty else { return Data() }
+        guard !codestream.isEmpty else { return (Data(), highWater.peak) }
         guard reconstructContainer, let meta0 = metaBins[0], !meta0.isEmpty else {
-            return codestream
+            return (codestream, highWater.peak)
         }
-        let container = Self.reconstructJP2Container(metaBins: metaBins, codestream: codestream)
-        guard container.count <= limits.maximumWorkspaceBytes, container.count <= limits.maximumMemoryBytes else {
-            throw CodecError(.resourceLimitExceeded, "Reassembled JP2 container exceeds resource limits.")
+        let containerLimits = try reconstructionLimits.reserving(
+            workspaceBytes: codestream.count, memoryBytes: codestream.count)
+        let container = try Self.reconstructJP2Container(metaBins: metaBins, codestream: codestream,
+            limits: containerLimits, workspaceObserver: { output in
+                let (local, overflow) = codestream.count.addingReportingOverflow(output)
+                observeReconstruction(overflow ? Int.max : local)
+            })
+        return (container, highWater.peak)
+    }
+
+    private static func admitReassemblyOutput(
+        _ bytes: Int, temporaryBytes: Int = 0, limits: ResourceLimits
+    ) throws {
+        let workspace = try add(bytes, temporaryBytes)
+        guard bytes <= limits.maximumCompressedBytes,
+              workspace <= limits.maximumWorkspaceBytes,
+              workspace <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Reassembled JPIP output and retained merge storage exceed resource limits.")
         }
-        return container
     }
 
     private static func inferTotalTiles(fromMainHeader mainHeader: Data) -> Int? {
@@ -852,7 +936,9 @@ public struct JPIPDataBinGenerator: Sendable {
                 let xtosiz = u32(28), ytosiz = u32(32)
                 let tw = max(1, (xsiz - xtosiz + xtsiz - 1) / xtsiz)
                 let th = max(1, (ysiz - ytosiz + ytsiz - 1) / ytsiz)
-                tiles2D = tw * th
+                let (total, overflow) = tw.multipliedReportingOverflow(by: th)
+                guard !overflow else { return Int.max }
+                tiles2D = total
                 sizTileCount = tiles2D
             } else if m == 0xFF54 && segLen >= 19, let t2 = tiles2D {
                 let p = cursor + 2
@@ -862,7 +948,9 @@ public struct JPIPDataBinGenerator: Sendable {
                 }
                 let zsiz = u32(3), ztsiz = max(1, u32(11)), ztosiz = u32(15)
                 let td = max(1, (zsiz - ztosiz + ztsiz - 1) / ztsiz)
-                sizTileCount = t2 * td
+                let (total, overflow) = t2.multipliedReportingOverflow(by: td)
+                guard !overflow else { return Int.max }
+                sizTileCount = total
             }
             cursor += 2 + segLen
         }
@@ -870,8 +958,8 @@ public struct JPIPDataBinGenerator: Sendable {
     }
 
     private static func repairTruncatedTilePartIfNeeded(_ tileData: Data, tileIndex: Int) -> Data {
-        var bytes = [UInt8](tileData)
-        guard bytes.count >= 14, bytes[0] == 0xFF, bytes[1] == 0x90 else {
+        let start = tileData.startIndex
+        guard tileData.count >= 14, tileData[start] == 0xFF, tileData[start + 1] == 0x90 else {
             return Data([
                 0xFF, 0x90, 0x00, 0x0A,
                 UInt8((tileIndex >> 8) & 0xFF), UInt8(tileIndex & 0xFF),
@@ -880,31 +968,39 @@ public struct JPIPDataBinGenerator: Sendable {
                 0xFF, 0x93
             ])
         }
-        let declaredPsot = Int(UInt32(bytes[6]) << 24 | UInt32(bytes[7]) << 16 | UInt32(bytes[8]) << 8 | UInt32(bytes[9]))
-        if declaredPsot > bytes.count {
-            let actual = UInt32(bytes.count)
-            bytes[6] = UInt8((actual >> 24) & 0xFF)
-            bytes[7] = UInt8((actual >> 16) & 0xFF)
-            bytes[8] = UInt8((actual >> 8) & 0xFF)
-            bytes[9] = UInt8(actual & 0xFF)
-        }
-        return Data(bytes)
+        let declaredPsot = Int(UInt32(tileData[start + 6]) << 24 | UInt32(tileData[start + 7]) << 16
+            | UInt32(tileData[start + 8]) << 8 | UInt32(tileData[start + 9]))
+        guard declaredPsot > tileData.count else { return tileData }
+        // The comparison proves this conversion fits UInt32. One copy-on-write
+        // buffer replaces the previous simultaneous UInt8 array and Data copy.
+        let actual = UInt32(tileData.count)
+        var repaired = tileData
+        repaired[start + 6] = UInt8((actual >> 24) & 0xFF)
+        repaired[start + 7] = UInt8((actual >> 16) & 0xFF)
+        repaired[start + 8] = UInt8((actual >> 8) & 0xFF)
+        repaired[start + 9] = UInt8(actual & 0xFF)
+        return repaired
     }
 
-    private static func reconstructJP2Container(metaBins: [Int: Data], codestream: Data) -> Data {
+    private static func reconstructJP2Container(
+        metaBins: [Int: Data], codestream: Data, limits: ResourceLimits,
+        workspaceObserver: (@Sendable (Int) -> Void)? = nil
+    ) throws -> Data {
         guard let meta0 = metaBins[0], !meta0.isEmpty else { return codestream }
-        let bytes = [UInt8](meta0)
+        func u32(_ offset: Int) -> UInt32 {
+            let p = meta0.startIndex + offset
+            return UInt32(meta0[p]) << 24 | UInt32(meta0[p + 1]) << 16
+                | UInt32(meta0[p + 2]) << 8 | UInt32(meta0[p + 3])
+        }
 
         // Check whether meta0 contains any ISO/IEC 15444-9 `phld` (`0x70686C64`) boxes.
         var cursor = 0
         var hasPhld = false
-        while cursor + 8 <= bytes.count {
-            let lbox = Int(UInt32(bytes[cursor]) << 24 | UInt32(bytes[cursor + 1]) << 16
-                | UInt32(bytes[cursor + 2]) << 8 | UInt32(bytes[cursor + 3]))
-            let tbox = UInt32(bytes[cursor + 4]) << 24 | UInt32(bytes[cursor + 5]) << 16
-                | UInt32(bytes[cursor + 6]) << 8 | UInt32(bytes[cursor + 7])
-            let boxLen = (lbox == 0) ? (bytes.count - cursor) : lbox
-            guard boxLen >= 8, cursor + boxLen <= bytes.count else { break }
+        while cursor <= meta0.count - 8 {
+            let lbox = Int(u32(cursor))
+            let tbox = u32(cursor + 4)
+            let boxLen = (lbox == 0) ? (meta0.count - cursor) : lbox
+            guard boxLen >= 8, boxLen <= meta0.count - cursor else { break }
             if tbox == 0x7068_6C64 {
                 hasPhld = true
                 break
@@ -912,55 +1008,61 @@ public struct JPIPDataBinGenerator: Sendable {
             cursor += boxLen
         }
 
-        if hasPhld {
-            var out = Data()
-            out.reserveCapacity(bytes.count + codestream.count + 64)
-            cursor = 0
+        // Visit borrowed payload ranges twice: first count and admit the complete
+        // expanded container, then allocate exactly once. Repeated placeholders
+        // are included in the count before any output growth occurs.
+        func visitParts(_ emit: ([UInt8]?, Data) throws -> Void) throws {
+            guard hasPhld else {
+                try emit(nil, meta0)
+                try emit([0x6A, 0x70, 0x32, 0x63], codestream)
+                if let suffix = metaBins[1] { try emit(nil, suffix) }
+                return
+            }
+            var cursor = 0
             var wroteCodestream = false
-            while cursor + 8 <= bytes.count {
-                let lbox = Int(UInt32(bytes[cursor]) << 24 | UInt32(bytes[cursor + 1]) << 16
-                    | UInt32(bytes[cursor + 2]) << 8 | UInt32(bytes[cursor + 3]))
-                let tbox = UInt32(bytes[cursor + 4]) << 24 | UInt32(bytes[cursor + 5]) << 16
-                    | UInt32(bytes[cursor + 6]) << 8 | UInt32(bytes[cursor + 7])
-                let boxLen = (lbox == 0) ? (bytes.count - cursor) : lbox
-                guard boxLen >= 8, cursor + boxLen <= bytes.count else { break }
+            while cursor <= meta0.count - 8 {
+                let lbox = Int(u32(cursor))
+                let tbox = u32(cursor + 4)
+                let boxLen = (lbox == 0) ? (meta0.count - cursor) : lbox
+                guard boxLen >= 8, boxLen <= meta0.count - cursor else { break }
 
                 if tbox == 0x7068_6C64 && boxLen >= 28 {
-                    let flags = UInt32(bytes[cursor + 8]) << 24 | UInt32(bytes[cursor + 9]) << 16
-                        | UInt32(bytes[cursor + 10]) << 8 | UInt32(bytes[cursor + 11])
+                    let flags = u32(cursor + 8)
                     var origID: UInt64 = 0
-                    for k in 12..<20 { origID = (origID << 8) | UInt64(bytes[cursor + k]) }
-                    let origTBox = UInt32(bytes[cursor + 24]) << 24 | UInt32(bytes[cursor + 25]) << 16
-                        | UInt32(bytes[cursor + 26]) << 8 | UInt32(bytes[cursor + 27])
+                    for k in 12..<20 { origID = (origID << 8) | UInt64(meta0[meta0.startIndex + cursor + k]) }
+                    let origTBox = u32(cursor + 24)
 
                     if origTBox == 0x6A70_3263 || (flags & 0x04) != 0 {
-                        appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &out)
+                        try emit([0x6A, 0x70, 0x32, 0x63], codestream)
                         wroteCodestream = true
                     } else if (flags & 0x01) != 0, origID <= UInt64(Int.max), let subPayload = metaBins[Int(origID)] {
-                        let tBytes = Array(bytes[(cursor + 24)..<(cursor + 28)])
-                        // Recursively expand any nested phld inside sub-metadata bins if needed
-                        appendJP2Box(typeBytes: tBytes, payload: subPayload, to: &out)
+                        let tBytes = Array(meta0[(meta0.startIndex + cursor + 24)..<(meta0.startIndex + cursor + 28)])
+                        // Preserve the referenced metadata payload under its original box type.
+                        try emit(tBytes, subPayload)
                     }
                 } else {
-                    out.append(contentsOf: bytes[cursor..<(cursor + boxLen)])
+                    try emit(nil, meta0[(meta0.startIndex + cursor)..<(meta0.startIndex + cursor + boxLen)])
                 }
                 cursor += boxLen
             }
             if !wroteCodestream {
-                appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &out)
+                try emit([0x6A, 0x70, 0x32, 0x63], codestream)
             }
-            return out
         }
-
-        // Legacy `generateDataBins` prefix/suffix layout without `phld`
-        var containerData = Data()
-        containerData.reserveCapacity(meta0.count + 16 + codestream.count)
-        containerData.append(meta0)
-        appendJP2Box(typeBytes: [0x6A, 0x70, 0x32, 0x63], payload: codestream, to: &containerData)
-        if let suffixMeta = metaBins[1] {
-            containerData.append(suffixMeta)
+        var outputBytes = 0
+        try visitParts { type, payload in
+            let headerBytes = type == nil ? 0 : (payload.count <= Int(UInt32.max) - 8 ? 8 : 16)
+            outputBytes = try add(outputBytes, add(headerBytes, payload.count))
         }
-        return containerData
+        try admitReassemblyOutput(outputBytes, limits: limits)
+        workspaceObserver?(outputBytes)
+        var output = Data()
+        output.reserveCapacity(outputBytes)
+        try visitParts { type, payload in
+            if let type { appendJP2Box(typeBytes: type, payload: payload, to: &output) }
+            else { output.append(payload) }
+        }
+        return output
     }
 
     private static func appendJP2Box(typeBytes: [UInt8], payload: Data, to out: inout Data) {

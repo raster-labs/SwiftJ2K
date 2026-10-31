@@ -48,13 +48,26 @@ internal struct HTMELEncoder: Sendable {
     private var k: Int = 0
     private var threshold: Int = 1
     private let maximumBytes: Int
+    private let budget: EntropyOutputBudget?
+    internal private(set) var reservedScratchBytes = 0
     internal private(set) var overflowed = false
 
-    internal init(maximumBytes: Int = Int.max) {
+    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
         self.maximumBytes = maximumBytes
-        let reserved = min(192, max(0, maximumBytes))
-        if reserved > 0 {
-            buffer.reserveCapacity(reserved)
+        self.budget = budget
+        if budget == nil {
+            let reserved = min(192, max(0, maximumBytes))
+            if reserved > 0 {
+                buffer.reserveCapacity(reserved)
+            }
+        }
+    }
+
+    internal mutating func releaseScratch() {
+        buffer = []
+        if let budget, reservedScratchBytes > 0 {
+            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-scratch")
+            reservedScratchBytes = 0
         }
     }
 
@@ -72,7 +85,24 @@ internal struct HTMELEncoder: Sendable {
         tmp = (tmp << 1) | (bit ? 1 : 0)
         rem -= 1
         if rem == 0 {
-            if buffer.count < maximumBytes {
+            if !overflowed && buffer.count < maximumBytes {
+                if let budget, buffer.count >= reservedScratchBytes {
+                    let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
+                    do {
+                        let previous = reservedScratchBytes
+                        let next = previous + chunk
+                        try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-mel-chunk")
+                        budget.recordActualAllocation(next, site: "ht-mel-chunk")
+                        buffer.reserveCapacity(next)
+                        budget.release(previous, countsTowardCompressedOutput: false, site: "ht-mel-replaced")
+                        reservedScratchBytes = next
+                    } catch {
+                        overflowed = true
+                        rem = 8
+                        tmp = 0
+                        return
+                    }
+                }
                 buffer.append(tmp)
             } else {
                 overflowed = true
@@ -111,6 +141,8 @@ internal struct HTMELEncoder: Sendable {
         }
         return (copy.buffer, copy.tmp, copy.rem)
     }
+
+    internal var emittedByteCount: Int { buffer.count }
 
     internal mutating func flushWithoutTrailingSeal() -> (tmp: UInt8, rem: Int) {
         if run > 0 {
@@ -232,25 +264,64 @@ internal struct HTMELDecoder: Sendable {
 // MARK: - VLC Reverse Bit Emitter (ISO/IEC 15444-15 Clause 7.3.5)
 
 internal struct HTReverseBitEmitter: Sendable {
-    private var bytes: [UInt8] = [0xFF]
+    private var bytes: [UInt8] = []
     private var tmp: UInt64 = 0xF
     private var usedBits: Int = 4
     private var lastGreaterThan8F: Bool = true
     private let maximumBytes: Int
+    private let budget: EntropyOutputBudget?
+    internal private(set) var reservedScratchBytes = 0
     internal private(set) var overflowed: Bool = false
 
-    internal init(maximumBytes: Int = Int.max) {
+    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
         self.maximumBytes = max(1, maximumBytes)
-        bytes.reserveCapacity(min(512, max(1, maximumBytes)))
+        self.budget = budget
+        if budget == nil {
+            bytes = [0xFF]
+            bytes.reserveCapacity(min(512, max(1, maximumBytes)))
+        }
+    }
+
+    internal mutating func releaseScratch() {
+        bytes = []
+        if let budget, reservedScratchBytes > 0 {
+            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-vlc-scratch")
+            reservedScratchBytes = 0
+        }
+    }
+
+    @inline(__always)
+    private mutating func appendAdmitted(_ byte: UInt8) -> Bool {
+        guard !overflowed, bytes.count < maximumBytes else {
+            overflowed = true
+            return false
+        }
+        if let budget, bytes.count >= reservedScratchBytes {
+            let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
+            do {
+                let previous = reservedScratchBytes
+                let next = previous + chunk
+                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-vlc-chunk")
+                budget.recordActualAllocation(next, site: "ht-vlc-chunk")
+                bytes.reserveCapacity(next)
+                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-vlc-replaced")
+                reservedScratchBytes = next
+            } catch {
+                overflowed = true
+                return false
+            }
+        }
+        bytes.append(byte)
+        return true
     }
 
     internal mutating func reset() {
         bytes.removeAll(keepingCapacity: true)
-        bytes.append(0xFF)
+        overflowed = false
+        _ = appendAdmitted(0xFF)
         tmp = 0xF
         usedBits = 4
         lastGreaterThan8F = true
-        overflowed = false
     }
 
     internal mutating func encode(codeword: Int, count: Int) {
@@ -264,14 +335,12 @@ internal struct HTReverseBitEmitter: Sendable {
             var byte = UInt8(tmp & 0xFF)
             if lastGreaterThan8F && (byte & 0x7F) == 0x7F {
                 byte &= 0x7F
-                guard bytes.count < maximumBytes else { overflowed = true; return }
-                bytes.append(byte)
+                guard appendAdmitted(byte) else { return }
                 lastGreaterThan8F = false
                 tmp >>= 7
                 usedBits -= 7
             } else {
-                guard bytes.count < maximumBytes else { overflowed = true; return }
-                bytes.append(byte)
+                guard appendAdmitted(byte) else { return }
                 lastGreaterThan8F = byte > 0x8F
                 tmp >>= 8
                 usedBits -= 8
@@ -307,11 +376,49 @@ internal struct HTMagSgnEncoder: Sendable {
     private var usedBits: Int = 0
     private var maxBits: Int = 8
     private let maximumBytes: Int
+    private let budget: EntropyOutputBudget?
+    internal private(set) var reservedScratchBytes = 0
     internal private(set) var overflowed: Bool = false
 
-    internal init(maximumBytes: Int = Int.max) {
+    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
         self.maximumBytes = max(0, maximumBytes)
-        bytes.reserveCapacity(min(1024, max(0, maximumBytes)))
+        self.budget = budget
+        if budget == nil {
+            bytes.reserveCapacity(min(1024, max(0, maximumBytes)))
+        }
+    }
+
+    internal mutating func releaseScratch() {
+        bytes = []
+        if let budget, reservedScratchBytes > 0 {
+            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-magsgn-scratch")
+            reservedScratchBytes = 0
+        }
+    }
+
+    @inline(__always)
+    private mutating func appendAdmitted(_ byte: UInt8) -> Bool {
+        guard !overflowed, bytes.count < maximumBytes else {
+            overflowed = true
+            return false
+        }
+        if let budget, bytes.count >= reservedScratchBytes {
+            let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
+            do {
+                let previous = reservedScratchBytes
+                let next = previous + chunk
+                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-magsgn-chunk")
+                budget.recordActualAllocation(next, site: "ht-magsgn-chunk")
+                bytes.reserveCapacity(next)
+                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-magsgn-replaced")
+                reservedScratchBytes = next
+            } catch {
+                overflowed = true
+                return false
+            }
+        }
+        bytes.append(byte)
+        return true
     }
 
     internal mutating func reset() {
@@ -332,8 +439,7 @@ internal struct HTMagSgnEncoder: Sendable {
         while usedBits >= maxBits {
             let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
             let byte = UInt8(tmp & pageMask)
-            guard bytes.count < maximumBytes else { overflowed = true; return }
-            bytes.append(byte)
+            guard appendAdmitted(byte) else { return }
             tmp >>= maxBits
             usedBits -= maxBits
             maxBits = (byte == 0xFF) ? 7 : 8
@@ -350,8 +456,7 @@ internal struct HTMagSgnEncoder: Sendable {
             while usedBits >= maxBits {
                 let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
                 let byte = UInt8(tmp & pageMask)
-                guard bytes.count < maximumBytes else { overflowed = true; return }
-                bytes.append(byte)
+                guard appendAdmitted(byte) else { return }
                 tmp >>= maxBits
                 usedBits &-= maxBits
                 maxBits = (byte == 0xFF) ? 7 : 8
@@ -372,8 +477,7 @@ internal struct HTMagSgnEncoder: Sendable {
             tmp |= padMask << usedBits
             let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
             let byte = UInt8(tmp & pageMask)
-            guard bytes.count < maximumBytes else { overflowed = true; return }
-            bytes.append(byte)
+            guard appendAdmitted(byte) else { return }
             tmp = 0
             usedBits = 0
             maxBits = (byte == 0xFF) ? 7 : 8
@@ -447,6 +551,9 @@ internal enum HTBlockLayout {
         mel: inout HTMELEncoder,
         vlc: HTReverseBitEmitter
     ) -> [UInt8] {
+        // Finish the pending run in the owning encoder. A copied encoder would
+        // otherwise allocate and alter the shared budget without transferring its lease.
+        _ = mel.flushWithoutTrailingSeal()
         var melSnap = mel.snapshotForFuse()
         let vlcSnap = vlc.snapshotForFuse()
 
@@ -490,8 +597,22 @@ internal enum HTBlockLayout {
         magsgn: [UInt8],
         mel: inout HTMELEncoder,
         vlc: HTReverseBitEmitter,
-        maximumOutputBytes: Int = Int.max
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
     ) throws -> [UInt8] {
+        guard !mel.overflowed, !vlc.overflowed else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K MEL/VLC stream exceeds the remaining block admission budget.")
+        }
+        _ = mel.flushWithoutTrailingSeal()
+        guard !mel.overflowed else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K MEL termination exceeds its allocation budget.")
+        }
+        // Fusion retains the original streams, a reversed VLC copy, and the
+        // growing fused stream. Admit all three temporary payloads before snapshots.
+        let fusionScratchBytes = 3 * (mel.emittedByteCount + vlc.rawBytesInEmitOrder.count + 4) + 64
+        try budget?.reserve(fusionScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-vlc-fusion")
+        defer { budget?.release(fusionScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-vlc-fusion") }
+        budget?.recordActualAllocation(fusionScratchBytes, site: "ht-mel-vlc-fusion")
         var melVlc = fuseMELAndVLC(mel: &mel, vlc: vlc)
         let scup = melVlc.count
         guard scup >= 2 else {
@@ -504,12 +625,16 @@ internal enum HTBlockLayout {
         guard lcup <= 65535 else {
             throw CodecError(.resourceLimitExceeded, "HTJ2K Lcup (\(lcup)) exceeds 65535-byte Part 15 limit.")
         }
-        guard !mel.overflowed, !vlc.overflowed, lcup <= maximumOutputBytes else {
+        guard lcup <= maximumOutputBytes else {
             throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment (\(lcup) bytes) exceeds the remaining block admission budget.")
         }
         melVlc[scup - 1] = UInt8((scup >> 4) & 0xFF)
         melVlc[scup - 2] = (melVlc[scup - 2] & 0xF0) | UInt8(scup & 0x0F)
 
+        if let budget {
+            try budget.reserve(lcup, countsTowardCompressedOutput: true, site: "ht-cleanup-segment")
+            budget.recordActualAllocation(lcup, site: "ht-cleanup-segment")
+        }
         var out: [UInt8] = []
         out.reserveCapacity(lcup)
         out.append(contentsOf: magsgn)
@@ -560,7 +685,8 @@ package enum HTBlockEncoder {
         width: Int,
         height: Int,
         bandShift: Int = 0,
-        maximumOutputBytes: Int = Int.max
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
     ) throws -> [UInt8] {
         guard width >= 1, height >= 1, coefficients.count == width * height else {
             throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
@@ -586,9 +712,14 @@ package enum HTBlockEncoder {
             throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment exceeds the remaining block admission budget.")
         }
 
-        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes)
-        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes))
-        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes))
+        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes, budget: budget)
+        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        defer {
+            magsgnEnc.releaseScratch()
+            melEnc.releaseScratch()
+            vlcEnc.releaseScratch()
+        }
 
         try encodeLoop(
             coefficients: coefficients,
@@ -608,7 +739,8 @@ package enum HTBlockEncoder {
             magsgn: magsgnBytes,
             mel: &melEnc,
             vlc: vlcEnc,
-            maximumOutputBytes: maximumOutputBytes
+            maximumOutputBytes: maximumOutputBytes,
+            budget: budget
         )
     }
 
@@ -936,7 +1068,8 @@ package enum HTBlockEncoder {
         cleanupBandShift: Int,
         includeMagRef: Bool,
         causal: Bool = false,
-        maximumOutputBytes: Int = 2046
+        maximumOutputBytes: Int = 2046,
+        budget: EntropyOutputBudget? = nil
     ) throws -> [UInt8] {
         guard width >= 1, height >= 1, coefficients.count == width * height else {
             throw CodecError(.invalidArgument, "HTJ2K refinement block dimensions do not match coefficient count.")
@@ -963,19 +1096,45 @@ package enum HTBlockEncoder {
 
         // Forward SigProp bit-stream writer (ITU-T T.814 Clause 7.1.5 & 7.4)
         var spBytes: [UInt8] = []
+        var spReserved = 0
+        var mrReserved = 0
+        defer {
+            if let budget {
+                if spReserved > 0 {
+                    budget.release(spReserved, countsTowardCompressedOutput: false, site: "ht-sigprop-scratch")
+                }
+                if mrReserved > 0 {
+                    budget.release(mrReserved, countsTowardCompressedOutput: false, site: "ht-magref-scratch")
+                }
+            }
+        }
         var spCur: UInt8 = 0
         var spUsed = 0
         var spMaxBits = 8
         let hardLimit = min(2046, maximumOutputBytes)
 
+        func appendSigPropByte(_ byte: UInt8) throws {
+            guard spBytes.count < hardLimit else {
+                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
+            }
+            if let budget, spBytes.count >= spReserved {
+                let chunk = min(64, max(1, hardLimit - spReserved))
+                let previous = spReserved
+                let next = previous + chunk
+                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-sigprop-chunk")
+                budget.recordActualAllocation(next, site: "ht-sigprop-chunk")
+                spBytes.reserveCapacity(next)
+                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-sigprop-replaced")
+                spReserved = next
+            }
+            spBytes.append(byte)
+        }
+
         func emitSigPropBit(_ bit: Int) throws {
             spCur |= UInt8(bit & 1) << UInt8(spUsed)
             spUsed += 1
             if spUsed == spMaxBits {
-                guard spBytes.count < hardLimit else {
-                    throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
-                }
-                spBytes.append(spCur)
+                try appendSigPropByte(spCur)
                 spMaxBits = (spCur == 0xFF) ? 7 : 8
                 spCur = 0
                 spUsed = 0
@@ -1027,16 +1186,10 @@ package enum HTBlockEncoder {
             }
         }
         if spUsed > 0 {
-            guard spBytes.count < hardLimit else {
-                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
-            }
-            spBytes.append(spCur)
+            try appendSigPropByte(spCur)
         }
         if spBytes.last == 0xFF {
-            guard spBytes.count < hardLimit else {
-                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp trailing stuff byte exceeds segment budget.")
-            }
-            spBytes.append(0x00)
+            try appendSigPropByte(0x00)
         }
 
         if !includeMagRef {
@@ -1048,6 +1201,10 @@ package enum HTBlockEncoder {
             if spBytes.count == 1 && spBytes[0] == 0x00 {
                 spBytes.removeAll()
             }
+            if let budget, !spBytes.isEmpty {
+                try budget.reserve(spBytes.count, countsTowardCompressedOutput: true, site: "ht-refinement-segment")
+                budget.recordActualAllocation(spBytes.count, site: "ht-refinement-segment")
+            }
             return spBytes
         }
 
@@ -1057,22 +1214,33 @@ package enum HTBlockEncoder {
         var mrUsed = 0
         var mrPrev: UInt8 = 0xFF
 
+        func appendMagRefByte(_ byte: UInt8) throws {
+            guard spBytes.count + mrRev.count < hardLimit else {
+                throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
+            }
+            if let budget, mrRev.count >= mrReserved {
+                let chunk = min(64, max(1, hardLimit - spBytes.count - mrReserved))
+                let previous = mrReserved
+                let next = previous + chunk
+                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-magref-chunk")
+                budget.recordActualAllocation(next, site: "ht-magref-chunk")
+                mrRev.reserveCapacity(next)
+                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-magref-replaced")
+                mrReserved = next
+            }
+            mrRev.append(byte)
+        }
+
         func emitMagRefBit(_ bit: Int) throws {
             mrCur |= UInt8(bit & 1) << UInt8(mrUsed)
             mrUsed += 1
             if mrUsed == 7 && mrPrev > 0x8F && mrCur == 0x7F {
-                guard spBytes.count + mrRev.count < hardLimit else {
-                    throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
-                }
-                mrRev.append(mrCur)
+                try appendMagRefByte(mrCur)
                 mrPrev = mrCur
                 mrCur = 0
                 mrUsed = 0
             } else if mrUsed == 8 {
-                guard spBytes.count + mrRev.count < hardLimit else {
-                    throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
-                }
-                mrRev.append(mrCur)
+                try appendMagRefByte(mrCur)
                 mrPrev = mrCur
                 mrCur = 0
                 mrUsed = 0
@@ -1092,13 +1260,17 @@ package enum HTBlockEncoder {
             }
         }
         if mrUsed > 0 {
-            guard spBytes.count + mrRev.count < hardLimit else {
-                throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
-            }
-            mrRev.append(mrCur)
+            try appendMagRefByte(mrCur)
         }
 
-        var dref = spBytes
+        let totalRefLen = spBytes.count + mrRev.count
+        if let budget, totalRefLen > 0 {
+            try budget.reserve(totalRefLen, countsTowardCompressedOutput: true, site: "ht-refinement-segment")
+            budget.recordActualAllocation(totalRefLen, site: "ht-refinement-segment")
+        }
+        var dref: [UInt8] = []
+        dref.reserveCapacity(totalRefLen)
+        dref.append(contentsOf: spBytes)
         dref.append(contentsOf: mrRev.reversed())
         return dref
     }

@@ -1,0 +1,45 @@
+{
+  "scope": "R3 bounded diagnostic CPU profile only; no native build/run performed during preparation",
+  "original_benchmark_source": "work/r3-benchmark-harness/Bench.swift",
+  "original_benchmark_sha256": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a",
+  "packages": {
+    "baseline": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline",
+      "dependency": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/performance-baseline-source",
+      "manifest_sha256": "0ef7a8c910da672e4fe0b40942060dfc80ae29e0cc021ac8ceb665ecda999684",
+      "harness_sha256": "6f02fc0911b868d5494b13a7303e5972d8923a20d88cb09f394755c49b0a387b",
+      "scratch_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline-build",
+      "build_command": [
+        "swift",
+        "build",
+        "--package-path",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline",
+        "--scratch-path",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline-build",
+        "-c",
+        "release",
+        "--product",
+        "r3-profile"
+      ]
+    },
+    "candidate": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate",
+      "dependency": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-05",
+      "manifest_sha256": "53e9347a20df2387425ecd5f93aae534d5f0ca654655adce0acf463518675205",
+      "harness_sha256": "6f02fc0911b868d5494b13a7303e5972d8923a20d88cb09f394755c49b0a387b",
+      "scratch_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate-build",
+      "build_command": [
+        "swift",
+        "build",
+        "--package-path",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate",
+        "--scratch-path",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate-build",
+        "-c",
+        "release",
+        "--product",
+        "r3-profile"
+      ]
+    }
+  }
+}

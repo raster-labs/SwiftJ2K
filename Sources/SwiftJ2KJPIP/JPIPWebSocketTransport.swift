@@ -26,6 +26,16 @@ import FoundationNetworking
 
 // MARK: - WebSocket Frame Types
 
+/// Package-only observation points for deterministic connection-lifetime tests.
+/// Observers never execute while a socket/budget lock or timer callback is held.
+package enum JPIPWebSocketLifecycleEvent: Sendable, Equatable {
+    case beforeTimeoutCleanup, afterTimeoutCleanup
+    case beforeCancellationCleanup, afterCancellationCleanup
+    case beforeWriteCleanup, afterWriteCleanup
+    case beforeReaderFinalClose, afterReaderFinalClose
+    case beforeHandshakePublication, beforeHandshakeFailure
+}
+
 /// Represents an application-level JPIP frame carried inside an RFC 6455 WebSocket binary message.
 public struct JPIPWebSocketFrame: Sendable {
     /// The type of WebSocket frame.
@@ -129,7 +139,9 @@ public struct JPIPWebSocketFrame: Sendable {
         let (endOffset, overflow) = Int(9).addingReportingOverflow(Int(length))
         guard !overflow, data.count >= endOffset else { return nil }
 
-        let payload = Data(data[(base + 9)..<(base + endOffset)])
+        // Borrow the message's slice until the response/bin decoder has admitted
+        // its final owning payload; do not copy the whole application frame here.
+        let payload = data[(base + 9)..<(base + endOffset)]
 
         return JPIPWebSocketFrame(
             type: frameType,
@@ -236,7 +248,7 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
             }
         }
 
-        let responseData = Data(data[(base + 4 + headerLen)..<data.endIndex])
+        let responseData = data.subdata(in: (base + 4 + headerLen)..<data.endIndex)
         let channelID = JPIPResponseParser.extractChannelID(from: headers)
 
         return JPIPResponse(
@@ -355,7 +367,7 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
             cursor += 4
         }
 
-        let binData = Data(data[cursor..<data.endIndex])
+        let binData = data.subdata(in: cursor..<data.endIndex)
 
         return JPIPDataBin(
             binClass: binClass,
@@ -366,6 +378,290 @@ public struct JPIPWebSocketMessageEncoder: Sendable {
             msgOffset: msgOffset,
             aux: aux
         )
+    }
+}
+
+/// Shared by the actor and the blocking socket reader. Every mutable field is
+/// protected by `lock`; no borrowed pointer or collection escapes that lock.
+/// Reservations precede payload/descriptor allocation and remain live until the
+/// actor has consumed a message or transferred an owning result to its caller.
+package final class JPIPWebSocketReadBudget: @unchecked Sendable {
+    private struct RequestLimit {
+        let body: Int
+        let storage: Int
+        var consumedBody = 0
+        var completed = false
+    }
+    private let lock = NSCondition()
+    private var readEnabled = false
+    private var allowsIdleReads = false
+    private var closed = false
+    private var bodyLimit = 128 * 1024 * 1024
+    private var storageLimit = 512 * 1024 * 1024
+    private var requests: [UInt32: RequestLimit] = [:]
+    private var readingBytes = 0
+    private var retainedFragmentBytes = 0
+    private var queuedPayloadBytes = 0
+    private var queuedCount = 0
+    private var deliveredStorageBytes = 0
+    private var peakBytes = 0
+    private var payloadAllocations = 0
+
+    private static func add(_ a: Int, _ b: Int) throws -> Int {
+        let (sum, overflow) = a.addingReportingOverflow(b)
+        guard a >= 0, b >= 0, !overflow else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket receive storage overflow.")
+        }
+        return sum
+    }
+
+    private func queuedBytes(payload: Int? = nil, count: Int? = nil) throws -> Int {
+        let (descriptors, overflow) = (count ?? queuedCount).multipliedReportingOverflow(
+            by: 2 * MemoryLayout<JPIPDataBin>.stride)
+        guard !overflow else { throw CodecError(.resourceLimitExceeded, "WebSocket push descriptors overflow.") }
+        return try Self.add(payload ?? queuedPayloadBytes, descriptors)
+    }
+
+    private var activeStorageLimit: Int {
+        requests.values.reduce(storageLimit) { $1.completed ? $0 : min($0, $1.storage) }
+    }
+
+    private func remainingBody(for requestID: UInt32?) -> Int {
+        if let requestID, let request = requests[requestID], !request.completed {
+            return request.body - request.consumedBody
+        }
+        var remaining = bodyLimit
+        var hasActiveRequest = false
+        for request in requests.values where !request.completed {
+            hasActiveRequest = true
+            remaining = min(remaining, request.body - request.consumedBody)
+        }
+        // Idle legacy pushes share a bounded queue. During a request, only new
+        // wire bytes consume its allowance; older queued owners consume storage.
+        return hasActiveRequest ? remaining : max(0, bodyLimit - queuedPayloadBytes)
+    }
+
+    private func admit(_ reading: Int, queue: Int? = nil, delivered: Int? = nil) throws {
+        let total = try Self.add(reading, Self.add(queue ?? queuedBytes(), delivered ?? deliveredStorageBytes))
+        guard total <= activeStorageLimit else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket frame, decoded response and queued pushes exceed remaining storage before allocation.")
+        }
+        peakBytes = max(peakBytes, total)
+    }
+
+    package func configure(maxBodyBytes: Int, maximumStorageBytes: Int, allowBackgroundPush: Bool = false) throws {
+        lock.lock(); defer { lock.unlock() }
+        guard maxBodyBytes >= 0, maximumStorageBytes > 0 else {
+            throw CodecError(.invalidArgument, "WebSocket receive limits must be nonnegative with positive storage.")
+        }
+        bodyLimit = maxBodyBytes
+        storageLimit = maximumStorageBytes
+        try admit(readingBytes)
+        allowsIdleReads = allowBackgroundPush
+        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+        lock.broadcast()
+    }
+
+    package func beginRequest(
+        _ id: UInt32, maxBodyBytes: Int, maximumStorageBytes: Int, pauseAfterResponse: Bool = true
+    ) throws {
+        lock.lock(); defer { lock.unlock() }
+        guard maxBodyBytes >= 0, maximumStorageBytes > 0 else {
+            throw CodecError(.invalidArgument, "WebSocket receive limits must be nonnegative with positive storage.")
+        }
+        // Results of the preceding request now belong to its caller. The new
+        // allowance is supplied after that caller accounts for retained owners.
+        if requests.isEmpty {
+            deliveredStorageBytes = 0
+            peakBytes = 0
+            payloadAllocations = 0
+        }
+        bodyLimit = maxBodyBytes
+        storageLimit = maximumStorageBytes
+        allowsIdleReads = !pauseAfterResponse
+        // Queued owners still consume storage, but their bytes belong to an
+        // earlier transfer round. The caller has already charged that round.
+        requests[id] = RequestLimit(body: maxBodyBytes, storage: maximumStorageBytes)
+        do { try admit(readingBytes) }
+        catch { requests.removeValue(forKey: id); throw error }
+        readEnabled = true
+        lock.broadcast()
+    }
+
+    package func endRequest(_ id: UInt32) {
+        lock.lock(); defer { lock.unlock() }
+        requests.removeValue(forKey: id)
+        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+        lock.broadcast()
+    }
+
+    /// The reader cannot allocate background pushes while its caller owns the
+    /// completed response and is parsing/reconstructing under a new live budget.
+    package func pauseAfterResponse(_ id: UInt32) {
+        lock.lock(); defer { lock.unlock() }
+        requests[id]?.completed = true
+        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+    }
+
+    package func waitUntilReadAllowed() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        while !readEnabled && !closed { lock.wait() }
+        return !closed
+    }
+
+    package func close() {
+        lock.lock(); defer { lock.unlock() }
+        closed = true
+        lock.broadcast()
+    }
+
+    /// Called from the socket reader after length bytes but before reading even
+    /// the small application prefix. Fragment append may retain old/new buffers.
+    package func admitFrame(fragmentedBytes: Int, payloadBytes: Int, control: Bool) throws {
+        lock.lock(); defer { lock.unlock() }
+        let next = try Self.add(fragmentedBytes, payloadBytes)
+        if !control {
+            let envelopeLimit = try Self.add(remainingBody(for: nil), 9 + 4 + Int(UInt16.max))
+            guard next <= envelopeLimit else {
+                throw CodecError(.resourceLimitExceeded, "WebSocket announced message exceeds remaining body allowance before payload allocation.")
+            }
+        }
+        var transient = next
+        if !control && fragmentedBytes > 0 { transient = try Self.add(transient, next) }
+        transient = try Self.add(transient, min(payloadBytes, 27) + min(next, 27) + 14)
+        try admit(transient)
+        readingBytes = transient
+        retainedFragmentBytes = fragmentedBytes
+    }
+
+    /// At most 27 bytes suffice for the application header and optional bin
+    /// fields. Validate the declared body before allocating/reading its remainder.
+    package func admitApplicationPrefix(_ prefix: Data, announcedBytes: Int, final: Bool) throws {
+        guard prefix.count >= 9 else { return }
+        let b = prefix.startIndex
+        func u32(_ p: Int) -> UInt32 {
+            UInt32(prefix[b + p]) << 24 | UInt32(prefix[b + p + 1]) << 16
+                | UInt32(prefix[b + p + 2]) << 8 | UInt32(prefix[b + p + 3])
+        }
+        let request = u32(1)
+        let declared = Int(u32(5))
+        let messageLength = try Self.add(9, declared)
+        guard announcedBytes <= messageLength, !final || announcedBytes == messageLength else {
+            throw J2KError.invalidData("WebSocket application length does not match its message.")
+        }
+        let body: Int
+        if prefix[b] == JPIPWebSocketFrame.FrameType.response.rawValue {
+            guard prefix.count >= 13 else { return }
+            let headers = Int(prefix[b + 11]) << 8 | Int(prefix[b + 12])
+            guard declared >= 4 + headers else { throw J2KError.invalidData("Truncated WebSocket response header.") }
+            body = declared - 4 - headers
+        } else if prefix[b] == JPIPWebSocketFrame.FrameType.dataBin.rawValue
+                    || prefix[b] == JPIPWebSocketFrame.FrameType.push.rawValue {
+            guard prefix.count >= 15 else { return }
+            let flags = prefix[b + 14]
+            let header = 6 + ((flags & 0x02) == 0 ? 0 : 4)
+                + ((flags & 0x04) == 0 ? 0 : 4) + ((flags & 0x08) == 0 ? 0 : 4)
+            guard declared >= header else { throw J2KError.invalidData("Truncated WebSocket data-bin header.") }
+            body = declared - header
+        } else { body = declared }
+        lock.lock(); defer { lock.unlock() }
+        guard body <= remainingBody(for: request == 0 ? nil : request) else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket declared body exceeds remaining allowance before payload allocation.")
+        }
+    }
+
+    package func willAllocatePayload() {
+        lock.lock(); defer { lock.unlock() }
+        payloadAllocations += 1
+    }
+
+    package func didReadMessage(bytes: Int, retainedFragments: Int) {
+        lock.lock(); defer { lock.unlock() }
+        readingBytes = bytes + retainedFragments
+        retainedFragmentBytes = retainedFragments
+    }
+
+    package func finishMessage() {
+        lock.lock(); defer { lock.unlock() }
+        readingBytes = retainedFragmentBytes
+    }
+
+    package func resetReading() {
+        lock.lock(); defer { lock.unlock() }
+        readingBytes = 0
+        retainedFragmentBytes = 0
+    }
+
+    private func consumeBody(_ count: Int, requestID: UInt32?) throws {
+        guard count <= remainingBody(for: requestID) else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket response and push bodies exceed remaining allowance.")
+        }
+        if let requestID, var request = requests[requestID], !request.completed {
+            request.consumedBody += count
+            requests[requestID] = request
+        } else {
+            for id in Array(requests.keys) where requests[id]?.completed == false { requests[id]?.consumedBody += count }
+        }
+    }
+
+    package func reserveResponse(bodyBytes: Int, decodedStorageBytes: Int, requestID: UInt32?) throws {
+        lock.lock(); defer { lock.unlock() }
+        let delivered = try Self.add(deliveredStorageBytes, decodedStorageBytes)
+        try admit(readingBytes, delivered: delivered)
+        try consumeBody(bodyBytes, requestID: requestID)
+        deliveredStorageBytes = delivered
+    }
+
+    package func admitControlReply(payloadBytes: Int) throws {
+        lock.lock(); defer { lock.unlock() }
+        let copies = try Self.add(payloadBytes, Self.add(payloadBytes, 14))
+        try admit(Self.add(readingBytes, copies))
+    }
+
+    package static func responseStorageBytes(bodyBytes: Int, headerBytes: Int, headerCount: Int) throws -> Int {
+        let (descriptors, overflow) = headerCount.multipliedReportingOverflow(
+            by: 2 * (MemoryLayout<(String, String)>.stride + MemoryLayout<Substring>.stride))
+        guard !overflow, headerBytes >= 0, headerBytes <= Int(UInt16.max) else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket decoded header storage overflow.")
+        }
+        let splitScratch = headerCount == 0 ? 0 : 4 * MemoryLayout<Substring>.stride
+        return try add(bodyBytes, add(3 * headerBytes,
+            add(descriptors, add(splitScratch, 2 * MemoryLayout<(UInt32, JPIPResponse)>.stride))))
+    }
+
+    package func reservePush(payloadBytes: Int, requestID: UInt32?) throws {
+        lock.lock(); defer { lock.unlock() }
+        let payload = try Self.add(queuedPayloadBytes, payloadBytes)
+        let count = try Self.add(queuedCount, 1)
+        let priorDescriptors = try queuedBytes() - queuedPayloadBytes
+        // Growing the array can retain its old descriptors while allocating the
+        // replacement. Data owners are shared; only the new payload is copied.
+        let growingQueue = try Self.add(queuedBytes(payload: payload, count: count), priorDescriptors)
+        try admit(readingBytes, queue: growingQueue)
+        try consumeBody(payloadBytes, requestID: requestID)
+        queuedPayloadBytes = payload
+        queuedCount = count
+    }
+
+    package func drainPushes() {
+        lock.lock(); defer { lock.unlock() }
+        queuedPayloadBytes = 0
+        queuedCount = 0
+    }
+
+    package var snapshot: (
+        peakStorageBytes: Int, payloadAllocationCount: Int, queuedBins: Int,
+        queuedStorageBytes: Int, retainedStorageBytes: Int
+    ) {
+        lock.lock(); defer { lock.unlock() }
+        let queued = (try? queuedBytes()) ?? Int.max
+        let retained = (try? Self.add(readingBytes, Self.add(queued, deliveredStorageBytes))) ?? Int.max
+        return (peakBytes, payloadAllocations, queuedCount, queued, retained)
+    }
+
+    package var configuredLimits: (body: Int, storage: Int, backgroundPush: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        return (bodyLimit, storageLimit, allowsIdleReads)
     }
 }
 
@@ -467,12 +763,17 @@ public actor JPIPWebSocketTransport {
 
     /// Pending responses keyed by request ID (when response arrives ahead of registration).
     private var pendingResponses: [UInt32: JPIPResponse]
+    private var pendingErrors: [UInt32: J2KError]
 
     /// Pending response continuations for async/await multiplexed requests.
     private var pendingContinuations: [UInt32: CheckedContinuation<JPIPResponse, any Error>]
 
     /// Received data bins pushed by the server.
     private var receivedDataBins: [JPIPDataBin]
+
+    private var readBudget = JPIPWebSocketReadBudget()
+    private var unconsumedHandshakePeakBytes = 0
+    private var unaccountedPushPayloadBytes = 0
 
     /// Keepalive interval in seconds.
     private let keepaliveInterval: TimeInterval
@@ -491,6 +792,14 @@ public actor JPIPWebSocketTransport {
 
     /// Monotonic connection generation to isolate reader loops across reconnects.
     private var connectionGeneration: UInt64 = 0
+    private var pendingConnect: (generation: UInt64, token: JPIPSocketCancellationToken)?
+    private var lifecycleObserver: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
+
+    package func setLifecycleObserver(
+        _ observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
+    ) {
+        lifecycleObserver = observer
+    }
 
     /// Transport statistics.
     public private(set) var statistics: Statistics
@@ -536,6 +845,7 @@ public actor JPIPWebSocketTransport {
         self.reconnectionAttempts = 0
         self.nextRequestID = 1
         self.pendingResponses = [:]
+        self.pendingErrors = [:]
         self.pendingContinuations = [:]
         self.receivedDataBins = []
         self.keepaliveInterval = keepaliveInterval
@@ -546,7 +856,17 @@ public actor JPIPWebSocketTransport {
 
     /// Establishes the real TCP RFC 6455 WebSocket connection (`Sec-WebSocket-Protocol: jpip`).
     public func connect() async throws {
+        try await connect(deadline: nil, allowBackgroundPush: true)
+    }
+
+    package func connect(
+        deadline: ContinuousClock.Instant?,
+        maxBodyBytes: Int = 128 * 1024 * 1024,
+        maximumStorageBytes: Int = 512 * 1024 * 1024,
+        allowBackgroundPush: Bool = false
+    ) async throws {
         try Task.checkCancellation()
+        let remainingDeadline = try deadline.map { try JPIPTransport.remainingSeconds(until: $0) }
 
         guard connectionState == .disconnected
                 || connectionState == .reconnecting else {
@@ -554,6 +874,10 @@ public actor JPIPWebSocketTransport {
                 "Cannot connect: already in state \(connectionState.rawValue)"
             )
         }
+        let nextBudget = JPIPWebSocketReadBudget()
+        try nextBudget.configure(maxBodyBytes: maxBodyBytes, maximumStorageBytes: maximumStorageBytes,
+                                 allowBackgroundPush: allowBackgroundPush)
+        for bin in receivedDataBins { try nextBudget.reservePush(payloadBytes: bin.data.count, requestID: nil) }
 
         let scheme = (url.scheme ?? "ws").lowercased()
         guard scheme == "ws" || scheme == "wss" else {
@@ -572,51 +896,100 @@ public actor JPIPWebSocketTransport {
         let pathAndQuery = url.query.map { "\(rawPath)?\($0)" } ?? rawPath
         let hostHeader = url.port != nil ? "\(host):\(port)" : host
 
+        // Retire the old generation before replacing any owners or suspending.
+        // A duplicate old-reader close must already be stale during this handshake.
+        connectionGeneration &+= 1
+        let gen = connectionGeneration
+        let observer = lifecycleObserver
+        readBudget.close()
+        readBudget = nextBudget
         connectionState = .connecting
 
-        let handshakeTimeout = self.requestTimeout
+        let handshakeTimeout = remainingDeadline.map { max(0.001, min(self.requestTimeout, $0)) } ?? self.requestTimeout
         let cancelToken = JPIPSocketCancellationToken()
+        pendingConnect = (gen, cancelToken)
+        var deadlineTimedOut = false
+        let watchdog = remainingDeadline.map { remaining in
+            JPIPDeadlineWatchdog(after: remaining) { cancelToken.cancel() }
+        }
+        defer {
+            watchdog?.cancel()
+            if pendingConnect?.generation == gen { pendingConnect = nil }
+        }
+
         let openedConn: JPIPTCPConnection
+        let handshakePeakBytes: Int
         do {
-            openedConn = try await withTaskCancellationHandler {
+            (openedConn, handshakePeakBytes) = try await withTaskCancellationHandler {
                 try await Self.openAndHandshakeOffPool(
                     host: host,
                     port: port,
                     pathAndQuery: pathAndQuery,
                     hostHeader: hostHeader,
                     timeoutInterval: handshakeTimeout,
+                    maximumStorageBytes: maximumStorageBytes,
                     cancelToken: cancelToken
                 )
             } onCancel: {
                 cancelToken.cancel()
             }
         } catch {
-            connectionState = .disconnected
-            if Task.isCancelled || cancelToken.cancelled {
+            if let observer { await observer(.beforeHandshakeFailure, gen) }
+            nextBudget.close()
+            if gen == connectionGeneration, readBudget === nextBudget {
+                connectionGeneration &+= 1
+                connectionState = .disconnected
+            }
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            if let deadline, ContinuousClock.now >= deadline {
+                deadlineTimedOut = true
+            }
+            if deadlineTimedOut {
+                throw CodecError(.resourceLimitExceeded, "JPIP WebSocket handshake deadline elapsed.")
+            }
+            if cancelToken.cancelled {
                 throw CancellationError()
             }
             throw error
         }
 
+        if let observer { await observer(.beforeHandshakePublication, gen) }
+        guard gen == connectionGeneration, readBudget === nextBudget,
+              connectionState == .connecting else {
+            openedConn.close()
+            nextBudget.close()
+            throw CancellationError()
+        }
         if Task.isCancelled {
             openedConn.close()
+            nextBudget.close()
+            connectionGeneration &+= 1
             connectionState = .disconnected
             throw CancellationError()
         }
+        if let deadline, ContinuousClock.now > deadline {
+            openedConn.close()
+            nextBudget.close()
+            connectionGeneration &+= 1
+            connectionState = .disconnected
+            throw CodecError(.resourceLimitExceeded, "JPIP WebSocket handshake deadline elapsed.")
+        }
+        unconsumedHandshakePeakBytes = max(unconsumedHandshakePeakBytes, handshakePeakBytes)
+        openedConn.setReceiveTimeout(interval: self.requestTimeout)
+        openedConn.setSendTimeout(interval: self.requestTimeout)
 
-        connectionGeneration &+= 1
-        let gen = connectionGeneration
         self.tcpConnection = openedConn
         self.connectionState = .connected
         self.reconnectionAttempts = 0
 
         let transportRef = self
-        let readerQueue = DispatchQueue(
-            label: "com.rasterlab.swiftj2k.jpip.wsreader.\(gen)",
-            qos: .userInitiated
-        )
-        readerQueue.async {
-            Self.runReaderLoop(connection: openedConn, generation: gen, transport: transportRef)
+        let budget = nextBudget
+        // A parked reader owns its OS thread, never a global/cooperative worker.
+        Thread.detachNewThread {
+            Self.runReaderLoop(connection: openedConn, generation: gen, transport: transportRef, budget: budget,
+                               observer: observer)
         }
     }
 
@@ -626,41 +999,31 @@ public actor JPIPWebSocketTransport {
         pathAndQuery: String,
         hostHeader: String,
         timeoutInterval: TimeInterval,
+        maximumStorageBytes: Int,
         cancelToken: JPIPSocketCancellationToken
-    ) async throws -> JPIPTCPConnection {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                if cancelToken.cancelled {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                do {
-                    let conn = try JPIPTCPConnection.connect(
-                        host: host,
-                        port: port,
-                        timeoutInterval: timeoutInterval,
-                        cancellationToken: cancelToken
-                    )
-                    do {
-                        _ = try conn.performWebSocketClientHandshake(
-                            pathAndQuery: pathAndQuery,
-                            hostHeader: hostHeader,
-                            subprotocol: "jpip"
-                        )
-                        if cancelToken.cancelled {
-                            conn.close()
-                            continuation.resume(throwing: CancellationError())
-                            return
-                        }
-                        conn.setReceiveTimeout(seconds: 0)
-                        continuation.resume(returning: conn)
-                    } catch {
-                        conn.close()
-                        continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
-                    }
-                } catch {
-                    continuation.resume(throwing: cancelToken.cancelled ? CancellationError() : error)
-                }
+    ) async throws -> (JPIPTCPConnection, Int) {
+        try await JPIPBlockingWorker.run {
+            if cancelToken.cancelled { throw CancellationError() }
+            let connection: JPIPTCPConnection
+            do {
+                connection = try JPIPTCPConnection.connect(
+                    host: host, port: port, timeoutInterval: timeoutInterval,
+                    cancellationToken: cancelToken)
+            } catch {
+                if cancelToken.cancelled { throw CancellationError() }
+                throw error
+            }
+            do {
+                let handshake = try connection.performWebSocketClientHandshake(
+                    pathAndQuery: pathAndQuery, hostHeader: hostHeader, subprotocol: "jpip",
+                    maxHeaderBytes: 65_536, maxBodyBytes: 0, maximumStorageBytes: maximumStorageBytes)
+                if cancelToken.cancelled { throw CancellationError() }
+                connection.setReceiveTimeout(seconds: 0)
+                return (connection, handshake.peakWorkspaceBytes)
+            } catch {
+                connection.close()
+                if cancelToken.cancelled { throw CancellationError() }
+                throw error
             }
         }
     }
@@ -668,58 +1031,70 @@ public actor JPIPWebSocketTransport {
     nonisolated private static func runReaderLoop(
         connection: JPIPTCPConnection,
         generation: UInt64,
-        transport: JPIPWebSocketTransport
+        transport: JPIPWebSocketTransport,
+        budget: JPIPWebSocketReadBudget,
+        observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
     ) {
+        var terminalError: (any Error)?
         while connection.isOpen {
-            let wireFrame: JPIPRFC6455WireFrame
+            guard budget.waitUntilReadAllowed() else { break }
             do {
-                wireFrame = try connection.readWebSocketFrame(requireMasked: false)
-            } catch {
-                break
-            }
-
-            switch wireFrame.opcode {
-            case .close:
-                connection.close()
-            case .ping:
-                try? connection.writeWebSocketFrame(
-                    opcode: .pong,
-                    payload: wireFrame.payload,
-                    masked: true
-                )
-            case .pong:
-                let appPong = JPIPWebSocketFrame.deserialize(from: wireFrame.payload)
-                    ?? JPIPWebSocketFrame(type: .pong, payload: wireFrame.payload)
-                let sema = DispatchSemaphore(value: 0)
-                Task {
-                    await transport.handlePong(appPong)
-                    sema.signal()
-                }
-                sema.wait()
-            case .binary, .text:
-                if let appFrame = JPIPWebSocketFrame.deserialize(from: wireFrame.payload) {
-                    let sema = DispatchSemaphore(value: 0)
-                    Task {
-                        await transport.handleReceivedFrame(appFrame)
-                        sema.signal()
+                let wireFrame = try connection.readWebSocketFrame(requireMasked: false, budget: budget)
+                switch wireFrame.opcode {
+                case .close:
+                    connection.close()
+                case .ping:
+                    try budget.admitControlReply(payloadBytes: wireFrame.payload.count)
+                    try? connection.writeWebSocketFrame(opcode: .pong, payload: wireFrame.payload, masked: true)
+                case .pong:
+                    let appPong = JPIPWebSocketFrame.deserialize(from: wireFrame.payload)
+                        ?? JPIPWebSocketFrame(type: .pong, payload: wireFrame.payload)
+                    performActorCallAndWait {
+                        await transport.handleNetworkPong(appPong, generation: generation)
                     }
-                    sema.wait()
+                case .binary, .text:
+                    if let appFrame = JPIPWebSocketFrame.deserialize(from: wireFrame.payload) {
+                        performActorCallAndWait {
+                            await transport.handleNetworkFrame(appFrame, generation: generation)
+                        }
+                    }
+                case .continuation:
+                    break
                 }
-            case .continuation:
+            } catch {
+                terminalError = error
                 break
             }
+            // The handler task is joined and the source message's lexical scope
+            // has ended before returning an owning decoded response to its caller.
+            budget.finishMessage()
+            performActorCallAndWait { await transport.publishResponses(generation: generation) }
         }
 
-        let sema = DispatchSemaphore(value: 0)
-        Task {
-            await transport.handleSocketClosed(generation: generation)
-            sema.signal()
+        budget.resetReading()
+        budget.close()
+        let closingError = terminalError
+        performActorCallAndWait {
+            if let observer { await observer(.beforeReaderFinalClose, generation) }
+            await transport.handleSocketClosed(generation: generation, error: closingError)
+            if let observer { await observer(.afterReaderFinalClose, generation) }
         }
+    }
+
+    nonisolated private static func performActorCallAndWait(_ action: @escaping @Sendable () async -> Void) {
+        let work = Task { await action() }
+        let sema = DispatchSemaphore(value: 0)
+        Task { await work.value; sema.signal() }
         sema.wait()
     }
 
-    private func handleSocketClosed(generation: UInt64) {
+    private func handleSocketClosed(generation: UInt64, error: (any Error)? = nil) {
         guard generation == connectionGeneration else { return }
+        // Retire before resuming a caller, which may immediately reconnect.
+        connectionGeneration &+= 1
+        pendingConnect?.token.cancel()
+        pendingConnect = nil
+        readBudget.close()
         tcpConnection?.close()
         tcpConnection = nil
         if connectionState == .connected || connectionState == .connecting {
@@ -727,22 +1102,26 @@ public actor JPIPWebSocketTransport {
         }
         for (_, continuation) in pendingContinuations {
             continuation.resume(
-                throwing: J2KError.networkError("WebSocket connection closed by peer")
+                throwing: error ?? J2KError.networkError("WebSocket connection closed by peer")
             )
         }
         pendingContinuations.removeAll()
         pendingResponses.removeAll()
+        pendingErrors.removeAll()
     }
 
     /// Closes the WebSocket connection cleanly with an RFC 6455 close control frame.
     public func disconnect(code: Int = 1000) async {
         guard connectionState == .connected
-                || connectionState == .connecting else {
+                || connectionState == .connecting || connectionState == .reconnecting else {
             return
         }
 
         connectionState = .closing
         connectionGeneration &+= 1
+        pendingConnect?.token.cancel()
+        pendingConnect = nil
+        readBudget.close()
 
         if let conn = tcpConnection {
             let codeU16 = UInt16(clamping: max(1000, min(4999, code)))
@@ -759,6 +1138,7 @@ public actor JPIPWebSocketTransport {
         }
         pendingContinuations.removeAll()
         pendingResponses.removeAll()
+        pendingErrors.removeAll()
 
         connectionState = .disconnected
     }
@@ -768,6 +1148,19 @@ public actor JPIPWebSocketTransport {
     public func sendRequest(
         _ request: JPIPRequest,
         timeout: TimeInterval? = nil
+    ) async throws -> JPIPResponse {
+        try await sendRequest(request, timeout: timeout, maxBodyBytes: 128 * 1024 * 1024,
+                              maximumStorageBytes: 512 * 1024 * 1024, pauseAfterResponse: false)
+    }
+
+    /// Resource-bounded facade requests pause further reads before handing the
+    /// decoded response to the caller. Legacy push clients retain bounded idle reads.
+    package func sendRequest(
+        _ request: JPIPRequest,
+        timeout: TimeInterval? = nil,
+        maxBodyBytes: Int,
+        maximumStorageBytes: Int,
+        pauseAfterResponse: Bool = true
     ) async throws -> JPIPResponse {
         try Task.checkCancellation()
 
@@ -781,6 +1174,12 @@ public actor JPIPWebSocketTransport {
 
         let requestID = nextRequestID
         nextRequestID = nextRequestID == UInt32.max ? 1 : (nextRequestID + 1)
+        let originBudget = readBudget
+        let generation = connectionGeneration
+        let observer = lifecycleObserver
+        try originBudget.beginRequest(requestID, maxBodyBytes: maxBodyBytes, maximumStorageBytes: maximumStorageBytes,
+                                    pauseAfterResponse: pauseAfterResponse)
+        defer { originBudget.endRequest(requestID) }
 
         let frame = encoder.encodeRequest(request, requestID: requestID)
         let serialized = frame.serialize()
@@ -793,55 +1192,117 @@ public actor JPIPWebSocketTransport {
         }
 
         let effectiveTimeout = max(0.001, timeout ?? requestTimeout)
-        let transportRef = self
-        let timeoutTask = Task {
-            let nanos = UInt64(min(Double(UInt64.max / 2), effectiveTimeout * 1_000_000_000.0))
-            try await Task.sleep(nanoseconds: max(1, nanos))
-            await transportRef.failPendingRequestOnTimeout(requestID: requestID, timeout: effectiveTimeout)
+        guard effectiveTimeout.isFinite else {
+            throw J2KError.invalidParameter("WebSocket timeout must be finite.")
         }
-        defer { timeoutTask.cancel() }
+        let cancelToken = JPIPSocketCancellationToken()
+        guard cancelToken.bind(connection: conn) else { throw CancellationError() }
+        let transportRef = self
+        let timeoutWatchdog = JPIPDeadlineWatchdog(after: effectiveTimeout) {
+            // Closing the socket does not depend on actor/cooperative scheduling.
+            cancelToken.cancel()
+            originBudget.close()
+            Task {
+                await Self.finishRequestFailure(transport: transportRef, generation: generation,
+                    budget: originBudget, connection: conn,
+                    error: CodecError(.resourceLimitExceeded, "JPIP WebSocket request \(requestID) timed out after \(effectiveTimeout) seconds."),
+                    before: .beforeTimeoutCleanup, after: .afterTimeoutCleanup, observer: observer)
+            }
+        }
+        defer { timeoutWatchdog.cancel() }
 
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                if Task.isCancelled {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                pendingContinuations[requestID] = continuation
-                do {
-                    try conn.writeWebSocketFrame(
-                        opcode: .binary,
-                        payload: serialized,
-                        masked: true
-                    )
-                } catch {
-                    if let removed = pendingContinuations.removeValue(forKey: requestID) {
-                        removed.resume(throwing: error)
+        // Register the response continuation before scheduling the blocking send. The
+        // POSIX write runs off the actor so its deadline and cancellation can close the
+        // socket even when a peer never drains its receive buffer. Join that writer on
+        // every exit; its connection/data owners cannot outlive operation cleanup.
+        var writer: Task<Void, Never>?
+        do {
+            let response: JPIPResponse = try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    if Task.isCancelled {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    pendingContinuations[requestID] = continuation
+                    writer = Task {
+                        do {
+                            try await Self.writeRequestOffPool(connection: conn, payload: serialized)
+                        } catch {
+                            await Self.finishRequestFailure(transport: transportRef, generation: generation,
+                                budget: originBudget, connection: conn, error: error,
+                                before: .beforeWriteCleanup, after: .afterWriteCleanup, observer: observer)
+                        }
                     }
                 }
+            } onCancel: {
+                cancelToken.cancel()
+                originBudget.close()
+                Task {
+                    await Self.finishRequestFailure(transport: transportRef, generation: generation,
+                        budget: originBudget, connection: conn, error: CancellationError(),
+                        before: .beforeCancellationCleanup, after: .afterCancellationCleanup, observer: observer)
+                }
             }
-        } onCancel: {
-            Task {
-                await transportRef.cancelPendingRequest(requestID: requestID)
+            await writer?.value
+            try Task.checkCancellation()
+            if timeoutWatchdog.isExpired {
+                throw CodecError(.resourceLimitExceeded, "JPIP WebSocket request deadline elapsed.")
+            }
+            return response
+        } catch {
+            await writer?.value
+            if Task.isCancelled { throw CancellationError() }
+            if timeoutWatchdog.isExpired {
+                throw CodecError(.resourceLimitExceeded, "JPIP WebSocket request deadline elapsed.")
+            }
+            throw error
+        }
+    }
+
+    nonisolated private static func writeRequestOffPool(
+        connection: JPIPTCPConnection, payload: Data
+    ) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            Thread.detachNewThread {
+                do {
+                    try connection.writeWebSocketFrame(opcode: .binary, payload: payload, masked: true)
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }
 
-    private func cancelPendingRequest(requestID: UInt32) {
-        if let continuation = pendingContinuations.removeValue(forKey: requestID) {
-            continuation.resume(throwing: CancellationError())
-        }
+    package var pendingRequestCount: Int {
+        pendingContinuations.count + pendingResponses.count
     }
 
-    private func failPendingRequestOnTimeout(requestID: UInt32, timeout: TimeInterval) {
-        if let continuation = pendingContinuations.removeValue(forKey: requestID) {
-            continuation.resume(
-                throwing: CodecError(
-                    .resourceLimitExceeded,
-                    "JPIP WebSocket request \(requestID) timed out after \(timeout) seconds."
-                )
-            )
-        }
+    /// The finite writer is joined by sendRequest. Timeout/cancellation actor
+    /// callbacks and the reader's terminal notification may finish later: each
+    /// retains only its original owners, and stale callbacks cannot change a
+    /// later generation. Watchdog cancellation joins its synchronous action only.
+    nonisolated private static func finishRequestFailure(
+        transport: JPIPWebSocketTransport, generation: UInt64,
+        budget: JPIPWebSocketReadBudget, connection: JPIPTCPConnection, error: any Error,
+        before: JPIPWebSocketLifecycleEvent, after: JPIPWebSocketLifecycleEvent,
+        observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
+    ) async {
+        budget.close()
+        connection.close()
+        if let observer { await observer(before, generation) }
+        await transport.failOriginatingConnection(generation: generation, budget: budget,
+                                                  connection: connection, error: error)
+        if let observer { await observer(after, generation) }
+    }
+
+    private func failOriginatingConnection(
+        generation: UInt64, budget: JPIPWebSocketReadBudget,
+        connection: JPIPTCPConnection, error: any Error
+    ) {
+        guard generation == connectionGeneration, readBudget === budget,
+              tcpConnection === connection else { return }
+        handleSocketClosed(generation: generation, error: error)
     }
 
     /// Sends a keepalive ping frame over the live WebSocket connection.
@@ -871,8 +1332,27 @@ public actor JPIPWebSocketTransport {
         statistics.bytesReceived += frame.payload.count
     }
 
+    private func handleNetworkPong(_ frame: JPIPWebSocketFrame, generation: UInt64) {
+        guard generation == connectionGeneration else { return }
+        handlePong(frame)
+    }
+
+    private func handleNetworkFrame(_ frame: JPIPWebSocketFrame, generation: UInt64) {
+        guard generation == connectionGeneration else { return }
+        do { try handleReceivedFrameBounded(frame) }
+        catch { handleSocketClosed(generation: generation, error: error) }
+    }
+
     /// Handles a received frame from the WebSocket connection.
     public func handleReceivedFrame(_ frame: JPIPWebSocketFrame) {
+        do {
+            try handleReceivedFrameBounded(frame)
+            publishResponses(generation: connectionGeneration)
+        }
+        catch { handleSocketClosed(generation: connectionGeneration, error: error) }
+    }
+
+    package func handleReceivedFrameBounded(_ frame: JPIPWebSocketFrame) throws {
         if frame.type == .pong {
             handlePong(frame)
             return
@@ -883,56 +1363,93 @@ public actor JPIPWebSocketTransport {
 
         switch frame.type {
         case .response:
-            handleResponseFrame(frame)
+            try handleResponseFrame(frame)
         case .dataBin:
-            handleDataBinFrame(frame)
+            try handleDataBinFrame(frame)
         case .pong:
             break
         case .push:
-            handlePushFrame(frame)
+            try handlePushFrame(frame)
         case .error:
-            handleErrorFrame(frame)
+            try handleErrorFrame(frame)
         default:
             break
         }
     }
 
-    private func handleResponseFrame(_ frame: JPIPWebSocketFrame) {
+    private func handleResponseFrame(_ frame: JPIPWebSocketFrame) throws {
+        // An unsolicited response has no consumer and must not allocate decoded
+        // payload/header storage merely to be discarded.
+        guard let requestID = frame.requestID, pendingContinuations[requestID] != nil else { return }
+        let data = frame.payload
+        guard data.count >= 4 else { throw J2KError.invalidData("Truncated WebSocket response.") }
+        let base = data.startIndex
+        let headerBytes = Int(data[base + 2]) << 8 | Int(data[base + 3])
+        guard headerBytes <= data.count - 4 else { throw J2KError.invalidData("Truncated WebSocket response headers.") }
+        let bodyBytes = data.count - 4 - headerBytes
+        var headerCount = headerBytes == 0 ? 0 : 1
+        for byte in data[(base + 4)..<(base + 4 + headerBytes)] where byte == 0x0A { headerCount += 1 }
+        // The header byte block is borrowed; the decoded String, key/value
+        // strings and dictionary descriptors coexist with the owning body copy.
+        let decodedStorage = try JPIPWebSocketReadBudget.responseStorageBytes(
+            bodyBytes: bodyBytes, headerBytes: headerBytes, headerCount: headerCount)
+        try readBudget.reserveResponse(bodyBytes: bodyBytes, decodedStorageBytes: decodedStorage, requestID: requestID)
         guard let response = encoder.decodeResponse(from: frame) else { return }
 
-        if let requestID = frame.requestID,
-           let continuation = pendingContinuations.removeValue(forKey: requestID) {
-            continuation.resume(returning: response)
-        } else if let requestID = frame.requestID {
-            pendingResponses[requestID] = response
-        }
+        pendingResponses[requestID] = response
+        readBudget.pauseAfterResponse(requestID)
     }
 
-    private func handleDataBinFrame(_ frame: JPIPWebSocketFrame) {
+    private func publishResponses(generation: UInt64) {
+        guard generation == connectionGeneration else { return }
+        for (requestID, response) in pendingResponses {
+            pendingContinuations.removeValue(forKey: requestID)?.resume(returning: response)
+        }
+        pendingResponses.removeAll()
+        for (requestID, error) in pendingErrors {
+            pendingContinuations.removeValue(forKey: requestID)?.resume(throwing: error)
+        }
+        pendingErrors.removeAll()
+    }
+
+    private func handleDataBinFrame(_ frame: JPIPWebSocketFrame) throws {
+        let data = frame.payload
+        guard data.count >= 6,
+              JPIPDataBinClass(rawValue: Int(data[data.startIndex])) != nil else {
+            throw J2KError.invalidData("Malformed pushed WebSocket data bin.")
+        }
+        let flags = data[data.startIndex + 5]
+        let header = 6 + ((flags & 0x02) == 0 ? 0 : 4)
+            + ((flags & 0x04) == 0 ? 0 : 4) + ((flags & 0x08) == 0 ? 0 : 4)
+        guard data.count >= header else { throw J2KError.invalidData("Truncated pushed WebSocket data bin.") }
+        let (unaccounted, overflow) = unaccountedPushPayloadBytes.addingReportingOverflow(data.count - header)
+        guard !overflow else {
+            throw CodecError(.resourceLimitExceeded, "Cumulative WebSocket pushed payload overflow before append.")
+        }
+        try readBudget.reservePush(payloadBytes: data.count - header, requestID: frame.requestID)
         guard let dataBin = encoder.decodeDataBin(from: frame) else { return }
+        unaccountedPushPayloadBytes = unaccounted
         receivedDataBins.append(dataBin)
         statistics.dataBinsPushed += 1
     }
 
-    private func handlePushFrame(_ frame: JPIPWebSocketFrame) {
-        if let dataBin = encoder.decodeDataBin(from: JPIPWebSocketFrame(
+    private func handlePushFrame(_ frame: JPIPWebSocketFrame) throws {
+        try handleDataBinFrame(JPIPWebSocketFrame(
             type: .dataBin,
             payload: frame.payload,
             requestID: frame.requestID
-        )) {
-            receivedDataBins.append(dataBin)
-            statistics.dataBinsPushed += 1
-        }
+        ))
     }
 
-    private func handleErrorFrame(_ frame: JPIPWebSocketFrame) {
-        if let requestID = frame.requestID,
-           let continuation = pendingContinuations.removeValue(forKey: requestID) {
+    private func handleErrorFrame(_ frame: JPIPWebSocketFrame) throws {
+        if let requestID = frame.requestID, pendingContinuations[requestID] != nil {
+            let storage = try JPIPWebSocketReadBudget.responseStorageBytes(
+                bodyBytes: frame.payload.count, headerBytes: 0, headerCount: 0)
+            try readBudget.reserveResponse(bodyBytes: frame.payload.count, decodedStorageBytes: storage, requestID: requestID)
+            readBudget.pauseAfterResponse(requestID)
             let message = String(data: frame.payload, encoding: .utf8)
                 ?? "Unknown WebSocket error"
-            continuation.resume(
-                throwing: J2KError.networkError(message)
-            )
+            pendingErrors[requestID] = J2KError.networkError(message)
         }
     }
 
@@ -940,11 +1457,43 @@ public actor JPIPWebSocketTransport {
     public func drainReceivedDataBins() -> [JPIPDataBin] {
         let bins = receivedDataBins
         receivedDataBins.removeAll()
+        readBudget.drainPushes()
         return bins
+    }
+
+    package func configureReceiveLimits(maxBodyBytes: Int, maximumStorageBytes: Int) throws {
+        try readBudget.configure(maxBodyBytes: maxBodyBytes, maximumStorageBytes: maximumStorageBytes,
+                                 allowBackgroundPush: true)
+    }
+
+    /// Consume only in the operation that established this connection, before
+    /// combining its peak with that operation's retained client owners. Separate
+    /// from the per-request ledger, whose high water resets in beginRequest.
+    package func takeHandshakeReceivePeakBytes() -> Int {
+        let peak = unconsumedHandshakePeakBytes
+        unconsumedHandshakePeakBytes = 0
+        return peak
+    }
+
+    /// Payload accepted since the previous charge. Draining retained bins does
+    /// not clear this transfer counter; cnew/probe rounds may leave them queued.
+    package func takeUnaccountedPushPayloadBytes() -> Int {
+        let count = unaccountedPushPayloadBytes
+        unaccountedPushPayloadBytes = 0
+        return count
+    }
+
+    /// Request-local high water plus currently retained transport-owned storage.
+    package var receiveStorageSnapshot: (
+        peakStorageBytes: Int, payloadAllocationCount: Int, queuedBins: Int,
+        queuedStorageBytes: Int, retainedStorageBytes: Int
+    ) {
+        readBudget.snapshot
     }
 
     /// Attempts reconnection using exponential backoff.
     public func attemptReconnection() async throws {
+        let receiveLimits = readBudget.configuredLimits
         guard reconnectionConfig.enabled else {
             throw J2KError.networkError("Reconnection is disabled")
         }
@@ -956,19 +1505,26 @@ public actor JPIPWebSocketTransport {
             )
         }
 
-        if let conn = tcpConnection {
-            conn.close()
-            tcpConnection = nil
-        }
-
+        handleSocketClosed(generation: connectionGeneration,
+            error: J2KError.networkError("WebSocket reconnecting"))
+        let retryGeneration = connectionGeneration
         connectionState = .reconnecting
         let delay = reconnectionConfig.delay(forAttempt: reconnectionAttempts)
         reconnectionAttempts += 1
         statistics.reconnectionAttempts += 1
 
-        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        do {
+            try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        } catch {
+            if retryGeneration == connectionGeneration { connectionState = .disconnected }
+            throw error
+        }
+        guard retryGeneration == connectionGeneration, connectionState == .reconnecting else {
+            throw CancellationError()
+        }
 
-        try await connect()
+        try await connect(deadline: nil, maxBodyBytes: receiveLimits.body,
+                          maximumStorageBytes: receiveLimits.storage, allowBackgroundPush: receiveLimits.backgroundPush)
         statistics.successfulReconnections += 1
     }
 

@@ -1,0 +1,202 @@
+{
+  "baseline": {
+    "active_samples": 3350,
+    "all_thread_samples": 10029,
+    "category_union_counts": {
+      "wavelet": 2262,
+      "ht_cleanup": 392,
+      "ht_loop": 329,
+      "tier2": 129,
+      "budget": 5,
+      "geometry_preflight": 5,
+      "geometry_make": 19,
+      "tasklocal": 4,
+      "reserve_capacity": 5,
+      "array_buffer_init": 1187,
+      "lock": 166,
+      "string": 0
+    },
+    "budget_roots": {
+      "JP3DLiveBudgetTracker.GrowthLease.__deallocating_deinit": 4,
+      "JP3DLiveBudgetTracker.remainingCompressedOutputLimit()": 1
+    },
+    "budget_leaf_top20": [
+      [
+        "swift_release",
+        3
+      ],
+      [
+        "os_unfair_lock_lock",
+        1
+      ],
+      [
+        "DYLD-STUB$$os_unfair_lock_lock",
+        1
+      ]
+    ],
+    "budget_nested_categories": {
+      "budget": 5,
+      "lock": 2
+    },
+    "active_roots": [
+      [
+        74,
+        3265
+      ],
+      [
+        1796,
+        1
+      ],
+      [
+        1800,
+        1
+      ],
+      [
+        1806,
+        1
+      ],
+      [
+        1813,
+        1
+      ],
+      [
+        1838,
+        81
+      ]
+    ],
+    "profile_sha256": "9b6102dc06bcf239e54e177b480de6741b0bcbf64b340fdbeb8bb1bb5b5ba109"
+  },
+  "candidate": {
+    "active_samples": 3331,
+    "all_thread_samples": 10044,
+    "category_union_counts": {
+      "wavelet": 2013,
+      "ht_cleanup": 641,
+      "ht_loop": 541,
+      "tier2": 114,
+      "budget": 195,
+      "geometry_preflight": 18,
+      "geometry_make": 12,
+      "tasklocal": 54,
+      "reserve_capacity": 11,
+      "array_buffer_init": 1058,
+      "lock": 155,
+      "string": 40
+    },
+    "budget_roots": {
+      "specialized EntropyOutputBudget.reserve(_:countsTowardCompressedOutput:site:)": 142,
+      "partial apply for closure #2 in EntropyOutputBudget.init(reserveBytes:releaseBytes:)": 18,
+      "specialized EntropyOutputBudget.recordActualAllocation(_:site:)": 4,
+      "specialized EntropyOutputBudget.release(_:countsTowardCompressedOutput:site:)": 23,
+      "outlined consume of EntropyOutputBudget?": 2,
+      "EntropyOutputBudget.reserve(_:countsTowardCompressedOutput:site:)": 5,
+      "JP3DLiveBudgetTracker.__deallocating_deinit": 1
+    },
+    "budget_leaf_top20": [
+      [
+        "_platform_memmove",
+        18
+      ],
+      [
+        "swift::RefCounts<swift::RefCountBitsT<(swift::RefCountInlinedness)1>>::doDecrementSlow<(swift::PerformDeinit)1>(swift::RefCountBitsT<(swift::RefCountInlinedness)1>, unsigned int)",
+        17
+      ],
+      [
+        "swift_task_localValueGetImpl(swift::HeapObject const*)",
+        11
+      ],
+      [
+        "TaskLocal.get()",
+        10
+      ],
+      [
+        "<deduplicated_symbol>",
+        9
+      ],
+      [
+        "swift::RefCounts<swift::RefCountBitsT<(swift::RefCountInlinedness)1>>::incrementSlow(swift::RefCountBitsT<(swift::RefCountInlinedness)1>, unsigned int)",
+        8
+      ],
+      [
+        "swift_task_getCurrent",
+        7
+      ],
+      [
+        "swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)",
+        7
+      ],
+      [
+        "swift_release",
+        7
+      ],
+      [
+        "_StringGuts.prepareForAppendInPlace(totalCount:otherUTF8Count:)",
+        5
+      ],
+      [
+        "JP3DLiveBudgetTracker.reserveTransient(_:checkCompressedLimit:stage:message:)",
+        5
+      ],
+      [
+        "JP3DLiveBudgetTracker.releaseScratch(_:)",
+        5
+      ],
+      [
+        "initializeWithCopy for ClosedRange<>.Index",
+        5
+      ],
+      [
+        "swift_retain",
+        5
+      ],
+      [
+        "closure #1 in JP3DLiveBudgetTracker.makeEntropyOutputBudget(reservation:stage:message:)",
+        4
+      ],
+      [
+        "specialized EntropyOutputBudget.reserve(_:countsTowardCompressedOutput:site:)",
+        4
+      ],
+      [
+        "specialized static StorageTelemetry.recordParserAllocation(stage:bytes:)",
+        4
+      ],
+      [
+        "_xzm_xzone_malloc_tiny",
+        4
+      ],
+      [
+        "swift_weakLoadStrong",
+        4
+      ],
+      [
+        "???",
+        3
+      ]
+    ],
+    "budget_nested_categories": {
+      "ht_cleanup": 179,
+      "ht_loop": 127,
+      "budget": 195,
+      "string": 40,
+      "tasklocal": 35,
+      "lock": 8,
+      "tier2": 14
+    },
+    "active_roots": [
+      [
+        77,
+        3329
+      ],
+      [
+        2496,
+        1
+      ],
+      [
+        2502,
+        1
+      ]
+    ],
+    "profile_sha256": "b18e59b9928f06c3d3a9383be5c996ffcbe88fefe561d374799076cc93dd5cdf"
+  }
+}

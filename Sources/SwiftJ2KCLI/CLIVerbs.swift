@@ -1845,7 +1845,11 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
     limitOpts.values.removeValue(forKey: "--mode")
     let lim = try limits(from: limitOpts, command: "jpip")
 
-    let host = options.values["--host"] ?? "127.0.0.1"
+    // Match the listener's accepted whitespace and empty-host semantics before
+    // reusing the address for the --once verification client and reports.
+    let requestedHost = (options.values["--host"] ?? "127.0.0.1")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    let host = requestedHost.isEmpty ? "127.0.0.1" : requestedHost
     let config = JPIPServer.Configuration(
         maxClients: maxClients,
         sessionTimeout: sessionTimeout
@@ -1868,7 +1872,14 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
     if options.once {
         let firstTarget = registered[0]
         let connectHost = (host == "0.0.0.0" || host == "*") ? "127.0.0.1" : host
-        let verifyURL = URL(string: "http://\(connectHost):\(actualPort)")!
+        var verifyAddress = URLComponents()
+        verifyAddress.scheme = "http"
+        verifyAddress.host = connectHost
+        verifyAddress.port = actualPort
+        guard let verifyURL = verifyAddress.url else {
+            try await server.stop()
+            throw UsageError(message: "--host cannot form a JPIP verification address.")
+        }
         let verifyClient = JPIPClient(serverURL: verifyURL)
         let session = try await verifyClient.createSession(target: firstTarget)
         let cid = await session.channelID ?? "verified"

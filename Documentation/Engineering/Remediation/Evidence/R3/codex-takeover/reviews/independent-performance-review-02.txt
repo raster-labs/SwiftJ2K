@@ -1,0 +1,34 @@
+SwiftJ2K R3 independent performance review 02 — completed CPU profile
+2026-10-31; reviewer /root/independent_core_review; read-only
+
+Conclusion
+The profile materially supports the incremental admission/bookkeeping explanation for the medium16 HT-encode regression, but does not prove the entire increase unavoidable. It identifies a small, concrete avoidable cost: constructing the invariant scratch-stage String per reservation. Test the narrow hoist first. A deliberate residual safety trade-off can be permissible under PERF-03 after recording the measured residual cost, reason, scoped decision and updated validated baseline; no requirement exists to recover the speed of the unsafe predecessor. This report neither accepts such a trade-off nor waives the remaining gates.
+
+Identity and method
+Reviewed work/r3-profile-results-01 metadata, baseline.sample.txt and candidate.sample.txt, plus validation/profile-comparison-01 receipt. Sample files and binaries match retained hashes. Both processes completed 10,000 operations with exact final samples, scalarCPU/one worker, thermal0 and no input change. Profiles sampled each own child for five seconds at 1 ms. Loop durations are diagnostic only and were not reused as acceptance timings.
+
+All 52 profiled candidate core files in diagnostic-source-05 and the profile metadata match review02. Root subsequently changed only main JP3DSliceStackCodec.swift to hoist the string; this new delta was not present in these profiles. Evidence identities are in independent-performance-review-02-source.json.
+
+I reconstructed the call tree, computed each node's exclusive count as its count minus direct-child counts, and counted each exclusive sample once when its ancestry included VolumeEncoder.encode. No negative exclusive counts occurred. Denominators are 3,350 active encode samples for baseline and 3,331 for candidate, not the 10,029/10,044 all-thread totals that include idle main/workqueue threads. Counts are archived in independent-performance-review-02-counts.json. Category percentages below are ancestry unions and overlap; they must not be summed.
+
+Category                          baseline active       candidate active
+Reversible 5/3 wavelet            2262 / 67.52%          2013 / 60.43%
+HT cleanup (inclusive)             392 / 11.70%           641 / 19.24%
+HT encode loop (inclusive)         329 /  9.82%           541 / 16.24%
+Entropy/live-budget ancestry         5 /  0.15%           195 /  5.85%
+Tier2 packet encoding              129 /  3.85%           114 /  3.42%
+Geometry preflight                   5 /  0.15%            18 /  0.54%
+
+Of the candidate's 195 budget samples, 179 lie under HT cleanup and 127 under its encode loop; 14 lie under Tier2. Thus new admission work sits on the changed HT path rather than merely appearing elsewhere in the program. The reduction in wavelet share is consistent with added work around an existing large kernel; it is not evidence that wavelet processing became faster. Static inline boundaries and sampling variation prevent exact attribution of the benchmark's 12–13% medium16 slowdown to these counts. Do not multiply every inclusive frame count or use the idle-thread totals to make a causal percentage.
+
+Avoidable work and what the profile does not show
+Forty active candidate samples (1.20%; 20.5% of budget ancestry) pass through String append/preparation under makeEntropyOutputBudget's reserve closure. Sample paths such as candidate.sample.txt:618–622 and :1062–1074 resolve to JP3DSliceStackCodec.swift:943, stage: "\(stage)-scratch". The String value is invariant for that budget. Root's current diff computes scratchStage once at construction and uses it at the same call site. I inspected this exact diff: it changes no cap, buffer-growth size, admission point, lock sequence, ledger arithmetic, label value or event order. It reduces repeated label construction. Its actual performance benefit and post-change native result remain unestablished here; the profile does not predict recovery of the entire slowdown.
+
+Thirty-five candidate budget samples include TaskLocal access and eight include lock/Mutex ancestry. Source-level six-lock transaction counts therefore must not be described as measured contention or as the demonstrated dominant cost. The run has one worker. The large generic-metadata Mutex subtree is principally under pre-existing wavelet/array work, not evidence of budget-lock contention. Named reserveCapacity ancestry is only 11 candidate versus 5 baseline active samples, so this profile does not prove costly repeated physical reallocations, quadratic copying, or a need to change growth policy. It also does not prove such costs absent: inlining and sampling can hide them. No evidence here justifies a larger lock-ledger rewrite or unrelated wavelet optimisation before the narrow change is measured.
+
+PERF-03 decision
+Use the repeated uninstrumented runs02/03 for cost: odd8 HT +14.26/+18.56%, medium16 HT +11.86/+12.85%, with exact samples, no encoded growth and median RSS increases below2.06%. The present profile supplies supporting attribution. It does not establish that all of the overhead is required, and the sampled repeated String work contradicts that stronger claim. Record the new candidate identity and repeat the narrow relevant comparisons after the hoist; preserve denial-before-allocation, overlap, cancellation and ledger regression evidence.
+
+If a residual above5% remains, a scoped safety/correctness trade-off can be defensible without proving a globally optimal implementation: identify the unsafe delayed-admission behaviour corrected, retain the resource invariants, report absolute/percentage residual costs and spread, document why further changes are deferred or riskier, and explicitly approve/update the validated successor baseline for that bounded scope. Do not silently waive the trigger or label a rejected predecessor safe. Otherwise the confirmed unexplained part remains open. The profile alone cannot authorise the decision.
+
+Secondary timing signals remain distinct: run03 odd8 EBCOT +8.71%, and run02 odd8 HT decode/HT-to-EBCOT increases above5%, were not resolved by this medium16 HT-only profile. Repetition or a documented bounded disposition is still needed before claiming all changed-path performance qualified. This two-volume scalar exercise does not close full-corpus/R4, OS26, direct Part10+15, full38 Part2 peer or multiple-active-HT-set gates. No native command, source write or acceptance action was performed by this reviewer.

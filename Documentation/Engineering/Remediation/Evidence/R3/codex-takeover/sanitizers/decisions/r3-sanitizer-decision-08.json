@@ -1,0 +1,44 @@
+{
+  "state": "QUALIFIED_LOCAL_PARTITIONED_NATIVE",
+  "completed_at": "2026-10-31T08:39:57.087331+00:00",
+  "authority": "Root Codex R3 engineering coordinator under the recorded human takeover/audit authority",
+  "snapshot": "candidate-snapshot-08",
+  "ordinary": {
+    "xctest": 1034,
+    "swift_testing_declarations": 302,
+    "declarations": 1336,
+    "parameter_declarations": 34,
+    "parameter_argument_starts": 397
+  },
+  "sanitizers": {
+    "modes": [
+      "address",
+      "thread"
+    ],
+    "jpip_declarations": 625,
+    "complement_declarations": 711,
+    "unexecuted_declarations": [],
+    "proofs": {
+      "thread": {
+        "path": "work/r3-sanitizer-execution-proof-thread-08.json",
+        "sha256": "6338f7eb1871c8ea9320abf525a183b492d76a21ed9e9281ecbd4e561ecff8d4"
+      },
+      "address": {
+        "path": "work/r3-sanitizer-execution-proof-address-08.json",
+        "sha256": "e8156af236df8fb9913ff44baf225e1cbceb114324469ae2410698755539ba82"
+      }
+    }
+  },
+  "release_cli_process_checks": 246,
+  "independent_review": {
+    "path": "work/independent-final-native-review-08.txt",
+    "sha256": "b26097baa5c63a3076f3bff66d16a67c9d4f6c2b68e0ae0b941881effb6428b6"
+  },
+  "boundaries": [
+    "Complete partitioned sanitizer coverage; not a successful fully concurrent cross-target sanitizer run.",
+    "Ordinary full concurrent run remains mandatory and passed with unchanged test assertions/deadlines.",
+    "Earlier full concurrent ThreadSanitizer05 and ordinary07 failures are preserved; the publication race and blocking test helpers were repaired.",
+    "No whole-R3 acceptance, external interoperability waiver, release qualification, R4 activation or merge authorization is conferred.",
+    "Hosted exact-head CI remains required after feature publication."
+  ]
+}

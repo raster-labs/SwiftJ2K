@@ -5,6 +5,7 @@
 // Predecessor commit: 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca
 
 import Foundation
+import Synchronization
 import SwiftJ2K
 
 // MARK: - JP3DTranscodingDirection
@@ -584,11 +585,36 @@ public actor JP3DTranscoder {
                 geomBytes = g2
             }
 
-            let tileOutCap = min(
-                max(0, (limits ?? .default).maximumCompressedBytes - retainedOutputBytes),
-                max(0, baseWsCap - planeBytes - geomBytes)
+            let maxWorkspaceExtra = max(0, baseWsCap - planeBytes - geomBytes)
+            let maxCompressedRemaining = max(0, (limits ?? .default).maximumCompressedBytes - retainedOutputBytes)
+            let tileBudgetState = Mutex<(sourcePacketWs: Int, entropyWs: Int, compressedOut: Int, peakExtra: Int)>((0, 0, 0, 0))
+            let tileEntropyBudget = EntropyOutputBudget(
+                reserveBytes: { delta, countsTowardCompressed in
+                    guard delta > 0 else { return true }
+                    return tileBudgetState.withLock { st in
+                        let (nextWs, ov1) = st.entropyWs.addingReportingOverflow(delta)
+                        let (totalWs, ov2) = st.sourcePacketWs.addingReportingOverflow(nextWs)
+                        guard !ov1, !ov2, totalWs <= maxWorkspaceExtra else { return false }
+                        if countsTowardCompressed {
+                            let (nextComp, ov3) = st.compressedOut.addingReportingOverflow(delta)
+                            guard !ov3, nextComp <= maxCompressedRemaining else { return false }
+                            st.compressedOut = nextComp
+                        }
+                        st.entropyWs = nextWs
+                        st.peakExtra = max(st.peakExtra, totalWs)
+                        return true
+                    }
+                },
+                releaseBytes: { delta, countsTowardCompressed in
+                    guard delta > 0 else { return }
+                    tileBudgetState.withLock { st in
+                        st.entropyWs = max(0, st.entropyWs - delta)
+                        if countsTowardCompressed {
+                            st.compressedOut = max(0, st.compressedOut - delta)
+                        }
+                    }
+                }
             )
-            var admittedTileOutBytes = 0
 
             let tileResult = try JP3DNormativeTileCodec.transcodeTileWaveletDomain(
                 tileData: parsedTile.data,
@@ -609,21 +635,37 @@ public actor JP3DTranscoder {
                 z0: tile.region.z.lowerBound,
                 z1: tile.region.z.upperBound,
                 useAccelerated: useAccelerated,
-                remainingOutputLimit: {
-                    max(0, tileOutCap - admittedTileOutBytes)
-                },
-                admitEncodedBytes: { delta in
+                admitWorkspaceBytes: { delta in
                     guard delta > 0 else { return }
-                    let (nextOut, ov) = admittedTileOutBytes.addingReportingOverflow(delta)
-                    guard !ov, nextOut <= tileOutCap else {
-                        throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D transcode output exceeds resource limits")
+                    let ok = tileBudgetState.withLock { st -> Bool in
+                        let (nextSrc, ov1) = st.sourcePacketWs.addingReportingOverflow(delta)
+                        let (totalWs, ov2) = nextSrc.addingReportingOverflow(st.entropyWs)
+                        guard !ov1, !ov2, totalWs <= maxWorkspaceExtra else { return false }
+                        st.sourcePacketWs = nextSrc
+                        st.peakExtra = max(st.peakExtra, totalWs)
+                        return true
                     }
-                    admittedTileOutBytes = nextOut
+                    guard ok else {
+                        throw CodecError(.resourceLimitExceeded, "Wavelet-domain 3D transcode packet/segment workspace exceeds resource limits")
+                    }
                 },
+                entropyBudget: tileEntropyBudget,
+                remainingOutputLimit: {
+                    tileBudgetState.withLock { st in
+                        min(
+                            max(0, maxCompressedRemaining - st.compressedOut),
+                            max(0, maxWorkspaceExtra - st.sourcePacketWs - st.entropyWs)
+                        )
+                    }
+                },
+                admitEncodedBytes: nil,
                 cancellation: { try work.check() }
             )
             if tileResult.usedAccelerated { anyAccelerated = true }
-            let (tileInnerPeak, innerOv) = tileResult.peakWorkspaceBytes.addingReportingOverflow(geomBytes)
+            let observedExtra = tileBudgetState.withLock { $0.peakExtra }
+            let admittedInnerPeak = try jp3dCheckedAdd(try jp3dCheckedAdd(planeBytes, geomBytes), observedExtra)
+            let (reportedInnerPeak, innerOv) = tileResult.peakWorkspaceBytes.addingReportingOverflow(geomBytes)
+            let tileInnerPeak = max(admittedInnerPeak, reportedInnerPeak)
             let (tilePeak, peakOverflow) = outerWorkspace.addingReportingOverflow(tileInnerPeak)
             let (nextOutputBytes, outputOverflow) = retainedOutputBytes.addingReportingOverflow(tileResult.data.count)
             guard !innerOv, !peakOverflow, !outputOverflow,
@@ -654,23 +696,49 @@ public actor JP3DTranscoder {
             part2BitSplit: source.part2BitSplit
         )
         let codestream = publication.data
-        let measuredPeak = max(peakWaveletWorkspace, publication.peakWorkspaceBytes)
+        var measuredPeak = max(peakWaveletWorkspace, publication.peakWorkspaceBytes)
+        var verificationPixelBytes = 0
+        var verificationComponentCount = 0
 
         if configuration.verifyRoundTrip {
-            let origVol = try await JP3DDecoder().decodeAdmitted(
+            let sharedWorkspace = try jp3dCheckedAdd(retainedSourceWorkspace, retainedOutputBytes)
+            let firstRetainedWorkspace = try jp3dCheckedAdd(sharedWorkspace, codestream.count)
+            let firstLimits = try (limits ?? .default).reserving(
+                workspaceBytes: firstRetainedWorkspace, memoryBytes: firstRetainedWorkspace)
+            let originalResult = try await JP3DDecoder().decodeAdmitted(
                 sourceData,
-                limits: limits,
+                limits: firstLimits,
                 executionPolicy: executionPolicy,
                 metadataPolicy: metadataPolicy,
                 work: work
-            ).volume
-            let transVol = try await JP3DDecoder().decodeAdmitted(
+            )
+            let origVol = originalResult.volume
+            let originalPixelBytes = try origVol.sizeInBytes
+            verificationPixelBytes = try jp3dCheckedMul(originalPixelBytes, 2)
+            guard verificationPixelBytes <= (limits ?? .default).maximumDecodedBytes else {
+                throw CodecError(.resourceLimitExceeded, "Transcode verification retains two decoded volumes beyond the decoded-byte limit.")
+            }
+            let secondRetainedMemory = try jp3dCheckedAdd(sharedWorkspace,
+                try jp3dCheckedAdd(sourceData.count, originalPixelBytes))
+            let secondLimits = try (limits ?? .default).reserving(
+                workspaceBytes: sharedWorkspace, memoryBytes: secondRetainedMemory)
+            let transcodedResult = try await JP3DDecoder().decodeAdmitted(
                 codestream,
-                limits: limits,
+                limits: secondLimits,
                 executionPolicy: executionPolicy,
                 metadataPolicy: metadataPolicy,
                 work: work
-            ).volume
+            )
+            let transVol = transcodedResult.volume
+            measuredPeak = max(measuredPeak, max(
+                try jp3dCheckedAdd(firstRetainedWorkspace, originalResult.peakWorkspaceBytes),
+                try jp3dCheckedAdd(sharedWorkspace, transcodedResult.peakWorkspaceBytes)))
+            verificationComponentCount = try jp3dCheckedAdd(origVol.componentCount, transVol.componentCount)
+            guard origVol.componentCount == transVol.componentCount,
+                  origVol.width == transVol.width, origVol.height == transVol.height,
+                  origVol.depth == transVol.depth else {
+                throw J2KError.encodingError("Normative wavelet-domain 3D round-trip verification changed the volume geometry.")
+            }
             for c in 0..<origVol.componentCount {
                 if origVol.components[c].data != transVol.components[c].data {
                     throw J2KError.encodingError(
@@ -687,6 +755,8 @@ public actor JP3DTranscoder {
             metadataPreserved: metadataPolicy == .preserve,
             warnings: [],
             peakWorkspaceBytes: measuredPeak,
+            roundTripPixelBytes: verificationPixelBytes,
+            roundTripComponentCount: verificationComponentCount,
             sourceCommentCount: source.comments.count,
             sourceCommentBytes: source.commentPayloadBytes,
             sourceHadVolumeGeometry: source.geometry != nil,

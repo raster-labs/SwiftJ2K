@@ -1,0 +1,7 @@
+{
+  "scope": "Only core change from pre-optimisation candidate: cache invariant scratch stage String once per entropy budget. No reserve/release/limit/event ordering change.",
+  "source_file": "Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift",
+  "before_sha256": "437bd6ee86c4cab154fb65559a1735a98db69d0050d2118031cde5ff902bb32e",
+  "after_sha256": "7929d88a300abd0843eba5cc986df995300aa92d260f0a204702591b18f11602",
+  "evidence": "Independent profile assessment found40/3331activeencode samples understage Stringappend; new performance unmeasured"
+}

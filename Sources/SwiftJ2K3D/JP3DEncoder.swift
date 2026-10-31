@@ -590,11 +590,8 @@ public actor JP3DEncoder {
                     maximumWorkspaceBytes: nil,
                     includeEncodeState: true
                 )
-                let extraGeom = (fp.codeBlockCount > fp.bandCount || fp.precinctCount > fp.resolutionCount)
-                    ? fp.totalBytes
-                    : 0
-                if extraGeom > maxGeomPerComp {
-                    maxGeomPerComp = extraGeom
+                if fp.totalBytes > maxGeomPerComp {
+                    maxGeomPerComp = fp.totalBytes
                 }
             }
             let (allCompGeom, gOv) = maxGeomPerComp.multipliedReportingOverflow(by: wireComponents)
@@ -697,9 +694,10 @@ public actor JP3DEncoder {
                 && error.message.contains("exceeding band Mb=") {
             // Wire Part 10 QCD/QCC caps G <= 7, eps <= 31 -> Mb <= 37 (|coeff| < 2^37).
             // When a 34...38-bit lossless volume produces wavelet coefficients with |coeff| >= 2^37,
-            // fall back normatively to Part 2 component bit-split (lo: 19-bit unsigned, hi: (B-19)-bit)
-            // signalled via Pcap^2 + CBD + MCT + MCC + MCO markers (ITU-T T.801 Annex I/J).
-            let descriptor = JP3DPart2BitSplitDescriptor.buildMarkerSegments(
+            // fall back normatively to Part 2 component bit-split using signed wire limbs
+            // (lo: 20-bit signed holding [0, 2^19 - 1], hi: signed holding v >> 19, zero Part 1 DC shift)
+            // signalled via Pcap^2 + CBD + MCT + MCC + MCO markers (ITU-T T.801 Annex I/J, Tmcc = 0x000001).
+            let descriptor = try JP3DPart2BitSplitDescriptor.buildMarkerSegments(
                 logicalBitDepths: logicalBitDepths,
                 logicalSigned: logicalSigned
             )
@@ -707,11 +705,16 @@ public actor JP3DEncoder {
             wireComponentCount = volume.componentCount * 2
             wireBitDepths = []
             wireSigned = []
+            let lowSplitBits = JP3DPart2BitSplitDescriptor.defaultSplitLowBits
             for idx in 0..<volume.componentCount {
-                wireBitDepths.append(JP3DPart2BitSplitDescriptor.defaultSplitLowBits)
-                wireBitDepths.append(max(1, logicalBitDepths[idx] - JP3DPart2BitSplitDescriptor.defaultSplitLowBits))
-                wireSigned.append(false)
-                wireSigned.append(logicalSigned[idx])
+                // Low limb `lo in [0, 2^19 - 1]` requires 20-bit signed (`[-2^19, 2^19 - 1]`) so zero DC shift applies.
+                wireBitDepths.append(lowSplitBits + 1)
+                let hiBits = logicalSigned[idx]
+                    ? max(2, logicalBitDepths[idx] - lowSplitBits)
+                    : max(2, logicalBitDepths[idx] - lowSplitBits + 1)
+                wireBitDepths.append(hiBits)
+                wireSigned.append(true)
+                wireSigned.append(true)
             }
             activeParams = Self.makeNormativeCodingParameters(
                 configuration: configuration,
@@ -1091,11 +1094,7 @@ public actor JP3DEncoder {
             maximumWorkspaceBytes: nil,
             includeEncodeState: true
         )
-        let extraGeomPerComp = (geomFootprint.codeBlockCount > geomFootprint.bandCount
-            || geomFootprint.precinctCount > geomFootprint.resolutionCount)
-            ? geomFootprint.totalBytes
-            : 0
-        let (allCompGeomBytes, gOv) = extraGeomPerComp.multipliedReportingOverflow(by: wireCompCount)
+        let (allCompGeomBytes, gOv) = geomFootprint.totalBytes.multipliedReportingOverflow(by: wireCompCount)
         guard !gOv else {
             throw CodecError(.resourceLimitExceeded, "Volumetric worker 3D geometry workspace overflows Int.")
         }
@@ -1150,6 +1149,12 @@ public actor JP3DEncoder {
             stage: "jp3d-tile-output",
             message: "Volumetric encoded tile payload exceeds operation resource limits."
         )
+        let (entropyBudget, cleanupEntropyScratch) = budget.makeEntropyOutputBudget(
+            reservation: outReservation,
+            stage: "jp3d-tier12-prealloc-output",
+            message: "Volumetric encoded tile payload exceeds operation resource limits."
+        )
+        defer { cleanupEntropyScratch() }
         do {
             let encoded = try JP3DNormativeTileCodec.encodeTile(
                 componentVoxels: intCompSamples,
@@ -1166,19 +1171,9 @@ public actor JP3DEncoder {
                 htConfiguration: htConfig,
                 targetBitrateBPP: targetBitrateBPP.map { Float($0) },
                 useAccelerated: useAccelerated,
-                remainingOutputLimit: {
-                    budget.remainingCompressedOutputLimit() ?? Int.max
-                },
-                admitEncodedBytes: { delta in
-                    guard delta > 0 else { return }
-                    try outReservation.withGrowth(
-                        by: delta,
-                        extraTransientBytes: 0,
-                        checkCompressedLimit: true,
-                        stage: "jp3d-tier12-incremental-output",
-                        message: "Volumetric encoded tile payload exceeds operation resource limits."
-                    ) {}
-                },
+                entropyBudget: entropyBudget,
+                remainingOutputLimit: nil,
+                admitEncodedBytes: nil,
                 cancellation: { try work.check() }
             )
             let packetBytes = encoded.data

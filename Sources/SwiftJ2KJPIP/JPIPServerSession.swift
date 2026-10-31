@@ -141,8 +141,64 @@ public actor JPIPServerSession {
         clientCache.addDataBin(dataBin)
     }
 
-    /// Applies ITU-T Rec. T.808 Clause C.8.1 `model=` cache-model directives against the
-    /// candidate bins of the target codestream.
+    /// Extracts `(totalTiles, componentCount)` from a JPEG 2000 Part 1 or Part 10 `SIZ` (+ optional `NSI`) main header.
+    private static func extractPrecinctGridCounts(fromMainHeader data: Data) -> (totalTiles: Int, componentCount: Int)? {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 42, bytes[0] == 0xFF, bytes[1] == 0x4F else { return nil }
+        func u16(_ idx: Int) -> Int { (Int(bytes[idx]) << 8) | Int(bytes[idx + 1]) }
+        func u32(_ idx: Int) -> Int {
+            (Int(bytes[idx]) << 24) | (Int(bytes[idx + 1]) << 16) | (Int(bytes[idx + 2]) << 8) | Int(bytes[idx + 3])
+        }
+        func tileAxisCount(size: Int, tileOrigin: Int, tileSize: Int) -> Int {
+            guard size > tileOrigin, tileSize > 0 else { return 1 }
+            let span = size - tileOrigin
+            return max(1, (span + tileSize - 1) / tileSize)
+        }
+
+        var pos = 2
+        var tilesXY: Int? = nil
+        var compCount: Int? = nil
+        var tilesZ = 1
+        while pos + 4 <= bytes.count {
+            guard bytes[pos] == 0xFF else { break }
+            let code = (UInt16(bytes[pos]) << 8) | UInt16(bytes[pos + 1])
+            pos += 2
+            if code == 0xFF90 || code == 0xFF93 || code == 0xFFD9 { break }
+            if (0xFF30...0xFF3F).contains(code) { continue }
+            guard pos + 2 <= bytes.count else { break }
+            let segLen = u16(pos)
+            guard segLen >= 2, pos + segLen <= bytes.count else { break }
+            if code == 0xFF51 && segLen >= 38 {
+                let xsiz = u32(pos + 4)
+                let ysiz = u32(pos + 8)
+                let xtsiz = u32(pos + 20)
+                let ytsiz = u32(pos + 24)
+                let xtosiz = u32(pos + 28)
+                let ytosiz = u32(pos + 32)
+                let csiz = u16(pos + 36)
+                let tx = tileAxisCount(size: xsiz, tileOrigin: xtosiz, tileSize: xtsiz)
+                let ty = tileAxisCount(size: ysiz, tileOrigin: ytosiz, tileSize: ytsiz)
+                let (tileCount, overflow) = tx.multipliedReportingOverflow(by: ty)
+                guard !overflow, csiz > 0 else { return nil }
+                tilesXY = tileCount
+                compCount = csiz
+            } else if code == 0xFF54 && segLen >= 19 {
+                let zsiz = u32(pos + 3)
+                let ztsiz = u32(pos + 11)
+                let ztosiz = u32(pos + 15)
+                tilesZ = tileAxisCount(size: zsiz, tileOrigin: ztosiz, tileSize: ztsiz)
+            }
+            pos += segLen
+        }
+        guard let txy = tilesXY, let c = compCount else { return nil }
+        let (total, tileOverflow) = txy.multipliedReportingOverflow(by: tilesZ)
+        let (_, componentOverflow) = total.multipliedReportingOverflow(by: c)
+        guard !tileOverflow, !componentOverflow else { return nil }
+        return (max(1, total), c)
+    }
+
+    /// Applies ITU-T Rec. T.808 Clauses C.8.1.1 / C.8.1.2 / C.8.1.3 `model=` cache-model directives against the
+    /// candidate bins of the target codestream(s).
     public func applyCacheModel(
         items: [String],
         availableBins: [JPIPDataBin]
@@ -150,190 +206,220 @@ public actor JPIPServerSession {
         let directives = JPIPCacheModel.parseModelItems(items)
         guard !directives.isEmpty else { return }
 
-        func matchesCodestream(_ cs: Int, target: Int?) -> Bool {
-            target == nil || target == cs
+        let cachedSnapshot = clientCache.allDataBins()
+        var gridCache: [Int: (totalTiles: Int, componentCount: Int)?] = [:]
+        func gridCounts(for codestreamID: Int) -> (totalTiles: Int, componentCount: Int)? {
+            if let existing = gridCache[codestreamID] {
+                return existing
+            }
+            let mh = availableBins.first { $0.codestreamID == codestreamID && $0.binClass.canonicalClass == .mainHeader && $0.binID == 0 }?.data
+                ?? cachedSnapshot.first { $0.codestreamID == codestreamID && $0.binClass.canonicalClass == .mainHeader && $0.binID == 0 }?.data
+            let extracted = mh.flatMap { Self.extractPrecinctGridCounts(fromMainHeader: $0) }
+            gridCache[codestreamID] = extracted
+            return extracted
+        }
+
+        func matchesImplicitPrecinct(
+            dir: JPIPCacheModelDirective,
+            binID: Int,
+            codestreamID: Int,
+            binMeta: JPIPDataBin?
+        ) -> Bool {
+            guard dir.matchesCodestream(codestreamID) else { return false }
+            // Tile and position ranges denote rectangles, not linear intervals. Until
+            // both grid dimensions are available, ignore additive rectangles; a
+            // subtractive interval safely removes a superset of the rectangle.
+            if dir.isAdditive,
+               [dir.tileFilter, dir.precinctFilter].contains(where: {
+                   guard let range = $0 else { return false }
+                   return range.upperBound != range.lowerBound
+               }) { return false }
+            let grid = gridCounts(for: codestreamID)
+            let tileIdx: Int? = binMeta.flatMap { _ in
+                if let g = grid { return binID % g.totalTiles }
+                return binMeta?.tileIndex
+            } ?? grid.map { binID % $0.totalTiles }
+            let compIdx: Int? = binMeta?.componentIndex ?? grid.map { (binID / $0.totalTiles) % $0.componentCount }
+            let seqIdx: Int? = binMeta?.sequenceInTileComponent ?? grid.map { binID / ($0.totalTiles * $0.componentCount) }
+            let resIdx: Int? = binMeta?.resolutionLevel
+            let prcIdx: Int? = binMeta?.precinctInResolution
+
+            if let tf = dir.tileFilter {
+                guard let t = tileIdx, tf.contains(t) else { return false }
+            }
+            if let cf = dir.componentFilter {
+                guard let c = compIdx, cf.contains(c) else { return false }
+            }
+            if let sf = dir.sequenceFilter {
+                guard let s = seqIdx, sf.contains(s) else { return false }
+            }
+            if let rf = dir.resolutionFilter {
+                guard let r = resIdx, rf.contains(r) else { return false }
+            }
+            if let pf = dir.precinctFilter {
+                guard let p = prcIdx, pf.contains(p) else { return false }
+            }
+            return true
+        }
+
+        func applySingleBinDirective(
+            dir: JPIPCacheModelDirective,
+            targetClass: JPIPDataBinClass,
+            explicitID: Int,
+            cs: Int
+        ) {
+            // T.808 C.8.1.1 permits ignoring additive cache statements. Without a
+            // packet-boundary index, never reinterpret a layer count as a complete bin.
+            // Subtractive layer statements conservatively discard the whole precinct;
+            // this may retransmit earlier packets, but cannot suppress required bytes.
+            if dir.layerCount != nil && dir.isAdditive { return }
+            let key = binKey(targetClass, explicitID, codestreamID: cs)
+            let matchingLen = availableBins.first {
+                $0.binClass.canonicalClass == targetClass
+                    && $0.binID == explicitID
+                    && $0.codestreamID == cs
+            }?.data.count
+
+            if dir.isAdditive {
+                if let specifiedBytes = dir.byteLength {
+                    let clamped = matchingLen.map { min(specifiedBytes, $0) } ?? specifiedBytes
+                    sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, clamped)
+                    if let total = matchingLen, clamped >= total {
+                        completedBinKeys.insert(key)
+                    }
+                } else {
+                    if let total = matchingLen {
+                        sentByteOffsets[key] = total
+                    }
+                    completedBinKeys.insert(key)
+                }
+            } else {
+                // ITU-T Rec. T.808 Clause C.8.1.2 & Example 1:
+                // `-<bin>:<B>` retains at most the first `B` already-held bytes without adding unheld bytes.
+                if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
+                    if let cur = sentByteOffsets[key] {
+                        let retained = min(cur, specifiedBytes)
+                        if retained > 0 {
+                            sentByteOffsets[key] = retained
+                        } else {
+                            sentByteOffsets.removeValue(forKey: key)
+                        }
+                    }
+                } else {
+                    sentByteOffsets.removeValue(forKey: key)
+                }
+                completedBinKeys.remove(key)
+                clientCache.truncateOrRemove(
+                    binClass: targetClass,
+                    binID: explicitID,
+                    codestreamID: cs,
+                    retainBytes: dir.byteLength ?? 0
+                )
+            }
         }
 
         for dir in directives {
-            if dir.binClass == nil && dir.binID == nil {
-                if !dir.isAdditive {
-                    if let targetCS = dir.codestreamID {
-                        if let retain = dir.byteLength, retain > 0 {
-                            for (k, cur) in sentByteOffsets {
-                                if let parsed = Self.parseBinKey(k), parsed.codestreamID == targetCS {
-                                    sentByteOffsets[k] = min(cur, retain)
-                                    completedBinKeys.remove(k)
-                                    if let cls = JPIPDataBinClass(rawValue: parsed.rawClass) {
-                                        clientCache.truncateOrRemove(
-                                            binClass: cls,
-                                            binID: parsed.binID,
-                                            codestreamID: parsed.codestreamID,
-                                            retainBytes: retain
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            let needle = ":\(targetCS):"
-                            for k in Array(sentByteOffsets.keys) where k.contains(needle) {
-                                sentByteOffsets.removeValue(forKey: k)
-                            }
-                            for k in Array(completedBinKeys) where k.contains(needle) {
-                                completedBinKeys.remove(k)
-                            }
-                            clientCache.invalidateCodestream(targetCS)
-                        }
-                    } else if let retain = dir.byteLength, retain > 0 {
-                        for (k, cur) in sentByteOffsets {
-                            sentByteOffsets[k] = min(cur, retain)
-                            if let parsed = Self.parseBinKey(k),
-                               let cls = JPIPDataBinClass(rawValue: parsed.rawClass) {
-                                clientCache.truncateOrRemove(
-                                    binClass: cls,
-                                    binID: parsed.binID,
-                                    codestreamID: parsed.codestreamID,
-                                    retainBytes: retain
-                                )
-                            }
-                        }
-                        completedBinKeys.removeAll()
-                    } else {
-                        sentByteOffsets.removeAll()
-                        completedBinKeys.removeAll()
-                        clientCache.clear()
-                    }
-                } else {
-                    for bin in availableBins where matchesCodestream(bin.codestreamID, target: dir.codestreamID) {
-                        let key = binKey(bin.binClass, bin.binID, codestreamID: bin.codestreamID)
-                        let len = dir.byteLength.map { min($0, bin.data.count) } ?? bin.data.count
-                        sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, len)
-                        if dir.byteLength == nil || len >= bin.data.count {
-                            completedBinKeys.insert(key)
+            guard let rawTargetClass = dir.binClass else { continue }
+            let targetClass = rawTargetClass.canonicalClass
+
+            if dir.isImplicitPrecinct {
+                // Clause C.8.1.3 implicit precinct selector (`t`/`c`/`s`/`r`/`p`): applies only to precinct bins
+                // matching the implicit component/tile/sequence/resolution filters within the active codestream(s).
+                var matchedPairs: [(cs: Int, binID: Int)] = []
+                var seenPairs = Set<String>()
+                for bin in availableBins where bin.binClass.canonicalClass == .precinct {
+                    if matchesImplicitPrecinct(dir: dir, binID: bin.binID, codestreamID: bin.codestreamID, binMeta: bin) {
+                        let tag = "\(bin.codestreamID):\(bin.binID)"
+                        if seenPairs.insert(tag).inserted {
+                            matchedPairs.append((bin.codestreamID, bin.binID))
                         }
                     }
                 }
+                if !dir.isAdditive {
+                    let cachedNow = clientCache.allDataBins()
+                    for k in Array(sentByteOffsets.keys) {
+                        if let parsed = Self.parseBinKey(k),
+                           parsed.rawClass == JPIPDataBinClass.precinct.rawValue {
+                            let meta = availableBins.first {
+                                $0.binClass.canonicalClass == .precinct
+                                    && $0.codestreamID == parsed.codestreamID
+                                    && $0.binID == parsed.binID
+                            } ?? cachedNow.first {
+                                $0.binClass.canonicalClass == .precinct
+                                    && $0.codestreamID == parsed.codestreamID
+                                    && $0.binID == parsed.binID
+                            }
+                            if matchesImplicitPrecinct(dir: dir, binID: parsed.binID, codestreamID: parsed.codestreamID, binMeta: meta) {
+                                let tag = "\(parsed.codestreamID):\(parsed.binID)"
+                                if seenPairs.insert(tag).inserted {
+                                    matchedPairs.append((parsed.codestreamID, parsed.binID))
+                                }
+                            }
+                        }
+                    }
+                }
+                for pair in matchedPairs {
+                    applySingleBinDirective(dir: dir, targetClass: .precinct, explicitID: pair.binID, cs: pair.cs)
+                }
                 continue
             }
-
-            guard let rawTargetClass = dir.binClass else { continue }
-            let targetClass = rawTargetClass.canonicalClass
 
             if let explicitID = dir.binID {
                 var candidateCS = Set<Int>()
                 if let cs = dir.codestreamID {
                     candidateCS.insert(cs)
                 } else {
-                    for bin in availableBins where bin.binClass.canonicalClass == targetClass && bin.binID == explicitID {
+                    for bin in availableBins
+                    where bin.binClass.canonicalClass == targetClass
+                        && bin.binID == explicitID
+                        && dir.matchesCodestream(bin.codestreamID) {
                         candidateCS.insert(bin.codestreamID)
                     }
                     for k in sentByteOffsets.keys {
                         if let parsed = Self.parseBinKey(k),
                            parsed.rawClass == targetClass.rawValue,
-                           parsed.binID == explicitID {
+                           parsed.binID == explicitID,
+                           dir.matchesCodestream(parsed.codestreamID) {
                             candidateCS.insert(parsed.codestreamID)
                         }
                     }
                     for k in completedBinKeys {
                         if let parsed = Self.parseBinKey(k),
                            parsed.rawClass == targetClass.rawValue,
-                           parsed.binID == explicitID {
+                           parsed.binID == explicitID,
+                           dir.matchesCodestream(parsed.codestreamID) {
                             candidateCS.insert(parsed.codestreamID)
                         }
                     }
-                    if candidateCS.isEmpty {
+                    if candidateCS.isEmpty, dir.matchesCodestream(0) {
                         candidateCS.insert(0)
                     }
                 }
 
                 for cs in candidateCS {
-                    let key = binKey(targetClass, explicitID, codestreamID: cs)
-                    let matchingLen = availableBins.first {
-                        $0.binClass.canonicalClass == targetClass
-                            && $0.binID == explicitID
-                            && $0.codestreamID == cs
-                    }?.data.count
-
-                    if dir.isAdditive {
-                        if let specifiedBytes = dir.byteLength {
-                            let clamped = matchingLen.map { min(specifiedBytes, $0) } ?? specifiedBytes
-                            sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, clamped)
-                            if let total = matchingLen, clamped >= total {
-                                completedBinKeys.insert(key)
-                            }
-                        } else {
-                            if let total = matchingLen {
-                                sentByteOffsets[key] = total
-                            }
-                            completedBinKeys.insert(key)
-                        }
-                    } else {
-                        // ITU-T Rec. T.808 Clause C.8.1.2 & Example 1:
-                        // `-<bin>:<B>` retains at most the first `B` already-held bytes without adding unheld bytes.
-                        if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
-                            if let cur = sentByteOffsets[key] {
-                                let retained = min(cur, specifiedBytes)
-                                if retained > 0 {
-                                    sentByteOffsets[key] = retained
-                                } else {
-                                    sentByteOffsets.removeValue(forKey: key)
-                                }
-                            }
-                        } else {
-                            sentByteOffsets.removeValue(forKey: key)
-                        }
-                        completedBinKeys.remove(key)
-                        clientCache.truncateOrRemove(
-                            binClass: targetClass,
-                            binID: explicitID,
-                            codestreamID: cs,
-                            retainBytes: dir.byteLength ?? 0
-                        )
-                    }
+                    applySingleBinDirective(dir: dir, targetClass: targetClass, explicitID: explicitID, cs: cs)
                 }
             } else {
-                // Wildcard within `targetClass` (e.g. `H*`, `P*`, `-P*`, `-P*:20`)
-                if dir.isAdditive {
-                    for bin in availableBins
-                    where bin.binClass.canonicalClass == targetClass
-                        && matchesCodestream(bin.codestreamID, target: dir.codestreamID) {
-                        let key = binKey(bin.binClass, bin.binID, codestreamID: bin.codestreamID)
-                        let len = dir.byteLength.map { min($0, bin.data.count) } ?? bin.data.count
-                        sentByteOffsets[key] = max(sentByteOffsets[key] ?? 0, len)
-                        if dir.byteLength == nil || len >= bin.data.count {
-                            completedBinKeys.insert(key)
+                // Apply the same byte/layer semantics to explicit wildcards. Include
+                // previously modelled bins for subtraction even when outside this window.
+                var pairs = Set<String>()
+                for bin in availableBins where bin.binClass.canonicalClass == targetClass
+                    && dir.matchesCodestream(bin.codestreamID) {
+                    pairs.insert(binKey(targetClass, bin.binID, codestreamID: bin.codestreamID))
+                }
+                if !dir.isAdditive {
+                    for key in Set(sentByteOffsets.keys).union(completedBinKeys) {
+                        if let parsed = Self.parseBinKey(key), parsed.rawClass == targetClass.rawValue,
+                           dir.matchesCodestream(parsed.codestreamID) {
+                            pairs.insert(key)
                         }
                     }
-                } else if let specifiedBytes = dir.byteLength, specifiedBytes > 0 {
-                    for (k, cur) in sentByteOffsets {
-                        if let parsed = Self.parseBinKey(k),
-                           parsed.rawClass == targetClass.rawValue,
-                           matchesCodestream(parsed.codestreamID, target: dir.codestreamID) {
-                            sentByteOffsets[k] = min(cur, specifiedBytes)
-                            completedBinKeys.remove(k)
-                            clientCache.truncateOrRemove(
-                                binClass: targetClass,
-                                binID: parsed.binID,
-                                codestreamID: parsed.codestreamID,
-                                retainBytes: specifiedBytes
-                            )
-                        }
+                }
+                for key in pairs {
+                    if let parsed = Self.parseBinKey(key) {
+                        applySingleBinDirective(dir: dir, targetClass: targetClass,
+                                                explicitID: parsed.binID, cs: parsed.codestreamID)
                     }
-                    for k in Array(completedBinKeys) {
-                        if let parsed = Self.parseBinKey(k),
-                           parsed.rawClass == targetClass.rawValue,
-                           matchesCodestream(parsed.codestreamID, target: dir.codestreamID) {
-                            completedBinKeys.remove(k)
-                        }
-                    }
-                } else {
-                    let prefix = dir.codestreamID.map { "\(targetClass.rawValue):\($0):" } ?? "\(targetClass.rawValue):"
-                    for k in Array(sentByteOffsets.keys) where k.hasPrefix(prefix) {
-                        sentByteOffsets.removeValue(forKey: k)
-                    }
-                    for k in Array(completedBinKeys) where k.hasPrefix(prefix) {
-                        completedBinKeys.remove(k)
-                    }
-                    clientCache.invalidate(binClass: targetClass, codestreamID: dir.codestreamID)
                 }
             }
         }

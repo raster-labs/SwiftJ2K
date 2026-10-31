@@ -1,0 +1,60 @@
+SwiftJ2K R3 independent core/3D delta audit — diagnostic-source-04
+
+Scope decision
+--------------
+Prior confirmed C1/C2 allocation findings and T1 test finding are CLOSED NARROWLY on this snapshot. No new confirmed actionable source defect was found in the reviewed delta. This is not R3 acceptance: mandatory independent external, final-source, security and controlled performance gates remain open.
+
+Auditor / source proof
+----------------------
+Read-only independent reviewer /root/independent_core_review. Root's exclusive claim1ce94f4b-ebfa-4309-98f6-5530103803d9 was not altered. No source edits, builds, tests, native codec execution, server, commit or publication was performed by this auditor.
+
+Source: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-04. Scope remains Sources/SwiftJ2K3D/** plus SwiftJ2K/Telemetry.swift, Codec/** excluding JPIPCodestreamIndexer.swift, and Acceleration/SIMDAcceleration.swift. All52 source hashes match before/after. All52 also match root-tested diagnostic-source-03. Only JP3DJPIPIndexer.swift, JP3DTier12Coder.swift and VolumeCodecAPI.swift changed since first audit snapshot01. Exact hashes, supplementary test hashes and receipt hashes: work/independent-core-review-02-source.json.
+
+Read root's source03 command/result/native receipts: exit0,22 tests in4 suites, source unchanged. Native log SHA25622c59c5e6dce643c39cc0046481c0af933394b7e3edfe2475d1599ffd6e1e70d. This is independently inspected root-executed evidence, not a run by this reviewer.
+
+Closed prior findings
+---------------------
+C1 — Retained codeword-segment COW overlap:
+JP3DTier12Coder.swift:3604–3622 validates complete packet bodies before transferring the result slot to the local contribution. This preserves prior contributions on tolerated packet truncation while removing the retained array alias before continuation. Lines3378–3383,3659–3670 and3687–3690 hold conservative old/replacement capacity allowances for segment tables, payload growth and optional indexed-packet arrays. For the previous1MiB+1 continuation trigger, the added test checks successful retention/pass count and denial before the second append telemetry. This test passed in the inspected22-test receipt. The previous unadmitted full-COW trigger is closed; this does not assert allocator-exact memory measurement for every collection implementation.
+
+C2 — Packet array forwarding copy and 3D indexer live owners:
+JP3DTier12Coder.swift:3303–3309 now admits bytes.count+32 before constructing Data(bytes). JP3DJPIPIndexer.swift:279–292,352–356 uses one preadmitted Data tile owner directly, eliminating that forwarding copy from its production indexing path. The indexer now admits the source scanning array before allocation, subtracts caller source bytes from the memory ceiling, holds raw-part metadata/sorting/component/precinct table allowances, and parses only bounded tile prefixes with copyTilePayloads=false. Its conservative header metadata envelope and retained parsed-tile records remain charged during indexing. New tests deny before the input-copy stage and assert the successful index emits no forwarding-copy stage; receipt passed. The specific old duplicate-input and missing aggregate-owner issues are closed in these paths.
+
+T1 — Stale spatial visited-table bound:
+CodexR3LayerBudgetTests.swift derives the nested-array/Boolean bound and compares one-layer versus65535-layer admission. All five progression orders and the131072-byte end-to-end cap remain unchanged. The corrected test passed. It continues to check the required asymptotic property instead of accepting an increased end-to-end limit.
+
+Additional A04/A05 delta assessment
+----------------------------------
+3D reassembly at JP3DJPIPIndexer.swift:472–524 checks aggregate inputs and header identifiers, preadmits its bounded probe and retained parser envelope, and discards the probe after parsing. Scalar tile enumeration removes eager tile arrays. Component/geometry/nested dictionary allocations are admitted before construction. Precinct splitting reads input Data directly and accounts for retained slices while contributions and packet ranges remain live. Lines741–762 precompute and reserve the complete tile body. Lines811–815 admit the complete next output allocation while old output, tile data and layer slices coexist. The65535-empty-layer overlap boundary regression passed for both workspace and memory caps, with exact admitted control.
+
+The workspaceObserver publishes a monotonic high-water of these conservative local admissions before allocation. Its intended quantity excludes caller-owned input bins and includes reconstruction output; outer callers must combine it with their retained input reservations. This review covers the3D helper implementation only, not full JPIP wrapper report plumbing or the excluded2D indexer.
+
+The64*headerBytes+4096 metadata envelope is conservative accounting, not measured heap usage. Reviewed compact-component, quantisation, override, marker-copy and tile-record paths did not expose a concrete expansion exceeding it; separate record/growth allowances are retained. No blanket proof of all parser/allocator behaviour is claimed from the multiplier. Required memory/security qualification remains separate.
+
+Correction to first-pass progress assessment
+-------------------------------------------
+The earlier report's proposed rule that completion-callback cancellation cannot fail the operation was incompatible with accepted R1/F13 behavior. That first-pass conclusion is superseded. The R1 test at R1VolumeRemediationTests.swift:785–843 explicitly requires cancellation from .completed to abort all three operations.
+
+Current VolumeCodecAPI.swift:479–514/516–522,821–855/857–863 and979–1015/1017–1023 qualifies the actual backend and constructs fallible report fields before completion, then retains the established final cancellation/deadline check after the callback. The original RA2-08 unsolicited required-backend failure cannot occur after .completed; callback-triggered cancellation remains honored. The R1/F13 test passed in the inspected receipt. Current CodexR3ProgressTests covers the original1x1x2 early-ineligibility reproducer; it does not by itself exercise the later backend-qualification branch, whose ordering was independently inspected in source.
+
+Marker boundaries and high precision
+------------------------------------
+Part2 marker builder/parser and signed-limb synthesis sources did not change since the first audit. Rechecked boundaries remain Xmcc1, Nmcc/Mmcc bit15 widths, CBD low15 count mask, Rsiz0xc100 and CODMCT2; oversized single-MCC construction throws before integer conversion. Tests for1/128/129/256/257 components are unchanged. Rectangular irreversible2->1 synthesis remains legal. Previous hidden DC-shift and extra full logical-plane allocation repairs remain source-closed. Direct independent full38 Part2 and combined Part10+15 qualification remains UNEXECUTED/UNWAIVED.
+
+Independent HT fixture correction and snapshot04 failure
+------------------------------------------------------
+The first adapter reused nonzero-DWT Part1 coefficients as Part10 coefficients; the coordinator identified incompatible reversible axis-order assumptions. This invalidates that old fixture adaptation as exact sample evidence, not the codec. Current test adapter refuses nonzero DWT levels, preserving independent tile/packet/entropy bytes in zero-DWT depth-one fixtures. It logs actual segment/pass metadata rather than inferring refinement coverage from Clayers.
+
+I read snapshot-refinement-04/result.json and native.log: exit1, three sample-equality issues for rates4/8/12, unchanged inputs; log SHA2565a743db28b41078c74e9cc7626918ac438c702caa318a5bf661eda9df5bc32f8. Actual nonempty refinement segments appear in59/64,64/64 and64/64 blocks; both1-pass SigProp and2-pass SigProp/MagRef segments occur. Retained independent fixture file hashes all match their manifest. This is real exercised refinement coverage with a failed oracle comparison.
+
+However, this is not sufficient to assert a conformance defect. Independently checked primary T.814(06/2019)§7.6 forwards recovered magnitude bits and decoded-plane count into Part1 inverse quantisation. T.800(11/2015)§E.1.1.2 and§E.1.2.2 permit decoder-selected reconstruction parameter r for incomplete coefficient precision, including reversible transforms; r=1/2 is common, while r=0 is permitted. Snapshot04's reversible volume path passes false at JP3DTier12Coder.swift:4649, and its coefficient transcoder passes false at5111. Kakadu's midpoint reconstruction can therefore legitimately differ by the untransmitted-plane midpoint. Do not mark production r=0 nonconformant solely from these differences or change its policy merely to make this comparison pass.
+
+The coordinator's next proposed diagnostic compares the shared HT block decoder under explicit midpointReconstruction:true against Kakadu, while testing public r=0 decode/transcode consistency separately. That test revision and its outcome are outside this snapshot and remain to be reviewed. Preserve snapshot04's failed receipt and label the oracle-policy mismatch explicitly.
+
+Primary references:
+https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.814-201906-I%21%21PDF-E&lang=e&type=items
+https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.800-201511-S%21%21PDF-E&lang=e&type=items
+
+Remaining qualification boundaries
+----------------------------------
+No whole-R3 acceptance is supplied. Direct independent combined Part10+15/full38 gates remain open. Explicit-midpoint HT oracle parity is not yet established by snapshot04's failed comparison. Controlled release timing, encoded-size/byte regression and allocator/race/cancellation/security campaigns remain required. The earlier bounded HT SigProp-only capacity-tail concern is unchanged and not promoted to a confirmed defect without an end-to-end violating trigger; similarly, chunk-growth hot-path cost remains a measured-gate question, not an invented regression percentage. Any later source/test edits require exact-delta review before carrying forward this narrow closure.

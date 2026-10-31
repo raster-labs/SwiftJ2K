@@ -1,0 +1,252 @@
+{
+  "kind": "refinement",
+  "input_license": "Apache-2.0 synthetic fixtures",
+  "tools": {
+    "kdu_compress": {
+      "path": "/Library/Kakadu/8.4.1/bin/kdu_compress",
+      "sha256": "6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06"
+    },
+    "kdu_expand": {
+      "path": "/Library/Kakadu/8.4.1/bin/kdu_expand",
+      "sha256": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"
+    },
+    "kdu_transcode": {
+      "path": "/Library/Kakadu/8.4.1/bin/kdu_transcode",
+      "sha256": "cb6b98182325b8c4ab8fddbd82e79097b69129827bbe932be8ae3b72f73c29b0"
+    }
+  },
+  "records": [
+    {
+      "name": "rate4",
+      "source_sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.pgm",
+            "-o",
+            "../portable-refinement-fixtures-01/rate4.part1.j2k",
+            "Creversible=yes",
+            "Cmodes=0",
+            "Clevels=0",
+            "Clayers=1",
+            "Cblk={8,8}",
+            "-rate",
+            "4",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_transcode",
+            "-i",
+            "../portable-refinement-fixtures-01/rate4.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate4.ht.j2k",
+            "Cmodes=HT",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate4.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate4.part1.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate4.ht.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate4.ht.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "files": {
+        "rate4.part1.j2k": "11ed823287c355a3d2a1dc95ae03557635aabbc88aac7f035989605e7eaaa450",
+        "rate4.ht.j2k": "bae00562f6943fdaeb530534a1929416547d119703d292edafb91ce6ca44e89f",
+        "rate4.part1.pgm": "e005816b9ac3f42d28596fd0fa79937f85fb703d752ef285a9447660da850306",
+        "rate4.ht.pgm": "e005816b9ac3f42d28596fd0fa79937f85fb703d752ef285a9447660da850306"
+      },
+      "independent_part1_ht_decodes_equal": true
+    },
+    {
+      "name": "rate8",
+      "source_sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.pgm",
+            "-o",
+            "../portable-refinement-fixtures-01/rate8.part1.j2k",
+            "Creversible=yes",
+            "Cmodes=0",
+            "Clevels=0",
+            "Clayers=1",
+            "Cblk={8,8}",
+            "-rate",
+            "8",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_transcode",
+            "-i",
+            "../portable-refinement-fixtures-01/rate8.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate8.ht.j2k",
+            "Cmodes=HT",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate8.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate8.part1.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate8.ht.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate8.ht.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "files": {
+        "rate8.part1.j2k": "150169d9e56b6e45b9c764a47c49621e0a30d5031337d221b24357463a7cab2d",
+        "rate8.ht.j2k": "f6eece804d349238de0d4b7941f53f5d84866107335c827023c3892998290b84",
+        "rate8.part1.pgm": "e9f77287f5162a03f4aa17c39b10272a0ad00f33b4e0930f2566e54c79b2395c",
+        "rate8.ht.pgm": "e9f77287f5162a03f4aa17c39b10272a0ad00f33b4e0930f2566e54c79b2395c"
+      },
+      "independent_part1_ht_decodes_equal": true
+    },
+    {
+      "name": "rate12",
+      "source_sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.pgm",
+            "-o",
+            "../portable-refinement-fixtures-01/rate12.part1.j2k",
+            "Creversible=yes",
+            "Cmodes=0",
+            "Clevels=0",
+            "Clayers=1",
+            "Cblk={8,8}",
+            "-rate",
+            "12",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_transcode",
+            "-i",
+            "../portable-refinement-fixtures-01/rate12.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate12.ht.j2k",
+            "Cmodes=HT",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate12.part1.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate12.part1.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-refinement-fixtures-01/rate12.ht.j2k",
+            "-o",
+            "../portable-refinement-fixtures-01/rate12.ht.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "files": {
+        "rate12.part1.j2k": "7feb613f4d3e12ed7328fc42987819d015f557eaddb3cc38abbc62d303d9aaa1",
+        "rate12.ht.j2k": "de0850b49bb5ac2904b7794f5afc53be33e433ba02b7ced36c979dc56d089c5b",
+        "rate12.part1.pgm": "82e5a1be74db963fdb727ad8b5963d3831d5ae7dc6beb4c0d047c57478e9ee25",
+        "rate12.ht.pgm": "82e5a1be74db963fdb727ad8b5963d3831d5ae7dc6beb4c0d047c57478e9ee25"
+      },
+      "independent_part1_ht_decodes_equal": true
+    }
+  ],
+  "scope": "Independent 2D HT evidence only; inspect actual segments before claiming refinement. No direct Part10+15 peer or MULTIHT qualification."
+}

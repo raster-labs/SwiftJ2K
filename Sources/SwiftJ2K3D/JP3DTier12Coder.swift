@@ -386,6 +386,7 @@ package enum JP3DGeometryBuilder {
         var precinctBandCount = 0
         var codeBlockCount = 0
         var tagTreeNodeCount = 0
+        var blockScratchBytes = 0
         let arrayHeader = 32
         let tagNodeStride = 16
 
@@ -402,19 +403,37 @@ package enum JP3DGeometryBuilder {
             let geomBytes = try jp3dCheckedAdd(g1, try jp3dCheckedAdd(g2, g3))
 
             // Decode state holds `result` + `wireState` (`2 * CodeBlockContribution` per block) + `trees` (2 octree tag-trees per precinct-band).
-            let decContrib = try jp3dCheckedMul(codeBlockCount, 2 * MemoryLayout<CodeBlockContribution>.stride)
+            let decContrib = try jp3dCheckedMul(codeBlockCount, 2 * MemoryLayout<CodeBlockContribution>.stride + 2 * MemoryLayout<Bool>.stride)
             let decArrays = try jp3dCheckedAdd(
                 try jp3dCheckedMul(precinctCount, 3 * arrayHeader),
                 try jp3dCheckedMul(precinctBandCount, 4 * arrayHeader)
             )
             let treeBytes = try jp3dCheckedMul(tagTreeNodeCount, tagNodeStride)
-            let decBytes = try jp3dCheckedAdd(decContrib, try jp3dCheckedAdd(decArrays, treeBytes))
+            // Packet parsing holds a per-block order entry with pass-count and
+            // length arrays. These arrays exist before segment-byte admission.
+            let maximumBlockPasses = 3 * JP3DBitPlaneCoder.maximumExtendedBitPlanes - 2
+            let packetOrderBytes = try jp3dCheckedMul(codeBlockCount,
+                2 * maximumBlockPasses * MemoryLayout<Int>.stride + 3 * arrayHeader + 2 * MemoryLayout<Int>.stride)
+            let nestedStateBytes = try jp3dCheckedAdd(
+                try jp3dCheckedMul(resolutionCount, 5 * (arrayHeader + MemoryLayout<[Int]>.stride)),
+                try jp3dCheckedMul(precinctBandCount, 2 * (arrayHeader + MemoryLayout<[Bool]>.stride)))
+            let decBytes = try jp3dCheckedAdd(blockScratchBytes, try jp3dCheckedAdd(decContrib,
+                try jp3dCheckedAdd(decArrays, try jp3dCheckedAdd(treeBytes,
+                    try jp3dCheckedAdd(packetOrderBytes, nestedStateBytes)))))
 
+            // Each retained block has per-pass offsets/termination offsets and a
+            // per-layer count array, including empty blocks. Layer counts must
+            // never disappear from admission just because packet order is lazy.
+            let perBlockMetadata = try jp3dCheckedAdd(
+                try jp3dCheckedMul(maximumBlockPasses * 2, MemoryLayout<Int>.stride),
+                try jp3dCheckedMul(max(1, cod.numLayers), MemoryLayout<Int>.stride))
             let encEntries = try jp3dCheckedMul(
                 codeBlockCount,
-                MemoryLayout<JP3DTier2Coder.BlockEncodingEntry>.stride + 32
+                try jp3dCheckedAdd(MemoryLayout<JP3DTier2Coder.BlockEncodingEntry>.stride + 4 * arrayHeader,
+                    perBlockMetadata)
             )
-            let encBytes = try jp3dCheckedAdd(encEntries, try jp3dCheckedAdd(decArrays, treeBytes))
+            let encBytes = try jp3dCheckedAdd(blockScratchBytes, try jp3dCheckedAdd(encEntries,
+                try jp3dCheckedAdd(decArrays, try jp3dCheckedAdd(treeBytes, packetOrderBytes))))
 
             if let limit = maximumWorkspaceBytes {
                 var active = geomBytes
@@ -533,6 +552,19 @@ package enum JP3DGeometryBuilder {
                             let cbH = max(1, (brcblkY - tlcblkY) >> ycb)
                             let cbD = max(1, (brcblkZ - tlcblkZ) >> zcb)
                             let blockCount = try jp3dCheckedMul(try jp3dCheckedMul(cbW, cbH), cbD, label: "3D code-block count")
+                            let sampleW = min(1 << xcb, px1 - px0)
+                            let sampleH = min(1 << ycb, py1 - py0)
+                            let sampleD = min(1 << zcb, pz1 - pz0)
+                            let blockSamples = try jp3dCheckedMul(try jp3dCheckedMul(sampleW, sampleH), sampleD)
+                            let paddedStates = try jp3dCheckedMul(
+                                try jp3dCheckedMul(sampleW + 2, sampleH + 2), sampleD)
+                            // One live block: gathered coefficients, magnitudes,
+                            // sign/refinement flags and returned coefficients, plus
+                            // padded state planes. Tile-wide wavelet planes are separate.
+                            let blockBytes = try jp3dCheckedAdd(
+                                try jp3dCheckedMul(blockSamples, 32),
+                                try jp3dCheckedAdd(try jp3dCheckedMul(paddedStates, 2), 512))
+                            blockScratchBytes = max(blockScratchBytes, blockBytes)
                             codeBlockCount = try jp3dCheckedAdd(codeBlockCount, blockCount, label: "Total 3D code-blocks")
                             guard codeBlockCount <= (1 << 24) else {
                                 throw CodecError(.resourceLimitExceeded, "3D tile code-block count \(codeBlockCount) exceeds safety ceiling.")
@@ -846,7 +878,8 @@ package enum JP3DBitPlaneCoder {
         style: CodeBlockStyle = .default,
         maxPasses: Int? = nil,
         qualityLayers: Int = 1,
-        maximumOutputBytes: Int = Int.max
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
     ) throws -> CodeBlockEncoding {
         let wh = try jp3dCheckedMul(width, height, label: "3D code-block slice area")
         let count = try jp3dCheckedMul(wh, depth, label: "3D code-block volume")
@@ -899,6 +932,22 @@ package enum JP3DBitPlaneCoder {
 
         var committedData: [UInt8] = []
         var activeCoder: EncodeCoder? = nil
+        var succeeded = false
+        defer {
+            if !succeeded {
+                switch activeCoder {
+                case .mq(var mq):
+                    mq.releaseAllReservedBudget()
+                case .raw(var raw):
+                    raw.releaseAllReservedBudget()
+                case nil:
+                    break
+                }
+                if !committedData.isEmpty {
+                    budget?.release(committedData.count, countsTowardCompressedOutput: true)
+                }
+            }
+        }
         var passByteOffsets: [Int] = []
         var passTerminatedBytes: [Int] = []
         passByteOffsets.reserveCapacity(targetPasses)
@@ -910,11 +959,12 @@ package enum JP3DBitPlaneCoder {
             if activeCoder == nil {
                 let remCap = max(1, maximumOutputBytes - committedData.count)
                 if style.passIsRaw(passIndex) {
-                    activeCoder = .raw(RawEncoder(maximumOutputBytes: remCap))
+                    activeCoder = .raw(RawEncoder(maximumOutputBytes: remCap, budget: budget))
                 } else {
                     activeCoder = .mq(MQEncoder(
-                        capacityHint: min(remCap, max(16, count / 2)),
-                        maximumOutputBytes: remCap
+                        capacityHint: min(remCap, max(8, count * 2)),
+                        maximumOutputBytes: remCap,
+                        budget: budget
                     ))
                 }
             }
@@ -926,18 +976,39 @@ package enum JP3DBitPlaneCoder {
             switch activeCoder! {
             case .mq(var mq):
                 if mq.overflowed {
+                    activeCoder = .mq(mq)
                     throw CodecError(.resourceLimitExceeded, "Encoded 3D code-block exceeds output byte budget.")
                 }
                 let termLen = committedData.count + mq.terminatedByteCount()
                 if terminates {
-                    let seg = mq.finish()
+                    activeCoder = nil
+                    var seg = mq.finish()
                     if mq.overflowed || committedData.count + seg.count > maximumOutputBytes {
+                        mq.releaseAllReservedBudget()
                         throw CodecError(.resourceLimitExceeded, "Encoded 3D code-block exceeds output byte budget.")
                     }
-                    committedData.append(contentsOf: seg)
+                    if committedData.isEmpty {
+                        committedData = seg
+                    } else if !seg.isEmpty {
+                        let mergeBytes = try jp3dCheckedAdd(committedData.count, seg.count, label: "3D EBCOT segment concatenation")
+                        if let budget {
+                            do {
+                                try budget.reserve(mergeBytes, countsTowardCompressedOutput: false, site: "jp3d-ebcot-segment-merge")
+                            } catch {
+                                mq.releaseAllReservedBudget()
+                                throw error
+                            }
+                            budget.recordActualAllocation(mergeBytes, site: "jp3d-ebcot-segment-merge")
+                        }
+                        committedData.reserveCapacity(mergeBytes)
+                        committedData.append(contentsOf: seg)
+                        seg = []
+                        mq.discardFinishedStorage()
+                        budget?.release(mergeBytes, countsTowardCompressedOutput: false)
+                    }
+                    mq.discardFinishedStorage()
                     passByteOffsets.append(committedData.count)
                     passTerminatedBytes.append(committedData.count)
-                    activeCoder = nil
                 } else {
                     passByteOffsets.append(committedData.count + mq.emittedByteCount)
                     passTerminatedBytes.append(termLen)
@@ -945,17 +1016,38 @@ package enum JP3DBitPlaneCoder {
                 }
             case .raw(var raw):
                 if raw.overflowed {
+                    activeCoder = .raw(raw)
                     throw CodecError(.resourceLimitExceeded, "Encoded 3D code-block exceeds output byte budget.")
                 }
                 if terminates {
-                    let seg = raw.finish()
+                    activeCoder = nil
+                    var seg = raw.finish()
                     if raw.overflowed || committedData.count + seg.count > maximumOutputBytes {
+                        raw.releaseAllReservedBudget()
                         throw CodecError(.resourceLimitExceeded, "Encoded 3D code-block exceeds output byte budget.")
                     }
-                    committedData.append(contentsOf: seg)
+                    if committedData.isEmpty {
+                        committedData = seg
+                    } else if !seg.isEmpty {
+                        let mergeBytes = try jp3dCheckedAdd(committedData.count, seg.count, label: "3D EBCOT segment concatenation")
+                        if let budget {
+                            do {
+                                try budget.reserve(mergeBytes, countsTowardCompressedOutput: false, site: "jp3d-ebcot-segment-merge")
+                            } catch {
+                                raw.releaseAllReservedBudget()
+                                throw error
+                            }
+                            budget.recordActualAllocation(mergeBytes, site: "jp3d-ebcot-segment-merge")
+                        }
+                        committedData.reserveCapacity(mergeBytes)
+                        committedData.append(contentsOf: seg)
+                        seg = []
+                        raw.discardFinishedStorage()
+                        budget?.release(mergeBytes, countsTowardCompressedOutput: false)
+                    }
+                    raw.discardFinishedStorage()
                     passByteOffsets.append(committedData.count)
                     passTerminatedBytes.append(committedData.count)
-                    activeCoder = nil
                 } else {
                     let cur = committedData.count + raw.emittedByteCount
                     passByteOffsets.append(cur)
@@ -1023,6 +1115,7 @@ package enum JP3DBitPlaneCoder {
         }
 
         let layerPassCounts = distributePassesAcrossLayers(totalPasses: passIndex, layers: layers)
+        succeeded = true
 
         return CodeBlockEncoding(
             data: committedData,
@@ -2583,25 +2676,35 @@ package enum JP3DTier2Coder {
         }
     }
 
-    /// Generates the exact normative 3D packet order per ITU-T Rec. T.809 Clause B.10.1.
-    package static func packetSequence(
+    /// Streams the exact normative 3D packet order per ITU-T Rec. T.809 Clause B.10.1 without materialising
+    /// an `O(totalLayers * totalPrecincts)` `[JP3DPacketAddress]` or `Set<JP3DPacketAddress>` table.
+    ///
+    /// - `LRCP` (`0`) and `RLCP` (`1`) execute in `O(1)` heap memory.
+    /// - `RPCL` (`2`), `PCRL` (`3`), and `CPRL` (`4`) step spatial coordinates in `O(1)` scalars and track
+    ///   visited `(component, resolution, precinct)` tuples in a pre-admitted `O(totalPrecincts)` boolean table
+    ///   independent of `totalLayers`.
+    /// - Returning `false` from `body` terminates iteration immediately.
+    package static func forEachPacketAddress(
         geometries: [JP3DTileComponentGeometry],
         progression: UInt8,
-        totalLayers: Int
-    ) throws -> [JP3DPacketAddress] {
+        totalLayers: Int,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil,
+        body: (JP3DPacketAddress) throws -> Bool
+    ) throws {
         let compCount = geometries.count
-        guard compCount > 0, totalLayers > 0 else { return [] }
-        let maxNL = geometries.map(\.maxLevels).max() ?? 0
-
-        var sequence: [JP3DPacketAddress] = []
-        var seen = Set<JP3DPacketAddress>()
-
-        func emit(layer l: Int, resolution r: Int, component c: Int, precinct p: Int) {
-            let addr = JP3DPacketAddress(layer: l, resolution: r, component: c, precinct: p)
-            if seen.insert(addr).inserted {
-                sequence.append(addr)
+        guard compCount > 0, totalLayers > 0 else { return }
+        var totalPrecincts = 0
+        var totalResolutions = 0
+        var maxNL = 0
+        for geom in geometries {
+            totalResolutions = try jp3dCheckedAdd(totalResolutions, geom.resolutions.count)
+            maxNL = max(maxNL, geom.maxLevels)
+            for res in geom.resolutions {
+                totalPrecincts = try jp3dCheckedAdd(totalPrecincts, res.precincts.count, label: "3D tile precinct count")
             }
         }
+        guard totalPrecincts > 0 else { return }
+        _ = try jp3dCheckedMul(totalPrecincts, totalLayers, label: "3D tile packet count")
 
         func precinctAt(component c: Int, resolution r: Int, x: Int, y: Int, z: Int) -> Int? {
             let geom = geometries[c]
@@ -2633,40 +2736,57 @@ package enum JP3DTier2Coder {
             return px + py * res.precinctsWide + pz * res.precinctsWide * res.precinctsHigh
         }
 
-        func gridPositions(start: Int, end: Int, step: Int) -> [Int] {
-            var pos: [Int] = []
-            var v = start
+        @inline(__always)
+        func nextGridPosition(_ v: Int, step: Int) -> Int {
             let s = max(1, step)
-            while v < end {
-                pos.append(v)
-                let rem = ((v % s) + s) % s
-                v += (s - rem)
-            }
-            return pos
+            let rem = ((v % s) + s) % s
+            return v + (s - rem)
         }
 
         switch progression {
-        case 0: // LRCP
+        case 0: // LRCP — O(1) memory
             for l in 0..<totalLayers {
                 for r in 0...maxNL {
                     for c in 0..<compCount where r <= geometries[c].maxLevels {
                         for p in 0..<geometries[c].resolutions[r].precincts.count {
-                            emit(layer: l, resolution: r, component: c, precinct: p)
+                            if !(try body(JP3DPacketAddress(layer: l, resolution: r, component: c, precinct: p))) {
+                                return
+                            }
                         }
                     }
                 }
             }
-        case 1: // RLCP
+        case 1: // RLCP — O(1) memory
             for r in 0...maxNL {
                 for l in 0..<totalLayers {
                     for c in 0..<compCount where r <= geometries[c].maxLevels {
                         for p in 0..<geometries[c].resolutions[r].precincts.count {
-                            emit(layer: l, resolution: r, component: c, precinct: p)
+                            if !(try body(JP3DPacketAddress(layer: l, resolution: r, component: c, precinct: p))) {
+                                return
+                            }
                         }
                     }
                 }
             }
         case 2, 3, 4: // RPCL, PCRL, CPRL (spatial step across Z outer, Y middle, X inner)
+            let visitedElements = try jp3dCheckedMul(
+                totalPrecincts,
+                MemoryLayout<Bool>.stride,
+                label: "3D spatial progression visited table"
+            )
+            let visitedBytes = try jp3dCheckedAdd(visitedElements,
+                try jp3dCheckedAdd(32,
+                    try jp3dCheckedAdd(
+                        try jp3dCheckedMul(compCount, 32 + MemoryLayout<[[Bool]]>.stride),
+                        try jp3dCheckedMul(totalResolutions, 32 + MemoryLayout<[Bool]>.stride))))
+            try admitWorkspaceBytes?(visitedBytes)
+            var visitedCRP: [[[Bool]]] = geometries.map { geom in
+                geom.resolutions.map { res in
+                    [Bool](repeating: false, count: res.precincts.count)
+                }
+            }
+            var emittedCRPCount = 0
+
             var stepX = Int.max, stepY = Int.max, stepZ = Int.max
             var minX = Int.max, maxX = Int.min
             var minY = Int.max, maxY = Int.min
@@ -2684,51 +2804,86 @@ package enum JP3DTier2Coder {
                     stepZ = min(stepZ, sz)
                 }
             }
-            if stepX < Int.max, stepY < Int.max, stepZ < Int.max, minX < maxX, minY < maxY, minZ < maxZ {
-                let xs = gridPositions(start: minX, end: maxX, step: stepX)
-                let ys = gridPositions(start: minY, end: maxY, step: stepY)
-                let zs = gridPositions(start: minZ, end: maxZ, step: stepZ)
-                var seenCRP = Set<Int>()
-                func emitCRP(_ c: Int, _ r: Int, _ x: Int, _ y: Int, _ z: Int) {
-                    guard let p = precinctAt(component: c, resolution: r, x: x, y: y, z: z) else { return }
-                    let key = (c << 44) | (r << 32) | p
-                    guard seenCRP.insert(key).inserted else { return }
-                    for l in 0..<totalLayers {
-                        emit(layer: l, resolution: r, component: c, precinct: p)
+
+            func emitCRP(_ c: Int, _ r: Int, _ x: Int, _ y: Int, _ z: Int) throws -> Bool {
+                guard let p = precinctAt(component: c, resolution: r, x: x, y: y, z: z) else { return true }
+                guard !visitedCRP[c][r][p] else { return true }
+                visitedCRP[c][r][p] = true
+                emittedCRPCount += 1
+                for l in 0..<totalLayers {
+                    if !(try body(JP3DPacketAddress(layer: l, resolution: r, component: c, precinct: p))) {
+                        return false
                     }
                 }
+                return true
+            }
+
+            if stepX < Int.max, stepY < Int.max, stepZ < Int.max, minX < maxX, minY < maxY, minZ < maxZ {
                 if progression == 2 { // RPCL
                     for r in 0...maxNL {
-                        for z in zs {
-                            for y in ys {
-                                for x in xs {
+                        var z = minZ
+                        while z < maxZ {
+                            var y = minY
+                            while y < maxY {
+                                var x = minX
+                                while x < maxX {
                                     for c in 0..<compCount where r <= geometries[c].maxLevels {
-                                        emitCRP(c, r, x, y, z)
+                                        if !(try emitCRP(c, r, x, y, z)) { return }
                                     }
+                                    x = nextGridPosition(x, step: stepX)
                                 }
+                                y = nextGridPosition(y, step: stepY)
                             }
+                            z = nextGridPosition(z, step: stepZ)
                         }
                     }
                 } else if progression == 3 { // PCRL
-                    for z in zs {
-                        for y in ys {
-                            for x in xs {
+                    var z = minZ
+                    while z < maxZ {
+                        var y = minY
+                        while y < maxY {
+                            var x = minX
+                            while x < maxX {
                                 for c in 0..<compCount {
                                     for r in 0...geometries[c].maxLevels {
-                                        emitCRP(c, r, x, y, z)
+                                        if !(try emitCRP(c, r, x, y, z)) { return }
                                     }
                                 }
+                                x = nextGridPosition(x, step: stepX)
                             }
+                            y = nextGridPosition(y, step: stepY)
                         }
+                        z = nextGridPosition(z, step: stepZ)
                     }
                 } else { // CPRL
                     for c in 0..<compCount {
-                        for z in zs {
-                            for y in ys {
-                                for x in xs {
+                        var z = minZ
+                        while z < maxZ {
+                            var y = minY
+                            while y < maxY {
+                                var x = minX
+                                while x < maxX {
                                     for r in 0...geometries[c].maxLevels {
-                                        emitCRP(c, r, x, y, z)
+                                        if !(try emitCRP(c, r, x, y, z)) { return }
                                     }
+                                    x = nextGridPosition(x, step: stepX)
+                                }
+                                y = nextGridPosition(y, step: stepY)
+                            }
+                            z = nextGridPosition(z, step: stepZ)
+                        }
+                    }
+                }
+            }
+
+            // Safety completion pass in LRCP order if any edge precinct was skipped by large shifts (rpx >= 31).
+            if emittedCRPCount < totalPrecincts {
+                for l in 0..<totalLayers {
+                    for r in 0...maxNL {
+                        for c in 0..<compCount where r <= geometries[c].maxLevels {
+                            for p in 0..<geometries[c].resolutions[r].precincts.count where !visitedCRP[c][r][p] {
+                                if !(try body(JP3DPacketAddress(layer: l, resolution: r, component: c, precinct: p))) {
+                                    return
                                 }
                             }
                         }
@@ -2738,19 +2893,42 @@ package enum JP3DTier2Coder {
         default:
             throw CodecError(.malformedInput, "Unknown 3D progression order \(progression).")
         }
+    }
 
-        // Safety completion pass in LRCP order if any edge precinct was skipped by large shifts (rpx >= 31).
-        let expected = geometries.reduce(0) { $0 + $1.resolutions.reduce(0) { $0 + $1.precincts.count } } * totalLayers
-        if sequence.count < expected {
-            for l in 0..<totalLayers {
-                for r in 0...maxNL {
-                    for c in 0..<compCount where r <= geometries[c].maxLevels {
-                        for p in 0..<geometries[c].resolutions[r].precincts.count {
-                            emit(layer: l, resolution: r, component: c, precinct: p)
-                        }
-                    }
-                }
+    /// Generates the exact normative 3D packet order per ITU-T Rec. T.809 Clause B.10.1.
+    /// Pre-admits the `O(totalPrecincts * totalLayers)` address buffer when `admitWorkspaceBytes` is supplied.
+    package static func packetSequence(
+        geometries: [JP3DTileComponentGeometry],
+        progression: UInt8,
+        totalLayers: Int,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil
+    ) throws -> [JP3DPacketAddress] {
+        let compCount = geometries.count
+        guard compCount > 0, totalLayers > 0 else { return [] }
+        var totalPrecincts = 0
+        for geom in geometries {
+            for res in geom.resolutions {
+                totalPrecincts = try jp3dCheckedAdd(totalPrecincts, res.precincts.count, label: "3D tile precinct count")
             }
+        }
+        guard totalPrecincts > 0 else { return [] }
+        let expected = try jp3dCheckedMul(totalPrecincts, totalLayers, label: "3D tile packet count")
+        let sequenceBytes = try jp3dCheckedMul(
+            expected,
+            MemoryLayout<JP3DPacketAddress>.stride,
+            label: "3D packet address sequence buffer"
+        )
+        try admitWorkspaceBytes?(sequenceBytes)
+        var sequence: [JP3DPacketAddress] = []
+        sequence.reserveCapacity(expected)
+        try forEachPacketAddress(
+            geometries: geometries,
+            progression: progression,
+            totalLayers: totalLayers,
+            admitWorkspaceBytes: admitWorkspaceBytes
+        ) { addr in
+            sequence.append(addr)
+            return true
         }
         return sequence
     }
@@ -2820,15 +2998,20 @@ package enum JP3DTier2Coder {
         var emittedBytes = 0
     }
 
-    /// Encodes all packets of a 3D tile into a contiguous tile-part bitstream.
-    package static func encodePackets(
+    /// Encodes all packets of a 3D tile into a contiguous tile-part bitstream while reserving both
+    /// packet-header bytes (`countsTowardCompressedOutput: true`) and transient duplicate body-copy
+    /// overlap bytes (`countsTowardCompressedOutput: false`) BEFORE appending to `out`.
+    ///
+    /// Callers holding `encodings` must clear `encodings` before releasing `bodyOverlapBytes`.
+    package static func encodePacketsWithOverlap(
         geometries: [JP3DTileComponentGeometry],
         cod: JP3DCODInfo,
         componentCODs: [JP3DCODInfo]? = nil,
         encodings: [[[[[BlockEncodingEntry]]]]],
+        budget: EntropyOutputBudget? = nil,
         admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
-    ) throws -> Data {
+    ) throws -> (data: Data, bodyOverlapBytes: Int) {
         let totalLayers = max(1, cod.numLayers)
 
         var trees: [[[PrecinctTrees3D]]] = []
@@ -2879,15 +3062,39 @@ package enum JP3DTier2Coder {
             progress.append(compProg)
         }
 
-        let sequence = try packetSequence(
-            geometries: geometries,
-            progression: cod.progressionOrderByte,
-            totalLayers: totalLayers
-        )
         var out = Data()
         var sopSeq: UInt16 = 0
+        var reservedHeaderBytes = 0
+        var reservedBodyOverlapBytes = 0
+        var reservedSeqScratchBytes = 0
+        var succeeded = false
+        defer {
+            if reservedSeqScratchBytes > 0 {
+                budget?.release(reservedSeqScratchBytes, countsTowardCompressedOutput: false)
+            }
+            if !succeeded {
+                if reservedHeaderBytes > 0 {
+                    budget?.release(reservedHeaderBytes, countsTowardCompressedOutput: true)
+                }
+                if reservedBodyOverlapBytes > 0 {
+                    budget?.release(reservedBodyOverlapBytes, countsTowardCompressedOutput: false)
+                }
+            }
+        }
 
-        for addr in sequence {
+        try forEachPacketAddress(
+            geometries: geometries,
+            progression: cod.progressionOrderByte,
+            totalLayers: totalLayers,
+            admitWorkspaceBytes: { bytes in
+                guard bytes > 0 else { return }
+                if let budget {
+                    try budget.reserve(bytes, countsTowardCompressedOutput: false, site: "jp3d-tier2-seq-visited")
+                    budget.recordActualAllocation(bytes, site: "jp3d-tier2-seq-visited")
+                    reservedSeqScratchBytes += bytes
+                }
+            }
+        ) { addr in
             try cancellation()
             let c = addr.component, r = addr.resolution, p = addr.precinct, l = addr.layer
             let compCOD = (componentCODs != nil && c < componentCODs!.count) ? componentCODs![c] : cod
@@ -2901,7 +3108,12 @@ package enum JP3DTier2Coder {
                 }
             }
 
-            var header = PacketBitWriter()
+            var header = PacketBitWriter(budget: budget)
+            var headerBytes: [UInt8] = []
+            defer {
+                headerBytes = []
+                header.releaseScratch()
+            }
             header.writeBit(anyIncluded)
             var bodySlices: [ArraySlice<UInt8>] = []
 
@@ -2993,10 +3205,38 @@ package enum JP3DTier2Coder {
                 }
             }
 
-            let headerBytes = header.finish()
+            headerBytes = header.finish()
+            guard !header.allocationRejected else {
+                throw CodecError(.resourceLimitExceeded, "3D packet-header staging exceeds its live allocation budget.")
+            }
             let packetOverhead = (cod.usesSOP ? 6 : 0) + headerBytes.count + (cod.usesEPH ? 2 : 0)
-            try admitEncodedBytes?(packetOverhead)
+            let packetBodyBytes = bodySlices.reduce(0) { $0 + $1.count }
 
+            if let budget {
+                if packetOverhead > 0 {
+                    try budget.reserve(packetOverhead, countsTowardCompressedOutput: true, site: "jp3d-tier2-packet-header")
+                    reservedHeaderBytes += packetOverhead
+                }
+                if packetBodyBytes > 0 {
+                    try budget.reserve(packetBodyBytes, countsTowardCompressedOutput: false, site: "jp3d-tier2-packet-body-overlap")
+                    reservedBodyOverlapBytes += packetBodyBytes
+                }
+                let packetTotal = packetOverhead + packetBodyBytes
+                if packetTotal > 0 {
+                    budget.recordActualAllocation(packetTotal, site: "jp3d-tier2-packet-emit")
+                }
+            } else {
+                try admitEncodedBytes?(packetOverhead)
+            }
+
+            let previousOutputBytes = out.count
+            let packetBytes = try jp3dCheckedAdd(packetOverhead, packetBodyBytes, label: "3D packet output")
+            let nextOutputBytes = try jp3dCheckedAdd(previousOutputBytes, packetBytes, label: "3D tile packet output")
+            // Data may relocate its previous allocation while growing. The new
+            // packet bytes were admitted above; retain an additional old-buffer lease.
+            try budget?.reserve(previousOutputBytes, countsTowardCompressedOutput: false, site: "jp3d-tier2-output-growth")
+            defer { budget?.release(previousOutputBytes, countsTowardCompressedOutput: false, site: "jp3d-tier2-output-growth") }
+            out.reserveCapacity(nextOutputBytes)
             if cod.usesSOP {
                 out.append(contentsOf: [
                     0xFF, 0x91, 0x00, 0x04,
@@ -3011,14 +3251,43 @@ package enum JP3DTier2Coder {
             for slice in bodySlices where !slice.isEmpty {
                 out.append(contentsOf: slice)
             }
+            return true
         }
+
         StorageTelemetry.recordStage("jp3d-tier2-packet-output", bytes: out.count)
+        succeeded = true
+        return (out, reservedBodyOverlapBytes)
+    }
+
+    /// Encodes all packets of a 3D tile into a contiguous tile-part bitstream.
+    package static func encodePackets(
+        geometries: [JP3DTileComponentGeometry],
+        cod: JP3DCODInfo,
+        componentCODs: [JP3DCODInfo]? = nil,
+        encodings: [[[[[BlockEncodingEntry]]]]],
+        budget: EntropyOutputBudget? = nil,
+        admitEncodedBytes: ((Int) throws -> Void)? = nil,
+        cancellation: () throws -> Void
+    ) throws -> Data {
+        let (out, overlap) = try encodePacketsWithOverlap(
+            geometries: geometries,
+            cod: cod,
+            componentCODs: componentCODs,
+            encodings: encodings,
+            budget: budget,
+            admitEncodedBytes: admitEncodedBytes,
+            cancellation: cancellation
+        )
+        if overlap > 0 {
+            budget?.release(overlap, countsTowardCompressedOutput: false)
+        }
         return out
     }
 
     /// Decodes packets of a 3D tile (with optional layer/resolution filtering, truncation tolerance,
     /// per-component `COD`/`COC` styles, ITU-T T.814 Annex B `3 * P0` / `MULTIHT` segment parsing,
-    /// and packet byte-range indexing for JPIP Class 0 precinct data-bin extraction).
+    /// pre-allocation workspace admission, and optional packet byte-range indexing for JPIP Class 0
+    /// precinct data-bin extraction).
     package static func decodePackets(
         geometries: [JP3DTileComponentGeometry],
         cod: JP3DCODInfo,
@@ -3027,9 +3296,46 @@ package enum JP3DTier2Coder {
         maxQualityLayers: Int? = nil,
         maxResolutionIndex: Int? = nil,
         tolerateTruncation: Bool = false,
+        recordPacketRanges: Bool = false,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil,
+        cancellation: () throws -> Void
+    ) throws -> (contributions: [[[[[CodeBlockContribution]]]]], packets: [JP3DIndexedPacket], wasTruncated: Bool) {
+        try admitWorkspaceBytes?(try jp3dCheckedAdd(bytes.count, 32, label: "3D packet input copy"))
+        StorageTelemetry.recordStage("jp3d-packet-input-copy", bytes: bytes.count)
+        return try decodePackets(
+            geometries: geometries,
+            cod: cod,
+            componentCODs: componentCODs,
+            data: Data(bytes),
+            maxQualityLayers: maxQualityLayers,
+            maxResolutionIndex: maxResolutionIndex,
+            tolerateTruncation: tolerateTruncation,
+            recordPacketRanges: recordPacketRanges,
+            admitWorkspaceBytes: admitWorkspaceBytes,
+            cancellation: cancellation
+        )
+    }
+
+    package static func decodePackets(
+        geometries: [JP3DTileComponentGeometry],
+        cod: JP3DCODInfo,
+        componentCODs: [JP3DCODInfo]? = nil,
+        data: Data,
+        maxQualityLayers: Int? = nil,
+        maxResolutionIndex: Int? = nil,
+        tolerateTruncation: Bool = false,
+        recordPacketRanges: Bool = false,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
     ) throws -> (contributions: [[[[[CodeBlockContribution]]]]], packets: [JP3DIndexedPacket], wasTruncated: Bool) {
         let totalLayers = max(1, cod.numLayers)
+        var totalPrecincts = 0
+        for geom in geometries {
+            for res in geom.resolutions {
+                totalPrecincts = try jp3dCheckedAdd(totalPrecincts, res.precincts.count, label: "3D tile precinct count")
+            }
+        }
+        let expectedPacketCount = try jp3dCheckedMul(totalPrecincts, totalLayers, label: "3D tile packet count")
 
         var result: [[[[[CodeBlockContribution]]]]] = geometries.map { geom in
             geom.resolutions.map { res in
@@ -3060,34 +3366,44 @@ package enum JP3DTier2Coder {
             }
         }
 
-        let sequence = try packetSequence(
-            geometries: geometries,
-            progression: cod.progressionOrderByte,
-            totalLayers: totalLayers
-        )
-
+        let dataBase = data.startIndex
         var cursor = 0
-        let end = bytes.count
+        let end = data.count
         var indexedPackets: [JP3DIndexedPacket] = []
-        indexedPackets.reserveCapacity(sequence.count)
+        var visitedPacketCount = 0
         var wasTruncated = false
 
-        for addr in sequence {
+        @inline(__always)
+        func appendEmptySegment(_ segments: inout [CodewordSegment]) throws {
+            // Keep a growth allowance with the retained segment table: old and
+            // replacement capacities can coexist during Array growth.
+            let tableBytes = try jp3dCheckedAdd(segments.isEmpty ? 64 : 0,
+                try jp3dCheckedMul(3, MemoryLayout<CodewordSegment>.stride))
+            try admitWorkspaceBytes?(tableBytes)
+            segments.append(CodewordSegment())
+        }
+
+        try forEachPacketAddress(
+            geometries: geometries,
+            progression: cod.progressionOrderByte,
+            totalLayers: totalLayers,
+            admitWorkspaceBytes: admitWorkspaceBytes
+        ) { addr in
             try cancellation()
             let keepLayer = maxQualityLayers.map { addr.layer < max(1, $0) } ?? true
             let keepRes = maxResolutionIndex.map { addr.resolution <= $0 } ?? true
             let keepPacket = keepLayer && keepRes
             if !keepLayer && cod.progressionOrderByte == 0 {
-                break
+                return false
             }
             if cursor >= end {
                 if tolerateTruncation {
                     wasTruncated = true
-                    break
+                    return false
                 }
                 throw CodecError(
                     .malformedInput,
-                    "Truncated 3D tile packet stream at packet \(indexedPackets.count) of \(sequence.count)."
+                    "Truncated 3D tile packet stream at packet \(visitedPacketCount) of \(expectedPacketCount)."
                 )
             }
             let packetStart = cursor
@@ -3100,14 +3416,14 @@ package enum JP3DTier2Coder {
 
             do {
                 if cod.usesSOP {
-                    if cursor + 6 <= end, bytes[cursor] == 0xFF, bytes[cursor + 1] == 0x91 {
+                    if cursor + 6 <= end, data[dataBase + cursor] == 0xFF, data[dataBase + cursor + 1] == 0x91 {
                         cursor += 6
                     } else if tolerateTruncation {
                         wasTruncated = true
-                        break
+                        return false
                     }
                 }
-                var reader = PacketBitReader(bytes: bytes, start: cursor, end: end)
+                var reader = PacketBitReader(data: data, start: cursor, end: end)
                 var order: [(band: Int, block: Int, chunks: [Int], lengths: [Int])] = []
 
                 if try reader.readBit() {
@@ -3280,14 +3596,31 @@ package enum JP3DTier2Coder {
                 try reader.alignToByte()
                 cursor = reader.position
                 if cod.usesEPH {
-                    guard cursor + 2 <= end, bytes[cursor] == 0xFF, bytes[cursor + 1] == 0x92 else {
+                    guard cursor + 2 <= end, data[dataBase + cursor] == 0xFF, data[dataBase + cursor + 1] == 0x92 else {
                         throw CodecError(.malformedInput, "Missing EPH (0xFF92) marker after 3D packet header.")
                     }
                     cursor += 2
                 }
+                // Validate the complete packet body before moving retained
+                // contributions out of result. A truncated packet must not erase
+                // a previously complete contribution when tolerated below.
+                var completeBodyBytes = 0
+                for entry in order {
+                    for length in entry.lengths {
+                        guard length >= 0, length <= end - cursor - completeBodyBytes else {
+                            throw CodecError(.malformedInput, "3D packet body exceeds tile-part data.")
+                        }
+                        completeBodyBytes += length
+                    }
+                }
                 for entry in order {
                     var wSt = wireState[c][r][p][entry.band][entry.block]
                     var outSt = result[c][r][p][entry.band][entry.block]
+                    if keepPacket {
+                        // Transfer ownership before mutating a continued segment;
+                        // retaining it in result forces a full payload COW copy.
+                        result[c][r][p][entry.band][entry.block] = CodeBlockContribution()
+                    }
                     var outSeenCleanup = outHasHTCleanup[c][r][p][entry.band][entry.block]
                     for (chunk, length) in zip(entry.chunks, entry.lengths) {
                         guard length >= 0, cursor + length <= end else {
@@ -3299,11 +3632,11 @@ package enum JP3DTier2Coder {
                                     if length == 0 {
                                         // Leading placeholder passes (`L = 0`)
                                         if outSt.segments.isEmpty {
-                                            outSt.segments.append(CodewordSegment())
+                                            try appendEmptySegment(&outSt.segments)
                                         }
                                     } else {
                                         // First non-zero HT cleanup segment starts its own `CodewordSegment`
-                                        outSt.segments.append(CodewordSegment())
+                                        try appendEmptySegment(&outSt.segments)
                                         outSeenCleanup = true
                                     }
                                 } else {
@@ -3313,16 +3646,31 @@ package enum JP3DTier2Coder {
                                     // `pStart % 3 == 2` -> continuation (`MagRef`) of previous `SigProp` refinement segment!
                                     let pStart = outSt.passes
                                     if outSt.segments.isEmpty || (pStart % 3) != 2 {
-                                        outSt.segments.append(CodewordSegment())
+                                        try appendEmptySegment(&outSt.segments)
                                     }
                                 }
                             } else {
                                 let lastTerm = outSt.passes == 0 || compEbcotStyle.passTerminates(outSt.passes - 1)
                                 if lastTerm || outSt.segments.isEmpty {
-                                    outSt.segments.append(CodewordSegment())
+                                    try appendEmptySegment(&outSt.segments)
                                 }
                             }
-                            outSt.segments[outSt.segments.count - 1].data.append(contentsOf: bytes[cursor..<(cursor + length)])
+                            if length > 0 {
+                                let priorCount = outSt.segments[outSt.segments.count - 1].data.count
+                                let newCount = try jp3dCheckedAdd(priorCount, length, label: "3D segment buffer workspace")
+                                // A retained allowance of three payload lengths
+                                // covers the old and doubled replacement capacity.
+                                // Two heap headers cover that growth overlap too.
+                                let priorAllowance = priorCount == 0 ? 0 : max(8, priorCount)
+                                let addedAllowance = max(8, newCount) - priorAllowance
+                                let segHeapBytes = try jp3dCheckedAdd(priorCount == 0 ? 64 : 0,
+                                    try jp3dCheckedMul(3, addedAllowance, label: "3D segment growth overlap"))
+                                try admitWorkspaceBytes?(segHeapBytes)
+                                StorageTelemetry.recordStage("jp3d-segment-buffer-append", bytes: newCount)
+                                outSt.segments[outSt.segments.count - 1].data.append(
+                                    contentsOf: data[(dataBase + cursor)..<(dataBase + cursor + length)]
+                                )
+                            }
                             outSt.segments[outSt.segments.count - 1].passes += chunk
                             outSt.passes += chunk
                         }
@@ -3335,16 +3683,22 @@ package enum JP3DTier2Coder {
                         outHasHTCleanup[c][r][p][entry.band][entry.block] = outSeenCleanup
                     }
                 }
-                indexedPackets.append(JP3DIndexedPacket(address: addr, byteRange: packetStart..<cursor))
+                if recordPacketRanges {
+                    try admitWorkspaceBytes?(try jp3dCheckedAdd(indexedPackets.isEmpty ? 64 : 0,
+                        try jp3dCheckedMul(3, MemoryLayout<JP3DIndexedPacket>.stride)))
+                    indexedPackets.append(JP3DIndexedPacket(address: addr, byteRange: packetStart..<cursor))
+                }
+                visitedPacketCount += 1
             } catch {
                 if error is CancellationError { throw error }
                 if let ce = error as? CodecError, ce.category == .resourceLimitExceeded { throw ce }
                 if tolerateTruncation {
                     wasTruncated = true
-                    break
+                    return false
                 }
                 throw error
             }
+            return true
         }
 
         if !wasTruncated && maxQualityLayers == nil && maxResolutionIndex == nil && cursor < end {
@@ -3384,6 +3738,7 @@ package enum JP3DNormativeTileCodec {
         htConfiguration: JP3DHTJ2KConfiguration? = nil,
         targetBitrateBPP: Float? = nil,
         useAccelerated: Bool = false,
+        entropyBudget: EntropyOutputBudget? = nil,
         remainingOutputLimit: (() -> Int)? = nil,
         admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
@@ -3416,6 +3771,19 @@ package enum JP3DNormativeTileCodec {
 
         var allEncodings: [[[[[JP3DTier2Coder.BlockEncodingEntry]]]]] = []
         allEncodings.reserveCapacity(compCount)
+        var totalRetainedCompressedBytes = 0
+        var activeBodyOverlapBytes = 0
+        var succeeded = false
+        defer {
+            if !succeeded {
+                if activeBodyOverlapBytes > 0 {
+                    entropyBudget?.release(activeBodyOverlapBytes, countsTowardCompressedOutput: false)
+                }
+                if totalRetainedCompressedBytes > 0 {
+                    entropyBudget?.release(totalRetainedCompressedBytes, countsTowardCompressedOutput: true)
+                }
+            }
+        }
 
         if allReversible {
             // 1. Level-shift unsigned components by -2^(B_c - 1) in Int64.
@@ -3485,7 +3853,7 @@ package enum JP3DNormativeTileCodec {
                 let compIsHT = (compCOD.codeBlockStyle & 0x40) != 0
                 let compIsMixed = (compCOD.codeBlockStyle & 0xC0) == 0xC0
                 let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
-                let (compEnc, blkSIMD) = try encodeWaveletSubbands(
+                let (compEnc, compBytes, blkSIMD) = try encodeWaveletSubbands(
                     waveletBuffer: planes[c],
                     tileW: tileW, tileWH: tileWH,
                     geometry: geometries[c],
@@ -3500,10 +3868,12 @@ package enum JP3DNormativeTileCodec {
                     ebcotStyle: compStyle,
                     maxPassesLimit: nil,
                     useAccelerated: useAccelerated,
+                    entropyBudget: entropyBudget,
                     remainingOutputLimit: remainingOutputLimit,
                     admitEncodedBytes: admitEncodedBytes,
                     cancellation: cancellation
                 )
+                totalRetainedCompressedBytes += compBytes
                 if blkSIMD { usedSIMD = true }
                 allEncodings.append(compEnc)
             }
@@ -3602,7 +3972,7 @@ package enum JP3DNormativeTileCodec {
                 let compIsHT = (compCOD.codeBlockStyle & 0x40) != 0
                 let compIsMixed = (compCOD.codeBlockStyle & 0xC0) == 0xC0
                 let compStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
-                let (compEnc, blkSIMD) = try encodeWaveletSubbands(
+                let (compEnc, compBytes, blkSIMD) = try encodeWaveletSubbands(
                     waveletBuffer: qPlane,
                     tileW: tileW, tileWH: tileWH,
                     geometry: geom,
@@ -3617,28 +3987,51 @@ package enum JP3DNormativeTileCodec {
                     ebcotStyle: compStyle,
                     maxPassesLimit: nil,
                     useAccelerated: useAccelerated,
+                    entropyBudget: entropyBudget,
                     remainingOutputLimit: remainingOutputLimit,
                     admitEncodedBytes: admitEncodedBytes,
                     cancellation: cancellation
                 )
+                totalRetainedCompressedBytes += compBytes
                 if blkSIMD { usedSIMD = true }
                 allEncodings.append(compEnc)
             }
         }
 
-        // If targetBitrateBPP is specified and produced bytes exceed budget, trim trailing coding passes proportionally.
-        var encodedPackets = try JP3DTier2Coder.encodePackets(
+        let tier1RetainedBytes = totalRetainedCompressedBytes
+        var (firstPackets, firstBodyOverlap) = try JP3DTier2Coder.encodePacketsWithOverlap(
             geometries: geometries,
             cod: cod,
             componentCODs: cods,
             encodings: allEncodings,
+            budget: entropyBudget,
             admitEncodedBytes: admitEncodedBytes,
             cancellation: cancellation
         )
+        let firstHeaderBytes = max(0, firstPackets.count - firstBodyOverlap)
+        if entropyBudget != nil {
+            totalRetainedCompressedBytes += firstHeaderBytes
+            activeBodyOverlapBytes = firstBodyOverlap
+        }
+        var encodedPackets = firstPackets
+        firstPackets = Data()
+
+        // If targetBitrateBPP is specified and produced bytes exceed budget, trim trailing coding passes proportionally.
         let anyHT = cods.contains { ($0.codeBlockStyle & 0x40) != 0 }
+        var usedReencoded = false
+        var reencodedBodyOverlap = 0
         if let bpp = targetBitrateBPP, bpp > 0, !anyHT {
             let maxBytes = max(32, Int(ceil(Double(bpp) * Double(voxelCount * compCount) / 8.0)))
             if encodedPackets.count > maxBytes {
+                var trimScratchBytes = tier1RetainedBytes
+                for c in geometries.indices {
+                    let footprint = try JP3DGeometryBuilder.preflightTileComponentGeometry(
+                        x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1,
+                        cod: cods[c], includeEncodeState: true)
+                    trimScratchBytes = try jp3dCheckedAdd(trimScratchBytes, footprint.encodeStateBytes)
+                }
+                try entropyBudget?.reserve(trimScratchBytes, countsTowardCompressedOutput: false, site: "jp3d-rate-control-copy")
+                defer { entropyBudget?.release(trimScratchBytes, countsTowardCompressedOutput: false, site: "jp3d-rate-control-copy") }
                 var trimmed = allEncodings
                 let keepRatio = max(0.15, Double(maxBytes) / Double(encodedPackets.count))
                 for c in 0..<trimmed.count {
@@ -3669,20 +4062,64 @@ package enum JP3DNormativeTileCodec {
                         }
                     }
                 }
-                let reencoded = try JP3DTier2Coder.encodePackets(
+                let (reencoded, reOverlap) = try JP3DTier2Coder.encodePacketsWithOverlap(
                     geometries: geometries,
                     cod: cod,
                     componentCODs: cods,
                     encodings: trimmed,
+                    budget: entropyBudget,
                     admitEncodedBytes: nil,
                     cancellation: cancellation
                 )
+                let reHeaderBytes = max(0, reencoded.count - reOverlap)
+                if entropyBudget != nil {
+                    totalRetainedCompressedBytes += reHeaderBytes
+                    activeBodyOverlapBytes += reOverlap
+                }
+                trimmed.removeAll(keepingCapacity: false)
                 if reencoded.count <= encodedPackets.count {
                     encodedPackets = reencoded
+                    usedReencoded = true
+                    reencodedBodyOverlap = reOverlap
+                    if entropyBudget != nil {
+                        if firstHeaderBytes > 0 {
+                            entropyBudget?.release(firstHeaderBytes, countsTowardCompressedOutput: true)
+                            totalRetainedCompressedBytes -= firstHeaderBytes
+                        }
+                        if firstBodyOverlap > 0 {
+                            entropyBudget?.release(firstBodyOverlap, countsTowardCompressedOutput: false)
+                            activeBodyOverlapBytes -= firstBodyOverlap
+                        }
+                    }
+                } else if entropyBudget != nil {
+                    if reHeaderBytes > 0 {
+                        entropyBudget?.release(reHeaderBytes, countsTowardCompressedOutput: true)
+                        totalRetainedCompressedBytes -= reHeaderBytes
+                    }
+                    if reOverlap > 0 {
+                        entropyBudget?.release(reOverlap, countsTowardCompressedOutput: false)
+                        activeBodyOverlapBytes -= reOverlap
+                    }
                 }
             }
         }
 
+        // Release Tier-1 block encodings BEFORE releasing the Tier-2 duplicate body-copy overlap reservation.
+        allEncodings.removeAll(keepingCapacity: false)
+        if let entropyBudget {
+            if activeBodyOverlapBytes > 0 {
+                entropyBudget.release(activeBodyOverlapBytes, countsTowardCompressedOutput: false)
+                activeBodyOverlapBytes = 0
+            }
+            let keptBodyBytes = usedReencoded ? reencodedBodyOverlap : firstBodyOverlap
+            if tier1RetainedBytes > keptBodyBytes {
+                let excessCompressed = tier1RetainedBytes - keptBodyBytes
+                entropyBudget.release(excessCompressed, countsTowardCompressedOutput: true)
+                totalRetainedCompressedBytes -= excessCompressed
+            }
+        }
+
+        succeeded = true
         return (encodedPackets, usedSIMD)
     }
 
@@ -3701,15 +4138,23 @@ package enum JP3DNormativeTileCodec {
         ebcotStyle: CodeBlockStyle,
         maxPassesLimit: Int?,
         useAccelerated: Bool,
+        entropyBudget: EntropyOutputBudget?,
         remainingOutputLimit: (() -> Int)?,
         admitEncodedBytes: ((Int) throws -> Void)?,
         cancellation: () throws -> Void
-    ) throws -> (encodings: [[[[JP3DTier2Coder.BlockEncodingEntry]]]], usedSIMD: Bool) {
+    ) throws -> (encodings: [[[[JP3DTier2Coder.BlockEncodingEntry]]]], retainedBytes: Int, usedSIMD: Bool) {
         _ = componentCOD
         let layers = max(1, cod.numLayers)
         var usedSIMD = false
         var resList: [[[[JP3DTier2Coder.BlockEncodingEntry]]]] = []
         resList.reserveCapacity(geometry.resolutions.count)
+        var retainedTier1Bytes = 0
+        var succeeded = false
+        defer {
+            if !succeeded && retainedTier1Bytes > 0 {
+                entropyBudget?.release(retainedTier1Bytes, countsTowardCompressedOutput: true)
+            }
+        }
 
         @inline(__always)
         func runHTCleanup(coeffs32: [Int32], width: Int, height: Int, bandShift: Int, maxOut: Int) throws -> [UInt8] {
@@ -3720,7 +4165,8 @@ package enum JP3DNormativeTileCodec {
                     width: width,
                     height: height,
                     bandShift: bandShift,
-                    maximumOutputBytes: maxOut
+                    maximumOutputBytes: maxOut,
+                    budget: entropyBudget
                 )
             }
             return try HTBlockEncoder.encodeCleanup(
@@ -3728,8 +4174,28 @@ package enum JP3DNormativeTileCodec {
                 width: width,
                 height: height,
                 bandShift: bandShift,
-                maximumOutputBytes: maxOut
+                maximumOutputBytes: maxOut,
+                budget: entropyBudget
             )
+        }
+
+        @inline(__always)
+        func concatenateHTSegments(_ segments: [[UInt8]], blockMaxOut: Int) throws -> [UInt8] {
+            let totalLen = segments.reduce(0) { $0 + $1.count }
+            guard totalLen <= blockMaxOut else {
+                throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+            }
+            if segments.count == 1 { return segments[0] }
+            if totalLen > 0, let entropyBudget {
+                try entropyBudget.reserve(totalLen, countsTowardCompressedOutput: false, site: "jp3d-ht-segment-concat")
+                entropyBudget.recordActualAllocation(totalLen, site: "jp3d-ht-segment-concat")
+            }
+            var allBytes: [UInt8] = []
+            allBytes.reserveCapacity(totalLen)
+            for seg in segments where !seg.isEmpty {
+                allBytes.append(contentsOf: seg)
+            }
+            return allBytes
         }
 
         for res in geometry.resolutions {
@@ -3872,53 +4338,69 @@ package enum JP3DNormativeTileCodec {
                             }
 
                             let desiredHTPasses = max(1, htConfiguration?.passCount ?? 1)
+                            var blockReservedBytes = 0
+                            var blockConcatOverlap = 0
+                            var blockSucceeded = false
+                            defer {
+                                if blockConcatOverlap > 0 {
+                                    entropyBudget?.release(blockConcatOverlap, countsTowardCompressedOutput: false)
+                                }
+                                if !blockSucceeded && blockReservedBytes > 0 {
+                                    entropyBudget?.release(blockReservedBytes, countsTowardCompressedOutput: true)
+                                }
+                            }
                             let enc: CodeBlockEncoding
 
                             if desiredHTPasses >= 4 && layers >= 2 && mb >= 2 && maxMag >= 2 {
                                 // MULTIHT (ITU-T T.814 Clauses 7.1–7.6 & Annex B):
                                 // Set 0 (`sSkip = 0`, `p_0 = 1`) in Layer 0 (`HT Cleanup` + `HT SigProp` + `HT MagRef`),
                                 // Set 1 (`sSkip = 1`, `p_1 = 0`) in Layer `layers - 1` (`HT Cleanup` at full precision).
-                                let cup0 = try runHTCleanup(
+                                var cup0 = try runHTCleanup(
                                     coeffs32: coeffs32,
                                     width: blk.width,
                                     height: blk.height,
                                     bandShift: 1,
                                     maxOut: blockMaxOut
                                 )
+                                blockReservedBytes += cup0.count
                                 let remAfterCup0 = max(1, blockMaxOut - cup0.count)
                                 guard blockMaxOut - cup0.count >= 0 else {
                                     throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
                                 }
-                                let ref0 = try HTBlockEncoder.encodeRefinement(
+                                var ref0 = try HTBlockEncoder.encodeRefinement(
                                     coefficients: coeffs64,
                                     width: blk.width,
                                     height: blk.height,
                                     cleanupBandShift: 1,
                                     includeMagRef: true,
                                     causal: ebcotStyle.causal,
-                                    maximumOutputBytes: min(2046, remAfterCup0)
+                                    maximumOutputBytes: min(2046, remAfterCup0),
+                                    budget: entropyBudget
                                 )
+                                blockReservedBytes += ref0.count
                                 guard cup0.count + ref0.count <= blockMaxOut else {
                                     throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
                                 }
                                 let remAfterSet0 = max(1, blockMaxOut - cup0.count - ref0.count)
-                                let cup1 = try runHTCleanup(
+                                var cup1 = try runHTCleanup(
                                     coeffs32: coeffs32,
                                     width: blk.width,
                                     height: blk.height,
                                     bandShift: 0,
                                     maxOut: remAfterSet0
                                 )
-                                var allBytes: [UInt8] = []
-                                allBytes.reserveCapacity(cup0.count + ref0.count + cup1.count)
-                                allBytes.append(contentsOf: cup0)
-                                allBytes.append(contentsOf: ref0)
-                                allBytes.append(contentsOf: cup1)
-                                guard allBytes.count <= blockMaxOut else {
-                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
-                                }
+                                blockReservedBytes += cup1.count
                                 let off0 = cup0.count
                                 let off2 = cup0.count + ref0.count
+                                let allBytes = try concatenateHTSegments([cup0, ref0, cup1], blockMaxOut: blockMaxOut)
+                                blockConcatOverlap = allBytes.count
+                                cup0 = []
+                                ref0 = []
+                                cup1 = []
+                                if blockConcatOverlap > 0 {
+                                    entropyBudget?.release(blockConcatOverlap, countsTowardCompressedOutput: false)
+                                    blockConcatOverlap = 0
+                                }
                                 let off3 = allBytes.count
                                 var layerCounts = [Int](repeating: 0, count: layers)
                                 layerCounts[0] = 3
@@ -3933,38 +4415,43 @@ package enum JP3DNormativeTileCodec {
                                 )
                             } else if (desiredHTPasses == 2 || desiredHTPasses == 3) && mb >= 2 && maxMag >= 2 {
                                 // Single HT set with HT SigProp (+ optional HT MagRef) refinement segment (`Lcup` + `Lref`).
-                                let cup = try runHTCleanup(
+                                var cup = try runHTCleanup(
                                     coeffs32: coeffs32,
                                     width: blk.width,
                                     height: blk.height,
                                     bandShift: 1,
                                     maxOut: blockMaxOut
                                 )
+                                blockReservedBytes += cup.count
                                 guard cup.count <= blockMaxOut else {
                                     throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
                                 }
                                 let includeMagRef = (desiredHTPasses >= 3)
                                 let remForRef = max(0, blockMaxOut - cup.count)
-                                let ref = try HTBlockEncoder.encodeRefinement(
+                                var ref = try HTBlockEncoder.encodeRefinement(
                                     coefficients: coeffs64,
                                     width: blk.width,
                                     height: blk.height,
                                     cleanupBandShift: 1,
                                     includeMagRef: includeMagRef,
                                     causal: ebcotStyle.causal,
-                                    maximumOutputBytes: min(2046, remForRef)
+                                    maximumOutputBytes: min(2046, remForRef),
+                                    budget: entropyBudget
                                 )
-                                var allBytes: [UInt8] = []
-                                allBytes.reserveCapacity(cup.count + ref.count)
-                                allBytes.append(contentsOf: cup)
-                                allBytes.append(contentsOf: ref)
-                                guard allBytes.count <= blockMaxOut else {
-                                    throw CodecError(.resourceLimitExceeded, "Encoded 3D HT code-block exceeds output byte budget.")
+                                blockReservedBytes += ref.count
+                                let cupLen = cup.count
+                                let allBytes = try concatenateHTSegments([cup, ref], blockMaxOut: blockMaxOut)
+                                blockConcatOverlap = allBytes.count
+                                cup = []
+                                ref = []
+                                if blockConcatOverlap > 0 {
+                                    entropyBudget?.release(blockConcatOverlap, countsTowardCompressedOutput: false)
+                                    blockConcatOverlap = 0
                                 }
                                 let totalP = includeMagRef ? 3 : 2
                                 let offsets = includeMagRef
-                                    ? [cup.count, allBytes.count, allBytes.count]
-                                    : [cup.count, allBytes.count]
+                                    ? [cupLen, allBytes.count, allBytes.count]
+                                    : [cupLen, allBytes.count]
                                 var layerCounts = [Int](repeating: 0, count: layers)
                                 if layers == 1 {
                                     layerCounts[0] = totalP
@@ -3988,6 +4475,7 @@ package enum JP3DNormativeTileCodec {
                                     bandShift: 0,
                                     maxOut: blockMaxOut
                                 )
+                                blockReservedBytes += coded.count
                                 var layerCounts = [Int](repeating: 0, count: layers)
                                 if !coded.isEmpty {
                                     layerCounts[0] = 1
@@ -3999,7 +4487,11 @@ package enum JP3DNormativeTileCodec {
                                     layerPassCounts: layerCounts
                                 )
                             }
-                            try admitEncodedBytes?(enc.data.count)
+                            if entropyBudget == nil {
+                                try admitEncodedBytes?(enc.data.count)
+                            }
+                            blockSucceeded = true
+                            retainedTier1Bytes += enc.data.count
                             if !enc.data.isEmpty {
                                 StorageTelemetry.recordStage("jp3d-tier1-block-output", bytes: enc.data.count)
                             }
@@ -4015,9 +4507,13 @@ package enum JP3DNormativeTileCodec {
                                 style: ebcotStyle,
                                 maxPasses: maxPassesLimit,
                                 qualityLayers: layers,
-                                maximumOutputBytes: blockMaxOut
+                                maximumOutputBytes: blockMaxOut,
+                                budget: entropyBudget
                             )
-                            try admitEncodedBytes?(enc.data.count)
+                            if entropyBudget == nil {
+                                try admitEncodedBytes?(enc.data.count)
+                            }
+                            retainedTier1Bytes += enc.data.count
                             if !enc.data.isEmpty {
                                 StorageTelemetry.recordStage("jp3d-tier1-block-output", bytes: enc.data.count)
                             }
@@ -4030,7 +4526,8 @@ package enum JP3DNormativeTileCodec {
             }
             resList.append(prcList)
         }
-        return (resList, usedSIMD)
+        succeeded = true
+        return (resList, retainedTier1Bytes, usedSIMD)
     }
 
     /// Decodes a normative ITU-T T.809 (or reconciled HT-in-JP3D) tile-part bitstream into
@@ -4047,6 +4544,7 @@ package enum JP3DNormativeTileCodec {
         componentQCDs: [JP3DQuantizationParameters]? = nil,
         roiShifts: [Int] = [],
         allowMultiHT: Bool = true,
+        disablePart1DCShiftAndClamp: Bool = false,
         x0: Int, x1: Int,
         y0: Int, y1: Int,
         z0: Int, z1: Int,
@@ -4054,6 +4552,8 @@ package enum JP3DNormativeTileCodec {
         resolutionLevel: Int = 0,
         tolerateTruncation: Bool = false,
         useAccelerated: Bool = false,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil,
+        beforeTier1Allocation: (() throws -> Void)? = nil,
         cancellation: () throws -> Void
     ) throws -> (components: [[Int64]], outWidth: Int, outHeight: Int, outDepth: Int, wasTruncated: Bool, usedAccelerated: Bool) {
         let compCount = siz.componentCount
@@ -4073,7 +4573,6 @@ package enum JP3DNormativeTileCodec {
         let voxelCount = tileWH * tileD
         var usedSIMD = false
 
-        let bytes = [UInt8](tileData)
         // Only apply a uniform Tier-2 resolution filter when every component has `levelsZ == 0` and identical `maxLevels`.
         let minXYLevels = cods.map { min($0.levelsX, $0.levelsY) }.min() ?? 0
         let allZZero = cods.allSatisfy { $0.levelsZ == 0 }
@@ -4081,17 +4580,19 @@ package enum JP3DNormativeTileCodec {
         let uniformSkip = min(max(0, resolutionLevel), minXYLevels)
         let maxResFilter: Int? = (allZZero && allSameNL && uniformSkip > 0) ? (geometries[0].maxLevels - uniformSkip) : nil
 
-        let decodedPackets = try JP3DTier2Coder.decodePackets(
+        var (contributions, _, packetWasTruncated) = try JP3DTier2Coder.decodePackets(
             geometries: geometries,
             cod: cod,
             componentCODs: cods,
-            bytes: bytes,
+            data: tileData,
             maxQualityLayers: maxQualityLayers,
             maxResolutionIndex: maxResFilter,
             tolerateTruncation: tolerateTruncation,
+            recordPacketRanges: false,
+            admitWorkspaceBytes: admitWorkspaceBytes,
             cancellation: cancellation
         )
-        let contributions = decodedPackets.contributions
+        try beforeTier1Allocation?()
         let useMCT = cod.multipleComponentTransform == 1 && compCount >= 3
 
         // Decode Tier-1 code-blocks into integer wavelet sub-band buffers `[Int64]`.
@@ -4103,7 +4604,7 @@ package enum JP3DNormativeTileCodec {
             let compCOD = cods[c]
             let compQCD = qcds[c]
             let compReversible = compCOD.isLossless && compQCD.isReversible
-            let useMidpoint = !compReversible && (maxQualityLayers != nil || decodedPackets.wasTruncated)
+            let useMidpoint = !compReversible && (maxQualityLayers != nil || packetWasTruncated)
             let ebcotStyle = CodeBlockStyle(bits: compCOD.codeBlockStyle & ~0xC0)
 
             var wBuf = [Int64](repeating: 0, count: voxelCount)
@@ -4187,8 +4688,10 @@ package enum JP3DNormativeTileCodec {
                     }
                 }
             }
+            contributions[c] = []
             intSubbandPlanes.append(wBuf)
         }
+        contributions.removeAll(keepingCapacity: false)
 
         let outW = jp3dDownsampleDimension(tileW, resolutionLevel: resolutionLevel)
         let outH = jp3dDownsampleDimension(tileH, resolutionLevel: resolutionLevel)
@@ -4271,11 +4774,16 @@ package enum JP3DNormativeTileCodec {
                 let extraReduce = compDwtDims[c].extraReduce
                 let compDepth = siz.bitDepth(forComponent: c)
                 let compSigned = siz.isSigned(forComponent: c)
-                let shift: Int64 = compSigned ? 0 : (Int64(1) << Int64(compDepth - 1))
-                let minVal: Int64 = compSigned ? -(Int64(1) << Int64(compDepth - 1)) : 0
-                let maxVal: Int64 = compSigned
-                    ? ((Int64(1) << Int64(compDepth - 1)) - 1)
-                    : ((Int64(1) << Int64(compDepth)) - 1)
+                // ITU-T T.801 Annex J disables the Part 1 DC level shift and per-wire-component clamp when MCO applies.
+                let shift: Int64 = (disablePart1DCShiftAndClamp || compSigned) ? 0 : (Int64(1) << Int64(compDepth - 1))
+                let minVal: Int64 = disablePart1DCShiftAndClamp
+                    ? (Int64.min / 2)
+                    : (compSigned ? -(Int64(1) << Int64(compDepth - 1)) : 0)
+                let maxVal: Int64 = disablePart1DCShiftAndClamp
+                    ? (Int64.max / 2)
+                    : (compSigned
+                        ? ((Int64(1) << Int64(compDepth - 1)) - 1)
+                        : ((Int64(1) << Int64(compDepth)) - 1))
 
                 var outPlane = [Int64](repeating: 0, count: outW * outH * outD)
                 let strideStep = extraReduce >= 30 ? max(1, max(dwtW, dwtH)) : (1 << extraReduce)
@@ -4448,11 +4956,15 @@ package enum JP3DNormativeTileCodec {
                 let extraReduce = compDwtDims[c].extraReduce
                 let compDepth = siz.bitDepth(forComponent: c)
                 let compSigned = siz.isSigned(forComponent: c)
-                let shift = compSigned ? 0.0 : Double(Int64(1) << Int64(compDepth - 1))
-                let minVal: Int64 = compSigned ? -(Int64(1) << Int64(compDepth - 1)) : 0
-                let maxVal: Int64 = compSigned
-                    ? ((Int64(1) << Int64(compDepth - 1)) - 1)
-                    : ((Int64(1) << Int64(compDepth)) - 1)
+                let shift = (disablePart1DCShiftAndClamp || compSigned) ? 0.0 : Double(Int64(1) << Int64(compDepth - 1))
+                let minVal: Int64 = disablePart1DCShiftAndClamp
+                    ? (Int64.min / 2)
+                    : (compSigned ? -(Int64(1) << Int64(compDepth - 1)) : 0)
+                let maxVal: Int64 = disablePart1DCShiftAndClamp
+                    ? (Int64.max / 2)
+                    : (compSigned
+                        ? ((Int64(1) << Int64(compDepth - 1)) - 1)
+                        : ((Int64(1) << Int64(compDepth)) - 1))
                 var outPlane = [Int64](repeating: 0, count: outW * outH * outD)
                 let strideStep = extraReduce >= 30 ? max(1, max(dwtW, dwtH)) : (1 << extraReduce)
                 for z in 0..<outD {
@@ -4470,7 +4982,7 @@ package enum JP3DNormativeTileCodec {
             }
         }
 
-        return (reconstructedComponents, outW, outH, outD, decodedPackets.wasTruncated, usedSIMD)
+        return (reconstructedComponents, outW, outH, outD, packetWasTruncated, usedSIMD)
     }
 
     /// Transcodes a normative 3D tile directly in the **wavelet sub-band domain** (`EBCOT <-> HTJ2K`)
@@ -4492,6 +5004,8 @@ package enum JP3DNormativeTileCodec {
         y0: Int, y1: Int,
         z0: Int, z1: Int,
         useAccelerated: Bool = false,
+        admitWorkspaceBytes: ((Int) throws -> Void)? = nil,
+        entropyBudget: EntropyOutputBudget? = nil,
         remainingOutputLimit: (() -> Int)? = nil,
         admitEncodedBytes: ((Int) throws -> Void)? = nil,
         cancellation: () throws -> Void
@@ -4521,19 +5035,33 @@ package enum JP3DNormativeTileCodec {
         let voxelCount = try jp3dCheckedMul(tileWH, tileD, label: "3D transcode tile volume")
         let planeWorkspaceBytes = try jp3dCheckedMul(voxelCount, MemoryLayout<Int64>.stride, label: "3D transcode wavelet workspace")
 
-        let decodedPackets = try JP3DTier2Coder.decodePackets(
+        var (contributions, _, _) = try JP3DTier2Coder.decodePackets(
             geometries: srcGeoms,
             cod: sourceCOD,
             componentCODs: srcCODs,
-            bytes: [UInt8](tileData),
+            data: tileData,
+            recordPacketRanges: false,
+            admitWorkspaceBytes: admitWorkspaceBytes,
             cancellation: cancellation
         )
-        let contributions = decodedPackets.contributions
         let useMCT = sourceCOD.multipleComponentTransform == 1 && compCount >= 3
         var usedSIMD = false
 
         var targetEncodings: [[[[[JP3DTier2Coder.BlockEncodingEntry]]]]] = []
         targetEncodings.reserveCapacity(compCount)
+        var totalRetainedCompressedBytes = 0
+        var activeBodyOverlapBytes = 0
+        var succeeded = false
+        defer {
+            if !succeeded {
+                if activeBodyOverlapBytes > 0 {
+                    entropyBudget?.release(activeBodyOverlapBytes, countsTowardCompressedOutput: false)
+                }
+                if totalRetainedCompressedBytes > 0 {
+                    entropyBudget?.release(totalRetainedCompressedBytes, countsTowardCompressedOutput: true)
+                }
+            }
+        }
 
         for c in 0..<compCount {
             let srcGeom = srcGeoms[c]
@@ -4610,8 +5138,9 @@ package enum JP3DNormativeTileCodec {
                     }
                 }
             }
+            contributions[c] = []
 
-            let (reencodedComp, blkSIMD) = try encodeWaveletSubbands(
+            let (reencodedComp, compBytes, blkSIMD) = try encodeWaveletSubbands(
                 waveletBuffer: wBuf,
                 tileW: tileW, tileWH: tileWH,
                 geometry: dstGeom,
@@ -4626,23 +5155,45 @@ package enum JP3DNormativeTileCodec {
                 ebcotStyle: dstEbcotStyle,
                 maxPassesLimit: nil,
                 useAccelerated: useAccelerated,
+                entropyBudget: entropyBudget,
                 remainingOutputLimit: remainingOutputLimit,
                 admitEncodedBytes: admitEncodedBytes,
                 cancellation: cancellation
             )
+            totalRetainedCompressedBytes += compBytes
             if blkSIMD { usedSIMD = true }
             targetEncodings.append(reencodedComp)
         }
 
-        let outTile = try JP3DTier2Coder.encodePackets(
+        let tier1RetainedBytes = totalRetainedCompressedBytes
+        let (outTile, bodyOverlap) = try JP3DTier2Coder.encodePacketsWithOverlap(
             geometries: dstGeoms,
             cod: targetCOD,
             componentCODs: dstCODs,
             encodings: targetEncodings,
+            budget: entropyBudget,
             admitEncodedBytes: admitEncodedBytes,
             cancellation: cancellation
         )
+        let headerBytes = max(0, outTile.count - bodyOverlap)
+        if entropyBudget != nil {
+            totalRetainedCompressedBytes += headerBytes
+            activeBodyOverlapBytes = bodyOverlap
+        }
+        targetEncodings.removeAll(keepingCapacity: false)
+        if let entropyBudget {
+            if activeBodyOverlapBytes > 0 {
+                entropyBudget.release(activeBodyOverlapBytes, countsTowardCompressedOutput: false)
+                activeBodyOverlapBytes = 0
+            }
+            if tier1RetainedBytes > bodyOverlap {
+                let excess = tier1RetainedBytes - bodyOverlap
+                entropyBudget.release(excess, countsTowardCompressedOutput: true)
+                totalRetainedCompressedBytes -= excess
+            }
+        }
         let peakWS = try jp3dCheckedAdd(planeWorkspaceBytes, outTile.count, label: "3D transcode tile peak")
+        succeeded = true
         return (outTile, peakWS, usedSIMD)
     }
 }

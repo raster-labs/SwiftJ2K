@@ -544,17 +544,50 @@ package enum JPIPCodestreamIndexer {
         mainHeader: Data,
         tileHeaders: [Int: Data],
         precinctBins: [Int: Data],
-        limits: ResourceLimits = .default
+        limits: ResourceLimits = .default,
+        workspaceObserver: (@Sendable (Int) -> Void)? = nil
     ) throws -> Data {
-        // Synthesize a minimal parseable header-only codestream so CodestreamSyntax parses
-        // main header + all tile-part header overrides (COD/COC/QCD/QCC/POC/RGN).
-        var probe = [UInt8](mainHeader)
-        // Determine tile count by appending one minimal empty tile-part at tile 0 plus any
-        // tiles present in `tileHeaders`.
-        let declaredTileHeaderIDs = Set(tileHeaders.keys).union([0]).sorted()
-        for tid in declaredTileHeaderIDs {
-            let th = [UInt8](tileHeaders[tid] ?? Data())
-            let psot = UInt32(14 + th.count)
+        // The caller accounts for its retained data-bins. Admit every additional
+        // allocation here, including the probe while the parser owns its metadata.
+        let fixedScratch = 4096
+        var headerBytes = 0
+        for (tid, header) in tileHeaders {
+            guard (0...65_535).contains(tid) else {
+                throw CodecError(.malformedInput, "Tile-header data-bin identifier is not representable.")
+            }
+            headerBytes = try checkedAdd(headerBytes, header.count)
+            guard try checkedAdd(14, header.count) <= Int(UInt32.max) else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled tile-part header is too large.")
+            }
+        }
+        var precinctBytes = 0
+        var largestPrecinctBin = 0
+        for (id, bin) in precinctBins {
+            guard id >= 0 else { throw CodecError(.malformedInput, "Negative precinct data-bin identifier.") }
+            precinctBytes = try checkedAdd(precinctBytes, bin.count)
+            largestPrecinctBin = max(largestPrecinctBin, bin.count)
+        }
+        let inputBytes = try checkedAdd(mainHeader.count, try checkedAdd(headerBytes, precinctBytes))
+        guard inputBytes <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Reassembly data-bins exceed maximumCompressedBytes.")
+        }
+        let probeTiles = try checkedAdd(tileHeaders.count, tileHeaders[0] == nil ? 1 : 0)
+        let probeBytes = try checkedAdd(mainHeader.count,
+            try checkedAdd(headerBytes, try checkedAdd(try checkedMultiply(probeTiles, 14), 2)))
+        let probeAllocation = try checkedAdd(probeBytes, fixedScratch)
+        guard probeBytes <= limits.maximumCompressedBytes,
+              probeAllocation <= limits.maximumWorkspaceBytes,
+              probeAllocation <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Reassembly header probe exceeds the live-storage budget.")
+        }
+        var peakWorkspace = probeAllocation
+        workspaceObserver?(peakWorkspace)
+        StorageTelemetry.recordStage("jpip-reassembly-probe", bytes: probeAllocation)
+        var probe: [UInt8] = []
+        probe.reserveCapacity(probeBytes)
+        probe.append(contentsOf: mainHeader)
+        func appendProbeTile(_ tid: Int, _ header: Data) {
+            let psot = UInt32(14 + header.count)
             probe.append(contentsOf: [
                 0xFF, 0x90, 0x00, 0x0A,
                 UInt8((tid >> 8) & 0xFF), UInt8(tid & 0xFF),
@@ -562,20 +595,108 @@ package enum JPIPCodestreamIndexer {
                 UInt8((psot >> 8) & 0xFF), UInt8(psot & 0xFF),
                 0x00, 0x01
             ])
-            probe.append(contentsOf: th)
+            probe.append(contentsOf: header)
             probe.append(contentsOf: [0xFF, 0x93])
         }
+        appendProbeTile(0, tileHeaders[0] ?? Data())
+        for (tid, header) in tileHeaders where tid != 0 { appendProbeTile(tid, header) }
         probe.append(contentsOf: [0xFF, 0xD9])
 
-        let parsed = try CodestreamSyntax.parse(probe, limits: limits, metadataPolicy: .preserve)
+        // parse already charges its input against memory; reserve the fixed
+        // scratch there, and the complete probe storage against parser workspace.
+        let parserLimits = try limits.reserving(workspaceBytes: probeAllocation, memoryBytes: fixedScratch)
+        let parsed = try CodestreamSyntax.parse(probe, limits: parserLimits, metadataPolicy: .preserve)
+        // Parser admission has bounded the probe plus every retained/transient
+        // structure. The final retained tally plus one whole-probe-sized marker
+        // scratch is a conservative upper bound, capped by that admitted limit.
+        peakWorkspace = max(peakWorkspace, min(limits.maximumWorkspaceBytes,
+            min(limits.maximumMemoryBytes, try checkedAdd(probeAllocation,
+                try checkedAdd(parsed.retainedMetadataBytes, probeAllocation)))))
+        workspaceObserver?(peakWorkspace)
+        probe = []
         let size = parsed.size
         let tilesWide = Wavelet53.ceilDiv(size.width - size.tileOriginX, size.tileWidth)
         let tilesHigh = Wavelet53.ceilDiv(size.height - size.tileOriginY, size.tileHeight)
-        let totalTiles = tilesWide * tilesHigh
+        let totalTiles = try checkedMultiply(tilesWide, tilesHigh)
         let componentCount = size.components.count
+        guard totalTiles > 0, totalTiles <= 65_536, tileHeaders.keys.allSatisfy({ $0 < totalTiles }) else {
+            throw CodecError(.malformedInput, "Tile-header data-bin lies outside the image tile grid.")
+        }
 
+        func admit(_ bytes: Int) throws {
+            guard bytes <= limits.maximumWorkspaceBytes, bytes <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "JPIP reconstruction exceeds the live-storage budget.")
+            }
+        }
+        // The scalar geometry preflight itself has only small fixed band records.
+        try admit(try checkedAdd(parsed.retainedMetadataBytes, fixedScratch))
+        var maximumTileScratch = 0
+        var outputBound = try checkedAdd(mainHeader.count,
+            try checkedAdd(headerBytes, try checkedAdd(try checkedMultiply(totalTiles, 14), 2)))
+        for tileIdx in 0..<totalTiles {
+            let tx = tileIdx % tilesWide, ty = tileIdx / tilesWide
+            let tx0 = max(size.tileOriginX + tx * size.tileWidth, size.originX)
+            let ty0 = max(size.tileOriginY + ty * size.tileHeight, size.originY)
+            let tx1 = min(size.tileOriginX + (tx + 1) * size.tileWidth, size.width)
+            let ty1 = min(size.tileOriginY + (ty + 1) * size.tileHeight, size.height)
+            let cod = parsed.tileOverrides[tileIdx]?.codingStyle ?? parsed.baseCodingStyle
+            var tileGeometry = try checkedMultiply(componentCount,
+                MemoryLayout<TileGeometry>.stride + MemoryLayout<CodingStyleSegment>.stride + 128)
+            var tileDecodeState = 0
+            var tilePrecincts = 0
+            var tileResolutions = 0
+            var positionCount = 0
+            for c in 0..<componentCount {
+                let comp = size.components[c]
+                let (style, _) = parsed.effectiveParameters(tile: tileIdx, component: c)
+                let x0 = Wavelet53.ceilDiv(tx0, comp.horizontalSeparation)
+                let y0 = Wavelet53.ceilDiv(ty0, comp.verticalSeparation)
+                let x1 = Wavelet53.ceilDiv(tx1, comp.horizontalSeparation)
+                let y1 = Wavelet53.ceilDiv(ty1, comp.verticalSeparation)
+                let footprint = try Tier2.preflightTileGeometry(x0: x0, x1: x1, y0: y0, y1: y1, codingStyle: style)
+                tileGeometry = try checkedAdd(tileGeometry, footprint.geometryBytes)
+                tileDecodeState = try checkedAdd(tileDecodeState, footprint.decodeStateBytes)
+                tilePrecincts = try checkedAdd(tilePrecincts, footprint.precinctCount)
+                tileResolutions = try checkedAdd(tileResolutions, footprint.resolutionCount)
+                // Spatial progressions materialise x/y positions. A unit step is
+                // the conservative bound, including differing component grids.
+                positionCount = try checkedAdd(positionCount, try checkedAdd(x1, y1))
+            }
+            let packets = try checkedMultiply(tilePrecincts, cod.layers)
+            let layerStorage = try checkedAdd(try checkedMultiply(packets, MemoryLayout<Data?>.stride + 32),
+                try checkedMultiply(try checkedAdd(tilePrecincts, tileResolutions), 64))
+            // Sequence + de-duplication Set, with old/new capacity during growth;
+            // spatial progressions additionally retain a precinct Set and positions.
+            let sequenceStorage = try checkedAdd(
+                try checkedMultiply(packets, 8 * MemoryLayout<Tier2.ComponentPacketAddress>.stride + 64),
+                try checkedAdd(try checkedMultiply(tilePrecincts, 128), try checkedMultiply(positionCount, 32)))
+            var tileInput = 0
+            for (id, bin) in precinctBins where id % totalTiles == tileIdx {
+                tileInput = try checkedAdd(tileInput, bin.count)
+            }
+            let packetOverhead = 1 + (cod.usesSOP ? 6 : 0) + (cod.usesEPH ? 2 : 0)
+            let tileOutputBound = try checkedAdd(tileInput, try checkedMultiply(packets, packetOverhead))
+            guard try checkedAdd(tileOutputBound, try checkedAdd(tileHeaders[tileIdx]?.count ?? 0, 14)) <= Int(UInt32.max) else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled tile-part exceeds its representable length.")
+            }
+            outputBound = try checkedAdd(outputBound, tileOutputBound)
+            let tileScratch = try checkedAdd(tileGeometry, try checkedAdd(tileDecodeState,
+                try checkedAdd(layerStorage, try checkedAdd(sequenceStorage,
+                    try checkedAdd(tileInput, try checkedMultiply(tileOutputBound, 3))))))
+            maximumTileScratch = max(maximumTileScratch, tileScratch)
+        }
+        // Final output remains live alongside packet slices, raw-bin parsing,
+        // packet order, and the growing tile buffer (old + new capacities).
+        let reconstructionPeak = try checkedAdd(parsed.retainedMetadataBytes,
+            try checkedAdd(fixedScratch, try checkedAdd(largestPrecinctBin,
+                try checkedAdd(outputBound, maximumTileScratch))))
+        try admit(reconstructionPeak)
+        peakWorkspace = max(peakWorkspace, reconstructionPeak)
+        workspaceObserver?(peakWorkspace)
+        StorageTelemetry.recordStage("jpip-reassembly-peak", bytes: reconstructionPeak)
+        StorageTelemetry.recordStage("jpip-reassembly-output", bytes: outputBound)
         var out = Data()
-        out.reserveCapacity(mainHeader.count + precinctBins.values.reduce(0) { $0 + $1.count } + totalTiles * 32 + 2)
+        out.reserveCapacity(outputBound)
         out.append(mainHeader)
 
         for tileIdx in 0..<totalTiles {
@@ -588,7 +709,8 @@ package enum JPIPCodestreamIndexer {
 
             let thData = tileHeaders[tileIdx] ?? Data()
 
-            // Build geometries and coding styles for this tile
+            // All nested geometry, layer arrays and sequence storage were admitted above.
+            StorageTelemetry.recordStage("jpip-reassembly-geometry", bytes: maximumTileScratch)
             var geometries: [TileGeometry] = []
             var codingStyles: [CodingStyleSegment] = []
             geometries.reserveCapacity(componentCount)
@@ -735,6 +857,9 @@ package enum JPIPCodestreamIndexer {
 
             if !anyPrecinctPresentInTile && tileHeaders[tileIdx] == nil {
                 // Omitted tile: emit valid 14-byte empty tile-part (SOT + SOD)
+                guard try checkedAdd(out.count, 16) <= limits.maximumCompressedBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Reassembled codestream exceeds maximumCompressedBytes.")
+                }
                 let psot: UInt32 = 14
                 out.append(contentsOf: [
                     0xFF, 0x90, 0x00, 0x0A,
@@ -753,7 +878,14 @@ package enum JPIPCodestreamIndexer {
                 progressionChanges: poc
             )
 
+            var tileInputBytes = 0
+            for (id, bin) in precinctBins where id % totalTiles == tileIdx {
+                tileInputBytes = try checkedAdd(tileInputBytes, bin.count)
+            }
+            let tileAssemblyBound = try checkedAdd(tileInputBytes,
+                try checkedMultiply(sequence.count, 1 + (baseCOD.usesSOP ? 6 : 0) + (baseCOD.usesEPH ? 2 : 0)))
             var tileBitstream = Data()
+            tileBitstream.reserveCapacity(tileAssemblyBound)
             var sopSeq: UInt16 = 0
             for address in sequence {
                 if let pkt = perPrecinctLayerPackets[address.component][address.resolution][address.precinct][address.layer] {
@@ -788,8 +920,12 @@ package enum JPIPCodestreamIndexer {
                 sopSeq &+= 1
             }
 
-            let totalPartLen = 12 + thData.count + 2 + tileBitstream.count
-            let psot: UInt32 = totalPartLen <= Int(UInt32.max) ? UInt32(totalPartLen) : 0
+            let totalPartLen = try checkedAdd(14, try checkedAdd(thData.count, tileBitstream.count))
+            guard totalPartLen <= Int(UInt32.max),
+                  try checkedAdd(out.count, try checkedAdd(totalPartLen, 2)) <= limits.maximumCompressedBytes else {
+                throw CodecError(.resourceLimitExceeded, "Reassembled codestream exceeds its compressed-output limit.")
+            }
+            let psot = UInt32(totalPartLen)
             out.append(contentsOf: [
                 0xFF, 0x90, 0x00, 0x0A,
                 UInt8((tileIdx >> 8) & 0xFF), UInt8(tileIdx & 0xFF),

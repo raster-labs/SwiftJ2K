@@ -332,6 +332,7 @@ public actor JP3DDecoder {
         let roiShifts: [Int]
         let tileOverrides: [Int: JP3DTileHeaderOverrides]
         let allowsMultiHTSets: Bool
+        let hasPart2BitSplit: Bool
         let tolerateTruncation: Bool
 
         init(parsed: JP3DParsedCodestream, tolerateTruncation: Bool) {
@@ -345,6 +346,7 @@ public actor JP3DDecoder {
             self.roiShifts = parsed.roiShifts
             self.tileOverrides = parsed.tileOverrides
             self.allowsMultiHTSets = parsed.allowsMultiHTSets
+            self.hasPart2BitSplit = (parsed.part2BitSplit != nil)
             self.tolerateTruncation = tolerateTruncation
         }
 
@@ -948,38 +950,27 @@ public actor JP3DDecoder {
         }
         let volumeComponents: [J2KVolumeComponent]
         if useExactIntegerPath {
-            var assembledBuffers = intComponentBuffers
-            var assembledBitDepths = siz.componentBitDepths
-            var assembledSigned = siz.componentSigned
             if let split = codestream.part2BitSplit,
-               assembledBuffers.count == split.logicalComponentCount * 2 {
-                let shift = JP3DPart2BitSplitDescriptor.defaultSplitLowBits
-                var merged: [[Int64]] = []
-                merged.reserveCapacity(split.logicalComponentCount)
-                for c in 0..<split.logicalComponentCount {
-                    let lo = assembledBuffers[2 * c]
-                    let hi = assembledBuffers[2 * c + 1]
-                    let cnt = min(lo.count, hi.count)
-                    var plane = [Int64](repeating: 0, count: cnt)
-                    for idx in 0..<cnt {
-                        plane[idx] = lo[idx] &+ (hi[idx] << shift)
-                    }
-                    merged.append(plane)
-                }
-                assembledBuffers = merged
-                assembledBitDepths = split.logicalComponentBitDepths
-                assembledSigned = split.logicalComponentSigned
+               intComponentBuffers.count == split.logicalComponentCount * 2 {
+                volumeComponents = jp3dAssemblePart2BitSplitVolumeComponentsInteger(
+                    wireBuffers: &intComponentBuffers,
+                    split: split,
+                    width: outWidth,
+                    height: outHeight,
+                    depth: outDepth
+                )
+            } else {
+                volumeComponents = jp3dAssembleVolumeComponentsInteger(
+                    buffers: intComponentBuffers,
+                    width: outWidth,
+                    height: outHeight,
+                    depth: outDepth,
+                    bitDepth: siz.componentBitDepths.first ?? siz.bitDepth,
+                    signed: siz.componentSigned.first ?? siz.signed,
+                    componentBitDepths: siz.componentBitDepths,
+                    componentSigned: siz.componentSigned
+                )
             }
-            volumeComponents = jp3dAssembleVolumeComponentsInteger(
-                buffers: assembledBuffers,
-                width: outWidth,
-                height: outHeight,
-                depth: outDepth,
-                bitDepth: assembledBitDepths.first ?? siz.bitDepth,
-                signed: assembledSigned.first ?? siz.signed,
-                componentBitDepths: assembledBitDepths,
-                componentSigned: assembledSigned
-            )
         } else {
             volumeComponents = assembleVolumeComponents(
                 buffers: floatComponentBuffers,
@@ -1158,6 +1149,8 @@ public actor JP3DDecoder {
             }
             workspace?.record(totalWorkerTileWs)
 
+            let singlePlaneSetBytes = tileBuffers / 2
+            var extraPacketWs = 0
             let decoded = try JP3DNormativeTileCodec.decodeTile(
                 tileData: data,
                 siz: ctx.siz,
@@ -1167,6 +1160,7 @@ public actor JP3DDecoder {
                 componentQCDs: compQCDs,
                 roiShifts: compROIs,
                 allowMultiHT: ctx.allowsMultiHTSets,
+                disablePart1DCShiftAndClamp: ctx.hasPart2BitSplit,
                 x0: tile.region.x.lowerBound,
                 x1: tile.region.x.upperBound,
                 y0: tile.region.y.lowerBound,
@@ -1177,6 +1171,41 @@ public actor JP3DDecoder {
                 resolutionLevel: 0,
                 tolerateTruncation: ctx.tolerateTruncation,
                 useAccelerated: useAccel,
+                admitWorkspaceBytes: { delta in
+                    guard delta > 0 else { return }
+                    let (nextExtra, ov) = extraPacketWs.addingReportingOverflow(delta)
+                    guard !ov else {
+                        throw CodecError(.resourceLimitExceeded, "Decoded tile packet/segment workspace overflows Int.")
+                    }
+                    let livePacketWs = try jp3dDecodeAdd(geomTotal, nextExtra)
+                    if let limits {
+                        guard livePacketWs <= limits.maximumWorkspaceBytes,
+                              livePacketWs <= limits.maximumMemoryBytes else {
+                            throw CodecError(
+                                .resourceLimitExceeded,
+                                "Decoded tile packet/segment workspace (\(livePacketWs) B) exceeds worker limits"
+                            )
+                        }
+                    }
+                    extraPacketWs = nextExtra
+                    workspace?.record(max(totalWorkerTileWs, livePacketWs))
+                },
+                beforeTier1Allocation: {
+                    let liveTier1Ws = try jp3dDecodeAdd(
+                        try jp3dDecodeAdd(geomTotal, singlePlaneSetBytes),
+                        extraPacketWs
+                    )
+                    if let limits {
+                        guard liveTier1Ws <= limits.maximumWorkspaceBytes,
+                              liveTier1Ws <= limits.maximumMemoryBytes else {
+                            throw CodecError(
+                                .resourceLimitExceeded,
+                                "Decoded tile Tier-1 + segment workspace (\(liveTier1Ws) B) exceeds worker limits"
+                            )
+                        }
+                    }
+                    workspace?.record(max(totalWorkerTileWs, liveTier1Ws))
+                },
                 cancellation: {
                     if let work {
                         try work.check()
@@ -1479,6 +1508,129 @@ internal func jp3dAssembleVolumeComponentsInteger(
             data: data
         )
     }
+}
+
+@inline(__always)
+internal func jp3dSynthesizePart2Sample(
+    lo: Int64,
+    hi: Int64,
+    coeffLow: Int64,
+    coeffHigh: Int64,
+    minVal: Int64,
+    maxVal: Int64
+) -> Int64 {
+    let (pLo, ov0) = lo.multipliedReportingOverflow(by: coeffLow)
+    let (pHi, ov1) = hi.multipliedReportingOverflow(by: coeffHigh)
+    if !ov0 && !ov1 {
+        let (sum, ov2) = pLo.addingReportingOverflow(pHi)
+        if !ov2 {
+            return max(minVal, min(maxVal, sum))
+        }
+    }
+    let wide = Double(lo) * Double(coeffLow) + Double(hi) * Double(coeffHigh)
+    if wide <= Double(minVal) { return minVal }
+    if wide >= Double(maxVal) { return maxVal }
+    return Int64(wide.rounded())
+}
+
+/// Directly synthesizes Part 2 bit-split wire limbs (`[coeffLow, coeffHigh]`) into output
+/// `J2KVolumeComponent` byte buffers without allocating an intermediate `[[Int64]]` logical plane,
+/// releasing each wire-limb pair as soon as its output component buffer is packed.
+internal func jp3dAssemblePart2BitSplitVolumeComponentsInteger(
+    wireBuffers: inout [[Int64]],
+    split: JP3DPart2BitSplitDescriptor,
+    width: Int,
+    height: Int,
+    depth: Int
+) -> [J2KVolumeComponent] {
+    var components: [J2KVolumeComponent] = []
+    components.reserveCapacity(split.logicalComponentCount)
+    let coeffLo = split.coeffLow
+    let coeffHi = split.coeffHigh
+
+    for c in 0..<split.logicalComponentCount {
+        let compBitDepth = c < split.logicalComponentBitDepths.count ? split.logicalComponentBitDepths[c] : 38
+        let compSigned = c < split.logicalComponentSigned.count ? split.logicalComponentSigned[c] : false
+        let clampedDepth = max(1, min(38, compBitDepth))
+        let bytesPerSample = (clampedDepth + 7) / 8
+        let minVal: Int64 = compSigned ? -(Int64(1) << (clampedDepth - 1)) : 0
+        let maxVal: Int64 = compSigned
+            ? ((Int64(1) << (clampedDepth - 1)) - 1)
+            : ((Int64(1) << clampedDepth) - 1)
+
+        let count = min(wireBuffers[2 * c].count, wireBuffers[2 * c + 1].count)
+        var data = Data(count: count * bytesPerSample)
+        wireBuffers[2 * c].withUnsafeBufferPointer { loBuf in
+            wireBuffers[2 * c + 1].withUnsafeBufferPointer { hiBuf in
+                data.withUnsafeMutableBytes { rawBuf in
+                    guard let base = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                    switch bytesPerSample {
+                    case 1:
+                        for i in 0..<count {
+                            let s = jp3dSynthesizePart2Sample(
+                                lo: loBuf[i], hi: hiBuf[i],
+                                coeffLow: coeffLo, coeffHigh: coeffHi,
+                                minVal: minVal, maxVal: maxVal
+                            )
+                            base[i] = UInt8(truncatingIfNeeded: UInt64(bitPattern: s))
+                        }
+                    case 2:
+                        for i in 0..<count {
+                            let s = jp3dSynthesizePart2Sample(
+                                lo: loBuf[i], hi: hiBuf[i],
+                                coeffLow: coeffLo, coeffHigh: coeffHi,
+                                minVal: minVal, maxVal: maxVal
+                            )
+                            let rawWord = UInt64(bitPattern: s)
+                            base[i * 2] = UInt8(truncatingIfNeeded: rawWord)
+                            base[i * 2 + 1] = UInt8(truncatingIfNeeded: rawWord >> 8)
+                        }
+                    case 4:
+                        for i in 0..<count {
+                            let s = jp3dSynthesizePart2Sample(
+                                lo: loBuf[i], hi: hiBuf[i],
+                                coeffLow: coeffLo, coeffHigh: coeffHi,
+                                minVal: minVal, maxVal: maxVal
+                            )
+                            let rawWord = UInt64(bitPattern: s)
+                            base[i * 4] = UInt8(truncatingIfNeeded: rawWord)
+                            base[i * 4 + 1] = UInt8(truncatingIfNeeded: rawWord >> 8)
+                            base[i * 4 + 2] = UInt8(truncatingIfNeeded: rawWord >> 16)
+                            base[i * 4 + 3] = UInt8(truncatingIfNeeded: rawWord >> 24)
+                        }
+                    default:
+                        for i in 0..<count {
+                            let s = jp3dSynthesizePart2Sample(
+                                lo: loBuf[i], hi: hiBuf[i],
+                                coeffLow: coeffLo, coeffHigh: coeffHi,
+                                minVal: minVal, maxVal: maxVal
+                            )
+                            let rawWord = UInt64(bitPattern: s)
+                            for b in 0..<bytesPerSample {
+                                base[i * bytesPerSample + b] = UInt8(truncatingIfNeeded: rawWord >> (b * 8))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Release wire limb buffers immediately so peak memory never overlaps remaining components.
+        wireBuffers[2 * c] = []
+        wireBuffers[2 * c + 1] = []
+
+        components.append(
+            J2KVolumeComponent(
+                index: c,
+                bitDepth: compBitDepth,
+                signed: compSigned,
+                width: width,
+                height: height,
+                depth: depth,
+                data: data
+            )
+        )
+    }
+    return components
 }
 
 internal func jp3dAssembleVolumeComponentsFloat(

@@ -1,0 +1,49 @@
+SwiftJ2K R3 — independent TSan05 publication and scheduling diagnosis
+Reviewer: /root/independent_jpip_review. Read-only; no native execution or source changes.
+
+Frozen source: work/candidate-snapshot-05. Evidence: work/validation/candidate-full-tsan-05.
+Final native log SHA256, independently recomputed and matched to result.json:
+4a0abcf25798065f203d2469776b5021931659d43e71f766035eeeb76b9d8fd7
+The run finished with exit 1, 292 Swift Testing tests in 36 suites reporting 10 issues after 273.339 seconds, plus one ThreadSanitizer warning. Wrapper duration was 402.639688458 seconds. Source-before and source-after match each other and the complete 1,345-file snapshot05 manifest. This is a failed sanitizer gate.
+
+JPIP-D01 — observed cross-thread connection publication diagnostic; unresolved
+
+native.log:3551–3586 reports an eight-byte read in JPIPTCPConnection.close at JPIPTCPSocket.swift:625, called by JPIPTransport.sendViaHTTP11TCP:372. Its prior write is in JPIPTCPConnection initialisation at JPIPTCPSocket.swift:448, on the dedicated HTTP worker started by executeHTTP11OffPool:428. The allocation stack also points to connect:515.
+
+The exact source matters: line 448 initialises the fdLock NSLock reference; line 625 evaluates that reference to call lock(). The access size is eight bytes. It is not a report of the four-byte fd value being modified without fdLock. That lock protects later fd reads/writes, but cannot by itself establish publication ordering for its own reference.
+
+The worker constructs the connection at connect:515, binds it through the cancellation token at 516, reads the response, and returns the response/connection tuple directly through CheckedContinuation.resume at JPIPTransport.swift:453 (retry path 484). The actor later consumes that newly created owner and closes it when the server requests Connection: close. Token cancellation has its own lock, but the normal caller handoff does not explicitly acquire that token lock before using the returned owner.
+
+The source logically hands a fully initialised object through a checked continuation; no concrete escape of self before constructor completion was found. Therefore the present evidence does not independently distinguish a missing instrumented publication edge/toolchain interaction from a lower-level publication defect. It does establish a real, unsuppressed sanitizer finding in a required @unchecked Sendable boundary. It must not be dismissed as a false positive, conflated with test scheduling, or silenced by an ignore list/unchecked annotation. The existing local ordinary/ASan passes do not close it.
+
+Bounded repair recommendation
+
+Make the finite-worker ownership handoff explicit: create a lock-protected result slot on the calling side before starting the thread; publish the complete Result under that lock; only then signal completion; acquire/take the result on the caller after completion before touching returned owners. A completion-only continuation avoids relying solely on its transferred tuple for the observable publication edge. Use the same small, documented boundary for HTTP response/connection and WS handshake connection results. Preserve cancellation-token binding, error classification, generation/owner checks, deadline signalling, and cleanup of partially acquired sockets. This adds an ordinary synchronisation guarantee rather than suppressing instrumentation.
+
+Verify success, thrown error, cancellation before publication, concurrent cancellation/close, persistent reuse and repeated connection creation/close. A direct regression should force independent producer/consumer threads, use an actual newly constructed connection, acknowledge both worker and cleanup completion, and run under TSan. A passing handoff helper unit test alone is not enough: the reported HTTP Connection: close path and WS connection path must also execute. Fresh independent source review and exact-candidate ordinary/TSan receipts remain required after repair.
+
+Separate timing and lifecycle failures
+
+The same full instrumented run also records ten test issues: old-cleanup handshakes miss deadlines, one obsolete-handshake case times out at a barrier and another sees unexpected EOF, the descriptor-heavy handshake test fails, HTTP elapsed bounds fail, RA2-07 WS setup fails, and the descriptor-heavy volume handshake path sees unexpected EOF. Several otherwise tiny tests finish around 85–90 seconds; the complete Swift Testing run lasts 273.339 seconds versus 36.014 seconds for ordinary full05.
+
+This is consistent with substantial instrumented workload/scheduling pressure, but the receipts lack internal stage timestamps. Do not categorically label every EOF or timeout harmless scheduler noise, and do not infer that the data-race warning caused all timing failures. The warning and timing failures remain separately recorded. Original 120 ms / less-than-two-second assertions passed in the ordinary full05 concurrent run and have not changed; their failures under this instrumented workload cannot retroactively erase that ordinary receipt or be relabelled passes.
+
+Honest sanitizer scheduling plan
+
+Contract Documentation/TESTING.md:68 requires supported-host ASan/TSan and ownership/race coverage, including repeated cancellation, callback re-entrancy and resource/backend failures. TEST-07 at line 80 requires selected sanitizer jobs and exact commands/counts; it does not mandate that every unrelated CPU/CLI case occupy the same instrumented process. AGENTS.md:33 still prohibits weakening concurrency checks or globally suppressing diagnostics.
+
+After D01 repair, a partitioned sanitizer plan is justified:
+1. Run the complete JPIP test target with its existing normal within-job concurrency, all five deterministic barrier cases, original silent-peer/cancellation deadlines, push/accounting tests and real JPIP/volume interaction tests. Add the new publication regression without deleting existing cases.
+2. Run the complete complementary test set under TSan, retaining its normal concurrency and all ownership/codec/CLI assertions. If workload isolation needs more than two bounded jobs, retain an explicit disjoint inventory and coverage union.
+3. Prove the union contains every previously discovered declaration/parameterised case plus any new regression, with no missing tests, disabled cases, ignored sanitizer reports or altered timing bounds. Record each source identity, command, count and log.
+4. Retain the ordinary complete concurrent suite as the workload/latency regression gate. Run it again on the repaired source; full05 qualifies only snapshot05. Describe a successful sanitizer outcome as complete partitioned TSan coverage, not a full-concurrent TSan pass.
+
+This isolates unrelated instrumented load without serialising the entire suite or removing the deliberate concurrency inside ownership/lifecycle tests. It is not a guarantee of a pass: a persistent race report or original elapsed/cleanup failure in the appropriately scoped job must still be investigated. A scheduler-isolated pass does not explain away D01; the explicit repair and its own validation are prerequisites.
+
+LLVM's primary TSan documentation describes typical execution overhead of 5–15 times and additional memory overhead: https://clang.llvm.org/docs/ThreadSanitizer.html . That supports treating sanitizer workload separately from ordinary latency measurement; it does not establish the cause of these individual failures or permit suppressing the warning.
+
+Disposition
+
+Keep TSan05 failed. The reviewed snapshot05 source/ordinary regression/ASan receipts remain valid for their scopes, but the new publication diagnostic blocks local concurrency qualification until repaired and validated. Neither this diagnosis nor the proposed partitioning grants whole-R3 acceptance. Independent native 3D JPIP and exact-extension peers remain UNEXECUTED / UNWAIVED, and all other external/CI prerequisites remain separately owned.
+
+No native campaign, listener/server, source edit, suppression or commit was performed by this reviewer. The JPIP implementer owns the bounded repair; this report is independent diagnostic advice, not self-approval.

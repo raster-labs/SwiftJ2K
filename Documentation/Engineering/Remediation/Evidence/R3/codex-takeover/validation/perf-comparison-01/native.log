@@ -1,0 +1,9 @@
+swift-driver version: 1.168.6 sysctl: sysctl fmt -1 1024 1: Operation not permitted
+Traceback (most recent call last):
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-05/../run-r3-benchmark.py", line 20, in <module>
+    'hardware':subprocess.check_output(['sysctl','-n','hw.model','hw.physicalcpu','hw.logicalcpu','hw.memsize']).decode(),
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 424, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['sysctl', '-n', 'hw.model', 'hw.physicalcpu', 'hw.logicalcpu', 'hw.memsize']' returned non-zero exit status 1.

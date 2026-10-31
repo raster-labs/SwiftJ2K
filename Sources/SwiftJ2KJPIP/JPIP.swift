@@ -42,6 +42,7 @@ public actor JPIPClient {
 
     /// Active session, if any.
     private var session: JPIPSession?
+    private var boundedDeliveryInProgress = false
 
     /// Creates a new JPIP client.
     ///
@@ -117,6 +118,13 @@ public actor JPIPClient {
     /// - Returns: A JPIP session.
     /// - Throws: ``J2KError`` if session creation fails.
     public func createSession(target: String) async throws -> JPIPSession {
+        try await createSession(target: target, deadline: nil)
+    }
+
+    private func createSession(
+        target: String,
+        deadline: ContinuousClock.Instant?, budget: JPIPTransferBudget? = nil
+    ) async throws -> JPIPSession {
         let sessionID = UUID().uuidString
         let newSession = JPIPSession(
             sessionID: sessionID,
@@ -134,7 +142,22 @@ public actor JPIPClient {
             request.codingPreference = codingPreference
         }
 
-        let response = try await transport.send(request)
+        let cachedStorage = try await session?.retainedStorageBytes() ?? 0
+        var retained = try JPIPAdmission.add(cachedStorage, await transport.receiveAdmissionSnapshot().queuedBytes)
+        let maxBody = try budget?.bodyLimit(retaining: retained) ?? 128 * 1024 * 1024
+        let response = try await transport.send(request, maxBodyBytes: maxBody, deadline: deadline,
+                maximumStorageBytes: try budget.map { try JPIPAdmission.remaining($0.limits, retaining: retained) })
+        let receive = await transport.receiveAdmissionSnapshot()
+        retained = try JPIPAdmission.add(cachedStorage, receive.queuedBytes)
+        budget?.workspace.observe(try JPIPAdmission.add(cachedStorage, receive.peakBytes))
+        let pushedPayload = await transport.takeUnaccountedPushPayloadBytes()
+        try budget?.received(response.data.count, pushedPayloadBytes: pushedPayload,
+            retaining: JPIPAdmission.add(retained, response.retainedHeaderStorageBytes))
+        if let budget {
+            let identifiers = try JPIPAdmission.add(JPIPAdmission.string(target), response.retainedHeaderStorageBytes)
+            try JPIPAdmission.admit(JPIPAdmission.add(retained,
+                JPIPAdmission.add(JPIPAdmission.response(response), identifiers)), limits: budget.limits, peak: budget.workspace)
+        }
 
         if let channelID = response.channelID ?? JPIPResponseParser.extractChannelID(from: response.headers) {
             await newSession.setChannelID(channelID)
@@ -147,12 +170,25 @@ public actor JPIPClient {
         if let tid = JPIPResponseParser.extractTargetID(from: response.headers) {
             await newSession.setTargetID(tid)
         }
+        retained = try JPIPAdmission.add(retained, await newSession.retainedStorageBytes())
 
         // If the server piggybacked initial VBAS data-bins on the `cnew` response, record them!
         if !response.data.isEmpty, Self.isVBASStreamResponse(response) {
-            let parsed = try JPIPWireCodec.decodeStream(response.data)
-            for bin in parsed.bins {
-                await newSession.recordDataBin(bin)
+            if let budget {
+                let beforeParse = try JPIPAdmission.add(retained, JPIPAdmission.response(response))
+                let parsed = try JPIPWireCodec.decodeStream(response.data,
+                    maxPayloadBytes: budget.limits.maximumCompressedBytes,
+                    maximumStorageBytes: JPIPAdmission.remaining(budget.limits, retaining: beforeParse),
+                    workspaceObserver: { budget.workspace.observe(beforeParse + $0) }, deadline: deadline)
+                var candidate = await newSession.copyCacheForAdmission()
+                try candidate.addAdmitted(parsed.bins, limits: budget.limits,
+                    retainingExternalBytes: JPIPAdmission.add(beforeParse, JPIPAdmission.add(JPIPAdmission.bins(parsed.bins), parsed.eorBody?.count ?? 0)),
+                    peak: budget.workspace)
+                let missing = parsed.bins.contains { !candidate.hasDataBin(binClass: $0.binClass, binID: $0.binID, codestreamID: $0.codestreamID) }
+                await newSession.commitPreparedCache(candidate, requiresSync: missing)
+            } else {
+                let parsed = try JPIPWireCodec.decodeStream(response.data)
+                for bin in parsed.bins { await newSession.recordDataBin(bin) }
             }
         }
 
@@ -162,12 +198,25 @@ public actor JPIPClient {
 
     /// Explicitly closes the active stateful JPIP channel on the server using ITU-T T.808 `cclose`.
     public func closeChannel() async throws {
+        try await closeChannel(deadline: nil)
+    }
+
+    private func closeChannel(deadline: ContinuousClock.Instant?, budget: JPIPTransferBudget? = nil) async throws {
         guard let currentSession = self.session else { return }
         if let cid = await currentSession.channelID, !cid.isEmpty {
             var closeReq = JPIPRequest(target: "")
             closeReq.cid = cid
             closeReq.cclose = [cid]
-            _ = try await transport.send(closeReq)
+            let cacheBytes = try await currentSession.retainedStorageBytes()
+            let retained = try JPIPAdmission.add(cacheBytes, await transport.receiveAdmissionSnapshot().queuedBytes)
+            let maxBody = try budget?.bodyLimit(retaining: retained) ?? 128 * 1024 * 1024
+            let response = try await transport.send(closeReq, maxBodyBytes: maxBody, deadline: deadline,
+                maximumStorageBytes: try budget.map { try JPIPAdmission.remaining($0.limits, retaining: retained) })
+            let receive = await transport.receiveAdmissionSnapshot()
+            budget?.workspace.observe(try JPIPAdmission.add(cacheBytes, receive.peakBytes))
+            let pushedPayload = await transport.takeUnaccountedPushPayloadBytes()
+            try budget?.received(response.data.count, pushedPayloadBytes: pushedPayload,
+                retaining: JPIPAdmission.add(cacheBytes, JPIPAdmission.add(receive.queuedBytes, response.retainedHeaderStorageBytes)))
         }
         try await currentSession.close()
         self.session = nil
@@ -286,11 +335,14 @@ public actor JPIPClient {
     }
 
     /// Gets the current session or creates a new one.
-    private func getOrCreateSession(target: String) async throws -> JPIPSession {
+    private func getOrCreateSession(
+        target: String,
+        deadline: ContinuousClock.Instant? = nil, budget: JPIPTransferBudget? = nil
+    ) async throws -> JPIPSession {
         if let existing = self.session, await existing.target == target {
             return existing
         }
-        return try await createSession(target: target)
+        return try await createSession(target: target, deadline: deadline, budget: budget)
     }
 
     /// Requests progressive quality layers for an image.
@@ -427,350 +479,191 @@ public actor JPIPClient {
         metadataPolicy: MetadataPolicy,
         deadline: ContinuousClock.Instant
     ) async throws -> J2KDecoder.DecodedCodestreamInfo {
-        @inline(__always)
+        guard !boundedDeliveryInProgress else {
+            throw CodecError(.invalidArgument, "A bounded delivery is already active on this JPIP client.")
+        }
+        boundedDeliveryInProgress = true
+        defer { boundedDeliveryInProgress = false }
+        let budget = JPIPTransferBudget(limits)
         func checkDeadline() throws {
             try Task.checkCancellation()
-            if ContinuousClock.now > deadline {
-                throw CodecError(.resourceLimitExceeded, "JPIP operation deadline elapsed.")
-            }
+            _ = try JPIPTransport.remainingSeconds(until: deadline)
         }
-
-        @inline(__always)
-        func checkedAdd(_ a: Int, _ b: Int) throws -> Int {
-            let (s, ov) = a.addingReportingOverflow(b)
-            guard !ov else {
-                throw CodecError(.resourceLimitExceeded, "JPIP storage arithmetic overflow.")
-            }
-            return s
-        }
-
-        func cacheStorageBytes(_ statistics: JPIPCacheModel.Statistics) throws -> Int {
-            let (descriptors, overflow) = statistics.entryCount.multipliedReportingOverflow(
-                by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
-            )
-            let (total, sumOverflow) = statistics.totalSize.addingReportingOverflow(descriptors)
-            guard !overflow, !sumOverflow else {
-                throw CodecError(.resourceLimitExceeded, "JPIP retained cache storage overflows Int.")
-            }
-            return total
-        }
-
         try checkDeadline()
         let activeSession: JPIPSession?
         if deliveryMode == .incremental {
-            activeSession = try await getOrCreateSession(target: imageID)
-        } else {
-            activeSession = nil
+            if let current = session, await current.needsServerModelSync {
+                try await closeChannel(deadline: deadline, budget: budget)
+            }
+            activeSession = try await getOrCreateSession(target: imageID, deadline: deadline, budget: budget)
+        } else { activeSession = nil }
+        let priorStorage = try await session?.retainedStorageBytes() ?? 0
+        var candidate: JPIPCacheModel? = nil
+        var candidateIncomplete = false
+        if let activeSession, maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
+            candidate = await activeSession.copyCacheForAdmission()
         }
-        try checkDeadline()
+        var assembly = JPIPCacheModel(maxCacheSize: limits.maximumWorkspaceBytes, maxEntries: Int.max)
+        if let activeSession {
+            let priorCache = await activeSession.copyCacheForAdmission()
+            let snapshotBytes = try priorCache.snapshotStorageBytes()
+            let retained = try JPIPAdmission.add(priorStorage, candidate?.retainedStorageBytes() ?? 0)
+            try JPIPAdmission.admit(JPIPAdmission.add(retained, snapshotBytes), limits: limits, peak: budget.workspace)
+            let priorBins = priorCache.allDataBins()
+            try assembly.addAdmitted(priorBins, limits: limits,
+                retainingExternalBytes: JPIPAdmission.add(retained, snapshotBytes), peak: budget.workspace)
+        }
+        var modelStorage = 0
+        var queuedTransportStorage = await transport.receiveAdmissionSnapshot().queuedBytes
+        func liveStorage() throws -> Int {
+            try JPIPAdmission.add(JPIPAdmission.add(priorStorage, JPIPAdmission.add(modelStorage, queuedTransportStorage)),
+                JPIPAdmission.add(assembly.retainedStorageBytes(), candidate?.retainedStorageBytes() ?? 0))
+        }
+        // Consume and merge inside a synchronous scope. The wire response and
+        // fragment array are released before the next read or reconstruction.
+        func consume(_ response: JPIPResponse, pushedPayloadBytes: Int) throws -> (raw: Data?, eor: JPIPEORReason?) {
+            let retained = try liveStorage()
+            try budget.received(response.data.count, pushedPayloadBytes: pushedPayloadBytes,
+                retaining: JPIPAdmission.add(retained, response.retainedHeaderStorageBytes))
+            if !Self.isVBASStreamResponse(response) {
+                if candidate != nil {
+                    let generated = try JPIPDataBinGenerator().generateDataBins(from: response.data,
+                        limits: limits, retainedBytes: JPIPAdmission.add(retained, response.retainedHeaderStorageBytes))
+                    budget.workspace.observe(generated.peakWorkspaceBytes)
+                    let external = try JPIPAdmission.add(JPIPAdmission.add(priorStorage, queuedTransportStorage),
+                        JPIPAdmission.add(assembly.retainedStorageBytes(),
+                            JPIPAdmission.add(JPIPAdmission.response(response), JPIPAdmission.bins(generated.bins))))
+                    try candidate?.addAdmitted(generated.bins, limits: limits,
+                        retainingExternalBytes: external, peak: budget.workspace)
+                    candidateIncomplete = candidateIncomplete || generated.bins.contains {
+                        candidate?.hasDataBin(binClass: $0.binClass, binID: $0.binID, codestreamID: $0.codestreamID) != true
+                    }
+                }
+                return (response.data, nil)
+            }
+            let beforeParse = try JPIPAdmission.add(retained, JPIPAdmission.response(response))
+            let parsed = try JPIPWireCodec.decodeStream(response.data,
+                maxPayloadBytes: limits.maximumCompressedBytes,
+                maximumStorageBytes: JPIPAdmission.remaining(limits, retaining: beforeParse),
+                workspaceObserver: { budget.workspace.observe(beforeParse + $0) }, deadline: deadline)
+            let fragments = try JPIPAdmission.add(JPIPAdmission.bins(parsed.bins), parsed.eorBody?.count ?? 0)
+            let external = try JPIPAdmission.add(JPIPAdmission.add(priorStorage, queuedTransportStorage),
+                JPIPAdmission.add(candidate?.retainedStorageBytes() ?? 0,
+                    JPIPAdmission.add(JPIPAdmission.response(response), fragments)))
+            try assembly.addAdmitted(parsed.bins, limits: limits, retainingExternalBytes: external, peak: budget.workspace)
+            if candidate != nil {
+                let candidateExternal = try JPIPAdmission.add(JPIPAdmission.add(priorStorage, queuedTransportStorage),
+                    JPIPAdmission.add(assembly.retainedStorageBytes(),
+                        JPIPAdmission.add(JPIPAdmission.response(response), fragments)))
+                try candidate?.addAdmitted(parsed.bins, limits: limits,
+                    retainingExternalBytes: candidateExternal, peak: budget.workspace)
+                candidateIncomplete = candidateIncomplete || parsed.bins.contains {
+                    candidate?.hasDataBin(binClass: $0.binClass, binID: $0.binID, codestreamID: $0.codestreamID) != true
+                }
+            }
+            return (nil, parsed.eorReason)
+        }
 
         var request = JPIPRequest(target: imageID)
-        var regionTuple: (x: Int, y: Int, width: Int, height: Int)? = nil
+        var regionTuple: (x: Int, y: Int, width: Int, height: Int)?
         if let window = viewWindow {
-            if let rx = window.regionOriginX,
-               let ry = window.regionOriginY,
-               let rw = window.regionWidth,
-               let rh = window.regionHeight {
-                regionTuple = (x: rx, y: ry, width: rw, height: rh)
-                request.roff = (rx, ry)
-                request.rsiz = (rw, rh)
+            if let x = window.regionOriginX, let y = window.regionOriginY,
+               let width = window.regionWidth, let height = window.regionHeight {
+                regionTuple = (x, y, width, height)
+                request.roff = (x, y); request.rsiz = (width, height)
             }
-            if let comps = window.components {
-                request.comps = comps
-            }
-            if let layers = window.maxQualityLayers {
-                request.layers = layers
-            }
+            request.comps = window.components
+            request.layers = window.maxQualityLayers
         }
-
-        if request.streamType == nil {
-            request.streamType = .jppStream
+        request.streamType = .jppStream
+        if codingPreference != .none { request.codingPreference = codingPreference }
+        if let activeSession, let cid = await activeSession.channelID {
+            request.cid = cid
+            await activeSession.markPendingWireTransfer()
         }
-        if codingPreference != .none {
-            request.codingPreference = codingPreference
+        if (request.roff != nil || request.rsiz != nil),
+           assembly.getDataBin(binClass: .mainHeader, binID: 0) == nil {
+            var probe = request
+            probe.roff = nil; probe.rsiz = nil; probe.layers = 1
+            probe.fsiz = (1, 1); probe.fsizRoundDirection = "closest"
+            let retainedAtProbe = try liveStorage()
+            let response = try await transport.send(probe,
+                maxBodyBytes: budget.bodyLimit(retaining: liveStorage()), deadline: deadline,
+                maximumStorageBytes: JPIPAdmission.remaining(limits, retaining: liveStorage()))
+            let receive = await transport.receiveAdmissionSnapshot()
+            budget.workspace.observe(try JPIPAdmission.add(retainedAtProbe - queuedTransportStorage, receive.peakBytes))
+            queuedTransportStorage = receive.queuedBytes
+            let pushedPayload = await transport.takeUnaccountedPushPayloadBytes()
+            _ = try consume(response, pushedPayloadBytes: pushedPayload)
+            try checkDeadline()
         }
-        if let currentSession = activeSession, let channelID = await currentSession.channelID {
-            request.cid = channelID
-            let sessionNeedsSync = await currentSession.needsServerModelSync
-            if sessionNeedsSync || maxCachedDataBins == 0 || maxCacheSizeBytes == 0 {
-                request.model = ["-*"] + (await currentSession.formatCacheModelDescriptors())
-            }
-            await currentSession.markPendingWireTransfer()
-        }
-
-        let maxWireBytes = min(limits.maximumCompressedBytes, limits.maximumMemoryBytes)
-        var cumulativeWireBytes = 0
-        var probedBins: [JPIPDataBin] = []
-        if request.fsiz == nil {
-            var cachedMainHdr: Data? = nil
-            if let currentSession = activeSession {
-                cachedMainHdr = (await currentSession.getAccumulatedDataBins())
-                    .first(where: { $0.binClass == .mainHeader && $0.isComplete })?.data
-            }
-            if (request.roff != nil || request.rsiz != nil) && cachedMainHdr == nil {
-                var probeReq = request
-                probeReq.roff = nil
-                probeReq.rsiz = nil
-                probeReq.layers = 1
-                probeReq.fsiz = (1, 1)
-                probeReq.fsizRoundDirection = "closest"
-                let probeResp = try await transport.send(probeReq, maxBodyBytes: maxWireBytes)
-                try checkDeadline()
-                cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, probeResp.data.count)
-                guard cumulativeWireBytes <= limits.maximumCompressedBytes,
-                      cumulativeWireBytes <= limits.maximumMemoryBytes else {
-                    throw CodecError(
-                        .resourceLimitExceeded,
-                        "JPIP probe payload (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit"
-                    )
-                }
-                if !probeResp.data.isEmpty, Self.isVBASStreamResponse(probeResp) {
-                    let probeParsed = try JPIPWireCodec.decodeStream(
-                        probeResp.data,
-                        maxPayloadBytes: limits.maximumCompressedBytes
-                    )
-                    probedBins = probeParsed.bins
-                    var tmpCache = JPIPCacheModel(
-                        maxCacheSize: limits.maximumWorkspaceBytes,
-                        maxEntries: max(16, min(100_000, limits.maximumWorkspaceBytes / 64))
-                    )
-                    let probeProj = try tmpCache.projectedAllocation(adding: probedBins)
-                    guard probeProj.totalPayloadBytes <= limits.maximumWorkspaceBytes,
-                          try checkedAdd(probeResp.data.count, probeProj.totalPayloadBytes) <= limits.maximumMemoryBytes else {
-                        throw CodecError(
-                            .resourceLimitExceeded,
-                            "JPIP bin payloads, descriptors and retained cache exceed combined limits."
-                        )
-                    }
-                    for b in probedBins { tmpCache.addDataBin(b) }
-                    cachedMainHdr = tmpCache.allDataBins().first(where: { $0.binClass == .mainHeader })?.data
-                    if activeSession == nil, !probedBins.isEmpty {
-                        request.model = tmpCache.formatCacheModelDescriptors()
-                    }
-                }
-            }
-            if let mh = cachedMainHdr, let dims = JPIPRequest.extractCodestreamDimensions(fromMainHeader: mh) {
-                request.fsiz = dims
-            } else {
-                request.fsiz = (1_048_576, 1_048_576)
-                request.fsizRoundDirection = "round-down"
-            }
-        }
-
-        let remainingWireBudget = max(0, maxWireBytes - cumulativeWireBytes)
-        let response = try await transport.send(request, maxBodyBytes: remainingWireBudget)
-        try checkDeadline()
-
-        guard !response.data.isEmpty else {
-            throw J2KError.decodingError("JPIP response contains no image data")
-        }
-        cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, response.data.count)
-        guard cumulativeWireBytes <= limits.maximumCompressedBytes,
-              cumulativeWireBytes <= limits.maximumMemoryBytes else {
-            throw CodecError(
-                .resourceLimitExceeded,
-                "JPIP response payload (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit"
-            )
-        }
-
-        var generationWorkspacePeak = 0
-        var pendingSessionBins: [JPIPDataBin] = []
-        let codestreamToDecode: Data
-
-        if Self.isVBASStreamResponse(response) {
-            var parsed = try JPIPWireCodec.decodeStream(
-                response.data,
-                maxPayloadBytes: limits.maximumCompressedBytes
-            )
-
-            // Snapshot any prior cached bins before mutating `activeSession` so pre-mutation
-            // budget checks leave `activeSession` untouched on limit denial, AND small cache
-            // eviction bounds (`maxCachedDataBins` / `maxCacheSizeBytes`) can evict old retained
-            // entries without losing bins needed to decode the current delivery.
-            var assemblyCache = JPIPCacheModel(
-                maxCacheSize: limits.maximumWorkspaceBytes,
-                maxEntries: Int.max
-            )
-            let priorStats: JPIPCacheModel.Statistics
-            if let currentSession = activeSession {
-                priorStats = await currentSession.getCacheStatistics()
-                for priorBin in await currentSession.getAccumulatedDataBins() {
-                    assemblyCache.addDataBin(priorBin)
-                }
-            } else {
-                priorStats = JPIPCacheModel.Statistics(hits: 0, misses: 0, totalSize: 0, entryCount: 0, evictions: 0)
-            }
-
-            let incomingBins = probedBins + parsed.bins
-            let retainedBefore = try cacheStorageBytes(priorStats)
-            var cumulativeRawPayload = try incomingBins.reduce(0) { try checkedAdd($0, $1.data.count) }
-            let projected = try assemblyCache.projectedAllocation(adding: incomingBins)
-            let projectedSpanDelta = max(0, projected.totalPayloadBytes - priorStats.totalSize)
-            let effectivePayload = max(cumulativeRawPayload, projectedSpanDelta)
-
-            let (binDescBytes, ov1) = incomingBins.count.multipliedReportingOverflow(
-                by: MemoryLayout<JPIPDataBin>.stride
-            )
-            let maxAdditionalEntries = (activeSession != nil)
-                ? max(0, maxCachedDataBins - priorStats.entryCount)
-                : 0
-            let (cacheDescBytes, ov2) = min(incomingBins.count, maxAdditionalEntries).multipliedReportingOverflow(
-                by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
-            )
-            guard !ov1, !ov2 else {
-                throw CodecError(.resourceLimitExceeded, "JPIP bin descriptor storage overflows Int.")
-            }
-            let streamWorkspace = try checkedAdd(
-                retainedBefore,
-                try checkedAdd(effectivePayload, try checkedAdd(binDescBytes, cacheDescBytes))
-            )
-            guard streamWorkspace <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(response.data.count, streamWorkspace) <= limits.maximumMemoryBytes else {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "JPIP bin payloads, descriptors and retained cache exceed combined limits."
-                )
-            }
-            generationWorkspacePeak = streamWorkspace
-
-            for bin in incomingBins {
-                try checkDeadline()
-                assemblyCache.addDataBin(bin)
-                pendingSessionBins.append(bin)
-            }
-
-            // If server truncated due to server-side `byteLimit` (`0x04`) and caller didn't cap `len`,
-            // resume automatically up to completion while enforcing cumulative workspace/compressed/memory limits.
-            var resumeRounds = 0
-            while parsed.eorReason == .byteLimit && request.len == nil && resumeRounds < 1024 {
-                resumeRounds += 1
-                try checkDeadline()
-                var followReq = request
-                followReq.model = nil
-                if activeSession == nil {
-                    followReq.model = assemblyCache.formatCacheModelDescriptors()
-                }
-                let nextMaxWire = max(0, maxWireBytes - cumulativeWireBytes)
-                guard nextMaxWire > 0 else {
-                    throw CodecError(
-                        .resourceLimitExceeded,
-                        "JPIP multi-round response exceeds compressed or memory limit."
-                    )
-                }
-                let nextResp = try await transport.send(followReq, maxBodyBytes: nextMaxWire)
-                cumulativeWireBytes = try checkedAdd(cumulativeWireBytes, nextResp.data.count)
-                guard cumulativeWireBytes <= limits.maximumCompressedBytes,
-                      cumulativeWireBytes <= limits.maximumMemoryBytes else {
-                    throw CodecError(
-                        .resourceLimitExceeded,
-                        "JPIP multi-round response (\(cumulativeWireBytes) bytes) exceeds compressed or memory limit."
-                    )
-                }
-                let nextParsed = try JPIPWireCodec.decodeStream(
-                    nextResp.data,
-                    maxPayloadBytes: limits.maximumCompressedBytes
-                )
-                if nextParsed.bins.isEmpty { break }
-
-                cumulativeRawPayload = try nextParsed.bins.reduce(cumulativeRawPayload) {
-                    try checkedAdd($0, $1.data.count)
-                }
-                let nextProjected = try assemblyCache.projectedAllocation(adding: nextParsed.bins)
-                let nextSpanDelta = max(0, nextProjected.totalPayloadBytes - priorStats.totalSize)
-                let nextEffectivePayload = max(cumulativeRawPayload, nextSpanDelta)
-                let totalPendingCount = try checkedAdd(pendingSessionBins.count, nextParsed.bins.count)
-                let (nextBinDescBytes, nOv1) = totalPendingCount.multipliedReportingOverflow(
-                    by: MemoryLayout<JPIPDataBin>.stride
-                )
-                let (nextCacheDescBytes, nOv2) = min(totalPendingCount, maxAdditionalEntries).multipliedReportingOverflow(
-                    by: MemoryLayout<JPIPCacheModel.CacheEntry>.stride
-                )
-                guard !nOv1, !nOv2 else {
-                    throw CodecError(.resourceLimitExceeded, "JPIP bin descriptor storage overflows Int.")
-                }
-                let nextWorkspace = try checkedAdd(
-                    retainedBefore,
-                    try checkedAdd(nextEffectivePayload, try checkedAdd(nextBinDescBytes, nextCacheDescBytes))
-                )
-                guard nextWorkspace <= limits.maximumWorkspaceBytes,
-                      try checkedAdd(nextResp.data.count, nextWorkspace) <= limits.maximumMemoryBytes else {
-                    throw CodecError(
-                        .resourceLimitExceeded,
-                        "JPIP bin payloads, descriptors and retained cache exceed combined limits."
-                    )
-                }
-                generationWorkspacePeak = max(generationWorkspacePeak, nextWorkspace)
-
-                for bin in nextParsed.bins {
-                    try checkDeadline()
-                    assemblyCache.addDataBin(bin)
-                    pendingSessionBins.append(bin)
-                }
-                parsed = nextParsed
-            }
-
-            codestreamToDecode = try JPIPDataBinGenerator().reassembleCodestreamThrowing(
-                from: assemblyCache.allDataBins(),
-                reconstructContainer: true,
-                limits: limits
-            )
+        if let header = assembly.getDataBin(binClass: .mainHeader, binID: 0),
+           let dimensions = JPIPRequest.extractCodestreamDimensions(fromMainHeader: header.data) {
+            request.fsiz = dimensions
         } else {
-            if let currentSession = activeSession, maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
-                let cacheStatistics = await currentSession.getCacheStatistics()
-                let generated = try JPIPDataBinGenerator().generateDataBins(
-                    from: response.data,
-                    limits: limits,
-                    retainedBytes: cacheStorageBytes(cacheStatistics),
-                    maximumAdditionalCacheEntries: max(0, maxCachedDataBins - cacheStatistics.entryCount)
-                )
-                generationWorkspacePeak = generated.peakWorkspaceBytes
-                pendingSessionBins = generated.bins
-            }
-            codestreamToDecode = response.data
+            request.fsiz = (1_048_576, 1_048_576)
+            request.fsizRoundDirection = "round-down"
         }
-
+        var rawCodestream: Data?
+        var rounds = 0
+        repeat {
+            try checkDeadline()
+            request.model = nil
+            modelStorage = 0
+            if activeSession == nil, assembly.statistics.entryCount > 0 {
+                // String model descriptors are bounded by admitted cache entries.
+                let modelBytes = try JPIPAdmission.multiply(assembly.statistics.entryCount, 128)
+                let sortedDescriptors = try JPIPAdmission.multiply(assembly.statistics.entryCount, MemoryLayout<JPIPCacheModel.CacheEntry>.stride)
+                try JPIPAdmission.admit(JPIPAdmission.add(liveStorage(), JPIPAdmission.add(modelBytes, sortedDescriptors)), limits: limits, peak: budget.workspace)
+                modelStorage = modelBytes
+                request.model = assembly.formatCacheModelDescriptors()
+            }
+            let retained = try liveStorage()
+            let response = try await transport.send(request,
+                maxBodyBytes: budget.bodyLimit(retaining: retained), deadline: deadline,
+                maximumStorageBytes: JPIPAdmission.remaining(limits, retaining: retained))
+            let receive = await transport.receiveAdmissionSnapshot()
+            budget.workspace.observe(try JPIPAdmission.add(retained - queuedTransportStorage, receive.peakBytes))
+            queuedTransportStorage = receive.queuedBytes
+            request.model = nil
+            modelStorage = 0
+            let pushedPayload = await transport.takeUnaccountedPushPayloadBytes()
+            let result = try consume(response, pushedPayloadBytes: pushedPayload)
+            if let raw = result.raw { rawCodestream = raw; break }
+            rounds += 1
+            if result.eor != .byteLimit || request.len != nil { break }
+            guard rounds < 1024 else {
+                throw CodecError(.resourceLimitExceeded, "JPIP response resumption limit reached.")
+            }
+        } while true
+        request.model = nil
+        let codestream: Data
+        if let rawCodestream { codestream = rawCodestream }
+        else {
+            let retained = try liveStorage()
+            let snapshotBytes = try assembly.snapshotStorageBytes()
+            let outer = try JPIPAdmission.add(retained, snapshotBytes)
+            try JPIPAdmission.admit(outer, limits: limits, peak: budget.workspace)
+            let reconstructed = try JPIPDataBinGenerator().reassembleCodestreamBounded(
+                from: assembly.allDataBins(), reconstructContainer: true,
+                limits: limits.reserving(workspaceBytes: outer, memoryBytes: outer))
+            budget.workspace.observe(try JPIPAdmission.add(outer, reconstructed.peakWorkspaceBytes))
+            codestream = reconstructed.data
+        }
+        // Only the old cache and already-admitted commit candidate survive decode.
+        assembly.clear()
         try checkDeadline()
-        let retainedCacheBytes: Int
-        if let activeSession {
-            if maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
-                let prospective = await activeSession.prospectiveCacheStatistics(adding: pendingSessionBins)
-                retainedCacheBytes = try cacheStorageBytes(prospective)
-            } else {
-                retainedCacheBytes = try cacheStorageBytes(await activeSession.getCacheStatistics())
-            }
-        } else {
-            retainedCacheBytes = 0
-        }
-
-        let decoded = try J2KDecoder.decodeWithInfo(
-            codestreamToDecode,
-            maxQualityLayers: viewWindow?.maxQualityLayers,
-            resolutionLevel: viewWindow?.resolutionLevel,
-            components: viewWindow?.components,
-            region: regionTuple,
-            limits: limits,
-            executionPolicy: executionPolicy,
-            metadataPolicy: metadataPolicy,
-            retainedExternalBytes: retainedCacheBytes
-        )
+        let retainedForDecode = try JPIPAdmission.add(JPIPAdmission.add(priorStorage, queuedTransportStorage), candidate?.retainedStorageBytes() ?? 0)
+        let decoded = try J2KDecoder.decodeWithInfo(codestream,
+            maxQualityLayers: viewWindow?.maxQualityLayers, resolutionLevel: viewWindow?.resolutionLevel,
+            components: viewWindow?.components, region: regionTuple, limits: limits,
+            executionPolicy: executionPolicy, metadataPolicy: metadataPolicy,
+            retainedExternalBytes: retainedForDecode)
         try checkDeadline()
-
-        if let currentSession = activeSession {
-            if maxCachedDataBins > 0, maxCacheSizeBytes > 0 {
-                let evictionsBefore = (await currentSession.getCacheStatistics()).evictions
-                await currentSession.markWireTransferSynchronized()
-                for bin in pendingSessionBins {
-                    await currentSession.recordDataBin(bin)
-                }
-                let evictionsAfter = (await currentSession.getCacheStatistics()).evictions
-                let stillNeedsSync = await currentSession.needsServerModelSync
-                if evictionsAfter == evictionsBefore && !stillNeedsSync {
-                    await currentSession.markWireTransferSynchronized()
-                }
-            }
+        if let activeSession, let candidate {
+            await activeSession.commitPreparedCache(candidate, requiresSync: candidateIncomplete)
         }
-
-        return decoded.includingAdditionalWorkspacePeak(generationWorkspacePeak)
+        return decoded.includingAdditionalWorkspacePeak(budget.workspace.peak)
     }
 
     /// Records received data bins in the session cache model, reassembles VBAS streams, and decodes the image.

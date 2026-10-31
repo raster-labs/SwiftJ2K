@@ -14,31 +14,99 @@ import Foundation
 @_exported import SwiftJ2K
 @_exported import SwiftJ2K3D
 
-/// One parsed directive from an ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` query field.
+/// One parsed directive from an ITU-T Rec. T.808 Clause C.8.1 / C.8.1.1 / C.8.1.2 / C.8.1.3 `model=` query field.
 public struct JPIPCacheModelDirective: Sendable, Equatable {
+    /// Non-negative integer range (`lo...hi` or open-ended `lo...` when `upperBound == nil`)
+    /// used by ITU-T Rec. T.808 Clause C.8.1.3 implicit precinct selectors.
+    public struct ImplicitRange: Sendable, Equatable {
+        public let lowerBound: Int
+        public let upperBound: Int?
+
+        public init(lowerBound: Int, upperBound: Int?) {
+            self.lowerBound = lowerBound
+            self.upperBound = upperBound
+        }
+
+        public func contains(_ value: Int) -> Bool {
+            guard value >= lowerBound else { return false }
+            if let hi = upperBound {
+                return value <= hi
+            }
+            return true
+        }
+    }
+
     /// `true` when additive (default), `false` when prefixed with `-` (subtractive).
     public let isAdditive: Bool
     /// Target data-bin class (`nil` represents `*` across all classes).
     public let binClass: JPIPDataBinClass?
-    /// Target in-class ID (`nil` represents `*` wildcard within `binClass`).
+    /// Target in-class ID (`nil` represents `*` wildcard within `binClass` or an implicit precinct selector).
     public let binID: Int?
-    /// Prefix byte count (`:<length>`); `nil` denotes the complete data-bin.
+    /// Prefix byte count (`:<length>`); `nil` denotes the complete data-bin (unless `layerCount` is set).
     public let byteLength: Int?
-    /// Target codestream index (`0` by default per Clause C.8.1.3; `nil` represents `c*` wildcard across codestreams).
+    /// Optional layer qualifier (`:L<layers>`).
+    public let layerCount: Int?
+    /// Target codestream index (`0` by default per Clause C.8.1.1; `nil` represents an open-ended codestream range `[lo-]`).
     public let codestreamID: Int?
+    /// Lower bound when `codestreamID == nil` comes from an open-ended Clause C.8.1.1 range `[lo-]`.
+    public let codestreamLowerBound: Int?
+    /// Inclusive upper bound of a finite codestream range; nil denotes an open range.
+    public let codestreamUpperBound: Int?
+    /// `true` when parsed from an ITU-T Rec. T.808 Clause C.8.1.3 implicit precinct descriptor (`t`/`c`/`s`/`r`/`p`).
+    public let isImplicitPrecinct: Bool
+    /// Optional Clause C.8.1.3 `t<range|*>` tile selector (`nil` matches all tiles).
+    public let tileFilter: ImplicitRange?
+    /// Optional Clause C.8.1.3 `c<range|*>` component selector (`nil` matches all components).
+    public let componentFilter: ImplicitRange?
+    /// Optional Clause C.8.1.3 `s<range|*>` tile-component precinct sequence selector (`nil` matches all sequences).
+    public let sequenceFilter: ImplicitRange?
+    /// Optional Clause C.8.1.3 `r<range|*>` resolution-level selector (`nil` matches all resolution levels).
+    public let resolutionFilter: ImplicitRange?
+    /// Optional Clause C.8.1.3 `p<range|*>` within-resolution precinct selector (`nil` matches all positions).
+    public let precinctFilter: ImplicitRange?
 
     public init(
         isAdditive: Bool,
         binClass: JPIPDataBinClass?,
         binID: Int?,
         byteLength: Int?,
-        codestreamID: Int? = 0
+        codestreamID: Int? = 0,
+        codestreamLowerBound: Int? = nil,
+        codestreamUpperBound: Int? = nil,
+        layerCount: Int? = nil,
+        isImplicitPrecinct: Bool = false,
+        tileFilter: ImplicitRange? = nil,
+        componentFilter: ImplicitRange? = nil,
+        sequenceFilter: ImplicitRange? = nil,
+        resolutionFilter: ImplicitRange? = nil,
+        precinctFilter: ImplicitRange? = nil
     ) {
         self.isAdditive = isAdditive
         self.binClass = binClass?.canonicalClass
         self.binID = binID
         self.byteLength = byteLength
+        self.layerCount = layerCount
         self.codestreamID = codestreamID
+        self.codestreamLowerBound = codestreamLowerBound
+        self.codestreamUpperBound = codestreamUpperBound
+        self.isImplicitPrecinct = isImplicitPrecinct
+        self.tileFilter = tileFilter
+        self.componentFilter = componentFilter
+        self.sequenceFilter = sequenceFilter
+        self.resolutionFilter = resolutionFilter
+        self.precinctFilter = precinctFilter
+    }
+
+    /// Checks whether a codestream index satisfies this directive's Clause C.8.1.1 codestream qualifier.
+    public func matchesCodestream(_ cs: Int) -> Bool {
+        if let exact = codestreamID {
+            return cs == exact
+        }
+        if let hi = codestreamUpperBound, cs > hi { return false }
+        if let lo = codestreamLowerBound {
+            return cs >= lo
+        }
+        return true
     }
 }
 
@@ -198,6 +266,22 @@ public actor JPIPSession {
         cacheModel.statistics
     }
 
+    package func copyCacheForAdmission() -> JPIPCacheModel { cacheModel }
+    package func retainedStorageBytes() throws -> Int {
+        let identifiers = try JPIPAdmission.add(JPIPAdmission.string(target),
+            JPIPAdmission.add(JPIPAdmission.string(channelID),
+                JPIPAdmission.add(JPIPAdmission.string(channelPath), JPIPAdmission.string(targetID))))
+        return try JPIPAdmission.add(cacheModel.retainedStorageBytes(), identifiers)
+    }
+
+    /// Publication is allocation-free: prepare and admit the candidate before
+    /// decode, retain the old cache on failure, and publish only after success.
+    package func commitPreparedCache(_ candidate: JPIPCacheModel, requiresSync: Bool = false) {
+        let evicted = candidate.statistics.evictions > cacheModel.statistics.evictions
+        cacheModel = candidate
+        needsServerModelSync = evicted || requiresSync
+    }
+
     /// Invalidates cached entries by bin class (optionally scoped to one codestream).
     public func invalidateCache(binClass: JPIPDataBinClass, codestreamID: Int? = nil) {
         cacheModel.invalidate(binClass: binClass, codestreamID: codestreamID)
@@ -307,7 +391,7 @@ public struct JPIPCacheModel: Sendable {
                 fullyComplete = false
             }
 
-            self.dataBin = JPIPDataBin(
+            var mergedInitBin = JPIPDataBin(
                 binClass: dataBin.binClass.canonicalClass,
                 binID: dataBin.binID,
                 data: assembled,
@@ -318,6 +402,11 @@ public struct JPIPCacheModel: Sendable {
                 msgOffset: 0,
                 aux: dataBin.aux
             )
+            mergedInitBin.componentIndex = dataBin.componentIndex
+            mergedInitBin.resolutionLevel = dataBin.resolutionLevel
+            mergedInitBin.precinctInResolution = dataBin.precinctInResolution
+            mergedInitBin.sequenceInTileComponent = dataBin.sequenceInTileComponent
+            self.dataBin = mergedInitBin
             self.coveredRanges = ranges
             self.knownCompleteLength = knownEnd
             self.timestamp = timestamp
@@ -360,13 +449,23 @@ public struct JPIPCacheModel: Sendable {
     /// Pre-computes the exact post-merge buffer sizes (`max(existingSize, msgOffset + data.count)`)
     /// and entry count for `incomingBins` using checked arithmetic without allocating any `Data`.
     package func projectedAllocation(
-        adding incomingBins: [JPIPDataBin]
-    ) throws -> (totalPayloadBytes: Int, entryCount: Int, additionalEntries: Int) {
+        adding incomingBins: [JPIPDataBin], maximumProjectionBytes: Int = Int.max
+    ) throws -> (totalPayloadBytes: Int, peakPayloadBytes: Int, entryCount: Int, additionalEntries: Int) {
+        let count = try JPIPAdmission.add(cachedBins.count, incomingBins.count)
+        let projectionBytes = try projectionStorageBytes(addingCount: incomingBins.count)
+        guard projectionBytes <= maximumProjectionBytes else {
+            throw CodecError(.resourceLimitExceeded, "JPIP cache projection descriptors exceed remaining storage before allocation.")
+        }
         var sizes: [String: (size: Int, isComplete: Bool)] = [:]
-        sizes.reserveCapacity(cachedBins.count + incomingBins.count)
+        sizes.reserveCapacity(count)
+        var totalBytes = 0
         for (k, entry) in cachedBins {
             sizes[k] = (entry.size, entry.dataBin.isComplete)
+            let (next, overflow) = totalBytes.addingReportingOverflow(entry.size)
+            guard !overflow else { throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.") }
+            totalBytes = next
         }
+        var peakBytes = totalBytes
         let initialCount = sizes.count
 
         for bin in incomingBins {
@@ -378,6 +477,7 @@ public struct JPIPCacheModel: Sendable {
                 throw CodecError(.resourceLimitExceeded, "JPIP Msg-Offset + length overflows Int.")
             }
             let key = cacheKey(binClass: bin.binClass, binID: bin.binID, codestreamID: bin.codestreamID)
+            let previousSize = sizes[key]?.size ?? 0
             if let existing = sizes[key] {
                 if bin.msgOffset == 0 && bin.isComplete && existing.isComplete {
                     sizes[key] = (segEnd, true)
@@ -387,17 +487,28 @@ public struct JPIPCacheModel: Sendable {
             } else {
                 sizes[key] = (segEnd, bin.msgOffset == 0 && bin.isComplete)
             }
-        }
-
-        var totalBytes = 0
-        for val in sizes.values {
-            let (sum, ov) = totalBytes.addingReportingOverflow(val.size)
-            guard !ov else {
+            let (sum, sumOverflow) = (totalBytes - previousSize).addingReportingOverflow(sizes[key]?.size ?? 0)
+            guard !sumOverflow else {
                 throw CodecError(.resourceLimitExceeded, "JPIP projected cache span overflows Int.")
             }
             totalBytes = sum
+            peakBytes = max(peakBytes, totalBytes)
         }
-        return (totalBytes, sizes.count, max(0, sizes.count - initialCount))
+        return (totalBytes, peakBytes, sizes.count, max(0, sizes.count - initialCount))
+    }
+
+    package func projectionStorageBytes(addingCount: Int) throws -> Int {
+        try JPIPAdmission.multiply(JPIPAdmission.add(cachedBins.count, addingCount),
+            2 * (MemoryLayout<(String, (Int, Bool))>.stride + 3 * String(Int.min).utf8.count + 2))
+    }
+
+    package func retainedStorageBytes() throws -> Int {
+        try cachedBins.reduce(0) { total, item in
+            let ranges = try JPIPAdmission.multiply(item.value.coveredRanges.count, 2 * MemoryLayout<Range<Int>>.stride)
+            let entry = try JPIPAdmission.add(item.value.size,
+                JPIPAdmission.add(ranges, 2 * MemoryLayout<(String, CacheEntry)>.stride + item.key.utf8.count))
+            return try JPIPAdmission.add(total, entry)
+        }
     }
 
     private static func mergeRange(_ newRange: Range<Int>, into existing: [Range<Int>]) -> [Range<Int>] {
@@ -474,7 +585,12 @@ public struct JPIPCacheModel: Sendable {
             let mergedRanges = Self.mergeRange(segStart..<segEnd, into: existing.coveredRanges)
             let knownEnd: Int? = dataBin.isComplete ? segEnd : existing.knownCompleteLength
             if let ke = knownEnd, buf.count > ke {
-                buf = buf.prefix(ke)
+                // Own exactly the admitted completed span; a prefix view could
+                // retain the earlier larger sparse buffer after size accounting shrinks.
+                buf = buf.withUnsafeBytes { bytes in
+                    guard ke > 0, let base = bytes.baseAddress else { return Data() }
+                    return Data(bytes: base, count: ke)
+                }
             }
             let fullyComplete: Bool
             if let ke = knownEnd {
@@ -483,7 +599,7 @@ public struct JPIPCacheModel: Sendable {
                 fullyComplete = false
             }
 
-            existing.dataBin = JPIPDataBin(
+            var mergedBin = JPIPDataBin(
                 binClass: canonical,
                 binID: dataBin.binID,
                 data: buf,
@@ -494,6 +610,11 @@ public struct JPIPCacheModel: Sendable {
                 msgOffset: 0,
                 aux: dataBin.aux ?? existing.dataBin.aux
             )
+            mergedBin.componentIndex = dataBin.componentIndex ?? existing.dataBin.componentIndex
+            mergedBin.resolutionLevel = dataBin.resolutionLevel ?? existing.dataBin.resolutionLevel
+            mergedBin.precinctInResolution = dataBin.precinctInResolution ?? existing.dataBin.precinctInResolution
+            mergedBin.sequenceInTileComponent = dataBin.sequenceInTileComponent ?? existing.dataBin.sequenceInTileComponent
+            existing.dataBin = mergedBin
             existing.coveredRanges = mergedRanges
             existing.knownCompleteLength = knownEnd
             existing.size = buf.count
@@ -591,7 +712,7 @@ public struct JPIPCacheModel: Sendable {
         }
         guard !clippedData.isEmpty || !clippedRanges.isEmpty else { return }
 
-        entry.dataBin = JPIPDataBin(
+        var truncatedBin = JPIPDataBin(
             binClass: entry.dataBin.binClass.canonicalClass,
             binID: entry.dataBin.binID,
             data: clippedData,
@@ -602,6 +723,11 @@ public struct JPIPCacheModel: Sendable {
             msgOffset: 0,
             aux: entry.dataBin.aux
         )
+        truncatedBin.componentIndex = entry.dataBin.componentIndex
+        truncatedBin.resolutionLevel = entry.dataBin.resolutionLevel
+        truncatedBin.precinctInResolution = entry.dataBin.precinctInResolution
+        truncatedBin.sequenceInTileComponent = entry.dataBin.sequenceInTileComponent
+        entry.dataBin = truncatedBin
         entry.coveredRanges = clippedRanges
         entry.knownCompleteLength = nil
         entry.size = clippedData.count
@@ -635,11 +761,23 @@ public struct JPIPCacheModel: Sendable {
         }
     }
 
-    // MARK: - Normative ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 / C.8.1.3 `model=` Grammar
+    // MARK: - Normative ITU-T Rec. T.808 Clauses C.8.1 / C.8.1.1 / C.8.1.2 / C.8.1.3 `model=` Grammar
 
-    /// Formats all cached entries into normative Clause C.8.1.2 / C.8.1.3 cache-model descriptors
-    /// (`Hm`, `Hm:<bytes>`, `M<id>`, `H<id>`, `P<id>:<bytes>`, `T<id>`, plus sticky `c<id>` codestream
-    /// context qualifiers when `codestreamID != 0`).
+    private struct CodestreamTarget: Equatable {
+        let exactID: Int?
+        let lowerBound: Int?
+        let upperBound: Int?
+    }
+
+    /// Model items use commas; the codestream range list inside brackets uses semicolons
+    /// (T.808 clause 5.1 and C.8.1.1). Invalid embedded commas are rejected by the parser.
+    package static func splitTopLevelModelTokens(_ raw: String) -> [String] {
+        raw.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+    }
+
+    /// Formats all cached entries into normative ITU-T Rec. T.808 Clauses C.8.1.1 / C.8.1.2 cache-model
+    /// descriptors (`Hm`, `Hm:<bytes>`, `M<id>`, `H<id>`, `P<id>:<bytes>`, `T<id>`, preceded by a sticky
+    /// bracketed `[<csn>]` codestream qualifier whenever `codestreamID` differs from the active context).
     public func formatCacheModelDescriptors() -> [String] {
         let sorted = cachedBins.values.sorted { a, b in
             if a.dataBin.codestreamID != b.dataBin.codestreamID {
@@ -659,7 +797,8 @@ public struct JPIPCacheModel: Sendable {
             let base: String
             switch bin.binClass.canonicalClass {
             case .mainHeader:
-                base = (bin.binID == 0) ? "Hm" : "Hm\(bin.binID)"
+                guard bin.binID == 0 else { continue }
+                base = "Hm"
             case .tileHeader:
                 base = "H\(bin.binID)"
             case .precinct, .extendedPrecinct:
@@ -677,7 +816,7 @@ public struct JPIPCacheModel: Sendable {
             }
             if let desc = formattedDescriptor {
                 if bin.codestreamID != currentContextCodestream {
-                    items.append("c\(bin.codestreamID)")
+                    items.append("[\(bin.codestreamID)]")
                     currentContextCodestream = bin.codestreamID
                 }
                 items.append(desc)
@@ -686,271 +825,213 @@ public struct JPIPCacheModel: Sendable {
         return items
     }
 
-    /// Alias for ``formatCacheModelDescriptors()`` returning Clause C.8.1.2 `model=` items.
+    /// Alias for ``formatCacheModelDescriptors()`` returning Clause C.8.1.1 / C.8.1.2 `model=` items.
     public func formatCacheModelField() -> [String] {
         formatCacheModelDescriptors()
     }
 
-    /// Alias for ``parseModelItems(_:)`` parsing Clause C.8.1 / C.8.1.2 `model=` items.
+    /// Alias for ``parseModelItems(_:)`` parsing Clause C.8.1 `model=` items.
     public static func parseCacheModelField(_ items: [String]) -> [JPIPCacheModelDirective] {
         parseModelItems(items)
     }
 
-    private static func parseCodestreamSpec(_ spec: String) throws -> [Int?] {
-        guard !spec.isEmpty else {
-            throw J2KError.invalidParameter("Empty codestream qualifier in JPIP model= field.")
+    private static func parseDecimalUInt(_ text: Substring, context: String) throws -> Int {
+        guard !text.isEmpty, text.allSatisfy({ $0 >= "0" && $0 <= "9" }), let val = Int(text), val >= 0 else {
+            throw J2KError.invalidParameter("Malformed unsigned integer '\(text)' in \(context).")
         }
-        if spec == "*" {
-            return [nil]
+        return val
+    }
+
+    /// Represents ranges without enumerating attacker-controlled codestream counts.
+    private static func parseBracketedCodestreamQualifier(
+        _ token: String, sessionBased: Bool
+    ) throws -> [CodestreamTarget] {
+        guard token.hasPrefix("["), token.hasSuffix("]"), token.count >= 3 else {
+            throw J2KError.invalidParameter("Malformed codestream qualifier in JPIP model= field.")
         }
-        if spec.contains("-") {
-            let parts = spec.split(separator: "-", omittingEmptySubsequences: false)
-            guard parts.count == 2,
-                  let lo = Int(parts[0]), let hi = Int(parts[1]),
-                  lo >= 0, lo <= hi, (hi - lo) <= 4096 else {
-                throw J2KError.invalidParameter("Malformed codestream range 'c\(spec)' in JPIP model= field.")
+        let parts = token.dropFirst().dropLast().split(separator: ";", omittingEmptySubsequences: false)
+        var targets: [CodestreamTarget] = []
+        for part in parts {
+            if let dash = part.firstIndex(of: "-") {
+                let lo = try parseDecimalUInt(part[..<dash], context: "codestream range")
+                let end = part[part.index(after: dash)...]
+                let hi = end.isEmpty ? nil : try parseDecimalUInt(end, context: "codestream range")
+                guard hi.map({ $0 >= lo }) ?? true else {
+                    throw J2KError.invalidParameter("Inverted codestream range in JPIP model= field.")
+                }
+                if hi == lo {
+                    targets.append(CodestreamTarget(exactID: lo, lowerBound: nil, upperBound: nil))
+                } else {
+                    targets.append(CodestreamTarget(exactID: nil, lowerBound: lo, upperBound: hi))
+                }
+            } else {
+                let id = try parseDecimalUInt(part, context: "codestream qualifier")
+                targets.append(CodestreamTarget(exactID: id, lowerBound: nil, upperBound: nil))
             }
-            return (lo...hi).map { Optional($0) }
         }
-        guard let cs = Int(spec), cs >= 0 else {
-            throw J2KError.invalidParameter("Malformed codestream identifier 'c\(spec)' in JPIP model= field.")
+        if sessionBased, targets.count != 1 || targets.first?.exactID == nil {
+            throw J2KError.invalidParameter("A session-based cache qualifier must identify one codestream.")
         }
-        return [cs]
+        return targets
+    }
+
+    private static func parseImplicitRangeSpec(
+        _ spec: Substring, sessionBased: Bool
+    ) throws -> JPIPCacheModelDirective.ImplicitRange? {
+        if spec == "*" {
+            guard !sessionBased else {
+                throw J2KError.invalidParameter("Wildcard cache selectors require a stateless request.")
+            }
+            return nil
+        }
+        if let dash = spec.firstIndex(of: "-") {
+            guard !sessionBased else {
+                throw J2KError.invalidParameter("Range cache selectors require a stateless request.")
+            }
+            let lo = try parseDecimalUInt(spec[..<dash], context: "implicit cache range")
+            let hi = try parseDecimalUInt(spec[spec.index(after: dash)...], context: "implicit cache range")
+            guard lo <= hi else {
+                throw J2KError.invalidParameter("Inverted implicit cache range.")
+            }
+            return .init(lowerBound: lo, upperBound: hi)
+        }
+        let value = try parseDecimalUInt(spec, context: "implicit cache selector")
+        return .init(lowerBound: value, upperBound: value)
     }
 
     private static func parseSingleModelToken(
         _ rawToken: String,
-        activeCodestreams: inout [Int?]
+        activeCodestreams: inout [CodestreamTarget],
+        awaitingDescriptorAfterQualifier: inout Bool,
+        sessionBased: Bool
     ) throws -> [JPIPCacheModelDirective] {
         var token = rawToken.trimmingCharacters(in: .whitespaces)
         guard !token.isEmpty else {
             throw J2KError.invalidParameter("Empty descriptor in JPIP model= field.")
         }
-
-        var isAdditive = true
-        var hadExplicitSign = false
-        if token.hasPrefix("-") {
-            isAdditive = false
-            hadExplicitSign = true
-            token.removeFirst()
-        } else if token.hasPrefix("+") {
-            hadExplicitSign = true
-            token.removeFirst()
-        }
-        guard !token.isEmpty else {
-            throw J2KError.invalidParameter("Dangling sign in JPIP model= item '\(rawToken)'.")
-        }
-
-        // 1. Standalone Clause C.8.1.3 codestream context or subtractive codestream flush (`c1`, `c0-2`, `c*`, `-c1`, `-c*`)
-        if token.hasPrefix("c") && !token.contains(":") && !token.contains("[") && !token.contains("]") {
-            let csSpec = String(token.dropFirst())
-            let parsedCS = try parseCodestreamSpec(csSpec)
-            if !isAdditive {
-                return parsedCS.map { cs in
-                    JPIPCacheModelDirective(
-                        isAdditive: false,
-                        binClass: nil,
-                        binID: nil,
-                        byteLength: nil,
-                        codestreamID: cs
-                    )
-                }
+        if token.hasPrefix("[") {
+            guard !awaitingDescriptorAfterQualifier else {
+                throw J2KError.invalidParameter("Consecutive codestream qualifiers without a descriptor.")
             }
-            activeCodestreams = parsedCS
-            if hadExplicitSign {
-                return parsedCS.map { cs in
-                    JPIPCacheModelDirective(
-                        isAdditive: true,
-                        binClass: nil,
-                        binID: nil,
-                        byteLength: nil,
-                        codestreamID: cs
-                    )
-                }
-            }
+            activeCodestreams = try parseBracketedCodestreamQualifier(token, sessionBased: sessionBased)
+            awaitingDescriptorAfterQualifier = true
             return []
         }
-
-        // 2. Optional inline `[c<id>]` codestream prefix before a bin descriptor (e.g. `[c1]Hm`, `-[c2]P7:20`)
-        var targetCodestreams = activeCodestreams
-        if token.hasPrefix("[") {
-            guard let closeIdx = token.firstIndex(of: "]") else {
-                throw J2KError.invalidParameter("Unclosed '[' in JPIP model= item '\(rawToken)'.")
-            }
-            let inside = String(token[token.index(after: token.startIndex)..<closeIdx])
-            guard inside.hasPrefix("c") else {
-                throw J2KError.invalidParameter("Malformed bracketed codestream qualifier '[\(inside)]' in JPIP model= item '\(rawToken)'.")
-            }
-            let parsedCS = try parseCodestreamSpec(String(inside.dropFirst()))
-            token = String(token[token.index(after: closeIdx)...])
-            if token.hasPrefix("-") && isAdditive && !hadExplicitSign {
-                isAdditive = false
-                token.removeFirst()
-            } else if token.hasPrefix("+") && !hadExplicitSign {
-                token.removeFirst()
-            }
-            guard !token.isEmpty else {
-                throw J2KError.invalidParameter("Missing bin descriptor after '[\(inside)]' in JPIP model= item '\(rawToken)'.")
-            }
-            targetCodestreams = parsedCS
-            activeCodestreams = parsedCS
-        } else if token.contains("[") || token.contains("]") {
-            throw J2KError.invalidParameter("Malformed bracket syntax in JPIP model= item '\(rawToken)'.")
+        let additive = !token.hasPrefix("-")
+        if !additive { token.removeFirst() }
+        guard !token.isEmpty else {
+            throw J2KError.invalidParameter("Dangling subtractive cache prefix.")
         }
-
-        // 3. Optional `:<byteLength>` qualifier
-        var byteLength: Int?
+        awaitingDescriptorAfterQualifier = false
+        var bytes: Int?
+        var layers: Int?
         if let colon = token.firstIndex(of: ":") {
-            let lenStr = String(token[token.index(after: colon)...])
-            guard !lenStr.contains(":"), let parsedLen = Int(lenStr), parsedLen >= 0 else {
-                throw J2KError.invalidParameter("Invalid byte length qualifier in JPIP model= item '\(rawToken)'.")
+            let suffix = token[token.index(after: colon)...]
+            if suffix.hasPrefix("L") {
+                layers = try parseDecimalUInt(suffix.dropFirst(), context: "cache layer count")
+            } else {
+                bytes = try parseDecimalUInt(suffix, context: "cache byte count")
             }
-            byteLength = parsedLen
             token = String(token[..<colon])
         }
-        guard !token.isEmpty else {
-            throw J2KError.invalidParameter("Missing bin class before ':' in JPIP model= item '\(rawToken)'.")
+        guard let first = token.first else {
+            throw J2KError.invalidParameter("Missing cache bin descriptor.")
         }
 
-        var out: [JPIPCacheModelDirective] = []
-
-        if token == "*" {
-            for cs in targetCodestreams {
-                out.append(JPIPCacheModelDirective(
-                    isAdditive: isAdditive,
-                    binClass: nil,
-                    binID: nil,
-                    byteLength: byteLength,
-                    codestreamID: cs
-                ))
+        var binClass: JPIPDataBinClass
+        var binID: Int?
+        var implicit = false
+        var tile: JPIPCacheModelDirective.ImplicitRange?
+        var component: JPIPCacheModelDirective.ImplicitRange?
+        var resolution: JPIPCacheModelDirective.ImplicitRange?
+        var position: JPIPCacheModelDirective.ImplicitRange?
+        if ["t", "c", "r", "p"].contains(first) {
+            guard bytes == nil else {
+                throw J2KError.invalidParameter("Implicit precinct descriptors allow layers, not byte counts.")
             }
-            return out
-        }
-
-        if token == "Hm" || token == "Hm*" {
-            for cs in targetCodestreams {
-                out.append(JPIPCacheModelDirective(
-                    isAdditive: isAdditive,
-                    binClass: .mainHeader,
-                    binID: token == "Hm" ? 0 : nil,
-                    byteLength: byteLength,
-                    codestreamID: cs
-                ))
-            }
-            return out
-        }
-        if token.hasPrefix("Hm") {
-            let idStr = String(token.dropFirst(2))
-            guard let id = Int(idStr), id >= 0 else {
-                throw J2KError.invalidParameter("Invalid main-header bin ID in JPIP model= item '\(rawToken)'.")
-            }
-            for cs in targetCodestreams {
-                out.append(JPIPCacheModelDirective(
-                    isAdditive: isAdditive,
-                    binClass: .mainHeader,
-                    binID: id,
-                    byteLength: byteLength,
-                    codestreamID: cs
-                ))
-            }
-            return out
-        }
-
-        guard let firstChar = token.first else {
-            throw J2KError.invalidParameter("Empty bin descriptor in JPIP model= item '\(rawToken)'.")
-        }
-        let rest = String(token.dropFirst())
-        let mappedClass: JPIPDataBinClass
-        switch firstChar {
-        case "H": mappedClass = .tileHeader
-        case "P": mappedClass = .precinct
-        case "T": mappedClass = .tile
-        case "M": mappedClass = .metadata
-        default:
-            throw J2KError.invalidParameter("Unknown JPIP model= bin class '\(firstChar)' in '\(rawToken)'.")
-        }
-
-        if rest.isEmpty || rest == "*" {
-            for cs in targetCodestreams {
-                out.append(JPIPCacheModelDirective(
-                    isAdditive: isAdditive,
-                    binClass: mappedClass,
-                    binID: rest == "*" ? nil : 0,
-                    byteLength: byteLength,
-                    codestreamID: cs
-                ))
-            }
-            return out
-        }
-
-        if rest.contains("-") {
-            let parts = rest.split(separator: "-", omittingEmptySubsequences: false)
-            guard parts.count == 2,
-                  let lo = Int(parts[0]), let hi = Int(parts[1]),
-                  lo >= 0, lo <= hi, (hi - lo) <= 65536 else {
-                throw J2KError.invalidParameter("Invalid bin ID range in JPIP model= item '\(rawToken)'.")
-            }
-            for cs in targetCodestreams {
-                for id in lo...hi {
-                    out.append(JPIPCacheModelDirective(
-                        isAdditive: isAdditive,
-                        binClass: mappedClass,
-                        binID: id,
-                        byteLength: byteLength,
-                        codestreamID: cs
-                    ))
+            implicit = true
+            binClass = .precinct
+            var seen = Set<Character>()
+            var index = token.startIndex
+            while index < token.endIndex {
+                let tag = token[index]
+                guard ["t", "c", "r", "p"].contains(tag), seen.insert(tag).inserted else {
+                    throw J2KError.invalidParameter("Unknown or repeated implicit cache selector.")
                 }
+                let start = token.index(after: index)
+                var end = start
+                while end < token.endIndex, !["t", "c", "r", "p"].contains(token[end]) {
+                    end = token.index(after: end)
+                }
+                let range = try parseImplicitRangeSpec(token[start..<end], sessionBased: sessionBased)
+                switch tag {
+                case "t": tile = range
+                case "c": component = range
+                case "r": resolution = range
+                case "p": position = range
+                default: break
+                }
+                index = end
             }
-            return out
+        } else if token == "Hm" {
+            binClass = .mainHeader
+            binID = 0
+        } else {
+            switch first {
+            case "H": binClass = .tileHeader
+            case "P": binClass = .precinct
+            case "T": binClass = .tile
+            case "M": binClass = .metadata
+            default: throw J2KError.invalidParameter("Unknown explicit cache descriptor.")
+            }
+            let rest = token.dropFirst()
+            if rest == "*" {
+                guard !sessionBased else {
+                    throw J2KError.invalidParameter("Wildcard cache descriptors require a stateless request.")
+                }
+            } else {
+                binID = try parseDecimalUInt(rest, context: "explicit cache bin identifier")
+            }
         }
-
-        guard let id = Int(rest), id >= 0 else {
-            throw J2KError.invalidParameter("Invalid bin ID in JPIP model= item '\(rawToken)'.")
+        guard layers == nil || binClass == .precinct else {
+            throw J2KError.invalidParameter("Layer counts apply only to precinct cache descriptors.")
         }
-        for cs in targetCodestreams {
-            out.append(JPIPCacheModelDirective(
-                isAdditive: isAdditive,
-                binClass: mappedClass,
-                binID: id,
-                byteLength: byteLength,
-                codestreamID: cs
-            ))
+        return activeCodestreams.map { cs in
+            JPIPCacheModelDirective(
+                isAdditive: additive, binClass: binClass, binID: binID,
+                byteLength: bytes, codestreamID: cs.exactID,
+                codestreamLowerBound: cs.lowerBound, codestreamUpperBound: cs.upperBound,
+                layerCount: layers, isImplicitPrecinct: implicit,
+                tileFilter: tile, componentFilter: component,
+                resolutionFilter: resolution, precinctFilter: position
+            )
         }
-        return out
     }
 
-    /// Parses and strictly validates comma-separated ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` items,
-    /// throwing ``J2KError/invalidParameter(_:)`` on any malformed descriptor.
-    public static func parseValidatedModelItems(_ items: [String]) throws -> [JPIPCacheModelDirective] {
+    /// Validates T.808 C.8.1 grammar and session-based selector restrictions.
+    public static func parseValidatedModelItems(
+        _ items: [String], sessionBased: Bool = false
+    ) throws -> [JPIPCacheModelDirective] {
         var directives: [JPIPCacheModelDirective] = []
-        var activeCodestreams: [Int?] = [0]
-        for rawItem in items {
-            let trimmedItem = rawItem.trimmingCharacters(in: .whitespaces)
-            guard !trimmedItem.isEmpty else {
-                throw J2KError.invalidParameter("Empty JPIP model= parameter.")
+        var active = [CodestreamTarget(exactID: 0, lowerBound: nil, upperBound: nil)]
+        var awaiting = false
+        for item in items {
+            for token in splitTopLevelModelTokens(item) {
+                directives.append(contentsOf: try parseSingleModelToken(
+                    token, activeCodestreams: &active,
+                    awaitingDescriptorAfterQualifier: &awaiting, sessionBased: sessionBased
+                ))
             }
-            let subTokens = rawItem.split(separator: ",", omittingEmptySubsequences: false)
-            for sub in subTokens {
-                let parsed = try parseSingleModelToken(String(sub), activeCodestreams: &activeCodestreams)
-                directives.append(contentsOf: parsed)
-            }
+        }
+        guard !awaiting else {
+            throw J2KError.invalidParameter("Trailing codestream qualifier without a descriptor.")
         }
         return directives
     }
 
-    /// Parses comma-separated ITU-T Rec. T.808 Clause C.8.1 / C.8.1.2 `model=` items,
-    /// safely ignoring malformed tokens without trapping.
+    /// Returns no directives for an invalid field, avoiding partial mutation under a stale qualifier.
     public static func parseModelItems(_ items: [String]) -> [JPIPCacheModelDirective] {
-        var directives: [JPIPCacheModelDirective] = []
-        var activeCodestreams: [Int?] = [0]
-        for rawItem in items {
-            for sub in rawItem.split(separator: ",") {
-                if let parsed = try? parseSingleModelToken(String(sub), activeCodestreams: &activeCodestreams) {
-                    directives.append(contentsOf: parsed)
-                }
-            }
-        }
-        return directives
+        (try? parseValidatedModelItems(items)) ?? []
     }
 
     private mutating func nextAccessOrder() -> UInt64 {

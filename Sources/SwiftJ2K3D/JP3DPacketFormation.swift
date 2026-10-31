@@ -586,7 +586,8 @@ public struct JP3DCodestreamBuilder: Sendable {
             width: width, height: height,
             components: components, bitDepth: bitDepth, signed: signed,
             componentBitDepths: componentBitDepths, componentSigned: componentSigned,
-            tileSizeX: tileSizeX, tileSizeY: tileSizeY
+            tileSizeX: tileSizeX, tileSizeY: tileSizeY,
+            usesPart2MCT: part2BitSplit != nil
         )
 
         // 3. Mandatory CAP (0xFF50) immediately after SIZ (ITU-T T.809 Table A.2), plus CPF (0xFF59) when HTJ2K is active.
@@ -624,10 +625,8 @@ public struct JP3DCodestreamBuilder: Sendable {
                 heterogeneous: hasAnyTileFunctional,
                 includePart2MCT: part2BitSplit != nil
             ))
-            stream.append(JP3DHTMarkers.cpfMarkerData(
-                for: htj2kConfiguration,
-                isLossless: !anyIrreversible
-            ))
+            // CPF is optional. No corresponding Part 1 profile is established
+            // for this Part 10 stream, so do not make an unverified profile claim.
         } else if part2BitSplit != nil {
             appendMarker(&stream, .cap)
             appendUInt16BE(&stream, 10)             // Lcap = 10 (2 Pcap bits: Pcap^2 | Pcap^10)
@@ -645,7 +644,7 @@ public struct JP3DCodestreamBuilder: Sendable {
         appendNSI(&stream, depth: depth, tileSizeZ: tileSizeZ, components: components)
 
         // 5. Normative 3D COD (0xFF52) + optional main-header COC (0xFF53)
-        appendCOD(&stream, cod: effectiveCOD)
+        appendCOD(&stream, cod: effectiveCOD, usesPart2MCT: part2BitSplit != nil)
         for compIdx in mainCOC.keys.sorted() where compIdx >= 0 && compIdx < components {
             if let coc = mainCOC[compIdx] {
                 appendCOC(&stream, component: compIdx, totalComponents: components, cod: coc)
@@ -699,7 +698,7 @@ public struct JP3DCodestreamBuilder: Sendable {
             var tileHeaderMarkers = Data()
             if let ov = tileOverrides[index] {
                 if let tcod = ov.cod {
-                    appendCOD(&tileHeaderMarkers, cod: tcod)
+                    appendCOD(&tileHeaderMarkers, cod: tcod, usesPart2MCT: part2BitSplit != nil)
                 }
                 for compIdx in ov.coc.keys.sorted() where compIdx >= 0 && compIdx < components {
                     if let tcoc = ov.coc[compIdx] {
@@ -804,8 +803,8 @@ public struct JP3DCodestreamBuilder: Sendable {
         }
         try add(qcdPayloadBytes)
 
-        // HT adds +2 bytes to CAP (12 vs 10) and +6 bytes for CPF = +8 bytes.
-        if includesHTMarkers { try add(8) }
+        // HT adds two bytes to CAP for Ccap^15; no unestablished CPF claim.
+        if includesHTMarkers { try add(2) }
         // Part 2 bit-split adds +2 bytes to CAP (Ccap^2) plus CBD/MCT/MCC/MCO marker bytes.
         if let part2BitSplit {
             try add(2 + part2BitSplit.rawMarkerSegments.count)
@@ -889,12 +888,13 @@ public struct JP3DCodestreamBuilder: Sendable {
         width: Int, height: Int,
         components: Int, bitDepth: Int, signed: Bool,
         componentBitDepths: [Int]?, componentSigned: [Bool]?,
-        tileSizeX: Int, tileSizeY: Int
+        tileSizeX: Int, tileSizeY: Int, usesPart2MCT: Bool
     ) {
         appendMarker(&stream, .siz)
         let segmentLength = UInt16(38 + 3 * components)
         appendUInt16BE(&stream, segmentLength)
-        appendUInt16BE(&stream, 0x4000) // Rsiz bit 14 signals extended capabilities (CAP)
+        // Part 2 MCT requires bits 15 and 8 as well as the CAP bit 14.
+        appendUInt16BE(&stream, usesPart2MCT ? 0xC100 : 0x4000)
         appendUInt32BE(&stream, UInt32(width))
         appendUInt32BE(&stream, UInt32(height))
         appendUInt32BE(&stream, 0)
@@ -929,7 +929,7 @@ public struct JP3DCodestreamBuilder: Sendable {
         }
     }
 
-    private func appendCOD(_ stream: inout Data, cod: JP3DCODInfo) {
+    private func appendCOD(_ stream: inout Data, cod: JP3DCODInfo, usesPart2MCT: Bool) {
         appendMarker(&stream, .cod)
         let maxLevels = max(cod.levelsX, max(cod.levelsY, cod.levelsZ))
         let hasPrecincts = cod.usesCustomPrecincts
@@ -938,7 +938,7 @@ public struct JP3DCodestreamBuilder: Sendable {
         stream.append(cod.scod)
         stream.append(cod.progressionOrderByte)
         appendUInt16BE(&stream, UInt16(max(1, min(65535, cod.numLayers))))
-        stream.append(cod.multipleComponentTransform)
+        stream.append(usesPart2MCT ? 2 : cod.multipleComponentTransform)
         stream.append(UInt8(max(0, min(32, cod.levelsX))))
         stream.append(UInt8(max(0, min(32, cod.levelsY))))
         stream.append(UInt8(max(0, min(32, cod.levelsZ))))

@@ -7,7 +7,10 @@
 // for Phase R3 rework items F04-01 through F04-10.
 
 import Foundation
+import CryptoKit
+import Darwin
 import Dispatch
+import Synchronization
 import Testing
 @testable import SwiftJ2K
 @testable import SwiftJ2K3D
@@ -45,9 +48,9 @@ struct CodexR3IndependentTests {
         #expect(offset == 20)
     }
 
-    // MARK: - F04-01 & F04-02 Extended Cache & Codestream Context Tests
+    // MARK: - F04-01, F04-02 & RA2-01 Extended Cache & Normative Codestream Context Tests
 
-    @Test("F04-01/02: Extended tile merges with tile, sticky c<id> model qualifiers round-trip, and -Tp:L never fabricates unheld bytes")
+    @Test("F04-01/02 & RA2-01: Extended tile merges with tile, sticky [<csn>] model qualifiers round-trip, -c1 subtracts component 1 precincts only, and [1],-P* clears codestream 1 precincts")
     func extendedTileMergeCodestreamQualifiersAndSubtractiveCap() async throws {
         var cache = JPIPCacheModel()
         cache.addDataBin(JPIPDataBin(binClass: .tile, binID: 2, data: Data([0xAA, 0xBB]), isComplete: false, codestreamID: 4))
@@ -61,11 +64,12 @@ struct CodexR3IndependentTests {
         #expect(mergedTile.data == Data([0xAA, 0xBB, 0xCC, 0xDD]))
         #expect(mergedTile.isComplete)
 
-        // Sticky Clause C.8.1.3 `c<id>` emission & parsing
+        // Sticky Clause C.8.1.1 `[<csn>]` emission & parsing
         cache.addDataBin(JPIPDataBin(binClass: .mainHeader, binID: 0, data: Data([1, 2, 3]), isComplete: true, codestreamID: 0))
         let formatted = cache.formatCacheModelField()
         #expect(formatted.contains("Hm"))
-        #expect(formatted.contains("c4"))
+        #expect(formatted.contains("[4]"))
+        #expect(!formatted.contains("c4"))
         #expect(formatted.contains("T2"))
 
         let parsed = try JPIPCacheModel.parseValidatedModelItems(formatted)
@@ -74,22 +78,42 @@ struct CodexR3IndependentTests {
 
         // Server session: multi-codestream isolation + `-P7:80` when only 20 bytes held keeps 20 bytes
         let session = JPIPServerSession(sessionID: "s1", channelID: "c1", target: "multi")
+        let p0Comp0 = JPIPDataBin(
+            binClass: .precinct, binID: 0,
+            data: Data(repeating: 0x33, count: 40),
+            isComplete: true, tileIndex: 0, codestreamID: 0,
+            componentIndex: 0, resolutionLevel: 0, precinctInResolution: 0, sequenceInTileComponent: 0
+        )
+        let p0Comp1 = JPIPDataBin(
+            binClass: .precinct, binID: 1,
+            data: Data(repeating: 0x44, count: 50),
+            isComplete: true, tileIndex: 0, codestreamID: 0,
+            componentIndex: 1, resolutionLevel: 0, precinctInResolution: 0, sequenceInTileComponent: 0
+        )
         let p0 = JPIPDataBin(binClass: .precinct, binID: 7, data: Data(repeating: 0x11, count: 20), isComplete: false, codestreamID: 0)
         let p1 = JPIPDataBin(binClass: .precinct, binID: 7, data: Data(repeating: 0x22, count: 60), isComplete: true, codestreamID: 1)
+        await session.recordSentDataBin(p0Comp0)
+        await session.recordSentDataBin(p0Comp1)
         await session.recordSentDataBin(p0)
         await session.recordSentDataBin(p1)
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 0) == 20)
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 1) == 60)
 
         let fullP0 = JPIPDataBin(binClass: .precinct, binID: 7, data: Data(repeating: 0x11, count: 100), isComplete: true, codestreamID: 0)
-        await session.applyCacheModel(items: ["-P7:80"], availableBins: [fullP0, p1])
+        await session.applyCacheModel(items: ["-P7:80"], availableBins: [p0Comp0, p0Comp1, fullP0, p1])
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 0) == 20)
         #expect(!(await session.hasCompleteDataBin(binClass: .precinct, binID: 7, totalLength: 100, codestreamID: 0)))
         // Codestream 1 untouched by codestream 0 directive
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 1) == 60)
 
-        // Subtractive `-c1` clears codestream 1 without clearing codestream 0
-        await session.applyCacheModel(items: ["-c1"], availableBins: [fullP0, p1])
+        // Clause C.8.1.3: `-c1` is an implicit COMPONENT-1 precinct subtraction on active codestream 0 (must NOT flush codestream 1 or component 0!)
+        await session.applyCacheModel(items: ["-c1"], availableBins: [p0Comp0, p0Comp1, fullP0, p1])
+        #expect(await session.sentByteOffset(binClass: .precinct, binID: 1, codestreamID: 0) == 0)
+        #expect(await session.sentByteOffset(binClass: .precinct, binID: 0, codestreamID: 0) == 40)
+        #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 1) == 60)
+
+        // Clause C.8.1.1 + C.8.1.2: `["[1]", "-P*"]` clears codestream 1 precincts without clearing codestream 0
+        await session.applyCacheModel(items: ["[1]", "-P*"], availableBins: [p0Comp0, p0Comp1, fullP0, p1])
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 1) == 0)
         #expect(await session.sentByteOffset(binClass: .precinct, binID: 7, codestreamID: 0) == 20)
     }
@@ -98,11 +122,17 @@ struct CodexR3IndependentTests {
 
     @Test("F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping")
     func malformedTokensAndOverflowingQueryRangesRejected() async throws {
-        // `[0]` previously crashed `token.first!` after stripping `[0]`
-        #expect(throws: J2KError.self) {
-            _ = try JPIPCacheModel.parseValidatedModelItems(["[0]"])
+        // Valid Clause C.8.1.1 `[0]` followed by a bin descriptor parses cleanly;
+        // trailing `[0]` without a bin descriptor or malformed brackets must reject cleanly without trapping.
+        let validZeroContext = try JPIPCacheModel.parseValidatedModelItems(["[0]", "Hm"])
+        #expect(validZeroContext.count == 1)
+        #expect(validZeroContext.first?.codestreamID == 0)
+        for badBracket in ["[0]", "[]", "[abc]", "[2-1]", "[1,]"] {
+            #expect(throws: J2KError.self) {
+                _ = try JPIPCacheModel.parseValidatedModelItems([badBracket])
+            }
+            #expect(JPIPCacheModel.parseModelItems([badBracket]).isEmpty)
         }
-        #expect(JPIPCacheModel.parseModelItems(["[0]"]).isEmpty)
 
         // Malformed HTTP query values record validation error and throw on validateParameters()
         let badFSiz = JPIPRequest.parseHTTPTarget("/jpip?target=a.j2k&fsiz=0,-5")
@@ -472,6 +502,229 @@ struct CodexR3IndependentTests {
         #expect(wireResp.statusCode == 422)
 
         try await server.stop()
+    }
+
+    // MARK: - RA2-06 JPIP 3D Verification Allocation Telemetry & Combined Retained Budget
+
+    @Test("RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace")
+    func deliverVolumeRegionVerificationTelemetryAndCombinedBudget() async throws {
+        let vol = makeGreyVolume(width: 16, height: 16, depth: 4)
+        let encoded = try await JP3DEncoder(
+            configuration: JP3DEncoderConfiguration(
+                compressionMode: .lossless,
+                qualityLayers: 1,
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 1
+            )
+        ).encode(vol)
+
+        let standaloneDecoded = try await VolumeDecoder().decode(encoded.data)
+        let standaloneWS = try #require(standaloneDecoded.report.peakWorkspaceBytes)
+
+        let server = JPIPServer(port: 0)
+        await server.registerImageData(name: "vol.jp3d", data: encoded.data)
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+        let port = await server.listeningPort
+        let url = URL(string: "http://127.0.0.1:\(port)")!
+
+        let session1 = JPIPStreamingSession(serverURL: url)
+        let fullRegion = JP3DStreamingRegion(
+            xRange: 0..<16,
+            yRange: 0..<16,
+            zRange: 0..<4,
+            qualityLayer: 0,
+            resolutionLevel: 0
+        )
+        let delivered = try await session1.deliverVolumeRegion(
+            volumeID: "vol.jp3d",
+            region: fullRegion
+        )
+        try await session1.close()
+
+        #expect(!delivered.bins.isEmpty)
+        #expect(delivered.report.fidelity == .exactSamples)
+        #expect((delivered.report.pixelAllocationCount ?? 0) > 0)
+        #expect((delivered.report.peakPixelBytes ?? 0) >= 16 * 16 * 4)
+        #expect(!delivered.report.copyEvents.isEmpty)
+
+        let totalBinBytes = delivered.bins.reduce(0) { $0 + $1.data.count }
+        let deliveredWS = try #require(delivered.report.peakWorkspaceBytes)
+        #expect(deliveredWS > standaloneWS)
+        #expect(deliveredWS > totalBinBytes)
+        // Returned fragments and their descriptors remain live alongside the
+        // assembled cache; a maximum of the payload counts would miss this overlap.
+        let returnedStorage = totalBinBytes + delivered.bins.count * MemoryLayout<JP3DDataBin>.stride
+        #expect(deliveredWS >= standaloneWS + returnedStorage)
+
+        let snapshotClient = JP3DJPIPClient(serverURL: url)
+        try await snapshotClient.connect()
+        try await snapshotClient.createSession(volumeID: "vol.jp3d")
+        let snapshotBins = try await snapshotClient.requestRegion(fullRegion)
+        let snapshotReturned = snapshotBins.reduce(0) { $0 + $1.data.count }
+            + snapshotBins.count * MemoryLayout<JP3DDataBin>.stride
+        let wideSnapshot = try await snapshotClient.verificationCacheSnapshot(
+            limits: .default, retainingAdditionalBytes: snapshotReturned
+        )
+        #expect(!wideSnapshot.bins.isEmpty)
+        #expect(wideSnapshot.retainedWorkspaceBytes > snapshotReturned)
+        // This boundary fails at the pre-snapshot admission point, before any
+        // reconstructed stream or verification decoder can allocate storage.
+        do {
+            _ = try await snapshotClient.verificationCacheSnapshot(
+                limits: try ResourceLimits(maximumWorkspaceBytes: wideSnapshot.retainedWorkspaceBytes - 1),
+                retainingAdditionalBytes: snapshotReturned
+            )
+            Issue.record("Expected retained-cache snapshot admission failure")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded)
+            #expect(error.message.contains("before snapshot allocation"))
+        }
+        await snapshotClient.disconnect()
+
+        // Pick a workspace limit strictly above standalone decode and bin payload individually,
+        // but strictly below the simultaneous retained cache + reconstructed codestream + decode workspace.
+        let tightCombinedWS = max(standaloneWS, totalBinBytes) + 16
+        #expect(tightCombinedWS < deliveredWS)
+
+        let completedPhases = Mutex<Int>(0)
+        let session2 = JPIPStreamingSession(serverURL: url)
+        do {
+            _ = try await session2.deliverVolumeRegion(
+                volumeID: "vol.jp3d",
+                region: fullRegion,
+                options: JPIPStreamingOptions(
+                    resourceLimits: try ResourceLimits(maximumWorkspaceBytes: tightCombinedWS),
+                    progress: { update in
+                        if update.phase == .completed {
+                            completedPhases.withLock { $0 += 1 }
+                        }
+                    }
+                )
+            )
+            Issue.record("Expected combined retained JPIP + verification workspace limit to throw CodecError(.resourceLimitExceeded)")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+        #expect(completedPhases.withLock { $0 } == 0)
+
+        try await session2.close()
+        try await server.stop()
+    }
+
+    // MARK: - RA2-07 HTTP & WebSocket Operation Deadlines Without External Task Cancellation
+
+    @Test("RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests")
+    func httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel() async throws {
+        final class HeldConnections: @unchecked Sendable {
+            private let lock = NSLock()
+            private var conns: [JPIPTCPConnection] = []
+            func append(_ c: JPIPTCPConnection) { lock.lock(); conns.append(c); lock.unlock() }
+            func closeAll() {
+                lock.lock()
+                let snapshot = conns
+                conns.removeAll()
+                lock.unlock()
+                snapshot.forEach { $0.close() }
+            }
+        }
+
+        // 1. Silent HTTP TCP peer: accepts connection, reads request headers, never sends a response.
+        let httpListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+        let heldHTTP = HeldConnections()
+        DispatchQueue.global(qos: .utility).async {
+            while httpListener.isOpen {
+                guard let conn = try? httpListener.acceptConnection(timeoutSeconds: 5) else { break }
+                heldHTTP.append(conn)
+                DispatchQueue.global(qos: .utility).async {
+                    _ = try? conn.readHTTPRequest()
+                }
+            }
+        }
+        defer {
+            httpListener.close()
+            heldHTTP.closeAll()
+        }
+
+        let clock = ContinuousClock()
+        let httpSession = JPIPStreamingSession(
+            serverURL: URL(string: "http://127.0.0.1:\(httpListener.boundPort)/jpip")!
+        )
+        let t0 = clock.now
+        do {
+            _ = try await httpSession.deliverImage(
+                imageID: "silent.j2k",
+                options: JPIPStreamingOptions(
+                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+                )
+            )
+            Issue.record("Expected silent HTTP peer to time out with CodecError(.resourceLimitExceeded)")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+        let httpElapsed = clock.now - t0
+        #expect(httpElapsed < .seconds(2))
+        try? await httpSession.close()
+
+        // 2. Silent WebSocket TCP peer: completes RFC 6455 HTTP 101 handshake, reads client frame, never replies.
+        let wsListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+        let heldWS = HeldConnections()
+        DispatchQueue.global(qos: .utility).async {
+            while wsListener.isOpen {
+                guard let conn = try? wsListener.acceptConnection(timeoutSeconds: 5) else { break }
+                heldWS.append(conn)
+                DispatchQueue.global(qos: .utility).async {
+                    guard let req = try? conn.readHTTPRequest(),
+                          let key = req.header("Sec-WebSocket-Key") else { return }
+                    try? conn.writeWebSocketServerHandshake(clientKey: key)
+                    _ = try? conn.readWebSocketFrame(requireMasked: true)
+                }
+            }
+        }
+        defer {
+            wsListener.close()
+            heldWS.closeAll()
+        }
+
+        // 2a. End-to-end JPIPStreamingSession over ws:// enforces ResourceLimits.deadlineSeconds
+        let wsSession = JPIPStreamingSession(
+            serverURL: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!
+        )
+        let t1 = clock.now
+        do {
+            _ = try await wsSession.deliverImage(
+                imageID: "silent-ws.j2k",
+                options: JPIPStreamingOptions(
+                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+                )
+            )
+            Issue.record("Expected silent WebSocket peer to time out with CodecError(.resourceLimitExceeded)")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+        #expect((clock.now - t1) < .seconds(2))
+        try? await wsSession.close()
+
+        // 2b. Direct JPIPWebSocketTransport request timeout cleans up pendingContinuations
+        let wsTransport = JPIPWebSocketTransport(
+            url: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!,
+            requestTimeout: 30.0
+        )
+        try await wsTransport.connect(deadline: clock.now + .seconds(2))
+        let t2 = clock.now
+        do {
+            _ = try await wsTransport.sendRequest(
+                JPIPRequest(target: "silent-ws.j2k"),
+                timeout: 0.12
+            )
+            Issue.record("Expected JPIPWebSocketTransport.sendRequest(timeout: 0.12) to throw CodecError(.resourceLimitExceeded)")
+        } catch let err as CodecError {
+            #expect(err.category == .resourceLimitExceeded)
+        }
+        #expect((clock.now - t2) < .seconds(2))
+        #expect(await wsTransport.pendingRequestCount == 0)
+        await wsTransport.disconnect()
     }
 
     // MARK: - Helpers

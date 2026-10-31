@@ -1,0 +1,46 @@
+SwiftJ2K R3 — independent CLI test-harness delta review 05
+Reviewer: /root/independent_jpip_review. Read-only source review; no native execution.
+
+Frozen candidate: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-05
+Comparison: candidate-snapshot-04. Root manifest: work/candidate-snapshot-05-source.json (1,345 files).
+Receipt: work/independent-cli-harness-review-05-source.json.
+Independent preservation check: work/independent-cli-harness-review-05-preservation.json.
+All code references below are relative to candidate-snapshot-05.
+
+Disposition: no confirmed defect found in this four-file test-only delta. It removes the demonstrated nested-build/cooperative-worker blocking paths without weakening existing CLI/JPIP assertions. It is suitable for the planned full concurrent comparison. A successful broad native result is not inferred from this source review; full04's nine issues remain unresolved until new evidence is recorded.
+
+Exact scope and assertion preservation
+
+Only Tests/SwiftJ2KTests/CLITestProcessSupport.swift (new), CLIBreadthAndConsumerTests.swift, R1RemediationTests.swift and R2RemediationTests.swift differ from snapshot04. No production file or JPIP source/test file changed. The root manifest comparison and scoped byte hashes are recorded in the receipt.
+
+Independent comparison, not reliance on the implementer's claim: after stripping the replaced helper sections and normalising exactly six named async test signatures plus 63 inserted await call sites, all remaining test-body bytes match snapshot04. The per-file totals are 2 methods/13 calls, 1 method/21 calls, and 3 methods/29 calls respectively. Manual diff inspection also confirmed the earlier fixture/root helper code in R2 is unchanged. Command arguments, sample/error checks, exit status and termination-reason checks, expected output, resource limits and timing assertions are preserved. No .serialized trait, deadline increase, test deletion or weakened error category was introduced.
+
+Binary selection and provenance
+
+CLITestProcessSupport.swift:23–60 accepts an explicit SWIFTJ2K_TEST_CLI_PATH only when it is absolute and resolves to a regular executable file. An invalid supplied path fails without fallback. With no override it searches bounded ancestors of the active executable and test/main bundle, recognising debug/release product directories and resolving symlinks. It does not search source-relative .build directories, consult PATH for a CLI executable, run swift build, or silently switch to a separate release artifact.
+
+The candidate layouts covered are Darwin's debug/Tests.xctest/Contents/MacOS/Tests and Linux's debug/Tests.xctest executable, plus case-insensitive Debug/Release product directories. The resolver test at 145–169 exercises both path shapes, a custom scratch directory, valid explicit override, and invalid-override failure without fallback. It does not qualify every Xcode/device packaging layout. Unsupported layouts fail clearly instead of choosing another source tree.
+
+The resolver binds the default choice to the running test product's location; it does not independently hash or prove the binary's source revision. Exact source/build provenance remains the native wrapper's responsibility. The parent's fresh candidate-build-05 scratch run without a supplied override is therefore a useful real-path verification. The unchanged Package.swift declares SwiftJ2KCLI as a dependency of SwiftJ2KTests. This review did not run or inspect a native outcome.
+
+Process, pipe and continuation lifetime
+
+run at 63–78 uses a checked continuation and a dedicated thread for launch/wait work. No global Dispatch queue or cooperative worker performs the blocking subprocess operations. The invocation retains owning argument/input values; no borrowed pointer escapes to a thread.
+
+runBlocking at 81–140 constructs Process and pipes locally. If resolving or launching fails, the throwing path resumes the continuation once and the installed defer closes the handles. After successful launch, the parent's unused stdout/stderr writing ends and optional stdin reading end close at 101–103. Dedicated reader threads concurrently drain stdout and stderr at 110–121. Optional stdin has a separate writer, records any write failure, and closes its end before leaving the group at 122–132. This removes the old dependency cycle where the parent waits for stdout EOF while the child cannot finish writing a full stderr pipe.
+
+The dedicated parent thread waits for child exit and the I/O group at 134–135 before reading results or propagating an input error. Output Data is transferred through Mutex; handles remain owned until all I/O finishes, and final defer closes them. Every group entry has a deferred leave; no continuation resumes before child exit and all registered I/O work complete. Process status/reason and stdout/stderr text conversion retain their existing meanings. No new unchecked Sendable annotation is added by this helper.
+
+No new concrete lock-order, pipe-order or ownership deadlock was found for the tested finite child processes. As before, the helper relies on the child terminating and closing its pipe descriptors: it does not introduce a process-kill deadline or cancellation handler. That existing limitation is not a new timeout masking mechanism; CLI resource/deadline command arguments and all JPIP elapsed checks remain unchanged. The native campaign's outer execution bound remains relevant to a truly hung child.
+
+The new 256 KiB dual-pipe/input regression at 172–184 deliberately makes the child fill stderr before reading stdin or producing stdout. It verifies exact output on both channels, normal termination, and the complete input echo. This meaningfully detects sequential-drain deadlock and premature return. It uses /bin/sh and standard shell/cat behavior on the existing Darwin/Linux host test platforms, with no product dependency on a shell. Native execution must still establish its completion and Swift concurrency compilation.
+
+Qualification boundaries and next evidence
+
+The helper itself is not a production transport repair. If the full concurrent run still fails unchanged JPIP latency/barrier assertions, those remain actionable failures requiring the staged diagnostic recommended in independent-jpip-deadline-diagnosis-05.txt. Do not replace the broad comparison with a focused pass. Confirm the new log contains no nested SwiftPM builds or .build lock waits and records that the new resolver and dual-pipe tests actually ran.
+
+The parent reported snapshot04 focused JPIP ASan (45 tests) and core ASan (44 tests) passes with stable sources. Those are separate owning receipts, not runs by this reviewer, and do not resolve full04's concurrency failures. Synchronous external-decoder subprocess helpers outside these three CLI callers remain unchanged and may require separate diagnosis if the next broad result still indicates executor blocking; no oracle coverage is removed here.
+
+The source hash receipt confirms stable review bytes and unchanged JPIP scope. No native build/test, listener/server, source edit or commit was performed by this reviewer. Only this report, its receipt and the independent preservation-check artifact were written outside the source tree.
+
+Snapshot04 C01/C02 source closure and B01/B02/F13 observations remain applicable because their source/tests are unchanged. Independent native 3D JPIP and the exact repository WebSocket extension peer gates remain UNEXECUTED / UNWAIVED. This narrow harness review does not issue whole-R3 acceptance or waive any external, native, sanitizer or exact-head CI gate.
