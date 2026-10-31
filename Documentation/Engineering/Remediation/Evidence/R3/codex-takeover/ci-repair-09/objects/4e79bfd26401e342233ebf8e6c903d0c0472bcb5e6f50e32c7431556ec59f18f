@@ -1,0 +1,226 @@
+name: Milestone 1 contract
+
+# Contract 0.5.0 PLAT-01: Swift 6.2 is the manifest minimum and Swift 6.4 the
+# qualified primary toolchain, so both are built and tested here. A gate that
+# cannot run is an unexecuted gate, not a pass (POL-08), so every job below uses
+# a generally available image or runner. No OS 27 job exists because no stable
+# runner ships those SDKs.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-identity:
+    name: Shared contract byte-identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      # POL-03 requires the seven shared documents to stay byte-identical across
+      # all four repositories. Checking the recorded manifest here catches local
+      # drift immediately; cross-repository comparison belongs to the suite
+      # harness, which cannot run from inside one repository.
+      - name: Verify COMMON_CONTRACT_SHA256.txt matches the documents
+        working-directory: Documentation
+        run: sha256sum -c COMMON_CONTRACT_SHA256.txt
+
+  linux:
+    name: Swift ${{ matrix.swift }} / ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        swift: ['6.2', '6.4']
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    container: swift:${{ matrix.swift }}-noble
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: swift --version
+      - run: swift build
+      - run: swift test
+      - run: swift build -c release
+      - run: swift test -c release
+
+  macos:
+    # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`);
+    # Swift 6.2 and 6.4 are qualified in the `linux` and `independent-consumer` jobs.
+    # External-oracle tests (`ojph_expand`, `kdu_expand`, `opj_decompress`) skip via
+    # `withKnownIssue(isIntermittent: true)` when those third-party binaries are absent.
+    name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: swift --version
+      - run: xcodebuild -version
+      - run: swift build
+      - name: Ordinary tests
+        id: ordinary_tests
+        run: |
+          set -euo pipefail
+          mkdir -p .build/sanitizer-evidence/ordinary
+          swift test --xunit-output .build/sanitizer-evidence/ordinary/full.xml
+      # Keep the ordinary full-suite run above. Each sanitizer still executes
+      # every test; only JPIP and its exact complement run in separate processes.
+      - name: Address sanitizer
+        id: address_tests
+        run: |
+          set -euo pipefail
+          python3 Scripts/verify-sanitizer-inventory.py --sanitizer address --scratch-path .build/asan --output .build/sanitizer-evidence/address
+          swift test --scratch-path .build/asan --sanitize address --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/jpip.xml
+          swift test --scratch-path .build/asan --sanitize address --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/complement.xml
+      - name: Thread sanitizer
+        id: thread_tests
+        run: |
+          set -euo pipefail
+          python3 Scripts/verify-sanitizer-inventory.py --sanitizer thread --scratch-path .build/tsan --output .build/sanitizer-evidence/thread
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/jpip.xml
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/complement.xml
+
+      - name: Retain exact test evidence in downloadable logs
+        if: always()
+        env:
+          EVIDENCE_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_PR_BASE: ${{ github.event.pull_request.base.sha }}
+          EVIDENCE_ORDINARY: ${{ steps.ordinary_tests.outcome }}
+          EVIDENCE_ASAN: ${{ steps.address_tests.outcome }}
+          EVIDENCE_TSAN: ${{ steps.thread_tests.outcome }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_EVIDENCE'
+          import hashlib, json, os, stat, subprocess
+          from pathlib import Path
+
+          FORMAT = "swiftj2k-ci-evidence-v1"
+          ROOT = Path(".build/sanitizer-evidence")
+          MAX_FILE = 8 * 1024 * 1024
+          MAX_TOTAL = 16 * 1024 * 1024
+          CHARS_PER_CHUNK = 4096
+          problems = []
+          retained = set()
+          total = 0
+
+          def emit(kind, **fields):
+              print(json.dumps({"format": FORMAT, "kind": kind, **fields},
+                               ensure_ascii=True, separators=(",", ":")), flush=True)
+
+          def git(*args):
+              return subprocess.check_output(["git", *args], text=True).strip()
+
+          try:
+              head, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
+              clean = subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], check=False).returncode == 0
+              identity = {name: os.environ.get(name) for name in (
+                  "GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB",
+                  "GITHUB_EVENT_NAME", "GITHUB_REF", "GITHUB_SHA", "EVIDENCE_PR_HEAD",
+                  "EVIDENCE_PR_BASE", "EVIDENCE_ORDINARY", "EVIDENCE_ASAN", "EVIDENCE_TSAN")}
+              emit("begin", identity=identity, checkout_head=head, checkout_tree=tree,
+                   tracked_tree_clean=clean, max_file_bytes=MAX_FILE, max_total_bytes=MAX_TOTAL)
+              if not clean or head != os.environ.get("GITHUB_SHA"):
+                  problems.append("Checkout identity differs from the workflow SHA or tracked files changed")
+          except (OSError, subprocess.CalledProcessError) as error:
+              emit("identity_error", error=str(error))
+              problems.append("Checkout identity unavailable")
+
+          inventory_names = ["reference.stdout", "reference.stderr", "reference.command-result.json",
+                             "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",
+                             "inventory.json", "all.ids", "jpip.ids", "complement.ids"]
+          xml_groups = [["ordinary/full.xml", "ordinary/full-swift-testing.xml"]]
+          required = []
+          optional = []
+          for mode in ("address", "thread"):
+              required += [f"{mode}/{name}" for name in inventory_names]
+              optional.append(f"{mode}/inventory-mismatch.json")
+              for part in ("jpip", "complement"):
+                  xml_groups.append([f"{mode}/{part}.xml", f"{mode}/{part}-swift-testing.xml"])
+          paths = sorted(set(required + optional + [path for group in xml_groups for path in group]))
+          for relative in paths:
+              path = ROOT / relative
+              try:
+                  # The fixed allowlist cannot disclose arbitrary files under .build. Reject
+                  # symlinked ancestors and files instead of following them outside the tree.
+                  if any(parent.is_symlink() for parent in [path, *path.parents]):
+                      raise ValueError("Symlinked evidence path refused")
+                  if not path.exists():
+                      emit("missing", path=relative)
+                      continue
+                  info = path.stat()
+                  if not stat.S_ISREG(info.st_mode):
+                      raise ValueError("Evidence path is not a regular file")
+                  if info.st_size > MAX_FILE or total + info.st_size > MAX_TOTAL:
+                      raise ValueError("Evidence size limit exceeded; no silent truncation")
+                  data = path.read_bytes()
+                  if len(data) > MAX_FILE or total + len(data) > MAX_TOTAL:
+                      raise ValueError("Evidence grew past the size limit")
+                  content = data.decode("utf-8")  # Strict: malformed UTF-8 is not rewritten.
+                  chunks = [content[i:i + CHARS_PER_CHUNK] for i in range(0, len(content), CHARS_PER_CHUNK)]
+                  emit("file", path=relative, sha256=hashlib.sha256(data).hexdigest(),
+                       bytes=len(data), encoding="utf-8", chunks=len(chunks))
+                  for index, chunk in enumerate(chunks):
+                      emit("chunk", path=relative, index=index, content_utf8=chunk)
+                  retained.add(relative)
+                  total += len(data)
+              except (OSError, UnicodeError, ValueError) as error:
+                  emit("file_error", path=relative, error=str(error))
+                  problems.append(relative + ": evidence could not be retained")
+
+          for relative in required:
+              if relative not in retained:
+                  problems.append("Missing inventory evidence: " + relative)
+          for group in xml_groups:
+              if not any(relative in retained for relative in group):
+                  problems.append("No XML retained for invocation: " + group[0])
+          emit("end", files=len(retained), bytes=total, problems=problems,
+               retention_complete=not problems,
+               scope="Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately")
+          raise SystemExit(1 if problems else 0)
+          PY_EVIDENCE
+
+  independent-consumer:
+    name: Independent consumer resolves at tools 6.2
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          path: SwiftJ2K
+      # POL-01/POL-02: a consumer must build against this package alone, with no
+      # sibling checkout and no suite dependency, on the declared manifest floor.
+      - name: Build a fresh consumer against the checkout
+        run: |
+          set -eux
+          NAME="$(grep -m1 -oE 'name: "Swift[A-Z0-9]+"' "$GITHUB_WORKSPACE/SwiftJ2K/Package.swift" \
+                  | grep -oE 'Swift[A-Z0-9]+')"
+          mkdir -p /tmp/consumer/Sources/Consumer
+          cd /tmp/consumer
+          {
+            echo '// swift-tools-version: 6.2'
+            echo 'import PackageDescription'
+            echo 'let package = Package('
+            echo '    name: "Consumer",'
+            echo "    dependencies: [.package(path: \"$GITHUB_WORKSPACE/$NAME\")],"
+            echo '    targets: [.executableTarget(name: "Consumer", dependencies: ['
+            echo "        .product(name: \"$NAME\", package: \"$NAME\")])]"
+            echo ')'
+          } > Package.swift
+          printf 'import %s\nprint("consumer built")\n' "$NAME" > Sources/Consumer/main.swift
+          swift build
+          swift run Consumer

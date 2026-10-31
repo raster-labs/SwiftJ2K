@@ -1,0 +1,250 @@
+﻿2026-10-31T08:56:32.8592586Z Current runner version: '2.338.2'
+2026-10-31T08:56:32.8622220Z ##[group]Runner Image Provisioner
+2026-10-31T08:56:32.8623538Z Hosted Compute Agent
+2026-10-31T08:56:32.8624218Z Version: 20261021.618
+2026-10-31T08:56:32.8624914Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-31T08:56:32.8625630Z Build Date: 2026-10-21T00:45:21Z
+2026-10-31T08:56:32.8626463Z Worker ID: {4d54d72f-6ba7-4824-8f53-e9e2686183bf}
+2026-10-31T08:56:32.8627206Z Region: eastus2
+2026-10-31T08:56:32.8627797Z Cloud: Azure
+2026-10-31T08:56:32.8628361Z ##[endgroup]
+2026-10-31T08:56:32.8629889Z ##[group]Operating System
+2026-10-31T08:56:32.8630673Z Ubuntu
+2026-10-31T08:56:32.8631208Z 24.04.5
+2026-10-31T08:56:32.8631732Z LTS
+2026-10-31T08:56:32.8632320Z ##[endgroup]
+2026-10-31T08:56:32.8633283Z ##[group]Runner Image
+2026-10-31T08:56:32.8634083Z Image: ubuntu-24.04
+2026-10-31T08:56:32.8634665Z Version: 20261025.353.1
+2026-10-31T08:56:32.8635971Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-31T08:56:32.8637528Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+2026-10-31T08:56:32.8638577Z ##[endgroup]
+2026-10-31T08:56:32.8639665Z ##[group]GITHUB_TOKEN Permissions
+2026-10-31T08:56:32.8641955Z Contents: read
+2026-10-31T08:56:32.8642582Z Metadata: read
+2026-10-31T08:56:32.8643404Z ##[endgroup]
+2026-10-31T08:56:32.8645636Z Secret source: Actions
+2026-10-31T08:56:32.8646588Z Cache mode: write
+2026-10-31T08:56:32.8647392Z Prepare workflow directory
+2026-10-31T08:56:33.0758719Z Prepare all required actions
+2026-10-31T08:56:33.0834071Z Getting action download info
+2026-10-31T08:56:33.2420725Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-31T08:56:33.5772879Z Complete job name: Swift 6.4 / ubuntu-24.04
+2026-10-31T08:56:33.6865106Z ##[group]Checking docker version
+2026-10-31T08:56:33.6878681Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-31T08:56:33.8054593Z '1.48'
+2026-10-31T08:56:33.8076094Z Docker daemon API version: '1.48'
+2026-10-31T08:56:33.8076939Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-31T08:56:33.8285067Z '1.48'
+2026-10-31T08:56:33.8309627Z Docker client API version: '1.48'
+2026-10-31T08:56:33.8314934Z ##[endgroup]
+2026-10-31T08:56:33.8319305Z ##[group]Clean up resources from previous jobs
+2026-10-31T08:56:33.8325047Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=dac4ba"
+2026-10-31T08:56:33.8509806Z ##[command]/usr/bin/docker network prune --force --filter "label=dac4ba"
+2026-10-31T08:56:33.8708669Z ##[endgroup]
+2026-10-31T08:56:33.8709266Z ##[group]Create local container network
+2026-10-31T08:56:33.8719762Z ##[command]/usr/bin/docker network create --label dac4ba github_network_e1457ac268cf49c29414e12fb8e941e8
+2026-10-31T08:56:33.9359614Z a1ccb1b31e70dd6bc80d6c7c261ee77bc765fb99c0699cb1adf97d7329653e4d
+2026-10-31T08:56:33.9383931Z ##[endgroup]
+2026-10-31T08:56:33.9407583Z ##[group]Starting job container
+2026-10-31T08:56:33.9429786Z ##[command]/usr/bin/docker pull swift:6.4-noble
+2026-10-31T08:56:34.2454222Z 6.4-noble: Pulling from library/swift
+2026-10-31T08:56:34.3237224Z 7a48b8f0e5c7: Pulling fs layer
+2026-10-31T08:56:34.3239629Z 65952fc05a03: Pulling fs layer
+2026-10-31T08:56:34.3241723Z dffd63a538cc: Pulling fs layer
+2026-10-31T08:56:34.3242831Z 18437af3bb1b: Pulling fs layer
+2026-10-31T08:56:34.3244187Z 18437af3bb1b: Waiting
+2026-10-31T08:56:34.5299468Z 7a48b8f0e5c7: Verifying Checksum
+2026-10-31T08:56:34.5334166Z 7a48b8f0e5c7: Download complete
+2026-10-31T08:56:34.5802393Z 18437af3bb1b: Verifying Checksum
+2026-10-31T08:56:34.5804912Z 18437af3bb1b: Download complete
+2026-10-31T08:56:34.8978835Z 65952fc05a03: Verifying Checksum
+2026-10-31T08:56:34.8981052Z 65952fc05a03: Download complete
+2026-10-31T08:56:35.8414138Z 7a48b8f0e5c7: Pull complete
+2026-10-31T08:56:38.5873037Z dffd63a538cc: Verifying Checksum
+2026-10-31T08:56:43.1619213Z dffd63a538cc: Download complete
+2026-10-31T08:56:43.1620388Z 65952fc05a03: Pull complete
+2026-10-31T08:57:01.9535345Z dffd63a538cc: Pull complete
+2026-10-31T08:57:01.9662018Z 18437af3bb1b: Pull complete
+2026-10-31T08:57:01.9708337Z Digest: sha256:bca121f6eb59fd80340d1296887b2698ed8f3eb9eca7d80c181f8af769dc7ee0
+2026-10-31T08:57:01.9722987Z Status: Downloaded newer image for swift:6.4-noble
+2026-10-31T08:57:01.9730928Z docker.io/library/swift:6.4-noble
+2026-10-31T08:57:01.9818887Z ##[command]/usr/bin/docker create --name e0528853c6204ae4834b123af47b2ad1_swift64noble_6faf7c --label dac4ba --workdir /__w/SwiftJ2K/SwiftJ2K --network github_network_e1457ac268cf49c29414e12fb8e941e8  -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true -v "/var/run/docker.sock":"/var/run/docker.sock" -v "/home/runner/work":"/__w" -v "/home/runner/actions-runner/cached/2.338.2/externals":"/__e":ro -v "/home/runner/work/_temp":"/__w/_temp" -v "/home/runner/work/_actions":"/__w/_actions" -v "/opt/hostedtoolcache":"/__t" -v "/home/runner/work/_temp/_github_home":"/github/home" -v "/home/runner/work/_temp/_github_workflow":"/github/workflow" --entrypoint "tail" swift:6.4-noble "-f" "/dev/null"
+2026-10-31T08:57:02.0132596Z 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:02.0159293Z ##[command]/usr/bin/docker start 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:02.2344061Z 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:02.2366198Z ##[command]/usr/bin/docker ps --all --filter id=7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-31T08:57:02.2514236Z 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3 Up Less than a second
+2026-10-31T08:57:02.2537984Z ##[command]/usr/bin/docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:02.2685122Z HOME=/github/home
+2026-10-31T08:57:02.2686058Z GITHUB_ACTIONS=true
+2026-10-31T08:57:02.2700502Z CI=true
+2026-10-31T08:57:02.2701387Z PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-10-31T08:57:02.2702323Z SWIFT_SIGNING_KEY=52BB7E3DE28A71BE22EC05FFEF80A866B47A981F
+2026-10-31T08:57:02.2703132Z SWIFT_PLATFORM=ubuntu24.04
+2026-10-31T08:57:02.2703417Z SWIFT_BRANCH=swift-6.4.2-release
+2026-10-31T08:57:02.2703695Z SWIFT_VERSION=swift-6.4.2-RELEASE
+2026-10-31T08:57:02.2704136Z SWIFT_WEBROOT=https://download.swift.org
+2026-10-31T08:57:02.2711169Z ##[endgroup]
+2026-10-31T08:57:02.2720461Z ##[group]Waiting for all services to be ready
+2026-10-31T08:57:02.2722143Z ##[endgroup]
+2026-10-31T08:57:02.6702344Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-10-31T08:57:02.6703307Z with:
+2026-10-31T08:57:02.6703544Z   persist-credentials: false
+2026-10-31T08:57:02.6703818Z   repository: raster-labs/SwiftJ2K
+2026-10-31T08:57:02.6706314Z   token: ***
+2026-10-31T08:57:02.6706517Z   ssh-strict: true
+2026-10-31T08:57:02.6706747Z   ssh-user: git
+2026-10-31T08:57:02.6706939Z   clean: true
+2026-10-31T08:57:02.6707153Z   sparse-checkout-cone-mode: true
+2026-10-31T08:57:02.6707407Z   fetch-depth: 1
+2026-10-31T08:57:02.6707598Z   fetch-tags: false
+2026-10-31T08:57:02.6707804Z   show-progress: true
+2026-10-31T08:57:02.6708006Z   lfs: false
+2026-10-31T08:57:02.6708187Z   submodules: false
+2026-10-31T08:57:02.6708389Z   set-safe-directory: true
+2026-10-31T08:57:02.6708630Z   allow-unsafe-pr-checkout: false
+2026-10-31T08:57:02.6709099Z ##[endgroup]
+2026-10-31T08:57:02.6771924Z ##[command]/usr/bin/docker exec  7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T08:57:03.1080267Z Syncing repository: raster-labs/SwiftJ2K
+2026-10-31T08:57:03.1082404Z ##[group]Getting Git version info
+2026-10-31T08:57:03.1083289Z Working directory is '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T08:57:03.1084271Z [command]/usr/bin/git version
+2026-10-31T08:57:03.1084755Z git version 2.43.0
+2026-10-31T08:57:03.1096306Z ##[endgroup]
+2026-10-31T08:57:03.1116713Z Temporarily overriding HOME='/__w/_temp/a600f101-c37f-4427-849b-c04bd5cd34c2' before making global git config changes
+2026-10-31T08:57:03.1118263Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T08:57:03.1124491Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T08:57:03.1166003Z Deleting the contents of '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T08:57:03.1173857Z ##[group]Initializing the repository
+2026-10-31T08:57:03.1178356Z [command]/usr/bin/git init /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T08:57:03.1225517Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-31T08:57:03.1226877Z hint: is subject to change. To configure the initial branch name to use in all
+2026-10-31T08:57:03.1227797Z hint: of your new repositories, which will suppress this warning, call:
+2026-10-31T08:57:03.1228435Z hint: 
+2026-10-31T08:57:03.1229130Z hint: 	git config --global init.defaultBranch <name>
+2026-10-31T08:57:03.1229670Z hint: 
+2026-10-31T08:57:03.1230350Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-31T08:57:03.1231194Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-31T08:57:03.1231823Z hint: 
+2026-10-31T08:57:03.1232356Z hint: 	git branch -m <name>
+2026-10-31T08:57:03.1234845Z Initialized empty Git repository in /__w/SwiftJ2K/SwiftJ2K/.git/
+2026-10-31T08:57:03.1246009Z [command]/usr/bin/git remote add origin https://github.com/raster-labs/SwiftJ2K
+2026-10-31T08:57:03.1298733Z ##[endgroup]
+2026-10-31T08:57:03.1299236Z ##[group]Disabling automatic garbage collection
+2026-10-31T08:57:03.1305778Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-31T08:57:03.1348247Z ##[endgroup]
+2026-10-31T08:57:03.1348650Z ##[group]Setting up auth
+2026-10-31T08:57:03.1358796Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T08:57:03.1395590Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T08:57:03.1658449Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T08:57:03.1701451Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T08:57:03.1972079Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T08:57:03.2023189Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T08:57:03.2276950Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-31T08:57:03.2326626Z ##[endgroup]
+2026-10-31T08:57:03.2327419Z ##[group]Fetching the repository
+2026-10-31T08:57:03.2340676Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5c88ca1961d4a294991310b035a26b7ddce5084c:refs/remotes/pull/30/merge
+2026-10-31T08:57:04.0706478Z From https://github.com/raster-labs/SwiftJ2K
+2026-10-31T08:57:04.0707416Z  * [new ref]         5c88ca1961d4a294991310b035a26b7ddce5084c -> pull/30/merge
+2026-10-31T08:57:04.0729711Z ##[endgroup]
+2026-10-31T08:57:04.0730284Z ##[group]Determining the checkout info
+2026-10-31T08:57:04.0735168Z ##[endgroup]
+2026-10-31T08:57:04.0740601Z [command]/usr/bin/git sparse-checkout disable
+2026-10-31T08:57:04.0791911Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-31T08:57:04.0832409Z ##[group]Checking out the ref
+2026-10-31T08:57:04.0837613Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/30/merge
+2026-10-31T08:57:04.2720889Z Note: switching to 'refs/remotes/pull/30/merge'.
+2026-10-31T08:57:04.2721699Z 
+2026-10-31T08:57:04.2722120Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-31T08:57:04.2723201Z changes and commit them, and you can discard any commits you make in this
+2026-10-31T08:57:04.2724022Z state without impacting any branches by switching back to a branch.
+2026-10-31T08:57:04.2724493Z 
+2026-10-31T08:57:04.2724923Z If you want to create a new branch to retain commits you create, you may
+2026-10-31T08:57:04.2725694Z do so (now or later) by using -c with the switch command. Example:
+2026-10-31T08:57:04.2726147Z 
+2026-10-31T08:57:04.2726328Z   git switch -c <new-branch-name>
+2026-10-31T08:57:04.2726615Z 
+2026-10-31T08:57:04.2726801Z Or undo this operation with:
+2026-10-31T08:57:04.2727064Z 
+2026-10-31T08:57:04.2727208Z   git switch -
+2026-10-31T08:57:04.2727487Z 
+2026-10-31T08:57:04.2727824Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-31T08:57:04.2728392Z 
+2026-10-31T08:57:04.2728974Z HEAD is now at 5c88ca1 Merge 7f1b123c1c8705666b3c19838f3ed22c00dc6145 into 46be90fc3bf50429956725ee592687d8ff8e7344
+2026-10-31T08:57:04.2743591Z ##[endgroup]
+2026-10-31T08:57:04.2797834Z [command]/usr/bin/git log -1 --format=%H
+2026-10-31T08:57:04.2837023Z 5c88ca1961d4a294991310b035a26b7ddce5084c
+2026-10-31T08:57:04.2848728Z ##[group]Removing auth
+2026-10-31T08:57:04.2853042Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T08:57:04.2893551Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T08:57:04.3138883Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T08:57:04.3171930Z http.https://github.com/.extraheader
+2026-10-31T08:57:04.3180496Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-31T08:57:04.3224482Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T08:57:04.3472877Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T08:57:04.3512171Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T08:57:04.3770001Z ##[endgroup]
+2026-10-31T08:57:04.5071157Z ##[group]Run swift --version
+2026-10-31T08:57:04.5071509Z [36;1mswift --version[0m
+2026-10-31T08:57:04.5075263Z shell: sh -e {0}
+2026-10-31T08:57:04.5075502Z ##[endgroup]
+2026-10-31T08:57:04.6184241Z Swift version 6.4.2 (swift-6.4.2-RELEASE)
+2026-10-31T08:57:04.6184875Z Target: x86_64-unknown-linux-gnu
+2026-10-31T08:57:04.7229192Z ##[group]Run swift build
+2026-10-31T08:57:04.7229497Z [36;1mswift build[0m
+2026-10-31T08:57:04.7229830Z shell: sh -e {0}
+2026-10-31T08:57:04.7230034Z ##[endgroup]
+2026-10-31T08:57:06.2412445Z Building for debugging...
+2026-10-31T08:57:06.2413271Z [Computing dependencies]
+2026-10-31T08:57:06.3568392Z [Pre-planning 1 / 270]
+2026-10-31T08:57:06.4653005Z [Planning deferred tasks]
+2026-10-31T08:57:06.5754358Z [46 / 76] SwiftJ2K
+2026-10-31T08:57:15.9167328Z [52 / 81] SwiftJ2K
+2026-10-31T08:57:24.3596505Z [59 / 82]
+2026-10-31T08:57:24.6526377Z [61 / 87] SwiftJ2K3D
+2026-10-31T08:57:25.8296797Z [62 / 87] SwiftJ2K3D
+2026-10-31T08:57:27.5617034Z [63 / 87] SwiftJ2K3D
+2026-10-31T08:57:30.1757180Z [64 / 87] SwiftJ2K3D
+2026-10-31T08:57:30.5336863Z [66 / 87] SwiftJ2K3D
+2026-10-31T08:57:30.7156313Z [72 / 88] SwiftJ2KJPIP
+2026-10-31T08:57:32.7744180Z [75 / 94] SwiftJ2KJPIP
+2026-10-31T08:57:38.5194920Z [76 / 94] SwiftJ2KJPIP
+2026-10-31T08:57:40.1156501Z [77 / 94] SwiftJ2K3D
+2026-10-31T08:57:40.2347072Z [82 / 94] SwiftJ2KJPIP
+2026-10-31T08:57:41.7887364Z [83 / 94] swiftj2k-cli-product
+2026-10-31T08:57:42.8575898Z error: SwiftCompile normal x86_64 /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransport.swift failed with a nonzero exit code. Command line:     cd /__w/SwiftJ2K
+2026-10-31T08:57:42.8578148Z     builtin-SwiftPerFileCompile JPIPTransport.swift
+2026-10-31T08:57:42.8627080Z /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransport.swift:551:56: [1;31merror: [1;39mvalue of type 'URLSession' has no member 'bytes'[0;0m
+2026-10-31T08:57:42.8629125Z [0;36m549 |[0;0m         _ request: URLRequest, session: URLSession, maxBodyBytes: Int, maximumStorageBytes: Int
+2026-10-31T08:57:42.8630624Z [0;36m550 |[0;0m     ) async throws -> (response: JPIPResponse, peak: Int) {
+2026-10-31T08:57:42.8632104Z [0;36m551 |[0;0m         let (asyncBytes, response) = try await [4;39msession[0;0m.[4;39mbytes[0;0m(for: request)
+2026-10-31T08:57:42.8634128Z     [0;36m|[0;0m                                                        `- [1;31merror: [1;39mvalue of type 'URLSession' has no member 'bytes'[0;0m
+2026-10-31T08:57:42.8635401Z [0;36m552 |[0;0m         defer { asyncBytes.task.cancel() }
+2026-10-31T08:57:42.8636561Z [0;36m553 |[0;0m         guard let httpResponse = response as? HTTPURLResponse else {
+2026-10-31T08:57:42.8637464Z Failed frontend command:
+2026-10-31T08:57:42.8696563Z /usr/bin/swift-frontend -frontend -c /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DCacheManager.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DJPIPClient.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DJPIPServer.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DProgressiveDelivery.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DStreamingTypes.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIP.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPAdaptiveQualityEngine.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPBandwidthEstimator.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPBandwidthThrottle.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPClientCacheManager.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPDataBinGenerator.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPHTJ2KSupport.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPMultiResolutionTileManager.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPNetworkFramework.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPPrecinctCache.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPProgressiveDeliveryScheduler.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPProgressiveStreamingPipeline.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPRequest.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPRequestQueue.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPResourceAdmission.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPResponse.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServer.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServerPush.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServerSession.swift /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionPersistence.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTranscodingService.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransport.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketClient.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketServer.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift -primary-file /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift -supplementary-output-file-map /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/supplementaryOutputs-12 -target x86_64-unknown-linux-gnu -disable-objc-interop -I /__w/SwiftJ2K/SwiftJ2K/.build/out/Products/Debug-linux-x86_64 -module-cache-path /__w/SwiftJ2K/SwiftJ2K/.build/out/ModuleCache.noindex -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -swift-version 6 -Onone -D SWIFT_PACKAGE -D DEBUG -D SWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -external-plugin-path /usr/lib/swift/host/plugins/testing\#/usr/bin/swift-plugin-server -validate-clang-modules-once -clang-build-session-file /__w/SwiftJ2K/SwiftJ2K/.build/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /__w/SwiftJ2K -enable-anonymous-context-mangled-names -file-compilation-dir /__w/SwiftJ2K -Xcc -fno-omit-frame-pointer -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/__w/SwiftJ2K/SwiftJ2K/.build/out/Products/Debug-linux-x86_64/include -Xcc -I/__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/DerivedSources-normal/x86_64 -Xcc -I/__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/DerivedSources/x86_64 -Xcc -I/__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name SwiftJ2KJPIP -package-name swiftj2k -const-gather-protocols-file /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/SwiftJ2KJPIP_const_extract_protocols.json -in-process-plugin-server-path /usr/lib/swift/host/libSwiftInProcPluginServer.so -plugin-path /usr/lib/swift/host/plugins -plugin-path /usr/local/lib/swift/host/plugins -parse-as-library -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPSessionPersistence.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTCPSocket.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTranscodingService.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTransport.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketClient.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketServer.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketTransport.o -o /__w/SwiftJ2K/SwiftJ2K/.build/out/Intermediates.noindex/SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWorkerHandoff.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPSessionPersistence.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTCPSocket.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTranscodingService.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPTransport.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketClient.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketServer.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWebSocketTransport.o -index-unit-output-path /SwiftJ2K.build/Debug-linux-x86_64/SwiftJ2KJPIP-t.build/Objects-normal/x86_64/JPIPWorkerHandoff.o -index-store-path /__w/SwiftJ2K/SwiftJ2K/.build/out -index-system-modules
+2026-10-31T08:57:42.8760390Z [88 / 100] swiftj2k-cli-product
+2026-10-31T08:57:42.9349918Z error: Build failed
+2026-10-31T08:57:42.9674123Z ##[error]Process completed with exit code 1.
+2026-10-31T08:57:43.1148609Z Post job cleanup.
+2026-10-31T08:57:43.1156578Z ##[command]/usr/bin/docker exec  7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T08:57:43.3112270Z [command]/usr/bin/git version
+2026-10-31T08:57:43.3161997Z git version 2.43.0
+2026-10-31T08:57:43.3209351Z Temporarily overriding HOME='/__w/_temp/c4e55d5f-f243-46d9-9c2a-53555611c9e3' before making global git config changes
+2026-10-31T08:57:43.3210585Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T08:57:43.3214737Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T08:57:43.3255181Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T08:57:43.3298233Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T08:57:43.3559577Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T08:57:43.3600991Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T08:57:43.3979940Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T08:57:43.4045478Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T08:57:43.4569991Z Stop and remove container: e0528853c6204ae4834b123af47b2ad1_swift64noble_6faf7c
+2026-10-31T08:57:43.4575179Z ##[command]/usr/bin/docker rm --force 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:43.6028898Z 7cdfdeb2c76d400fb4267ec221906f8284d676f1b552e5af5666f2ea138b99a3
+2026-10-31T08:57:43.6065334Z Remove container network: github_network_e1457ac268cf49c29414e12fb8e941e8
+2026-10-31T08:57:43.6070181Z ##[command]/usr/bin/docker network rm github_network_e1457ac268cf49c29414e12fb8e941e8
+2026-10-31T08:57:43.6939303Z github_network_e1457ac268cf49c29414e12fb8e941e8
+2026-10-31T08:57:43.7030137Z Cleaning up orphan processes
+2026-10-31T08:57:43.7456019Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

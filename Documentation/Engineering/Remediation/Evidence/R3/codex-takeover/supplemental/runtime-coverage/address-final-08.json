@@ -1,0 +1,29 @@
+{
+  "source": "work/candidate-snapshot-08",
+  "inventory": "work/sanitizer-inventory-08/address/all.ids",
+  "ordinary": {
+    "label": "ordinary-final",
+    "directory": "work/validation/candidate-full-08",
+    "swift_testing_xml": [
+      "work/validation/candidate-full-08/report-swift-testing.xml"
+    ]
+  },
+  "partitions": [
+    {
+      "label": "address-jpip-final",
+      "directory": "work/validation/candidate-jpip-asan-08",
+      "expected_ids": "work/sanitizer-inventory-08/address/jpip.ids",
+      "swift_testing_xml": [
+        "work/validation/candidate-jpip-asan-08/report-swift-testing.xml"
+      ]
+    },
+    {
+      "label": "address-complement-final",
+      "directory": "work/validation/candidate-complement-asan-08",
+      "expected_ids": "work/sanitizer-inventory-08/address/complement.ids",
+      "swift_testing_xml": [
+        "work/validation/candidate-complement-asan-08/report-swift-testing.xml"
+      ]
+    }
+  ]
+}

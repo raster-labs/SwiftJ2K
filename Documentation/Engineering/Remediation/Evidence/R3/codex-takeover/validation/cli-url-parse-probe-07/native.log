@@ -1,0 +1,6 @@
+" 127.0.0.1 " NIL
+" " NIL
+"" http://:12345
+" * " NIL
+"localhost" http://localhost:12345
+"127.0.0.1" http://127.0.0.1:12345

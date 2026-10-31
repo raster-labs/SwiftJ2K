@@ -1,0 +1,54 @@
+{
+  "state": "PREPARATION_ONLY_NOT_FOR_FINAL_PUBLICATION",
+  "prepared_at": "2026-10-31T10:34:19.069630+00:00",
+  "candidate": "candidate-snapshot-14",
+  "completed_native_selected": [
+    "candidate-cli-09",
+    "candidate-focused-09",
+    "candidate-release-build-09",
+    "candidate-focused-10",
+    "candidate-full-10",
+    "trickle-probe-build-10",
+    "trickle-probe-run-10",
+    "diagnostic-https-full-11",
+    "diagnostic-https-full-12",
+    "diagnostic-sampled-full-13",
+    "foundation-queue-policy-13",
+    "queue-policy-build-13",
+    "queue-policy-run-13",
+    "candidate-focused-14",
+    "candidate-full-14",
+    "candidate-release-build-14",
+    "candidate-cli-14"
+  ],
+  "pending_native": [
+    "candidate-tsan-inventory-14",
+    "candidate-jpip-tsan-14",
+    "candidate-complement-tsan-14",
+    "candidate-asan-inventory-14",
+    "candidate-jpip-asan-14",
+    "candidate-complement-asan-14"
+  ],
+  "pending_receipt_categories": [
+    "Independent root review of the versioned packager14 receipt-path guard delta.",
+    "Final independent14 source review report and source pair after positive stop.",
+    "Final14 complete ordinary and partitioned sanitizer declaration/argument execution proofs and independent audit.",
+    "Final14 native gate decision and updated capability/status documentation review.",
+    "Subsequent exact-head hosted run metadata, every raw job log, retention reconstruction and runtime proof.",
+    "Final publication head/tree/base/merge-tree identity and scoped PR/checkpoint records."
+  ],
+  "external_gates": {
+    "state": "UNEXECUTED_UNWAIVED",
+    "R3_acceptance": "NOT_ACCEPTED",
+    "R4": "GATED"
+  },
+  "excluded_binaries_or_cache": [
+    "work/trickle-probe-10/trickle-delivery-probe",
+    "work/queue-policy-probe-13/queue-policy"
+  ],
+  "publication_policy": "Root only, existing exclusive claim and stopped writers; use reviewed versioned14 package.py, fixed ci-repair-09 destination and immutable index. This manifest remains incomplete; create a NEW final manifest after remaining receipts exist.",
+  "excluded_local_only": [
+    "https-full-concurrency-diagnosis-12/environment-after.json",
+    "https-full-concurrency-diagnosis-12/other-native-after.txt"
+  ]
+}

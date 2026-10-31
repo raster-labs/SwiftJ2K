@@ -1,0 +1,47 @@
+{
+  "state": "DOCUMENTATION_PENDING_READ_ONLY_DRY_RUN_PASS_NO_PUBLICATION",
+  "at": "2026-10-31T12:30:32.822691+00:00",
+  "manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/manifest-candidate-22-02.json",
+    "sha256": "e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2"
+  },
+  "reviewed_helper": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py",
+    "sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83"
+  },
+  "published": false,
+  "index": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/ci-repair-09/indexes/0f5c12a1547ea63422eddb90c5f9075eae433078a45c8b5d44efab90ceccaf86.json",
+  "index_sha256": "0f5c12a1547ea63422eddb90c5f9075eae433078a45c8b5d44efab90ceccaf86",
+  "artifact_roles": 135,
+  "proposed_payloads": 119,
+  "proposed_payload_bytes": 6101003,
+  "existing_identical_payloads": 5,
+  "currently_absent_payloads": 114,
+  "prior_08_references": 4,
+  "native_runs": 3,
+  "candidate22_completed_native_runs": 2,
+  "diagnostic19_native_runs": 1,
+  "review_pairs": 11,
+  "hosted_runs": 1,
+  "hosted_job_logs": 7,
+  "supplemental_receipts": 76,
+  "implementation_scope_sha256": "d5698c7ca7d24cc85ff7b86ee1b782496b86dc5bb12c01214212f35ce686277e",
+  "ci_scope_sha256": "018d8ecf684b67e0a9467278ceeafbf393b7b070d0533e2cbafde82995162127",
+  "published_corpus_before": {
+    "files": 1050,
+    "bytes": 50648899,
+    "map_sha256": "df9c7da0d27501820dbeb94b5bbccb6e4d28540fece8c409359348b1ccfab4c0",
+    "map_format": "helper canonical JSON of relative-path to sha256/bytes"
+  },
+  "published_corpus_after": {
+    "files": 1050,
+    "bytes": 50648899,
+    "map_sha256": "df9c7da0d27501820dbeb94b5bbccb6e4d28540fece8c409359348b1ccfab4c0",
+    "map_format": "helper canonical JSON of relative-path to sha256/bytes"
+  },
+  "published_corpus_unchanged": true,
+  "repository_writes": false,
+  "native_execution": false,
+  "R3": "NOT_ACCEPTED",
+  "final_document_review_pending": true
+}

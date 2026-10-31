@@ -1,0 +1,120 @@
+CI-repair-09 supplemental evidence packaging
+
+The initial manifest selects the completed first hosted failure and stopped
+compiler-expression repair receipts only. It contains no candidate09 native
+result and is not the final validation manifest. Add completed native/review/
+hosted records explicitly when they exist; never invent a pending pass.
+
+Default operation reads/verifies and prints a proposed immutable index path:
+
+  python3 work/ci-repair-evidence-09/package.py work/ci-repair-evidence-09/manifest-initial.json
+
+Actual publication belongs to the coordinator, under its existing exclusive
+claim and after source writers stop. Review the explicit manifest first:
+
+  python3 work/ci-repair-evidence-09/package.py work/ci-repair-evidence-09/manifest-final.json --publish --writers-stopped
+
+The flag records the operator's acknowledgement, not claim acquisition or a
+request for new user permission. The helper does not run native tools, Git or
+network calls. All final writes are confined to the fixed repository path:
+  Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/ci-repair-09/
+
+Never rerun or edit the older package-r3-evidence.py to append these receipts.
+Its published08 generated-index.json and receipt objects remain immutable.
+
+Layout and repeat runs
+- objects/<sha256>: exact original bytes, deduplicated inside the supplement.
+- indexes/<sha256>.json: immutable complete index for this explicit invocation.
+- README.md: stable scope explanation; there is no mutable latest index.
+- Identical hashes already in prior08 reference that verified prior object.
+  Only the pinned prior index and actually reused objects are read; the 22 MB
+  historical corpus is neither copied nor scanned in full.
+- Same inputs/source/helper produce the same index. New records or changed
+  candidate source create a new index without replacing any previous receipt.
+- Changed existing objects, symlinks, path traversal, input mutation, missing
+  files, hash mismatches and incomplete required receipts produce visible errors.
+  A failed publication may leave immutable objects without an index. Do not
+  delete/reclaim a lock or reconcile a conflicting receipt automatically.
+- Reference the exact printed index in the coordinator's checkpoint. After
+  publication, inspect its bytes and hashes before claiming package completeness.
+
+Manifest schema
+Top-level schema is swiftj2k-r3-ci-repair-inputs-v1. Unknown top-level fields
+are rejected. Paths are absolute or workspace-relative; each input reference is
+  {"path": "work/path/to/file.json", "sha256": "64 lowercase hex digits"}
+The prior_index path must resolve to the fixed prior08 generated-index.json.
+published_base_label is descriptive; the helper does not verify Git identity.
+candidate_label is also descriptive, never a qualification result.
+
+Native entries, under native_runs:
+  {"result": REF_TO_RESULT_JSON, "command": REF_TO_COMMAND_JSON,
+   "before": REF_TO_SOURCE_BEFORE_JSON, "after": REF_TO_SOURCE_AFTER_JSON,
+   "reports": [REF_TO_EVERY_XML_UNDER_THIS_RUN], "diagnostic_only": false}
+
+All four files must belong to the same completed run directory. The wrapper's
+native.log and exact native.stdout/native.stderr are discovered only through
+that directory and their recorded SHA/byte/path metadata. Source before/after
+maps and changed_inputs must agree. Ordinary failed exit codes are retained.
+Changed source or failed capture requires diagnostic_only=true and is indexed
+as such; this is not successful execution evidence. All existing XML must be
+explicitly listed. An absent XML framework report is never counted as zero
+tests. No declaration/case coverage is inferred by this packager.
+
+Review entries, under reviews:
+  {"report": REF, "source": REF, "completed": true, "supporting": [REF, ...]}
+Both files are required, the report must be nonempty, and report_sha256 is
+checked when present in the source receipt. Explicit active/pending states are
+rejected. Completion is the coordinator's explicit attestation; the helper
+checks integrity and does not independently approve the review's conclusions.
+One-file JSON review receipts may be preserved as explicitly named supplemental
+receipts, without pretending they are report/source pairs.
+
+Hosted entries, under hosted_runs:
+  {"run_id": 123, "attempt": 1, "metadata": REF_TO_JOBS_JSON,
+   "logs": [{"job_id": 456, "file": REF_TO_EXACT_LOG}, ...], "review": REF}
+metadata must contain jobs with matching run_id, unique id, status=completed
+and an explicit conclusion. Exactly one log must be supplied for every job
+in that metadata. Success, failure, cancellation and skipped steps retain their
+original meanings. Run attempt and log association are manifest attribution,
+not cryptographic provider proof. The separate review receipt must establish
+exact PR head/tested checkout/tree, step outcomes, retention and runtime proof.
+The packager never upgrades job success into hosted coverage or acceptance.
+For first run41186617163, all 32 missing macOS emitter paths are correctly an
+incomplete-retention result; there is no successful reconstruction to include.
+
+Additional explicit inputs, under supplemental:
+  {"file": REF, "role": "compiler-source-diff"}
+Use this for scoped repair before/after files, reports, independent root JSON
+reviews, sanitizer inventories/proofs, CI identity reviews and reproduction
+helpers. Only receipt/source-text suffixes are allowed; no build trees/binaries.
+All references are hashed exactly. No directory glob silently adds evidence.
+
+To append a completed native run, this small coordinator-side pattern creates
+the explicit pins (example only; it does not claim any run exists):
+
+  from pathlib import Path
+  import hashlib, json
+  def ref(p):
+      return {"path": str(p.absolute()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+  run = Path("work/validation/ACTUAL_COMPLETED_RUN")
+  item = {key: ref(run / name) for key, name in (
+      ("result", "result.json"), ("command", "command.json"),
+      ("before", "source-before.json"), ("after", "source-after.json"))}
+  item["reports"] = [ref(p) for p in sorted(run.rglob("*.xml"))]
+  manifest["native_runs"].append(item)
+
+Identity and acceptance boundaries
+Current Package.swift/Sources/Tests/Scripts contents and modes are captured
+separately from .github CI contents/modes. Both are checked again before the
+index is written. Documentation and generated evidence are excluded to avoid
+self-reference. Native manifests retain their original source identity; a
+current-source manifest does not retroactively qualify an earlier test run.
+
+Every index remains NOT_ACCEPTED and explicitly retains UNEXECUTED/UNWAIVED:
+combined Part10+15; native3D JPIP; exact WebSocket extension; direct full38 Part2;
+multiple transmitted nonempty HT sets. No merge, release or R4 activation follows.
+
+Synthetic verification only:
+  python3 work/ci-repair-evidence-09/selftest.py
+This creates temporary fake repositories only beneath this work directory,
+checks the helper, deletes those fixtures and saves selftest-result.json.

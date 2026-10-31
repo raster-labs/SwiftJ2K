@@ -1,0 +1,125 @@
+{
+  "state": "STOPPED_WITH_ADDRESS_FAILURE",
+  "scope": "Independent local ordinary/release/CLI and complete partitioned TSan accepted only; ASan incomplete; no R3 acceptance",
+  "source_manifest_sha256": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+  "source_files": 1857,
+  "source_stable": true,
+  "ordinary_thread_partial_receipt_sha256": "6f18a4708cc6dc422684c2bab81de62899817b713ed5c9f211b74a1c33eb097f",
+  "independent_checker_sha256": "563180ac831fbecbc3ffd14b61431004fef1888488fb99ad3ae27513d08f7e3d",
+  "thread_proof_sha256": "8ef0ba4a8bb9c68af25cdf066a5a6a2710a7c972e9f2d94dc12ddf91cfec1f7c",
+  "verified_thread": {
+    "proof_sha256": "8ef0ba4a8bb9c68af25cdf066a5a6a2710a7c972e9f2d94dc12ddf91cfec1f7c",
+    "independent_parser_matches": true,
+    "runs": [
+      {
+        "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-14",
+        "declarations": 1358,
+        "xctest": 1034,
+        "swift_testing": 324,
+        "parameter_declarations": 38,
+        "parameter_starts": 406
+      },
+      {
+        "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-14",
+        "declarations": 647,
+        "xctest": 544,
+        "swift_testing": 103,
+        "parameter_declarations": 6,
+        "parameter_starts": 14
+      },
+      {
+        "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-14",
+        "declarations": 711,
+        "xctest": 490,
+        "swift_testing": 221,
+        "parameter_declarations": 32,
+        "parameter_starts": 392
+      }
+    ]
+  },
+  "cli": {
+    "checks": 246,
+    "binary_sha256": "f91f721d59103b8e7278916198a29431c1e2f7a179d90fd82c72ad6ef1b1b585",
+    "command_statuses_match": true
+  },
+  "address_failure_receipt_sha256": "9526a0c44bdcd5e2b95db4c394b6b668537b49fe87b897c2139f3dac9126bf2c",
+  "address_failure": {
+    "state": "FAILED_ADDRESS_PARTITION_AND_UNEXECUTED_COMPLEMENT",
+    "source_stable": true,
+    "source_files": 1857,
+    "xctest_passed": 544,
+    "swift_testing_declarations": 103,
+    "failed_declarations": [
+      {
+        "classname": "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests",
+        "name": "staleCleanupCannotCloseReplacementHandshake(_:)",
+        "time": "3.693055625"
+      }
+    ],
+    "issues": [
+      {
+        "line": 1507,
+        "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+      },
+      {
+        "line": 1508,
+        "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+      },
+      {
+        "line": 1509,
+        "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+      }
+    ],
+    "parameter_argument_starts": 14,
+    "sanitizer_diagnostics_found": false,
+    "complement_executed": false,
+    "address_proof_exists": false
+  },
+  "address_complement_executed": false,
+  "address_proof_exists": false,
+  "historical": {
+    "candidate-full-tsan-05": {
+      "exit_code": 1,
+      "log_sha256": "4a0abcf25798065f203d2469776b5021931659d43e71f766035eeeb76b9d8fd7",
+      "source_unchanged": true
+    },
+    "candidate-full-07": {
+      "exit_code": 1,
+      "log_sha256": "d826c3c0afa13a283fdb0e68579e8031a111a1ebceabbcde9c4a95a7717fac6a",
+      "source_unchanged": true
+    },
+    "candidate-focused-09": {
+      "exit_code": 1,
+      "log_sha256": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994",
+      "source_unchanged": true
+    },
+    "candidate-full-10": {
+      "exit_code": 1,
+      "log_sha256": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49",
+      "source_unchanged": true
+    },
+    "diagnostic-https-full-11": {
+      "exit_code": 1,
+      "log_sha256": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8",
+      "source_unchanged": true
+    },
+    "diagnostic-https-full-12": {
+      "exit_code": 1,
+      "log_sha256": "7771302c1f4eaa91b3ad6cfe3fdfca68138d1a163fba512e3ac710055ba46d91",
+      "source_unchanged": true
+    },
+    "diagnostic-sampled-full-13": {
+      "exit_code": 1,
+      "log_sha256": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+      "source_unchanged": true
+    },
+    "foundation-queue-policy-13": {
+      "exit_code": -11,
+      "log_sha256": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346",
+      "source_unchanged": true
+    }
+  },
+  "source_review_unchanged_sha256": "937df492fbc0d392a87b175d92e4e8cd383ac4de8e640addee9bea8bce28e2b5",
+  "source_review_receipt_unchanged_sha256": "edeb261f50c1efbac8bfccf1385428d9caaaf527f62b3355c1b07ca41c0a403e",
+  "report_sha256": "5872f7c72e2f413b4bdd09f73eb8f17aa7ac59141fc7ba626e07d2626dffce87"
+}

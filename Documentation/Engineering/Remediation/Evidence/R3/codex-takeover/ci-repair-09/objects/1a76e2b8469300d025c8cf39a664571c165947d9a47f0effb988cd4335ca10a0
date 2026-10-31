@@ -1,0 +1,10 @@
+HTTPS active-trickle harness correction 10 — FROZEN
+
+Canonical claim reverified. Exactly one test file changed: Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+SHA256: f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3
+
+Root-executed standalone diagnostic receipt: work/validation/trickle-probe-run-10/native.stdout. With absent Content-Type, URLProtocol submitted 201 one-byte callbacks but URLSession delivered no response/body callbacks before two-second cancellation. With explicit image/jpp-stream, the same cadence submitted 201 bytes and delivered one response plus 200 body callbacks/bytes, first body at 0.000939583 seconds. Both tasks completed and sessions invalidated. This establishes an observed header-dependent delivery difference on that runtime; the private Foundation mechanism is not asserted.
+
+The active-trickle test now explicitly declares its actual image/jpp-stream content type. A future readiness failure reports submitted one-byte chunks, accumulator bytes and whether protocol startup occurred, distinguishing lack of emission from lack of receipt. Existing one-byte/10ms input, two-second readiness, 120ms shared watchdog, less-than-two-second cancellation assertion, resource caps and cleanup are unchanged. Silent read(deadline:) coverage remains unchanged. No production change was needed. This remains transport harness coverage, not a TLS or independent JPIP peer result.
+
+Static checks: no trailing whitespace; normalising only the header addition and diagnostic message reproduces frozen09 byte-for-byte; the other six prior scoped source/test hashes match frozen09. Prior09 reports, snapshots, failure receipts and standalone probe are untouched. No native/compiler/test/server execution by this writer. Root must run the frozen10 test qualification. All writes stopped.

@@ -1,0 +1,11 @@
+R3 fixture cleanup18 — source preparation only
+
+Source writes stopped. This bounded followup addresses independent finding FIXTURE17-01. No native execution, Git, network or CI action was performed. Root validation and independent review remain required.
+
+Added R3OwnedScriptedPeer.waitForStartup(), which wraps the existing waitFor("accept.started") in do/catch. A startup timeout, peer error or task cancellation now calls the existing stopAndObserve(): close the listener and retained sockets, then observe final accept/worker publication within the unchanged bound. The thrown diagnostic preserves the original failure, the explicit Boolean stopped result, and final phase/error/worker state. A timeout/cancelled observation remains false; no unconditional physical-thread join is claimed.
+
+Replaced exactly four initial startup calls: three in CodexR3IndependentTests and one in CodexR3WebSocketBudgetTests. No other call or test/helper logic changed. Reverse-normalising these four names and removing the new helper method reproduces all three before files byte-for-byte. Existing deferred close remains idempotent fallback cleanup.
+
+No HTTPS code or tests, production source, test assertions, request timeouts, elapsed limits, peer quality-of-service policy, inventory or execution concurrency changed. Existing source17 repair and review receipts remain historical and untouched. Root's failed ordinary17 execution is not reclassified; its four unchanged HTTPS failures remain outside this source repair.
+
+Static checks: claim identity verified; exact before/after bytes and whole diff retained; reverse-normalisation verified; whitespace checked. No new test execution or acceptance is claimed.

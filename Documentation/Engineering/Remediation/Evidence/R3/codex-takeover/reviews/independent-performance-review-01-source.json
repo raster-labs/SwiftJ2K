@@ -1,0 +1,23 @@
+{
+  "review_time_utc": "2026-10-31T07:02:29.547640+00:00",
+  "supporting_files": {
+    "work/run-r3-benchmark.py": "bae3eb6b9f5c4ef400f9985d90b9a82d5cc5d9ca1a25a7f272cf39e1487c2fcb",
+    "work/r3-benchmark-harness/Bench.swift": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a",
+    "work/r3-performance-investigation.txt": "569b6166e68fdb079a60d9a8677c954607edec5a551993b2a4264599031d671c",
+    "work/SwiftJ2K/Documentation/PERFORMANCE.md": "139e83f4c670b514940bcbae2d69560e0b28f866b266019ff8c112c0f388343b",
+    "work/r3-benchmark-results-02/metadata.json": "ec46c6c88ab8b0a7b4d4d590f959da29d3d07bfa05f39fd57183ace64088fd22",
+    "work/r3-benchmark-results-02/samples.jsonl": "593338fa440a6863b5a6e2788aab4f6479431bb5e088f55846313b84932edc48",
+    "work/r3-benchmark-results-02/summary.json": "0c3190b9f664e08fe8334d5eb481759208def1027850dc70dfe3725bc2953e4b",
+    "work/r3-benchmark-results-03/metadata.json": "91f84deada155589b47e2958cdf0d65440b469eadc2c83f367c5057239746fc0",
+    "work/r3-benchmark-results-03/samples.jsonl": "d12a142ec2812e26bb256dd2a144bd704a9a2e5cf8346d0ffb1ce78a29cd3a6f",
+    "work/r3-benchmark-results-03/summary.json": "9332e6e7e14300eb6dfd844c5d259854ed006a7925b17ec8e0f9c9ee479a6678",
+    "work/r3-benchmark-results-02/encoded-size-audit.json": "dd95b9b1807c1559edb81211855d15b3fb3b2bee07cfb2273242491a0f439458",
+    "work/validation/candidate-core-asan-01/command.json": "f02fe6464eed67a59c14d70e59ec6dda1aab2c091f5cf7d9dceef736426b4cc7",
+    "work/validation/candidate-core-asan-01/result.json": "a7e0e1123803db08561095f885d6f7c21555b4f9fa5f252fff11000a28b4199f",
+    "work/validation/candidate-core-asan-01/native.log": "1dde58f89ebc5d64ef47f9e2a971fece9dfe30360652694032bcd503ea14f8e2"
+  },
+  "production_scope_count": 52,
+  "production_matches_review02": true,
+  "candidate_snapshot_production_matches_review02": true,
+  "profile_available_at_completion": true
+}

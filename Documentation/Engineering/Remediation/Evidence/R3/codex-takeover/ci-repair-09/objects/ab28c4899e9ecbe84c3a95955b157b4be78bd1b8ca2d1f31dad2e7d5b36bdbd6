@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Replay read-only parser components on completed historical and focused receipts."""
+from pathlib import Path
+import hashlib
+import json
+import runpy
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'component-check-10.json'
+if out.exists():
+    raise SystemExit('Refusing component-report overwrite')
+code = runpy.run_path(str(here / 'audit-final.py'))
+parse, require = code['independently_parse'], code['require']
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read = lambda p: json.loads(Path(p).read_text())
+results = {'state': 'READ_ONLY_PARSER_COMPONENT_REPLAY', 'inputs': {}, 'runs': {}}
+for mode in ['thread', 'address']:
+    proof_path = work / ('r3-sanitizer-execution-proof-' + mode + '-08.json')
+    proof = read(proof_path)
+    results['inputs'][str(proof_path)] = sha(proof_path)
+    for run in [proof['ordinary'], *proof['partitions']]:
+        directory = Path(run['directory'])
+        xc, sw, params = parse(directory, proof['display_bindings'])
+        require({k: 'passed' for k in xc} == run['runtime']['xctest'] and sw == run['runtime']['swift_testing']
+                and params == run['runtime']['parameter_cases'], 'Historical parser replay differs')
+        for filename in ['native.stdout', 'report-swift-testing.xml']:
+            results['inputs'][str(directory / filename)] = sha(directory / filename)
+        results['runs'][directory.name] = {'xctest': len(xc), 'swift_testing': len(sw),
+            'parameter_declarations': len(params), 'parameter_argument_starts': sum(sum(v.values()) for v in params.values())}
+prep_path = here / 'preparation-10.json'
+prep = read(prep_path)
+results['inputs'][str(prep_path)] = sha(prep_path)
+old_ids = set((work / 'sanitizer-inventory-08' / 'thread' / 'all.ids').read_text().splitlines())
+merged_ids = old_ids | set(prep['helper_compatibility']['new_observed_focused09_declarations'])
+reconcile = runpy.run_path(str(work / 'runtime-coverage' / 'reconcile.py'))
+bindings, _ = reconcile['display_map'](work / 'candidate-snapshot-10', merged_ids)
+directory = work / 'validation' / 'candidate-focused-10'
+xc, sw, params = parse(directory, bindings)
+require(not xc and len(sw) == 22 and len(params) == 4 and sum(sum(v.values()) for v in params.values()) == 9,
+        'Focused10 parser replay has unexpected declarations/arguments')
+results['runs'][directory.name] = {'xctest': len(xc), 'swift_testing': len(sw),
+    'parameter_declarations': len(params), 'parameter_argument_starts': sum(sum(v.values()) for v in params.values())}
+for filename in ['native.stdout', 'report-swift-testing.xml']:
+    results['inputs'][str(directory / filename)] = sha(directory / filename)
+rejected = False
+try:
+    parse(work / 'validation' / 'candidate-focused-09', bindings)
+except ValueError:
+    rejected = True
+require(rejected, 'Failed focused09 unexpectedly accepted by strict independent parser')
+results['failed_focused09_rejected'] = True
+results['boundaries'] = ['Parser component replay only; final10 ordinary/inventory/sanitizer audit still pending.',
+                         'No native processes or modified native receipts.']
+for path in [Path(__file__), here / 'audit-final.py', work / 'runtime-coverage' / 'reconcile.py']:
+    results['inputs'][str(path)] = sha(path)
+with out.open('x') as output:
+    output.write(json.dumps(results, indent=2) + '\n')
+print(json.dumps({'state': results['state'], 'runs': results['runs'], 'failed_focused09_rejected': rejected}, indent=2))

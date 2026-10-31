@@ -1,0 +1,20 @@
+CLI Linux Swift 6.4 portability repair16 — implementation only
+
+Scope and ownership
+The root authorised only Sources/SwiftJ2KCLI/CLIVerbs.swift and this receipt directory. Immediately before editing, work/active-claim.json and the canonical audit.claim/owner.json matched invocation1ce94f4b-ebfa-4309-98f6-5530103803d9, owner Codex Astra R3 takeover. They remain unchanged. No native, CI, Git or network command was executed. Root retains native validation; a separate reviewer must assess this change.
+
+Baseline and observed failure
+The parent identified published PR30 f3c63e3 and hosted run41195752705 attempt1, Swift6.4 Linux arm job124521448817. The raw supplied log is preserved and hashed in before.json. Its five error-bearing lines represent one distinct compiler cause: at CLIVerbs.swift:1922, referring to Glibc's mutable stdout variable is rejected by Swift concurrency checking. The remaining error lines are duplicate rendered diagnostics, the enclosing SwiftCompile failure, Build failed, and process exit1. This job failed building; no test-runtime pass is inferred. Before edit the file matched the frozen candidate15 file byte-for-byte (SHA7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43). Root's current README identifies shared contract0.10.0; older AGENTS baseline text does not authorise changing current contract/platform requirements.
+
+Repair and source proof
+Removed exactly the single line `    fflush(stdout)` after the non-once JPIP server startup report. No replacement call, suppression, annotation, option, deadline, concurrency or control-flow change was added.
+The text path invokes `write(_:to:)` in main.swift:521-522, which directly performs throwing synchronous `FileHandle.write(contentsOf:)` using UTF8 data. The JSON path invokes report(_:json:to:) in main.swift:1006-1009, which serialises sorted-key JSON and synchronously writes the data and newline through the same FileHandle API. Both explicitly use FileHandle.standardOutput and return from the write before the unchanged maxRequests/cancellation wait loops. These output paths do not stage their bytes in the C FILE* stdout buffer, so flushing that separate stdio buffer is unnecessary for publishing these startup messages. Output contents, newline, destination and existing thrown I/O behaviour are preserved by the one-line delta. No codec work, output allocation policy or performance path was changed or measured.
+
+Checks performed
+Filesystem source/log inspection; claim equality; before-file equality with frozen15; exact one-line byte transformation; unified diff; source SHA256 and read-only input immutability. The after file SHA256 is1b92d632abea8abe1aea4180b01045e3fcfddd1b32d11259e0832d29c00f535c. main.swift, the raw hosted log, original frozen15 file and both claim records remain byte-identical. No new test was added for this reversible one-line compiler portability repair, and no existing assertion, threshold or selection was edited.
+
+Validation still required
+Fresh root-owned build and CLI regression must validate this source; old15 results remain historical. Existing CodexR3CLIHostTests and Scripts/test-cli.py exercise server --once, which returns before the removed line. A focused root-owned smoke check should therefore read a long-running server's text and JSON startup announcements from stdout while the process remains alive, then explicitly close the server/process. A fresh hosted Swift6.4 Linux arm compile is required to establish the previously failing target; this edit alone does not prove it passes or exclude later errors. Independent review and any required broader root checks remain pending. No R3, CI, peer or release acceptance is claimed.
+
+Artifacts
+CLIVerbs.before.swift; CLIVerbs.after.swift; source.diff; before.json; observed-log-errors.json; report.json. Original published15 source/evidence was not modified. Positive STOP: implementation and source receipt complete; no further edits or execution planned.

@@ -1,0 +1,31 @@
+{
+  "started_at": "2026-10-31T06:44:54.007571+00:00",
+  "scope": "Bounded R3 changed-volume-hot-path comparison; not complete R4 corpus or release qualification.",
+  "baseline": "Rejected pre-takeover 67c8f7ed05379113b1fd41897b289c48a541266c; comparator only",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n",
+  "hardware": "Mac16,13\n10\n10\n17179869184\n",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434\n",
+  "power_before": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded\n",
+  "binaries": {
+    "baseline": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-baseline-build/arm64-apple-macosx/release/r3-benchmark",
+      "sha256": "9c5dd537aac390bd6e32be20832f4ea5ef35e847e2e705df8e493d17abda8601"
+    },
+    "candidate": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-candidate-build/arm64-apple-macosx/release/r3-benchmark",
+      "sha256": "d612c751aa040ce209e25e4ecbeea4982e1c1946767dc8b4456d5a1f6b6da391"
+    }
+  },
+  "inputs": {
+    "medium16.raw": "637a7a93f6aa8e50bb21ca17e96baaa9c31663b8f09f9528106f42cd86cd0d7a",
+    "odd8.ebcot.j2k": "344c3f64058605bfe62ef4c36543ab44f668e81217ee74649ca2c4c7f11e00de",
+    "medium16.ht.j2k": "975d527f9248d96168dc0abcba23481a4585cbbbb1c47b504268161f06d58b8d",
+    "medium16.ebcot.j2k": "2cd3b0f66d4e1007f6f5ed92f797d75f46e035b267be3f54bef19f5ac91abf59",
+    "odd8.ht.j2k": "d2c5c05b288c5b30602968150daa7e1afc1179dfe831e3fb0d18d2b1642e96ec",
+    "odd8.raw": "c1126b26f3636f2c9f69bf501eb374409e1aa71e0d71b32949cf47ec87355686"
+  },
+  "rounds": 20,
+  "warmups_per_process": 5,
+  "timing": "One operation timed per fresh process after five warmups. Serial alternating AB/BA per round. Process startup and sample verification excluded from operation latency; RSS includes startup/input/warmups."
+}

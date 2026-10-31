@@ -1,0 +1,29 @@
+{
+  "reviewed_at": "2026-10-31T07:48:20.932476+00:00",
+  "candidate": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-05",
+  "reviewed_sources": {
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "d673d0c85f90e95d56720259f2e1a49c6f614dbe6aaf428612961ce1bafe9082",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "7c57067174343585d6fb6efac3eb9c6eca66572d45cc25e560cd13c2b9700fdb",
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": "009cc2fe7780be5aef226d01d5f72e29078afff9a3acc616f7acd39b838c76b4",
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift": "28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5",
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+    "Documentation/TESTING.md": "3d01911ff78d52e593ffdbd0962d19607878abc51fad5862f8cc10a927fca765",
+    "AGENTS.md": "2298c623bd9ca57edb7d65e4db8a259d135cea07049b2874d54bafc9cb91233b"
+  },
+  "source_manifest_mismatches": [],
+  "evidence_hashes": {
+    "command.json": "c38467ca26a746d50d1d3c7bdef580e772a4fe7def08e3a9f8f9a48275279b3e",
+    "result.json": "e4e2cd6ddc1639b99398eac71b6f75b37f41f46f7ea15cf155fa886c8bbb1c55",
+    "native.log": "4a0abcf25798065f203d2469776b5021931659d43e71f766035eeeb76b9d8fd7",
+    "source-before.json": "a7536ff7153c3c26021f9b05ff4e59d0af47e9e438ac3a6b6250a35a28c8500a",
+    "source-after.json": "a7536ff7153c3c26021f9b05ff4e59d0af47e9e438ac3a6b6250a35a28c8500a"
+  },
+  "native_exit_code": 1,
+  "native_sources_stable": true,
+  "native_sources_match_manifest": true,
+  "native_log_matches_result": true,
+  "report_sha256": "3edaf6627253ce8b87bb86939912e16911ea9e6b4d365db980831df6079eab52",
+  "reviewer_native_execution": false
+}

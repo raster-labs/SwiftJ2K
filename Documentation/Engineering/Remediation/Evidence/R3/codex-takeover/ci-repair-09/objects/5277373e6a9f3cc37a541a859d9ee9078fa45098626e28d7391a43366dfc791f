@@ -1,0 +1,24 @@
+{
+  "snapshot": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-15",
+  "manifest_sha256": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+  "verified_files": 1857,
+  "changed_during_review": [],
+  "delta_vs14": {
+    "Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": {
+      "before": "69d40da080bdaf37263ac7525acdbd544e8ec6caa56f89e6c0b121946e6b2276",
+      "after": "55064621d9d069b45c8c2953c8793995d07bdfd0823958d84789e2756deb2076"
+    },
+    "Documentation/Engineering/Remediation/STATUS.md": {
+      "before": "d5dbae47c264853043a7b16176288811a5f3a31342aeee16ebaea1e42e7e4f26",
+      "after": "322d33dff389ac27326008b8be074554b35446d39f8a221e638efeef87f8d68e"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift": {
+      "before": "28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd",
+      "after": "674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386"
+    }
+  },
+  "normalisation_matches_frozen14": true,
+  "labelled_calls": 10,
+  "author_source_receipt_sha256": "93e0644db8c3488dfa5477c1fb0d652bbb131f1eb224edc3c2792ac955dd8ee5",
+  "all_production_package_scripts_resources_other_tests_unchanged": true
+}

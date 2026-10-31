@@ -40,56 +40,8 @@ private func containerFixtureURL(_ name: String) -> URL {
         .appendingPathComponent(name)
 }
 
-private func locateR2CLIBinary() throws -> URL {
-    let root = repoRootURL()
-    let bundleDir = Bundle.main.bundleURL.deletingLastPathComponent()
-    let candidates = [
-        bundleDir.appendingPathComponent("swiftj2k-cli"),
-        root.appendingPathComponent(".build/out/Products/Debug/swiftj2k-cli"),
-        root.appendingPathComponent(".build/debug/swiftj2k-cli"),
-        root.appendingPathComponent(".build/arm64-apple-macosx/debug/swiftj2k-cli"),
-        root.appendingPathComponent(".build/x86_64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        root.appendingPathComponent(".build/aarch64-unknown-linux-gnu/debug/swiftj2k-cli"),
-        root.appendingPathComponent(".build/out/Products/Release/swiftj2k-cli"),
-        root.appendingPathComponent(".build/release/swiftj2k-cli")
-    ]
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    let buildProc = Process()
-    buildProc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    buildProc.arguments = ["swift", "build", "--product", "swiftj2k-cli"]
-    buildProc.currentDirectoryURL = root
-    try buildProc.run()
-    buildProc.waitUntilExit()
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate.path) {
-        return candidate
-    }
-    throw CodecError(.internalFailure, "Could not locate or build swiftj2k-cli binary for Phase R2 tests.")
-}
-
-private struct R2CLIResult: Sendable {
-    let status: Int32
-    let stdout: Data
-    let stderr: Data
-    var stdoutText: String { String(data: stdout, encoding: .utf8) ?? "" }
-    var stderrText: String { String(data: stderr, encoding: .utf8) ?? "" }
-}
-
-private func runR2CLI(_ args: [String]) throws -> R2CLIResult {
-    let binary = try locateR2CLIBinary()
-    let proc = Process()
-    proc.executableURL = binary
-    proc.arguments = args
-    let outPipe = Pipe()
-    let errPipe = Pipe()
-    proc.standardOutput = outPipe
-    proc.standardError = errPipe
-    try proc.run()
-    let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-    proc.waitUntilExit()
-    return R2CLIResult(status: proc.terminationStatus, stdout: outData, stderr: errData)
+private func runR2CLI(_ args: [String]) async throws -> CLITestProcessResult {
+    try await CLITestProcess.run(args)
 }
 
 private func makeJP2Box(_ type: String, payload: [UInt8]) -> [UInt8] {
@@ -1152,7 +1104,7 @@ struct R2RemediationTests {
     // MARK: M12-CX-03 — Normative W3C PNG `sBIT` Representation & Byte-Layout Verification
 
     @Test("M12-CX-03: PNG sBIT preserves significant samples normatively on read/write and rejects invalid/unequal sBIT or unscaled clipping")
-    func normativePNGSbitReadWriteAndValidation() throws {
+    func normativePNGSbitReadWriteAndValidation() async throws {
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-png-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -1178,7 +1130,7 @@ struct R2RemediationTests {
             )
             try pngData.write(to: pngURL)
 
-            let res = try runR2CLI(["convert", "-i", pngURL.path, "-o", nrrdURL.path])
+            let res = try await runR2CLI(["convert", "-i", pngURL.path, "-o", nrrdURL.path])
             #expect(res.status == 0, "CLI stderr: \(res.stderrText)")
             let parsed = try parseNRRDSamples(Data(contentsOf: nrrdURL))
             #expect(parsed.meaningfulBits == 12)
@@ -1198,7 +1150,7 @@ struct R2RemediationTests {
             sbitBeforeIDAT: [10, 10, 10],
             samplesBigEndian: [0, 256, 512, 513, 768, 1023].map(rep10To16)
         ).write(to: rgb10PNG)
-        let rgb10Res = try runR2CLI(["convert", "-i", rgb10PNG.path, "-o", rgb10NRRD.path])
+        let rgb10Res = try await runR2CLI(["convert", "-i", rgb10PNG.path, "-o", rgb10NRRD.path])
         #expect(rgb10Res.status == 0, "CLI stderr: \(rgb10Res.stderrText)")
         let rgb10Parsed = try parseNRRDSamples(Data(contentsOf: rgb10NRRD))
         #expect(rgb10Parsed.meaningfulBits == 10)
@@ -1215,7 +1167,7 @@ struct R2RemediationTests {
             sbitBeforeIDAT: [5],
             samplesBigEndian: [0x00, 0x84, 0xFF] // 0, 16 ((16<<3)|(16>>2)=132=0x84), 31 (0xFF)
         ).write(to: g5PNG)
-        let g5Res = try runR2CLI(["convert", "-i", g5PNG.path, "-o", g5NRRD.path])
+        let g5Res = try await runR2CLI(["convert", "-i", g5PNG.path, "-o", g5NRRD.path])
         #expect(g5Res.status == 0, "CLI stderr: \(g5Res.stderrText)")
         let g5Parsed = try parseNRRDSamples(Data(contentsOf: g5NRRD))
         #expect(g5Parsed.meaningfulBits == 5)
@@ -1231,7 +1183,7 @@ struct R2RemediationTests {
             pgmBytes.append(UInt8(v & 0xFF))
         }
         try Data(pgmBytes).write(to: src12PGM)
-        let writeRes = try runR2CLI(["convert", "-i", src12PGM.path, "-o", out12PNG.path])
+        let writeRes = try await runR2CLI(["convert", "-i", src12PGM.path, "-o", out12PNG.path])
         #expect(writeRes.status == 0, "CLI stderr: \(writeRes.stderrText)")
         let rawPNGInfo = try inspectRawPNG16Greyscale(Data(contentsOf: out12PNG))
         #expect(rawPNGInfo.bitDepth == 16)
@@ -1247,7 +1199,7 @@ struct R2RemediationTests {
             width: 1, height: 1, bitDepth: 8, colorType: 2,
             sbitBeforeIDAT: [5, 6, 5], samplesBigEndian: [0xFF, 0xFF, 0xFF]
         ).write(to: unequalRGB)
-        #expect(try runR2CLI(["convert", "-i", unequalRGB.path, "-o", dummyOut.path]).status == 4)
+        #expect(try await runR2CLI(["convert", "-i", unequalRGB.path, "-o", dummyOut.path]).status == 4)
 
         // 5b. Out-of-range `sBIT` (`0` and `17`), wrong byte length, duplicate `sBIT`, post-`IDAT` `sBIT` -> exit 3 (.malformedInput)
         for (idx, badPNG) in [
@@ -1259,25 +1211,25 @@ struct R2RemediationTests {
         ].enumerated() {
             let badURL = tmpDir.appendingPathComponent("bad_sbit_\(idx).png")
             try badPNG.write(to: badURL)
-            #expect(try runR2CLI(["convert", "-i", badURL.path, "-o", dummyOut.path]).status == 3)
+            #expect(try await runR2CLI(["convert", "-i", badURL.path, "-o", dummyOut.path]).status == 3)
         }
 
         // 5c. Conflicting `--precision 10` vs `sBIT = 12`, and unscaled 16-bit PNG (`60000`) with `--precision 12` (no silent clipping!) -> exit 2 (.invalidArgument)
         let j2kDummy = tmpDir.appendingPathComponent("rejected.j2k")
-        #expect(try runR2CLI(["encode", "-i", out12PNG.path, "--precision", "10", "-o", j2kDummy.path]).status == 2)
+        #expect(try await runR2CLI(["encode", "-i", out12PNG.path, "--precision", "10", "-o", j2kDummy.path]).status == 2)
 
         let unscaled16 = tmpDir.appendingPathComponent("unscaled16.png")
         try buildIndependentPNG(
             width: 2, height: 1, bitDepth: 16, colorType: 0,
             sbitBeforeIDAT: nil, samplesBigEndian: [100, 60000]
         ).write(to: unscaled16)
-        #expect(try runR2CLI(["encode", "-i", unscaled16.path, "--precision", "12", "-o", j2kDummy.path]).status == 2)
+        #expect(try await runR2CLI(["encode", "-i", unscaled16.path, "--precision", "12", "-o", j2kDummy.path]).status == 2)
     }
 
     // MARK: M12-CX-04 — Deliberate TIFF `PhotometricInterpretation` (Tag 262)
 
     @Test("M12-CX-04: TIFF PhotometricInterpretation handles WhiteIsZero and Palette Color (single- and multi-strip) and rejects YCbCr/CMYK/invalid tags")
-    func tiffPhotometricInterpretationSemanticsAndRejection() throws {
+    func tiffPhotometricInterpretationSemanticsAndRejection() async throws {
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-tiff-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -1304,7 +1256,7 @@ struct R2RemediationTests {
                 strips: strips
             )
             try tiffData.write(to: tiffURL)
-            let res = try runR2CLI(["convert", "-i", tiffURL.path, "-o", nrrdURL.path])
+            let res = try await runR2CLI(["convert", "-i", tiffURL.path, "-o", nrrdURL.path])
             #expect(res.status == 0, "CLI stderr: \(res.stderrText)")
             let parsed = try parseNRRDSamples(Data(contentsOf: nrrdURL))
             #expect(parsed.meaningfulBits == 8)
@@ -1332,7 +1284,7 @@ struct R2RemediationTests {
             ],
             strips: [raw12LE]
         ).write(to: wiz12URL)
-        #expect(try runR2CLI(["convert", "-i", wiz12URL.path, "-o", wiz12NRRD.path]).status == 0)
+        #expect(try await runR2CLI(["convert", "-i", wiz12URL.path, "-o", wiz12NRRD.path]).status == 0)
         let wiz12Parsed = try parseNRRDSamples(Data(contentsOf: wiz12NRRD))
         #expect(wiz12Parsed.meaningfulBits == 12)
         #expect(wiz12Parsed.samples == [4095, 3071, 0])
@@ -1354,7 +1306,7 @@ struct R2RemediationTests {
             ],
             strips: [[0, 12, 200, 250]]
         ).write(to: wizAlphaURL)
-        #expect(try runR2CLI(["convert", "-i", wizAlphaURL.path, "-o", wizAlphaNRRD.path]).status == 0)
+        #expect(try await runR2CLI(["convert", "-i", wizAlphaURL.path, "-o", wizAlphaNRRD.path]).status == 0)
         let wizAlphaParsed = try parseNRRDSamples(Data(contentsOf: wizAlphaNRRD))
         #expect(wizAlphaParsed.components == 2)
         #expect(wizAlphaParsed.samples == [255, 12, 55, 250])
@@ -1389,7 +1341,7 @@ struct R2RemediationTests {
                 ],
                 strips: strips
             ).write(to: palURL)
-            let res = try runR2CLI(["convert", "-i", palURL.path, "-o", palNRRD.path])
+            let res = try await runR2CLI(["convert", "-i", palURL.path, "-o", palNRRD.path])
             #expect(res.status == 0, "CLI stderr: \(res.stderrText)")
             let parsed = try parseNRRDSamples(Data(contentsOf: palNRRD))
             #expect(parsed.components == 3)
@@ -1418,7 +1370,7 @@ struct R2RemediationTests {
             ],
             strips: [[0, 1]]
         ).write(to: pal16URL)
-        #expect(try runR2CLI(["convert", "-i", pal16URL.path, "-o", pal16NRRD.path]).status == 0)
+        #expect(try await runR2CLI(["convert", "-i", pal16URL.path, "-o", pal16NRRD.path]).status == 0)
         let pal16Parsed = try parseNRRDSamples(Data(contentsOf: pal16NRRD))
         #expect(pal16Parsed.components == 3)
         #expect(pal16Parsed.meaningfulBits == 16)
@@ -1447,7 +1399,7 @@ struct R2RemediationTests {
             ],
             strips: [[0x1F, 0x20]]
         ).write(to: pal4URL)
-        #expect(try runR2CLI(["convert", "-i", pal4URL.path, "-o", pal4NRRD.path]).status == 0)
+        #expect(try await runR2CLI(["convert", "-i", pal4URL.path, "-o", pal4NRRD.path]).status == 0)
         let pal4Parsed = try parseNRRDSamples(Data(contentsOf: pal4NRRD))
         #expect(pal4Parsed.samples == [10, 20, 30, 200, 210, 220, 40, 50, 60])
 
@@ -1469,7 +1421,7 @@ struct R2RemediationTests {
                 ],
                 strips: [[UInt8](repeating: 128, count: 12)]
             ).write(to: badURL)
-            #expect(try runR2CLI(["convert", "-i", badURL.path, "-o", rejectedOut.path]).status == 4)
+            #expect(try await runR2CLI(["convert", "-i", badURL.path, "-o", rejectedOut.path]).status == 4)
         }
 
         // Malformed PhotometricInterpretation combinations -> exit 3:
@@ -1486,7 +1438,7 @@ struct R2RemediationTests {
             ],
             strips: [[0, 1, 2, 3]]
         ).write(to: missing262URL)
-        #expect(try runR2CLI(["convert", "-i", missing262URL.path, "-o", rejectedOut.path]).status == 3)
+        #expect(try await runR2CLI(["convert", "-i", missing262URL.path, "-o", rejectedOut.path]).status == 3)
 
         // (b) Palette Color (262 = 3) missing ColorMap (320)
         let palNoMapURL = tmpDir.appendingPathComponent("pal_no_cmap.tiff")
@@ -1502,7 +1454,7 @@ struct R2RemediationTests {
             ],
             strips: [[0, 1, 2, 3]]
         ).write(to: palNoMapURL)
-        #expect(try runR2CLI(["convert", "-i", palNoMapURL.path, "-o", rejectedOut.path]).status == 3)
+        #expect(try await runR2CLI(["convert", "-i", palNoMapURL.path, "-o", rejectedOut.path]).status == 3)
 
         // (c) WhiteIsZero (262 = 0) with SamplesPerPixel = 3
         let wiz3URL = tmpDir.appendingPathComponent("wiz_spp3.tiff")
@@ -1518,13 +1470,13 @@ struct R2RemediationTests {
             ],
             strips: [[UInt8](repeating: 0, count: 12)]
         ).write(to: wiz3URL)
-        #expect(try runR2CLI(["convert", "-i", wiz3URL.path, "-o", rejectedOut.path]).status == 3)
+        #expect(try await runR2CLI(["convert", "-i", wiz3URL.path, "-o", rejectedOut.path]).status == 3)
     }
 
     // MARK: F09, F10, F11 — CLI End-to-End Policy, View-Window & 3D NRRD Geometry Checks
 
     @Test("F09, F10 & F11 CLI: 3D NRRD geometry round-trip (including negative --origin), --copy-policy require-sharing rejection, and JPIP --components validation")
-    func cliVolumeGeometryCopyPolicyAndJPIPValidation() throws {
+    func cliVolumeGeometryCopyPolicyAndJPIPValidation() async throws {
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-cli-ext-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -1552,27 +1504,27 @@ struct R2RemediationTests {
 
         // F09: `--copy-policy require-sharing` on encode3d must exit 4
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "encode3d", "-i", nrrdIn.path, "-o", j3dOut.path,
                 "--levels", "1,1,1", "--copy-policy", "require-sharing"
             ]).status == 4
         )
 
         // F11: Default encode3d + decode3d preserves spacing & negative origin in output NRRD
-        let encRes = try runR2CLI([
+        let encRes = try await runR2CLI([
             "encode3d", "-i", nrrdIn.path, "-o", j3dOut.path, "--levels", "1,1,1"
         ])
         #expect(encRes.status == 0, "encode3d stderr: \(encRes.stderrText)")
 
         // F09: `--copy-policy require-sharing` on decode3d must exit 4
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "decode3d", "-i", j3dOut.path, "-o", nrrdOut.path,
                 "--copy-policy", "require-sharing"
             ]).status == 4
         )
 
-        let decRes = try runR2CLI(["decode3d", "-i", j3dOut.path, "-o", nrrdOut.path])
+        let decRes = try await runR2CLI(["decode3d", "-i", j3dOut.path, "-o", nrrdOut.path])
         #expect(decRes.status == 0, "decode3d stderr: \(decRes.stderrText)")
         let parsedVol = try parseNRRDVolume(Data(contentsOf: nrrdOut), limits: .default)
         #expect(parsedVol.spacingX == 0.7 && parsedVol.spacingY == 0.7 && parsedVol.spacingZ == 1.5)
@@ -1581,19 +1533,19 @@ struct R2RemediationTests {
         // F11: Negative `--origin` flag directly on CLI command line overrides geometry cleanly
         let j3dCLIOrigin = tmpDir.appendingPathComponent("vol_cli_origin.j3d")
         let nrrdCLIOrigin = tmpDir.appendingPathComponent("vol_cli_origin.nrrd")
-        let cliOriginRes = try runR2CLI([
+        let cliOriginRes = try await runR2CLI([
             "encode3d", "-i", nrrdIn.path, "-o", j3dCLIOrigin.path,
             "--levels", "1,1,1", "--spacing", "0.5,0.5,2.0", "--origin", "-250.25,10,-99.5"
         ])
         #expect(cliOriginRes.status == 0, "encode3d negative --origin stderr: \(cliOriginRes.stderrText)")
-        #expect(try runR2CLI(["decode3d", "-i", j3dCLIOrigin.path, "-o", nrrdCLIOrigin.path]).status == 0)
+        #expect(try await runR2CLI(["decode3d", "-i", j3dCLIOrigin.path, "-o", nrrdCLIOrigin.path]).status == 0)
         let parsedCLIOrigin = try parseNRRDVolume(Data(contentsOf: nrrdCLIOrigin), limits: .default)
         #expect(parsedCLIOrigin.spacingX == 0.5 && parsedCLIOrigin.spacingZ == 2.0)
         #expect(parsedCLIOrigin.originX == -250.25 && parsedCLIOrigin.originZ == -99.5)
 
         // F11: `--metadata-policy discard-ancillary` strips geometry
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "decode3d", "-i", j3dOut.path, "-o", nrrdDisc.path,
                 "--metadata-policy", "discard-ancillary"
             ]).status == 0
@@ -1616,7 +1568,7 @@ struct R2RemediationTests {
         ].joined(separator: "\n")
         try (Data(rotatedHeader.utf8) + voxels).write(to: rotatedNRRD)
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "encode3d", "-i", rotatedNRRD.path, "-o", tmpDir.appendingPathComponent("rot.j3d").path,
                 "--levels", "1,1,1"
             ]).status == 4
@@ -1626,21 +1578,21 @@ struct R2RemediationTests {
         let rgbJP2 = containerFixtureURL("jp2_rgb8_rct.kdu.jp2")
         // `--copy-policy require-sharing` -> exit 4
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "jpip", "client", "--single-file", rgbJP2.path,
                 "--port", "19421", "--copy-policy", "require-sharing"
             ]).status == 4
         )
         // Malformed `--components 0,abc` -> exit 2 (UsageError)
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "jpip", "client", "--single-file", rgbJP2.path,
                 "--port", "19422", "--components", "0,abc"
             ]).status == 2
         )
         // Out-of-range `--components 99` -> exit 2 (CodecError.invalidArgument)
         #expect(
-            try runR2CLI([
+            try await runR2CLI([
                 "jpip", "client", "--single-file", rgbJP2.path,
                 "--port", "19423", "--components", "99"
             ]).status == 2

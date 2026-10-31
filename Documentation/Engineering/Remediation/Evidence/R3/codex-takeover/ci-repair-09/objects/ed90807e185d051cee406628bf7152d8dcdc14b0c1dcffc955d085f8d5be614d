@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Synthetic files only, all beneath this work directory; no native/Git/network."""
+import copy
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import types
+import unittest
+
+HERE = Path(__file__).absolute().parent
+P = types.ModuleType('supplement_packager')
+P.__file__ = str(HERE / 'package.py')
+exec(compile(Path(P.__file__).read_text(), P.__file__, 'exec'), P.__dict__)
+
+
+class PackagerTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='synthetic-', dir=HERE)
+        self.addCleanup(self.temporary.cleanup)
+        self.workspace = Path(self.temporary.name)
+        self.repository = self.workspace / 'repo'
+        for name in ['Sources/a.swift', 'Tests/a.swift', 'Scripts/a.py', '.github/workflows/a.yml', 'Package.swift']:
+            self.write(self.repository / name, b'synthetic source\n')
+        self.base = self.repository / P.BASE
+        self.old_object = self.base / 'old.txt'
+        self.write(self.old_object, b'existing historical receipt\n')
+        prior = {'schema': 'swiftj2k-r3-evidence-package-v1', 'state': 'NOT_ACCEPTED', 'artifacts': [
+            {'repository_relative_location': self.old_object.relative_to(self.repository).as_posix(),
+             'sha256': P.sha(self.old_object.read_bytes()), 'bytes': self.old_object.stat().st_size}]}
+        self.prior = self.base / 'generated-index.json'
+        self.write(self.prior, P.canonical(prior))
+        self.run = self.workspace / 'validation/run09'
+        self.before = {'Sources/a.swift': P.sha(b'synthetic source\n')}
+        self.command = {'cwd': str(self.repository), 'command': ['swift', 'test'], 'source_files': 1}
+        self.result = {'finished_at': '2026-10-31T00:00:00+00:00', 'exit_code': 0, 'changed_inputs': [],
+                       'log_sha256': P.sha(b'out\nerr\n'), 'capture_complete': True,
+                       'capture_threads_joined': True, 'capture_errors': [], 'wrapper_exit_code': 0,
+                       'native_streams': {}}
+        for stream, data in [('stdout', b'out\n'), ('stderr', b'err\n')]:
+            path = self.run / ('native.' + stream)
+            self.write(path, data)
+            self.result['native_streams'][stream] = dict(self.ref(path), bytes=len(data))
+        self.write(self.run / 'native.log', b'out\nerr\n')
+        self.write(self.run / 'report-swift-testing.xml', b'<testsuites/>\n')
+        self.manifest = {'schema': 'swiftj2k-r3-ci-repair-inputs-v1', 'workspace': str(self.workspace),
+                         'repository': str(self.repository), 'candidate_label': 'SYNTHETIC',
+                         'prior_index': self.ref(self.prior), 'native_runs': [], 'reviews': [],
+                         'hosted_runs': [], 'supplemental': []}
+        self.path = self.workspace / 'manifest.json'
+        self.refresh_run()
+
+    def write(self, path, data):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def ref(self, path):
+        return {'path': str(path), 'sha256': P.sha(path.read_bytes())}
+
+    def refresh_run(self, after=None):
+        for name, data in [('command.json', self.command), ('result.json', self.result),
+                           ('source-before.json', self.before), ('source-after.json', after or self.before)]:
+            self.write(self.run / name, P.canonical(data))
+        entry = {key: self.ref(self.run / name) for key, name in
+                 [('command', 'command.json'), ('result', 'result.json'), ('before', 'source-before.json'), ('after', 'source-after.json')]}
+        entry['reports'] = [self.ref(self.run / 'report-swift-testing.xml')]
+        self.manifest['native_runs'] = [entry]
+
+    def assemble(self):
+        self.path.write_bytes(P.canonical(self.manifest))
+        return P.assemble(self.path)
+
+    def index(self, assembled):
+        package, index_path, *_ = assembled
+        return json.loads(package.payloads[index_path])
+
+    def test_dry_run_is_deterministic_and_no_write(self):
+        first = self.assemble()
+        self.assertEqual(first[1], self.assemble()[1])
+        self.assertFalse((self.repository / P.DEST).exists())
+        self.assertEqual(len(self.index(first)['external_gates']), 5)
+        self.assertTrue(all(not g['waived'] for g in self.index(first)['external_gates']))
+
+    def test_publish_is_idempotent_and_preserves_08(self):
+        old = self.prior.read_bytes()
+        args = self.assemble(); P.publish(*args)
+        files = {p: p.read_bytes() for p in (self.repository / P.DEST).rglob('*') if p.is_file()}
+        P.publish(*self.assemble())
+        self.assertEqual(old, self.prior.read_bytes())
+        self.assertEqual(files, {p: p.read_bytes() for p in (self.repository / P.DEST).rglob('*') if p.is_file()})
+
+    def test_reuses_prior_payload_without_copy(self):
+        self.manifest['supplemental'] = [{'file': self.ref(self.old_object), 'role': 'old-reference'}]
+        assembled = self.assemble()
+        self.assertEqual(self.index(assembled)['artifacts'][-3]['storage'], 'prior-08-reference')
+        self.assertNotIn(self.old_object.read_bytes(), assembled[0].payloads.values())
+
+    def test_failed_native_is_preserved(self):
+        self.result.update(exit_code=1, wrapper_exit_code=1); self.refresh_run()
+        self.assertEqual(self.index(self.assemble())['native_runs'][0]['exit_code'], 1)
+        self.assertEqual(self.index(self.assemble())['state'], 'NOT_ACCEPTED')
+
+    def test_incomplete_native_rejected(self):
+        del self.result['finished_at']; self.refresh_run()
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_source_change_list_mismatch_rejected(self):
+        self.refresh_run({'Sources/a.swift': P.sha(b'changed')})
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_source_change_requires_diagnostic_and_is_recorded(self):
+        self.result.update(changed_inputs=['Sources/a.swift'], wrapper_exit_code=2)
+        self.refresh_run({'Sources/a.swift': P.sha(b'changed')})
+        with self.assertRaises(ValueError): self.assemble()
+        self.manifest['native_runs'][0]['diagnostic_only'] = True
+        self.assertFalse(self.index(self.assemble())['native_runs'][0]['source_stable'])
+
+    def test_capture_failure_requires_diagnostic(self):
+        self.result.update(capture_complete=False, capture_errors=['synthetic'], wrapper_exit_code=2)
+        self.refresh_run()
+        with self.assertRaises(ValueError): self.assemble()
+        self.manifest['native_runs'][0]['diagnostic_only'] = True
+        self.assertFalse(self.index(self.assemble())['native_runs'][0]['capture_complete'])
+
+    def test_log_and_raw_hash_mismatch_rejected(self):
+        for name in ['native.log', 'native.stdout', 'native.stderr']:
+            with self.subTest(name=name):
+                path = self.run / name; old = path.read_bytes(); path.write_bytes(b'changed')
+                with self.assertRaises(ValueError): self.assemble()
+                path.write_bytes(old)
+
+    def test_raw_stream_size_and_owner_checked(self):
+        self.result['native_streams']['stdout']['bytes'] += 1; self.refresh_run()
+        with self.assertRaises(ValueError): self.assemble()
+        self.result['native_streams']['stdout']['bytes'] -= 1
+        self.result['native_streams']['stdout']['path'] = str(self.run / 'other.stdout'); self.refresh_run()
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_omitted_xml_rejected(self):
+        self.manifest['native_runs'][0]['reports'] = []
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_manifest_hash_mismatch_and_unknown_key_rejected(self):
+        entry = self.manifest['native_runs'][0]['result']; old = entry['sha256']; entry['sha256'] = '0' * 64
+        with self.assertRaises(ValueError): self.assemble()
+        entry['sha256'] = old; self.manifest['nativeRuns'] = []
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_source_mutation_before_publish_rejected(self):
+        args = self.assemble(); (self.repository / 'Tests/a.swift').write_bytes(b'changed')
+        with self.assertRaises(ValueError): P.publish(*args)
+        self.assertFalse((args[0].destination / args[1]).exists())
+
+    def test_receipt_mutation_before_publish_rejected(self):
+        args = self.assemble(); (self.run / 'native.stdout').write_bytes(b'changed')
+        with self.assertRaises(ValueError): P.publish(*args)
+
+    def test_existing_payload_and_prior_index_corruption_rejected(self):
+        args = self.assemble(); P.publish(*args)
+        target = args[0].destination / next(p for p in args[0].payloads if p.parts[0] == 'objects')
+        target.write_bytes(b'corrupt')
+        with self.assertRaises(ValueError): self.assemble()
+        self.prior.write_bytes(b'changed')
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_symlink_and_parent_traversal_rejected(self):
+        path = self.workspace / 'linked.log'; path.symlink_to(self.run / 'native.log')
+        self.manifest['supplemental'] = [{'file': self.ref(path), 'role': 'linked'}]
+        with self.assertRaises(ValueError): self.assemble()
+        self.manifest['supplemental'][0]['file']['path'] = str(self.workspace / 'x/../linked.log')
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_review_pair_hash_and_completion(self):
+        report = self.workspace / 'review.txt'; source = self.workspace / 'review-source.json'
+        self.write(report, b'review\n'); self.write(source, P.canonical({'report_sha256': P.sha(report.read_bytes())}))
+        entry = {'report': self.ref(report), 'source': self.ref(source), 'completed': True}
+        self.manifest['reviews'] = [entry]
+        self.assertEqual(len(self.index(self.assemble())['reviews']), 1)
+        entry['completed'] = False
+        with self.assertRaises(ValueError): self.assemble()
+        entry['completed'] = True; source.write_bytes(P.canonical({'report_sha256': '0' * 64})); entry['source'] = self.ref(source)
+        with self.assertRaises(ValueError): self.assemble()
+
+    def test_hosted_failures_successes_and_omissions(self):
+        metadata = self.workspace / 'jobs.json'; log = self.workspace / 'job.log'
+        self.write(log, b'hosted synthetic log\n')
+        jobs = [{'id': 1, 'run_id': 10, 'status': 'completed', 'conclusion': 'failure'}]
+        self.write(metadata, P.canonical({'jobs': jobs}))
+        entry = {'run_id': 10, 'attempt': 1, 'metadata': self.ref(metadata), 'logs': [{'job_id': 1, 'file': self.ref(log)}]}
+        self.manifest['hosted_runs'] = [entry]
+        self.assertEqual(self.index(self.assemble())['hosted_runs'][0]['reported_jobs'][0]['conclusion'], 'failure')
+        jobs[0]['conclusion'] = 'success'; metadata.write_bytes(P.canonical({'jobs': jobs})); entry['metadata'] = self.ref(metadata)
+        self.assertEqual(self.index(self.assemble())['state'], 'NOT_ACCEPTED')
+        entry['logs'] = []
+        with self.assertRaises(ValueError): self.assemble()
+
+
+if __name__ == '__main__':
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(PackagerTests)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    summary = {'scope': 'Synthetic fixtures only; all writes under ci-repair-evidence-09; no native/Git/network or real repository publication.',
+               'tests_run': result.testsRun, 'failures': len(result.failures), 'errors': len(result.errors),
+               'successful': result.wasSuccessful(), 'helper_sha256': P.sha(Path(P.__file__).read_bytes())}
+    (HERE / 'selftest-result.json').write_bytes(P.canonical(summary))
+    raise SystemExit(0 if result.wasSuccessful() else 1)

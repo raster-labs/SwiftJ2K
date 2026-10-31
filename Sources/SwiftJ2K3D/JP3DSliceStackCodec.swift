@@ -605,6 +605,16 @@ internal final class JP3DLiveBudgetTracker: Sendable {
             owner?.promoteOutputToRetained(toPromote, stage: stage)
         }
 
+        internal func shrinkTo(_ actualBytes: Int) {
+            let target = max(0, actualBytes)
+            let current = reservedBytes
+            guard current > target else { return }
+            let removed = subtractReservedBytes(current - target)
+            if removed > 0 {
+                owner?.rollbackOutputGrowth(outputBytes: removed, scratchBytes: 0)
+            }
+        }
+
         internal func release() {
             let toRelease = bytesMutex.withLock { current -> Int in
                 let taken = current
@@ -676,6 +686,33 @@ internal final class JP3DLiveBudgetTracker: Sendable {
 
     internal var currentRevision: UInt64 {
         stateStorage.state.withLock { $0.revision }
+    }
+
+    internal func remainingCompressedOutputLimit() -> Int? {
+        guard let limits else { return nil }
+        return stateStorage.state.withLock { st in
+            let (liveOut, ov1) = st.liveOutputBytes.addingReportingOverflow(st.retainedBytes)
+            let (liveWs, ov2) = st.liveScratchBytes.addingReportingOverflow(liveOut)
+            let (liveMem, ov3) = baseBytes.addingReportingOverflow(liveWs)
+            if ov1 || ov2 || ov3 { return 0 }
+            let remComp = max(0, limits.maximumCompressedBytes - liveOut)
+            let remWs = max(0, limits.maximumWorkspaceBytes - liveWs)
+            let remMem = max(0, limits.maximumMemoryBytes - liveMem)
+            return min(remComp, min(remWs, remMem))
+        }
+    }
+
+    internal func remainingWorkspaceLimit() -> Int? {
+        guard let limits else { return nil }
+        return stateStorage.state.withLock { st in
+            let (liveOut, ov1) = st.liveOutputBytes.addingReportingOverflow(st.retainedBytes)
+            let (liveWs, ov2) = st.liveScratchBytes.addingReportingOverflow(liveOut)
+            let (liveMem, ov3) = baseBytes.addingReportingOverflow(liveWs)
+            if ov1 || ov2 || ov3 { return 0 }
+            let remWs = max(0, limits.maximumWorkspaceBytes - liveWs)
+            let remMem = max(0, limits.maximumMemoryBytes - liveMem)
+            return min(remWs, remMem)
+        }
     }
 
     /// Assigns a strictly increasing revision under `JP3DLiveBudgetTracker.state` and, in normal execution
@@ -877,12 +914,90 @@ internal final class JP3DLiveBudgetTracker: Sendable {
         }
         completeInterceptedPublish(snap, recorder: recorder, interceptor: interceptor)
     }
+
+    /// Creates a pre-allocation `EntropyOutputBudget` backed atomically by `reservation` (for compressed
+    /// output chunks) and `liveScratchBytes` (for transient stream/concat/Tier-2 overlap chunks).
+    internal func makeEntropyOutputBudget(
+        reservation: OutputReservation,
+        stage: String,
+        message: String
+    ) -> (entropyBudget: EntropyOutputBudget, cleanupScratch: @Sendable () -> Void) {
+        let heldScratch = Mutex<Int>(0)
+        // The label is invariant across every admitted stream-growth transaction.
+        let scratchStage = "\(stage)-scratch"
+        let eb = EntropyOutputBudget(
+            reserveBytes: { [weak self] bytes, countsTowardCompressed in
+                guard bytes > 0 else { return true }
+                guard let self else { return true }
+                do {
+                    if countsTowardCompressed {
+                        try reservation.withGrowth(
+                            by: bytes,
+                            extraTransientBytes: 0,
+                            checkCompressedLimit: true,
+                            stage: stage,
+                            message: message
+                        ) {}
+                    } else {
+                        _ = try self.reserveTransient(
+                            bytes,
+                            checkCompressedLimit: false,
+                            stage: scratchStage,
+                            message: message
+                        )
+                        heldScratch.withLock { $0 += bytes }
+                    }
+                    return true
+                } catch {
+                    return false
+                }
+            },
+            releaseBytes: { [weak self] bytes, countsTowardCompressed in
+                guard bytes > 0 else { return }
+                if countsTowardCompressed {
+                    let current = reservation.reservedBytes
+                    reservation.shrinkTo(max(0, current - bytes))
+                } else {
+                    let toRelease = heldScratch.withLock { cur -> Int in
+                        let r = min(cur, bytes)
+                        cur -= r
+                        return r
+                    }
+                    if toRelease > 0 {
+                        self?.releaseScratch(toRelease)
+                    }
+                }
+            }
+        )
+        let cleanup: @Sendable () -> Void = { [weak self] in
+            let remaining = heldScratch.withLock { cur -> Int in
+                let r = cur
+                cur = 0
+                return r
+            }
+            if remaining > 0 {
+                self?.releaseScratch(remaining)
+            }
+        }
+        return (eb, cleanup)
+    }
 }
 
 /// Encoded volumetric tile payload paired with its active live-budget reservation across child-task return.
 internal struct JP3DEncodedTileOutput: Sendable {
     internal let data: Data
     internal let reservation: JP3DLiveBudgetTracker.OutputReservation
+    internal let usedAccelerated: Bool
+
+    internal init(
+        data: Data,
+        reservation: JP3DLiveBudgetTracker.OutputReservation,
+        usedAccelerated: Bool = false
+    ) {
+        self.data = data
+        self.reservation = reservation
+        self.usedAccelerated = usedAccelerated
+    }
 }
 
 @inline(__always)

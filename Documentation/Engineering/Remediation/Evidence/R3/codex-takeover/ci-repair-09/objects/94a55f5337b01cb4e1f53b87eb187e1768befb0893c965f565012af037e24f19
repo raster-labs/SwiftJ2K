@@ -1,0 +1,8 @@
+{
+  "state": "COMMENT_ONLY_CI_CORRECTION",
+  "recorded_at": "2026-10-31T10:50:12.252671+00:00",
+  "before_sha256": "4e79bfd26401e342233ebf8e6c903d0c0472bcb5e6f50e32c7431556ec59f18f",
+  "after_sha256": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2",
+  "finding": "Five external oracle declarations use enabled(if:) guards and explicit skips. Prior workflow comment incorrectly described withKnownIssue. All non-comment workflow lines are byte-identical; jobs, permissions, timeouts, commands and retention emitter unchanged.",
+  "boundary": "No hosted pass or oracle availability inferred; exact future head/job logs must be reviewed."
+}

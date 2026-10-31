@@ -1,0 +1,66 @@
+{
+  "state": "READ_ONLY_PARSER_COMPONENT_REPLAY",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-thread-08.json": "6338f7eb1871c8ea9320abf525a183b492d76a21ed9e9281ecbd4e561ecff8d4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-08/native.stdout": "0cf2b8048aa3f77a45a59651ad19943171fa486806e9b0455b4207e6f07b1c2f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-08/report-swift-testing.xml": "14ab3ffb24dcfae980743cf9159698b291e8a0ad8843655c10ae0a9742fabb80",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-08/native.stdout": "4087225130b6d56c6f277ed4e193e229df1209a41bf1773d949dded250a9bbb2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-08/report-swift-testing.xml": "5c5d976a669aa521e96043e3ab2dc6a8901d68639e4fff0253440e6417797262",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-08/native.stdout": "e1c099012822dff384b38325b020fbf89d76f6f2ca004ff1fc0e10fcf4c83091",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-08/report-swift-testing.xml": "2a1853d753478dc762e05dbf7f2aa64fba843cf7c8260f55b43c3566e5cf6bec",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-address-08.json": "e8156af236df8fb9913ff44baf225e1cbceb114324469ae2410698755539ba82",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-08/native.stdout": "6d2a8d997f5685a9048bb00155b337c3462df36200c70fcbabcef6a8dca62238",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-08/report-swift-testing.xml": "fd30c24b40917d25283db7d69e46996330d93c7383edfb3f2e5feac2d8e9408f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-08/native.stdout": "a3d0f5baaaf767829ab42f1c1f312b42c96753ea940e4a7d8b111053eccf92dd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-08/report-swift-testing.xml": "837304b3ddc2e221e6d3210300f8367d81b0a2ceec57457b51974f7502412b34",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/preparation-10.json": "f951192ba89038f685c3bd08a6445f23140c53ae9e11181d7865b781cf0ac1f5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-10/native.stdout": "1d6484bde2981d192a32ef0275c780a066e9f8d30ffc9a462b33cd0a61568a3a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-10/report-swift-testing.xml": "bf3cca4a29ee5d8c20562960b2b46d2eb689ff139b63eefabcbff5206d933192",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/component-check-10.py": "ab28c4899e9ecbe84c3a95955b157b4be78bd1b8ca2d1f31dad2e7d5b36bdbd6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa"
+  },
+  "runs": {
+    "candidate-full-08": {
+      "xctest": 1034,
+      "swift_testing": 302,
+      "parameter_declarations": 34,
+      "parameter_argument_starts": 397
+    },
+    "candidate-jpip-tsan-08": {
+      "xctest": 544,
+      "swift_testing": 81,
+      "parameter_declarations": 2,
+      "parameter_argument_starts": 5
+    },
+    "candidate-complement-tsan-08": {
+      "xctest": 490,
+      "swift_testing": 221,
+      "parameter_declarations": 32,
+      "parameter_argument_starts": 392
+    },
+    "candidate-jpip-asan-08": {
+      "xctest": 544,
+      "swift_testing": 81,
+      "parameter_declarations": 2,
+      "parameter_argument_starts": 5
+    },
+    "candidate-complement-asan-08": {
+      "xctest": 490,
+      "swift_testing": 221,
+      "parameter_declarations": 32,
+      "parameter_argument_starts": 392
+    },
+    "candidate-focused-10": {
+      "xctest": 0,
+      "swift_testing": 22,
+      "parameter_declarations": 4,
+      "parameter_argument_starts": 9
+    }
+  },
+  "failed_focused09_rejected": true,
+  "boundaries": [
+    "Parser component replay only; final10 ordinary/inventory/sanitizer audit still pending.",
+    "No native processes or modified native receipts."
+  ]
+}

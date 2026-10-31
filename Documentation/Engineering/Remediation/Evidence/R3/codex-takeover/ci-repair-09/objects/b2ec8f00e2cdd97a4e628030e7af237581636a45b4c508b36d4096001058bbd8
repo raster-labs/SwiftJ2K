@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-31T09:08:27.369396+00:00",
+  "reviewer": "root; did not implement test-expression repair",
+  "file": "Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift",
+  "base_head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "before_sha256": "4dd36e895781a7e898a2acdbd5dcd47d330a94deb262bc33088a4fdbcba4f684",
+  "after_sha256": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663",
+  "result": "Exact whole-file two-expression extraction verified independently against Git HEAD. Same Int range, arithmetic, Int64 conversion and equality checks. Local and hosted compiler/runtime verification pending.",
+  "acceptance": "No whole-R3 acceptance"
+}

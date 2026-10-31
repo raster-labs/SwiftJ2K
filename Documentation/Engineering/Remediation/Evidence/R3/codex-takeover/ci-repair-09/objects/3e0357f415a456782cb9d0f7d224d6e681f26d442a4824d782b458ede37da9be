@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Reconcile a failed ordinary17 receipt without granting runtime qualification."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib, json, re, xml.etree.ElementTree as ET
+
+work = Path(__file__).resolve().parent.parent
+out = Path(__file__).resolve().parent / 'ordinary-failed17-check.json'
+assert not out.exists()
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read = lambda p: json.loads(Path(p).read_text())
+files = {}
+def record(p):
+    p = Path(p).resolve(); digest = sha(p)
+    assert str(p) not in files or files[str(p)] == digest
+    files[str(p)] = digest
+    return digest
+source = work/'candidate-snapshot-17'
+manifest_path = work/'candidate-snapshot-17-source.json';manifest=read(manifest_path)
+actual = {str(p.relative_to(source)):sha(p) for p in source.rglob('*') if p.is_file() and '.build' not in p.relative_to(source).parts}
+assert actual == manifest and len(manifest)==2282
+record(manifest_path)
+directory=work/'validation/candidate-full-17'; result=read(directory/'result.json');command=read(directory/'command.json')
+assert result['exit_code']==result['wrapper_exit_code']==1 and not result['changed_inputs']
+assert read(directory/'source-before.json')==read(directory/'source-after.json')==manifest
+assert command['source_files']==len(manifest)
+assert result['capture_complete'] and result['capture_threads_joined'] and result['capture_errors']==[]
+assert result['log_sha256']==record(directory/'native.log')
+assert command['wrapper_sha256']==record(work/'run-validation.py')
+for stream,value in result['native_streams'].items():
+    p=directory/('native.'+stream)
+    assert p.resolve()==Path(value['path']).resolve() and record(p)==value['sha256'] and p.stat().st_size==value['bytes']
+assert Counter((directory/'native.log').read_bytes().splitlines())==Counter((directory/'native.stdout').read_bytes().splitlines())+Counter((directory/'native.stderr').read_bytes().splitlines())
+for p in directory.iterdir():
+    if p.is_file():record(p)
+plan=read(work/'planned-native-sequence-17.json');record(work/'planned-native-sequence-17.json')
+assert command['command']==plan['gates'][0]['command'] and plan['gates'][0]['label']=='candidate-full-17'
+assert command['command'][:2]==['swift','test'] and not any(v in command['command'] for v in ['--sanitize','--filter','--skip'])
+raw=(directory/'native.stdout').read_text()
+xcstart=Counter(a+'/'+b for a,b in re.findall(r"^Test Case '-\[([^ ]+) ([^\]]+)\]' started\.$",raw,re.M))
+xcpass=Counter(a+'/'+b for a,b in re.findall(r"^Test Case '-\[([^ ]+) ([^\]]+)\]' passed \([^\n]+\)\.$",raw,re.M))
+assert xcstart==xcpass and len(xcpass)==1034 and all(n==1 for n in xcpass.values())
+assert not re.search(r"^Test Case .* (failed|skipped)",raw,re.M)
+starts=Counter(re.findall(r'^◇ Test (?!case |run )(.+) started\.$',raw,re.M))
+ends={}
+for status,glyph in [('passed','✔'),('failed','✘')]:
+    for display,count in re.findall(r'^'+glyph+r' Test (?!run )(.*?)(?: with (\d+) test cases?)? '+status+r' after [0-9.]+ seconds(?: with \d+ issues?)?\.$',raw,re.M):
+        assert display not in ends;ends[display]={'status':status,'parameter_count':int(count) if count else None}
+assert len(starts)==len(ends)==324 and set(starts)==set(ends) and all(n==1 for n in starts.values())
+xml=ET.parse(directory/'report-swift-testing.xml');cases=list(xml.iter('testcase'));assert len(cases)==324
+failures=[]
+for case in cases:
+    assert case.find('skipped') is None and case.find('error') is None
+    if case.find('failure') is not None:
+        failures.append({'classname':case.attrib['classname'],'name':case.attrib['name'],'messages':[n.attrib.get('message','') for n in case.findall('failure')]})
+assert len(failures)==4 and sum(v['status']=='failed' for v in ends.values())==4
+summary=re.findall(r'^✘ Test run with (\d+) tests in (\d+) suites failed after ([0-9.]+) seconds with (\d+) issues\.$',raw,re.M)
+assert len(summary)==1 and summary[0][0:2]==('324','41') and summary[0][3]=='4'
+issues=[{'line':i,'text':line} for i,line in enumerate(raw.splitlines(),1) if line.startswith('✘ Test ') and 'recorded an issue' in line]
+assert len(issues)==4
+assert not re.search(r'^↷|known issue',raw,re.M|re.I)
+unexecuted=[]
+for gate in plan['gates'][1:]:
+    p=work/'validation'/gate['label']
+    assert not (p/'result.json').exists()
+    unexecuted.append({'label':gate['label'],'state':'UNEXECUTED'})
+for mode in ['address','thread']:assert not (work/f'r3-sanitizer-execution-proof-{mode}-17.json').exists()
+m15=read(work/'candidate-snapshot-15-source.json');record(work/'candidate-snapshot-15-source.json')
+unchanged={}
+for relative in ['Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift','Sources/SwiftJ2KJPIP/JPIPTransport.swift','Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift','Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift','Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift']:
+    assert m15[relative]==manifest[relative];unchanged[relative]=record(source/relative)
+for p,digest in files.items():assert sha(p)==digest
+record(__file__)
+receipt={'state':'ORDINARY17_FAILED_SANITIZERS_UNEXECUTED_NO_FINAL_PROOF','at':datetime.now(timezone.utc).isoformat(),'source':str(source),'source_files':len(manifest),'exit_code':result['exit_code'],'elapsed_seconds':result['elapsed_seconds'],'raw_capture_verified':True,'source_stable':True,'xctest':{'started_and_passed':1034,'failed':0,'skipped':0},'swift_testing':{'declarations_with_start_and_completion':324,'passed':320,'failed':4,'skipped':0,'suites_reported':41,'issues_reported':4,'reported_seconds':float(summary[0][2])},'failed_declarations_xml':failures,'raw_issue_records':issues,'unchanged_https_inputs_from15':unchanged,'unexecuted_native_gates':unexecuted,'files':files,'boundaries':['This is failed evidence, not a successful ordinary or sanitizer qualification.','No fresh17 declaration-discovery inventory was executed; counts here reconcile observed runtime/XML, not a new sanitizer inventory proof.','Exact failed parameter argument identity is retained in raw issue text; aggregate failure is not a passing argument-completion proof.','Unchanged HTTPS source identity does not explain the scheduling/deadline failures or attribute their cause.','Auditor17 maintenance remains immutable and not independently approved or used for final qualification.','No native, network, repository, Git or source changes were performed by this reviewer.','Whole R3, merge, R4 and all five direct independent gates remain unaccepted/unwaived.']}
+with out.open('x') as f:f.write(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps({k:receipt[k] for k in ['state','source_files','exit_code','xctest','swift_testing','unexecuted_native_gates']},indent=2))

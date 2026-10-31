@@ -1,0 +1,23 @@
+{
+  "source": "work/candidate-snapshot-08",
+  "inventory": "work/sanitizer-inventory-08/thread/all.ids",
+  "ordinary": {
+    "label": "ordinary-final",
+    "directory": "work/validation/candidate-full-08",
+    "swift_testing_xml": ["work/validation/candidate-full-08/report-swift-testing.xml"]
+  },
+  "partitions": [
+    {
+      "label": "thread-jpip-final",
+      "directory": "work/validation/candidate-jpip-tsan-08",
+      "expected_ids": "work/sanitizer-inventory-08/thread/jpip.ids",
+      "swift_testing_xml": ["work/validation/candidate-jpip-tsan-08/report-swift-testing.xml"]
+    },
+    {
+      "label": "thread-complement-final",
+      "directory": "work/validation/candidate-complement-tsan-08",
+      "expected_ids": "work/sanitizer-inventory-08/thread/complement.ids",
+      "swift_testing_xml": ["work/validation/candidate-complement-tsan-08/report-swift-testing.xml"]
+    }
+  ]
+}

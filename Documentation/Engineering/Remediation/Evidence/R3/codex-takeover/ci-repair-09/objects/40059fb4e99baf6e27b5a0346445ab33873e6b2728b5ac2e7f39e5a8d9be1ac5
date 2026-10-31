@@ -1,0 +1,8 @@
+{
+  "state": "POINT_IN_TIME_CURRENT_CI_DIFFERENCE_NOT_QUALIFICATION",
+  "observed_at": "2026-10-31T10:51:37.021836+00:00",
+  "path": ".github/workflows/contract.yml",
+  "frozen15_sha256": "4e79bfd26401e342233ebf8e6c903d0c0472bcb5e6f50e32c7431556ec59f18f",
+  "current_sha256": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2",
+  "meaning": "Current CI identity is separate from frozen native source. Do not infer native qualification of this workflow change. Final CI content/identity must be stopped and reviewed before publication. No current CI body was added as a supplemental input."
+}

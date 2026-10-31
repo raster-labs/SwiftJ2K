@@ -1,0 +1,24 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "file": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+  "before_sha256": "28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd",
+  "sha256": "674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386",
+  "bytes": 14071,
+  "delta_sha256": "b3218f7d2c1a1c6db5a7f9d0a29424c06f9d8aa740877e39d7428fc301f04434",
+  "barrier_labels": [
+    "stale cleanup \\(scenario): first request received",
+    "stale cleanup \\(scenario): old cleanup parked",
+    "stale cleanup \\(scenario): replacement handshake parked",
+    "stale cleanup \\(scenario): old cleanup acknowledged",
+    "stale cleanup \\(scenario): old reader close acknowledged",
+    "stale cleanup \\(scenario): peer workers stopped after failure",
+    "stale cleanup \\(scenario): peer workers stopped",
+    "obsolete handshake rejected=\\(rejected): outcome parked",
+    "obsolete handshake rejected=\\(rejected): peer workers stopped after failure",
+    "obsolete handshake rejected=\\(rejected): peer workers stopped"
+  ],
+  "normalised_preservation": "Removing only labels/error payload plus the accepted-socket lifetime comment and restoring the fixture timeout argument1 recovers frozen14 byte-for-byte.",
+  "native_execution": "NONE; root owns native validation",
+  "limits": "2s barrier bound,5ms poll and all real request/handshake timeouts unchanged",
+  "qualification": "Fixture idle-expiry mismatch fixed; attribution of all prior barrier failures and gate pass unclaimed"
+}

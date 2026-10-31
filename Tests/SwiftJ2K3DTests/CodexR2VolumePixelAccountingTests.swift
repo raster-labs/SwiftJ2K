@@ -20,7 +20,7 @@ struct CodexR2VolumePixelAccountingTests {
         ))
     }
 
-    @Test("Full slice pixels remain counted when the result has only two voxels", arguments: [1, 2])
+    @Test("Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels", arguments: [1, 2])
     func reducedVolumeCountsBridgeBuffers(workers: Int) async throws {
         let limits = try ResourceLimits(maximumWorkers: workers)
         let encoding = try encoder()
@@ -29,23 +29,16 @@ struct CodexR2VolumePixelAccountingTests {
             try await encoding.encode(volume(), options: VolumeEncodeOptions(
                 resourceLimits: limits, executionPolicy: .scalarCPU, copyPolicy: .allowCopy))
         }
-        // Two complete 8-bit slices each allocate packed pixels and an owned image.
-        #expect(encodeRecorder.counts.pixelAllocations == 4)
-        #expect(encoded.report.pixelAllocationCount == encodeRecorder.counts.pixelAllocations)
-        #expect(encoded.report.peakPixelBytes == nil)
-        var packedSliceBytes: Int = 0
-        var encoderDestinationBytes: Int = 0
-        for event in encoded.report.copyEvents {
-            if event.sourceLayout == "int32-slice-samples" {
-                packedSliceBytes += event.bytesMoved
-            }
-            if event.sourceLayout == "packed-slice-pixels" {
-                encoderDestinationBytes += event.bytesMoved
-            }
-        }
-        let expectedPackedBytes: Int = 64 * 64 * 2
-        #expect(packedSliceBytes == expectedPackedBytes)
-        #expect(encoderDestinationBytes == expectedPackedBytes)
+        let expectedVolumeBytes: Int = 64 * 64 * 2
+        // Native Part 10 3D encoding extracts tile Int64 workspaces directly without 2D OwnedImage bridge allocations.
+        #expect(encodeRecorder.counts.pixelAllocations == 0)
+        #expect(encoded.report.pixelAllocationCount == 0)
+        #expect(encoded.report.peakPixelBytes == expectedVolumeBytes)
+        #expect(encoded.report.copyEvents.count == 1)
+        #expect(encoded.report.copyEvents[0].sourceLayout == "j2kvolume-component-data")
+        #expect(encoded.report.copyEvents[0].bytesMoved == expectedVolumeBytes)
+        let encWorkspace = try #require(encoded.report.peakWorkspaceBytes)
+        #expect(encWorkspace >= 64 * 64 * MemoryLayout<Int64>.stride)
 
         let decoding = try VolumeDecoder(configuration: VolumeDecoderConfiguration(resolutionLevel: 6))
         let decodeRecorder = StorageTelemetry.Recorder()
@@ -54,35 +47,19 @@ struct CodexR2VolumePixelAccountingTests {
                 resourceLimits: limits, executionPolicy: .scalarCPU, copyPolicy: .allowCopy))
         }
         #expect(decoded.volume.width == 1 && decoded.volume.height == 1 && decoded.volume.depth == 2)
-        // Each 2D decoder materialises a full 16-bit mono slice before reduction.
-        let slicePixelBytes: Int = 64 * 64 * 2
-        var slicePixelAllocationCount: Int = 0
-        for event in decodeRecorder.events {
-            if event.stage == "pixel" && event.bytes == slicePixelBytes {
-                slicePixelAllocationCount += 1
-            }
-        }
-        #expect(slicePixelAllocationCount == 2)
-        #expect(decodeRecorder.counts.pixelAllocations == 3)
-        #expect(decoded.report.pixelAllocationCount == decodeRecorder.counts.pixelAllocations)
-        // The exact simultaneous peak is intentionally unknown, never claimed as two bytes.
-        #expect(decoded.report.peakPixelBytes == nil)
-        var reconstructedSampleBytes: Int = 0
-        var finalComponentBytes: Int = 0
-        for event in decoded.report.copyEvents {
-            if event.sourceLayout == "image-destination" {
-                reconstructedSampleBytes += event.bytesMoved
-            }
-            if event.destinationLayout == "j2kvolume-component-data" {
-                finalComponentBytes += event.bytesMoved
-            }
-        }
-        let expectedSampleBytes: Int = 64 * 64 * 2 * MemoryLayout<Int32>.stride
-        #expect(reconstructedSampleBytes == expectedSampleBytes)
-        #expect(finalComponentBytes == 2)
+        // Native Part 10 3D decoding allocates only the 1 output component buffer (2 bytes) while charging
+        // the full 64x64x1 Int64 3D tile reconstruction workspace in peakWorkspaceBytes.
+        #expect(decodeRecorder.counts.pixelAllocations == 1)
+        #expect(decoded.report.pixelAllocationCount == 1)
+        #expect(decoded.report.peakPixelBytes == 2)
+        let decWorkspace = try #require(decoded.report.peakWorkspaceBytes)
+        #expect(decWorkspace >= 64 * 64 * MemoryLayout<Int64>.stride)
+        #expect(decoded.report.copyEvents.count == 1)
+        #expect(decoded.report.copyEvents[0].destinationLayout == "j2kvolume-component-data")
+        #expect(decoded.report.copyEvents[0].bytesMoved == 2)
     }
 
-    @Test("Lossy transcode reports both bridge directions and reserves the retained source")
+    @Test("Lossy transcode reports intermediate volume allocation and reserves the retained source")
     func lossyFallbackKeepsOuterBuffersCharged() async throws {
         let limits = try ResourceLimits(maximumWorkers: 1)
         let data = try await encoder(lossy: true).encode(volume(), options: VolumeEncodeOptions(
@@ -93,19 +70,13 @@ struct CodexR2VolumePixelAccountingTests {
             try await transcoder.transcode(data, to: .htj2k, options: TranscodeOptions(
                 resourceLimits: limits, executionPolicy: .scalarCPU, copyPolicy: .allowCopy))
         }
-        // Two decoder destinations, one intermediate volume, four encoder pixel buffers.
-        #expect(recorder.counts.pixelAllocations == 7)
-        #expect(result.report.pixelAllocationCount == recorder.counts.pixelAllocations)
-        #expect(result.report.peakPixelBytes == nil)
-        #expect(result.report.copyEvents.count == 4)
-        var reconstructedSampleBytes: Int = 0
-        for event in result.report.copyEvents {
-            if event.sourceLayout == "image-destination" {
-                reconstructedSampleBytes += event.bytesMoved
-            }
-        }
-        let expectedSampleBytes: Int = 64 * 64 * 2 * MemoryLayout<Int32>.stride
-        #expect(reconstructedSampleBytes == expectedSampleBytes)
+        let expectedVolumeBytes: Int = 64 * 64 * 2
+        // Native Part 10 lossy fallback materialises one intermediate 1-component J2KVolume buffer.
+        #expect(recorder.counts.pixelAllocations == 1)
+        #expect(result.report.pixelAllocationCount == 1)
+        #expect(result.report.peakPixelBytes == expectedVolumeBytes)
+        #expect(result.report.copyEvents.count == 1)
+        #expect(result.report.copyEvents[0].bytesMoved == expectedVolumeBytes * 2)
         let peak = try #require(result.report.peakWorkspaceBytes)
         for limits in [
             try ResourceLimits(maximumWorkspaceBytes: peak - 1, maximumWorkers: 1),

@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Static/read-only auditor verification with owned temporary tamper fixtures."""
+from pathlib import Path
+import difflib
+import hashlib
+import json
+import runpy
+import tempfile
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'auditor-delta-check.json'
+if out.exists(): raise SystemExit('Refusing auditor check overwrite')
+old_path = work / 'runtime-coverage-14/audit-final.py'
+new_path = here / 'audit-final.py'
+old, new = old_path.read_text(), new_path.read_text()
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read = lambda p: json.loads(Path(p).read_text())
+code = runpy.run_path(str(new_path))
+verify, require = code['verify_authorised_websocket_fixture'], code['require']
+start = new.index('def verify_authorised_websocket_fixture(')
+end = new.index('def main():', start)
+normalised = (new[:start] + new[end:]).replace('import difflib\n', '')
+normalised = normalised.replace("['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]",
+    "['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift', 'CodexR3WebSocketLifecycleTests.swift']]")
+normalised = normalised.replace("    receipt['authorised_websocket_fixture_delta_15'] = verify_authorised_websocket_fixture(\n"
+    "        source, manifest, m04, work, record)\n", '')
+require(normalised == old, 'Auditor changed outside the approved historical fixture assertion')
+require(sha(old_path) == '809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252',
+        'Inherited auditor changed')
+reconciler = work / 'runtime-coverage/reconcile.py'
+require(sha(reconciler) == '18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa',
+        'Strict reconciliation helper changed')
+manifest = read(work / 'candidate-snapshot-15-source.json')
+historical = read(work / 'candidate-snapshot-04-source.json')
+source = work / 'candidate-snapshot-15'
+relative = 'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift'
+positive = verify(source, manifest, historical, work, sha)
+rejected = []
+
+def reject(label, callback):
+    try:
+        callback()
+    except ValueError as error:
+        rejected.append({'case': label, 'reason': str(error)})
+    else:
+        raise ValueError('Tampered input was accepted: ' + label)
+
+reject('changed final manifest hash', lambda: verify(source, {**manifest, relative: '0'*64}, historical, work, sha))
+reject('changed historical manifest hash', lambda: verify(source, manifest, {**historical, relative: '0'*64}, work, sha))
+with tempfile.TemporaryDirectory(prefix='owned-auditor-tamper-', dir=here) as directory:
+    temporary = Path(directory)
+    changed_source = temporary / 'source'
+    changed = changed_source / relative
+    changed.parent.mkdir(parents=True)
+    changed.write_bytes((source / relative).read_bytes() + b'\n// deliberately tampered audit fixture\n')
+    reject('changed source bytes under pinned manifest', lambda: verify(changed_source, manifest, historical, work, sha))
+    reject('changed source and matching unreviewed manifest hash',
+           lambda: verify(changed_source, {**manifest, relative: sha(changed)}, historical, work, sha))
+    old_copy = temporary / 'candidate-snapshot-14' / relative
+    old_copy.parent.mkdir(parents=True)
+    old_copy.write_bytes((work / 'candidate-snapshot-14' / relative).read_bytes())
+    patch = temporary / 'websocket-peer-lifetime-15/delta-from14.patch'
+    patch.parent.mkdir(parents=True)
+    patch.write_bytes((work / 'websocket-peer-lifetime-15/delta-from14.patch').read_bytes() + b'\n# tamper\n')
+    reject('changed reviewed diff bytes', lambda: verify(source, manifest, historical, temporary, sha))
+patch_path = here / 'auditor-delta-from14.patch'
+require(not patch_path.exists(), 'Refusing auditor patch overwrite')
+patch_path.write_text(''.join(difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True),
+    fromfile='runtime-coverage-14/audit-final.py', tofile='runtime-coverage-15/audit-final.py')))
+report = {'state': 'NARROW_AUDITOR_MAINTENANCE_VERIFIED', 'old_auditor_sha256': sha(old_path),
+    'new_auditor_sha256': sha(new_path), 'helper_diff_sha256': sha(patch_path),
+    'unchanged_strict_reconciler_sha256': sha(reconciler), 'normalised_old_auditor_recovered': True,
+    'authorised_fixture_positive': positive, 'tamper_cases_rejected': rejected,
+    'scope': 'Only an obsolete historical fixture byte-equality assertion recognises the pinned reviewed15 repair; final-runtime source equality remains unchanged.',
+    'native_execution': False, 'repository_edits': False,
+    'checker_sha256': sha(Path(__file__))}
+with out.open('x') as output: output.write(json.dumps(report, indent=2) + '\n')
+print(json.dumps(report, indent=2))

@@ -1,0 +1,12 @@
+{
+  "state": "STATIC_SOURCE_CHECKS_ONLY",
+  "base_files": 2282,
+  "derived_files": 2283,
+  "overlay_files": 4,
+  "main_traced_inputs_unchanged": true,
+  "test_declarations_and_expectations_unchanged": true,
+  "named_deadlines_queue_priorities_and_suspension_policy_unchanged": true,
+  "delta_sha256": "fc36256fbdb4b85f84abcbed3464f47278e89a84b01b562634d9f497bd0f59be",
+  "derived_manifest_sha256": "70bcbf992b5e48e53736d3398fd2a702ada7fb7ddf518139e463fac3de501143",
+  "native_executed": false
+}

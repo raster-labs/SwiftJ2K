@@ -127,7 +127,7 @@ struct R2BinGenerationBudgetTests {
         #expect(generator.reassembleCodestream(from: generated.bins) == container)
     }
 
-    @Test("A cache-aware request denies generation before mutating its existing cache")
+    @Test("A cache-aware request denies response admission before mutating its existing cache")
     func requestBudgetFailureLeavesCacheUnchanged() async throws {
         let fixture = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -153,10 +153,13 @@ struct R2BinGenerationBudgetTests {
                 limits: ResourceLimits(maximumWorkspaceBytes: workspace - 1),
                 executionPolicy: .scalarCPU, metadataPolicy: .preserve,
                 deadline: ContinuousClock.now.advanced(by: .seconds(30)))
-            Issue.record("Expected cumulative generation budget rejection")
+            Issue.record("Expected response admission budget rejection")
         } catch let error as CodecError {
             #expect(error.category == .resourceLimitExceeded)
-            #expect(error.message.contains("bin payloads"))
+            // The shared receive/cache budget now rejects the response before
+            // data-bin generation. Keep the specific early-stage proof as well
+            // as the unchanged-cache assertions below.
+            #expect(error.message.contains("JPIP response payload"))
         }
         let after = await session.getCacheStatistics()
         #expect(after.entryCount == before.entryCount)

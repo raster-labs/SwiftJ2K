@@ -1,0 +1,723 @@
+﻿2026-10-31T09:00:04.6912380Z Current runner version: '2.338.2'
+2026-10-31T09:00:04.6927610Z ##[group]Runner Image Provisioner
+2026-10-31T09:00:04.6928250Z Hosted Compute Agent
+2026-10-31T09:00:04.6928680Z Version: 20261021.618
+2026-10-31T09:00:04.6929080Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-31T09:00:04.6929690Z Build Date: 2026-10-21T00:45:21Z
+2026-10-31T09:00:04.6930290Z Worker ID: {20806d35-37eb-4477-9ef3-c9534e7bddd7}
+2026-10-31T09:00:04.6934320Z Region: westus
+2026-10-31T09:00:04.6934730Z Cloud: MacCloud
+2026-10-31T09:00:04.6935940Z ##[endgroup]
+2026-10-31T09:00:04.6937300Z ##[group]Operating System
+2026-10-31T09:00:04.6937780Z macOS
+2026-10-31T09:00:04.6938120Z 26.6.2
+2026-10-31T09:00:04.6938470Z 25G83
+2026-10-31T09:00:04.6938870Z ##[endgroup]
+2026-10-31T09:00:04.6939530Z ##[group]Runner Image
+2026-10-31T09:00:04.6941540Z Image: macos-26-arm64
+2026-10-31T09:00:04.6942530Z Version: 20261026.0455.2
+2026-10-31T09:00:04.6943420Z Included Software: https://github.com/actions/runner-images/blob/macos-26-arm64/20261026.0455/images/macos/macos-26-arm64-Readme.md
+2026-10-31T09:00:04.6951440Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-26-arm64%2F20261026.0455
+2026-10-31T09:00:04.6970840Z ##[endgroup]
+2026-10-31T09:00:04.6972320Z ##[group]GITHUB_TOKEN Permissions
+2026-10-31T09:00:04.6974420Z Contents: read
+2026-10-31T09:00:04.6976070Z Metadata: read
+2026-10-31T09:00:04.6976490Z ##[endgroup]
+2026-10-31T09:00:04.6978310Z Secret source: Actions
+2026-10-31T09:00:04.6978890Z Cache mode: write
+2026-10-31T09:00:04.6979840Z Prepare workflow directory
+2026-10-31T09:00:04.8100260Z Prepare all required actions
+2026-10-31T09:00:04.8132830Z Getting action download info
+2026-10-31T09:00:04.9420080Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-31T09:00:05.4563320Z Complete job name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
+2026-10-31T09:00:05.7884700Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-10-31T09:00:05.7885620Z with:
+2026-10-31T09:00:05.7886080Z   persist-credentials: false
+2026-10-31T09:00:05.7886660Z   repository: raster-labs/SwiftJ2K
+2026-10-31T09:00:05.7890770Z   token: ***
+2026-10-31T09:00:05.7891140Z   ssh-strict: true
+2026-10-31T09:00:05.7891540Z   ssh-user: git
+2026-10-31T09:00:05.7891880Z   clean: true
+2026-10-31T09:00:05.7892240Z   sparse-checkout-cone-mode: true
+2026-10-31T09:00:05.7892730Z   fetch-depth: 1
+2026-10-31T09:00:05.7893220Z   fetch-tags: false
+2026-10-31T09:00:05.7893610Z   show-progress: true
+2026-10-31T09:00:05.7894000Z   lfs: false
+2026-10-31T09:00:05.7894390Z   submodules: false
+2026-10-31T09:00:05.7894780Z   set-safe-directory: true
+2026-10-31T09:00:05.7895240Z   allow-unsafe-pr-checkout: false
+2026-10-31T09:00:05.7896610Z ##[endgroup]
+2026-10-31T09:00:06.2756620Z Syncing repository: raster-labs/SwiftJ2K
+2026-10-31T09:00:06.2763540Z ##[group]Getting Git version info
+2026-10-31T09:00:06.2783820Z Working directory is '/Users/runner/work/SwiftJ2K/SwiftJ2K'
+2026-10-31T09:00:06.2785950Z [command]/opt/homebrew/bin/git version
+2026-10-31T09:00:06.3033960Z git version 2.56.0
+2026-10-31T09:00:06.3051410Z ##[endgroup]
+2026-10-31T09:00:06.3057770Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/d76c76bb-471e-4ff0-8b41-de340dc5fd9d/.gitconfig'
+2026-10-31T09:00:06.3067520Z Temporarily overriding HOME='/Users/runner/work/_temp/d76c76bb-471e-4ff0-8b41-de340dc5fd9d' before making global git config changes
+2026-10-31T09:00:06.3068680Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T09:00:06.3070500Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/SwiftJ2K/SwiftJ2K
+2026-10-31T09:00:06.3193880Z Deleting the contents of '/Users/runner/work/SwiftJ2K/SwiftJ2K'
+2026-10-31T09:00:06.3198970Z ##[group]Initializing the repository
+2026-10-31T09:00:06.3202310Z [command]/opt/homebrew/bin/git init /Users/runner/work/SwiftJ2K/SwiftJ2K
+2026-10-31T09:00:06.3413980Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-31T09:00:06.3415670Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-31T09:00:06.3416480Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-31T09:00:06.3417280Z hint: call:
+2026-10-31T09:00:06.3417660Z hint:
+2026-10-31T09:00:06.3418130Z hint: 	git config --global init.defaultBranch <name>
+2026-10-31T09:00:06.3418630Z hint:
+2026-10-31T09:00:06.3419550Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-31T09:00:06.3420410Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-31T09:00:06.3421310Z hint:
+2026-10-31T09:00:06.3421920Z hint: 	git branch -m <name>
+2026-10-31T09:00:06.3422600Z hint:
+2026-10-31T09:00:06.3423280Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-31T09:00:06.3424270Z Initialized empty Git repository in /Users/runner/work/SwiftJ2K/SwiftJ2K/.git/
+2026-10-31T09:00:06.3428950Z [command]/opt/homebrew/bin/git remote add origin https://github.com/raster-labs/SwiftJ2K
+2026-10-31T09:00:06.3522260Z ##[endgroup]
+2026-10-31T09:00:06.3522990Z ##[group]Disabling automatic garbage collection
+2026-10-31T09:00:06.3526390Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-10-31T09:00:06.3599740Z ##[endgroup]
+2026-10-31T09:00:06.3600540Z ##[group]Setting up auth
+2026-10-31T09:00:06.3606920Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T09:00:06.3692990Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T09:00:06.4842520Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T09:00:06.4922150Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T09:00:06.5851700Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T09:00:06.5923610Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T09:00:06.7906060Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-31T09:00:06.8011520Z ##[endgroup]
+2026-10-31T09:00:06.8012530Z ##[group]Fetching the repository
+2026-10-31T09:00:06.8017090Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5c88ca1961d4a294991310b035a26b7ddce5084c:refs/remotes/pull/30/merge
+2026-10-31T09:00:08.2729180Z From https://github.com/raster-labs/SwiftJ2K
+2026-10-31T09:00:08.2730020Z  * [new ref]         5c88ca1961d4a294991310b035a26b7ddce5084c -> pull/30/merge
+2026-10-31T09:00:08.2731340Z ##[endgroup]
+2026-10-31T09:00:08.2731720Z ##[group]Determining the checkout info
+2026-10-31T09:00:08.2732140Z ##[endgroup]
+2026-10-31T09:00:08.2740030Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-10-31T09:00:08.2825800Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-31T09:00:08.2904550Z ##[group]Checking out the ref
+2026-10-31T09:00:08.2907580Z [command]/opt/homebrew/bin/git checkout --progress --force refs/remotes/pull/30/merge
+2026-10-31T09:00:08.5744950Z HEAD is now at 5c88ca1 Merge 7f1b123c1c8705666b3c19838f3ed22c00dc6145 into 46be90fc3bf50429956725ee592687d8ff8e7344
+2026-10-31T09:00:08.5763290Z ##[endgroup]
+2026-10-31T09:00:08.5866510Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-10-31T09:00:08.5942500Z 5c88ca1961d4a294991310b035a26b7ddce5084c
+2026-10-31T09:00:08.5950590Z ##[group]Removing auth
+2026-10-31T09:00:08.5953610Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T09:00:08.6033140Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T09:00:08.6996020Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T09:00:08.7056730Z http.https://github.com/.extraheader
+2026-10-31T09:00:08.7061510Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-31T09:00:08.7128970Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T09:00:08.7969300Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T09:00:08.8039290Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T09:00:08.8829350Z ##[endgroup]
+2026-10-31T09:00:08.9674300Z ##[group]Run swift --version
+2026-10-31T09:00:08.9674630Z [36;1mswift --version[0m
+2026-10-31T09:00:08.9716260Z shell: /bin/bash -e {0}
+2026-10-31T09:00:08.9716530Z ##[endgroup]
+2026-10-31T09:00:12.6199610Z Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
+2026-10-31T09:00:12.6200220Z Target: arm64-apple-macosx26.0
+2026-10-31T09:00:12.6284550Z swift-driver version: 1.148.6 
+2026-10-31T09:00:12.6696370Z ##[group]Run xcodebuild -version
+2026-10-31T09:00:12.6696770Z [36;1mxcodebuild -version[0m
+2026-10-31T09:00:12.6734770Z shell: /bin/bash -e {0}
+2026-10-31T09:00:12.6735090Z ##[endgroup]
+2026-10-31T09:00:12.9761500Z Xcode 26.6
+2026-10-31T09:00:12.9762690Z Build version 17F113
+2026-10-31T09:00:12.9963080Z ##[group]Run swift build
+2026-10-31T09:00:12.9963310Z [36;1mswift build[0m
+2026-10-31T09:00:13.0000030Z shell: /bin/bash -e {0}
+2026-10-31T09:00:13.0000300Z ##[endgroup]
+2026-10-31T09:00:24.0951970Z Building for debugging...
+2026-10-31T09:00:24.1029250Z [0/10] Write sources
+2026-10-31T09:00:24.1131970Z [1/10] Write swiftj2k-cli-entitlement.plist
+2026-10-31T09:00:24.1246460Z [2/10] Write sources
+2026-10-31T09:00:24.2807420Z [5/10] Write swift-version-7974D3F7F03D5E95.txt
+2026-10-31T09:00:25.1586690Z [6/37] Compiling CZlibShim CZlibShim.c
+2026-10-31T09:00:47.5584230Z [8/37] Compiling SwiftJ2K LosslessPipeline.swift
+2026-10-31T09:00:47.5718050Z [9/37] Compiling SwiftJ2K MQCoder.swift
+2026-10-31T09:00:47.5834180Z [10/37] Compiling SwiftJ2K Part1Pipeline.swift
+2026-10-31T09:00:47.5937770Z [11/37] Compiling SwiftJ2K Quantization.swift
+2026-10-31T09:00:47.6040280Z [12/37] Compiling SwiftJ2K ROI.swift
+2026-10-31T09:00:47.6140570Z [13/37] Compiling SwiftJ2K TagTree.swift
+2026-10-31T09:00:47.6360160Z [14/37] Compiling SwiftJ2K Tier2.swift
+2026-10-31T09:00:47.6361280Z [15/37] Compiling SwiftJ2K Wavelet53.swift
+2026-10-31T09:00:47.6367930Z [16/37] Compiling SwiftJ2K Wavelet97.swift
+2026-10-31T09:00:47.6369770Z [17/37] Compiling SwiftJ2K CodecAPI.swift
+2026-10-31T09:00:47.6371100Z [18/37] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+2026-10-31T09:00:47.6375690Z [19/37] Compiling SwiftJ2K JP2Boxes.swift
+2026-10-31T09:00:47.6381300Z [20/37] Compiling SwiftJ2K JP2Container.swift
+2026-10-31T09:00:51.1626300Z [21/49] Compiling SwiftJ2K JP2ReaderRequirements.swift
+2026-10-31T09:00:51.1627050Z [22/49] Compiling SwiftJ2K Errors.swift
+2026-10-31T09:00:51.1627490Z [23/49] Compiling SwiftJ2K Image.swift
+2026-10-31T09:00:51.1628660Z [24/49] Compiling SwiftJ2K ImageDescriptor.swift
+2026-10-31T09:00:51.1668120Z [25/49] Compiling SwiftJ2K ImageStorage.swift
+2026-10-31T09:00:51.1686230Z [26/49] Compiling SwiftJ2K LegacyImageBridge.swift
+2026-10-31T09:00:51.1686790Z [27/49] Compiling SwiftJ2K LegacyPixelAccounting.swift
+2026-10-31T09:00:51.1737810Z [28/49] Compiling SwiftJ2K Options.swift
+2026-10-31T09:00:51.1746790Z [29/49] Compiling SwiftJ2K Telemetry.swift
+2026-10-31T09:00:51.1755240Z [30/49] Compiling SwiftJ2K Transcoding.swift
+2026-10-31T09:00:51.1755770Z [31/49] Compiling SwiftJ2K Volume.swift
+2026-10-31T09:00:51.1756370Z [32/49] Compiling SwiftJ2K VolumePixelAccounting.swift
+2026-10-31T09:00:52.7471720Z [33/49] Emitting module SwiftJ2K
+2026-10-31T09:00:52.7474300Z [34/49] Compiling SwiftJ2K AcceleratedCodec.swift
+2026-10-31T09:00:52.7476280Z [35/49] Compiling SwiftJ2K AccelerationRuntime.swift
+2026-10-31T09:00:52.7477550Z [36/49] Compiling SwiftJ2K MetalAcceleration.swift
+2026-10-31T09:00:52.7482710Z [37/49] Compiling SwiftJ2K SIMDAcceleration.swift
+2026-10-31T09:00:52.7484410Z [38/49] Compiling SwiftJ2K BitIO.swift
+2026-10-31T09:00:52.7486260Z [39/49] Compiling SwiftJ2K BitPlaneCoder.swift
+2026-10-31T09:00:52.7487320Z [40/49] Compiling SwiftJ2K BoundedByteWriter.swift
+2026-10-31T09:00:52.7488450Z [41/49] Compiling SwiftJ2K Codestream.swift
+2026-10-31T09:00:52.7489650Z [42/49] Compiling SwiftJ2K ColourTransform.swift
+2026-10-31T09:00:52.7491510Z [43/49] Compiling SwiftJ2K ContextModeling.swift
+2026-10-31T09:00:52.7492320Z [44/49] Compiling SwiftJ2K HTBlockCoder.swift
+2026-10-31T09:00:52.7494690Z [45/49] Compiling SwiftJ2K HTTables.swift
+2026-10-31T09:00:52.7496250Z [46/49] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+2026-10-31T09:00:59.4331230Z [47/72] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+2026-10-31T09:00:59.4441040Z [48/72] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+2026-10-31T09:00:59.4546670Z [49/72] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+2026-10-31T09:00:59.4597530Z [50/72] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+2026-10-31T09:00:59.4599350Z [51/72] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+2026-10-31T09:00:59.4600900Z [52/72] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+2026-10-31T09:00:59.4612390Z [53/72] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+2026-10-31T09:00:59.4612970Z [54/72] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+2026-10-31T09:00:59.4614180Z [55/72] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+2026-10-31T09:00:59.4614640Z [56/72] Compiling SwiftJ2K3D JP3DRateControl.swift
+2026-10-31T09:00:59.4615200Z [57/72] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+2026-10-31T09:00:59.8708260Z [58/83] Emitting module SwiftJ2K3D
+2026-10-31T09:00:59.8711290Z [59/83] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+2026-10-31T09:00:59.8711930Z [60/83] Compiling SwiftJ2K3D JP3DConfiguration.swift
+2026-10-31T09:00:59.8712670Z [61/83] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+2026-10-31T09:00:59.8713400Z [62/83] Compiling SwiftJ2K3D JP3DDecoder.swift
+2026-10-31T09:00:59.8713950Z [63/83] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+2026-10-31T09:00:59.8714700Z [64/83] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+2026-10-31T09:00:59.8715180Z [65/83] Compiling SwiftJ2K3D JP3DEncoder.swift
+2026-10-31T09:00:59.8715870Z [66/83] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+2026-10-31T09:00:59.8716460Z [67/83] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+2026-10-31T09:00:59.8716980Z [68/83] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+2026-10-31T09:00:59.8717670Z [69/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+2026-10-31T09:01:06.8932950Z [70/83] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+2026-10-31T09:01:06.8934750Z [71/83] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+2026-10-31T09:01:06.8935280Z [72/83] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+2026-10-31T09:01:06.8936060Z [73/83] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+2026-10-31T09:01:06.8936510Z [74/83] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+2026-10-31T09:01:06.8937140Z [75/83] Compiling SwiftJ2K3D JP3DTiling.swift
+2026-10-31T09:01:06.8937650Z [76/83] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+2026-10-31T09:01:06.8938430Z [77/83] Compiling SwiftJ2K3D JP3DTranscoder.swift
+2026-10-31T09:01:06.8938890Z [78/83] Compiling SwiftJ2K3D JP3DTypes.swift
+2026-10-31T09:01:06.8939630Z [79/83] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+2026-10-31T09:01:06.8941470Z [80/83] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+2026-10-31T09:01:10.4948510Z [81/107] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+2026-10-31T09:01:10.5051080Z [82/107] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+2026-10-31T09:01:10.5051850Z [83/107] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+2026-10-31T09:01:10.5052310Z [84/107] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+2026-10-31T09:01:10.5052920Z [85/107] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+2026-10-31T09:01:10.5053640Z [86/107] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+2026-10-31T09:01:10.5054440Z [87/107] Compiling SwiftJ2KJPIP JPIPRequest.swift
+2026-10-31T09:01:10.5055160Z [88/107] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+2026-10-31T09:01:10.5055610Z [89/107] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+2026-10-31T09:01:10.5056460Z [90/107] Compiling SwiftJ2KJPIP JPIPResponse.swift
+2026-10-31T09:01:10.5056850Z [91/107] Compiling SwiftJ2KJPIP JPIPServer.swift
+2026-10-31T09:01:12.8562800Z [92/118] Emitting module SwiftJ2KJPIP
+2026-10-31T09:01:12.8685620Z [93/118] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+2026-10-31T09:01:12.8706650Z [94/118] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+2026-10-31T09:01:12.8764780Z [95/118] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+2026-10-31T09:01:12.8781740Z [96/118] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+2026-10-31T09:01:12.8831090Z [97/118] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+2026-10-31T09:01:12.8853580Z [98/118] Compiling SwiftJ2KJPIP JPIP.swift
+2026-10-31T09:01:12.8874300Z [99/118] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+2026-10-31T09:01:12.8876130Z [100/118] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+2026-10-31T09:01:12.8877880Z [101/118] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+2026-10-31T09:01:12.8881460Z [102/118] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+2026-10-31T09:01:12.8883120Z [103/118] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+2026-10-31T09:01:12.8886220Z [104/118] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+2026-10-31T09:01:15.8405720Z [105/118] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+2026-10-31T09:01:15.8407590Z [106/118] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+2026-10-31T09:01:15.8408420Z [107/118] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+2026-10-31T09:01:15.8408930Z [108/118] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+2026-10-31T09:01:15.8409640Z [109/118] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+2026-10-31T09:01:15.8410140Z [110/118] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+2026-10-31T09:01:15.8410850Z [111/118] Compiling SwiftJ2KJPIP JPIPTransport.swift
+2026-10-31T09:01:15.8411410Z [112/118] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+2026-10-31T09:01:15.8411920Z [113/118] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+2026-10-31T09:01:15.8412610Z [114/118] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+2026-10-31T09:01:15.8413510Z [115/118] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+2026-10-31T09:01:21.1492960Z [116/121] Compiling SwiftJ2KCLI CLIImageIO.swift
+2026-10-31T09:01:21.1494170Z [117/121] Emitting module SwiftJ2KCLI
+2026-10-31T09:01:21.1495060Z [118/121] Compiling SwiftJ2KCLI CLIVerbs.swift
+2026-10-31T09:01:23.8197420Z [119/122] Compiling SwiftJ2KCLI main.swift
+2026-10-31T09:01:23.8532490Z [119/122] Write Objects.LinkFileList
+2026-10-31T09:01:25.4979880Z [120/122] Linking swiftj2k-cli
+2026-10-31T09:01:25.6043250Z [121/122] Applying swiftj2k-cli
+2026-10-31T09:01:25.6120100Z Build complete! (63.52s)
+2026-10-31T09:01:25.6729210Z ##[group]Run set -euo pipefail
+2026-10-31T09:01:25.6729520Z [36;1mset -euo pipefail[0m
+2026-10-31T09:01:25.6729790Z [36;1mmkdir -p .build/sanitizer-evidence/ordinary[0m
+2026-10-31T09:01:25.6730200Z [36;1mswift test --xunit-output .build/sanitizer-evidence/ordinary/full.xml[0m
+2026-10-31T09:01:25.6993710Z shell: /bin/bash -e {0}
+2026-10-31T09:01:25.6993910Z ##[endgroup]
+2026-10-31T09:01:30.0730800Z [0/1] Planning build
+2026-10-31T09:01:30.0796090Z Building for debugging...
+2026-10-31T09:01:30.0854080Z [0/9] /Users/runner/work/SwiftJ2K/SwiftJ2K/.build/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+2026-10-31T09:01:30.0855100Z [0/9] Write sources
+2026-10-31T09:01:30.1403680Z [5/11] Copying Fixtures
+2026-10-31T09:01:30.2433750Z [6/11] Write swift-version-7974D3F7F03D5E95.txt
+2026-10-31T09:01:47.4270930Z [8/67] Compiling SwiftJ2K3DTests CodexR2VolumeGridTests.swift
+2026-10-31T09:01:47.4283510Z [9/67] Compiling SwiftJ2K3DTests CodexR2VolumePixelAccountingTests.swift
+2026-10-31T09:01:47.4385130Z [10/67] Compiling SwiftJ2K3DTests CodexR3IndependentHTTests.swift
+2026-10-31T09:01:47.4486950Z [11/67] Compiling SwiftJ2K3DTests CodexR3LayerBudgetTests.swift
+2026-10-31T09:01:47.4589690Z [12/67] Compiling SwiftJ2K3DTests CodexR3Part2MarkerTests.swift
+2026-10-31T09:01:47.4691670Z [13/67] Compiling SwiftJ2KJPIPTests CodexR3WebSocketLifecycleTests.swift
+2026-10-31T09:01:47.4793830Z [14/67] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+2026-10-31T09:01:47.4894520Z [15/67] Compiling SwiftJ2K3DTests JP3DComplianceTests.swift
+2026-10-31T09:01:47.4996490Z [16/67] Compiling SwiftJ2K3DTests JP3DCoreTypeTests.swift
+2026-10-31T09:01:47.5096850Z [17/67] Emitting module SwiftJ2KTests
+2026-10-31T09:02:00.2248130Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.2292600Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:00.2391070Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:00.2490800Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:00.2635700Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.2637290Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.2711860Z 223 |         }
+2026-10-31T09:02:00.2813610Z 
+2026-10-31T09:02:00.2918390Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.3031610Z 237 | 
+2026-10-31T09:02:00.3134910Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:00.3236960Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:00.3341780Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.3420700Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.3523780Z 241 |     }
+2026-10-31T09:02:00.3625320Z 
+2026-10-31T09:02:00.3729460Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:00.3850860Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.3953030Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:00.4054720Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:00.4155030Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:00.4259730Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.4382460Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.4485770Z 223 |         }
+2026-10-31T09:02:00.4487010Z 
+2026-10-31T09:02:00.4588680Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.4690480Z 237 | 
+2026-10-31T09:02:00.4792090Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:00.4895930Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:00.5002200Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.5111580Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.5189840Z 241 |     }
+2026-10-31T09:02:00.5290810Z 
+2026-10-31T09:02:00.5392010Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:00.5493030Z [20/75] Compiling SwiftJ2K3DTests JP3DDecoderTests.swift
+2026-10-31T09:02:00.5594860Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.5695660Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:00.5800390Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:00.5901130Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:00.6004820Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.6101540Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.6203070Z 223 |         }
+2026-10-31T09:02:00.6304520Z 
+2026-10-31T09:02:00.6408890Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.6462280Z 237 | 
+2026-10-31T09:02:00.6470400Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:00.6472000Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:00.6476040Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.6479070Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.6480170Z 241 |     }
+2026-10-31T09:02:00.6480550Z 
+2026-10-31T09:02:00.6481660Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:00.6570090Z [21/75] Compiling SwiftJ2K3DTests JP3DEncoderTests.swift
+2026-10-31T09:02:00.6672950Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.6773500Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:00.6875730Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:00.6977230Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:00.7079470Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.7181520Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.7282950Z 223 |         }
+2026-10-31T09:02:00.7382810Z 
+2026-10-31T09:02:00.7484930Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.7585510Z 237 | 
+2026-10-31T09:02:00.7688060Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:00.7787950Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:00.7890480Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.7990930Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.8094570Z 241 |     }
+2026-10-31T09:02:00.8193660Z 
+2026-10-31T09:02:00.8297010Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:00.8401210Z [22/75] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+2026-10-31T09:02:00.8503690Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.8601540Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:00.8703810Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:00.8807500Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:00.8908170Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.9010410Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.9110590Z 223 |         }
+2026-10-31T09:02:00.9211830Z 
+2026-10-31T09:02:00.9316600Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.9413880Z 237 | 
+2026-10-31T09:02:00.9515400Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:00.9595530Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:00.9704970Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:00.9837270Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:00.9946390Z 241 |     }
+2026-10-31T09:02:01.0053370Z 
+2026-10-31T09:02:01.0156090Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:01.0256700Z [23/75] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+2026-10-31T09:02:01.0363740Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.0460470Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:01.0561830Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:01.0610820Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:01.0612530Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.0613830Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:01.0614640Z 223 |         }
+2026-10-31T09:02:01.0614910Z 
+2026-10-31T09:02:01.0615930Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.0617190Z 237 | 
+2026-10-31T09:02:01.0617790Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:01.0618620Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:01.0619750Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.0620940Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:01.0621760Z 241 |     }
+2026-10-31T09:02:01.0621940Z 
+2026-10-31T09:02:01.0622250Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:01.1765040Z [24/75] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+2026-10-31T09:02:01.1866070Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.1972200Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T09:02:01.2072230Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T09:02:01.2172650Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T09:02:01.2277970Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.2377440Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T09:02:01.2478570Z 223 |         }
+2026-10-31T09:02:01.2579970Z 
+2026-10-31T09:02:01.2686020Z /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.2687480Z 237 | 
+2026-10-31T09:02:01.2689570Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T09:02:01.2791420Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T09:02:01.2893560Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T09:02:01.2996690Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T09:02:01.3101690Z 241 |     }
+2026-10-31T09:02:01.3203480Z 
+2026-10-31T09:02:01.3306020Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T09:02:01.3410110Z [27/81] Compiling SwiftJ2K3DTests JP3DParityAndSurfaceTests.swift
+2026-10-31T09:02:01.3511360Z [28/81] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+2026-10-31T09:02:01.3613000Z [29/81] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+2026-10-31T09:02:01.3714560Z [30/81] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+2026-10-31T09:02:01.3743740Z [31/81] Compiling SwiftJ2K3DTests R3VolumeRemediationTests.swift
+2026-10-31T09:02:01.3845980Z [32/81] Compiling SwiftJ2K3DTests VolumeContractTests.swift
+2026-10-31T09:02:01.3945660Z [33/81] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+2026-10-31T09:02:01.4048670Z [34/81] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+2026-10-31T09:02:01.4148950Z [35/81] Compiling SwiftJ2KTests R2RemediationTests.swift
+2026-10-31T09:02:01.8531790Z [36/92] Emitting module SwiftJ2K3DTests
+2026-10-31T09:02:10.3076150Z [56/92] Emitting module SwiftJ2KJPIPTests
+2026-10-31T09:02:13.8517930Z [71/92] Compiling SwiftJ2KJPIPTests JPIPSessionPersistenceTests.swift
+2026-10-31T09:02:13.8620140Z [72/92] Compiling SwiftJ2KJPIPTests JPIPTests.swift
+2026-10-31T09:02:13.8720620Z [73/92] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+2026-10-31T09:02:17.7667420Z [77/92] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+2026-10-31T09:02:17.7668520Z [78/92] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+2026-10-31T09:02:17.7669370Z [79/92] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+2026-10-31T09:02:17.7669960Z [80/92] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+2026-10-31T09:02:17.7670900Z [81/92] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+2026-10-31T09:02:17.7671630Z [82/92] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+2026-10-31T09:02:17.7672160Z [83/92] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+2026-10-31T09:02:17.7672750Z [84/92] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+2026-10-31T09:02:30.8467760Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8470300Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8471130Z  648 | 
+2026-10-31T09:02:30.8471800Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8472500Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8478690Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8481300Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8484540Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8488010Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8489590Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8492050Z  651 | 
+2026-10-31T09:02:30.8494870Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8495920Z 
+2026-10-31T09:02:30.8497340Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8501270Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8503270Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8504810Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8505960Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8506910Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8510220Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8511630Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8514940Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8517180Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8518090Z  659 |     }
+2026-10-31T09:02:30.8518830Z  660 | 
+2026-10-31T09:02:30.8520360Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8523190Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8524720Z  648 | 
+2026-10-31T09:02:30.8525580Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8526720Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8527580Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8528600Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8535510Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8539630Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8541310Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8542280Z  651 | 
+2026-10-31T09:02:30.8543550Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8545170Z 
+2026-10-31T09:02:30.8546590Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8549290Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8550890Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8552090Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8553170Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8554240Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8555290Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8559450Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8563160Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8564850Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8565300Z  659 |     }
+2026-10-31T09:02:30.8565520Z  660 | 
+2026-10-31T09:02:30.8566200Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8567400Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8567960Z  648 | 
+2026-10-31T09:02:30.8568290Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8568700Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8569130Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8569530Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8570600Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8571940Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8572560Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8572960Z  651 | 
+2026-10-31T09:02:30.8573360Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8573740Z 
+2026-10-31T09:02:30.8574200Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8575610Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8576370Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8576870Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8577400Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8578140Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8580150Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8581340Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8582620Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8583380Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8583700Z  659 |     }
+2026-10-31T09:02:30.8583970Z  660 | 
+2026-10-31T09:02:30.8584520Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8585560Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8586160Z  648 | 
+2026-10-31T09:02:30.8586440Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8586920Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8587280Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8587750Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8588810Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8590270Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8590980Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8591280Z  651 | 
+2026-10-31T09:02:30.8591760Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8592080Z 
+2026-10-31T09:02:30.8592570Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8593530Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8594150Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8594640Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8595120Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8595520Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8595990Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8597760Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8599210Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8599840Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8600160Z  659 |     }
+2026-10-31T09:02:30.8600500Z  660 | 
+2026-10-31T09:02:30.8601080Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8602690Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8603250Z  648 | 
+2026-10-31T09:02:30.8603580Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8604130Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8604570Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8605080Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8606030Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8607300Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8608000Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8608410Z  651 | 
+2026-10-31T09:02:30.8608800Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8609190Z 
+2026-10-31T09:02:30.8609660Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8610790Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8611450Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8611930Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8612400Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8612860Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8613210Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8614260Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8615530Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8616080Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8616330Z  659 |     }
+2026-10-31T09:02:30.8616550Z  660 | 
+2026-10-31T09:02:30.8617220Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8618150Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:650:61: note: expanded code originates here
+2026-10-31T09:02:30.8618770Z  648 | 
+2026-10-31T09:02:30.8619730Z  649 |         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+2026-10-31T09:02:30.8620150Z  650 |         #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
+2026-10-31T09:02:30.8620520Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8620850Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8621770Z      |1 | Testing.__checkBinaryOperation(ramp,{ $0 == $1() },(0..<8).map { Int64(10 + 17 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("ramp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(10 + 17 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8623340Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8624030Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8624380Z  651 | 
+2026-10-31T09:02:30.8624740Z  652 |         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+2026-10-31T09:02:30.8625090Z 
+2026-10-31T09:02:30.8625550Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8626480Z `- /Users/runner/work/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift:658:67: note: expanded code originates here
+2026-10-31T09:02:30.8627110Z  656 |         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+2026-10-31T09:02:30.8627490Z  657 |         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+2026-10-31T09:02:30.8627950Z  658 |         #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
+2026-10-31T09:02:30.8628350Z      |         `- note: in expansion of macro 'expect' here
+2026-10-31T09:02:30.8628730Z      +--- macro expansion #expect --------------------------------------
+2026-10-31T09:02:30.8629880Z      |1 | Testing.__checkBinaryOperation(oddCasRamp,{ $0 == $1() },(0..<8).map { Int64(25 + 13 * $0) },expression: .__fromBinaryOperation(.__fromSyntaxNode("oddCasRamp"),"==",.__fromSyntaxNode("(0..<8).map { Int64(25 + 13 * $0) }")),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+2026-10-31T09:02:30.8631160Z      |  | `- error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions
+2026-10-31T09:02:30.8631780Z      +------------------------------------------------------------------
+2026-10-31T09:02:30.8632070Z  659 |     }
+2026-10-31T09:02:30.8632330Z  660 | 
+2026-10-31T09:02:30.9016240Z error: fatalError
+2026-10-31T09:02:30.9109200Z ##[error]Process completed with exit code 1.
+2026-10-31T09:02:30.9754080Z ##[group]Run set -euo pipefail
+2026-10-31T09:02:30.9754400Z [36;1mset -euo pipefail[0m
+2026-10-31T09:02:30.9754580Z [36;1mpython3 - <<'PY_EVIDENCE'[0m
+2026-10-31T09:02:30.9754810Z [36;1mimport hashlib, json, os, stat, subprocess[0m
+2026-10-31T09:02:30.9755060Z [36;1mfrom pathlib import Path[0m
+2026-10-31T09:02:30.9755240Z [36;1m[0m
+2026-10-31T09:02:30.9755400Z [36;1mFORMAT = "swiftj2k-ci-evidence-v1"[0m
+2026-10-31T09:02:30.9755650Z [36;1mROOT = Path(".build/sanitizer-evidence")[0m
+2026-10-31T09:02:30.9755880Z [36;1mMAX_FILE = 8 * 1024 * 1024[0m
+2026-10-31T09:02:30.9756060Z [36;1mMAX_TOTAL = 16 * 1024 * 1024[0m
+2026-10-31T09:02:30.9756260Z [36;1mCHARS_PER_CHUNK = 4096[0m
+2026-10-31T09:02:30.9756460Z [36;1mproblems = [][0m
+2026-10-31T09:02:30.9756630Z [36;1mretained = set()[0m
+2026-10-31T09:02:30.9756790Z [36;1mtotal = 0[0m
+2026-10-31T09:02:30.9756920Z [36;1m[0m
+2026-10-31T09:02:30.9757060Z [36;1mdef emit(kind, **fields):[0m
+2026-10-31T09:02:30.9757380Z [36;1m    print(json.dumps({"format": FORMAT, "kind": kind, **fields},[0m
+2026-10-31T09:02:30.9757740Z [36;1m                     ensure_ascii=True, separators=(",", ":")), flush=True)[0m
+2026-10-31T09:02:30.9758020Z [36;1m[0m
+2026-10-31T09:02:30.9758150Z [36;1mdef git(*args):[0m
+2026-10-31T09:02:30.9758420Z [36;1m    return subprocess.check_output(["git", *args], text=True).strip()[0m
+2026-10-31T09:02:30.9758710Z [36;1m[0m
+2026-10-31T09:02:30.9758830Z [36;1mtry:[0m
+2026-10-31T09:02:30.9759060Z [36;1m    head, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")[0m
+2026-10-31T09:02:30.9759530Z [36;1m    clean = subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], check=False).returncode == 0[0m
+2026-10-31T09:02:30.9760260Z [36;1m    identity = {name: os.environ.get(name) for name in ([0m
+2026-10-31T09:02:30.9760650Z [36;1m        "GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB",[0m
+2026-10-31T09:02:30.9761070Z [36;1m        "GITHUB_EVENT_NAME", "GITHUB_REF", "GITHUB_SHA", "EVIDENCE_PR_HEAD",[0m
+2026-10-31T09:02:30.9761500Z [36;1m        "EVIDENCE_PR_BASE", "EVIDENCE_ORDINARY", "EVIDENCE_ASAN", "EVIDENCE_TSAN")}[0m
+2026-10-31T09:02:30.9761930Z [36;1m    emit("begin", identity=identity, checkout_head=head, checkout_tree=tree,[0m
+2026-10-31T09:02:30.9762380Z [36;1m         tracked_tree_clean=clean, max_file_bytes=MAX_FILE, max_total_bytes=MAX_TOTAL)[0m
+2026-10-31T09:02:30.9762770Z [36;1m    if not clean or head != os.environ.get("GITHUB_SHA"):[0m
+2026-10-31T09:02:30.9763210Z [36;1m        problems.append("Checkout identity differs from the workflow SHA or tracked files changed")[0m
+2026-10-31T09:02:30.9763670Z [36;1mexcept (OSError, subprocess.CalledProcessError) as error:[0m
+2026-10-31T09:02:30.9763990Z [36;1m    emit("identity_error", error=str(error))[0m
+2026-10-31T09:02:30.9764270Z [36;1m    problems.append("Checkout identity unavailable")[0m
+2026-10-31T09:02:30.9764510Z [36;1m[0m
+2026-10-31T09:02:30.9764820Z [36;1minventory_names = ["reference.stdout", "reference.stderr", "reference.command-result.json",[0m
+2026-10-31T09:02:30.9765340Z [36;1m                   "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",[0m
+2026-10-31T09:02:30.9765780Z [36;1m                   "inventory.json", "all.ids", "jpip.ids", "complement.ids"][0m
+2026-10-31T09:02:30.9766180Z [36;1mxml_groups = [["ordinary/full.xml", "ordinary/full-swift-testing.xml"]][0m
+2026-10-31T09:02:30.9766490Z [36;1mrequired = [][0m
+2026-10-31T09:02:30.9766650Z [36;1moptional = [][0m
+2026-10-31T09:02:30.9766830Z [36;1mfor mode in ("address", "thread"):[0m
+2026-10-31T09:02:30.9767110Z [36;1m    required += [f"{mode}/{name}" for name in inventory_names][0m
+2026-10-31T09:02:30.9767460Z [36;1m    optional.append(f"{mode}/inventory-mismatch.json")[0m
+2026-10-31T09:02:30.9767750Z [36;1m    for part in ("jpip", "complement"):[0m
+2026-10-31T09:02:30.9768640Z [36;1m        xml_groups.append([f"{mode}/{part}.xml", f"{mode}/{part}-swift-testing.xml"])[0m
+2026-10-31T09:02:30.9769150Z [36;1mpaths = sorted(set(required + optional + [path for group in xml_groups for path in group]))[0m
+2026-10-31T09:02:30.9769530Z [36;1mfor relative in paths:[0m
+2026-10-31T09:02:30.9769720Z [36;1m    path = ROOT / relative[0m
+2026-10-31T09:02:30.9769890Z [36;1m    try:[0m
+2026-10-31T09:02:30.9770160Z [36;1m        # The fixed allowlist cannot disclose arbitrary files under .build. Reject[0m
+2026-10-31T09:02:30.9770610Z [36;1m        # symlinked ancestors and files instead of following them outside the tree.[0m
+2026-10-31T09:02:30.9771120Z [36;1m        if any(parent.is_symlink() for parent in [path, *path.parents]):[0m
+2026-10-31T09:02:30.9771490Z [36;1m            raise ValueError("Symlinked evidence path refused")[0m
+2026-10-31T09:02:30.9771780Z [36;1m        if not path.exists():[0m
+2026-10-31T09:02:30.9772000Z [36;1m            emit("missing", path=relative)[0m
+2026-10-31T09:02:30.9772230Z [36;1m            continue[0m
+2026-10-31T09:02:30.9772410Z [36;1m        info = path.stat()[0m
+2026-10-31T09:02:30.9772630Z [36;1m        if not stat.S_ISREG(info.st_mode):[0m
+2026-10-31T09:02:30.9772930Z [36;1m            raise ValueError("Evidence path is not a regular file")[0m
+2026-10-31T09:02:30.9773290Z [36;1m        if info.st_size > MAX_FILE or total + info.st_size > MAX_TOTAL:[0m
+2026-10-31T09:02:30.9773700Z [36;1m            raise ValueError("Evidence size limit exceeded; no silent truncation")[0m
+2026-10-31T09:02:30.9774050Z [36;1m        data = path.read_bytes()[0m
+2026-10-31T09:02:30.9774330Z [36;1m        if len(data) > MAX_FILE or total + len(data) > MAX_TOTAL:[0m
+2026-10-31T09:02:30.9774670Z [36;1m            raise ValueError("Evidence grew past the size limit")[0m
+2026-10-31T09:02:30.9775240Z [36;1m        content = data.decode("utf-8")  # Strict: malformed UTF-8 is not rewritten.[0m
+2026-10-31T09:02:30.9775740Z [36;1m        chunks = [content[i:i + CHARS_PER_CHUNK] for i in range(0, len(content), CHARS_PER_CHUNK)][0m
+2026-10-31T09:02:30.9776220Z [36;1m        emit("file", path=relative, sha256=hashlib.sha256(data).hexdigest(),[0m
+2026-10-31T09:02:30.9776600Z [36;1m             bytes=len(data), encoding="utf-8", chunks=len(chunks))[0m
+2026-10-31T09:02:30.9776910Z [36;1m        for index, chunk in enumerate(chunks):[0m
+2026-10-31T09:02:30.9777230Z [36;1m            emit("chunk", path=relative, index=index, content_utf8=chunk)[0m
+2026-10-31T09:02:30.9777540Z [36;1m        retained.add(relative)[0m
+2026-10-31T09:02:30.9777750Z [36;1m        total += len(data)[0m
+2026-10-31T09:02:30.9778000Z [36;1m    except (OSError, UnicodeError, ValueError) as error:[0m
+2026-10-31T09:02:30.9778340Z [36;1m        emit("file_error", path=relative, error=str(error))[0m
+2026-10-31T09:02:30.9778860Z [36;1m        problems.append(relative + ": evidence could not be retained")[0m
+2026-10-31T09:02:30.9779200Z [36;1m[0m
+2026-10-31T09:02:30.9779350Z [36;1mfor relative in required:[0m
+2026-10-31T09:02:30.9779550Z [36;1m    if relative not in retained:[0m
+2026-10-31T09:02:30.9779850Z [36;1m        problems.append("Missing inventory evidence: " + relative)[0m
+2026-10-31T09:02:30.9780140Z [36;1mfor group in xml_groups:[0m
+2026-10-31T09:02:30.9780400Z [36;1m    if not any(relative in retained for relative in group):[0m
+2026-10-31T09:02:30.9780760Z [36;1m        problems.append("No XML retained for invocation: " + group[0])[0m
+2026-10-31T09:02:30.9781140Z [36;1memit("end", files=len(retained), bytes=total, problems=problems,[0m
+2026-10-31T09:02:30.9781450Z [36;1m     retention_complete=not problems,[0m
+2026-10-31T09:02:30.9781970Z [36;1m     scope="Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately")[0m
+2026-10-31T09:02:30.9782480Z [36;1mraise SystemExit(1 if problems else 0)[0m
+2026-10-31T09:02:30.9782700Z [36;1mPY_EVIDENCE[0m
+2026-10-31T09:02:31.0056980Z shell: /bin/bash -e {0}
+2026-10-31T09:02:31.0057190Z env:
+2026-10-31T09:02:31.0057650Z   EVIDENCE_PR_HEAD: 7f1b123c1c8705666b3c19838f3ed22c00dc6145
+2026-10-31T09:02:31.0057980Z   EVIDENCE_PR_BASE: 46be90fc3bf50429956725ee592687d8ff8e7344
+2026-10-31T09:02:31.0058240Z   EVIDENCE_ORDINARY: failure
+2026-10-31T09:02:31.0058420Z   EVIDENCE_ASAN: skipped
+2026-10-31T09:02:31.0058580Z   EVIDENCE_TSAN: skipped
+2026-10-31T09:02:31.0058740Z ##[endgroup]
+2026-10-31T09:02:31.3300920Z {"format":"swiftj2k-ci-evidence-v1","kind":"begin","identity":{"GITHUB_REPOSITORY":"raster-labs/SwiftJ2K","GITHUB_RUN_ID":"41186617163","GITHUB_RUN_ATTEMPT":"1","GITHUB_JOB":"macos","GITHUB_EVENT_NAME":"pull_request","GITHUB_REF":"refs/pull/30/merge","GITHUB_SHA":"5c88ca1961d4a294991310b035a26b7ddce5084c","EVIDENCE_PR_HEAD":"7f1b123c1c8705666b3c19838f3ed22c00dc6145","EVIDENCE_PR_BASE":"46be90fc3bf50429956725ee592687d8ff8e7344","EVIDENCE_ORDINARY":"failure","EVIDENCE_ASAN":"skipped","EVIDENCE_TSAN":"skipped"},"checkout_head":"5c88ca1961d4a294991310b035a26b7ddce5084c","checkout_tree":"934266a4d41b742f8d3f3be8fdf894b8ad033ac8","tracked_tree_clean":true,"max_file_bytes":8388608,"max_total_bytes":16777216}
+2026-10-31T09:02:31.3307710Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/all.ids"}
+2026-10-31T09:02:31.3309230Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/complement-swift-testing.xml"}
+2026-10-31T09:02:31.3310540Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/complement.ids"}
+2026-10-31T09:02:31.3311750Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/complement.xml"}
+2026-10-31T09:02:31.3313010Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/inventory-mismatch.json"}
+2026-10-31T09:02:31.3314290Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/inventory.json"}
+2026-10-31T09:02:31.3317010Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/jpip-swift-testing.xml"}
+2026-10-31T09:02:31.3318240Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/jpip.ids"}
+2026-10-31T09:02:31.3319380Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/jpip.xml"}
+2026-10-31T09:02:31.3320640Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/reference.command-result.json"}
+2026-10-31T09:02:31.3321970Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/reference.stderr"}
+2026-10-31T09:02:31.3323180Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/reference.stdout"}
+2026-10-31T09:02:31.3324520Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/sanitized.command-result.json"}
+2026-10-31T09:02:31.3325870Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/sanitized.stderr"}
+2026-10-31T09:02:31.3327080Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"address/sanitized.stdout"}
+2026-10-31T09:02:31.3328370Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"ordinary/full-swift-testing.xml"}
+2026-10-31T09:02:31.3329590Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"ordinary/full.xml"}
+2026-10-31T09:02:31.3330770Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/all.ids"}
+2026-10-31T09:02:31.3332010Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/complement-swift-testing.xml"}
+2026-10-31T09:02:31.3333300Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/complement.ids"}
+2026-10-31T09:02:31.3334690Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/complement.xml"}
+2026-10-31T09:02:31.3336010Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/inventory-mismatch.json"}
+2026-10-31T09:02:31.3337270Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/inventory.json"}
+2026-10-31T09:02:31.3338550Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/jpip-swift-testing.xml"}
+2026-10-31T09:02:31.3339810Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/jpip.ids"}
+2026-10-31T09:02:31.3341490Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/jpip.xml"}
+2026-10-31T09:02:31.3342870Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/reference.command-result.json"}
+2026-10-31T09:02:31.3344230Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/reference.stderr"}
+2026-10-31T09:02:31.3346520Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/reference.stdout"}
+2026-10-31T09:02:31.3348820Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/sanitized.command-result.json"}
+2026-10-31T09:02:31.3350400Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/sanitized.stderr"}
+2026-10-31T09:02:31.3351600Z {"format":"swiftj2k-ci-evidence-v1","kind":"missing","path":"thread/sanitized.stdout"}
+2026-10-31T09:02:31.3356820Z {"format":"swiftj2k-ci-evidence-v1","kind":"end","files":0,"bytes":0,"problems":["Missing inventory evidence: address/reference.stdout","Missing inventory evidence: address/reference.stderr","Missing inventory evidence: address/reference.command-result.json","Missing inventory evidence: address/sanitized.stdout","Missing inventory evidence: address/sanitized.stderr","Missing inventory evidence: address/sanitized.command-result.json","Missing inventory evidence: address/inventory.json","Missing inventory evidence: address/all.ids","Missing inventory evidence: address/jpip.ids","Missing inventory evidence: address/complement.ids","Missing inventory evidence: thread/reference.stdout","Missing inventory evidence: thread/reference.stderr","Missing inventory evidence: thread/reference.command-result.json","Missing inventory evidence: thread/sanitized.stdout","Missing inventory evidence: thread/sanitized.stderr","Missing inventory evidence: thread/sanitized.command-result.json","Missing inventory evidence: thread/inventory.json","Missing inventory evidence: thread/all.ids","Missing inventory evidence: thread/jpip.ids","Missing inventory evidence: thread/complement.ids","No XML retained for invocation: ordinary/full.xml","No XML retained for invocation: address/jpip.xml","No XML retained for invocation: address/complement.xml","No XML retained for invocation: thread/jpip.xml","No XML retained for invocation: thread/complement.xml"],"retention_complete":false,"scope":"Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately"}
+2026-10-31T09:02:31.3380990Z ##[error]Process completed with exit code 1.
+2026-10-31T09:02:31.6508800Z Post job cleanup.
+2026-10-31T09:02:32.1804940Z [command]/opt/homebrew/bin/git version
+2026-10-31T09:02:32.1909830Z git version 2.56.0
+2026-10-31T09:02:32.2440040Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/385e5815-f9f3-4ae4-a808-7cb12c7b42f1/.gitconfig'
+2026-10-31T09:02:32.2554040Z Temporarily overriding HOME='/Users/runner/work/_temp/385e5815-f9f3-4ae4-a808-7cb12c7b42f1' before making global git config changes
+2026-10-31T09:02:32.2670160Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T09:02:32.2772740Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/SwiftJ2K/SwiftJ2K
+2026-10-31T09:02:32.3094520Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T09:02:32.3287140Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T09:02:32.4784000Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T09:02:32.4877490Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T09:02:32.6952740Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T09:02:32.7066040Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T09:02:32.8614070Z Cleaning up orphan processes
+2026-10-31T09:02:33.8232070Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+

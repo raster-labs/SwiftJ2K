@@ -1,0 +1,133 @@
+Hosted evidence reconstruction — prepared and synthetically checked only
+
+Scope and stop
+Only work/hosted-evidence/ was written. No GitHub calls, Git subprocesses, network,
+Swift/native execution, repository edit or new agent. The helper reconstructs the
+reviewed swiftj2k-ci-evidence-v1 format from one complete downloaded macOS job log.
+No real hosted log has been reconstructed yet, and no CI or R3 gate is accepted.
+
+Inputs reviewed
+work/ci-final-proposal/.github/workflows/contract.yml
+work/sanitizer-partition-proposal/evidence-retention-note.txt
+Their hashes are retained in source-reference.json. The helper intentionally
+requires this fixed format and 32-path allowlist; schema changes need review.
+
+Usage
+Preserve the complete downloaded job log and its SHA-256. Obtain the exact job/run
+attempt, event/ref, repository, PR head/base, workflow SHA, tested merge commit/tree
+and all three test-step outcomes independently from the run/PR/commit metadata.
+Fill a copy of expected-template.json from those records. It contains deliberately
+invalid placeholders until filled. Do not derive expected values solely by copying
+the log's own begin record; that would only check self-consistency.
+
+python3 work/hosted-evidence/reconstruct.py \
+  --log work/ci-downloads/EXACT-RUN-ATTEMPT-macos.log \
+  --expected work/ci-downloads/EXACT-RUN-ATTEMPT-expected.json \
+  --output work/hosted-evidence/recovered-EXACT-RUN-ATTEMPT
+
+The output parent must already exist; the final output directory must be absent.
+Output is constrained to a fresh subdirectory of this takeover's work/; traversal,
+symlinked ancestors, outside paths and existing output are refused. All records,
+hashes and required report families validate before output creation. Recovered
+reports preserve their allowlisted address/thread/ordinary relative paths. The
+final reconstruction.json binds input log/expected-file/helper hashes and every
+recovered byte count/hash. A write/verification failure leaves no success receipt;
+inspect any partial output rather than reusing it as a completed reconstruction.
+
+Validation behavior
+- Only JSON records with the exact format are selected, after an RFC3339-style
+  GitHub runner timestamp prefix. Other command/output lines and unrelated JSON
+  namespaces are ignored. Matching malformed JSON, duplicate JSON keys and missing
+  timestamps fail; do not pass a rendered preview or a tool-truncated log.
+- Exactly one begin and one end are required, in the right positions. Repository,
+  run ID, attempt, job, event/ref, workflow SHA, PR head/base, tested HEAD/tree and
+  ordinary/ASan/TSan outcomes must match the independently supplied expectation.
+  Tracked source must be clean and HEAD must equal the workflow SHA. For PR events,
+  the ref must name the synthetic merge; PR head and merge tree remain distinct.
+- Every fixed path appears once, in the emitter's sorted order, as file or missing.
+  File/error/identity-error records cannot be ignored. Chunks must be contiguous,
+  unique, correctly owned and indexed from zero, with the reviewed 4096 Unicode
+  character boundaries. UTF-8 encoding is strict and preserves exact original
+  bytes; no replacement decoding, newline normalization or masking workaround.
+- Every file's bytes and SHA-256, per-file/total ceilings, footer file/byte counts,
+  empty problem list and retention_complete=true are checked. All 20 inventory
+  files and at least one XML in each of five invocation pairs are mandatory.
+  Missing optional sibling XML/mismatch files remain explicit missing records.
+- Truncation, reordering, duplicate records, mismatched hashes, masked content or
+  altered identity cause failure. A successfully matched failing step may still
+  be reconstructed for diagnosis, but test_steps_successful remains false and
+  the result is only retention evidence. Success outcomes alone do not establish
+  runtime declaration/case coverage or independent oracle availability.
+
+Synthetic validation
+selftest.py performs exact roundtrips with empty files, quotes/backslashes, CR/LF,
+tabs, NUL, non-ASCII and multi-chunk Unicode. Negative checks include absent or
+duplicate begin/end, mixed attempts, PR/merge/outcome mismatches, tracked drift,
+path traversal/absolute/unknown paths, duplicate/missing/ordered chunk violations,
+masking, invalid UTF-8 code points, sizes/ceilings/footer problems, missing required
+families, malformed/duplicate-key JSON, output reuse, outside paths and symlinked
+output ancestors. Actual byte writes are checked in a temporary work subdirectory
+then removed. selftest-result.json is explicitly synthetic, not a hosted receipt.
+
+Hosted runtime event splitting and reconciliation
+1. Preserve the full raw job log and exact-run job/step metadata before extraction.
+   If the downloaded archive has separate step logs, retain those original files
+   and archive entry names; use the actual inventory, never assumed filenames.
+   Select the Ordinary tests, Address sanitizer and Thread sanitizer steps by
+   recorded step identity/order and outcome. Otherwise locate those exact steps
+   in the complete job log and retain line-number intervals plus input hashes.
+   Never combine attempts or use only the browser-rendered preview.
+2. Strip only the leading timestamp and one separating space from physical log
+   lines. Preserve payload whitespace, tabs, CR/LF descriptions and literal
+   multiline parameter arguments. Keep the raw timestamped source and record the
+   extraction transformation. Command-echo groups are not actual executions:
+   all three sanitizer shell commands are usually echoed together before running.
+   Do not split at an echoed command as though that proves the process started.
+3. In each sanitizer step, the inventory helper's BEGIN/END EXACT SANITIZED
+   INVENTORY STDOUT markers delimit declaration listing, not test execution.
+   After the final inventory marker, identify two actual runner invocations in
+   the reviewed shell order: JPIP filter, then its exact complement. Use observed
+   XCTest All-tests start/end and Swift Testing test-run start/terminal events
+   together with the original step boundaries. Each invocation must be complete.
+   Under the installed local runner XCTest precedes Swift Testing; verify the
+   actual hosted Swift 6.3.3 sequence before relying on that order. An aborted
+   first command means the complement may never run; retain that as unexecuted.
+4. Bind those five actual invocation segments to ordinary/full, address/jpip,
+   address/complement, thread/jpip and thread/complement retained XML groups.
+   Require every observed qualified ID in a JPIP segment to belong to its exact
+   inventory subset, every complement ID to its complement, and ordinary IDs to
+   the full hosted inventory. This identity check detects a mistaken boundary;
+   counts alone do not. Preserve complete raw ranges for audit. A warning-spliced
+   or truncated event remains a gap even if the job or XML claims overall success.
+5. Reconstruct and verify each hosted reference/sanitized inventory stdout/stderr,
+   command/result JSON, inventory.json and all/jpip/complement IDs. Require exact
+   ordinary-to-sanitizer equality separately for address and thread, disjoint
+   partitions and complete union. Use the tested merge's source for custom @Test
+   display-title bindings, and verify its actual checkout tree. Do not assume the
+   isolated PR-head or local candidate tree equals the tested synthetic merge.
+6. Reconcile qualified XCTest starts/completions and Swift Testing XML IDs with
+   those discovered sets. Compare each parameter declaration's exact argument
+   multiset and successful aggregate case count against hosted ordinary at that
+   source. Multiline argument events join only through their own terminal marker;
+   intervening framework/diagnostic lines are gaps. XML currently collapses each
+   parameter declaration, so it cannot supply missing argument values/events.
+7. Missing external tools can yield known-issue/skipped oracle paths on hosted
+   machines. List those identities and cases as UNEXECUTED, compare hosted ordinary
+   versus hosted sanitizer behavior, and review any new difference. A framework
+   passed status is not independent decoder execution. Never fill missing hosted
+   oracle evidence or argument events from a local successful run. The existing
+   local runtime helper intentionally rejects actual known-issue events for manual
+   disposition; a hosted adapter must preserve this distinction explicitly.
+8. Keep a separate hosted reconciliation record: job/run/attempt/step conclusions,
+   tested commit/tree, compiler/runner evidence, raw step-range hashes, recovered
+   file hashes, declarations/cases, unexecuted oracles and unresolved gaps. Reuse
+   parse_log/xml/display binding components only with an honest hosted adapter.
+   Do not create fake local command.json/result.json/source-before/source-after
+   receipts to satisfy parse_run(), which requires the root native wrapper's
+   actual execution evidence. Local and hosted environments/source identities
+   must be recorded separately and compared explicitly where appropriate.
+
+The reconstructor covers storage and identity checks. The splitting instructions
+are a review procedure, not an automated step splitter or a completed hosted
+coverage proof. Required CI job outcomes and final source/acceptance review remain
+the coordinator's responsibility. Positive stop after helper/report selftests.

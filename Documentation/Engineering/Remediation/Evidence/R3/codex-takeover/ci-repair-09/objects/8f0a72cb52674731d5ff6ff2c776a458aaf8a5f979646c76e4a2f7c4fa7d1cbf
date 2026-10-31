@@ -1,0 +1,18 @@
+{
+  "state": "PREPARED_AND_STOPPED",
+  "files": {
+    "work/runtime-coverage-14/README.txt": "b97e94f35b3dfe75d784dcbb90541c82b7e1773b2d1d46f5fe76ea3f773e63ed",
+    "work/runtime-coverage-14/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "work/runtime-coverage-14/check-focused.py": "3f99f7cf9527a0dd374b02f7af581ef06d93db11925505cb5fba67ccac266743",
+    "work/runtime-coverage-14/focused14-check.json": "98a5f1978e455b8f0c68b5ebbf47e013173cdb549c8452d91f9392b4f839bc0e",
+    "work/runtime-coverage-14/planned-14/address-final-14.json": "08f387ce00dda0060413f7fd6f299ba49410bf3f1400645db2a5d93eafdf081d",
+    "work/runtime-coverage-14/planned-14/audit-plan.json": "9b9a2d3a41c08c8a9e51aec783a4ddf8e74fc82253be19e80c37c7b87aa21a38",
+    "work/runtime-coverage-14/planned-14/thread-final-14.json": "053b0d3fd4a0a6b0e053325055899e1591e4720b7c8a0047a33e4e4ea3d7fb1c",
+    "work/runtime-coverage-14/preparation.json": "54c471cd87c839464de0162cad099834e17e3ee15315149a78906ab09d533f82",
+    "work/runtime-coverage-14/prepare-check.py": "21f7c6b3b2eaf712ef2591d4fc20a236c0cd5538cde6a9229daa8b28928985b7",
+    "work/runtime-coverage-14/prepare_plan.py": "18cb4a2fde8388534ba11bf63633364857666de9cb1f3fff419c142d68458f46"
+  },
+  "native_execution": false,
+  "repository_edits": false,
+  "final_coverage_claim": false
+}

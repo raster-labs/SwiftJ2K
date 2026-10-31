@@ -1,0 +1,312 @@
+--- frozen08/JPIPTransport.swift
++++ frozen09/JPIPTransport.swift
+@@ -104,6 +104,25 @@
+     /// Optional channel path negotiated via `JPIP-cnew` (`path=...`).
+     private var channelPathOverride: String?
+     private var lastReceivePeakBytes = 0
++    private var requestGeneration = UUID()
++    private var activeRequests: [UUID: any JPIPTransportRequestOwner] = [:]
++    private var lifecycleObserver: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?
++    private var httpsTaskPublicationObserver: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
++    private var httpWorkerCompletionObserver: (@Sendable () -> Void)?
++
++    package func setRequestLifecycleObserver(
++        _ observer: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?,
++        httpsTaskPublished: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil,
++        httpWorkerCompleting: (@Sendable () -> Void)? = nil
++    ) {
++        lifecycleObserver = observer
++        httpsTaskPublicationObserver = httpsTaskPublished
++        httpWorkerCompletionObserver = httpWorkerCompleting
++    }
++
++    package var requestOwnershipSnapshot: (registered: Int, unfinished: Int) {
++        (activeRequests.count, activeRequests.values.filter { !$0.isFinished }.count)
++    }
+ 
+     /// Creates a new JPIP transport targeting a remote or loopback HTTP(S) URL.
+     ///
+@@ -306,23 +325,31 @@
+             effectiveTimeout = self.timeoutInterval
+         }
+ 
+-        let cancelToken = JPIPSocketCancellationToken()
++        let owner = JPIPHTTPRequestOwner()
++        let cancelToken = owner.token
+         let deadlineLatch = JPIPDeadlineExpiryLatch()
+         if let existingConn, !cancelToken.bind(connection: existingConn) {
+             existingConn.close()
+             throw CancellationError()
+         }
++        let requestID = UUID()
++        let generation = requestGeneration
++        let observer = lifecycleObserver
++        let workerObserver = httpWorkerCompletionObserver
++        activeRequests[requestID] = owner
++        defer { activeRequests.removeValue(forKey: requestID) }
+ 
+         let watchdog = remainingDeadline.map { remaining in
+             JPIPDeadlineWatchdog(after: remaining) {
+                 deadlineLatch.markExpired()
+-                cancelToken.cancel()
++                owner.cancelForTransportClose()
+             }
+         }
+         defer { watchdog?.cancel() }
+ 
+         let (wireResponse, survivingConnection): (JPIPHTTPWireResponse, JPIPTCPConnection)
+         do {
++            await observer?(.registered, requestID)
+             (wireResponse, survivingConnection) = try await withTaskCancellationHandler {
+                 try await Self.executeHTTP11OffPool(
+                     host: host,
+@@ -334,12 +361,15 @@
+                     headers: reqHeaders,
+                     maxBodyBytes: maxBodyBytes,
+                     maximumStorageBytes: maximumStorageBytes,
+-                    cancelToken: cancelToken
++                    cancelToken: cancelToken,
++                    owner: owner,
++                    workerObserver: workerObserver
+                 )
+             } onCancel: {
+-                cancelToken.cancel()
++                owner.cancelForTransportClose()
+             }
+         } catch {
++            if generation != requestGeneration { throw CancellationError() }
+             if Task.isCancelled {
+                 throw CancellationError()
+             }
+@@ -352,13 +382,18 @@
+             throw error
+         }
+ 
++        await observer?(.beforePublication, requestID)
++        do {
++            guard generation == requestGeneration else { throw CancellationError() }
++            try Task.checkCancellation()
++            if let deadline, ContinuousClock.now > deadline {
++                throw CodecError(.resourceLimitExceeded, "JPIP HTTP operation deadline elapsed.")
++            }
++        } catch {
++            survivingConnection.close()
++            throw error
++        }
+         lastReceivePeakBytes = wireResponse.peakWorkspaceBytes
+-
+-        try Task.checkCancellation()
+-        if let deadline, ContinuousClock.now > deadline {
+-            survivingConnection.close()
+-            throw CodecError(.resourceLimitExceeded, "JPIP HTTP operation deadline elapsed.")
+-        }
+ 
+         // Restore default transport socket timeouts before returning the keep-alive connection to the pool.
+         if remainingDeadline != nil {
+@@ -407,9 +442,18 @@
+         headers: [String: String],
+         maxBodyBytes: Int,
+         maximumStorageBytes: Int,
+-        cancelToken: JPIPSocketCancellationToken
++        cancelToken: JPIPSocketCancellationToken,
++        owner: JPIPHTTPRequestOwner,
++        workerObserver: (@Sendable () -> Void)?
+     ) async throws -> (JPIPHTTPWireResponse, JPIPTCPConnection) {
+-        try await JPIPBlockingWorker.run {
++        guard owner.beginWorker() else {
++            existingConnection?.close()
++            throw CancellationError()
++        }
++        return try await JPIPBlockingWorker.run(onCompletion: {
++            workerObserver?()
++            owner.workerFinished()
++        }) {
+             if cancelToken.cancelled {
+                 existingConnection?.close()
+                 throw CancellationError()
+@@ -477,7 +521,7 @@
+         }
+     }
+ 
+-    // MARK: - HTTPS Fallback via URLSession (Streaming Pre-Buffer Limit Enforcement)
++    // MARK: - HTTPS via portable URLSession delegate streaming
+ 
+     private func sendViaHTTPS(
+         _ request: JPIPRequest,
+@@ -507,28 +551,23 @@
+             forHTTPHeaderField: "Accept"
+         )
+ 
+-        // A request timeout measures idle time. A separate request-owned session and
+-        // absolute watchdog also bound a peer that keeps trickling response bytes.
+-        let requestSession = URLSession(configuration: session.configuration)
+-        let watchdog: Task<Void, Never>? = deadline.map { deadline in
+-            Task {
+-                do {
+-                    try await ContinuousClock().sleep(until: deadline)
+-                    requestSession.invalidateAndCancel()
+-                } catch {}
+-            }
+-        }
+-        defer {
+-            watchdog?.cancel()
+-            requestSession.invalidateAndCancel()
+-        }
++        // URLSessionDataDelegate is the portable streaming API on Darwin and
++        // FoundationNetworking. The request owns its task, absolute watchdog,
++        // bounded accumulation and completion/invalidation acknowledgement.
++        let operation = JPIPHTTPSRequest(maximumBodyBytes: maxBodyBytes,
++                                        maximumStorageBytes: maximumStorageBytes)
++        let requestID = UUID()
++        let generation = requestGeneration
++        let observer = lifecycleObserver
++        let taskObserver = httpsTaskPublicationObserver
++        activeRequests[requestID] = operation
++        defer { activeRequests.removeValue(forKey: requestID) }
+         do {
+-            let result = try await withTaskCancellationHandler {
+-                try await Self.readHTTPSResponse(urlRequest, session: requestSession, maxBodyBytes: maxBodyBytes,
+-                                                maximumStorageBytes: maximumStorageBytes)
+-            } onCancel: {
+-                requestSession.invalidateAndCancel()
+-            }
++            await observer?(.registered, requestID)
++            let result = try await operation.read(urlRequest, configuration: session.configuration,
++                                                  deadline: deadline, afterTaskPublication: taskObserver)
++            await observer?(.beforePublication, requestID)
++            guard generation == requestGeneration else { throw CancellationError() }
+             try Task.checkCancellation()
+             if let deadline { _ = try Self.remainingSeconds(until: deadline) }
+             lastReceivePeakBytes = result.peak
+@@ -537,94 +576,13 @@
+             }
+             return result.response
+         } catch {
++            if generation != requestGeneration { throw CancellationError() }
+             if Task.isCancelled { throw CancellationError() }
+             if deadline.map({ ContinuousClock.now >= $0 }) == true {
+                 throw CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")
+             }
+             throw error
+         }
+-    }
+-
+-    nonisolated private static func readHTTPSResponse(
+-        _ request: URLRequest, session: URLSession, maxBodyBytes: Int, maximumStorageBytes: Int
+-    ) async throws -> (response: JPIPResponse, peak: Int) {
+-        let (asyncBytes, response) = try await session.bytes(for: request)
+-        defer { asyncBytes.task.cancel() }
+-        guard let httpResponse = response as? HTTPURLResponse else {
+-            throw J2KError.networkError("Invalid response type")
+-        }
+-        guard (200..<300).contains(httpResponse.statusCode) else {
+-            throw J2KError.networkError("HTTP error: \(httpResponse.statusCode)")
+-        }
+-
+-        // URLSession owns its protocol headers. Admit our dictionary descriptors
+-        // before creating that additional representation, and retain them while
+-        // incrementally collecting the body.
+-        var headerBytes = 0
+-        var headerCount = 0
+-        for (key, value) in httpResponse.allHeaderFields {
+-            guard let key = key as? String, let value = value as? String else { continue }
+-            let (pairBytes, pairOverflow) = key.utf8.count.addingReportingOverflow(value.utf8.count)
+-            let (next, overflow) = headerBytes.addingReportingOverflow(pairBytes)
+-            guard !pairOverflow, !overflow else { throw CodecError(.resourceLimitExceeded, "HTTPS header storage overflow.") }
+-            headerBytes = next
+-            headerCount += 1
+-        }
+-        let (descriptors, descriptorOverflow) = headerCount.multipliedReportingOverflow(by: 4 * MemoryLayout<(String, String)>.stride)
+-        let (headerWorkspace, headerOverflow) = headerBytes.addingReportingOverflow(descriptors)
+-        guard !descriptorOverflow, !headerOverflow, headerWorkspace <= maximumStorageBytes else {
+-            throw CodecError(.resourceLimitExceeded, "HTTPS response header descriptors exceed remaining storage.")
+-        }
+-        let headers = JPIPResponseParser.parseHeaders(from: httpResponse)
+-        let bodyLimit = min(maxBodyBytes, (maximumStorageBytes - headerWorkspace) / 2)
+-        if httpResponse.expectedContentLength > 0,
+-           httpResponse.expectedContentLength > Int64(bodyLimit) {
+-            throw CodecError(
+-                .resourceLimitExceeded,
+-                "JPIP HTTPS Content-Length (\(httpResponse.expectedContentLength) bytes) exceeds limit (\(maxBodyBytes) bytes)."
+-            )
+-        }
+-        if let clRaw = headers.first(where: { $0.key.lowercased() == "content-length" })?.value
+-            .trimmingCharacters(in: .whitespacesAndNewlines),
+-           let declaredLen = Int(clRaw),
+-           declaredLen > bodyLimit {
+-            throw CodecError(
+-                .resourceLimitExceeded,
+-                "JPIP HTTPS Content-Length (\(declaredLen) bytes) exceeds limit (\(maxBodyBytes) bytes)."
+-            )
+-        }
+-
+-        let initialCap: Int
+-        if httpResponse.expectedContentLength > 0 {
+-            initialCap = min(bodyLimit, Int(clamping: httpResponse.expectedContentLength))
+-        } else {
+-            initialCap = min(bodyLimit, 64 * 1024)
+-        }
+-        var data = Data()
+-        data.reserveCapacity(max(0, initialCap))
+-
+-        for try await byte in asyncBytes {
+-            if (data.count & 0x3FFF) == 0 {
+-                try Task.checkCancellation()
+-            }
+-            if data.count >= bodyLimit {
+-                throw CodecError(
+-                    .resourceLimitExceeded,
+-                    "JPIP HTTPS response payload exceeds limit (\(maxBodyBytes) bytes)."
+-                )
+-            }
+-            data.append(byte)
+-        }
+-
+-        let channelID = JPIPResponseParser.extractChannelID(from: headers)
+-
+-        let result = JPIPResponse(
+-            channelID: channelID,
+-            data: data,
+-            statusCode: httpResponse.statusCode,
+-            headers: headers
+-        )
+-        return (result, headerWorkspace + 2 * max(initialCap, data.count))
+     }
+ 
+     // MARK: - Normative JPIP Path & Query Formatting
+@@ -683,15 +641,30 @@
+     }
+ 
+     /// Closes the transport and cleans up resources.
++    /// HTTP(S) requests active at entry are cancelled and joined. Later requests
++    /// belong to a new generation and are unaffected by this close's cleanup.
++    /// Joining a TCP request may wait for an opaque system DNS lookup to return.
+     public func close() async {
++        // Retire publication before any suspension. Keep registry entries until
++        // each sender finishes, so overlapping closes join the same old owners.
++        requestGeneration = UUID()
++        let closeID = requestGeneration
++        let closing = Array(activeRequests.values)
++        let observer = lifecycleObserver
++        for owner in closing { owner.cancelForTransportClose() }
++        channelPathOverride = nil
++        lastReceivePeakBytes = 0
+         tcpConnection?.close()
+         tcpConnection = nil
+-        if let ws = wsTransport {
+-            wsTransport = nil
+-            await ws.disconnect()
+-        }
+-        channelPathOverride = nil
++        let ws = wsTransport
++        wsTransport = nil
+         session.finishTasksAndInvalidate()
++        await observer?(.closeJoining, closeID)
++        if let ws { await ws.disconnect() }
++        for owner in closing { await owner.waitForCompletion() }
++        await observer?(.closeJoined, closeID)
++        // No shared-state mutation after awaiting: newer requests own the new
++        // generation's connection, path, telemetry and registry entries.
+     }
+ }
+ 

@@ -1,0 +1,149 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "scope": "Oracle async process completion only; no production edits",
+  "files": {
+    "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift": {
+      "before_sha256": "72d2a12754bec78ba0e270f0caefdae399254fed2de94edc35c42b71907d2ee6",
+      "after_sha256": "2c9fa3ada7e3fcbc0045e723c0700d7d7084ac458157a7981b4691fd176b9ec0",
+      "normalised_sha256": "72d2a12754bec78ba0e270f0caefdae399254fed2de94edc35c42b71907d2ee6",
+      "whole_file_normalised_equal": true,
+      "awaited_oracle_calls": 4
+    },
+    "Tests/SwiftJ2KTests/LosslessCodecTests.swift": {
+      "before_sha256": "cb03c5f7d02a17770d133af7dc3eec3fdf34a06585575993e88e7239b41498fc",
+      "after_sha256": "c452fc3ec9f1a6ac5552f408ab81b0fec96216ce423374be127533568d2db9c0",
+      "normalised_sha256": "cb03c5f7d02a17770d133af7dc3eec3fdf34a06585575993e88e7239b41498fc",
+      "whole_file_normalised_equal": true,
+      "awaited_oracle_calls": 1
+    },
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": {
+      "before_sha256": "fc2fcc5a075eb560213d21f4a5c4d4689176f58daa21f540426c7abc2c1f4dc5",
+      "after_sha256": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450",
+      "normalised_sha256": "fc2fcc5a075eb560213d21f4a5c4d4689176f58daa21f540426c7abc2c1f4dc5",
+      "whole_file_normalised_equal": true,
+      "awaited_oracle_calls": 0
+    },
+    "Tests/SwiftJ2KTests/Part1BreadthTests.swift": {
+      "before_sha256": "ed1bfbe01aa58de24353f8894d5da8fd2972674fccb911892f0776432e1c7d82",
+      "after_sha256": "7eab0d13070503db8112a1052d2764719533c7821336b6c04508b24da0d865cc",
+      "normalised_sha256": "ed1bfbe01aa58de24353f8894d5da8fd2972674fccb911892f0776432e1c7d82",
+      "whole_file_normalised_equal": true,
+      "awaited_oracle_calls": 7
+    },
+    "Tests/SwiftJ2KTests/ContainerTests.swift": {
+      "before_sha256": "2ba51ecba9cd11559114743ca97693cee3eddc52cd22f1d2d575af6c222d4560",
+      "after_sha256": "3d7a7cdd2697cb7b874c862b87e5b1bcecf35502284c9dd3bf35964627e4662e",
+      "normalised_sha256": "2ba51ecba9cd11559114743ca97693cee3eddc52cd22f1d2d575af6c222d4560",
+      "whole_file_normalised_equal": true,
+      "awaited_oracle_calls": 3
+    }
+  },
+  "before_wait_sites": [
+    {
+      "path": "Tests/SwiftJ2KTests/CLITestProcessSupport.swift",
+      "line": 134,
+      "text": "process.waitUntilExit()"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift",
+      "line": 69,
+      "text": "process.waitUntilExit()"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/LosslessCodecTests.swift",
+      "line": 512,
+      "text": "try process.run(); process.waitUntilExit()"
+    }
+  ],
+  "after_wait_sites": [
+    {
+      "path": "Tests/SwiftJ2KTests/CLITestProcessSupport.swift",
+      "line": 95,
+      "text": "process.waitUntilExit()"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/CLITestProcessSupport.swift",
+      "line": 157,
+      "text": "process.waitUntilExit()"
+    }
+  ],
+  "all_awaited_oracle_calls": [
+    {
+      "path": "Tests/SwiftJ2KTests/ContainerTests.swift",
+      "line": 270,
+      "text": "#expect(try await Oracle.decode(tool, jp2URL, outPPM), \"\\(tool) failed to decode successor .jp2 container\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/ContainerTests.swift",
+      "line": 281,
+      "text": "#expect(try await Oracle.decode(kdu, jphURL, dir.appendingPathComponent(\"jph_kdu.ppm\")), \"Kakadu failed to decode successor .jph container\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/ContainerTests.swift",
+      "line": 289,
+      "text": "#expect(try await Oracle.decode(kdu, jpxURL, dir.appendingPathComponent(\"jpx_kdu.ppm\")), \"Kakadu failed to decode successor .jpx container\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift",
+      "line": 170,
+      "text": "let oracleDecoded = try await HTOracle.decodePGM(tool, input, output)"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift",
+      "line": 263,
+      "text": "let decoded = try await HTOracle.decodePGM(tool, input, output)"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift",
+      "line": 495,
+      "text": "#expect(try await HTOracle.decodePGM(tool, htFile, outPGM) == expected, \"\\(tool) failed on transcoded HTJ2K \\(name)\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift",
+      "line": 504,
+      "text": "#expect(try await HTOracle.decodePGM(tool, part1File, outPGM) == expected, \"\\(tool) failed on transcoded Part 1 \\(name)\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/LosslessCodecTests.swift",
+      "line": 533,
+      "text": "#expect(try await Oracle.decode(tool, input, output), \"\\(tool) rejected the successor codestream\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 527,
+      "text": "#expect(try await Oracle.decode(tool, rgbLosslessURL, ppmLossless), \"\\(tool) failed on RGB lossless\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 529,
+      "text": "#expect(try await Oracle.decode(tool, rgbLossyURL, ppmLossy), \"\\(tool) failed on RGB lossy\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 563,
+      "text": "#expect(try await Oracle.decode(kdu, signed16URL, directory.appendingPathComponent(\"s16_kdu.pgx\")), \"Kakadu failed on signed 16-bit\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 564,
+      "text": "#expect(try await Oracle.decode(kdu, signed12RoiURL, directory.appendingPathComponent(\"s12_roi_kdu.pgx\")), \"Kakadu failed on signed 12-bit + ROI\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 565,
+      "text": "#expect(try await Oracle.decode(kdu, signed16RoiURL, directory.appendingPathComponent(\"s16_roi_kdu.pgx\")), \"Kakadu failed on signed 16-bit + ROI (34 bit-planes)\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 568,
+      "text": "#expect(try await Oracle.decode(opj, signed16URL, directory.appendingPathComponent(\"s16_opj.pgx\")), \"OpenJPEG failed on signed 16-bit\")"
+    },
+    {
+      "path": "Tests/SwiftJ2KTests/Part1BreadthTests.swift",
+      "line": 569,
+      "text": "#expect(try await Oracle.decode(opj, signed12RoiURL, directory.appendingPathComponent(\"s12_roi_opj.pgx\")), \"OpenJPEG failed on signed 12-bit + ROI\")"
+    }
+  ],
+  "native_execution": "NOT RUN; root serialises validation",
+  "limitations": "Confirmed cooperative-executor blocking removed; not proven sole cause of frozen07 deadline failure."
+}

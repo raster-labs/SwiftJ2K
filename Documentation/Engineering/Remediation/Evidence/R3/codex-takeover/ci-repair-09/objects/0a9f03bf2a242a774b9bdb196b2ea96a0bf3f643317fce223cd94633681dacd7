@@ -1,0 +1,74 @@
+{
+  "state": "FINAL_CANDIDATE22_EXPLICIT_INPUTS_READY_FOR_ROOT_PUBLICATION_REVIEW",
+  "at": "2026-10-31T12:36:12.198894+00:00",
+  "prior_documentation_pending_checkpoint": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/manifest-candidate-22-02.json",
+    "sha256": "e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2"
+  },
+  "prior_checkpoint_meaning": "Historical preparation01/02 pending states are preserved. The exact22b documents and stopped independent review resolve the prior document-input pending items in this new final manifest.",
+  "final_documents": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-doc-draft-22b/STATUS.md",
+      "sha256": "a1026efb56f80187f00e4a88e67026e1e88d465646017cdf556e14045a379481"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-doc-draft-22b/R3_CAPABILITY_MATRIX.md",
+      "sha256": "c052e77d4ff75bc04d772a5692ad48f9ce99545979e853ceb74ba4543c6617e0"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-doc-draft-22b/PR-body.txt",
+      "sha256": "c36c075a834d03b0b66d5a621a0c1502eb9112b35475277ccb9e26a6f7a7a3c0"
+    }
+  ],
+  "current_repository_docs_match_approved_drafts": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "sha256": "a1026efb56f80187f00e4a88e67026e1e88d465646017cdf556e14045a379481"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "sha256": "c052e77d4ff75bc04d772a5692ad48f9ce99545979e853ceb74ba4543c6617e0"
+    }
+  ],
+  "document_writer_pair": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-doc-draft-22b/report.txt",
+      "sha256": "cef0e9054f778b571903a206f492c4a9c36ad23e76e66525f81b81548678ea9e"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-doc-draft-22b/source.json",
+      "sha256": "107fd13552a1572e73b21c409dc1c2bad21863b071101fff2f81aab0dbd3ea8b"
+    }
+  ],
+  "independent_document_review_pair": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-22/report.txt",
+      "sha256": "56a6113c96d77325d6afb00147fe3dd9d8173e762c927cf4e98453ccb2cea331"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-22/source.json",
+      "sha256": "d29a485ffe8b5a7dc7d94290951a8decafaabf4aab7fb70a6f61281fbe538700"
+    }
+  ],
+  "current_source_ci_binding": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/source-binding-02.json",
+    "sha256": "8aa3f6a1a3b310dd5cd09b9bb5708e46538bfbbe55a5c5f3fb160d3e31fdb9a7"
+  },
+  "candidate22_native": "Ordinary1359 PASS; JPIP ASan four HTTPS tests FAIL with no recognised sanitizer diagnostic in complete streams; remaining five stages UNEXECUTED. Failed/unqualified sequence.",
+  "historical_failures": "Failed ordinary17 and hosted15/18 remain failed. No sole cause or retrospective closure asserted.",
+  "diagnostic19": "Instrumented diagnostic only, even though its run passed; never qualifies unmodified18/22 or closes earlier failures.",
+  "diagnostic23": "No23 preparation/execution/source/result input selected. Exact approved documents only retain the historical prepared/unexecuted boundary; no23 qualification inferred.",
+  "cli16": "Reuse limited to verified512 input equality and independently reviewed existing CLI16 results; no fresh22 CLI execution asserted.",
+  "auditor22": "Unapproved derivative/specs/probes remain excluded. Only the completed failed-sequence review/checker/reconciliation is selected.",
+  "local_input_pending": [],
+  "root_remaining_actions": [
+    "Final manifest/index review under the existing claim and stopped-writer acknowledgement.",
+    "Actual append-only package and authorised draft source publication.",
+    "Verify successor source/index/run links separately; do not mutate these pinned draft bytes."
+  ],
+  "postpublication_pending": "Subsequent exact-head hosted feedback is separate after publication; no future pass assumed and not a missing local input prerequisite.",
+  "R3": "NOT_ACCEPTED",
+  "merge_allowed": false,
+  "R4": "GATED",
+  "five_direct_external_gates": "UNEXECUTED_UNWAIVED"
+}

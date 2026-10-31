@@ -1,0 +1,67 @@
+JPIP worker-result publication repair for candidate06
+
+Implementer source/test/report writes stopped. No native execution, child agents,
+commits, repository documentation or immutable snapshot edits. Canonical claim
+1ce94f4b-ebfa-4309-98f6-5530103803d9 was reverified before writes. Exact scoped
+hashes and candidate05 comparison hashes: work/jpip-worker-handoff-source-06.json.
+
+Observed report and limits
+Parent receipt work/validation/candidate-full-tsan-05/native.log:3551–3586 records
+a TSan read at JPIPTCPConnection.close line625 versus construction line448 on
+the dedicated HTTP worker. The eight-byte location is the immutable fdLock
+NSLock reference, not the four-byte fd protected by that lock. The connection
+is fully constructed before checked-continuation resume in source; no later
+fdLock assignment or initializer self-escape was found. Therefore this is an
+observed publication/happens-before diagnostic, not evidence that fd mutation
+bypasses its lock. It is not dismissed as a false positive. No suppression or
+ad hoc socket-state lock change was added. Native TSan must establish closure.
+
+Explicit handoff proof
+New JPIPBlockingWorker.run creates JPIPWorkerHandoff on the caller before
+starting the dedicated thread. That handoff contains Mutex<Result<Value,Error>?>.
+The worker finishes constructing its complete owning success/error result, then
+publishes it while holding that mutex. Only after unlocking does it resume a
+Void continuation. The caller resumes, acquires the same pre-existing mutex,
+takes the result and clears the slot before using any returned owner. Thus every
+worker initialization/write precedes the producer unlock, and caller owner use
+follows the matching consumer acquire. The continuation carries no connection
+reference. This provides an explicit synchronization edge for the unchecked-
+Sendable socket's lock objects as well as its response/header owners.
+
+HTTP normal and stale-connection retry outputs use this path. WebSocket
+handshake connection/peak outputs use the same path. Existing cancellation-token
+binding remains protected by its own lock; failures close their local connection
+before publishing an error; callers still await finite worker completion. The
+helper deliberately does not abandon work when its caller is cancelled: existing
+outer cancellation handlers close the socket and join the worker. Deadline and
+generation ownership checks remain in their existing caller paths. No payload
+copy or new final image allocation is introduced; the handoff owns a small
+constant-sized result wrapper with aliased owning values. Void-only workers do
+not export newly constructed socket owners and remain unchanged.
+
+Regression coverage (not executed by implementer)
+CodexR3WorkerHandoffTests uses real TCP and dedicated peer workers with protected
+state and asynchronous completion acknowledgements. It repeats 32 construction
+→ publication → immediate Connection:close paths, verifies three requests reuse
+one connection, then verifies a stale keep-alive retry publishes its replacement.
+A second test verifies announced-body resource rejection, recovery on a fresh
+connection, cancellation after the peer has consumed the request, and subsequent
+recovery on another fresh connection. Error completion wakes the peer-waiting
+test as well, so an early request failure cannot leave that wait suspended.
+Existing WebSocket lifecycle tests exercise successful and failed handshakes,
+cancellation and reconnection through the second helper call site. These are
+regressions, not independent interoperability evidence.
+
+Changed paths
+Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift (new)
+Sources/SwiftJ2KJPIP/JPIPTransport.swift
+Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift
+Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift (new)
+
+Static check: git diff --check passes. Parent should compile and run all JPIP
+tests under TSan, including the new handoff tests and existing WS lifecycle,
+then run the exact non-JPIP complement under TSan as planned. Preserve the
+ordinary full-concurrent gate. All 120ms operation and <2s latency assertions
+are unchanged; full-campaign timing/barrier failures remain a separate issue.
+No current-source native pass, sanitizer closure, or whole-R3 acceptance is
+claimed by this implementer.

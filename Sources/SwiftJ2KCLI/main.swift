@@ -11,6 +11,7 @@
 import Foundation
 import Synchronization
 import SwiftJ2K
+import SwiftJ2K3D
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -38,6 +39,7 @@ private let valueOptions: Set<String> = [
     "--output-dir", "--input-list", "--filter", "--exclude", "--output-suffix", "--op",
     "--server", "--url", "--target", "-t", "--single-file", "--data-dir",
     "--port", "-p", "--host", "--max-sessions", "--session-timeout", "--coding-preference",
+    "--stream", "--len", "--box", "--max-requests",
     "--runs", "--iterations", "--warmup", "--format", "--shell"
 ]
 
@@ -66,11 +68,12 @@ struct Options {
     var compareAll = false
     var metadataOnly = false
     var once = false
+    var stateless = false
     var values: [String: String] = [:]
     var codecOptions: Bool {
         !values.isEmpty || overwrite || sop || eph || signed || bitExact ||
         recursive || continueOnError || progress || encodeOnly || decodeOnly ||
-        htj2k || compareAll || metadataOnly || once || subcommand != nil
+        htj2k || compareAll || metadataOnly || once || stateless || subcommand != nil
     }
 }
 
@@ -160,6 +163,7 @@ private func parse(_ args: [String]) throws -> Options {
         else if !positionalOnly && arg == "--compare-all" { options.compareAll = true }
         else if !positionalOnly && arg == "--metadata-only" { options.metadataOnly = true }
         else if !positionalOnly && arg == "--once" { options.once = true }
+        else if !positionalOnly && arg == "--stateless" { options.stateless = true }
         else if !positionalOnly && arg.hasPrefix("-") {
             throw UsageError(message: "Unknown option. Use \(tool) --help.")
         } else if options.command == nil { options.command = arg }
@@ -765,6 +769,8 @@ private func codestreamHasHT(_ data: Data, startIndex: Int, endIndex: Int) -> Bo
         return false
     }
     var pos = startIndex + 2
+    var hasNSI = false
+    var codMarkers: [(pos: Int, len: Int)] = []
     while pos + 2 <= endIndex {
         let marker = (UInt16(data[pos]) << 8) | UInt16(data[pos + 1])
         pos += 2
@@ -773,14 +779,54 @@ private func codestreamHasHT(_ data: Data, startIndex: Int, endIndex: Int) -> Bo
         guard pos + 2 <= endIndex else { break }
         let segLen = Int((UInt16(data[pos]) << 8) | UInt16(data[pos + 1]))
         guard segLen >= 2, pos + segLen <= endIndex else { break }
-        if marker == 0xFF51 && segLen >= 4 {
-            let rsiz = (UInt16(data[pos + 2]) << 8) | UInt16(data[pos + 3])
-            if (rsiz & 0x4000) != 0 { return true }
-        } else if marker == 0xFF50 {
+        if marker == 0xFF54 {
+            hasNSI = true
+        } else if marker == 0xFF50 && segLen >= 6 {
+            let pcap = (UInt32(data[pos + 2]) << 24)
+                | (UInt32(data[pos + 3]) << 16)
+                | (UInt32(data[pos + 4]) << 8)
+                | UInt32(data[pos + 5])
+            if (pcap & 0x0002_0000) != 0 { return true }
+        } else if marker == 0xFF52 {
+            codMarkers.append((pos, segLen))
+        }
+        pos += segLen
+    }
+    for cod in codMarkers {
+        if hasNSI {
+            if cod.len >= 17 && (data[cod.pos + 13] & 0x40) != 0 { return true }
+        } else if cod.len >= 12 {
+            let cstyle = data[cod.pos + 10]
+            if (cstyle & 0x40) != 0 || (data[cod.pos + 11] & 0x40) != 0 { return true }
+        }
+    }
+    return false
+}
+
+func codestreamIsJP3D(_ data: Data) -> Bool {
+    let startIndex = data.startIndex
+    let endIndex = data.endIndex
+    guard endIndex - startIndex >= 4,
+          data[startIndex] == 0xFF, data[startIndex + 1] == 0x4F else {
+        return false
+    }
+    var pos = startIndex + 2
+    while pos + 2 <= endIndex {
+        let marker = (UInt16(data[pos]) << 8) | UInt16(data[pos + 1])
+        pos += 2
+        if marker == 0xFF90 || marker == 0xFFD9 { break }
+        if (0xFF30...0xFF3F).contains(marker) { continue }
+        guard pos + 2 <= endIndex else { break }
+        let segLen = Int((UInt16(data[pos]) << 8) | UInt16(data[pos + 1]))
+        guard segLen >= 2, pos + segLen <= endIndex else { break }
+        if marker == 0xFF54 {
             return true
-        } else if marker == 0xFF52 && segLen >= 12 {
-            let cstyle = data[pos + 11]
-            if (cstyle & 0x40) != 0 { return true }
+        } else if marker == 0xFF50 && segLen >= 6 {
+            let pcap = (UInt32(data[pos + 2]) << 24)
+                | (UInt32(data[pos + 3]) << 16)
+                | (UInt32(data[pos + 4]) << 8)
+                | UInt32(data[pos + 5])
+            if (pcap & 0x0040_0000) != 0 { return true }
         }
         pos += segLen
     }
@@ -1325,39 +1371,80 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         guard compressedFormats.contains(format) else {
             throw ExitFailure(status: 4, message: "unsupported format: inspect reads JPEG 2000 or HTJ2K codestreams and containers.")
         }
-        let info = try Decoder().inspect(input, options: .init(resourceLimits: limits))
-        let sampleTypeStr = info.descriptor.sampleType == .signedInteger ? "signedInteger" : "unsignedInteger"
-        let compCount = info.descriptor.components.count
-        let fields: [String: Any] = [
-            "format": info.format, "width": info.descriptor.width, "height": info.descriptor.height,
-            "meaningfulBits": info.descriptor.meaningfulBits, "storageBits": info.descriptor.storageBits,
-            "sampleType": sampleTypeStr, "components": compCount, "frames": info.frameCount, "bytes": input.count
-        ]
-        if options.json {
-            try report(fields, json: true, to: .standardOutput)
+        if codestreamIsJP3D(input) {
+            let volInfo = try VolumeDecoder().inspect(input, options: .init(resourceLimits: limits, metadataPolicy: metadataPolicy))
+            let fmtStr = volInfo.isHTJ2K ? "htj2k-codestream" : "jpeg2000-codestream"
+            let sampleTypeStr = volInfo.signed ? "signedInteger" : "unsignedInteger"
+            let storageBits = ((volInfo.bitDepth + 7) / 8) * 8
+            let fields: [String: Any] = [
+                "format": fmtStr, "profile": "jp3d", "width": volInfo.width, "height": volInfo.height,
+                "depth": volInfo.depth, "frames": volInfo.depth,
+                "meaningfulBits": volInfo.bitDepth, "storageBits": storageBits,
+                "sampleType": sampleTypeStr, "components": volInfo.componentCount, "bytes": input.count
+            ]
+            if options.json {
+                try report(fields, json: true, to: .standardOutput)
+            } else {
+                try write("format: \(fmtStr) (jp3d)\nwidth: \(volInfo.width)\nheight: \(volInfo.height)\ndepth: \(volInfo.depth)\nmeaningful bits: \(volInfo.bitDepth)\nstorage bits: \(storageBits)\ncomponents: \(volInfo.componentCount)\nbytes: \(input.count)\n", to: .standardOutput)
+            }
         } else {
-            try write("format: \(info.format)\nwidth: \(info.descriptor.width)\nheight: \(info.descriptor.height)\nmeaningful bits: \(info.descriptor.meaningfulBits)\nstorage bits: \(info.descriptor.storageBits)\ncomponents: \(compCount)\nbytes: \(input.count)\n", to: .standardOutput)
+            let info = try Decoder().inspect(input, options: .init(resourceLimits: limits))
+            let sampleTypeStr = info.descriptor.sampleType == .signedInteger ? "signedInteger" : "unsignedInteger"
+            let compCount = info.descriptor.components.count
+            let fields: [String: Any] = [
+                "format": info.format, "width": info.descriptor.width, "height": info.descriptor.height,
+                "meaningfulBits": info.descriptor.meaningfulBits, "storageBits": info.descriptor.storageBits,
+                "sampleType": sampleTypeStr, "components": compCount, "frames": info.frameCount, "bytes": input.count
+            ]
+            if options.json {
+                try report(fields, json: true, to: .standardOutput)
+            } else {
+                try write("format: \(info.format)\nwidth: \(info.descriptor.width)\nheight: \(info.descriptor.height)\nmeaningful bits: \(info.descriptor.meaningfulBits)\nstorage bits: \(info.descriptor.storageBits)\ncomponents: \(compCount)\nbytes: \(input.count)\n", to: .standardOutput)
+            }
         }
     case "validate":
         guard compressedFormats.contains(format) else {
             throw ExitFailure(status: 4, message: "unsupported format: validate reads JPEG 2000 or HTJ2K codestreams and containers.")
         }
         try context.diagnostic(2, "decoding in memory")
-        let decoded = try await Decoder().decode(
-            input,
-            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
-        )
-        let elapsed = ContinuousClock.now - started
-        let fields: [String: Any] = [
-            "valid": true, "width": decoded.image.descriptor.width, "height": decoded.image.descriptor.height,
-            "meaningfulBits": decoded.image.descriptor.meaningfulBits,
-            "components": decoded.image.descriptor.components.count,
-            "backend": backendString(decoded.report.backend),
-            "fidelity": fidelityString(decoded.report.fidelity),
-            "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
-        ]
-        if options.json { try report(fields, json: true, to: .standardOutput) }
-        else { try write("valid: \(decoded.image.descriptor.width)x\(decoded.image.descriptor.height), \(decoded.image.descriptor.meaningfulBits) meaningful bits, \(input.count) bytes\n", to: .standardOutput) }
+        if codestreamIsJP3D(input) {
+            let volCopyPolicy: CopyPolicy = options.values["--copy-policy"] == "require-shared-storage"
+                ? .requireSharedStorage
+                : .allowCopy
+            let decoded = try await VolumeDecoder().decode(
+                input,
+                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: volCopyPolicy, metadataPolicy: metadataPolicy)
+            )
+            let elapsed = ContinuousClock.now - started
+            let bitDepth = decoded.volume.components.first?.bitDepth ?? 8
+            let fields: [String: Any] = [
+                "valid": true, "profile": "jp3d", "width": decoded.volume.width, "height": decoded.volume.height,
+                "depth": decoded.volume.depth, "frames": decoded.volume.depth,
+                "meaningfulBits": bitDepth,
+                "components": decoded.volume.componentCount,
+                "backend": backendString(decoded.report.backend),
+                "fidelity": fidelityString(decoded.report.fidelity),
+                "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
+            ]
+            if options.json { try report(fields, json: true, to: .standardOutput) }
+            else { try write("valid: \(decoded.volume.width)x\(decoded.volume.height)x\(decoded.volume.depth), \(bitDepth) meaningful bits, \(input.count) bytes\n", to: .standardOutput) }
+        } else {
+            let decoded = try await Decoder().decode(
+                input,
+                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            )
+            let elapsed = ContinuousClock.now - started
+            let fields: [String: Any] = [
+                "valid": true, "width": decoded.image.descriptor.width, "height": decoded.image.descriptor.height,
+                "meaningfulBits": decoded.image.descriptor.meaningfulBits,
+                "components": decoded.image.descriptor.components.count,
+                "backend": backendString(decoded.report.backend),
+                "fidelity": fidelityString(decoded.report.fidelity),
+                "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
+            ]
+            if options.json { try report(fields, json: true, to: .standardOutput) }
+            else { try write("valid: \(decoded.image.descriptor.width)x\(decoded.image.descriptor.height), \(decoded.image.descriptor.meaningfulBits) meaningful bits, \(input.count) bytes\n", to: .standardOutput) }
+        }
     case "decode":
         guard compressedFormats.contains(format) else {
             throw ExitFailure(status: 4, message: "unsupported format: decode reads JPEG 2000 or HTJ2K codestreams and containers.")
@@ -1553,32 +1640,62 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
             throw UsageError(message: error.message)
         }
         try context.diagnostic(2, "transcoding \(format) -> \(target.rawValue)")
-        let transcoder = try Transcoder(configuration: TranscoderConfiguration(mode: .lossless, codecOptions: transcodeOptions))
-        let transcoded = try await transcoder.transcode(
-            input,
-            to: target,
-            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
-        )
-        try context.diagnostic(2, "publishing output")
-        try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
-        let elapsed = ContinuousClock.now - started
-        let sourceFormatCanonical: String
-        switch format {
-        case "j2k": sourceFormatCanonical = "jpeg2000-codestream"
-        case "htj2k": sourceFormatCanonical = "htj2k-codestream"
-        default: sourceFormatCanonical = format
+        if codestreamIsJP3D(input) {
+            guard targetContainer == .codestream else {
+                throw ExitFailure(status: 4, message: "unsupported: JP3D volumetric transcoding produces raw codestreams (--container codestream).")
+            }
+            let volTranscoder = try VolumeTranscoder()
+            let transcoded = try await volTranscoder.transcode(
+                input,
+                to: target,
+                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            )
+            try context.diagnostic(2, "publishing output")
+            try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
+            let elapsed = ContinuousClock.now - started
+            let sourceFormatCanonical = (format == "htj2k") ? "htj2k-codestream" : "jpeg2000-codestream"
+            let targetFormatCanonical = (target == .htj2k) ? "htj2k-codestream" : "jpeg2000-codestream"
+            try report(["command": "transcode", "profile": "jp3d", "inputBytes": input.count, "outputBytes": transcoded.data.count,
+                        "sourceFormat": sourceFormatCanonical,
+                        "format": targetFormatCanonical, "mode": transcoded.isLossless ? "lossless" : "lossy",
+                        "backend": backendString(transcoded.report.backend),
+                        "fidelity": fidelityString(transcoded.report.fidelity),
+                        "processingPath": transcoded.report.copyEvents.isEmpty ? "coefficients" : "roundtrip",
+                        "copyEvents": transcoded.report.copyEvents.count,
+                        "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
+                        "peakWorkspaceBytes": transcoded.report.peakWorkspaceBytes ?? -1,
+                        "discardedMetadataCount": transcoded.report.discardedMetadataCount ?? 0,
+                        "discardedMetadataBytes": transcoded.report.discardedMetadataBytes ?? 0,
+                        "discardedMetadataKinds": transcoded.report.discardedMetadataKinds,
+                        "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
+        } else {
+            let transcoder = try Transcoder(configuration: TranscoderConfiguration(mode: .lossless, codecOptions: transcodeOptions))
+            let transcoded = try await transcoder.transcode(
+                input,
+                to: target,
+                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            )
+            try context.diagnostic(2, "publishing output")
+            try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
+            let elapsed = ContinuousClock.now - started
+            let sourceFormatCanonical: String
+            switch format {
+            case "j2k": sourceFormatCanonical = "jpeg2000-codestream"
+            case "htj2k": sourceFormatCanonical = "htj2k-codestream"
+            default: sourceFormatCanonical = format
+            }
+            try report(["command": "transcode", "inputBytes": input.count, "outputBytes": transcoded.data.count,
+                        "sourceFormat": sourceFormatCanonical,
+                        "format": transcoded.encoding.format, "mode": "lossless", "backend": backendString(transcoded.report.backend),
+                        "fidelity": "exactSamples", "processingPath": "coefficients",
+                        "copyEvents": transcoded.report.copyEvents.count,
+                        "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
+                        "peakWorkspaceBytes": transcoded.report.peakWorkspaceBytes ?? -1,
+                        "discardedMetadataCount": transcoded.report.discardedMetadataCount ?? 0,
+                        "discardedMetadataBytes": transcoded.report.discardedMetadataBytes ?? 0,
+                        "discardedMetadataKinds": transcoded.report.discardedMetadataKinds,
+                        "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
         }
-        try report(["command": "transcode", "inputBytes": input.count, "outputBytes": transcoded.data.count,
-                    "sourceFormat": sourceFormatCanonical,
-                    "format": transcoded.encoding.format, "mode": "lossless", "backend": backendString(transcoded.report.backend),
-                    "fidelity": "exactSamples", "processingPath": "coefficients",
-                    "copyEvents": transcoded.report.copyEvents.count,
-                    "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
-                    "peakWorkspaceBytes": transcoded.report.peakWorkspaceBytes ?? -1,
-                    "discardedMetadataCount": transcoded.report.discardedMetadataCount ?? 0,
-                    "discardedMetadataBytes": transcoded.report.discardedMetadataBytes ?? 0,
-                    "discardedMetadataKinds": transcoded.report.discardedMetadataKinds,
-                    "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
     default:
         throw UsageError(message: "Unknown command.")
     }

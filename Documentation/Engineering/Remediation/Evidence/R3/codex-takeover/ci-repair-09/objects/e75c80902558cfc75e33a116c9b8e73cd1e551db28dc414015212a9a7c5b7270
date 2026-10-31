@@ -1,0 +1,21 @@
+{
+  "state": "FAILED17_REVIEW_COMPLETE_STOPPED",
+  "finished_at": "2026-10-31T11:30:44.546763+00:00",
+  "report_sha256": "60fb91a129a0797ba099c07fa189008cc7f8176c4e2808b4f7cfe999ae64aa80",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/ordinary-failed17-check.json": "39dac52e81e1a0c1d2e06e45fcb2dae430cb3009f36642a6d1ad9ee72c1100d3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/check-failed-ordinary.py": "3e0357f415a456782cb9d0f7d224d6e681f26d442a4824d782b458ede37da9be",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/source-cli-equivalence-17.json": "677c9e8a5a005a3f4d5c5d30c10e4482b118c757653bb60349f1beaf10d48a83",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/preparation-plan.json": "d61db6fcfe3ee5424fd359b0096bc24b94f153b29cbcafccf27b0bcd92808e97",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/audit-final.py": "087a92352d550e7556e50ab85ba156cf223cfec08800abdd7666678eb5c710a6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/auditor-delta-from15.patch": "1b0a900ba6a9f893c31c9baebdc2a4ee2a027ee411602804b2ed9578684ef19b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/auditor-delta-check.json": "7e863d5f272dcf61ca6a1555d7942efab452d89a6a807eddee3f48784e2fba3e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/verify-auditor-delta.py": "a8d3914470c845eaa18a256c4bfe7c3eed713e2c082c38ba4f68cd0864f4c8e7"
+  },
+  "native_executed": false,
+  "repository_edited": false,
+  "auditor17_independently_approved": false,
+  "sanitizers17": "UNEXECUTED",
+  "whole_r3": "NOT_ACCEPTED",
+  "writes_stopped": true
+}

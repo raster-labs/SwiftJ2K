@@ -10,7 +10,7 @@
 // silently ignored out-of-range leaves now throw, and the decoder bounds its
 // per-node loop so malformed input cannot spin.
 
-struct TagTree: Sendable {
+package struct TagTree: Sendable {
     private struct Node: Sendable {
         var value: Int32 = Int32.max
         var low: Int32 = 0
@@ -18,9 +18,9 @@ struct TagTree: Sendable {
         var parent = -1
     }
 
-    static var nodeStride: Int { MemoryLayout<Node>.stride }
+    package static var nodeStride: Int { MemoryLayout<Node>.stride }
 
-    static func nodeCount(width: Int, height: Int) throws -> Int {
+    package static func nodeCount(width: Int, height: Int) throws -> Int {
         guard width > 0, height > 0 else { return 0 }
         var total = 0
         var w = width, h = height
@@ -38,7 +38,7 @@ struct TagTree: Sendable {
     private let leafCount: Int
     private var path: [Int] = []
 
-    init(width: Int, height: Int) {
+    package init(width: Int, height: Int) {
         leafCount = width * height
         guard width > 0, height > 0 else {
             nodes = []
@@ -65,7 +65,7 @@ struct TagTree: Sendable {
     }
 
     /// Sets a leaf value and propagates the minimum towards the root.
-    mutating func setValue(leaf: Int, value: Int32) throws {
+    package mutating func setValue(leaf: Int, value: Int32) throws {
         guard leaf >= 0, leaf < leafCount else {
             throw CodecError(.internalFailure, "Tag tree leaf index is outside the precinct.")
         }
@@ -90,7 +90,7 @@ struct TagTree: Sendable {
     }
 
     /// Emits the bits that tell a decoder whether `leaf` is below `threshold`.
-    mutating func encode(writer: inout PacketBitWriter, leaf: Int, threshold: Int32) throws {
+    package mutating func encode(writer: inout PacketBitWriter, leaf: Int, threshold: Int32) throws {
         try buildPath(to: leaf)
         var low: Int32 = 0
         for index in path {
@@ -111,7 +111,7 @@ struct TagTree: Sendable {
     }
 
     /// Returns `true` when the leaf value is known to be below `threshold`.
-    mutating func decode(reader: inout PacketBitReader, leaf: Int, threshold: Int32) throws -> Bool {
+    package mutating func decode(reader: inout PacketBitReader, leaf: Int, threshold: Int32) throws -> Bool {
         try buildPath(to: leaf)
         var low: Int32 = 0
         for index in path {
@@ -129,5 +129,5 @@ struct TagTree: Sendable {
     }
 
     /// The decoded value of a leaf, once `decode` has returned `true` for it.
-    func value(leaf: Int) -> Int32 { nodes[leaf].value }
+    package func value(leaf: Int) -> Int32 { nodes[leaf].value }
 }

@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""Append explicit CI-repair receipts; default is read-only. No native/Git/network calls."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import stat
+
+BASE = Path('Documentation/Engineering/Remediation/Evidence/R3/codex-takeover')
+DEST = BASE / 'ci-repair-09'
+SCHEMA = 'swiftj2k-r3-ci-repair-supplement-v1'
+GATES = ['Direct independent combined Part 10+15', 'Independent native 3D JPIP',
+         'Independent exact repository WebSocket extension', 'Direct full38 Part 2 output',
+         'Multiple transmitted nonempty HT sets']
+EXCLUDED = {'.git', '.build', '__pycache__', 'node_modules', '.cache'}
+SUFFIXES = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+            '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
+README = '''# CI-repair-09 supplemental evidence — NOT_ACCEPTED
+
+Immutable append-only receipts and content-addressed indexes extend the prior 08
+package. They do not replace its generated-index.json or qualify its source anew.
+Each indexes/<sha256>.json identifies the exact input manifest, original paths,
+packaged paths, hashes, current implementation/CI identities and prior 08 index.
+Objects with an identical prior 08 hash reference that verified object directly.
+No mutable latest index exists. Use the exact index printed by the packager.
+
+Failed native/hosted evidence is retained as failed. Job metadata and logs alone
+do not establish exact-head CI, runtime coverage, interoperability or acceptance.
+All five external peer gates remain UNEXECUTED / UNWAIVED. R3 is NOT_ACCEPTED.
+No merge, release or R4 activation is authorised by this package.
+'''.encode('utf-8')
+
+
+def canonical(value):
+    return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + '\n').encode()
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def safe_path(root, value):
+    path = Path(value)
+    require('..' not in path.parts, 'Parent traversal refused')
+    path = path if path.is_absolute() else root / path
+    require(not any(p.is_symlink() for p in (path, *path.parents)), 'Symlink refused: ' + str(path))
+    path = path.absolute()
+    require(path.is_relative_to(root), 'Path outside workspace: ' + str(path))
+    return path
+
+
+def stable_read(path):
+    require(not any(p.is_symlink() for p in (path, *path.parents)), 'Symlink refused: ' + str(path))
+    a = path.stat()
+    require(stat.S_ISREG(a.st_mode), 'Not a regular file: ' + str(path))
+    data = path.read_bytes()
+    b = path.stat()
+    key = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns, s.st_mode)
+    require(key(a) == key(b) and len(data) == b.st_size, 'File changed during read: ' + str(path))
+    return data, stat.S_IMODE(b.st_mode)
+
+
+def identity(repository, ci=False):
+    roots = ['.github'] if ci else ['Sources', 'Tests', 'Scripts']
+    paths = [] if ci else [repository / 'Package.swift']
+    for name in roots:
+        directory = repository / name
+        require(directory.is_dir() and not directory.is_symlink(), 'Missing/linked identity scope: ' + name)
+        for current, dirs, names in os.walk(directory, followlinks=False):
+            require(not any((Path(current) / d).is_symlink() for d in dirs), 'Linked source directory')
+            dirs[:] = sorted(d for d in dirs if d not in EXCLUDED)
+            paths += [Path(current) / n for n in sorted(names) if n != '.DS_Store']
+    files = {}
+    for path in sorted(paths):
+        data, mode = stable_read(path)
+        files[path.relative_to(repository).as_posix()] = {'sha256': sha(data), 'bytes': len(data), 'mode': f'{mode:04o}'}
+    return {'scope': roots if ci else ['Package.swift', 'Sources/**', 'Tests/**', 'Scripts/**'],
+            'excludes': ['Documentation/**', 'Git/build/cache directories'], 'files': files,
+            'scope_sha256': sha(canonical(files)), 'is_git_tree': False,
+            'meaning': 'Current contents/modes only; not validation or acceptance.'}
+
+
+class Package:
+    def __init__(self, workspace, repository, prior_ref):
+        self.workspace, self.repository = workspace, repository
+        self.destination = repository / DEST
+        self.inputs, self.payloads, self.artifacts = {}, {}, []
+        path, data, _ = self.read_ref(prior_ref, text_only=False)
+        require(path == repository / BASE / 'generated-index.json', 'Prior index must be the fixed 08 index')
+        self.prior = json.loads(data)
+        require(self.prior.get('schema') == 'swiftj2k-r3-evidence-package-v1', 'Unknown prior index')
+        require(self.prior.get('state') == 'NOT_ACCEPTED', 'Prior acceptance state requires explicit redesign')
+        self.prior_by_hash = {}
+        for item in self.prior['artifacts']:
+            target = safe_path(repository, item['repository_relative_location'])
+            require(target.is_relative_to(repository / BASE) and not target.is_relative_to(self.destination), 'Invalid prior payload path')
+            self.prior_by_hash.setdefault(item['sha256'], []).append(item)
+        self.prior_reference = {'repository_relative_location': (BASE / 'generated-index.json').as_posix(),
+                                'sha256': sha(data), 'state': self.prior['state']}
+
+    def read_ref(self, ref, text_only=True):
+        require(isinstance(ref, dict) and re.fullmatch('[0-9a-f]{64}', ref.get('sha256', '')), 'Each input needs an exact SHA-256')
+        path = safe_path(self.workspace, ref['path'])
+        if text_only:
+            require(path.suffix.lower() in SUFFIXES, 'Non-receipt/binary input refused: ' + str(path))
+            require(not any(p in EXCLUDED or re.fullmatch(r'.*-build(?:-\d+)?', p) for p in path.relative_to(self.workspace).parts[:-1]), 'Build/cache input refused')
+        data, mode = stable_read(path)
+        require(sha(data) == ref['sha256'], 'Input hash mismatch: ' + str(path))
+        require(path not in self.inputs or self.inputs[path] == (sha(data), mode), 'Input changed between roles')
+        self.inputs[path] = (sha(data), mode)
+        return path, data, mode
+
+    def add(self, ref, role):
+        path, data, mode = self.read_ref(ref)
+        return self.add_bytes(data, role, str(path), mode)
+
+    def add_bytes(self, data, role, original=None, mode=None):
+        h = sha(data)
+        matches = sorted(self.prior_by_hash.get(h, []), key=lambda r: r['repository_relative_location'])
+        if matches:
+            old = matches[0]
+            path = safe_path(self.repository, old['repository_relative_location'])
+            actual, actual_mode = stable_read(path)
+            require(actual == data and len(actual) == old['bytes'], 'Referenced prior object changed')
+            self.inputs[path] = (h, actual_mode)
+            target, storage = old['repository_relative_location'], 'prior-08-reference'
+        else:
+            target = (DEST / 'objects' / h).as_posix()
+            self.payloads[Path('objects') / h] = data
+            storage = 'supplement-object'
+        item = {'role': role, 'original_location': original, 'repository_relative_location': target,
+                'sha256': h, 'bytes': len(data), 'storage': storage}
+        if mode is not None:
+            item['original_mode'] = f'{mode:04o}'
+        self.artifacts.append(item)
+        return item
+
+    def verify_inputs(self):
+        for path, expected in self.inputs.items():
+            data, mode = stable_read(path)
+            require((sha(data), mode) == expected, 'Input changed after collection: ' + str(path))
+
+
+def native_run(package, entry):
+    records, parsed, paths = {}, {}, {}
+    names = {'result': 'result.json', 'command': 'command.json', 'before': 'source-before.json', 'after': 'source-after.json'}
+    for key, name in names.items():
+        path, data, _ = package.read_ref(entry[key])
+        require(path.name == name, 'Unexpected native receipt filename: ' + str(path))
+        paths[key], parsed[key] = path, json.loads(data)
+        records[key] = package.add(entry[key], 'native-' + key)
+    directory = paths['result'].parent
+    require(all(p.parent == directory for p in paths.values()), 'Native receipt files have different owners')
+    result, command, before, after = (parsed[k] for k in ('result', 'command', 'before', 'after'))
+    require(result.get('finished_at') and type(result.get('exit_code')) is int, 'Native run incomplete')
+    require(isinstance(command.get('command'), list) and command['command'] and command.get('cwd'), 'Native command incomplete')
+    for source in (before, after):
+        require(isinstance(source, dict) and source and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch('[0-9a-f]{64}', v) for k, v in source.items()), 'Invalid source manifest')
+    require(command.get('source_files') == len(before), 'Source count differs from command receipt')
+    changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+    require(changed == result.get('changed_inputs'), 'Source change list contradicts before/after maps')
+    capture_ok = (result.get('capture_complete') is True and result.get('capture_threads_joined') is True and result.get('capture_errors') == [])
+    require((not changed and capture_ok) or entry.get('diagnostic_only') is True, 'Changed/incomplete capture requires explicit diagnostic_only')
+    require(type(result.get('wrapper_exit_code')) is int, 'Missing wrapper exit status')
+    expected_exit = result['exit_code'] or (2 if changed or result.get('capture_errors') else 0)
+    require(result['wrapper_exit_code'] == expected_exit, 'Wrapper exit status inconsistent')
+    records['log'] = package.add({'path': str(directory / 'native.log'), 'sha256': result['log_sha256']}, 'native-log')
+    for stream in ('stdout', 'stderr'):
+        recorded = result.get('native_streams', {}).get(stream, {})
+        path = directory / ('native.' + stream)
+        require(safe_path(package.workspace, recorded.get('path', '')) == path, 'Raw stream owner path mismatch')
+        item = package.add({'path': str(path), 'sha256': recorded.get('sha256')}, 'native-' + stream)
+        require(item['bytes'] == recorded.get('bytes'), 'Raw stream length mismatch')
+        records[stream] = item
+    records['reports'] = []
+    selected_reports = set()
+    for ref in entry.get('reports', []):
+        path = safe_path(package.workspace, ref['path'])
+        require(path.is_relative_to(directory) and path.suffix.lower() == '.xml', 'XML is not owned by this native run')
+        require(path not in selected_reports, 'Duplicate native XML')
+        selected_reports.add(path)
+        records['reports'].append(package.add(ref, 'native-xml'))
+    available_reports = {p for p in directory.rglob('*') if p.is_file() and p.suffix.lower() == '.xml'}
+    require(selected_reports == available_reports, 'Explicit XML list omits an existing report')
+    return {'directory': str(directory), 'files': records, 'command': command['command'],
+            'source_root': command['cwd'], 'source_stable': not changed, 'changed_inputs': changed,
+            'capture_complete': capture_ok, 'exit_code': result['exit_code'],
+            'wrapper_exit_code': result['wrapper_exit_code'], 'diagnostic_only': entry.get('diagnostic_only', False),
+            'qualification': 'Receipt only; no pass, coverage or acceptance inferred.'}
+
+
+def review_pair(package, entry):
+    require(entry.get('completed') is True, 'Review completion must be explicitly recorded')
+    _, report, _ = package.read_ref(entry['report'])
+    _, source, _ = package.read_ref(entry['source'])
+    detail = json.loads(source)
+    require(report.strip() and isinstance(detail, dict), 'Empty/incomplete review pair')
+    require(detail.get('report_sha256', sha(report)) == sha(report), 'Review report hash mismatch')
+    require(str(detail.get('state', '')).lower() not in {'in_progress', 'audit_started', 'pending', 'running'}, 'Review is still active')
+    return {'files': [package.add(entry['report'], 'review-report'), package.add(entry['source'], 'review-source')]
+                    + [package.add(ref, 'review-supporting') for ref in entry.get('supporting', [])],
+            'qualification': 'Paired receipt integrity only; no independent acceptance inferred.'}
+
+
+def hosted_run(package, entry):
+    _, raw, _ = package.read_ref(entry['metadata'])
+    metadata = json.loads(raw)
+    jobs = metadata.get('jobs', [])
+    require(jobs and type(entry.get('run_id')) is int and type(entry.get('attempt')) is int and entry['attempt'] > 0, 'Missing hosted identity/jobs')
+    by_id = {j['id']: j for j in jobs}
+    require(len(by_id) == len(jobs), 'Duplicate hosted jobs')
+    require(all(j.get('run_id') == entry['run_id'] and j.get('status') == 'completed' and j.get('conclusion') for j in jobs), 'Hosted jobs incomplete or wrong run')
+    logs = entry.get('logs', [])
+    ids = [log['job_id'] for log in logs]
+    require(len(set(ids)) == len(ids) and set(ids) == set(by_id), 'Require exactly one explicit log for every reported job')
+    files = [package.add(entry['metadata'], 'hosted-job-metadata')]
+    for log in logs:
+        files.append(dict(package.add(log['file'], 'hosted-job-log'), job_id=log['job_id']))
+    if entry.get('review'):
+        files.append(package.add(entry['review'], 'hosted-review-receipt'))
+    return {'run_id': entry['run_id'], 'attempt': entry['attempt'], 'files': files,
+            'reported_jobs': [{'id': j['id'], 'name': j.get('name'), 'conclusion': j['conclusion']} for j in jobs],
+            'qualification': 'Reported job conclusions retained, including failures/skips. Attempt/log association is explicit-manifest attribution. Exact tested head/tree, retention and execution coverage require separate review; no success is inferred.'}
+
+
+def assemble(manifest_path):
+    raw, manifest_mode = stable_read(manifest_path)
+    manifest = json.loads(raw)
+    require(manifest.get('schema') == 'swiftj2k-r3-ci-repair-inputs-v1', 'Unknown manifest schema')
+    require(set(manifest) <= {'schema', 'workspace', 'repository', 'candidate_label', 'prior_index',
+                             'published_base_label', 'native_runs', 'reviews', 'hosted_runs', 'supplemental'},
+            'Unknown manifest field; refusing to ignore possibly omitted inputs')
+    workspace = Path(manifest['workspace']).absolute()
+    repository = safe_path(workspace, manifest['repository'])
+    require(manifest.get('candidate_label'), 'Candidate label is required; it is not a Git identity')
+    package = Package(workspace, repository, manifest['prior_index'])
+    package.inputs[manifest_path] = (sha(raw), manifest_mode)
+    implementation, ci = identity(repository), identity(repository, ci=True)
+    package.add_bytes(raw, 'input-manifest', str(manifest_path), manifest_mode)
+    helper, helper_mode = stable_read(Path(__file__).absolute())
+    package.inputs[Path(__file__).absolute()] = (sha(helper), helper_mode)
+    package.add_bytes(helper, 'packager-source', str(Path(__file__).absolute()), helper_mode)
+    runs = [native_run(package, e) for e in manifest.get('native_runs', [])]
+    reviews = [review_pair(package, e) for e in manifest.get('reviews', [])]
+    hosted = [hosted_run(package, e) for e in manifest.get('hosted_runs', [])]
+    extra = [package.add(e['file'], e['role']) for e in manifest.get('supplemental', [])]
+    require(runs or reviews or hosted or extra, 'Empty evidence manifest refused')
+    impl_ref = package.add_bytes(canonical(implementation), 'current-implementation-identity')
+    ci_ref = package.add_bytes(canonical(ci), 'current-ci-identity')
+    index = {'schema': SCHEMA, 'state': 'NOT_ACCEPTED', 'candidate_label': manifest['candidate_label'],
+             'prior_08': package.prior_reference, 'published_base_label': manifest.get('published_base_label'),
+             'base_label_verified_by_git': False, 'input_manifest_sha256': sha(raw),
+             'helper_sha256': sha(helper), 'native_runs': runs, 'reviews': reviews, 'hosted_runs': hosted,
+             'current_implementation_identity': impl_ref, 'current_ci_identity': ci_ref,
+             'artifacts': package.artifacts, 'external_gates': [{'gate': g, 'state': 'UNEXECUTED', 'waived': False} for g in GATES],
+             'boundaries': ['No native/Git/network execution or acceptance.', 'Prior08 index and objects never overwritten.',
+                            'Current identities exclude documentation; no retroactive qualification.',
+                            'Publication requires the coordinator claim and stopped writers; helper never acquires/reclaims a claim.']}
+    index_bytes = canonical(index)
+    index_path = Path('indexes') / (sha(index_bytes) + '.json')
+    package.payloads[index_path] = index_bytes
+    package.payloads[Path('README.md')] = README
+    package.verify_inputs()
+    require(identity(repository) == implementation and identity(repository, ci=True) == ci, 'Source changed during collection')
+    for relative, data in package.payloads.items():
+        path = safe_path(workspace, package.destination / relative)
+        if path.exists():
+            require(stable_read(path)[0] == data, 'Existing supplement object changed: ' + str(path))
+    return package, index_path, implementation, ci
+
+
+def publish(package, index_path, implementation, ci):
+    # No path outside the fixed supplement is opened for writing. All objects/indexes
+    # are exclusive-created; existing differing bytes abort. No mutable latest file.
+    safe_path(package.workspace, package.destination)
+    package.destination.mkdir(parents=True, exist_ok=True)
+    lock = package.destination / '.packaging.lock'
+    lock.mkdir()  # An existing lock is a visible failure; never reclaim it here.
+    try:
+        package.verify_inputs()
+        require(identity(package.repository) == implementation and identity(package.repository, ci=True) == ci, 'Source changed before publication')
+        for relative in sorted(package.payloads, key=lambda p: (p == index_path, str(p))):
+            data = package.payloads[relative]
+            path = safe_path(package.workspace, package.destination / relative)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                require(stable_read(path)[0] == data, 'Refusing changed existing receipt: ' + str(path))
+                continue
+            if relative == index_path:
+                package.verify_inputs()
+                require(identity(package.repository) == implementation and identity(package.repository, ci=True) == ci, 'Source changed before index commit')
+            with path.open('xb') as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+    finally:
+        lock.rmdir()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('manifest', type=Path)
+    parser.add_argument('--publish', action='store_true')
+    parser.add_argument('--writers-stopped', action='store_true', help='Coordinator acknowledgement; does not acquire a claim')
+    args = parser.parse_args()
+    require(not args.publish or args.writers_stopped, 'Publication needs explicit --writers-stopped under the existing coordinator claim')
+    package, index_path, implementation, ci = assemble(args.manifest.absolute())
+    if args.publish:
+        publish(package, index_path, implementation, ci)
+    print(json.dumps({'published': args.publish, 'state': 'NOT_ACCEPTED',
+                      'index': str(package.destination / index_path), 'index_sha256': index_path.stem,
+                      'artifact_roles': len(package.artifacts), 'new_payloads': len(package.payloads),
+                      'new_payload_bytes': sum(len(b) for b in package.payloads.values()),
+                      'prior_08_references': sum(a['storage'] == 'prior-08-reference' for a in package.artifacts),
+                      'implementation_scope_sha256': implementation['scope_sha256'],
+                      'ci_scope_sha256': ci['scope_sha256']}, indent=2))
+
+
+if __name__ == '__main__':
+    main()

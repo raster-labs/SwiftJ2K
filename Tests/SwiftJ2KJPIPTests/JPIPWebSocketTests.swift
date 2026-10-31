@@ -341,8 +341,27 @@ final class JPIPWebSocketReconnectionTests: XCTestCase {
 // MARK: - WebSocket Transport Tests
 
 final class JPIPWebSocketTransportTests: XCTestCase {
+    private func startTestServer() async throws -> (server: JPIPWebSocketServer, url: URL) {
+        let server = JPIPWebSocketServer(port: 0)
+        let comp = J2KComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: 8,
+            height: 8,
+            data: Data((0..<64).map { UInt8($0 & 0xFF) })
+        )
+        let img = J2KImage(width: 8, height: 8, components: [comp])
+        let encoded = try await J2KEncoder().encode(img)
+        await server.registerImageData(name: "test.jp2", data: encoded)
+        try await server.start()
+        let port = await server.listeningPort
+        let url = URL(string: "ws://127.0.0.1:\(port)/jpip")!
+        return (server, url)
+    }
+
     func testTransportInitialization() async {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let transport = JPIPWebSocketTransport(url: url)
 
         let state = await transport.connectionState
@@ -354,7 +373,8 @@ final class JPIPWebSocketTransportTests: XCTestCase {
     }
 
     func testConnectAndDisconnect() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let transport = JPIPWebSocketTransport(url: url)
 
         try await transport.connect()
@@ -364,10 +384,12 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         await transport.disconnect()
         state = await transport.connectionState
         XCTAssertEqual(state, .disconnected)
+        try await server.stop()
     }
 
     func testDoubleConnectFails() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let transport = JPIPWebSocketTransport(url: url)
 
         try await transport.connect()
@@ -380,10 +402,11 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         }
 
         await transport.disconnect()
+        try await server.stop()
     }
 
     func testSendRequestRequiresConnection() async {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let transport = JPIPWebSocketTransport(url: url)
         let request = JPIPRequest(target: "test.jp2")
 
@@ -396,7 +419,8 @@ final class JPIPWebSocketTransportTests: XCTestCase {
     }
 
     func testSendRequestWhenConnected() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let transport = JPIPWebSocketTransport(url: url)
 
         try await transport.connect()
@@ -404,12 +428,15 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         let response = try await transport.sendRequest(request)
         XCTAssertEqual(response.statusCode, 200)
         XCTAssertEqual(response.headers["X-JPIP-Transport"], "websocket")
+        XCTAssertFalse(response.data.isEmpty)
 
         await transport.disconnect()
+        try await server.stop()
     }
 
     func testSendPing() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let transport = JPIPWebSocketTransport(url: url)
 
         try await transport.connect()
@@ -419,10 +446,11 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         XCTAssertEqual(stats.keepalivePingsSent, 1)
 
         await transport.disconnect()
+        try await server.stop()
     }
 
     func testHandleReceivedDataBin() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let transport = JPIPWebSocketTransport(url: url)
         let encoder = JPIPWebSocketMessageEncoder()
 
@@ -446,7 +474,7 @@ final class JPIPWebSocketTransportTests: XCTestCase {
     }
 
     func testDrainClearsDataBins() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let transport = JPIPWebSocketTransport(url: url)
         let encoder = JPIPWebSocketMessageEncoder()
 
@@ -468,10 +496,11 @@ final class JPIPWebSocketTransportTests: XCTestCase {
     }
 
     func testReconnectionAttemptTracking() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let config = JPIPWebSocketReconnectionConfig(
             enabled: true,
-            initialDelay: 0.01, // Very short for testing
+            initialDelay: 0.01,
             maxAttempts: 3,
             jitterFactor: 0.0
         )
@@ -482,7 +511,6 @@ final class JPIPWebSocketTransportTests: XCTestCase {
 
         try await transport.attemptReconnection()
         var attempts = await transport.currentReconnectionAttempts
-        // After successful reconnection, attempts are reset to 0
         XCTAssertEqual(attempts, 0)
 
         let stats = await transport.statistics
@@ -492,10 +520,13 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         await transport.resetReconnectionAttempts()
         attempts = await transport.currentReconnectionAttempts
         XCTAssertEqual(attempts, 0)
+
+        await transport.disconnect()
+        try await server.stop()
     }
 
     func testReconnectionDisabledFails() async {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let config = JPIPWebSocketReconnectionConfig.disabled
         let transport = JPIPWebSocketTransport(
             url: url,
@@ -511,13 +542,14 @@ final class JPIPWebSocketTransportTests: XCTestCase {
     }
 
     func testHandlePongMeasuresLatency() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
         let transport = JPIPWebSocketTransport(url: url)
 
         try await transport.connect()
         try await transport.sendPing()
 
-        // Simulate pong response
+        // Allow live pong from server or direct pong injection
         let pongFrame = JPIPWebSocketFrame(
             type: .pong,
             payload: Data("pong".utf8)
@@ -529,14 +561,34 @@ final class JPIPWebSocketTransportTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(latency ?? -1, 0.0)
 
         await transport.disconnect()
+        try await server.stop()
     }
 }
 
 // MARK: - WebSocket Client Tests
 
 final class JPIPWebSocketClientTests: XCTestCase {
+    private func startTestServer() async throws -> (server: JPIPWebSocketServer, url: URL) {
+        let server = JPIPWebSocketServer(port: 0)
+        let comp = J2KComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: 8,
+            height: 8,
+            data: Data((0..<64).map { UInt8($0 & 0xFF) })
+        )
+        let img = J2KImage(width: 8, height: 8, components: [comp])
+        let encoded = try await J2KEncoder().encode(img)
+        await server.registerImageData(name: "test.jp2", data: encoded)
+        try await server.start()
+        let port = await server.listeningPort
+        let url = URL(string: "ws://127.0.0.1:\(port)/jpip")!
+        return (server, url)
+    }
+
     func testClientInitialization() async {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let client = JPIPWebSocketClient(serverURL: url)
 
         let fallback = await client.isUsingHTTPFallback
@@ -548,33 +600,44 @@ final class JPIPWebSocketClientTests: XCTestCase {
     }
 
     func testClientConnects() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
-        let client = JPIPWebSocketClient(serverURL: url)
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
+        let client = JPIPWebSocketClient(
+            serverURL: url,
+            configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+        )
 
         try await client.connect()
         let state = await client.getConnectionState()
         XCTAssertEqual(state, .connected)
 
         try await client.close()
+        try await server.stop()
     }
 
     func testClientSendRequest() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
-        let client = JPIPWebSocketClient(serverURL: url)
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
+        let client = JPIPWebSocketClient(
+            serverURL: url,
+            configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+        )
 
         try await client.connect()
         let request = JPIPRequest(target: "test.jp2")
         let response = try await client.sendRequest(request)
         XCTAssertEqual(response.statusCode, 200)
+        XCTAssertFalse(response.data.isEmpty)
 
         let stats = await client.statistics
         XCTAssertEqual(stats.webSocketRequests, 1)
 
         try await client.close()
+        try await server.stop()
     }
 
     func testClientHTTPFallbackConfiguration() async {
-        let url = URL(string: "ws://localhost:8080/jpip")!
+        let url = URL(string: "ws://127.0.0.1:8080/jpip")!
         let config = JPIPWebSocketClientConfiguration(
             enableHTTPFallback: true,
             maxConcurrentRequests: 8
@@ -589,36 +652,50 @@ final class JPIPWebSocketClientTests: XCTestCase {
     }
 
     func testClientDrainPushedDataBins() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
-        let client = JPIPWebSocketClient(serverURL: url)
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
+        let client = JPIPWebSocketClient(
+            serverURL: url,
+            configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+        )
 
         try await client.connect()
         let bins = await client.drainPushedDataBins()
-        XCTAssertEqual(bins.count, 0) // No pushed bins yet
+        XCTAssertEqual(bins.count, 0)
 
         try await client.close()
+        try await server.stop()
     }
 
     func testClientSendPing() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
-        let client = JPIPWebSocketClient(serverURL: url)
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
+        let client = JPIPWebSocketClient(
+            serverURL: url,
+            configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+        )
 
         try await client.connect()
         try await client.sendPing()
-        // No error means success
 
         try await client.close()
+        try await server.stop()
     }
 
     func testClientGetSession() async throws {
-        let url = URL(string: "ws://localhost:8080/jpip")!
-        let client = JPIPWebSocketClient(serverURL: url)
+        let (server, url) = try await startTestServer()
+        defer { Task { try? await server.stop() } }
+        let client = JPIPWebSocketClient(
+            serverURL: url,
+            configuration: JPIPWebSocketClientConfiguration(enableHTTPFallback: false)
+        )
 
         try await client.connect()
         let session = await client.getSession()
-        XCTAssertNil(session) // No session created yet
+        XCTAssertNil(session)
 
         try await client.close()
+        try await server.stop()
     }
 }
 

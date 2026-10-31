@@ -1,0 +1,28 @@
+{
+  "state": "PREPARED_NOT_PUBLISHED",
+  "old_helper": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py",
+    "sha256": "5d2d8e647f30c698d76de64fdd28522ed987c312bf810f38f51505587950d823"
+  },
+  "new_helper": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py",
+    "sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83"
+  },
+  "patch": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package-receipt-path-fix.patch",
+    "sha256": "7300fd8ddcbe7f9c6e794148ae94072899a7339f76b1059a1d9adca844c02af8"
+  },
+  "selftest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/selftest.py",
+    "sha256": "a626112e3382d810fbb80fda39dbc757721f1cc374e0bd961fe794f9cb949f5c"
+  },
+  "selftest_result": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/selftest-result.json",
+    "sha256": "8dea855e6acf7b11fb722da88599c8c2cb52aab20f7055decd241419f442eba1"
+  },
+  "failed_original_dry_run": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/dry-run-01.json",
+    "sha256": "0ccaa63e8ba398bf5855929d5710463247f177d617c6d8100d502b72a64f472b"
+  },
+  "report_sha256": "3db26da54d7e8760dbfa9ae4e1ea16a81a17aeb435f9575f4d2a6dc8693b7c48"
+}

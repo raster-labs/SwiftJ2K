@@ -1,0 +1,437 @@
+{
+  "review_started_at": "2026-10-31T08:39:05.758876+00:00",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-08",
+  "manifest_sha256": "cfcab1859d72772ec18d4ecb64179313f34f60880222c9781224511b6226c7dc",
+  "source_files": 1349,
+  "runs": {
+    "candidate-full-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 89.128325458,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-build-08",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--xunit-output",
+        "../validation/candidate-full-08/report.xml"
+      ],
+      "log_sha256": "3e05e9a7bcfcc2206e73e8a73da251da6fa2deadf35c4fab291ab499d3323d18",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-focused-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 48.582351792,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-build-08",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "CodexR3CLIHostTests|descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest|independentHTDecodersReadSuccessorHTJ2KCodestreams|independentDecodersReadSuccessorCodestreams|independentOraclesVerifyTranscodedOutputsInBothDirections",
+        "--xunit-output",
+        "../validation/candidate-focused-08/report.xml"
+      ],
+      "log_sha256": "9c8dc800f82bd8b13191363bd49ca1892b02c5887374fe0058b5d557d4ffed71",
+      "raw_capture_verified": false,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-release-build-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 105.97745583300001,
+      "command": [
+        "swift",
+        "build",
+        "-c",
+        "release",
+        "--scratch-path",
+        "../candidate-build-08",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--product",
+        "swiftj2k-cli"
+      ],
+      "log_sha256": "aec856d788b52f71ecac67716c3292cf2dc05f2c6e6d30f00ee7bfb45a489129",
+      "raw_capture_verified": false,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-cli-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.018299292,
+      "command": [
+        "python3",
+        "Scripts/test-cli.py",
+        "--binary",
+        "../candidate-build-08/release/swiftj2k-cli",
+        "--output",
+        "../cli-integration-08"
+      ],
+      "log_sha256": "9667573138222777a0ec269e4fd47f242153702aa9ad4d51bc172f2e76d8bc3c",
+      "raw_capture_verified": false,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-tsan-inventory-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 52.968278417,
+      "command": [
+        "python3",
+        "../sanitizer-partition-proposal/verify-sanitizer-inventory.py",
+        "--sanitizer",
+        "thread",
+        "--scratch-path",
+        "../candidate-tsan-08",
+        "--reference-scratch-path",
+        "../candidate-build-08",
+        "--output",
+        "../sanitizer-inventory-08/thread",
+        "--swift-option=--disable-sandbox",
+        "--swift-option=--build-system",
+        "--swift-option=native",
+        "--swift-option=--cache-path",
+        "--swift-option=../swiftpm-cache",
+        "--swift-option=--config-path",
+        "--swift-option=../swiftpm-config",
+        "--swift-option=--security-path",
+        "--swift-option=../swiftpm-security",
+        "--swift-option=-j",
+        "--swift-option=4"
+      ],
+      "log_sha256": "986919b6c7fd1dc32cf77f312c488d74ab53ad7d01fa21efbbdf6717091582ae",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-jpip-tsan-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 70.253296292,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-tsan-08",
+        "--sanitize",
+        "thread",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-tsan-08/report.xml"
+      ],
+      "log_sha256": "e2e532a365181ee7220a3accb9b0338bae584eaa37273475ac43988b79bf9b34",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-complement-tsan-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 207.039370125,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-tsan-08",
+        "--sanitize",
+        "thread",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--skip",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-complement-tsan-08/report.xml"
+      ],
+      "log_sha256": "c69a152920b75d6c2f1ca59217ebf1b7e4908abdfd88a0a53c5b594f221ed2db",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-asan-inventory-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 51.894396291999996,
+      "command": [
+        "python3",
+        "../sanitizer-partition-proposal/verify-sanitizer-inventory.py",
+        "--sanitizer",
+        "address",
+        "--scratch-path",
+        "../candidate-asan-08",
+        "--reference-scratch-path",
+        "../candidate-build-08",
+        "--output",
+        "../sanitizer-inventory-08/address",
+        "--swift-option=--disable-sandbox",
+        "--swift-option=--build-system",
+        "--swift-option=native",
+        "--swift-option=--cache-path",
+        "--swift-option=../swiftpm-cache",
+        "--swift-option=--config-path",
+        "--swift-option=../swiftpm-config",
+        "--swift-option=--security-path",
+        "--swift-option=../swiftpm-security",
+        "--swift-option=-j",
+        "--swift-option=4"
+      ],
+      "log_sha256": "73d6e6112d22c708dd5c8a4882f39090482cf91ce63f7b2b878103309ebf57ed",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-jpip-asan-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 62.310441042,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-asan-08",
+        "--sanitize",
+        "address",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-asan-08/report.xml"
+      ],
+      "log_sha256": "3ac21a6458e9faea22e4f5253050433693d8ecdbcb6d8af3d4a87240cc5ee675",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    },
+    "candidate-complement-asan-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 164.085960667,
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-asan-08",
+        "--sanitize",
+        "address",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--skip",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-complement-asan-08/report.xml"
+      ],
+      "log_sha256": "5f35e99c8c708f54584efa8f169804bc59cb8a8b211fc71724503fc9cdb633da",
+      "raw_capture_verified": true,
+      "source_files": 1349,
+      "environment": {
+        "SWIFTJ2K_TEST_CLI_PATH": null,
+        "ASAN_OPTIONS": null,
+        "TSAN_OPTIONS": null
+      },
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+    }
+  },
+  "proofs": {
+    "thread": {
+      "proof_sha256": "6338f7eb1871c8ea9320abf525a183b492d76a21ed9e9281ecbd4e561ecff8d4",
+      "independent_parser_matches": true,
+      "runs": [
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-08",
+          "declarations": 1336,
+          "xctest": 1034,
+          "swift_testing": 302,
+          "parameter_declarations": 34,
+          "parameter_starts": 397
+        },
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-08",
+          "declarations": 625,
+          "xctest": 544,
+          "swift_testing": 81,
+          "parameter_declarations": 2,
+          "parameter_starts": 5
+        },
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-08",
+          "declarations": 711,
+          "xctest": 490,
+          "swift_testing": 221,
+          "parameter_declarations": 32,
+          "parameter_starts": 392
+        }
+      ]
+    },
+    "address": {
+      "proof_sha256": "e8156af236df8fb9913ff44baf225e1cbceb114324469ae2410698755539ba82",
+      "independent_parser_matches": true,
+      "runs": [
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-08",
+          "declarations": 1336,
+          "xctest": 1034,
+          "swift_testing": 302,
+          "parameter_declarations": 34,
+          "parameter_starts": 397
+        },
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-08",
+          "declarations": 625,
+          "xctest": 544,
+          "swift_testing": 81,
+          "parameter_declarations": 2,
+          "parameter_starts": 5
+        },
+        {
+          "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-08",
+          "declarations": 711,
+          "xctest": 490,
+          "swift_testing": 221,
+          "parameter_declarations": 32,
+          "parameter_starts": 392
+        }
+      ]
+    }
+  },
+  "historical": {
+    "candidate-full-tsan-05": {
+      "exit_code": 1,
+      "log_sha256": "4a0abcf25798065f203d2469776b5021931659d43e71f766035eeeb76b9d8fd7",
+      "source_unchanged": true
+    },
+    "candidate-full-07": {
+      "exit_code": 1,
+      "log_sha256": "d826c3c0afa13a283fdb0e68579e8031a111a1ebceabbcde9c4a95a7717fac6a",
+      "source_unchanged": true
+    }
+  },
+  "cli": {
+    "checks": 246,
+    "binary_sha256": "8334c9399d36310bf2edd6d796efeb770f0b8e36894348d6c1a42bacef52610f",
+    "command_statuses_match": true
+  },
+  "unchanged_tests_from_failed_04": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift": "28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd"
+  },
+  "unchanged_jpip_files_from_07": 69,
+  "source_stable": true,
+  "review_finished_at": "2026-10-31T08:39:06.154981+00:00"
+}

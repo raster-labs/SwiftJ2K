@@ -1,0 +1,157 @@
+{
+  "schema": "swiftj2k-r3-ci-repair-inputs-v1",
+  "workspace": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover",
+  "repository": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K",
+  "candidate_label": "CI repair09 preparation; final native and hosted requalification pending",
+  "published_base_label": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "prior_index": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/generated-index.json",
+    "sha256": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54"
+  },
+  "native_runs": [],
+  "reviews": [],
+  "hosted_runs": [
+    {
+      "run_id": 41186617163,
+      "attempt": 1,
+      "metadata": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-jobs.json",
+        "sha256": "7adaf6896571fe79afc6be42302e4a2d0cb7967c2f2b6ddedaa422239dbab1ea"
+      },
+      "logs": [
+        {
+          "job_id": 124494725970,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494725970.log",
+            "sha256": "89370fa39e3f1962bc55e1d668d2dbfb85123e3925c9def70668a67d57469cc1"
+          }
+        },
+        {
+          "job_id": 124494726046,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726046.log",
+            "sha256": "e6daf365044fc9fe80abcafb15021882aed611c3a5391189a3928108e623ad63"
+          }
+        },
+        {
+          "job_id": 124494726061,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726061.log",
+            "sha256": "ddf52e578850efe46466f5599e0b7edf626c7693bf6f06ef521a0ec5eefaab00"
+          }
+        },
+        {
+          "job_id": 124494726067,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726067.log",
+            "sha256": "679268228c01bbb6e462658e04a07a673afbcb6f743c44da6fcd09790dd0a155"
+          }
+        },
+        {
+          "job_id": 124494726069,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726069.log",
+            "sha256": "13b782eb7071b43fc33bfceb908388c9550ad2e87d2f14ca3e17cda79dadde00"
+          }
+        },
+        {
+          "job_id": 124494726111,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726111.log",
+            "sha256": "ffc0747ef4842e2a2e453ce853829fddfd216073b8114f1a87ca9ea688f010c5"
+          }
+        },
+        {
+          "job_id": 124494726161,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-arm64-swift64.log",
+            "sha256": "72e7366afb316a52eeedf459439850ddb75884a33309bc25d38761c6af00c536"
+          }
+        }
+      ],
+      "review": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-review.json",
+        "sha256": "59b3cd4280624f9731adf02136f20982a04ff38334f72fcace868e6526cbeea0"
+      }
+    }
+  ],
+  "supplemental": [
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/R3VolumeRemediationTests.before.swift",
+        "sha256": "4dd36e895781a7e898a2acdbd5dcd47d330a94deb262bc33088a4fdbcba4f684"
+      },
+      "role": "compiler-repair-R3VolumeRemediationTests.before.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/before.json",
+        "sha256": "ac99bebd1f11d27b4e3f80faf0ac8f3e8ffb66ea3a04354fd3cb0668a2984ad1"
+      },
+      "role": "compiler-repair-before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/independent-root-review.json",
+        "sha256": "b2ec8f00e2cdd97a4e628030e7af237581636a45b4c508b36d4096001058bbd8"
+      },
+      "role": "compiler-repair-independent-root-review.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/report.json",
+        "sha256": "59897d021799a3dc0e85fd80d348ad6f6088fc98ab614ad91bf9ad193a0c94d2"
+      },
+      "role": "compiler-repair-report.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/report.txt",
+        "sha256": "f2d2002b12431895e059d46437908ae40c482bbce96dc26034b6247f205c93b4"
+      },
+      "role": "compiler-repair-report.txt"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/source.diff",
+        "sha256": "b700539a0f594d18684294e351155baaa00f9e225d2ff5547ff0eb10fa7ef2a7"
+      },
+      "role": "compiler-repair-source.diff"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift",
+        "sha256": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663"
+      },
+      "role": "compiler-repair-after-source"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/USAGE.txt",
+        "sha256": "a09d16d0f8e43578fe56f0910f6ffe102056afde71183bc8d1c36a61351185b5"
+      },
+      "role": "supplement-packager-USAGE.txt"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/report.txt",
+        "sha256": "5f010b3e361d267d5f4635bf44db5008f1b135c87f2ac1c18fa091edd3a19d7f"
+      },
+      "role": "supplement-packager-report.txt"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/selftest.py",
+        "sha256": "ed90807e185d051cee406628bf7152d8dcdc14b0c1dcffc955d085f8d5be614d"
+      },
+      "role": "supplement-packager-selftest.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/selftest-result.json",
+        "sha256": "6d4b0f57e1e890c53f7edd2e4807b9c32e4e0b232d13aedbedb989bc7b2dea3b"
+      },
+      "role": "supplement-packager-selftest-result.json"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+SwiftJ2K R3 documentation correction verification 09
+Reviewer: /root/readiness_check; 31 October 2026
+Disposition: DOC08-01 through DOC08-04 CLOSED for the reviewed text. No remaining finding in this narrow correction check. Positive stop.
+
+Scope and independence
+Only the known corrections, current package selection/summary and updated performance-decision identity were checked. Fourteen files are pinned in the matching source receipt; the earlier 759 consistency checks were not repeated. My authorship of earlier drafts/packager remains disclosed: this is a consistency verification, not independent acceptance of my own work or whole R3. No native execution, Git, repository/helper edits or packaging execution occurred. Only this report and its scope receipt were written.
+
+Verified corrections
+- DOC08-01: README line 36 now distinguishes historical Milestone 6 evidence from current bounded refinement implementation/evidence and retains direct combined Part 10+15 and multiple-active-HT-set qualification as unexecuted/unwaived.
+- DOC08-02: README lines 15/46 label the OS27CLI platform record historical/superseded, point current readers to STATUS and retain the OS26.0 floor. The historical OS27CLI record's hash is unchanged from review08; historical records were not rewritten by this reviewer.
+- DOC08-03: matrix line 33 now records supplied local ordinary/release CLI/complete partitioned sanitizer qualification and bounded PERF-03 median-cost acceptance, while preserving peers, hosted CI, broader security/R4 and tail-latency limits.
+- DOC08-04: the flagged joined count/run/review labels are now spaced in current prose, including the coordinator's final Candidate/Review/Run/ThreadSanitizer and Sequentialseries corrections. Filenames and code spans were not requested to be relabelled.
+
+Performance decision identity
+Prior review08 hash: d2e53ec6d615c8a85274b6f4eb34c4d9997eba5c55f4031ee222ef329d14c7bb
+Final prose-corrected hash: 6eb31541315c4f727a59a47aa0b370647fa29b9892db52bf8f92dfcc8679ab48
+All ten measured cost records, medians, full spread dictionaries, RSS and encoded-size changes still exactly match the unchanged run04/05 summary receipts. Numeric cost payload SHA-256 (canonical JSON) is e7b6fd77d88f9b80cf25164aca8cd4d9920bc8d70a497fe661e42d30bf986b25. ACCEPTED_SCOPED_SAFETY_TRADEOFF and NOT_ACCEPTED whole-R3 state are unchanged. The unexplained run05 candidate transcode tails, no tail guarantee, rejected comparator-only status and two-volume/scalar/environment limitations remain. The five direct independent gates and hosted CI remain separate; no scope expansion is inferred from prose edits.
+
+Package check
+package-final-dry-run-09.json records 59 completed runs, 618 artifact roles, 499 payloads, 22,821,834 bytes and no incomplete exclusions. Its implementation source-scope SHA-256 remains 8747915fbc9985e59571be239a0d1be4a1b7d1f14dd0bebda95d516e965ae51f, identical to dry-run08. Current helper SHA-256 remains 48fb4df0d8649e3265ba882f582ec144df1657e5901628c676663580a8a2c8f7. Static selection includes the final native checker/summary and the complete review08 report/source pair; that pair's report hash matches. Current selection also retains the previously checked final proofs/decisions/specs. The summary is not a published payload index. Actual packaging after this stop must copy final bytes, including the changed performance prose and this newly completed review09 pair, and publish its exact generated index. No further native campaign is implied by these text-only corrections.
+
+Final document identities
+README.md: ed6ae9ce2a68e30c40359259aff5b8e23ebdbb3a5f3951e3f6d0c3d794bcd3ee
+STATUS.md: 6dbbf11f94e5e14a0cdee34e00b1600689ded8ae15d43904208d01bd82438d6c
+R3_CAPABILITY_MATRIX.md: 3ae0d68c05609c26623d02eddfaf66b0052a2a43388ba5403d1a0ca469bc5aa2
+
+The coordinator's final spacing update occurred during this narrow check and is recorded in the scope receipt. All fourteen final inputs were rechecked stable after that update. Publication authorisation remains distinct from formal R3 acceptance, exact-head CI and guarded merge; this report grants none of those decisions. Stopped.

@@ -970,7 +970,7 @@ public struct JPIPPersistenceMetrics: Sendable {
 extension JPIPDataBinClass: CaseIterable {
     /// All data bin class cases.
     public static var allCases: [JPIPDataBinClass] {
-        [.mainHeader, .tileHeader, .precinct, .tile, .extendedPrecinct, .metadata]
+        [.mainHeader, .tileHeader, .precinct, .tile, .extendedPrecinct, .metadata, .extendedTile]
     }
 }
 

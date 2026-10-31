@@ -1,0 +1,20 @@
+[
+  {
+    "path": "CLIBreadthAndConsumerTests.swift",
+    "body_match_after_exact_six_signature_63_call_normalization": true,
+    "awaited_calls": 13,
+    "async_methods": 2
+  },
+  {
+    "path": "R1RemediationTests.swift",
+    "body_match_after_exact_six_signature_63_call_normalization": true,
+    "awaited_calls": 21,
+    "async_methods": 1
+  },
+  {
+    "path": "R2RemediationTests.swift",
+    "body_match_after_exact_six_signature_63_call_normalization": true,
+    "awaited_calls": 29,
+    "async_methods": 3
+  }
+]

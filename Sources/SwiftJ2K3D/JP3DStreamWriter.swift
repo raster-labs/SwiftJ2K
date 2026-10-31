@@ -183,21 +183,26 @@ public actor JP3DStreamWriter {
         try flushAllRemainingTiles()
 
         let builder = JP3DCodestreamBuilder()
-        let maxLevel = maxDecompositionLevels()
-        let codestream = builder.build(
+        let params = makeStreamingCodingParameters()
+        let codestream = builder.buildPreallocated(
             tileData: encodedTiles,
             width: config.width,
             height: config.height,
             depth: config.depth,
             components: config.componentCount,
             bitDepth: config.bitDepth,
-            levelsX: maxLevel,
-            levelsY: maxLevel,
-            levelsZ: maxLevel,
+            signed: false,
+            levelsX: params.cod.levelsX,
+            levelsY: params.cod.levelsY,
+            levelsZ: params.cod.levelsZ,
             tileSizeX: config.tiling.tileSizeX,
             tileSizeY: config.tiling.tileSizeY,
             tileSizeZ: config.tiling.tileSizeZ,
-            isLossless: config.compressionMode.isLossless
+            isLossless: params.cod.isLossless,
+            htj2kConfiguration: params.htConfig,
+            capacity: 0,
+            codOverride: params.cod,
+            qcdOverride: params.qcd
         )
 
         state = .finalized
@@ -273,10 +278,10 @@ public actor JP3DStreamWriter {
         zStart: Int,
         zEnd: Int
     ) throws {
-        let rateController = JP3DRateController(
-            mode: config.compressionMode,
-            qualityLayers: config.qualityLayers
-        )
+        let params = makeStreamingCodingParameters()
+        let componentBitDepths = [Int](repeating: config.bitDepth, count: config.componentCount)
+        let componentSigned = [Bool](repeating: false, count: config.componentCount)
+        let maxVal = (Int64(1) << Int64(max(1, min(38, config.bitDepth)))) - 1
 
         for ty in 0..<tileGrid.tilesY {
             for tx in 0..<tileGrid.tilesX {
@@ -287,28 +292,41 @@ public actor JP3DStreamWriter {
                     volumeDepth: config.depth
                 )
 
-                var tileBytes = Data()
-
+                var compVoxels: [[Int64]] = []
+                compVoxels.reserveCapacity(config.componentCount)
                 for comp in 0..<config.componentCount {
                     let tileData = extractTileFromSlices(
                         tile: tile, componentIndex: comp, zStart: zStart, zEnd: zEnd
                     )
-
-                    let quantized = rateController.quantize(
-                        coefficients: tileData,
-                        tile: tile,
-                        componentIndex: comp,
-                        bitDepth: config.bitDepth,
-                        decompositionLevels: maxDecompositionLevels()
-                    )
-
-                    for coeff in quantized.coefficients {
-                        var value = coeff.bigEndian
-                        tileBytes.append(contentsOf: withUnsafeBytes(of: &value) { Array($0) })
+                    let ints: [Int64] = tileData.map { val in
+                        let d = Double(val).rounded()
+                        guard d.isFinite else { return 0 }
+                        if d <= 0 { return 0 }
+                        if d >= Double(maxVal) { return maxVal }
+                        return Int64(d)
                     }
+                    compVoxels.append(ints)
                 }
 
-                encodedTiles.append(tileBytes)
+                let tileBytes = try JP3DNormativeTileCodec.encodeTile(
+                    componentVoxels: compVoxels,
+                    componentBitDepths: componentBitDepths,
+                    componentSigned: componentSigned,
+                    x0: tile.region.x.lowerBound,
+                    x1: tile.region.x.upperBound,
+                    y0: tile.region.y.lowerBound,
+                    y1: tile.region.y.upperBound,
+                    z0: tile.region.z.lowerBound,
+                    z1: tile.region.z.upperBound,
+                    cod: params.cod,
+                    qcd: params.qcd,
+                    htConfiguration: params.htConfig,
+                    targetBitrateBPP: params.targetBitrateBPP.map { Float($0) },
+                    cancellation: {
+                        if Task.isCancelled { throw CancellationError() }
+                    }
+                )
+                encodedTiles.append(tileBytes.data)
             }
         }
     }
@@ -349,15 +367,39 @@ public actor JP3DStreamWriter {
         return data
     }
 
-    private func maxDecompositionLevels() -> Int {
-        let minDim = min(
-            config.tiling.tileSizeX,
-            min(config.tiling.tileSizeY, config.tiling.tileSizeZ)
-        )
-        guard minDim > 1 else { return 0 }
+    private func axisDecompositionLevels(dim: Int) -> Int {
+        guard dim > 1 else { return 0 }
         var levels = 0
-        var d = minDim
-        while d > 1 { d = (d + 1) / 2; levels += 1 }
-        return min(levels, 5)
+        var d = dim
+        while d > 1 {
+            d = (d + 1) / 2
+            levels += 1
+        }
+        return min(levels, 3)
+    }
+
+    private func makeStreamingCodingParameters() -> (
+        cod: JP3DCODInfo,
+        qcd: JP3DQuantizationParameters,
+        htConfig: JP3DHTJ2KConfiguration?,
+        targetBitrateBPP: Double?
+    ) {
+        let lx = axisDecompositionLevels(dim: min(config.width, config.tiling.tileSizeX))
+        let ly = axisDecompositionLevels(dim: min(config.height, config.tiling.tileSizeY))
+        let lz = axisDecompositionLevels(dim: min(config.depth, config.tiling.tileSizeZ))
+        let encConfig = JP3DEncoderConfiguration(
+            compressionMode: config.compressionMode,
+            tiling: config.tiling,
+            progressionOrder: config.progressionOrder,
+            qualityLayers: config.qualityLayers,
+            levelsX: lx,
+            levelsY: ly,
+            levelsZ: lz
+        )
+        return JP3DEncoder.makeNormativeCodingParameters(
+            configuration: encConfig,
+            componentBitDepths: [Int](repeating: config.bitDepth, count: config.componentCount),
+            componentCount: config.componentCount
+        )
     }
 }

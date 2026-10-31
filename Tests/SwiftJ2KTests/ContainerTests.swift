@@ -267,7 +267,7 @@ func independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() async throws {
 
     for tool in [Oracle.openJPEG, Oracle.kakadu].compactMap({ $0 }) {
         let outPPM = dir.appendingPathComponent("jp2_\(tool.contains("kdu") ? "kdu" : "opj").ppm")
-        #expect(try Oracle.decode(tool, jp2URL, outPPM), "\(tool) failed to decode successor .jp2 container")
+        #expect(try await Oracle.decode(tool, jp2URL, outPPM), "\(tool) failed to decode successor .jp2 container")
     }
 
     // 2. JPH and JPX containers -> Kakadu
@@ -278,7 +278,7 @@ func independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() async throws {
         )).encode(rgbImage).data
         let jphURL = dir.appendingPathComponent("test.jph")
         try jphData.write(to: jphURL)
-        #expect(try Oracle.decode(kdu, jphURL, dir.appendingPathComponent("jph_kdu.ppm")), "Kakadu failed to decode successor .jph container")
+        #expect(try await Oracle.decode(kdu, jphURL, dir.appendingPathComponent("jph_kdu.ppm")), "Kakadu failed to decode successor .jph container")
 
         let jpxData = try await Encoder(configuration: EncoderConfiguration(
             mode: .lossless,
@@ -286,7 +286,7 @@ func independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() async throws {
         )).encode(rgbImage).data
         let jpxURL = dir.appendingPathComponent("test.jpx")
         try jpxData.write(to: jpxURL)
-        #expect(try Oracle.decode(kdu, jpxURL, dir.appendingPathComponent("jpx_kdu.ppm")), "Kakadu failed to decode successor .jpx container")
+        #expect(try await Oracle.decode(kdu, jpxURL, dir.appendingPathComponent("jpx_kdu.ppm")), "Kakadu failed to decode successor .jpx container")
     }
     #endif
 }

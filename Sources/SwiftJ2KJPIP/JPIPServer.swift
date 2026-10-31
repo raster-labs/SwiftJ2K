@@ -6,73 +6,93 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPServer.swift
 //
-//
-// JPIPServer.swift
-// J2KSwift
-//
-/// # JPIPServer
-///
-/// Server implementation for the JPIP protocol.
+// Re-engineered in Phase R3 (F04) with:
+// - Real POSIX TCP listening socket (`JPIPTCPListener`) supporting concurrent
+//   persistent HTTP/1.1 connections and RFC 6455 WebSocket upgrade (`Sec-WebSocket-Protocol: jpip`).
+// - Ephemeral port binding (`port == 0` -> `listeningPort`).
+// - Normative ITU-T Rec. T.808 (12/2022) V2 | ISO/IEC 15444-9 Annex A.2 VBAS
+//   data-bin streaming (`image/jpp-stream` & `image/jpt-stream`) for 2D (`.j2k`,
+//   `.jp2`, `.jph`) and 3D Part 10 (`.jp3d`) targets, per-byte `Msg-Offset` session
+//   deduplication, Clause C.8.1 `model=` reconciliation, `len=` byte-budget partial
+//   bins, `cclose` channel teardown, and Clause D.3 End of Response (EOR) signalling.
 
 import Foundation
+import Dispatch
 @_exported import SwiftJ2K
 @_exported import SwiftJ2K3D
 
-/// In-process loopback registry mapping local ports to running ``JPIPServer`` instances.
+/// Thread-safe registry of active client TCP sockets owned by a running ``JPIPServer``
+/// so `stop()` can close all open sockets immediately and unblock reader threads.
 ///
-/// Enables ``JPIPClient`` and ``JPIPTransport`` configured with `http://localhost:<port>`
-/// or `http://127.0.0.1:<port>` to communicate directly with a running ``JPIPServer``
-/// in the same process without requiring an external HTTP daemon.
-package actor JPIPLoopbackRegistry {
-    package static let shared = JPIPLoopbackRegistry()
+/// Concurrency proof (`@unchecked Sendable`):
+/// All mutable state (`connections`, `isStopped`) is guarded exclusively by `lock` (`NSLock`).
+package final class JPIPActiveSocketPool: @unchecked Sendable {
+    private let lock = NSLock()
+    private var connections: [UUID: JPIPTCPConnection] = [:]
+    private var isStopped: Bool = false
 
-    private var servers: [Int: JPIPServer] = [:]
+    package init() {}
 
-    package func register(server: JPIPServer, port: Int) {
-        servers[port] = server
+    package func insert(_ conn: JPIPTCPConnection) -> UUID? {
+        lock.lock()
+        defer { lock.unlock() }
+        if isStopped {
+            conn.close()
+            return nil
+        }
+        let id = UUID()
+        connections[id] = conn
+        return id
     }
 
-    package func unregister(port: Int) {
-        servers.removeValue(forKey: port)
+    package func remove(_ id: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        connections.removeValue(forKey: id)
     }
 
-    package func server(forPort port: Int) -> JPIPServer? {
-        servers[port]
+    package var activeCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return connections.count
+    }
+
+    package func closeAll() {
+        let toClose: [JPIPTCPConnection] = {
+            lock.lock()
+            defer { lock.unlock() }
+            isStopped = true
+            let all = Array(connections.values)
+            connections.removeAll()
+            return all
+        }()
+        for c in toClose {
+            c.close()
+        }
     }
 }
 
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
-/// A JPIP server for serving JPEG 2000 images over HTTP.
-///
-/// The server handles multiple concurrent clients, manages request queues,
-/// implements bandwidth throttling, and serves image data progressively.
-/// Supports HTJ2K format detection, data bin streaming, and on-the-fly
-/// transcoding between legacy JPEG 2000 and HTJ2K formats.
-///
-/// Example usage:
-/// ```swift
-/// let server = JPIPServer(port: 8080)
-///
-/// // Register images
-/// try await server.registerImage(name: "sample.jp2", at: imageURL)
-///
-/// // Start serving
-/// try await server.start()
-///
-/// // Server is now accepting requests...
-///
-/// // Stop when done
-/// try await server.stop()
-/// ```
+/// A JPIP server for serving 2D JPEG 2000 (`.j2k`, `.jp2`, `.jph`) and 3D Part 10 (`.jp3d`)
+/// targets over real HTTP/1.1 and RFC 6455 WebSocket connections.
 public actor JPIPServer {
-    /// The port to listen on.
+    /// Requested listening port (`0` requests an OS-assigned ephemeral port).
     nonisolated public let port: Int
 
-    /// Registered images available for serving.
+    /// Host/interface address bound by `start()` (defaults to `"127.0.0.1"`).
+    nonisolated public let bindHost: String
+
+    /// Actual bound TCP port once `start()` succeeds (equals `port` when `port > 0`,
+    /// or the OS-assigned ephemeral port when `port == 0`).
+    public private(set) var listeningPort: Int
+
+    /// Registered file URLs available for serving.
     private var registeredImages: [String: URL]
+
+    /// Registered in-memory codestream/container/volume blobs available for serving.
+    private var registeredBlobs: [String: Data]
+
+    /// Reverse lookup from `JPIP-tid` to registered target name.
+    private var targetByTID: [String: String]
 
     /// Cached image format information for registered images.
     private var imageInfoCache: [String: JPIPImageInfo]
@@ -89,7 +109,7 @@ public actor JPIPServer {
     /// Cache for transcoded data.
     private let transcodingCache: JPIPTranscodingCache
 
-    /// Active client sessions.
+    /// Active client sessions keyed by `channelID` (`cid`).
     private var sessions: [String: JPIPServerSession]
 
     /// Request queue for managing incoming requests.
@@ -99,7 +119,16 @@ public actor JPIPServer {
     private var bandwidthThrottle: JPIPBandwidthThrottle
 
     /// Whether the server is currently running.
-    private var isRunning: Bool
+    public private(set) var isRunning: Bool
+
+    /// Active POSIX TCP listener while running.
+    private var listener: JPIPTCPListener?
+
+    /// Active accepted client sockets while running.
+    private var socketPool: JPIPActiveSocketPool?
+
+    /// Optional WebSocket upgrade delegate (used when embedded inside ``JPIPWebSocketServer``).
+    private var webSocketDelegate: JPIPWebSocketServer?
 
     /// Configuration for the server.
     nonisolated public let configuration: Configuration
@@ -124,26 +153,24 @@ public actor JPIPServer {
         /// Session timeout in seconds.
         public let sessionTimeout: TimeInterval
 
+        /// Default stream media type when client does not specify `type=`.
+        public let defaultStreamType: JPIPStreamType
+
         /// Creates a new server configuration.
-        ///
-        /// - Parameters:
-        ///   - maxClients: Maximum concurrent clients (default: 100).
-        ///   - maxQueueSize: Maximum queue size (default: 1000).
-        ///   - globalBandwidthLimit: Global bandwidth limit in bytes/sec (default: nil).
-        ///   - perClientBandwidthLimit: Per-client bandwidth limit in bytes/sec (default: nil).
-        ///   - sessionTimeout: Session timeout in seconds (default: 300).
         public init(
             maxClients: Int = 100,
             maxQueueSize: Int = 1000,
             globalBandwidthLimit: Int? = nil,
             perClientBandwidthLimit: Int? = nil,
-            sessionTimeout: TimeInterval = 300
+            sessionTimeout: TimeInterval = 300,
+            defaultStreamType: JPIPStreamType = .jppStream
         ) {
             self.maxClients = maxClients
             self.maxQueueSize = maxQueueSize
             self.globalBandwidthLimit = globalBandwidthLimit
             self.perClientBandwidthLimit = perClientBandwidthLimit
             self.sessionTimeout = sessionTimeout
+            self.defaultStreamType = defaultStreamType
         }
     }
 
@@ -173,12 +200,21 @@ public actor JPIPServer {
     /// Creates a new JPIP server.
     ///
     /// - Parameters:
-    ///   - port: The port to listen on (default: 8080).
+    ///   - port: The TCP port to listen on (`0` for ephemeral port, default: `8080`).
+    ///   - host: The bind address (default: `"127.0.0.1"`).
     ///   - configuration: Server configuration.
-    public init(port: Int = 8080, configuration: Configuration = Configuration()) {
+    public init(
+        port: Int = 8080,
+        host: String = "127.0.0.1",
+        configuration: Configuration = Configuration()
+    ) {
         self.port = port
+        self.bindHost = host
+        self.listeningPort = port
         self.configuration = configuration
         self.registeredImages = [:]
+        self.registeredBlobs = [:]
+        self.targetByTID = [:]
         self.imageInfoCache = [:]
         self.htj2kSupport = JPIPHTJ2KSupport()
         self.dataBinGenerator = JPIPDataBinGenerator()
@@ -191,87 +227,515 @@ public actor JPIPServer {
             perClientLimit: configuration.perClientBandwidthLimit
         )
         self.isRunning = false
+        self.listener = nil
+        self.socketPool = nil
+        self.webSocketDelegate = nil
         self.stats = Statistics()
     }
 
-    /// Registers an image for serving.
+    package func setWebSocketDelegate(_ delegate: JPIPWebSocketServer?) {
+        self.webSocketDelegate = delegate
+    }
+
+    /// Registers an image or 3D `.jp3d` file for serving.
     ///
     /// - Parameters:
-    ///   - name: The image name (used as target in requests).
-    ///   - url: The file URL of the JPEG 2000 image.
-    /// - Throws: ``J2KError`` if the image cannot be accessed.
+    ///   - name: The target name used in JPIP requests.
+    ///   - url: The file URL of the JPEG 2000 / JP2 / JPH / JP3D target.
+    /// - Throws: ``J2KError`` if the file cannot be accessed.
     public func registerImage(name: String, at url: URL) throws {
-        // Verify the file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw J2KError.fileNotFound("Image file not found: \(url.path)")
         }
 
         registeredImages[name] = url
+        registeredBlobs.removeValue(forKey: name)
+        targetByTID["tid-\(name)"] = name
 
-        // Detect format and cache image info
         if let info = try? htj2kSupport.detectFormat(at: url) {
             imageInfoCache[name] = info
         }
     }
 
-    /// Unregisters an image from serving.
-    ///
-    /// - Parameter name: The image name to unregister.
+    /// Registers an in-memory codestream, container, or Part 10 `.jp3d` volume for serving.
+    public func registerImageData(name: String, data: Data) {
+        registeredBlobs[name] = data
+        registeredImages.removeValue(forKey: name)
+        targetByTID["tid-\(name)"] = name
+
+        if let info = try? htj2kSupport.detectFormat(from: data) {
+            imageInfoCache[name] = info
+        }
+    }
+
+    /// Unregisters a target from serving.
     public func unregisterImage(name: String) {
         registeredImages.removeValue(forKey: name)
+        registeredBlobs.removeValue(forKey: name)
+        targetByTID.removeValue(forKey: "tid-\(name)")
         imageInfoCache.removeValue(forKey: name)
     }
 
-    /// Gets the list of registered image names.
-    ///
-    /// - Returns: Array of registered image names.
+    /// Gets the list of registered target names.
     public func listRegisteredImages() async -> [String] {
-        Array(registeredImages.keys)
+        Array(Set(registeredImages.keys).union(registeredBlobs.keys)).sorted()
     }
 
-    /// Starts the server.
-    ///
-    /// This is a placeholder implementation. In a real server, this would
-    /// start an HTTP server (using SwiftNIO, Vapor, or similar framework).
-    ///
-    /// - Throws: ``J2KError`` if the server cannot start.
+    /// Starts the real POSIX TCP HTTP/1.1 + RFC 6455 WebSocket listener.
     public func start() async throws {
         guard !isRunning else {
             throw J2KError.invalidState("Server is already running")
         }
 
-        isRunning = true
-        await JPIPLoopbackRegistry.shared.register(server: self, port: port)
+        let tcpListener = try JPIPTCPListener(host: bindHost, port: port)
+        let pool = JPIPActiveSocketPool()
+        self.listener = tcpListener
+        self.listeningPort = tcpListener.boundPort
+        self.socketPool = pool
+        self.isRunning = true
+
+        let serverRef = self
+        let maxClients = configuration.maxClients
+        let acceptQueue = DispatchQueue(
+            label: "com.rasterlab.swiftj2k.jpip.accept.\(tcpListener.boundPort)",
+            qos: .userInitiated
+        )
+        let clientQueue = DispatchQueue(
+            label: "com.rasterlab.swiftj2k.jpip.clients.\(tcpListener.boundPort)",
+            qos: .userInitiated,
+            attributes: .concurrent
+        )
+
+        acceptQueue.async {
+            while tcpListener.isOpen {
+                let accepted: JPIPTCPConnection?
+                do {
+                    accepted = try tcpListener.acceptConnection(timeoutSeconds: 30)
+                } catch {
+                    if !tcpListener.isOpen { break }
+                    continue
+                }
+                guard let conn = accepted else { break }
+
+                if pool.activeCount >= maxClients {
+                    try? conn.writeHTTPResponse(
+                        statusCode: 503,
+                        reasonPhrase: "Service Unavailable",
+                        headers: ["Connection": "close", "Retry-After": "1"],
+                        body: Data("Maximum concurrent clients reached".utf8)
+                    )
+                    conn.close()
+                    continue
+                }
+
+                guard let connID = pool.insert(conn) else {
+                    continue
+                }
+
+                clientQueue.async {
+                    defer {
+                        conn.close()
+                        pool.remove(connID)
+                    }
+                    Self.serveClientConnection(conn, server: serverRef)
+                }
+            }
+        }
     }
 
-    /// Stops the server.
-    ///
-    /// - Throws: ``J2KError`` if stopping fails.
+    /// Stops the server, closing the listening socket, active client connections, and sessions.
     public func stop() async throws {
         guard isRunning else {
             throw J2KError.invalidState("Server is not running")
         }
 
         isRunning = false
-        await JPIPLoopbackRegistry.shared.unregister(port: port)
+        listener?.close()
+        listener = nil
+        socketPool?.closeAll()
+        socketPool = nil
 
-        // Close all active sessions
         for (_, session) in sessions {
             await session.close()
         }
         sessions.removeAll()
+        stats.activeClients = 0
 
-        // Clear the request queue
         await requestQueue.clear()
     }
 
+    // MARK: - Blocking Socket Connection Worker (Dedicated DispatchQueue)
+
+    nonisolated private static func serveClientConnection(
+        _ conn: JPIPTCPConnection,
+        server: JPIPServer
+    ) {
+        while conn.isOpen {
+            let wireReq: JPIPHTTPWireRequest?
+            do {
+                wireReq = try conn.readHTTPRequest()
+            } catch {
+                break
+            }
+            guard let req = wireReq else {
+                break
+            }
+
+            // Check for RFC 6455 WebSocket upgrade (`Upgrade: websocket`)
+            if let upgrade = req.header("Upgrade"),
+               upgrade.lowercased() == "websocket" {
+                Self.serveWebSocketUpgrade(req, on: conn, server: server)
+                return
+            }
+
+            // Synchronous bridge to actor request processing on dedicated worker thread
+            let box = WireOutcomeBox()
+            let sema = DispatchSemaphore(value: 0)
+            Task {
+                let outcome = await server.handleWireHTTPRequest(req)
+                box.store(outcome)
+                sema.signal()
+            }
+            sema.wait()
+
+            let outcome = box.load()
+            let wantsClose = (req.header("Connection")?.lowercased() ?? "").contains("close")
+                || (req.version == "HTTP/1.0" && !(req.header("Connection")?.lowercased() ?? "").contains("keep-alive"))
+            var headers = outcome.headers
+            headers["Connection"] = wantsClose ? "close" : "keep-alive"
+
+            do {
+                try conn.writeHTTPResponse(
+                    statusCode: outcome.statusCode,
+                    reasonPhrase: Self.httpReasonPhrase(for: outcome.statusCode),
+                    headers: headers,
+                    body: outcome.body
+                )
+            } catch {
+                break
+            }
+
+            if wantsClose {
+                break
+            }
+        }
+    }
+
+    nonisolated private static func serveWebSocketUpgrade(
+        _ req: JPIPHTTPWireRequest,
+        on conn: JPIPTCPConnection,
+        server: JPIPServer
+    ) {
+        guard let clientKey = req.header("Sec-WebSocket-Key"),
+              !clientKey.trimmingCharacters(in: .whitespaces).isEmpty else {
+            try? conn.writeHTTPResponse(
+                statusCode: 400,
+                reasonPhrase: "Bad Request",
+                headers: ["Connection": "close"],
+                body: Data("Missing Sec-WebSocket-Key".utf8)
+            )
+            return
+        }
+
+        // Delegate to attached JPIPWebSocketServer if present, or serve directly using JPIPWebSocketMessageEncoder.
+        let upgradeBox = WSUpgradeBox()
+        let sema = DispatchSemaphore(value: 0)
+        Task {
+            let delegate = await server.getWebSocketDelegate()
+            if let wsServer = delegate {
+                let res = await wsServer.acceptLiveSocketUpgrade(headers: req.headers, socket: conn)
+                upgradeBox.store(delegate: wsServer, connectionID: res.connectionID, error: res.error)
+            } else {
+                upgradeBox.store(delegate: nil, connectionID: UUID().uuidString, error: nil)
+            }
+            sema.signal()
+        }
+        sema.wait()
+
+        if let err = upgradeBox.error {
+            try? conn.writeHTTPResponse(
+                statusCode: 400,
+                reasonPhrase: "Bad Request",
+                headers: ["Connection": "close"],
+                body: Data(err.utf8)
+            )
+            return
+        }
+
+        let requestedProto = req.header("Sec-WebSocket-Protocol") ?? ""
+        let negotiatedProto: String? = requestedProto.lowercased().contains("jpip") || requestedProto.isEmpty
+            ? "jpip"
+            : nil
+        do {
+            try conn.writeWebSocketServerHandshake(
+                clientKey: clientKey,
+                negotiatedSubprotocol: negotiatedProto
+            )
+            conn.setReceiveTimeout(seconds: 0)
+        } catch {
+            if let wsServer = upgradeBox.delegate, let cid = upgradeBox.connectionID {
+                let closeSema = DispatchSemaphore(value: 0)
+                Task {
+                    await wsServer.closeConnection(cid)
+                    closeSema.signal()
+                }
+                closeSema.wait()
+            }
+            return
+        }
+
+        let wsDelegate = upgradeBox.delegate
+        let wsConnID = upgradeBox.connectionID ?? UUID().uuidString
+        defer {
+            if let wsServer = wsDelegate {
+                let closeSema = DispatchSemaphore(value: 0)
+                Task {
+                    await wsServer.closeConnection(wsConnID)
+                    closeSema.signal()
+                }
+                closeSema.wait()
+            }
+        }
+
+        let msgEncoder = JPIPWebSocketMessageEncoder()
+        while conn.isOpen {
+            let wireFrame: JPIPRFC6455WireFrame
+            do {
+                wireFrame = try conn.readWebSocketFrame(requireMasked: true)
+            } catch {
+                break
+            }
+
+            switch wireFrame.opcode {
+            case .close:
+                try? conn.writeWebSocketFrame(
+                    opcode: .close,
+                    payload: wireFrame.payload.prefix(2),
+                    masked: false
+                )
+                return
+            case .ping:
+                try? conn.writeWebSocketFrame(
+                    opcode: .pong,
+                    payload: wireFrame.payload,
+                    masked: false
+                )
+            case .pong:
+                if let wsServer = wsDelegate {
+                    let s = DispatchSemaphore(value: 0)
+                    Task {
+                        _ = try? await wsServer.handleFrame(
+                            JPIPWebSocketFrame(type: .pong, payload: wireFrame.payload),
+                            from: wsConnID
+                        )
+                        s.signal()
+                    }
+                    s.wait()
+                }
+            case .binary, .text:
+                guard let appFrame = JPIPWebSocketFrame.deserialize(from: wireFrame.payload) else {
+                    let errFrame = JPIPWebSocketFrame(
+                        type: .error,
+                        payload: Data("Malformed JPIP WebSocket frame".utf8)
+                    )
+                    try? conn.writeWebSocketFrame(opcode: .binary, payload: errFrame.serialize(), masked: false)
+                    continue
+                }
+
+                let replyBox = WSFrameReplyBox()
+                let s = DispatchSemaphore(value: 0)
+                Task {
+                    if let wsServer = wsDelegate {
+                        do {
+                            let reply = try await wsServer.handleFrame(appFrame, from: wsConnID)
+                            replyBox.store(reply)
+                        } catch {
+                            replyBox.store(JPIPWebSocketFrame(
+                                type: .error,
+                                payload: Data("\(error)".utf8),
+                                requestID: appFrame.requestID
+                            ))
+                        }
+                    } else {
+                        let reply = await server.handleStandaloneWebSocketFrame(appFrame, encoder: msgEncoder)
+                        replyBox.store(reply)
+                    }
+                    s.signal()
+                }
+                s.wait()
+
+                if let replyFrame = replyBox.load() {
+                    do {
+                        try conn.writeWebSocketFrame(
+                            opcode: .binary,
+                            payload: replyFrame.serialize(),
+                            masked: false
+                        )
+                    } catch {
+                        break
+                    }
+                }
+            case .continuation:
+                break
+            }
+        }
+    }
+
+    package func getWebSocketDelegate() -> JPIPWebSocketServer? {
+        webSocketDelegate
+    }
+
+    private func handleStandaloneWebSocketFrame(
+        _ frame: JPIPWebSocketFrame,
+        encoder: JPIPWebSocketMessageEncoder
+    ) async -> JPIPWebSocketFrame? {
+        switch frame.type {
+        case .ping:
+            return JPIPWebSocketFrame(type: .pong, payload: frame.payload, requestID: frame.requestID)
+        case .request:
+            guard let req = encoder.decodeRequest(from: frame) else {
+                return JPIPWebSocketFrame(
+                    type: .error,
+                    payload: Data("Invalid JPIP request payload".utf8),
+                    requestID: frame.requestID
+                )
+            }
+            do {
+                let rawResp = try await handleRequest(req)
+                var wsHeaders = rawResp.headers
+                wsHeaders["X-JPIP-Transport"] = "websocket"
+                let resp = JPIPResponse(
+                    channelID: rawResp.channelID,
+                    data: rawResp.data,
+                    statusCode: rawResp.statusCode,
+                    headers: wsHeaders
+                )
+                return encoder.encodeResponse(resp, requestID: frame.requestID ?? 0)
+            } catch {
+                return JPIPWebSocketFrame(
+                    type: .error,
+                    payload: Data("\(error)".utf8),
+                    requestID: frame.requestID
+                )
+            }
+        case .control:
+            if let cmd = String(data: frame.payload, encoding: .utf8),
+               cmd.hasPrefix("close-session:") {
+                let sid = String(cmd.dropFirst("close-session:".count))
+                await closeSession(sid)
+                return JPIPWebSocketFrame(
+                    type: .control,
+                    payload: Data("session-closed:\(sid)".utf8),
+                    requestID: frame.requestID
+                )
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    private func handleWireHTTPRequest(_ wireReq: JPIPHTTPWireRequest) async -> (statusCode: Int, headers: [String: String], body: Data) {
+        let method = wireReq.method.uppercased()
+        guard method == "GET" || method == "HEAD" || method == "POST" else {
+            return (405, ["Content-Type": "text/plain; charset=utf-8", "Allow": "GET, HEAD, POST"], Data("Method Not Allowed".utf8))
+        }
+
+        // Validate explicit `type=` query value before parsing so unknown return types get HTTP 415.
+        if let qIdx = wireReq.target.firstIndex(of: "?") {
+            let query = wireReq.target[wireReq.target.index(after: qIdx)...]
+            for pair in query.split(separator: "&") {
+                let kv = pair.split(separator: "=", maxSplits: 1)
+                if kv.count == 2, kv[0] == "type" {
+                    let rawType = (String(kv[1]).removingPercentEncoding ?? String(kv[1]))
+                    if JPIPStreamType(queryValue: rawType) == nil {
+                        return (415, ["Content-Type": "text/plain; charset=utf-8"], Data("Unsupported JPIP stream return type: \(rawType)".utf8))
+                    }
+                }
+            }
+        }
+
+        var parsedReq = JPIPRequest.parseHTTPTarget(wireReq.target)
+        if method == "POST", !wireReq.body.isEmpty,
+           let bodyQuery = String(data: wireReq.body, encoding: .utf8) {
+            let mergedTarget = wireReq.target.contains("?")
+                ? "\(wireReq.target)&\(bodyQuery)"
+                : "\(wireReq.target)?\(bodyQuery)"
+            parsedReq = JPIPRequest.parseHTTPTarget(mergedTarget)
+        }
+
+        do {
+            let resp = try await handleRequest(parsedReq)
+            let body = (method == "HEAD") ? Data() : resp.data
+            return (resp.statusCode, resp.headers, body)
+        } catch let codecErr as CodecError {
+            let msg = codecErr.message
+            let status: Int
+            switch codecErr.category {
+            case .resourceLimitExceeded:
+                status = 413
+            case .malformedInput:
+                status = 422
+            case .invalidArgument:
+                status = 400
+            case .unsupportedFeature:
+                status = 415
+            default:
+                status = 500
+            }
+            return (status, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+        } catch let j2kErr as J2KError {
+            let msg = "\(j2kErr)"
+            if msg.contains("File not found") || msg.contains("Image not found") {
+                return (404, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            }
+            if msg.contains("Unknown or expired JPIP channel ID") {
+                return (410, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            }
+            if msg.contains("Invalid parameter") || msg.contains("channel ID") {
+                return (400, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            }
+            switch j2kErr.asCodecError.category {
+            case .invalidArgument:
+                return (400, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .unsupportedFeature:
+                return (415, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .malformedInput:
+                return (422, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            case .resourceLimitExceeded:
+                return (413, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            default:
+                return (500, ["Content-Type": "text/plain; charset=utf-8"], Data(msg.utf8))
+            }
+        } catch {
+            return (500, ["Content-Type": "text/plain; charset=utf-8"], Data("\(error)".utf8))
+        }
+    }
+
+    nonisolated private static func httpReasonPhrase(for code: Int) -> String {
+        switch code {
+        case 200: return "OK"
+        case 204: return "No Content"
+        case 400: return "Bad Request"
+        case 404: return "Not Found"
+        case 405: return "Method Not Allowed"
+        case 410: return "Gone"
+        case 413: return "Payload Too Large"
+        case 415: return "Unsupported Media Type"
+        case 422: return "Unprocessable Content"
+        case 500: return "Internal Server Error"
+        case 503: return "Service Unavailable"
+        default: return "OK"
+        }
+    }
+
+    // MARK: - Core JPIP Request Handling
+
     /// Handles an incoming JPIP request.
-    ///
-    /// This method processes JPIP requests and generates appropriate responses.
     ///
     /// - Parameter request: The JPIP request to handle.
     /// - Returns: A JPIP response.
-    /// - Throws: ``J2KError`` if the request cannot be handled.
+    /// - Throws: ``J2KError`` or ``CodecError`` if the request cannot be handled.
     public func handleRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
         guard isRunning else {
             throw J2KError.invalidState("Server is not running")
@@ -279,33 +743,59 @@ public actor JPIPServer {
 
         stats.totalRequests += 1
 
+        // Validate all query, view-window, and cache-model parameters with checked arithmetic
+        try request.validateParameters()
+
+        // 1. Handle ITU-T Rec. T.808 Clause C.3.3 channel close (`cclose`)
+        if let ccloseList = request.cclose, !ccloseList.isEmpty {
+            return try await handleChannelClose(request, ccloseList: ccloseList)
+        }
+
         // Enqueue the request
         try await requestQueue.enqueue(request, priority: determinePriority(request))
         stats.queuedRequests = await requestQueue.size
 
+        // Resolve target name before session creation when `tid` or leading slash is used
+        let resolvedRequest = resolveTargetAlias(in: request)
+
         // Get or create session
-        let session = try await getOrCreateSession(for: request)
+        let session = try await getOrCreateSession(for: resolvedRequest)
 
         // Check bandwidth limits
         let canSend = await bandwidthThrottle.canSend(
             clientID: session.sessionID,
-            bytes: 1024 // Estimated response size
+            bytes: 1024
         )
 
         guard canSend else {
-            // Return throttled response
+            _ = await requestQueue.dequeue()
+            stats.queuedRequests = await requestQueue.size
             return JPIPResponse(
-                channelID: session.channelID,
+                channelID: session.channelID.isEmpty ? nil : session.channelID,
                 data: Data(),
-                statusCode: 503, // Service Unavailable
+                statusCode: 503,
                 headers: ["Retry-After": "1"]
             )
         }
 
         // Process the request
-        let response = try await processRequest(request, session: session)
+        let response: JPIPResponse
+        do {
+            response = try await processRequest(resolvedRequest, session: session)
+        } catch {
+            _ = await requestQueue.dequeue()
+            stats.queuedRequests = await requestQueue.size
+            // If `cnew` allocated a session for a nonexistent target, roll it back cleanly
+            if resolvedRequest.cnew != nil && !session.channelID.isEmpty {
+                sessions.removeValue(forKey: session.channelID)
+                stats.activeClients = sessions.count
+            }
+            throw error
+        }
 
-        // Record bandwidth usage
+        _ = await requestQueue.dequeue()
+        await session.recordRequest(bytesSent: response.data.count)
+
         await bandwidthThrottle.recordSent(
             clientID: session.sessionID,
             bytes: response.data.count
@@ -317,32 +807,86 @@ public actor JPIPServer {
         return response
     }
 
+    private func handleChannelClose(
+        _ request: JPIPRequest,
+        ccloseList: [String]
+    ) async throws -> JPIPResponse {
+        if ccloseList.contains("*") {
+            if let cid = request.cid, sessions[cid] == nil {
+                throw J2KError.invalidParameter("Unknown or already closed JPIP channel ID: \(cid)")
+            }
+            for (_, session) in sessions {
+                await session.close()
+            }
+            sessions.removeAll()
+        } else {
+            for cidToClose in ccloseList {
+                guard let session = sessions.removeValue(forKey: cidToClose) else {
+                    throw J2KError.invalidParameter("Unknown or already closed JPIP channel ID: \(cidToClose)")
+                }
+                await session.close()
+            }
+        }
+        stats.activeClients = sessions.count
+        let body: Data
+        let headers: [String: String]
+        if let st = request.streamType {
+            body = JPIPWireCodec.encodeEOR(reason: .windowDone)
+            headers = ["Content-Type": st.contentTypeHeader, "Cache-Control": "no-cache"]
+        } else {
+            body = Data()
+            headers = ["Content-Type": "application/octet-stream"]
+        }
+        return JPIPResponse(channelID: nil, data: body, statusCode: 200, headers: headers)
+    }
+
+    private func resolveTargetAlias(in request: JPIPRequest) -> JPIPRequest {
+        var req = request
+        if req.target.isEmpty, let cid = req.cid, let existing = sessions[cid] {
+            req.target = existing.target
+        }
+        if req.target.isEmpty, let tid = req.tid, let mapped = targetByTID[tid] {
+            req.target = mapped
+        }
+        if !req.target.isEmpty,
+           registeredImages[req.target] == nil,
+           registeredBlobs[req.target] == nil {
+            let stripped = req.target.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            if registeredImages[stripped] != nil || registeredBlobs[stripped] != nil {
+                req.target = stripped
+            }
+        }
+        return req
+    }
+
     /// Determines the priority for a request.
     private func determinePriority(_ request: JPIPRequest) -> Int {
-        // Higher priority for:
-        // - Session creation requests (cnew)
-        // - Metadata requests
-        // - Small region requests
-
         if request.cnew != nil {
-            return 100 // Highest priority for new sessions
+            return 100
         }
-
         if request.metadata == true {
-            return 90 // High priority for metadata
+            return 90
         }
-
-        if let rsiz = request.rsiz, rsiz.width * rsiz.height < 10000 {
-            return 80 // High priority for small regions
+        if let rsiz = request.rsiz, rsiz.width > 0, rsiz.height > 0 {
+            let (area, ov) = rsiz.width.multipliedReportingOverflow(by: rsiz.height)
+            if !ov && area < 10_000 {
+                return 80
+            }
         }
-
-        return 50 // Normal priority
+        if let rvsiz = request.rvsiz, rvsiz.count == 3,
+           rvsiz[0] > 0, rvsiz[1] > 0, rvsiz[2] > 0 {
+            let (xy, o1) = rvsiz[0].multipliedReportingOverflow(by: rvsiz[1])
+            let (xyz, o2) = xy.multipliedReportingOverflow(by: rvsiz[2])
+            if !o1 && !o2 && xyz < 10_000 {
+                return 80
+            }
+        }
+        return 50
     }
 
     /// Gets an existing session, creates a persistent session when `cnew` is requested,
     /// or returns an ephemeral non-persisted session for stateless requests (`cid == nil && cnew == nil`).
     private func getOrCreateSession(for request: JPIPRequest) async throws -> JPIPServerSession {
-        // Check if request references an existing channel ID
         if let cid = request.cid {
             if let existingSession = sessions[cid] {
                 return existingSession
@@ -352,7 +896,6 @@ public actor JPIPServer {
             }
         }
 
-        // Create new persistent session if cnew is specified
         if request.cnew != nil {
             let sessionID = UUID().uuidString
             let channelID = "cid-\(sessionID)"
@@ -369,8 +912,6 @@ public actor JPIPServer {
             return newSession
         }
 
-        // ISO/IEC 15444-9 stateless JPIP request (e.g. `deliveryMode == .full`):
-        // serve without allocating a persistent server-side session entry.
         return JPIPServerSession(
             sessionID: "stateless-\(UUID().uuidString)",
             channelID: "",
@@ -383,78 +924,116 @@ public actor JPIPServer {
         _ request: JPIPRequest,
         session: JPIPServerSession
     ) async throws -> JPIPResponse {
-        // Verify the target image is registered
-        guard let imageURL = registeredImages[request.target] else {
-            throw J2KError.fileNotFound("Image not found: \(request.target)")
+        let effectiveTarget = request.target.isEmpty ? session.target : request.target
+        let imageURL = registeredImages[effectiveTarget]
+        let blobData = registeredBlobs[effectiveTarget]
+
+        guard imageURL != nil || blobData != nil else {
+            throw J2KError.fileNotFound("Image not found: \(effectiveTarget)")
         }
 
         let responseChannelID: String? = session.channelID.isEmpty ? nil : session.channelID
+        let tid = "tid-\(effectiveTarget)"
+        targetByTID[tid] = effectiveTarget
 
-        // For session creation, return minimal response with channel ID
-        if request.cnew != nil {
-            var headers = [
-                "JPIP-cnew": "cid=\(session.channelID),path=/jpip,transport=http",
-                "Content-Type": "application/octet-stream"
-            ]
+        var baseHeaders: [String: String] = [
+            "JPIP-tid": tid,
+            "Cache-Control": "no-cache"
+        ]
 
-            // Add HTJ2K capability headers if the image supports it
-            if let info = imageInfoCache[request.target] {
+        if let cnewType = request.cnew {
+            let transportToken = (cnewType == .webSocket) ? "ws" : "http"
+            baseHeaders["JPIP-cnew"] = "cid=\(session.channelID),path=jpip,transport=\(transportToken)"
+            if let info = imageInfoCache[effectiveTarget] {
                 let capHeaders = htj2kSupport.capabilityHeaders(for: info)
                 for (key, value) in capHeaders where key != "Content-Type" {
-                    headers[key] = value
+                    baseHeaders[key] = value
                 }
             }
 
-            return JPIPResponse(
-                channelID: responseChannelID,
-                data: Data(),
-                statusCode: 200,
-                headers: headers
-            )
+            // Bare session-establishment request (`cnew` with no view-window or stream parameters):
+            // return 200 OK with `JPIP-cnew` header and empty body.
+            if !request.hasViewWindowOrStreamParameters && request.metadata != true {
+                baseHeaders["Content-Type"] = "application/octet-stream"
+                return JPIPResponse(
+                    channelID: responseChannelID,
+                    data: Data(),
+                    statusCode: 200,
+                    headers: baseHeaders
+                )
+            }
         }
 
-        // For metadata requests, return basic metadata
-        if request.metadata == true {
-            let metadataData = try await generateMetadata(for: imageURL)
+        // Key-value metadata query (`meta=yes` without explicit `type=jpp-stream`/`jpt-stream`)
+        if request.metadata == true && request.streamType == nil {
+            let metadataData = try await generateMetadata(
+                targetName: effectiveTarget,
+                imageURL: imageURL,
+                blobData: blobData
+            )
+            baseHeaders["Content-Type"] = "application/octet-stream"
             return JPIPResponse(
                 channelID: responseChannelID,
                 data: metadataData,
                 statusCode: 200,
-                headers: ["Content-Type": "application/octet-stream"]
+                headers: baseHeaders
             )
         }
 
-        // For image data requests, generate response data
-        let imageData = try await generateImageData(
-            for: imageURL,
+        // Normative data-bin or fallback raw image payload generation
+        let generated = try await generateImagePayload(
+            targetName: effectiveTarget,
+            imageURL: imageURL,
+            blobData: blobData,
             request: request,
             session: session
         )
+        baseHeaders["Content-Type"] = generated.contentType
 
         return JPIPResponse(
             channelID: responseChannelID,
-            data: imageData,
+            data: generated.body,
             statusCode: 200,
-            headers: ["Content-Type": "application/octet-stream"]
+            headers: baseHeaders
         )
     }
 
-    /// Generates metadata for an image.
-    private func generateMetadata(for imageURL: URL) async throws -> Data {
+    /// Generates textual format/dimension metadata for `meta=yes` queries.
+    private func generateMetadata(
+        targetName: String,
+        imageURL: URL?,
+        blobData: Data?
+    ) async throws -> Data {
         var lines: [String] = []
-        for (name, url) in registeredImages where url == imageURL {
-            if let info = imageInfoCache[name],
-               let str = String(data: htj2kSupport.generateFormatMetadata(for: info), encoding: .utf8) {
-                lines.append(str)
-                break
-            }
+        if let info = imageInfoCache[targetName],
+           let str = String(data: htj2kSupport.generateFormatMetadata(for: info), encoding: .utf8) {
+            lines.append(str)
         }
-        if let fileData = try? Data(contentsOf: imageURL, options: .mappedIfSafe),
-           let info = try? Decoder().inspect(fileData) {
-            lines.append("width=\(info.descriptor.width)")
-            lines.append("height=\(info.descriptor.height)")
-            lines.append("components=\(info.descriptor.components.count)")
-            lines.append("bitDepth=\(info.descriptor.meaningfulBits)")
+        let rawData: Data?
+        if let blobData {
+            rawData = blobData
+        } else if let imageURL {
+            rawData = try? Data(contentsOf: imageURL, options: .mappedIfSafe)
+        } else {
+            rawData = nil
+        }
+
+        if let fileData = rawData {
+            if JP3DJPIPIndexer.isJP3DCodestream(fileData),
+               let idx3D = try? JP3DJPIPIndexer.index(fileData) {
+                let bitDepth3D = (try? JP3DCodestreamParser().parse(fileData).siz.bitDepth) ?? 8
+                lines.append("format=jp3d")
+                lines.append("width=\(idx3D.width)")
+                lines.append("height=\(idx3D.height)")
+                lines.append("depth=\(idx3D.depth)")
+                lines.append("components=\(idx3D.componentCount)")
+                lines.append("bitDepth=\(bitDepth3D)")
+            } else if let info = try? Decoder().inspect(fileData) {
+                lines.append("width=\(info.descriptor.width)")
+                lines.append("height=\(info.descriptor.height)")
+                lines.append("components=\(info.descriptor.components.count)")
+                lines.append("bitDepth=\(info.descriptor.meaningfulBits)")
+            }
         }
         if !lines.isEmpty {
             return Data(lines.joined(separator: "\n").utf8)
@@ -462,27 +1041,34 @@ public actor JPIPServer {
         return Data("metadata".utf8)
     }
 
-    /// Generates image data for a request.
-    private func generateImageData(
-        for imageURL: URL,
+    /// Generates normative ITU-T Rec. T.808 VBAS data-bin stream (`image/jpp-stream` or `image/jpt-stream`)
+    /// for real 2D/3D JPEG 2000 targets, falling back to raw bytes only for non-codestream synthetic unit-test files.
+    private func generateImagePayload(
+        targetName: String,
+        imageURL: URL?,
+        blobData: Data?,
         request: JPIPRequest,
         session: JPIPServerSession
-    ) async throws -> Data {
-        // Read the source codestream data
-        let sourceData = try Data(contentsOf: imageURL, options: .mappedIfSafe)
+    ) async throws -> (body: Data, contentType: String) {
+        let sourceData: Data
+        if let blobData {
+            sourceData = blobData
+        } else if let imageURL {
+            sourceData = try Data(contentsOf: imageURL, options: .mappedIfSafe)
+        } else {
+            throw J2KError.fileNotFound("Image not found: \(targetName)")
+        }
 
-        // Determine if on-the-fly transcoding is needed
         let preference = request.codingPreference ?? .none
-        let imageName = registeredImages.first(where: { $0.value == imageURL })?.key
-        let sourceIsHTJ2K = imageName.flatMap { imageInfoCache[$0]?.isHTJ2K } ?? false
-
+        let sourceIsHTJ2K = imageInfoCache[targetName]?.isHTJ2K ?? false
         var dataToServe = sourceData
 
-        // Apply on-the-fly transcoding if client prefers a different format
-        if transcodingService.needsTranscoding(preference: preference, sourceIsHTJ2K: sourceIsHTJ2K) {
+        if !JP3DJPIPIndexer.isJP3DCodestream(sourceData),
+           transcodingService.needsTranscoding(preference: preference, sourceIsHTJ2K: sourceIsHTJ2K) {
             let sourceHash = stableHash(for: sourceData)
             if let direction = transcodingService.determineDirection(
-                preference: preference, sourceIsHTJ2K: sourceIsHTJ2K
+                preference: preference,
+                sourceIsHTJ2K: sourceIsHTJ2K
             ) {
                 if let cached = await transcodingCache.get(sourceHash: sourceHash, direction: direction) {
                     dataToServe = cached
@@ -491,7 +1077,6 @@ public actor JPIPServer {
                     preference: preference,
                     sourceIsHTJ2K: sourceIsHTJ2K
                 ), result.wasTranscoded {
-                    // Transcoding succeeded; use transcoded data
                     dataToServe = result.data
                     await transcodingCache.put(
                         data: result.data,
@@ -499,46 +1084,216 @@ public actor JPIPServer {
                         direction: direction
                     )
                 }
-                // If transcoding fails, gracefully fall back to serving original data.
-                // This ensures clients always receive valid image data even if
-                // the source codestream cannot be transcoded to the preferred format.
             }
         }
 
-        // Try to generate data bins from the codestream for progressive streaming
-        if let dataBins = try? dataBinGenerator.generateDataBins(from: dataToServe), !dataBins.isEmpty {
-            for bin in dataBins {
-                let alreadySent = await session.hasDataBin(binClass: bin.binClass, binID: bin.binID)
-                if !alreadySent {
-                    await session.recordSentDataBin(bin)
-                }
-            }
-
-            // Reassemble valid codestream from the generated data bins
-            var responseData = dataBinGenerator.reassembleCodestream(from: dataBins)
-            if responseData.isEmpty {
-                responseData = dataToServe
-            }
-
-            // Apply response length limit if specified
+        // Legacy fallback ONLY for untyped (`request.streamType == nil`) non-JPEG2000 unit-test stub blobs
+        // (e.g. `Data("test".utf8)`). Any explicit JPIP stream return type (`type=jpp-stream` / `jpt-stream`)
+        // or any JPEG 2000 / JP2 / JPH / JP3D target MUST go through normative indexing and propagate errors.
+        let requiresNormativeStream = (request.streamType != nil) || Self.hasJPEG2000OrContainerMagic(dataToServe)
+        if !requiresNormativeStream {
+            var responseData = dataToServe
             if let maxLen = request.len, responseData.count > maxLen {
-                responseData = responseData.prefix(maxLen)
+                responseData = Data(responseData.prefix(max(0, maxLen)))
+            }
+            return (responseData, "application/octet-stream")
+        }
+
+        // Normative ITU-T Rec. T.808 Annex A.2 VBAS data-bin streaming for 2D & 3D targets
+        let windowGen = try dataBinGenerator.generateWireDataBins(
+            from: dataToServe,
+            request: request,
+            defaultStreamType: configuration.defaultStreamType
+        )
+
+        // 1. Reconcile client-supplied Clause C.8.1 `model=` descriptors if present
+        if let modelItems = request.model, !modelItems.isEmpty {
+            let mergedBins = Self.mergeContiguousSegmentsForModel(windowGen.bins)
+            await session.applyCacheModel(items: modelItems, availableBins: mergedBins)
+        }
+
+        // 2. Compute unsent segments / `Msg-Offset` tails against `session` (keyed by canonicalClass + codestreamID + binID)
+        var unsentSegments: [JPIPDataBin] = []
+        unsentSegments.reserveCapacity(windowGen.bins.count)
+
+        for seg in windowGen.bins {
+            let segStart = max(0, seg.msgOffset)
+            let segEnd = segStart + seg.data.count
+            if seg.data.isEmpty {
+                let complete = await session.hasCompleteDataBin(
+                    binClass: seg.binClass,
+                    binID: seg.binID,
+                    totalLength: segEnd,
+                    codestreamID: seg.codestreamID
+                )
+                if !complete {
+                    unsentSegments.append(seg)
+                }
+                continue
             }
 
-            return responseData
+            let alreadySent = await session.sentByteOffset(
+                binClass: seg.binClass,
+                binID: seg.binID,
+                codestreamID: seg.codestreamID
+            )
+            if alreadySent >= segEnd {
+                if seg.isComplete {
+                    let complete = await session.hasCompleteDataBin(
+                        binClass: seg.binClass,
+                        binID: seg.binID,
+                        totalLength: segEnd,
+                        codestreamID: seg.codestreamID
+                    )
+                    if !complete {
+                        unsentSegments.append(JPIPDataBin(
+                            binClass: seg.binClass,
+                            binID: seg.binID,
+                            codestreamID: seg.codestreamID,
+                            data: Data(),
+                            isComplete: true,
+                            msgOffset: segEnd,
+                            aux: seg.aux
+                        ))
+                    }
+                }
+                continue
+            }
+
+            if alreadySent > segStart {
+                let trim = min(seg.data.count, alreadySent - segStart)
+                let tail = Data(seg.data.dropFirst(trim))
+                unsentSegments.append(JPIPDataBin(
+                    binClass: seg.binClass,
+                    binID: seg.binID,
+                    codestreamID: seg.codestreamID,
+                    data: tail,
+                    isComplete: seg.isComplete,
+                    msgOffset: segStart + trim,
+                    aux: seg.aux
+                ))
+            } else {
+                unsentSegments.append(seg)
+            }
         }
 
-        // Fallback: serve raw data when codestream parsing is not applicable
-        var responseData = dataToServe
-        if let maxLen = request.len, responseData.count > maxLen {
-            responseData = responseData.prefix(maxLen)
+        // 3. Enforce ITU-T Rec. T.808 Clause C.6.1 `len=` byte budget on ordinary data-bin messages,
+        //    always appending a complete, valid 3-byte EOR (excluded from `len=`).
+        let completedReason: JPIPEORReason = windowGen.coversFullTarget ? .imageDone : .windowDone
+        if let maxLen = request.len {
+            if maxLen <= 0 {
+                let reason: JPIPEORReason = unsentSegments.isEmpty ? completedReason : .byteLimit
+                let wireData = JPIPWireCodec.encodeStream(bins: [], eorReason: reason)
+                return (wireData, windowGen.streamType.contentTypeHeader)
+            }
+
+            var emitted: [JPIPDataBin] = []
+            var hitByteLimit = false
+
+            for seg in unsentSegments {
+                let fullOrdinaryBytes = JPIPWireCodec.encodeStream(
+                    bins: emitted + [seg],
+                    eorReason: .byteLimit
+                ).count - 3
+                if fullOrdinaryBytes <= maxLen {
+                    emitted.append(seg)
+                    await session.recordSentDataBin(seg)
+                    continue
+                }
+
+                // Binary-search largest non-empty prefix `k` (`1..<seg.data.count`) whose
+                // VBAS header + `k` payload bytes fits within `maxLen` (excluding the 3-byte EOR).
+                if seg.data.count > 1 {
+                    var lo = 1
+                    var hi = seg.data.count - 1
+                    var bestK = 0
+                    while lo <= hi {
+                        let mid = (lo + hi) / 2
+                        let partialTrial = JPIPDataBin(
+                            binClass: seg.binClass,
+                            binID: seg.binID,
+                            codestreamID: seg.codestreamID,
+                            data: Data(seg.data.prefix(mid)),
+                            isComplete: false,
+                            msgOffset: seg.msgOffset,
+                            aux: seg.aux
+                        )
+                        let wireOrdinaryBytes = JPIPWireCodec.encodeStream(
+                            bins: emitted + [partialTrial],
+                            eorReason: .byteLimit
+                        ).count - 3
+                        if wireOrdinaryBytes <= maxLen {
+                            bestK = mid
+                            lo = mid + 1
+                        } else {
+                            hi = mid - 1
+                        }
+                    }
+
+                    if bestK > 0 {
+                        let partial = JPIPDataBin(
+                            binClass: seg.binClass,
+                            binID: seg.binID,
+                            codestreamID: seg.codestreamID,
+                            data: Data(seg.data.prefix(bestK)),
+                            isComplete: false,
+                            msgOffset: seg.msgOffset,
+                            aux: seg.aux
+                        )
+                        emitted.append(partial)
+                        await session.recordSentDataBin(partial)
+                    }
+                }
+
+                hitByteLimit = true
+                break
+            }
+
+            let finalReason: JPIPEORReason = hitByteLimit ? .byteLimit : completedReason
+            let wireData = JPIPWireCodec.encodeStream(bins: emitted, eorReason: finalReason)
+            return (wireData, windowGen.streamType.contentTypeHeader)
         }
-        return responseData
+
+        // Unbounded response (`len == nil`): emit all unsent segments + completion EOR
+        for seg in unsentSegments {
+            await session.recordSentDataBin(seg)
+        }
+        let wireData = JPIPWireCodec.encodeStream(bins: unsentSegments, eorReason: completedReason)
+        return (wireData, windowGen.streamType.contentTypeHeader)
+    }
+
+    /// Detects JPEG 2000 / JP3D raw codestream (`0xFF 0x4F` SOC) or ISO BMFF JP2 / JPH / JPX / MJ2
+    /// container signatures (`jP  ` signature box or `ftyp` box) so malformed/oversized codestreams
+    /// never silently fall through to raw `application/octet-stream`.
+    private static func hasJPEG2000OrContainerMagic(_ data: Data) -> Bool {
+        guard data.count >= 2 else { return false }
+        let b0 = data[data.startIndex]
+        let b1 = data[data.startIndex + 1]
+        if b0 == 0xFF && b1 == 0x4F {
+            return true
+        }
+        if data.count >= 8 {
+            let sigJP2: [UInt8] = [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20]
+            let prefix8 = Array(data.prefix(8))
+            if prefix8 == sigJP2 {
+                return true
+            }
+            if prefix8[4] == 0x66 && prefix8[5] == 0x74 && prefix8[6] == 0x79 && prefix8[7] == 0x70 {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func mergeContiguousSegmentsForModel(_ segments: [JPIPDataBin]) -> [JPIPDataBin] {
+        var merger = JPIPCacheModel(maxCacheSize: Int.max, maxEntries: Int.max)
+        for seg in segments {
+            merger.addDataBin(seg)
+        }
+        return merger.allDataBins()
     }
 
     /// Gets the current server statistics.
-    ///
-    /// - Returns: Current server statistics.
     public func getStatistics() async -> Statistics {
         var currentStats = stats
         currentStats.activeClients = sessions.count
@@ -546,44 +1301,99 @@ public actor JPIPServer {
         return currentStats
     }
 
-    /// Closes a client session.
-    ///
-    /// - Parameter sessionID: The session ID to close.
+    /// Closes a client session by channel/session ID.
     public func closeSession(_ sessionID: String) async {
         if let session = sessions.removeValue(forKey: sessionID) {
             await session.close()
+            stats.activeClients = sessions.count
+            return
+        }
+        if let match = sessions.first(where: { $0.value.sessionID == sessionID }) {
+            sessions.removeValue(forKey: match.key)
+            await match.value.close()
             stats.activeClients = sessions.count
         }
     }
 
     /// Gets the number of active sessions.
-    ///
-    /// - Returns: Number of active sessions.
     public func getActiveSessionCount() async -> Int {
         sessions.count
     }
 
     /// Gets the format information for a registered image.
-    ///
-    /// - Parameter name: The registered image name.
-    /// - Returns: The image info if available, nil otherwise.
     public func getImageInfo(name: String) -> JPIPImageInfo? {
         imageInfoCache[name]
     }
 
-    /// Computes a stable hash string for data, suitable for cache keys.
-    ///
-    /// Uses a simple FNV-1a-like hash that is stable across executions.
-    ///
-    /// - Parameter data: The data to hash.
-    /// - Returns: A hex string hash.
     private func stableHash(for data: Data) -> String {
-        var hash: UInt64 = 14695981039346656037 // FNV offset basis
+        var hash: UInt64 = 14695981039346656037
         for byte in data {
             hash ^= UInt64(byte)
-            hash &*= 1099511628211 // FNV prime
+            hash &*= 1099511628211
         }
         return String(hash, radix: 16)
+    }
+}
+
+// MARK: - Thread-Safe Worker Bridge Boxes
+
+/// Concurrency proof (`@unchecked Sendable`):
+/// Written once inside the spawned `Task` before `DispatchSemaphore.signal()` and read
+/// only after `DispatchSemaphore.wait()`, establishing a strict happens-before edge.
+private final class WireOutcomeBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var outcome: (statusCode: Int, headers: [String: String], body: Data) = (
+        500,
+        ["Content-Type": "text/plain"],
+        Data("Uninitialized".utf8)
+    )
+
+    func store(_ value: (statusCode: Int, headers: [String: String], body: Data)) {
+        lock.lock()
+        outcome = value
+        lock.unlock()
+    }
+
+    func load() -> (statusCode: Int, headers: [String: String], body: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        return outcome
+    }
+}
+
+/// Concurrency proof (`@unchecked Sendable`):
+/// Guarded by `NSLock` and synchronized via `DispatchSemaphore`.
+private final class WSUpgradeBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var delegate: JPIPWebSocketServer?
+    private(set) var connectionID: String?
+    private(set) var error: String?
+
+    func store(delegate: JPIPWebSocketServer?, connectionID: String?, error: String?) {
+        lock.lock()
+        self.delegate = delegate
+        self.connectionID = connectionID
+        self.error = error
+        lock.unlock()
+    }
+}
+
+/// Concurrency proof (`@unchecked Sendable`):
+/// Guarded by `NSLock` and synchronized via `DispatchSemaphore`.
+private final class WSFrameReplyBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reply: JPIPWebSocketFrame?
+
+    func store(_ value: JPIPWebSocketFrame?) {
+        lock.lock()
+        reply = value
+        lock.unlock()
+    }
+
+    func load() -> JPIPWebSocketFrame? {
+        lock.lock()
+        defer { lock.unlock() }
+        return reply
     }
 }
 

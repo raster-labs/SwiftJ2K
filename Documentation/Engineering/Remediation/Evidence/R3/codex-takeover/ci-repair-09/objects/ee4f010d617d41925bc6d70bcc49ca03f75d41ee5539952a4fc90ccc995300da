@@ -1,0 +1,115 @@
+{
+  "state": "CLI16_NATIVE_RECEIPTS_VERIFIED",
+  "finished_at": "2026-10-31T11:25:44.245739+00:00",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/result.json": "e8002389da976aa05edcddc8a76af604e34f4aabd9c5e3e48c5572424ddcfac5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/source-before.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/source-after.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/native.stdout": "3ebfce7cc804898ac873e350e186ee0277f95973b129754f8f7fdf0be562e239",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/native.log": "6e3cd297c0f36b94b9f61d2c62634e4d86c5f3caa16d955d14e3023a66d989d1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/command.json": "cd2afe8f2a3adb63bdf15eb613773467c166fc338f0a00b8100c76554b40750e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-16/native.stderr": "8d13865527b64b7506e0c65bc7df4ac68841c6d2c6329546be9de001355584bb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/result.json": "a308a6f78fc390baee4a1b33db4c53b3082eb7d4677dd7e1d9e49be9a5b4fd51",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/source-before.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/source-after.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/native.stdout": "9667573138222777a0ec269e4fd47f242153702aa9ad4d51bc172f2e76d8bc3c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/native.log": "9667573138222777a0ec269e4fd47f242153702aa9ad4d51bc172f2e76d8bc3c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/command.json": "a0c58537472163efb796590da4d7f33dadb953f0e6a8e468a038649ca87ca8b0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-16/native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/result.json": "705ea51bc877b265755f84b08e56d892c3f5bb753e266836bb9456f04d8e10ab",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/source-before.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/source-after.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/native.stdout": "0166a2f84a4676a7698b4d46bcea69e58a38bbfa3cd48de26d3e668dca458d95",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/native.log": "0166a2f84a4676a7698b4d46bcea69e58a38bbfa3cd48de26d3e668dca458d95",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/command.json": "f4eb1d997c06949141a55b179d50a9e29d45cdfd4b5433edccd9d63a3b527930",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-startup-16/native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16-source.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-16.json": "3ab78e83f3256ca0a2c4d6b81dc92574dda1cdcb999bcaa5f78681e5876f0cfb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-probe-16.py": "2369e7760b948f273329ef09b8f8f3a513d268edf998b70a0423e973f966839b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-native-verification-16.json": "3e3af1d1eb29c3843b554bce1f564e02738f3dc6bd944bf4e0d270b8d6ef7f1f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-integration-16/report.json": "27c815eef4ae15fd3ade2fab2ff0bf4e97266d66df3ef60fafcbbf14b618c50e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli": "27d601f7fedb0fdeebf45ff605521ac4be4322d673add2ba0bb095c54e0a7266",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2": "34447afd2dcea953f9a04f6c78764c740e2f60cbceba35f89755b59426928ceb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/report.txt": "6c2849f8f16b299130a04cfa77d6d3b29f76865a1ddb433b3f6862e3c089e9b4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/source.json": "9fd9e3d7105f8f609d0f01258acb2267a34c36b142e00975b2d6339be1b9c1ce",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/verify-native.py": "13e8bdaf213cdfb75128055e8f60ca8e865737a8741ba57daa15afed7a4f8b01",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-results-16/json.stdout": "76f7580a7d62afc5f1e7567c3d178e277c2634f64db5fc727bba0418c7f5c6bb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-results-16/results.json": "91a6cbbab5afc7d3a2cc4f7edaf38e49534c430885b10cd0eb4f31f2f92a270c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-results-16/json.stderr": "9ebb867530bcc8308bafdce0e57fa90ba4a3cabcf9b4577cc70cd941b988cf8e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-results-16/text.stderr": "9ebb867530bcc8308bafdce0e57fa90ba4a3cabcf9b4577cc70cd941b988cf8e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-startup-results-16/text.stdout": "e85fc26ff9955914fb82ceb4b27bb5688e9684f23c1b386e8dfc3337b9829685",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/native-report.txt": "1e74770a590947d205bab69c2c35f3abaec7da7919d34ecd331c216e63e77ed9"
+  },
+  "source_files": 2281,
+  "source_stable": true,
+  "runs": {
+    "candidate-release-build-16": {
+      "exit_code": 0,
+      "elapsed_seconds": 105.027026667,
+      "log_sha256": "6e3cd297c0f36b94b9f61d2c62634e4d86c5f3caa16d955d14e3023a66d989d1",
+      "raw_capture_verified": true
+    },
+    "candidate-cli-16": {
+      "exit_code": 0,
+      "elapsed_seconds": 4.739821624999999,
+      "log_sha256": "9667573138222777a0ec269e4fd47f242153702aa9ad4d51bc172f2e76d8bc3c",
+      "raw_capture_verified": true
+    },
+    "candidate-cli-startup-16": {
+      "exit_code": 0,
+      "elapsed_seconds": 0.186806416,
+      "log_sha256": "0166a2f84a4676a7698b4d46bcea69e58a38bbfa3cd48de26d3e668dca458d95",
+      "raw_capture_verified": true
+    }
+  },
+  "cli_checks": 246,
+  "binary_sha256": "27d601f7fedb0fdeebf45ff605521ac4be4322d673add2ba0bb095c54e0a7266",
+  "startup_cases": [
+    {
+      "mode": "text",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "pid": 55149,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006577832999999998,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    },
+    {
+      "mode": "json",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0",
+        "--json"
+      ],
+      "pid": 55150,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006740916999999999,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    }
+  ],
+  "native_executed_by_reviewer": false,
+  "boundary": "CLI16 only; no exact-source15 ordinary/sanitizer relabelling, Linux/macOS26 hosted acceptance or whole-R3 approval."
+}

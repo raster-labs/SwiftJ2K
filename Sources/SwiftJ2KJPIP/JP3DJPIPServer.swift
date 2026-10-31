@@ -6,25 +6,14 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JP3DJPIPServer.swift
 //
-//
-// JP3DJPIPServer.swift
-// J2KSwift
-//
 /// # JP3DJPIPServer
 ///
-/// JPIP server actor for serving JP3D volumetric data to multiple streaming clients.
+/// JPIP server actor for serving Part 10 JP3D volumetric data over real TCP HTTP/1.1
+/// and RFC 6455 WebSocket connections, as well as programmatic 3D delivery scheduling.
 ///
-/// `JP3DJPIPServer` manages volume registration, session creation/removal,
-/// precinct cache, and bandwidth-aware delivery scheduling. A shared precinct
-/// cache reduces redundant extraction work when many clients request the same tiles.
-///
-/// ## Topics
-///
-/// ### Server Actor
-/// - ``JP3DJPIPServer``
-///
-/// ### Configuration
-/// - ``JP3DServerConfiguration``
+/// `JP3DJPIPServer` manages volume registration, real TCP listener lifecycle (`JPIPServer`),
+/// session creation/removal, normative ITU-T T.808 + T.809 3D precinct data-bin extraction,
+/// shared precinct caching, and bandwidth-aware delivery scheduling.
 
 import Foundation
 @_exported import SwiftJ2K
@@ -33,19 +22,12 @@ import Foundation
 // MARK: - Server Configuration
 
 /// Configuration for the JP3D JPIP server.
-///
-/// Controls port, concurrency limits, bandwidth caps, and size limits.
-///
-/// Example:
-/// ```swift
-/// let config = JP3DServerConfiguration(port: 8080, maxSessions: 100)
-/// ```
 public struct JP3DServerConfiguration: Sendable {
-    /// TCP/WebSocket port to listen on.
+    /// TCP/WebSocket port to listen on (`0` binds an ephemeral OS-assigned port).
     public let port: Int
     /// Maximum number of concurrent streaming sessions.
     public let maxSessions: Int
-    /// Per-session bandwidth cap in bytes/sec (0 = unlimited).
+    /// Per-session bandwidth cap in bytes/sec (`0` = unlimited).
     public let perSessionBandwidthCap: Double
     /// Maximum volume size in bytes before forcing streaming-only mode.
     public let maxFullVolumeBytes: Int
@@ -53,13 +35,6 @@ public struct JP3DServerConfiguration: Sendable {
     public let maxPrecinctCacheEntries: Int
 
     /// Creates a server configuration.
-    ///
-    /// - Parameters:
-    ///   - port: Listening port.
-    ///   - maxSessions: Concurrent session limit.
-    ///   - perSessionBandwidthCap: Per-session bandwidth cap (0 = unlimited).
-    ///   - maxFullVolumeBytes: Full-volume size limit.
-    ///   - maxPrecinctCacheEntries: Shared precinct cache capacity.
     public init(
         port: Int = 8080,
         maxSessions: Int = 100,
@@ -90,19 +65,12 @@ public struct JP3DServerConfiguration: Sendable {
 
 /// Errors produced by the JP3D JPIP server.
 public enum JP3DServerError: Error, Sendable {
-    /// The server is already running.
     case alreadyRunning
-    /// The server is not running.
     case notRunning
-    /// Session limit reached.
     case sessionLimitExceeded(Int)
-    /// Unknown volume identifier.
     case unknownVolume(String)
-    /// The requested region overlaps an invalid tile.
     case invalidTile(String)
-    /// The volume is too large for a full-volume request.
     case volumeTooLarge(Int)
-    /// The frustum does not intersect the volume.
     case emptyFrustum
 }
 
@@ -153,24 +121,7 @@ public struct JP3DRegisteredVolume: Sendable {
 
 // MARK: - Server Actor
 
-/// JP3D JPIP server actor for multi-session volumetric streaming.
-///
-/// Volumes are registered once and shared across all sessions. A shared precinct
-/// cache avoids repeated extraction work. Sessions are created per client
-/// connection and removed on disconnect.
-///
-/// Edge cases handled:
-/// - Empty view frustum → immediate empty response.
-/// - Volume size > `maxFullVolumeBytes` → rejects full-volume requests.
-/// - Session count > `maxSessions` → rejects new connections.
-/// - Shared precinct cache across sessions to reduce redundant extraction.
-///
-/// Example:
-/// ```swift
-/// let server = JP3DJPIPServer(configuration: .default)
-/// try await server.registerVolume(name: "ct_scan", data: volumeData, volume: volume)
-/// try await server.start()
-/// ```
+/// JP3D JPIP server actor for multi-session volumetric streaming over HTTP/1.1 and RFC 6455 WebSocket.
 public actor JP3DJPIPServer {
     // MARK: - Configuration
 
@@ -183,39 +134,89 @@ public actor JP3DJPIPServer {
     private var sessions: [String: JP3DStreamingSession] = [:]
     private var precinctCache: [JP3DPrecinct3D: Data] = [:]
     private var requestCount: Int = 0
+    private let jpipServer: JPIPServer
+    private let dataBinGenerator = JPIPDataBinGenerator()
+
+    /// Actual bound TCP port once `start()` completes.
+    public var listeningPort: Int {
+        get async { await jpipServer.listeningPort }
+    }
 
     // MARK: - Initialiser
 
     /// Creates a JP3D JPIP server with the given configuration.
-    ///
-    /// - Parameter configuration: Server configuration.
     public init(configuration: JP3DServerConfiguration = .default) {
         self.configuration = configuration
+        let perClientBW: Int? = configuration.perSessionBandwidthCap > 0
+            ? Int(configuration.perSessionBandwidthCap)
+            : nil
+        self.jpipServer = JPIPServer(
+            port: configuration.port,
+            configuration: JPIPServer.Configuration(
+                maxClients: configuration.maxSessions,
+                perClientBandwidthLimit: perClientBW
+            )
+        )
     }
 
     // MARK: - Volume Registration
 
-    /// Registers a volume for streaming.
-    ///
-    /// - Parameters:
-    ///   - name: Unique identifier for the volume.
-    ///   - data: Compressed JP3D codestream data.
-    ///   - volume: Volume metadata.
-    /// - Throws: ``JP3DServerError/volumeTooLarge(_:)`` if data exceeds the full-volume size limit.
+    /// Registers a volume for streaming over HTTP/1.1, WebSocket, and direct schedule APIs.
     public func registerVolume(name: String, data: Data, volume: J2KVolume) async throws {
+        var effectiveData = data
+        if !JP3DJPIPIndexer.isJP3DCodestream(data),
+           data.isEmpty,
+           !volume.components.isEmpty,
+           volume.components.allSatisfy({ !$0.data.isEmpty }) {
+            let encoded = try await JP3DEncoder(configuration: .lossless).encode(volume)
+            effectiveData = encoded.data
+        }
+
         registeredVolumes[name] = JP3DRegisteredVolume(
             volumeID: name,
             volume: volume,
-            data: data
+            data: effectiveData
         )
+        await jpipServer.registerImageData(name: name, data: effectiveData)
+    }
+
+    /// Registers an on-disk `.jp3d` file for streaming.
+    public func registerVolumeFile(name: String, at url: URL) async throws {
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        let parsed = try JP3DCodestreamParser().parse(data)
+        let stubComponents = (0..<parsed.siz.componentCount).map { idx in
+            J2KVolumeComponent(
+                index: idx,
+                bitDepth: parsed.siz.bitDepth(forComponent: idx),
+                signed: parsed.siz.isSigned(forComponent: idx),
+                width: parsed.siz.width,
+                height: parsed.siz.height,
+                depth: parsed.siz.depth,
+                data: Data()
+            )
+        }
+        let metaVol = J2KVolume(
+            width: parsed.siz.width,
+            height: parsed.siz.height,
+            depth: parsed.siz.depth,
+            components: stubComponents
+        )
+        registeredVolumes[name] = JP3DRegisteredVolume(
+            volumeID: name,
+            volume: metaVol,
+            data: data,
+            tileWidth: parsed.siz.tileSizeX,
+            tileHeight: parsed.siz.tileSizeY,
+            tileDepth: parsed.siz.tileSizeZ
+        )
+        try await jpipServer.registerImage(name: name, at: url)
     }
 
     /// Removes a registered volume and invalidates related cache entries.
-    ///
-    /// - Parameter name: Volume identifier to remove.
-    public func unregisterVolume(name: String) {
+    public func unregisterVolume(name: String) async {
         registeredVolumes.removeValue(forKey: name)
-        // Invalidate any cached precincts for this volume (by convention tileX == -1 means tombstone)
+        precinctCache.removeAll()
+        await jpipServer.unregisterImage(name: name)
     }
 
     /// Returns identifiers of all registered volumes.
@@ -225,33 +226,23 @@ public actor JP3DJPIPServer {
 
     // MARK: - Lifecycle
 
-    /// Starts the server and begins accepting connections.
-    ///
-    /// - Throws: ``JP3DServerError/alreadyRunning`` if already started.
+    /// Starts the real TCP HTTP/1.1 + WebSocket listener and begins accepting connections.
     public func start() async throws {
         guard !isRunning else { throw JP3DServerError.alreadyRunning }
+        try await jpipServer.start()
         isRunning = true
     }
 
     /// Stops the server and disconnects all sessions.
-    ///
-    /// - Throws: ``JP3DServerError/notRunning`` if not started.
     public func stop() async throws {
         guard isRunning else { throw JP3DServerError.notRunning }
+        try? await jpipServer.stop()
         sessions.removeAll()
         isRunning = false
     }
 
     // MARK: - Session Management
 
-    /// Creates a new streaming session for the specified volume.
-    ///
-    /// - Parameters:
-    ///   - volumeID: Volume to stream.
-    ///   - viewport: Initial viewport.
-    /// - Returns: The newly created session identifier.
-    /// - Throws: ``JP3DServerError/sessionLimitExceeded(_:)`` if at capacity.
-    /// - Throws: ``JP3DServerError/unknownVolume(_:)`` if the volume is not registered.
     @discardableResult
     public func createSession(volumeID: String, viewport: JP3DViewport) async throws -> String {
         guard sessions.count < configuration.maxSessions else {
@@ -266,8 +257,6 @@ public actor JP3DJPIPServer {
     }
 
     /// Removes a session by identifier.
-    ///
-    /// - Parameter sessionID: The session to remove.
     public func removeSession(_ sessionID: String) {
         sessions.removeValue(forKey: sessionID)
     }
@@ -278,14 +267,6 @@ public actor JP3DJPIPServer {
     // MARK: - Request Handling
 
     /// Handles a 3D streaming request from a client session.
-    ///
-    /// - Parameters:
-    ///   - region: The requested 3D streaming region.
-    ///   - sessionID: The requesting session identifier.
-    /// - Returns: An ordered delivery schedule.
-    /// - Throws: ``JP3DServerError/unknownVolume(_:)`` if volume not found.
-    /// - Throws: ``JP3DServerError/volumeTooLarge(_:)`` for full-volume requests exceeding the size limit.
-    /// - Throws: ``JP3DServerError/emptyFrustum`` if the frustum doesn't intersect the volume.
     public func handleRequest(_ region: JP3DStreamingRegion, sessionID: String) async throws -> JP3DDeliverySchedule {
         requestCount += 1
 
@@ -296,7 +277,6 @@ public actor JP3DJPIPServer {
             throw JP3DServerError.unknownVolume(session.volumeID)
         }
 
-        // Edge case: empty frustum check
         if let frustum = session.viewport.frustum {
             let vol = registered.volume
             if !frustum.intersects(xRange: 0..<vol.width, yRange: 0..<vol.height, zRange: 0..<vol.depth) {
@@ -304,7 +284,6 @@ public actor JP3DJPIPServer {
             }
         }
 
-        // Edge case: reject full-volume requests on very large volumes
         let isFullVolume = region.xRange == (0..<registered.volume.width)
             && region.yRange == (0..<registered.volume.height)
             && region.zRange == (0..<registered.volume.depth)
@@ -312,7 +291,6 @@ public actor JP3DJPIPServer {
             throw JP3DServerError.volumeTooLarge(registered.byteCount)
         }
 
-        // Intersect requested region with actual volume
         let vol = registered.volume
         let xRange = max(region.xRange.lowerBound, 0)..<min(region.xRange.upperBound, vol.width)
         let yRange = max(region.yRange.lowerBound, 0)..<min(region.yRange.upperBound, vol.height)
@@ -322,7 +300,6 @@ public actor JP3DJPIPServer {
             return JP3DDeliverySchedule(bins: [], estimatedSeconds: 0, hasMore: false)
         }
 
-        // Update session activity
         session.lastActivity = Date()
         sessions[sessionID] = session
 
@@ -344,13 +321,9 @@ public actor JP3DJPIPServer {
 
     // MARK: - Prefetching
 
-    /// Prefetches precincts adjacent to the current viewport to reduce latency.
-    ///
-    /// - Parameter sessionID: The session whose viewport determines prefetch region.
     public func prefetch(sessionID: String) async {
         guard let session = sessions[sessionID],
               let registered = registeredVolumes[session.volumeID] else { return }
-        // Expand viewport by one tile in each direction
         let vp = session.viewport
         let vol = registered.volume
         let xLo = max(0, vp.xRange.lowerBound - registered.tileWidth)
@@ -374,7 +347,6 @@ public actor JP3DJPIPServer {
 
     // MARK: - Cache Statistics
 
-    /// Number of entries in the shared precinct cache.
     public var precinctCacheSize: Int { precinctCache.count }
 
     // MARK: - Private Helpers
@@ -384,15 +356,90 @@ public actor JP3DJPIPServer {
         xRange: Range<Int>, yRange: Range<Int>, zRange: Range<Int>,
         qualityLayer: Int, resolutionLevel: Int
     ) -> [JP3DDataBin] {
+        if JP3DJPIPIndexer.isJP3DCodestream(registered.data) {
+            var req = JPIPRequest(target: registered.volumeID)
+            if let dims = JPIPRequest.extract3DCodestreamDimensions(fromMainHeader: registered.data) {
+                let frame = JPIPRequest.frameDimensions3D(
+                    fullWidth: dims.width,
+                    fullHeight: dims.height,
+                    fullDepth: dims.depth,
+                    levelsX: dims.levelsX,
+                    levelsY: dims.levelsY,
+                    levelsZ: dims.levelsZ,
+                    resolutionLevel: resolutionLevel
+                )
+                let fx = frame[0], fy = frame[1], fz = frame[2]
+                req.fvsiz = frame
+                req.fvsizRoundDirection = "closest"
+                let ox = (xRange.lowerBound * fx) / max(1, dims.width)
+                let oy = (yRange.lowerBound * fy) / max(1, dims.height)
+                let oz = (zRange.lowerBound * fz) / max(1, dims.depth)
+                let endX = max(ox + 1, (xRange.upperBound * fx + max(1, dims.width) - 1) / max(1, dims.width))
+                let endY = max(oy + 1, (yRange.upperBound * fy + max(1, dims.height) - 1) / max(1, dims.height))
+                let endZ = max(oz + 1, (zRange.upperBound * fz + max(1, dims.depth) - 1) / max(1, dims.depth))
+                req.rvoff = [ox, oy, oz]
+                req.rvsiz = [
+                    max(1, min(fx, endX) - ox),
+                    max(1, min(fy, endY) - oy),
+                    max(1, min(fz, endZ) - oz)
+                ]
+            } else {
+                req.rvoff = [xRange.lowerBound, yRange.lowerBound, zRange.lowerBound]
+                req.rvsiz = [xRange.count, yRange.count, zRange.count]
+            }
+            if qualityLayer > 0 { req.layers = qualityLayer }
+            req.streamType = .jppStream
+
+            if let generated = try? dataBinGenerator.generateWireDataBins(
+                from: registered.data,
+                request: req,
+                defaultStreamType: .jppStream
+            ) {
+                var out: [JP3DDataBin] = []
+                out.reserveCapacity(generated.bins.count)
+                for (idx, wBin) in generated.bins.enumerated() {
+                    let key = JP3DPrecinct3D(
+                        tileX: wBin.binClass.rawValue,
+                        tileY: 0,
+                        tileZ: zRange.lowerBound,
+                        resolutionLevel: resolutionLevel,
+                        subband: 0,
+                        precinctIndex: wBin.binID
+                    )
+                    let payload: Data
+                    if let cached = precinctCache[key], qualityLayer == 0 {
+                        payload = cached
+                    } else {
+                        payload = wBin.data
+                        if qualityLayer == 0 && precinctCache.count < configuration.maxPrecinctCacheEntries {
+                            precinctCache[key] = payload
+                        }
+                    }
+                    out.append(JP3DDataBin(
+                        binID: wBin.binID,
+                        tileX: 0,
+                        tileY: 0,
+                        tileZ: zRange.lowerBound,
+                        resolutionLevel: resolutionLevel,
+                        qualityLayer: qualityLayer,
+                        data: payload,
+                        isComplete: wBin.isComplete && (idx == generated.bins.count - 1)
+                    ))
+                }
+                return out
+            }
+        }
+
+        // Deterministic byte-range fallback for non-codestream unit-test fixture blobs.
         var bins: [JP3DDataBin] = []
         var binID = 0
 
         let txStart = xRange.lowerBound / registered.tileWidth
-        let txEnd   = (xRange.upperBound - 1) / registered.tileWidth
+        let txEnd = (xRange.upperBound - 1) / registered.tileWidth
         let tyStart = yRange.lowerBound / registered.tileHeight
-        let tyEnd   = (yRange.upperBound - 1) / registered.tileHeight
+        let tyEnd = (yRange.upperBound - 1) / registered.tileHeight
         let tzStart = zRange.lowerBound / registered.tileDepth
-        let tzEnd   = (zRange.upperBound - 1) / registered.tileDepth
+        let tzEnd = (zRange.upperBound - 1) / registered.tileDepth
 
         for tz in tzStart...tzEnd {
             for ty in tyStart...tyEnd {
@@ -407,11 +454,10 @@ public actor JP3DJPIPServer {
                     if let cached = precinctCache[key] {
                         data = cached
                     } else {
-                        // Extract a representative slice of the codestream
                         let offset = (tz * registered.tilesY * registered.tilesX + ty * registered.tilesX + tx) * 64
                         let safeOffset = min(offset, max(0, registered.data.count - 64))
                         let end = min(safeOffset + 64, registered.data.count)
-                        data = safeOffset < end ? registered.data[safeOffset..<end] : Data(repeating: 0, count: 64)
+                        data = safeOffset < end ? Data(registered.data[safeOffset..<end]) : Data()
                         if precinctCache.count < configuration.maxPrecinctCacheEntries {
                             precinctCache[key] = data
                         }

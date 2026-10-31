@@ -1,0 +1,8 @@
+{
+  "observed_at": "2026-10-31T07:41:40.252698+00:00",
+  "current_tool_shell_SWIFTJ2K_TEST_CLI_PATH": null,
+  "coordinator_attestation": "candidate-full-05 invocation supplied no CLI override; the new variable was not configured by this task. The original wrapper did not record its inherited value at start.",
+  "built_cli": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-05/arm64-apple-macosx/debug/swiftj2k-cli",
+  "binary_sha256": "8e35e9628e3ee2705f543483683c4c317f012bbac4e8638f6c4907fc454e1c06",
+  "binding": "Fresh candidate-build-05 link log plus active-build resolver source; no observed child argv trace claimed."
+}

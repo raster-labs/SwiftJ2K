@@ -1,0 +1,44 @@
+{
+  "scope": "Independent frozen14 source audit plus separately scoped sampled13 evidence; no native by reviewer",
+  "source_root": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14",
+  "manifest_sha256": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+  "verified_inputs_before_after": 1857,
+  "changed_inputs": [],
+  "delta_vs10": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "before": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+      "after": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "before": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+      "after": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+      "before": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+      "after": "af479ff104df41184d0d40998f12bc87464ba5cf1459187b642ed9473b8a7034"
+    },
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+      "before": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+      "after": "20936f356b36f11c1249b686973dc35b2e26cd456307b12a9c9363f11badce46"
+    }
+  },
+  "normalisation_checks": {
+    "policy_normalises_to10": true,
+    "fixture_normalises_to_proof13": true,
+    "proof13_matches_snapshot14_after_fixture_normalisation": true
+  },
+  "source_before_sha256": "c36df2bdc56a55db166f342beca77ef69601a8b772c7cdfd6a9892d6c187eb95",
+  "proof13_source_before_sha256": "bb9af51b945e32f69317a490ff9b327276b7f6e360f559b5e8045b228da7c6bb",
+  "author_receipts": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-delegate-policy-14/source.json": "c264fbe9a6979cac6a15effe044a5094eb14b10bf78a8b9358d52e8b6e308e25",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/tcp-peer-lifetime-14/source.json": "e55e756d8b9d094908d0869ee6e132e48cea1a1fd20d8d195a6a13ad7b9db6a7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-test-proof-fixes-13/source.json": "ff4dd2dadeb7f90ba41ef73ede1004b802632706ef781652beed7115ff26a2a4"
+  },
+  "report_sha256": "937df492fbc0d392a87b175d92e4e8cd383ac4de8e640addee9bea8bce28e2b5",
+  "sampled13_report_sha256": "a2c60a1db9b28ddaa38c0564d8f32934b0ea09f7e65e00f7ed1c44acf99e2f3e",
+  "sampled13_analysis_sha256": "27d0036ccf72b115d66c55b1bf96dc15564bf33206bcbca2737edb703ff44ced",
+  "queue_probe_identity_sha256": "3c49f5c9207c8bf60e429747925d0263f7eb8d7e5b14724919a758fc81d6567d",
+  "queue_probe_inputs_verified": 23,
+  "native14_scope": "Not incorporated; ordinary and sanitizer gates pending independent native reconciliation",
+  "acceptance": "Source closure only for two test-proof defects and fixture mismatch; QoS policy hypothesis awaiting validation; no whole-R3 acceptance"
+}

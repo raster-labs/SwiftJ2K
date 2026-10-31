@@ -1,0 +1,98 @@
+{
+  "reviewed_at": "2026-10-31T09:59:50.184746+00:00",
+  "status": "DIAGNOSTIC_NO_UNIQUE_CAUSE_ESTABLISHED",
+  "source_root": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10",
+  "source_manifest_sha256": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+  "files_before": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49",
+    "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift": "2ac924fb6acb4be2b590f22e09b9c01ce7a3fc5c1310e55459322a9278e008d2",
+    "Tests/SwiftJ2KTests/OwnershipTests.swift": "a6e49c9357eecf823a58685df79a7f047bb820ec343a9af1da49b6e2e2c8c234",
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450",
+    "Tests/SwiftJ2KTests/AccelerationTests.swift": "1ea870fe514670faca4b1f76ff34a3cb4aa093d6e55df40c841f5a8e3f6ee23a",
+    "Sources/SwiftJ2K/CodecAPI.swift": "747823cc2a829b64928133c63c44c8b598b209896a7c0a2f035292d1550705bd",
+    "Sources/SwiftJ2K/Acceleration/MetalAcceleration.swift": "b5c8f406e873a74cb5ce1abc12dff71f2fed4af3dcb932df5b8520a202e1a593",
+    "Sources/SwiftJ2K3D/JP3DEncoder.swift": "84015a2413b44e01002dc46a20acf2dd3ffcd4893c2607f9747c76efd9fd11b2",
+    "Sources/SwiftJ2K3D/JP3DDecoder.swift": "2f37df932a1d8315fc92af3f429031668be743a6f111b9055b6578af7b0d0614",
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d"
+  },
+  "files_after": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49",
+    "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift": "2ac924fb6acb4be2b590f22e09b9c01ce7a3fc5c1310e55459322a9278e008d2",
+    "Tests/SwiftJ2KTests/OwnershipTests.swift": "a6e49c9357eecf823a58685df79a7f047bb820ec343a9af1da49b6e2e2c8c234",
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450",
+    "Tests/SwiftJ2KTests/AccelerationTests.swift": "1ea870fe514670faca4b1f76ff34a3cb4aa093d6e55df40c841f5a8e3f6ee23a",
+    "Sources/SwiftJ2K/CodecAPI.swift": "747823cc2a829b64928133c63c44c8b598b209896a7c0a2f035292d1550705bd",
+    "Sources/SwiftJ2K/Acceleration/MetalAcceleration.swift": "b5c8f406e873a74cb5ce1abc12dff71f2fed4af3dcb932df5b8520a202e1a593",
+    "Sources/SwiftJ2K3D/JP3DEncoder.swift": "84015a2413b44e01002dc46a20acf2dd3ffcd4893c2607f9747c76efd9fd11b2",
+    "Sources/SwiftJ2K3D/JP3DDecoder.swift": "2f37df932a1d8315fc92af3f429031668be743a6f111b9055b6578af7b0d0614",
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d"
+  },
+  "stable": true,
+  "source_08_equalities": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": true,
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": true,
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": true,
+    "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift": true,
+    "Tests/SwiftJ2KTests/OwnershipTests.swift": true,
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": true,
+    "Tests/SwiftJ2KTests/AccelerationTests.swift": true,
+    "Sources/SwiftJ2K/CodecAPI.swift": true,
+    "Sources/SwiftJ2K/Acceleration/MetalAcceleration.swift": true,
+    "Sources/SwiftJ2K3D/JP3DEncoder.swift": true,
+    "Sources/SwiftJ2K3D/JP3DDecoder.swift": true
+  },
+  "evidence_runs": {
+    "candidate-full-10": {
+      "exit_code": 1,
+      "elapsed_seconds": 86.982176167,
+      "files": {
+        "command.json": "7842d70a29ecabd6e934d2cc04b03beb16eedce8719714aba598b19e4a15f0f4",
+        "result.json": "bd8f62abb5d926445c9a2d026f81e3bd70922060accf422626a9c589d367ce56",
+        "native.log": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49",
+        "native.stdout": "2b90420162de22acd8eb4e1f44e39f4e464e8ff67f8e2f48f689aa407c80b941",
+        "native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+        "report-swift-testing.xml": "e7e3feb0de900434bf4211d976fb7ccdec66ec6e843c17bdb8b2e3072c463364",
+        "source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+        "source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2"
+      }
+    },
+    "candidate-full-08": {
+      "exit_code": 0,
+      "elapsed_seconds": 89.128325458,
+      "files": {
+        "command.json": "f3906953e2868be8096f0e38cd730506be9045cdf8670b827eaea2a3ccf49f34",
+        "result.json": "f58a79284d95c7e6c7f40322cdfb67ab7c80383ff9a874bd72bf586343d3d737",
+        "native.log": "3e05e9a7bcfcc2206e73e8a73da251da6fa2deadf35c4fab291ab499d3323d18",
+        "native.stdout": "0cf2b8048aa3f77a45a59651ad19943171fa486806e9b0455b4207e6f07b1c2f",
+        "native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+        "report-swift-testing.xml": "14ab3ffb24dcfae980743cf9159698b291e8a0ad8843655c10ae0a9742fabb80",
+        "source-before.json": "cfcab1859d72772ec18d4ecb64179313f34f60880222c9781224511b6226c7dc",
+        "source-after.json": "cfcab1859d72772ec18d4ecb64179313f34f60880222c9781224511b6226c7dc"
+      }
+    },
+    "candidate-focused-10": {
+      "exit_code": 0,
+      "elapsed_seconds": 37.381140083,
+      "files": {
+        "command.json": "2fe9b79f1d612c8c3aa7fdfc620a4d698d5958f18eedf2433caeb6024375266f",
+        "result.json": "d08d8d1f9cb1fa339a6d97dab37508ffa0ce19a338cf7f015c04bb66f691d27c",
+        "native.log": "ac79764cabad3108a36308610ca4dd56ea2bd79bbe84c8706656f760a5c7aead",
+        "native.stdout": "1d6484bde2981d192a32ef0275c780a066e9f8d30ffc9a462b33cd0a61568a3a",
+        "native.stderr": "1389bf334a467787ebc47220f9fc77385a521344bcb0ed346863fa7b52549139",
+        "report-swift-testing.xml": "bf3cca4a29ee5d8c20562960b2b46d2eb689ff139b63eefabcbff5206d933192",
+        "source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+        "source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2"
+      }
+    }
+  },
+  "report_sha256": "314b0b4417aaed0f5f666d30de8faf0a7e9d835f13c45de3edf45fb934b7fb22",
+  "native_executed": false,
+  "repository_written": false,
+  "acceptance_granted": false
+}

@@ -1,0 +1,298 @@
+--- frozen10/Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift
++++ main/Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift
+@@ -7,12 +7,13 @@
+     private var counts: [JPIPTransportLifecycleEvent: Int] = [:]
+     private var gated: Set<JPIPTransportLifecycleEvent>
+     private var held: [JPIPTransportLifecycleEvent: CheckedContinuation<Void, Never>] = [:]
+-    private var arrivals: [JPIPTransportLifecycleEvent: [(Int, CheckedContinuation<Void, Never>)]] = [:]
+-    private var aborted = false
++    private var arrivals: [JPIPTransportLifecycleEvent: [(Int, CheckedContinuation<Void, any Error>)]] = [:]
++    private var abortError: (any Error)?
+ 
+     init(gatingFirst events: Set<JPIPTransportLifecycleEvent> = []) { gated = events }
+ 
+     func observe(_ event: JPIPTransportLifecycleEvent, _ id: UUID) async {
++        guard abortError == nil else { return }
+         counts[event, default: 0] += 1
+         let count = counts[event, default: 0]
+         let ready = arrivals[event, default: []].filter { $0.0 <= count }
+@@ -23,9 +24,16 @@
+         }
+     }
+ 
+-    func wait(_ event: JPIPTransportLifecycleEvent, count: Int = 1) async {
+-        if aborted || counts[event, default: 0] >= count { return }
+-        await withCheckedContinuation { arrivals[event, default: []].append((count, $0)) }
++    func wait(_ event: JPIPTransportLifecycleEvent, count: Int = 1,
++              onWaiting: (@Sendable () -> Void)? = nil) async throws {
++        if let abortError { throw abortError }
++        if counts[event, default: 0] >= count { return }
++        try await withCheckedThrowingContinuation { continuation in
++            arrivals[event, default: []].append((count, continuation))
++            // A nonblocking test observation proves a waiter is installed before
++            // injecting startup failure; production lifecycle callbacks do not use it.
++            onWaiting?()
++        }
+     }
+     func count(_ event: JPIPTransportLifecycleEvent) -> Int { counts[event, default: 0] }
+     func release(_ event: JPIPTransportLifecycleEvent) { held.removeValue(forKey: event)?.resume() }
+@@ -35,11 +43,13 @@
+         catch {
+             // Unexpected startup failures must fail the owning test, not leave
+             // it waiting forever for a lifecycle event that can no longer occur.
+-            aborted = true
++            if abortError == nil { abortError = error }
+             gated.removeAll()
+-            let waiting = arrivals.values.flatMap { $0.map { $0.1 } } + Array(held.values)
++            let waiting = arrivals.values.flatMap { $0.map { $0.1 } }
++            let releasing = Array(held.values)
+             arrivals.removeAll(); held.removeAll()
+-            for waiter in waiting { waiter.resume() }
++            for waiter in waiting { waiter.resume(throwing: abortError ?? error) }
++            for waiter in releasing { waiter.resume() }
+             throw error
+         }
+     }
+--- frozen10/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
++++ main/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+@@ -152,9 +152,17 @@
+             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
+                 deadline: .now.advanced(by: .seconds(2)))
+             Issue.record("Expected delegated response admission denial")
+-        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }
+-        #expect(!operation.hasActiveOwners)
++        } catch let error as CodecError {
++            #expect(error.category == .resourceLimitExceeded)
++            let expected = declared
++                ? "JPIP HTTPS Content-Length (9 bytes) exceeds limit (8 bytes)."
++                : "JPIP HTTPS response payload exceeds limit (8 bytes)."
++            #expect(error.message == expected)
++        }
++        #expect(!operation.hasActiveOwners)
++        #expect(scenario.request != nil)
+         if declared { #expect(scenario.deliveredChunks == 0) }
++        else { #expect(scenario.deliveredChunks == 2) }
+     }
+ 
+     @Test func absoluteDeadlineCancelsSilentResponse() async throws {
+@@ -371,7 +379,15 @@
+         delegateQueue.isSuspended = true
+         let first = Task { await transport.close() }
+         let second = Task { await transport.close() }
+-        await probe.wait(.closeJoining, count: 2)
++        do { try await probe.wait(.closeJoining, count: 2) }
++        catch {
++            delegateQueue.isSuspended = false
++            request.cancel()
++            await first.value; await second.value
++            _ = try? await request.value
++            await transport.close()
++            throw error
++        }
+         let before = await transport.requestOwnershipSnapshot
+         let joined = await probe.count(.closeJoined)
+         #expect(before.registered == 1)
+@@ -399,18 +415,26 @@
+                     deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             }
+         }
+-        await probe.wait(.registered)
+-        await transport.close()
+-        await transport.close()
+-        let joined = await transport.requestOwnershipSnapshot
+-        #expect(joined.registered == 1) // Sender is still held; duplicate close can find it.
+-        #expect(joined.unfinished == 0)
+-        #expect(scenario.request == nil)
+-        await probe.release(.registered)
+-        await #expect(throws: CancellationError.self) { _ = try await request.value }
+-        #expect(scenario.request == nil)
+-        let finished = await transport.requestOwnershipSnapshot
+-        #expect(finished.registered == 0)
++        do {
++            try await probe.wait(.registered)
++            await transport.close()
++            await transport.close()
++            let joined = await transport.requestOwnershipSnapshot
++            #expect(joined.registered == 1) // Sender is still held; duplicate close can find it.
++            #expect(joined.unfinished == 0)
++            #expect(scenario.request == nil)
++            await probe.release(.registered)
++            await #expect(throws: CancellationError.self) { _ = try await request.value }
++            #expect(scenario.request == nil)
++            let finished = await transport.requestOwnershipSnapshot
++            #expect(finished.registered == 0)
++        } catch {
++            await probe.release(.registered)
++            request.cancel()
++            _ = try? await request.value
++            await transport.close()
++            throw error
++        }
+     }
+ 
+     @Test func oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() async throws {
+@@ -427,28 +451,30 @@
+                     deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             }
+         }
+-        await probe.wait(.beforePublication)
+-        let closing = Task { await transport.close() }
+-        await probe.wait(.closeJoining)
+-        let fresh = HTTPSHarnessScenario(mode: .complete,
+-            headers: ["JPIP-cnew": "cid=fresh,path=/fresh"], chunks: [Data([2])])
+-        HTTPSHarnessProtocol.replace(fixture.url, with: fresh)
+-        do {
++        var closing: Task<Void, Never>?
++        do {
++            try await probe.wait(.beforePublication)
++            closing = Task { await transport.close() }
++            try await probe.wait(.closeJoining)
++            let fresh = HTTPSHarnessScenario(mode: .complete,
++                headers: ["JPIP-cnew": "cid=fresh,path=/fresh"], chunks: [Data([2])])
++            HTTPSHarnessProtocol.replace(fixture.url, with: fresh)
+             let replacement = try await transport.send(JPIPRequest(target: "fresh"), maxBodyBytes: 8,
+                 deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             #expect(replacement.channelID == "fresh")
+             await probe.release(.beforePublication)
+             await #expect(throws: CancellationError.self) { _ = try await original.value }
+             await probe.release(.closeJoining)
+-            await closing.value
++            await closing?.value
+             let path = await transport.getChannelPath()
+             let ownership = await transport.requestOwnershipSnapshot
+             #expect(path == "/fresh")
+             #expect(ownership.registered == 0)
+         } catch {
+             await probe.release(.beforePublication); await probe.release(.closeJoining)
++            original.cancel()
+             _ = try? await original.value
+-            await closing.value
++            await closing?.value
+             await transport.close()
+             throw error
+         }
+--- frozen10/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
++++ main/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
+@@ -6,6 +6,37 @@
+ 
+ @Suite("R3 captured HTTP request close lifecycle")
+ struct CodexR3TransportCloseTests {
++    private enum ProbeFailure: Error, Equatable { case startup, later }
++
++    @Test func lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() async throws {
++        let probe = TransportLifecycleProbe(gatingFirst: [.beforePublication])
++        let held = Task { await probe.observe(.beforePublication, UUID()) }
++        try await probe.wait(.beforePublication)
++        let installed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
++        let pending = Task {
++            try await probe.wait(.registered, onWaiting: {
++                installed.continuation.yield(())
++                installed.continuation.finish()
++            })
++        }
++        for await _ in installed.stream { break }
++        await #expect(throws: ProbeFailure.startup) {
++            let _: Void = try await probe.track { throw ProbeFailure.startup }
++        }
++        // Abort wakes a waiter with the recorded error and releases the held
++        // observer without fabricating the .registered arrival it awaited.
++        await held.value
++        await #expect(throws: ProbeFailure.startup) { try await pending.value }
++        let registered = await probe.count(.registered)
++        #expect(registered == 0)
++        await #expect(throws: ProbeFailure.startup) { try await probe.wait(.registered) }
++        await #expect(throws: ProbeFailure.startup) { try await probe.wait(.beforePublication) }
++        await #expect(throws: ProbeFailure.later) {
++            let _: Void = try await probe.track { throw ProbeFailure.later }
++        }
++        await #expect(throws: ProbeFailure.startup) { try await probe.wait(.registered) }
++    }
++
+     @Test func publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() async throws {
+         let peer = try TransportClosePeer()
+         defer { peer.close() }
+@@ -55,7 +86,14 @@
+             #expect(peer.acceptedCount == (mode == "retry" ? 2 : 1))
+             let first = Task { await transport.close() }
+             let second = Task { await transport.close() }
+-            await probe.wait(.closeJoining, count: 2)
++            do { try await probe.wait(.closeJoining, count: 2) }
++            catch {
++                gate.release()
++                request.cancel()
++                await first.value; await second.value
++                _ = try? await request.value
++                throw error
++            }
+             await gate.waitUntilHeld()
+             let ownership = await transport.requestOwnershipSnapshot
+             let joined = await probe.count(.closeJoined)
+@@ -90,15 +128,24 @@
+                     deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             }
+         }
+-        await probe.wait(.registered)
+-        await transport.close(); await transport.close()
+-        let before = await transport.requestOwnershipSnapshot
+-        #expect(before.registered == 1)
+-        #expect(before.unfinished == 0)
+-        #expect(peer.acceptedCount == 0)
+-        await probe.release(.registered)
+-        await #expect(throws: CancellationError.self) { _ = try await request.value }
+-        #expect(peer.acceptedCount == 0)
++        do {
++            try await probe.wait(.registered)
++            await transport.close(); await transport.close()
++            let before = await transport.requestOwnershipSnapshot
++            #expect(before.registered == 1)
++            #expect(before.unfinished == 0)
++            #expect(peer.acceptedCount == 0)
++            await probe.release(.registered)
++            await #expect(throws: CancellationError.self) { _ = try await request.value }
++            #expect(peer.acceptedCount == 0)
++        } catch {
++            await probe.release(.registered)
++            request.cancel()
++            _ = try? await request.value
++            await transport.close()
++            peer.close(); await peer.waitForCompletion()
++            throw error
++        }
+         peer.close(); await peer.waitForCompletion()
+     }
+ 
+@@ -114,10 +161,11 @@
+                     deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             }
+         }
+-        await probe.wait(.beforePublication)
+-        let closing = Task { await transport.close() }
+-        await probe.wait(.closeJoining)
++        var closing: Task<Void, Never>?
+         do {
++            try await probe.wait(.beforePublication)
++            closing = Task { await transport.close() }
++            try await probe.wait(.closeJoining)
+             let fresh = try await transport.send(JPIPRequest(target: "fresh"), maxBodyBytes: 8,
+                 deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+             #expect(fresh.channelID == "fresh")
+@@ -125,7 +173,7 @@
+             await probe.release(.beforePublication)
+             await #expect(throws: CancellationError.self) { _ = try await original.value }
+             await probe.release(.closeJoining)
+-            await closing.value
++            await closing?.value
+             let path = await transport.getChannelPath()
+             #expect(path == "/fresh")
+             // This request must reuse the replacement connection: old cleanup
+@@ -135,8 +183,9 @@
+             #expect(peer.acceptedCount == 2)
+         } catch {
+             await probe.release(.beforePublication); await probe.release(.closeJoining)
++            original.cancel()
+             _ = try? await original.value
+-            await closing.value
++            await closing?.value
+             await transport.close()
+             peer.close(); await peer.waitForCompletion()
+             throw error

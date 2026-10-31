@@ -1,0 +1,35 @@
+{
+  "started_at": "2026-10-31T08:06:32.944649+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-07",
+  "command": [
+    "swift",
+    "test",
+    "--scratch-path",
+    "../candidate-build-07",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--skip-build",
+    "--xunit-output",
+    "../validation/candidate-full-07/report.xml"
+  ],
+  "wrapper_sha256": "3047a8f917484f6b83b223bb720d818f2c459fd0cd0b6eb8b6cf9b5ae0d3c465",
+  "test_environment": {
+    "SWIFTJ2K_TEST_CLI_PATH": null,
+    "ASAN_OPTIONS": null,
+    "TSAN_OPTIONS": null
+  },
+  "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1348,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n",
+  "spawned_pid": 34241
+}

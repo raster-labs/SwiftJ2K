@@ -131,26 +131,43 @@ struct ByteWriter: CodestreamByteSink {
 
 /// Packet-header bit reader (ISO/IEC 15444-1 B.10.1). Bits are consumed MSB
 /// first; after a 0xFF byte the next byte carries only seven data bits.
-struct PacketBitReader {
-    private let bytes: [UInt8]
+package struct PacketBitReader {
+    private enum Backing {
+        case array([UInt8])
+        case data(Data, base: Data.Index)
+    }
+
+    private let backing: Backing
     private let end: Int
-    private(set) var position: Int
+    package private(set) var position: Int
     private var current: UInt8 = 0
     private var bitsLeft = 0
     private var previousWasFF = false
 
-    init(bytes: [UInt8], start: Int, end: Int) {
-        self.bytes = bytes
+    package init(bytes: [UInt8], start: Int, end: Int) {
+        self.backing = .array(bytes)
         self.position = start
         self.end = end
     }
 
-    mutating func readBit() throws -> Bool {
+    package init(data: Data, start: Int, end: Int) {
+        self.backing = .data(data, base: data.startIndex)
+        self.position = start
+        self.end = end
+    }
+
+    package mutating func readBit() throws -> Bool {
         if bitsLeft == 0 {
             guard position < end else {
                 throw CodecError(.malformedInput, "Packet header ends before its last field.")
             }
-            let byte = bytes[position]
+            let byte: UInt8
+            switch backing {
+            case .array(let bytes):
+                byte = bytes[position]
+            case .data(let data, let base):
+                byte = data[base + position]
+            }
             position += 1
             bitsLeft = previousWasFF ? 7 : 8
             previousWasFF = byte == 0xFF
@@ -160,7 +177,7 @@ struct PacketBitReader {
         return (current >> UInt8(bitsLeft)) & 1 == 1
     }
 
-    mutating func readBits(_ count: Int) throws -> Int {
+    package mutating func readBits(_ count: Int) throws -> Int {
         guard count >= 0, count <= 31 else {
             throw CodecError(.malformedInput, "Packet header field width \(count) is not representable.")
         }
@@ -171,7 +188,7 @@ struct PacketBitReader {
 
     /// Discards the remaining bits of the current byte. If the last byte read
     /// was 0xFF, the single stuffed byte that follows it is consumed too.
-    mutating func alignToByte() throws {
+    package mutating func alignToByte() throws {
         bitsLeft = 0
         if previousWasFF {
             guard position < end else {
@@ -184,26 +201,63 @@ struct PacketBitReader {
 }
 
 /// Packet-header bit writer, the inverse of `PacketBitReader`.
-struct PacketBitWriter {
-    private(set) var bytes: [UInt8] = []
+package struct PacketBitWriter {
+    package private(set) var bytes: [UInt8] = []
     private var current: UInt8 = 0
     private var bitsUsed = 0
     private var limit = 8
+    private let budget: EntropyOutputBudget?
+    private var reservedScratchBytes = 0
+    package private(set) var allocationRejected = false
 
-    mutating func writeBit(_ bit: Bool) {
+    package init(budget: EntropyOutputBudget? = nil) {
+        self.budget = budget
+    }
+
+    /// Releases the header's staging storage before returning its scratch allowance.
+    /// A caller retaining `finish()`'s array must drop that value first.
+    package mutating func releaseScratch() {
+        bytes = []
+        if reservedScratchBytes > 0 {
+            budget?.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "packet-header-scratch")
+            reservedScratchBytes = 0
+        }
+    }
+
+    private mutating func appendAdmitted(_ byte: UInt8) {
+        guard !allocationRejected else { return }
+        if let budget, bytes.count == reservedScratchBytes {
+            let (next, overflow) = reservedScratchBytes.addingReportingOverflow(64)
+            guard !overflow else { allocationRejected = true; return }
+            do {
+                // Retain the old buffer during a possible reserveCapacity reallocation.
+                try budget.reserve(next, countsTowardCompressedOutput: false, site: "packet-header-grow")
+                budget.recordActualAllocation(next, site: "packet-header-grow")
+                bytes.reserveCapacity(next)
+                budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "packet-header-replaced")
+                reservedScratchBytes = next
+            } catch {
+                allocationRejected = true
+                return
+            }
+        }
+        bytes.append(byte)
+    }
+
+    package mutating func writeBit(_ bit: Bool) {
         if bit { current |= 1 << UInt8(limit - 1 - bitsUsed) }
         bitsUsed += 1
         if bitsUsed == limit { emit() }
     }
 
-    mutating func writeBits(_ value: Int, count: Int) {
+    package mutating func writeBits(_ value: Int, count: Int) {
         for shift in stride(from: count - 1, through: 0, by: -1) {
             writeBit((value >> shift) & 1 == 1)
         }
     }
 
     private mutating func emit() {
-        bytes.append(current)
+        appendAdmitted(current)
         limit = current == 0xFF ? 7 : 8
         current = 0
         bitsUsed = 0
@@ -211,10 +265,10 @@ struct PacketBitWriter {
 
     /// Flushes the partial byte. A trailing 0xFF is followed by one stuffed
     /// byte so that a reader cannot mistake the tail for a marker.
-    mutating func finish() -> [UInt8] {
+    package mutating func finish() -> [UInt8] {
         if bitsUsed > 0 { emit() }
         if limit == 7 {
-            bytes.append(0)
+            appendAdmitted(0)
             limit = 8
         }
         return bytes

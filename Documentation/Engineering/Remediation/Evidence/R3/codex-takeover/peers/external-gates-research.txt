@@ -1,0 +1,239 @@
+R3 external-peer capability investigation — 31 October 2026
+
+Scope: capability research plus explicitly authorized test-only harness and
+CPF-helper correction described below. No codec/native executables, builds,
+tests, servers, package installation or credential operations were performed.
+Research used local text/binary inspection, hashes and primary-source lookups.
+This is not acceptance evidence for the current unfinished source.
+
+Decision boundary
+-----------------
+No capable, available direct peer was identified for combined Part 10+15,
+Part 10 3D JPIP, or this repository's WebSocket JPIP extension. These three
+gates remain UNEXECUTED / UNWAIVED. This is a bounded search result, not proof
+that nobody implements these capabilities. Independent HT refinement and
+narrow Part 2 synthesis checks have candidate routes described below. Parent
+subsequently found only cleanup plus placeholder passes in the selected Kakadu
+multilayer candidates, and the direct Part2 limb attempt crashed in Kakadu.
+The current bounded follow-up is work/ht-refinement-fixture-plan.txt; no route
+here retires the direct peer gates or establishes successful Part2 execution.
+
+Local peers independently located and SHA-256 checked
+----------------------------------------------------
+/usr/local/bin/kdu_expand -> /Library/Kakadu/8.4.1/bin/kdu_expand
+  a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8
+/usr/local/bin/kdu_compress -> /Library/Kakadu/8.4.1/bin/kdu_compress
+  6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06
+/usr/local/bin/kdu_server -> /Library/Kakadu/8.4.1/bin/kdu_server
+  dc0cc8ad8637076258131ea83f3be3f829ff4439e36a4c23a484c07de78ec539
+/opt/homebrew/Cellar/openjph/0.30.1/bin/ojph_expand
+  c6831b19f29824edfa36acb8110bdd4d3cdfecb4acc98f08842d8ea620bbdf3f
+/opt/homebrew/Cellar/openjpeg/2.5.4/bin/opj_decompress
+  29f46b837c299a9001d73ec07ec39f157d80c3fa482c3b91121189302ce0282a
+
+These match the existing R3 matrix's hashes. Version identities above come
+from installed paths and retained manifests; no fresh -version run occurred.
+The historical /Users/raster/Documents/SwiftJ2K/scratch directory is absent.
+No openjp3d source/binary was found in that original or the previous R3 audit
+work directory by targeted filename search. Do not assume old /tmp tools or
+temporary fixture files still exist. Retained raw diagnostic receipts remain.
+
+Historical independent HT fixtures: refinement not demonstrated
+--------------------------------------------------------------
+Base: work/SwiftJ2K/Tests/SwiftJ2KTests/Fixtures/HTJ2K/
+All following current byte hashes match the retained manifest:
+
+g12_5x3_ramp_extremes.kdu_ht_layers_lrcp.j2k (323 bytes, 5x3 unsigned12)
+  SHA256 746c72a06f28d4069ff49a6077185595e64dfcb27fead52f4c2d0ae0e65b7199
+  Expected LE16 sample digest
+  34a1930c3229a471bd3e256e15cc6c05301e4ba138afda439f16b6fc6a4b7551
+g16_17x9_alternating.kdu_ht_layers_lrcp.j2k (366 bytes, 17x9 unsigned16)
+  SHA256 40d2fc14fd09e2c97293f29bd697baaa4d6ea8e6d5b43940ff899484438c7c25
+  Expected LE16 sample digest
+  079fb4563583225c59c982f1354692b3f6d5e10e051574637e01b3a1acdfc33e
+g08_37x23_random.kdu_ht_layers_lrcp.j2k (1411 bytes, 37x23 unsigned8)
+  SHA256 dcb7cb348e92fc1d42eb18bffd90d1f3efdbf8c1593c7b59be9fb3469d21b993
+  Expected LE16 sample digest
+  a527628108dae306deb2086c3cbc4046e8e4f5e1709e9baedebda5f1a5a6ceec
+g16_64x64_random.kdu_ht_layers_lrcp.j2k (9213 bytes, 64x64 unsigned16)
+  SHA256 ddef656fa645165c6038f805d03832103491c0088ec98ff228cc8a701ac61342
+  Expected LE16 sample digest
+  5eb5c5ec74007192be61fcd501aef8cb5da6acefe1e33ca335ee46746e75730a
+
+Provenance: Scripts/generate-htj2k-fixtures.py uses deterministic synthetic
+inputs and kdu_compress Cmodes=HT Clayers=3 Corder=LRCP. The manifest records
+Apache-2.0 in-house fixture licensing, Kakadu 8.4.1, Kakadu exact=true,
+OpenJPH/OpenJPEG=null for these multilayer cases. Its general kdu_ht_layers
+description identifies multiple HT sets / seven passes, but this was not
+substantiated by the parent's later packet inspection. Source PGMs are in
+Tests/SwiftJ2KTests/Fixtures/Lossless; the HT generator removes its temporary
+PGMs. Merely selecting Clayers=3 is not proof that a chosen block includes
+both SigProp and MagRef; inspect segment/pass metadata in the new receipt.
+
+Superseded experiment recommendation: the parent retained the historical
+receipts and inspected fresh zero-DWT candidates, finding only cleanup plus
+placeholders. Do not repeat these as a refinement experiment. Use the T.803
+truncated-Part1 transcoding route or pinned external refinement vectors in
+work/ht-refinement-fixture-plan.txt. A dimensional lift is restricted to zero
+wavelet levels because reversible 2D/3D axis order differs; even that derived
+fixture is not a direct external combined Part10+15 encoder/decoder.
+
+Part 2 synthesis: proposed narrow route; subsequent peer crash preserved
+-----------------------------------------------------------------------
+Local primary documentation:
+/Library/Kakadu/8.4.1/Overview.txt:3485 says all Part 2 multi-component
+transforms are supported. Lines 3502–3519 limit decoding to the first 30
+magnitude planes and warn reversibly compressed >=30-bit samples may fail.
+/Library/Kakadu/8.4.1/Usage_Examples.txt:750–845 documents matrix, offset,
+Sprecision versus Mprecision, and fewer output than coded components.
+Lines 2956–2963 document -codestream_components to bypass inverse MCT.
+
+Read-only strings from the installed kdu_expand confirm concrete writer
+limits: PGX and RAW reject >4 bytes/sample, TIFF rejects >32 bits/sample,
+PFM holds 32-bit floats only. -fprec aligns/truncates/scales values; it cannot
+establish a full38 exact sample oracle. -precise does not promise 64-bit
+integer or double MCT processing. Do not claim full38 parity from these modes.
+
+Prepared bounded test-only harness: work/independent-part2-peer.py. It has
+NOT BEEN EXECUTED. It accepts --input emitted.jp3d --expected original.json
+--output-dir NEW_DIRECTORY, optionally --kdu and --timeout1..60seconds.
+JSON supplies width,height,bitDepth,signed,samples (exact integer array).
+The diagnostic requires depth=1, NLz=0, zcb=0, equal reversible XY levels,
+one origin-zero tile/part, no overrides/POC/explicit precincts, LRCP, signed
+wire limbs <=20bits, and a single transmitted [1,524288] int32 array.
+It independently validates CBD/MCT/MCC/MCO and normative Part2 signalling.
+It removes NSI and only Part10 CAP, retains Part2/15 CAP words when present, converts COD
+to2D, and retains all Part2 markers and the SOT/SOD/entropy/EOC bytes exactly.
+Because there is no tile-header edit, Psot is unchanged and verified.
+The adapted Rsiz is0xc100 with remaining CAP, or0x8100 without CAP.
+Optional CPF is parsed and recorded, then omitted from the derived fixture:
+this diagnostic does not assert the original corresponding-profile claim.
+The harness calls installed kdu_expand once with -codestream_components,
+-precise,-fussy,-num_threads0,-record and one signed PGX per wire component.
+It independently parses PGX signedness, precision and endian order, applies
+the transmitted array with exact integers, then compares every logical sample
+and retains all source/tool/entropy hashes and logs. Native execution is
+owned and serialized by root; no result is implied by writing this harness.
+
+For full-range algebra, independently decode the <=20-bit signed limb planes
+using -codestream_components and interpret the transmitted matrix and offsets
+with an independent exact-integer Annex J implementation. This usefully checks
+RA2-03 arithmetic and signalled conventions, but is a composite diagnostic;
+it is not a direct independent full Part2+Part10 peer or full38 Kakadu output.
+
+Part2 normative issues found while designing the independent harness
+--------------------------------------------------------------------
+Primary: ITU-T T.801 (V3) (08/2023), official publicly indexed epublication:
+https://www.itu.int/epublications/publication/itu-t-t-801-v3-2023-08-information-technology-jpeg-2000-image-coding-system-extensions
+Direct web open returned empty content, while the search index returned
+the relevant tables and Annex A/J text. Reproducible search queries:
+  site.itu.int/epublications "T.801" "reserved" "r" "Xmcc"
+  site.itu.int/epublications "T.801" "Nmcc" "most significant"
+  site.itu.int/epublications/publication/itu-t-t-801-v3-2023-08 "Extended capabilities"
+Table A.35 represents array decorrelation as rrrrrr01; Annex A requires
+reserved r bits0. Thus Xmcc0x09 is invalid reserved signalling; use0x01.
+Tables A.36/A.37 put index width in bit15 of Nmcc/Mmcc:0=8bits,1=16bits.
+The remaining count uses mask0x7fff, permitted1..16384; indices max16383.
+Table A.30 similarly requires Ncbd&0x7fff, since0x3fff loses count16384.
+Table A.38 assigns Tmcc low8 matrix, next8 offset, bit16 reversibility.
+Table A.2 combines Part2 MCT + CAP as Rsiz0xc100; Table A.8 uses COD MCT2
+for array processing. These fields must be correct in the original stream;
+the harness refuses to silently repair them in the dimensional adaptation.
+Annex J suppresses ordinary DC shift when its transform processing applies.
+
+The official current recommendation page identifies2023 as in-force but its
+download requires payment. No purchase/access circumvention was attempted:
+https://www.itu.int/rec/T-REC-T.801/en
+Official older2002 PDF (for historical comparison only):
+https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.801-200208-S%21%21PDF-E&lang=e&type=items
+
+Additional profile signalling concern: current JP3DHTMarkers.cpfMarkerData
+uses Pcpf0x8000/0x8001 as lossless/lossy flags. Official T.814 A.6 instead
+defines Pcpf as base65536 digits of CPFnum+1. Thus0x8000 means profile32767,
+not reversibility. CPF is optional and makes a corresponding-profile claim;
+production should omit an unestablished claim or supply a demonstrated one.
+Primary: https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.814-201906-I%21%21PDF-E&lang=e&type=items
+Search: site.itu.int "T.814" "CPF" "Pcpf"
+
+Authorized follow-up: after checking the current root claim, corrected only
+JP3DHTJ2K.swift's public cpfMarkerData(for:isLossless:) helper to deprecate
+its unsupported profile inference and return empty Data (optional CPF omitted).
+The signature is retained for source compatibility. A numeric profile API was
+not introduced because a number alone cannot validate actual conformance.
+Updated the directly relevant JP3DHTJ2KTests helper/builder expectations to
+require omission for lossless, lossy and mixed configuration. Root owns the
+builder/capacity changes. No native tests or script execution occurred here.
+
+The current T.801 A.49 Ccap2 fields signal block-coder extensions (bit15)
+and PRCL progression (bit14); zero Ccap2 cannot replace the Rsiz MCT bit.
+The prepared harness permits zero Ccap2 and retains it, but rejects other
+Part2 CAP extensions outside this bounded fixture's scope.
+
+Current upstream capability findings
+------------------------------------
+1. OpenJPEG's official 2.5.0 notice says JP3D, JPWL and MJ2 were removed;
+   HTJ2K decoding was added. OpenJPIP was NOT removed. Live v2.5.4 src/lib
+   still contains openjpip. Correct the R3 matrix sentence claiming both
+   openjp3d and openjpip were removed after2.4.0. However v2.5.4
+   msgqueue_manager.c still skips two SOT bytes and jp2k_encoder.c retains
+   the foundTH/add_SOT path implicated in prior failed JPP receipts. An
+   upgrade alone supplies no new reason to repeat that failed experiment.
+   https://www.openjpeg.org/2022/05/13/OpenJPEG-2.5.0-released
+   https://github.com/uclouvain/openjpeg/tree/v2.5.4/src/lib
+   https://github.com/uclouvain/openjpeg/blob/v2.5.4/src/lib/openjpip/msgqueue_manager.c
+   https://github.com/uclouvain/openjpeg/blob/v2.5.4/src/lib/openjpip/jp2k_encoder.c
+
+2. OpenJPH official scope is Part15 with supported Part1 features. It does
+   not supply a documented Part10/JPIP/WebSocket endpoint. Existing 0.30.1
+   remains a useful 2D/block oracle within its demonstrated pass limits.
+   https://openjph.org/OpenJPH/
+   https://openjph.org/OpenJPH/docs/status.html
+
+3. Current OpenHTJ2K README identifies Part1/15 and partial Part2 DFS/ATK.
+   Its JPIP documentation specifies 2D fsiz/roff/rsiz HTTP/1.1 and HTTP/3;
+   no Part10 NSI or WebSocket binding was found. It is a possible additional
+   2D HTTP/HT peer, not a solution to missing direct3D/WS gates. Its cache
+   documentation currently uses Ht; do not substitute its prose for T.808.
+   README blob f7678d330a1661978637ef4d6566e6fdae04b077;
+   jpip.md blob 696b7784019324a1851a6674a04420018679667e.
+   https://github.com/osamu620/OpenHTJ2K/blob/main/README.md
+   https://github.com/osamu620/OpenHTJ2K/blob/main/docs/jpip.md
+
+4. 0verkilll/jpeg v1.0.1 advertises JP3D but source parser.go has explicit
+   empty inverseZ/inverseXY stubs, allocates zero output without applying
+   subbands, and parses NSI with a nonnormative extended-SIZ layout. It is
+   not a viable acceptance peer; do not install/run it just for its claim.
+   parser.go blob 4abf111eb95392c5cbf21ebab019d1349a19b45b.
+   https://github.com/0verkilll/jpeg/blob/v1.0.1/internal/jpeg2000/jp3d/parser.go
+
+5. IRIS-JP3D is identified in its authors' thesis/papers as Part1/10
+   reference software. Those sources do not establish Part15 or a live
+   JPIP/WebSocket endpoint. irissoftware.be was inaccessible in this lookup.
+   https://researchportal.vub.be/files/29598865/ijhpca_final_accepted_version.pdf
+   https://theses.eurasip.org/media/theses/documents/bruylants-tim-advanced-coding-technologies-for-medical-and-holographic-imaging-algorithms-implementations-and-standardization.pdf
+
+6. frames-sg/j2k documents external OpenHTJ2K refinement fixtures
+   openhtj2k_ds0_ht_12_b11 and openhtj2k_ds0_ht_09_b11. It offers another
+   concrete block-vector source, but no Part10/3D JPIP/WS endpoint was identified.
+   The older Kakadu multilayer fixtures did not establish actual refinement;
+   see the pinned follow-up plan in work/ht-refinement-fixture-plan.txt.
+   https://github.com/frames-sg/j2k/blob/main/docs/public-support.md
+
+WebSocket search found general RFC6455 transports and unrelated DICOM UPS
+notifications, not an independent implementation of this repository's jpip
+subprotocol. A Python/Node standard WebSocket library can independently test
+the transport layer, but an author-written JPIP adapter remains a harness;
+the existing direct external-extension gate cannot silently be reclassified.
+
+Next gate action
+----------------
+Execute the bounded HT refinement and synthesis diagnostics on the frozen
+candidate, retain their limited claims, and continue fixes/native/hosted
+qualification. For the remaining direct gates, the concrete missing input is
+a capable independent endpoint/tool or independently sourced full-profile
+fixture set with inspectable provenance. Keep R3 not accepted and R4 gated
+until these mandatory requirements are met; do not repeat known-incompatible
+tools, waive gates, or represent source research as successful execution.
+
+Root correction after native diagnostic,31Oct2026:
+The original nonzero-DWT dimensional adaptation is invalid for exact sample parity: Part1 T800 F3.2/F4.2 uses inverseXthenY/forwardYthenX, while Part10 T8093.7 specifies forwardX,Y,Z and inverseZ,Y,X. Integer lifting order matters even atdepth1. The signed-limb harness is now restricted to NLx=NLy=NLz=0. First derivedHT fixture failures remain preserved in validation/snapshot-focused-01. Fresh zero-DWT Kakadu fixtures and direct Kakadu sample equality are recorded in planar-ht-fixtures-01 and validation/planar-ht-generation-01. Swift zero-DWT diagnostic is pending; do not claim entropy failure from the earlier invalid lift. Primary Part1 URL: https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.800-201511-S%21%21PDF-E&lang=e&type=items (F3.2,F4.2). Primary Part10 URL: https://www.itu.int/rec/dologin_pub.asp?id=T-REC-T.809-200708-S%21%21PDF-E&lang=e&type=items (3.7).

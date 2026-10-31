@@ -1,0 +1,182 @@
+{
+  "scope": "Read-only extraction of retained failing ordinary XML, not strict full hosted reconstruction or qualification",
+  "raw_log_sha256": "5cd18d60d8004353493481c699daa038a30f251adb46f6c38afbe96fc8d7726f",
+  "ordinary_xml_sha256": "5ce53ac1bdbc92689499ea6b0f081a64c2e8b7a604223f1516b9ab369810f85c",
+  "emitter_begin": [
+    {
+      "line": 3944,
+      "record": {
+        "format": "swiftj2k-ci-evidence-v1",
+        "kind": "begin",
+        "identity": {
+          "GITHUB_REPOSITORY": "raster-labs/SwiftJ2K",
+          "GITHUB_RUN_ID": "41195752705",
+          "GITHUB_RUN_ATTEMPT": "1",
+          "GITHUB_JOB": "macos",
+          "GITHUB_EVENT_NAME": "pull_request",
+          "GITHUB_REF": "refs/pull/30/merge",
+          "GITHUB_SHA": "2dbe225d2c2bdf9272797c99d4a512e090a10c08",
+          "EVIDENCE_PR_HEAD": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+          "EVIDENCE_PR_BASE": "46be90fc3bf50429956725ee592687d8ff8e7344",
+          "EVIDENCE_ORDINARY": "failure",
+          "EVIDENCE_ASAN": "skipped",
+          "EVIDENCE_TSAN": "skipped"
+        },
+        "checkout_head": "2dbe225d2c2bdf9272797c99d4a512e090a10c08",
+        "checkout_tree": "4e818309cf03798d3e156517ad936ab380fbe647",
+        "tracked_tree_clean": true,
+        "max_file_bytes": 8388608,
+        "max_total_bytes": 16777216
+      }
+    }
+  ],
+  "emitter_end": [
+    {
+      "line": 3989,
+      "record": {
+        "format": "swiftj2k-ci-evidence-v1",
+        "kind": "end",
+        "files": 1,
+        "bytes": 45512,
+        "problems": [
+          "Missing inventory evidence: address/reference.stdout",
+          "Missing inventory evidence: address/reference.stderr",
+          "Missing inventory evidence: address/reference.command-result.json",
+          "Missing inventory evidence: address/sanitized.stdout",
+          "Missing inventory evidence: address/sanitized.stderr",
+          "Missing inventory evidence: address/sanitized.command-result.json",
+          "Missing inventory evidence: address/inventory.json",
+          "Missing inventory evidence: address/all.ids",
+          "Missing inventory evidence: address/jpip.ids",
+          "Missing inventory evidence: address/complement.ids",
+          "Missing inventory evidence: thread/reference.stdout",
+          "Missing inventory evidence: thread/reference.stderr",
+          "Missing inventory evidence: thread/reference.command-result.json",
+          "Missing inventory evidence: thread/sanitized.stdout",
+          "Missing inventory evidence: thread/sanitized.stderr",
+          "Missing inventory evidence: thread/sanitized.command-result.json",
+          "Missing inventory evidence: thread/inventory.json",
+          "Missing inventory evidence: thread/all.ids",
+          "Missing inventory evidence: thread/jpip.ids",
+          "Missing inventory evidence: thread/complement.ids",
+          "No XML retained for invocation: address/jpip.xml",
+          "No XML retained for invocation: address/complement.xml",
+          "No XML retained for invocation: thread/jpip.xml",
+          "No XML retained for invocation: thread/complement.xml"
+        ],
+        "retention_complete": false,
+        "scope": "Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately"
+      }
+    }
+  ],
+  "failed_cases": [
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3IndependentTests",
+      "name": "stalledTCPTransportsCancelAndTimeoutPromptly()",
+      "seconds": "26.21234625",
+      "failures": [
+        {
+          "message": "Expectation failed: (httpElapsed \u2192 2.62893125 seconds) < (.seconds(2) \u2192 2.0 seconds) (error)"
+        }
+      ]
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3IndependentTests",
+      "name": "httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel()",
+      "seconds": "27.784615708",
+      "failures": [
+        {
+          "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket handshake deadline elapsed.\") (error)"
+        }
+      ]
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests",
+      "name": "descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest()",
+      "seconds": "15.702271125",
+      "failures": [
+        {
+          "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket request deadline elapsed.\") (error)"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "line": 2718,
+      "text": "2026-10-31T11:14:56.2346730Z \t Executed 1034 tests, with 0 failures (0 unexpected) in 68.170 (68.382) seconds"
+    },
+    {
+      "line": 2720,
+      "text": "2026-10-31T11:14:56.2348290Z \t Executed 1034 tests, with 0 failures (0 unexpected) in 68.170 (68.391) seconds"
+    },
+    {
+      "line": 2721,
+      "text": "2026-10-31T11:14:56.2361580Z \u25c7 Test run started."
+    },
+    {
+      "line": 3074,
+      "text": "2026-10-31T11:15:05.0941790Z \u25c7 Test \"RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests\" started."
+    },
+    {
+      "line": 3098,
+      "text": "2026-10-31T11:15:05.3368940Z \u25c7 Test \"F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout\" started."
+    },
+    {
+      "line": 3113,
+      "text": "2026-10-31T11:15:05.4876560Z \u25c7 Test finalRowNeedsOnlyItsActualSampleBytes() started."
+    },
+    {
+      "line": 3123,
+      "text": "2026-10-31T11:15:05.5911660Z \u25c7 Test rejectsOverlappingPlanesAndIncompleteMapping() started."
+    },
+    {
+      "line": 3305,
+      "text": "2026-10-31T11:15:13.1223130Z \u25c7 Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() started."
+    },
+    {
+      "line": 3624,
+      "text": "2026-10-31T11:15:28.4188420Z \u2714 Test finalRowNeedsOnlyItsActualSampleBytes() passed after 24.183 seconds."
+    },
+    {
+      "line": 3629,
+      "text": "2026-10-31T11:15:28.4191030Z \u2714 Test rejectsOverlappingPlanesAndIncompleteMapping() passed after 24.164 seconds."
+    },
+    {
+      "line": 3757,
+      "text": "2026-10-31T11:15:59.5595980Z \u2718 Test \"F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout\" recorded an issue at CodexR3IndependentTests.swift:455:9: Expectation failed: (httpElapsed \u2192 2.62893125 seconds) < (.seconds(2) \u2192 2.0 seconds)"
+    },
+    {
+      "line": 3768,
+      "text": "2026-10-31T11:15:59.5612310Z \u2718 Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() recorded an issue at CodexR3WebSocketBudgetTests.swift:218:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket request deadline elapsed.\")"
+    },
+    {
+      "line": 3777,
+      "text": "2026-10-31T11:15:59.5620810Z \u2718 Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() failed after 15.702 seconds with 1 issue."
+    },
+    {
+      "line": 3795,
+      "text": "2026-10-31T11:15:59.5635840Z \u2718 Test \"F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout\" failed after 26.212 seconds with 1 issue."
+    },
+    {
+      "line": 3821,
+      "text": "2026-10-31T11:15:59.5658510Z \u2718 Test \"RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests\" recorded an issue at CodexR3IndependentTests.swift:618:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket handshake deadline elapsed.\")"
+    },
+    {
+      "line": 3822,
+      "text": "2026-10-31T11:15:59.5660280Z \u2718 Test \"RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests\" failed after 27.784 seconds with 1 issue."
+    },
+    {
+      "line": 3844,
+      "text": "2026-10-31T11:15:59.5683630Z \u2718 Test run with 324 tests in 41 suites failed after 63.290 seconds with 3 issues."
+    },
+    {
+      "line": 3845,
+      "text": "2026-10-31T11:15:59.5718330Z ##[error]Process completed with exit code 1."
+    },
+    {
+      "line": 3990,
+      "text": "2026-10-31T11:16:00.0558200Z ##[error]Process completed with exit code 1."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+JPIP incremental HTTP delimiter repair
+
+Source/test/report writes stopped. Scope: main work/SwiftJ2K only, canonical
+claim verified before edits; frozen06 and its receipts remain unchanged. No
+native builds/tests/listeners, new child agents, commits or repository docs
+were executed/changed by this implementer. Scoped hashes and candidate06
+comparison hashes: work/jpip-http-scan-source-07.json.
+
+Confirmed path
+The previous header loop began scanning at readOffset after every one-byte
+fill. An n-byte block therefore revisited its prefix quadratically. The chunk
+line loop used the same shape. Parent reported the 2,000-header handshake
+case took about 12 seconds normally and 25 seconds under ASan; those are
+parent-owned observations, not measurements by this implementer. This repair
+does not claim every prior EOF or elapsed failure came from that scan.
+
+Repair and invariant
+Line scanning now remembers the first unexamined index; each line byte is
+visited exactly once. Header scanning remembers the previous buffer end minus
+three bytes, clamped to readOffset. Only those final three positions could
+begin an incomplete four-byte CRLFCRLF delimiter; LF-LF is covered too. Each
+new byte adds at most four candidate-position visits. readOffset and indices
+remain stable while awaiting more bytes; compaction still happens only after
+a complete line/block is consumed. Existing first-match order, CR stripping,
+search-before-cap order, immediate/partial EOF distinctions and all cap/error
+conditions remain unchanged. fillOnceLocked still reads at most one byte for
+these helpers, so there is no speculative body read or larger allocation.
+Body/header storage admission and all timeout values are untouched.
+
+Evidence
+Package-only saturating counters under readLock record actual candidate
+positions and line-byte visits. They cannot wrap under long-lived traffic.
+Six new tests cover CRLF/LF delimiters at every final fragment boundary and
+subsequent body/sentinel bytes; 1 KiB, 4 KiB and 16 KiB header values under a
+4*n work bound; exact one-visit line counts for increasing chunk extensions
+and trailers; a 2,000-header101 block under the same bound; accepted/denied
+line and header caps before absent-body reads; and immediate versus truncated
+EOF. Test socket reads/writes use dedicated workers with asynchronous completion
+acknowledgement, so larger fixtures do not block a cooperative test worker
+while pre-writing into a full socket. There are no elapsed-time assertions in
+these algorithm-work regressions and no existing timeout/assertion was raised.
+
+A static Python model compared old/new header outcomes and delimiter offsets
+for all CR/LF/X sequences of length 0 through 8 under all caps from 0 through
+length+1: 93,494 cases agreed and satisfied the 4*n candidate bound. This is
+model-level reasoning evidence only, not execution of the Swift implementation.
+git diff --check passes. Root must compile/run CodexR3HTTPDelimiterTests plus
+existing descriptor-heavy HTTP/WS admission/handshake and deadline regressions,
+then the planned sanitizer inventory and ordinary full-concurrent gates.
+
+Changed paths
+Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift
+Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift (new)
+
+No current-source native success, measured speedup, broad race closure or
+whole-R3 acceptance is claimed. Independent peer gates remain unchanged.

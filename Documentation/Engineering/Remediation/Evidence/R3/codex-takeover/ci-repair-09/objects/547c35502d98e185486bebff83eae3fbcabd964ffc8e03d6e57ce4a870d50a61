@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""Independent read-only hosted18 reconciliation. Extract diagnostic XML only."""
+from pathlib import Path
+from datetime import datetime, timezone
+from collections import Counter
+import hashlib
+import json
+import re
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+OUT = Path(__file__).resolve().parent / 'checked'
+OUT.mkdir(exist_ok=False)
+WORK = OUT.parent.parent
+DOWNLOADS = WORK / 'ci-downloads'
+RUN = 41198397609
+MAC = 124529119630
+STAMP = re.compile(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z (.*)$')
+ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+def unique(pairs):
+    result = {}
+    for key, value in pairs:
+        assert key not in result, key
+        result[key] = value
+    return result
+
+def read(name):
+    return json.loads((DOWNLOADS / name).read_text(), object_pairs_hook=unique)
+
+metadata = read(f'run-{RUN}-attempt1-jobs.json')
+initial = read(f'run-{RUN}-attempt1-initial.json')
+merge = read(f'run-{RUN}-tested-merge.json')
+jobs = metadata['jobs']
+assert len(jobs) == 7 and len({job['id'] for job in jobs}) == 7
+assert all(job['run_id'] == RUN and job['status'] == 'completed' and job['conclusion'] for job in jobs)
+mac = next(job for job in jobs if job['id'] == MAC)
+steps = {step['name']: step['conclusion'] for step in mac['steps']}
+assert steps['Run swift build'] == 'success' and steps['Ordinary tests'] == 'failure'
+assert steps['Address sanitizer'] == steps['Thread sanitizer'] == 'skipped'
+assert steps['Retain exact test evidence in downloadable logs'] == 'failure'
+assert initial['id'] == RUN and initial['run_attempt'] == 1 and initial['event'] == 'pull_request'
+pr = initial['pull_requests'][0]
+assert initial['head_sha'] == pr['head']['sha'] and pr['number'] == 30
+assert [parent['sha'] for parent in merge['parents']] == [pr['base']['sha'], pr['head']['sha']]
+provider_path = WORK / 'hosted-source-provider-review-18.json'
+provider = json.loads(provider_path.read_text())
+assert provider['head'] == initial['head_sha'] and provider['tested_merge'] == merge['sha']
+assert provider['tree'] == provider['tested_merge_tree'] == merge['tree']['sha']
+assert provider['run'] == RUN and provider['attempt'] == 1 and provider['macos_job'] == MAC
+
+input_paths = [DOWNLOADS / f'run-{RUN}-attempt1-jobs.json',
+               DOWNLOADS / f'run-{RUN}-attempt1-initial.json',
+               DOWNLOADS / f'run-{RUN}-tested-merge.json', provider_path,
+               WORK / 'candidate-snapshot-18-source.json', WORK / 'publication-commit-18.json',
+               WORK / 'publication-remote-commit-18.json', WORK / 'hosted-evidence/reconstruct.py']
+logs = {job['id']: DOWNLOADS / f"run-{RUN}-attempt1-job{job['id']}.log" for job in jobs}
+input_paths += list(logs.values())
+before = {str(path): sha(path) for path in input_paths}
+save('input-before.json', {'at': datetime.now(timezone.utc).isoformat(), 'files': before})
+
+expected = {'identity': {
+    'GITHUB_REPOSITORY': initial['repository']['full_name'], 'GITHUB_RUN_ID': str(RUN),
+    'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_JOB': 'macos', 'GITHUB_EVENT_NAME': 'pull_request',
+    'GITHUB_REF': f"refs/pull/{pr['number']}/merge", 'GITHUB_SHA': merge['sha'],
+    'EVIDENCE_PR_HEAD': pr['head']['sha'], 'EVIDENCE_PR_BASE': pr['base']['sha'],
+    'EVIDENCE_ORDINARY': steps['Ordinary tests'], 'EVIDENCE_ASAN': steps['Address sanitizer'],
+    'EVIDENCE_TSAN': steps['Thread sanitizer'],
+}, 'checkout_head': merge['sha'], 'checkout_tree': merge['tree']['sha']}
+save('expected-from-supplied-metadata.json', expected)
+
+mac_lines, records = [], []
+for number, raw in enumerate(logs[MAC].read_text().split('\n'), 1):
+    match = STAMP.fullmatch(raw.rstrip('\r'))
+    message = match[1] if match else raw
+    mac_lines.append((number, ANSI.sub('', message)))
+    if message.startswith('{') and 'swiftj2k-ci-evidence-v1' in message:
+        assert match is not None
+        record = json.loads(message, object_pairs_hook=unique)
+        if record.get('format') == 'swiftj2k-ci-evidence-v1':
+            records.append((number, record))
+assert records[0][1]['kind'] == 'begin' and records[-1][1]['kind'] == 'end'
+assert sum(record['kind'] == 'begin' for _, record in records) == 1
+assert sum(record['kind'] == 'end' for _, record in records) == 1
+begin, end = records[0][1], records[-1][1]
+assert begin['identity'] == expected['identity']
+assert begin['checkout_head'] == expected['checkout_head'] and begin['checkout_tree'] == expected['checkout_tree']
+assert begin['tracked_tree_clean'] is True
+assert begin['max_file_bytes'] == 8 * 1024 * 1024 and begin['max_total_bytes'] == 16 * 1024 * 1024
+
+inventory_names = ['reference.stdout', 'reference.stderr', 'reference.command-result.json',
+    'sanitized.stdout', 'sanitized.stderr', 'sanitized.command-result.json', 'inventory.json',
+    'all.ids', 'jpip.ids', 'complement.ids', 'inventory-mismatch.json']
+allowed = {f'{mode}/{name}' for mode in ['address', 'thread'] for name in inventory_names}
+allowed |= {'ordinary/full.xml', 'ordinary/full-swift-testing.xml'}
+allowed |= {f'{mode}/{part}{suffix}.xml' for mode in ['address', 'thread']
+            for part in ['jpip', 'complement'] for suffix in ['', '-swift-testing']}
+cursor, recovered, missing, chunk_receipts = 1, {}, [], []
+for path in sorted(allowed):
+    number, item = records[cursor]; cursor += 1
+    assert item['path'] == path and item['kind'] in ['missing', 'file']
+    if item['kind'] == 'missing':
+        assert set(item) == {'format', 'kind', 'path'}
+        missing.append(path)
+        continue
+    assert set(item) == {'format', 'kind', 'path', 'sha256', 'bytes', 'encoding', 'chunks'}
+    assert item['encoding'] == 'utf-8' and re.fullmatch('[0-9a-f]{64}', item['sha256'])
+    assert type(item['bytes']) is int and 0 <= item['bytes'] <= 8 * 1024 * 1024
+    assert type(item['chunks']) is int and 0 <= item['chunks'] <= 2048
+    chunks = []
+    for index in range(item['chunks']):
+        line, chunk = records[cursor]; cursor += 1
+        assert set(chunk) == {'format', 'kind', 'path', 'index', 'content_utf8'}
+        assert chunk['kind'] == 'chunk' and chunk['path'] == path
+        assert type(chunk['index']) is int and chunk['index'] == index
+        content = chunk['content_utf8']
+        assert type(content) is str and 0 < len(content) <= 4096
+        assert index == item['chunks'] - 1 or len(content) == 4096
+        chunks.append(content.encode('utf-8'))
+        chunk_receipts.append({'path': path, 'index': index, 'line': line,
+                               'utf8_bytes': len(chunks[-1]), 'characters': len(content)})
+    data = b''.join(chunks)
+    assert len(data) == item['bytes'] and hashlib.sha256(data).hexdigest() == item['sha256']
+    recovered[path] = data
+assert cursor == len(records) - 1
+assert end['files'] == len(recovered) and end['bytes'] == sum(map(len, recovered.values()))
+assert end['retention_complete'] is False and len(end['problems']) == 24
+assert set(recovered) == {'ordinary/full-swift-testing.xml'}
+xml_bytes = recovered['ordinary/full-swift-testing.xml']
+with (OUT / 'ordinary-diagnostic-swift-testing.xml').open('xb') as stream:
+    stream.write(xml_bytes)
+
+# Invoke the unchanged strict reconstructor. A diagnostic XML extraction is not
+# allowed to turn incomplete retention into a successful reconstructed bundle.
+destination = OUT / 'strict-full-reconstruction-must-not-exist'
+assert not destination.exists()
+command = [sys.executable, str(WORK / 'hosted-evidence/reconstruct.py'), '--log', str(logs[MAC]),
+           '--expected', str(OUT / 'expected-from-supplied-metadata.json'), '--output', str(destination)]
+strict = subprocess.run(command, capture_output=True)
+for name, data in [('strict-reconstruction.stdout', strict.stdout), ('strict-reconstruction.stderr', strict.stderr)]:
+    with (OUT / name).open('xb') as stream:
+        stream.write(data)
+assert strict.returncode != 0 and b'Emitter recorded retention problems or incomplete evidence' in strict.stderr
+assert not destination.exists()
+
+def matches(pattern):
+    return [(line, match.groups()) for line, message in mac_lines if (match := re.fullmatch(pattern, message))]
+
+xstarts = matches(r"Test Case '(.+)' started\.")
+xpasses = matches(r"Test Case '(.+)' passed \(.+\)\.")
+assert len(xstarts) == len(xpasses) == 1034
+assert Counter(value[0] for _, value in xstarts) == Counter(value[0] for _, value in xpasses)
+assert len({value[0] for _, value in xstarts}) == 1034
+assert not matches(r"Test Case '(.+)' failed \(.+\)\.")
+starts = matches(r'◇ Test (?!case |run )(.+) started\.')
+passed = matches(r'✔ Test (.+?)(?: with (\d+) test cases?)? passed after .+ seconds\.')
+failed = matches(r'✘ Test (?!run )(.+?)(?: with (\d+) test cases?)? failed after .+ seconds with \d+ issues?\.')
+skipped = matches(r'➜ Test (.+?) skipped: (.+)')
+assert len(starts) == 319 and len(passed) == 313 and len(failed) == 6 and len(skipped) == 5
+assert Counter(value[0] for _, value in starts) == Counter(value[0] for _, value in passed + failed)
+assert len({value[0] for _, value in passed + failed + skipped}) == 324
+assert len(matches(r'◇ Suite (.+) started\.')) == 41
+summary = matches(r'✘ Test run with (\d+) tests in (\d+) suites failed after ([0-9.]+) seconds with (\d+) issues\.')
+assert len(summary) == 1 and summary[0][1] == ('324', '41', '56.717', '6')
+issue_lines = [{'line': line, 'message': message} for line, message in mac_lines
+               if message.startswith('✘ Test ') and ' recorded an issue' in message]
+assert len(issue_lines) == 6
+cases = ET.fromstring(xml_bytes).findall('.//testcase')
+assert len(cases) == 324
+xml_status = {'passed': [], 'failed': [], 'skipped': []}
+for case in cases:
+    failures, skips = case.findall('failure'), case.findall('skipped')
+    assert not (failures and skips)
+    kind = 'failed' if failures else 'skipped' if skips else 'passed'
+    xml_status[kind].append({'class': case.attrib['classname'], 'name': case.attrib['name'],
+                            'messages': [(element.text or '') for element in failures + skips]})
+# Resolve custom display titles independently from the immutable source18 files.
+# XML retains function signatures while the raw reporter displays 130 custom titles.
+display_bindings, title_sources = {}, {}
+for case in cases:
+    name = case.attrib['name']
+    module = case.attrib['classname'].split('.')[0]
+    function = name.split('(')[0]
+    found = []
+    for source in (WORK / 'candidate-snapshot-18/Tests' / module).glob('*.swift'):
+        text = source.read_text()
+        for match in re.finditer(r'\bfunc\s+' + re.escape(function) + r'\s*\(', text):
+            position = text.rfind('@Test', 0, match.start())
+            annotation = text[position:match.start()]
+            if position < 0 or re.search(r'\bfunc\b', annotation):
+                continue
+            found.append((source, annotation))
+    assert len(found) == 1, (name, len(found))
+    source, annotation = found[0]
+    literal = re.match(r'@Test\(\s*("(?:\\.|[^"\\])*")', annotation)
+    token = '"' + json.loads(literal[1]) + '"' if literal else name
+    display_bindings[name] = token
+    title_sources[str(source)] = sha(source)
+for kind, raw in [('passed', passed), ('failed', failed), ('skipped', skipped)]:
+    assert Counter(display_bindings[item['name']] for item in xml_status[kind]) == Counter(value[0] for _, value in raw)
+
+linux = []
+for job in jobs:
+    if 'ubuntu-' not in job['name'] or not job['name'].startswith('Swift '):
+        continue
+    outcomes = {step['name']: step['conclusion'] for step in job['steps']}
+    assert outcomes['Run swift build'] == 'success' and outcomes['Run swift test'] == 'failure'
+    assert outcomes['Run swift build -c release'] == outcomes['Run swift test -c release'] == 'skipped'
+    messages = [(number, ANSI.sub('', STAMP.sub(r'\1', raw)))
+                for number, raw in enumerate(logs[job['id']].read_text().split('\n'), 1)]
+    build_completions = [(line, text) for line, text in messages if text.startswith('Build complete!')]
+    test_entry = next(line for line, text in messages if text == '##[group]Run swift test')
+    assert len(build_completions) == 1 and build_completions[0][0] < test_entry
+    diagnostics = [(line, text) for line, text in messages if "error: no such module 'CryptoKit'" in text]
+    assert diagnostics and all(line > test_entry for line, _ in diagnostics)
+    assert not any(text.startswith(('Test Suite ', 'Test Case ', '◇ Test ')) for _, text in messages)
+    assert not any("reference to var 'stdout'" in text for _, text in messages)
+    linux.append({'job_id': job['id'], 'name': job['name'], 'steps': outcomes,
+                  'build_completion': build_completions[0], 'test_step_line': test_entry,
+                  'cryptokit_diagnostic_lines': [line for line, _ in diagnostics],
+                  'first_diagnostic': diagnostics[0], 'runtime_test_starts_observed': 0,
+                  'log_sha256': sha(logs[job['id']])})
+assert len(linux) == 4
+
+result = {
+    'state': 'FAILED_HOSTED18_INDEPENDENTLY_RECONCILED_NOT_ACCEPTED',
+    'finished_at': datetime.now(timezone.utc).isoformat(), 'run_id': RUN, 'attempt': 1,
+    'identity': expected, 'source_binding': 'Saved provider/run/commit receipts and actual emitter identity reconciled; no new provider or Git retrieval by this reviewer.',
+    'jobs': [{'id': job['id'], 'name': job['name'], 'status': job['status'], 'conclusion': job['conclusion']} for job in jobs],
+    'macos': {'job_id': MAC, 'steps': steps, 'xctest_starts': 1034, 'xctest_passes': 1034,
+        'swift_testing_declarations': 324, 'swift_testing_started': 319, 'swift_testing_passed': 313,
+        'swift_testing_failed': 6, 'swift_testing_skipped': 5, 'suites': 41,
+        'observed_parameter_start_prefixes': sum(message.startswith('◇ Test case passing ') for _, message in mac_lines),
+        'parameterised_completed_declarations': sum(values[1] is not None for _, values in passed + failed),
+        'runtime_and_xml_status_multisets_equal': True, 'raw_summary': summary[0],
+        'display_bindings': display_bindings, 'title_source_hashes': title_sources,
+        'issues': issue_lines, 'xml_failures': xml_status['failed'], 'xml_skips': xml_status['skipped'],
+        'observed_total_declarations_including_skips': 1358, 'observed_executed_declarations': 1353,
+        'observed_total_passed_declarations': 1347,
+        'boundary': 'Observed raw/XML accounting only; failed run, no new discovery/argument-union or complete sanitizer coverage proof.'},
+    'retention': {'begin_line': records[0][0], 'end_line': records[-1][0], 'record_count': len(records),
+        'diagnostic_only_file': 'ordinary-diagnostic-swift-testing.xml', 'bytes': len(xml_bytes),
+        'sha256': hashlib.sha256(xml_bytes).hexdigest(), 'chunks': chunk_receipts,
+        'missing_paths': missing, 'footer': end,
+        'strict_reconstructor_exit': strict.returncode, 'strict_output_directory_exists': destination.exists(),
+        'strict_rejection_reason': 'Emitter recorded retention problems or incomplete evidence'},
+    'linux': linux, 'inputs': before,
+    'native_compiler_network_git_repository_actions': False,
+    'whole_r3': 'NOT_ACCEPTED', 'five_direct_external_gates': 'UNEXECUTED_UNWAIVED',
+}
+assert before == {str(path): sha(path) for path in input_paths}
+assert title_sources == {path: sha(Path(path)) for path in title_sources}
+save('reconciliation.json', result)
+print(json.dumps({'state': result['state'], 'xml_bytes': len(xml_bytes), 'xml_sha256': result['retention']['sha256'],
+                  'swift_testing': [319, 313, 6, 5], 'xctest_passed': 1034,
+                  'strict_rejected': True, 'linux_jobs': len(linux)}, indent=2))

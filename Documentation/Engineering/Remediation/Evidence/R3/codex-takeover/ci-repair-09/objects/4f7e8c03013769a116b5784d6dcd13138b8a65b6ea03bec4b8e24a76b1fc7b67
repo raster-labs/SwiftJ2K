@@ -1,0 +1,86 @@
+from pathlib import Path
+from collections import Counter
+import hashlib,json,re,xml.etree.ElementTree as ET,datetime
+w=Path(__file__).resolve().parent.parent;out=Path(__file__).resolve().parent
+v=w/'validation/diagnostic-https-full-19';candidate=w/'candidate-diagnostic-19'
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+r=json.loads((v/'result.json').read_text());command=json.loads((v/'command.json').read_text())
+assert r['exit_code']==r['wrapper_exit_code']==0 and r['capture_complete'] and r['capture_threads_joined'] and not r['capture_errors'] and not r['changed_inputs']
+assert r['merged_synthetic_eof_newlines']==0
+before=json.loads((v/'source-before.json').read_text());after=json.loads((v/'source-after.json').read_text());derived=json.loads((w/'https-diagnostic-19/diagnostic-source-manifest.json').read_text())
+assert before==after==derived and len(before)==2283
+for p,h in before.items():assert sha(candidate/p)==h,p
+for name in ['stdout','stderr']:
+ p=v/('native.'+name);assert sha(p)==r['native_streams'][name]['sha256'];assert p.stat().st_size==r['native_streams'][name]['bytes']
+assert sha(v/'native.log')==r['log_sha256']
+assert Counter((v/'native.stdout').read_bytes().splitlines(keepends=True))+Counter((v/'native.stderr').read_bytes().splitlines(keepends=True))==Counter((v/'native.log').read_bytes().splitlines(keepends=True))
+t=(v/'native.stdout').read_text();events=[];flushes=[]
+for n,line in enumerate(t.splitlines(),1):
+ if 'HTTPS_PHASE19_FLUSH' in line:
+  m=re.fullmatch(r'HTTPS_PHASE19_FLUSH events=(\d+) droppedEvents=(\d+) droppedOwners=(\d+)',line);assert m,(n,line)
+  flushes.append({'line':n,'declared_events':int(m[1]),'dropped_events':int(m[2]),'dropped_owners':int(m[3]),'observed_events':0})
+ elif 'HTTPS_PHASE19 ns=' in line:
+  m=re.fullmatch(r'HTTPS_PHASE19 ns=(\d+) owner=(.*?) host=(\S+) event=(.*)',line);assert m,(n,line)
+  assert flushes
+  events.append({'line':n,'ns':int(m[1]),'owner':m[2],'host':m[3],'event':m[4],'flush':len(flushes)})
+  flushes[-1]['observed_events']+=1
+assert len(events)==t.count('HTTPS_PHASE19 ns=')
+for f in flushes:assert f['declared_events']==f['observed_events'] and f['dropped_events']==f['dropped_owners']==0
+assert len(flushes)==5
+selected={}
+labels={'success-caller-before':'success','silent-before-clock':'silent','deinit-helper-before':'deinit','scripted-caller-before-read cancelFirst=false':'scripted_false','scripted-caller-before-read cancelFirst=true':'scripted_true'}
+for x in events:
+ for prefix,label in labels.items():
+  if x['event'].startswith(prefix):assert label not in selected;selected[label]={'host':x['host'],'start_marker':x}
+assert len(selected)==5
+for label,row in selected.items():
+ ev=sorted([e for e in events if e['host']==row['host']],key=lambda e:e['ns'])
+ row['events']=ev
+ def first(prefix):return next((e for e in ev if e['event'].startswith(prefix)),None)
+ def pair(a,b):
+  l=first(a);rr=first(b)
+  return None if l is None or rr is None else {'from_line':l['line'],'to_line':rr['line'],'from_ns':l['ns'],'to_ns':rr['ns'],'milliseconds':(rr['ns']-l['ns'])/1e6}
+ intervals={}
+ for name,a,b in [
+  ('read_to_watchdog_scheduled','read-entry','watchdog-scheduled'),
+  ('read_to_task_resume_after','read-entry','task-resume-after'),
+  ('session_creation','session-create-before','session-created'),
+  ('protocol_queue_wait','protocol-startLoading-entry','protocol-startLoading-queue-entry'),
+  ('protocol_response_to_delegate','protocol-response-submit host=','response-callback-entry'),
+  ('completion_to_invalidation','task-completion-entry','session-invalidation-entry'),
+  ('invalidation_to_tail','session-invalidation-entry','tail-executing'),
+  ('tail_queue_wait','tail-enqueued','tail-executing'),
+  ('continuation_resume_to_caller','continuation-resume-after','caller-woke'),
+  ('read_to_caller','read-entry','caller-woke'),
+  ('read_to_exit','read-entry','read-exit'),
+  ('silent_preclock_to_watchdog','silent-before-clock-origin','watchdog-fired'),
+  ('silent_watchdog_to_resume','watchdog-fired','continuation-resume-after'),
+  ('silent_preclock_to_elapsed_assertion','silent-before-clock-origin','silent-after-elapsed-assertion'),
+  ('request_return_to_deinit','deinit-helper-after-read','request-deinit'),
+  ('deinit_to_observer','request-deinit','observer-called')]:
+  p=pair(a,b)
+  if p:intervals[name]=p
+ row['intervals']=intervals
+ row['task_priorities']=sorted(set(int(m[1]) for e in ev if (m:=re.search(r'priority=(\d+)',e['event']))))
+ row['queue_configs']=sorted(set(e['event'] for e in ev if e['event'].startswith('delegate-queue-config')))
+ row['first_read']=first('read-entry');row['read_exit']=first('read-exit')
+ assert row['first_read'] and row['read_exit'] and first('caller-woke') and first('continuation-resume-after')
+root=ET.parse(v/'report-swift-testing.xml').getroot();cases=root.findall('.//testcase')
+assert len(cases)==324 and not root.findall('.//failure') and not root.findall('.//error') and not root.findall('.//skipped')
+assert all(n.attrib.get('failures','0')=='0' and n.attrib.get('skipped','0')=='0' for n in root.findall('.//testsuite'))
+xc=[l for l in t.splitlines() if 'Executed 1034 tests, with 0 failures' in l];assert len(xc)==2
+assert 'Test run with 324 tests in 41 suites passed after 26.036 seconds.' in t
+xc_starts=re.findall(r"^Test Case '.+' started\.$",t,re.M)
+xc_passes=re.findall(r"^Test Case '.+' passed \([\d.]+ seconds\)\.$",t,re.M)
+swt_starts=re.findall(r'^◇ Test (?!(?:case |run )).+ started\.$',t,re.M)
+swt_passes=re.findall(r'^✔ Test (?!run ).+ passed after [\d.]+ seconds\.$',t,re.M)
+swt_suites=re.findall(r'^✔ Suite .+ passed after [\d.]+ seconds\.$',t,re.M)
+assert len(xc_starts)==len(xc_passes)==1034
+assert len(swt_starts)==len(swt_passes)==324 and len(swt_suites)==41
+need=['sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel','absoluteDeadlineCancelsSilentResponse','completionAndCancellationHaveOneWinner','completedRequestEventuallyReleasesItsDelegateOwnership']
+xml_selected=[dict(n.attrib) for n in cases if any(x in n.attrib['name'] for x in need)];assert len(xml_selected)==4
+inputs=[*v.iterdir(),w/'candidate-diagnostic-19-source.json',w/'candidate-diagnostic-19-provenance.json',w/'https-diagnostic-19/source.json',w/'https-diagnostic-19/diagnostic-source-manifest.json',w/'https-diagnostic-19/overlay-delta.patch',w/'https-diagnostic-19/report.txt',w/'independent-diagnostic19-review/report.txt',w/'independent-diagnostic19-review/source.json',w/'https-failure17-review/report.txt',w/'https-failure17-review/source.json',w/'validation/candidate-full-17/result.json',w/'validation/candidate-full-17/native.log']
+identity={str(p.relative_to(w)):{'sha256':sha(p),'bytes':p.stat().st_size} for p in inputs if p.is_file()}
+res={'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'inputs_before':identity,'result':r,'command':command,'source_manifest_count':len(before),'all_source_bytes_verified':True,'raw_lines_reconcile_exactly':True,'xml_cases':len(cases),'xml_selected':xml_selected,'xctest_summary_lines':xc,'runtime_counts':{'xctest_starts':len(xc_starts),'xctest_passes':len(xc_passes),'swift_testing_starts':len(swt_starts),'swift_testing_passes':len(swt_passes),'swift_testing_suites':len(swt_suites)},'trace_event_count':len(events),'trace_flushes':flushes,'selected_cases':selected,'all_events_sorted':sorted(events,key=lambda e:e['ns']),'interpretation':'Paired timestamps only; missing late events are censored; zero reported drops does not imply post-flush capture completeness.'}
+(out/'analysis.json').write_text(json.dumps(res,indent=2)+'\n')
+print(json.dumps({'source_files':len(before),'events':len(events),'flushes':flushes,'cases':{k:{'host':v['host'],'priorities':v['task_priorities'],'qos':v['queue_configs'],'ms':{n:i['milliseconds'] for n,i in v['intervals'].items()}} for k,v in selected.items()}},indent=2))

@@ -1,0 +1,51 @@
+{
+  "purpose": "Sample unchanged candidate10 at the beginning of Swift Testing; diagnostic only.",
+  "at": "2026-10-31T10:20:47.303274+00:00",
+  "helper_sha256": "08baa05f184430954ad31f49ed72f6799cd5d0693ae92be5ad6ba051ca40cc65",
+  "command": [
+    "swift",
+    "test",
+    "--scratch-path",
+    "../candidate-build-10",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--skip-build",
+    "--xunit-output",
+    "../validation/diagnostic-sampled-full-13/report.xml"
+  ],
+  "samples": [
+    {
+      "pid": 48911,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Sampling process 48911 for 1 second with 5 milliseconds of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 48911 written to file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/sample-48911.txt\n",
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/sample-48911.txt",
+      "sha256": "89ade974051ab5d2130148748ff0ca00762eeb711450e55ef395e9c29eb955b4"
+    }
+  ],
+  "observer_errors": [],
+  "child_pid": 48809,
+  "marker_observed_at": "2026-10-31T10:21:48.163784+00:00",
+  "own_test_children": [
+    [
+      "48911",
+      "48809",
+      "17.1",
+      "57648",
+      "00:00",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec/swift/pm/swiftpm-testing-helper"
+    ]
+  ],
+  "exit_code": 1,
+  "observer_joined": true,
+  "finished_at": "2026-10-31T10:22:14.689603+00:00"
+}

@@ -1,0 +1,46 @@
+SwiftJ2K R3 — independent analysis of full candidate04 JPIP failures
+Reviewer: /root/independent_jpip_review. Read-only analysis, no native execution or source changes.
+
+Evidence: immutable work/candidate-snapshot-04, work/validation/candidate-full-04/{command.json,result.json,native.log}, work/validation/candidate-jpip-04/{result.json,native.log}, review04 source receipt. Full-run log SHA256: ed76c8b17b557c2c4b7581ea76a61fbdaf64cdae18461cb9d55a5860a29408a1.
+
+Disposition and recommended next experiment
+
+Full04 remains a failed qualification: 1,034 XCTest cases passed; the Swift Testing run reported nine issues across 290 tests. The focused 32-test, five-suite run passed, including the five lifecycle barrier cases, but does not close full04. No production deadline exemption or assertion relaxation is justified.
+
+The smallest evidence-driven next experiment is to fix the demonstrated CLI test-harness defect, preserve all JPIP source/test bytes and all deadline bounds, then repeat the full concurrent suite. Resolve and validate the already-built CLI from the active candidate build, eliminate hidden in-suite builds, and move blocking subprocess waits/pipe drains off cooperative test workers using owned, joined I/O workers. Keep unrelated tests concurrent. Do not add diagnostic hooks in this first comparison: preserve a single changed factor. Parent has assigned that repair to the sole CLI-harness writer; this reviewer made no edits.
+
+Confirmed observations
+
+1. The parent invocation uses --skip-build and --scratch-path ../candidate-build-04. A CLI executable exists at work/candidate-build-04/arm64-apple-macosx/debug/swiftj2k-cli. However, the full log records repeated SwiftPM lock waits against candidate-snapshot-04/.build (native.log:3088,3095,3096,3115), followed by six builds (3289,3399–3417). The first completed in 17.84 seconds, followed by five short builds. These are real unexpected child builds during the test phase, not a speculative source-path concern.
+
+2. CLI helpers search repository .build locations and then synchronously start swift build and wait: Tests/SwiftJ2KTests/CLIBreadthAndConsumerTests.swift:16–37, R1RemediationTests.swift:34–55, R2RemediationTests.swift:43–64 (the latter has one bundle-directory fallback, insufficient in this run). Command execution also uses blocking readDataToEndOfFile and waitUntilExit in the same helpers. Swift Testing runs synchronous and asynchronous test bodies concurrently using Swift Concurrency, so these synchronous waits can occupy workers required by unrelated async tests. They also create unnecessary compiler/process CPU pressure. The log establishes build contention; it does not measure how much of any individual deadline miss each mechanism caused.
+
+3. Nine issues cluster around roughly 9.5–11.8 seconds of Swift Testing execution: five lifecycle barrier timeouts, one descriptor-heavy handshake deadline failure, one HTTP cancellation elapsed assertion, one HTTP operation-deadline elapsed assertion, and one WS setup deadline error in RA2-07. The exact HTTP elapsed observations were 2.746063375 seconds for cancellation and 2.213935584 seconds for operation deadline, both exceeding the unchanged two-second assertion. Many trivial test completions also appear in that interval. This is consistent with delayed runnable-task execution but is not a scheduler trace.
+
+4. The focused 32-test run passed on unchanged source (candidate-jpip-04 result exit 0, no changed inputs; reported Swift Testing duration 11.884 seconds). This supports functionality under that workload. It does not prove prompt response during the full concurrent workload.
+
+What the current timing measurements do and do not establish
+
+F04-09, CodexR3IndependentTests.swift:443–455, starts its stopwatch before launching a Task, awaits Task.sleep for 60 ms, then calls cancel. The measured 2.746 seconds includes initial task scheduling, any delay resuming the test to issue cancellation, the cancellation path, and return to the test. It is not specifically cancel-to-socket-shutdown latency. Task.sleep specifies a minimum suspension, not a guaranteed resume time. Nevertheless, the end-to-end assertion is a real failure and remains in force.
+
+RA2-07 at 654–667 starts its stopwatch before awaiting deliverImage. The facade's 120 ms deadline is created only when JPIPStreamingSession enters its actor method (JPIPCodecAPI.swift:292–296). Therefore the observed 2.214 seconds includes time waiting to enter the actor plus any time resuming the caller after transport work. The current receipt contains no timestamp for actor entry, watchdog firing, socket shutdown or finite-worker completion. It cannot establish that socket receive remained blocked for 2.214 seconds, nor can it prove prompt I/O cleanup with only delayed observation. The original API-return bound still failed.
+
+The descriptor-heavy handshake test supplies two-second absolute deadlines before hopping to transport/WS actors. connect rechecks the deadline after its off-thread handshake returns; a correctly expired deadline can fail after a delayed actor resumption. The late error alone does not identify whether TCP setup, peer scheduling or actor resumption consumed the time.
+
+The lifecycle test's eventually helper (CodexR3WebSocketLifecycleTests.swift:145–150) applies a generic two-second observation timeout at several stages. Its error is only barrierTimedOut, without a stage identifier. The full log consequently cannot identify whether the missing observation was first-request arrival, old-cleanup parking, B's handshake parking, cleanup acknowledgement or final reader acknowledgement. These failures cannot honestly be labelled renewed C01/C02 corruption without the missing phase evidence. Conversely, source closure and focused passes do not erase their failure in the required broad run.
+
+Production implications
+
+Dedicated socket/handshake/write threads and the independent timer queue remove blocking I/O and deadline signalling from the cooperative executor. They do not guarantee prompt execution of subsequently resumed default-actor continuations or the test observer. JPIP's actors still use their normal actor executors; the core encoder explicitly uses @concurrent/generic-executor execution at CodecAPI.swift:516–518. An async caller's wall-clock completion includes scheduling outside the socket worker.
+
+There is currently no evidence warranting an invasive production custom-executor redesign, reduced test concurrency, a blanket "scheduler noise" waiver, or changing the 120 ms deadline / two-second completion criteria. The demonstrated harness blocking/build contention should be removed first. A post-fix full pass would provide relevant new evidence; a repeat failure would require further diagnosis, not another isolated run counted as closure.
+
+If the same failures persist after that single-factor correction, instrument a bounded diagnostic separately: record monotonic test start, actual cancellation issue, facade actor entry, deadline installation/firing, socket shutdown, finite-worker completion and caller catch. Add named barrier stages and a contemporaneous process/thread stack sample. Keep the original end-to-end assertions and cleanup checks; do not replace them with a lower-level socket-close measurement. Those timestamps distinguish scheduler admission/observer delay from an actual late cancellation signal or blocked worker. No such new instrumentation is requested for the first rerun.
+
+Further qualification must still exercise a ready silent peer, an approximately 100 ms operation deadline against the ordinary much longer transport timeout, correct error classification and cleanup of pending requests/owners. A handshake timeout before the silent request is sent is not proof of that specific blocked-response path. Retain both the broad failure receipt and the later controlled evidence.
+
+Primary scheduling references consulted
+
+Swift's language guide states that sleep suspends for at least the requested interval, and cancellation remains cooperative: https://docs.swift.org/swift-book/LanguageGuide/Concurrency.html . Apple documents that Swift Testing parallelises both synchronous and asynchronous test functions and uses Swift Concurrency: https://developer.apple.com/videos/play/wwdc2024/10195/ and https://developer.apple.com/videos/play/wwdc2024/10179/ . These explain permitted scheduling behaviour; the attribution of this run's delays remains an inference from local logs/source, not a result asserted by those documents.
+
+An independent exchange with /root/jpip_repairs agreed on these measurement limits and the unchanged-JPIP rerun; neither reviewer ran native work or edited source during this diagnosis. Snapshot04 C01/C02 ownership checks remain source-sound as recorded in review04; current broad deadline/lifecycle validation remains unresolved. Direct independent 3D JPIP and exact-extension peer gates remain UNEXECUTED / UNWAIVED, and no whole-R3 acceptance is issued.

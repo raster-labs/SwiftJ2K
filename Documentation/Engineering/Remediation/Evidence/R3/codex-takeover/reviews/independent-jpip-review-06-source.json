@@ -1,0 +1,124 @@
+{
+  "candidate": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-06",
+  "started_at": "2026-10-31T07:52:53.519268+00:00",
+  "root_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-06-source.json",
+  "before": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "fae584536249be159b28728c7e056d2cc3d5e4a2f59ca2be11dc1130f97a740e",
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "273167d783512c239483c9ef2426d825d63e3320c4abf478add4979593d9c752",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+  },
+  "root_manifest_differences": [],
+  "proposed_ci_before": {
+    "workflow.diff": "771983bafc5b6dc0975eefb904e2a5702dbf80182b4d1f35c08bbe4a5b2c4e7b",
+    "verify-sanitizer-inventory.py": "b94b52ce0d76db2035eaa6726d3c06d7cb603632e027bf27f8aa6f6687e45f13"
+  },
+  "finished_at": "2026-10-31T07:59:58.737205+00:00",
+  "after": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "fae584536249be159b28728c7e056d2cc3d5e4a2f59ca2be11dc1130f97a740e",
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "273167d783512c239483c9ef2426d825d63e3320c4abf478add4979593d9c752",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+  },
+  "differences": [],
+  "proposed_ci_after": {
+    "workflow.diff": "771983bafc5b6dc0975eefb904e2a5702dbf80182b4d1f35c08bbe4a5b2c4e7b",
+    "verify-sanitizer-inventory.py": "b94b52ce0d76db2035eaa6726d3c06d7cb603632e027bf27f8aa6f6687e45f13"
+  },
+  "proposed_ci_differences": [],
+  "candidate05_to_06_changed_paths": [
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift",
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift"
+  ],
+  "complete_candidate_file_count": 1347,
+  "complete_candidate_manifest_differences": [],
+  "root_manifest_sha256": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+  "additional_evidence_sha256": {
+    "work/sanitizer-partition-proposal/proposal.txt": "c4892e3d028cc546b06d5f5a2721c5880b063461bfc9fada1a8e8870853d02c6",
+    "work/sanitizer-partition-proposal/inputs.json": "92ff3ebc4c61b17400d147b87d6a3991f1b3590ef9f609f2ec8ffc68b7949aac",
+    "work/jpip-worker-handoff-report.txt": "fe2c12f7a6d45b15ed19af9901d6adaf2a23c9d9eb08f40aee12d80e7626391e",
+    "work/jpip-worker-handoff-source-06.json": "227371421225180f724d38ee63aa637cca0a3c10af0e6a82a7e21dfaa8b264ef"
+  },
+  "report": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-06.txt",
+  "report_sha256": "58ea81f28c450813f2846fbf55324a72f29698fd4367963abb2053e20c7db079",
+  "native_commands_executed_by_reviewer": false,
+  "native_receipts_independently_inspected": {
+    "candidate-jpip-06": {
+      "exit_code": 0,
+      "log_sha256": "6ee614748e82436765a718fc140544e24050e91ae591c313612b967fe4329ed7",
+      "log_hash_matches": true,
+      "source_before_matches_manifest": true,
+      "source_after_matches_manifest": true,
+      "tsan_diagnostic_lines": [],
+      "files_sha256": {
+        "result.json": "6c01620c4877cc6b6aa47205ad7a9dfe7159680d0ebc7962a5ac242c55b825ab",
+        "source-before.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "source-after.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "native.log": "6ee614748e82436765a718fc140544e24050e91ae591c313612b967fe4329ed7",
+        "command.json": "d4edea8113988573d19e39ffd2d306b233101377c751805c502d7fd3bca2ccbf"
+      }
+    },
+    "candidate-tsan-inventory-06": {
+      "exit_code": 0,
+      "log_sha256": "289a64cd86bd759ef7d2c74db4a7d0581d51c89b6ed01fbf47c5a3778cfb52be",
+      "log_hash_matches": true,
+      "source_before_matches_manifest": true,
+      "source_after_matches_manifest": true,
+      "tsan_diagnostic_lines": [],
+      "files_sha256": {
+        "result.json": "9f529e03dcc724fe6bd9f680996d21b0645533bfd563c676b389b366a327b618",
+        "source-before.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "source-after.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "native.log": "289a64cd86bd759ef7d2c74db4a7d0581d51c89b6ed01fbf47c5a3778cfb52be",
+        "command.json": "4159bb9b88be16b58cc315e755dd3a6a9f19ee05da504fbc2f7996b25963e0a9"
+      }
+    },
+    "candidate-handoff-tsan-06": {
+      "exit_code": 0,
+      "log_sha256": "14971d49e94b68d68ce21dedac1da2d3afb40d2775987afddabda1dbe163b529",
+      "log_hash_matches": true,
+      "source_before_matches_manifest": true,
+      "source_after_matches_manifest": true,
+      "tsan_diagnostic_lines": [],
+      "files_sha256": {
+        "report-swift-testing.xml": "a325eff7d1fc1d978f290a2b28f1d3d5f13bbd5ae8f7742ff3910d4cfd149b1a",
+        "result.json": "1c3e46e72183b0f678e89f48f28e6d63d1ad9c59dabf1a00bce40dfd97901f7b",
+        "source-before.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "source-after.json": "9c85a16fd6112818248cb7bee268f3cceccc799af3f8ca34458b130f77ff23bf",
+        "native.log": "14971d49e94b68d68ce21dedac1da2d3afb40d2775987afddabda1dbe163b529",
+        "command.json": "c3ca7f7f79aaefae1e04119671454f3988028bbcc2d1367b5b12a33d4c98d4bc"
+      }
+    }
+  },
+  "native_inventory_proof": {
+    "reference_count": 1328,
+    "sanitized_count": 1328,
+    "raw_stdout_identical": true,
+    "no_duplicates": true,
+    "jpip_count": 619,
+    "complement_count": 709,
+    "disjoint": true,
+    "union_matches": true,
+    "regex_matches": true,
+    "files_sha256": {
+      "jpip.ids": "2c9db9b250f48caf454b8ef91764d11c778df340a8c2ebb527159fd092fe6b10",
+      "complement.ids": "0e342152df68447915daffac6bba494f0ff7307ee6595654993349a282fa2b9b",
+      "sanitized.stdout": "0a824963eeb58b4fa86dfd8b6010d5ba161415ae8c0856b55795213512578928",
+      "sanitized.command-result.json": "f502dd5ea139586829fee04f2e9836690c84a1b7f7ee147845a8981bc5895744",
+      "reference.stdout": "0a824963eeb58b4fa86dfd8b6010d5ba161415ae8c0856b55795213512578928",
+      "all.ids": "bbb1da8c666f47846672b84b05dfb703bb7861ab233a761c887bb54468e8d9e1",
+      "inventory.json": "3aba7beb1338d3bc0c6b1204275414168c5b40f89ed028a519595684a8ea9801",
+      "reference.command-result.json": "c611c84898fb2345916a070600aaa1968ae7a009be490f19dfdee5e3ba1356fb",
+      "reference.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+      "sanitized.stderr": "e80dd4e06c7be692393f560624f47ca14ec8bc58dfce919d8189dd8a9dc606fc"
+    },
+    "focused_xml_declarations": [
+      "SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests/workerErrorAndCancellationDoNotPublishAReusableConnection()",
+      "SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests/workerCreatedConnectionsPublishBeforeCloseAndReuse()",
+      "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests/staleCleanupCannotCloseReplacementHandshake(_:)",
+      "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests/obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:)"
+    ]
+  }
+}

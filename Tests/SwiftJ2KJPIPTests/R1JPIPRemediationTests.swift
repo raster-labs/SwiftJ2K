@@ -255,6 +255,18 @@ struct R1JPIPRemediationTests {
         let port = Int.random(in: 41_000..<49_000)
         let server = JPIPServer(port: port)
         try await server.registerImage(name: "f13.jp2", at: imgURL)
+        let f13VolComp = J2KVolumeComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: 4,
+            height: 4,
+            depth: 2,
+            data: Data((0..<(4 * 4 * 2)).map { UInt8($0 & 0xFF) })
+        )
+        let f13Vol = J2KVolume(width: 4, height: 4, depth: 2, components: [f13VolComp])
+        let f13VolEncoded = try await JP3DEncoder(configuration: .lossless).encode(f13Vol)
+        await server.registerImageData(name: "vol-f13", data: f13VolEncoded.data)
         try await server.start()
         let session = JPIPStreamingSession(server: server, port: port)
 

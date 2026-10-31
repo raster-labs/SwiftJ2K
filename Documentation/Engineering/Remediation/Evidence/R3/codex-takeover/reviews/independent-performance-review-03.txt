@@ -1,0 +1,42 @@
+SwiftJ2K R3 independent performance review 03 — candidate03 residual-cost decision
+2026-10-31; /root/independent_core_review; read-only recommendation
+
+Recommendation
+Support an explicitly recorded, narrowly scoped safety/correctness trade-off for the measured encoder regressions, including the small EBCOT case. The new preallocation/live-overlap work is necessary to retain the repaired resource contract, its contribution is supported by the source and encoder profile, and the concrete invariant-string overhead identified in that profile has been removed. No further encoder optimisation is a prerequisite to that bounded decision; proving a globally optimal implementation or recovering the unsafe predecessor's speed is not required.
+
+Do not yet fold odd8 HT-to-EBCOT into the same disposition. Its required added work has a credible source explanation, but the candidate's new wide timing spread is not explained by the medium16 HT-encode profile. One bounded diagnostic of the actual odd8 transcode path, rather than a speculative production change, is the remaining targeted investigation I recommend before closing all twelve measured cases. Root retains the final engineering decision. This report does not approve R3 overall.
+
+Identity and measurement
+Recomputed all 960 raw records in runs04/05, matched each against archived stdout, verified alternating AB/BA ordering, sample counts/options and current executable hashes. Both campaigns use the same baseline and candidate03 binaries, 20 timed samples/version/case after five warmups per process, scalarCPU and one worker. All samples are exact, thermal0, low-power false. Both retained native-wrapper receipts have exit0, unchanged_inputs=[] and matching log hashes. Evidence is pinned in independent-performance-review-03-source.json. The only difference among the 52 scoped core files from the previously profiled candidate is the inspected scratchStage hoist; main matches candidate03 for those files.
+
+Residual encoder cost (microseconds; percentages are ratios of independent medians):
+                       run04 baseline -> candidate       run05 baseline -> candidate
+odd8 HT                387.375 -> 456.333                  412.354 -> 480.501
+  addition             68.958 (+17.80%)                   68.147 (+16.53%)
+medium16 HT           3077.125 -> 3389.126                3128.667 -> 3381.541
+  addition            312.001 (+10.14%)                  252.874 (+8.08%)
+odd8 EBCOT            1138.729 -> 1201.438                1227.104 -> 1283.250
+  addition             62.708 (+5.51%)                     56.146 (+4.58%)
+
+HT paired median ratios are +19.33/+16.53% (odd8) and +10.15/+8.19% (medium16); 20/19 and 18/13 of 20 pairs respectively exceed5%. The odd8 HT candidate standard deviations are15.16/19.22 us, with p95 481.38/525.75 us; the baseline p95 values are404.46/453.75 us. Medium16 candidate p95 is3522.04/3542.54 us against3140.79/3573.25 us, so the median regression does not imply uniformly worse tails. EBCOT odd8 has more variation (candidate SD170.92/262.72 us), but its ~56–63 us median increment is comparable to the HT increment and consistent with shared encoder admission work. Medium16 EBCOT is only +1.69/+0.39%.
+
+Neither series is an A/B experiment of the hoist itself: different binaries were run in sequential campaigns. The lower medium16 HT percentages versus runs02/03 are not a demonstrated causal improvement. The safe statement is the observed residual candidate03 cost.
+
+No encoded-size growth or median RSS trigger occurs; maximum RSS increase across04/05 is1.68%. HT encoded outputs remain six bytes smaller and other measured output sizes unchanged. Output hashes are deterministic per case/version and sample equality remains exact. Reported workspace is an admission value, not measured heap allocation. The earlier odd8 HT-decode +7.39% signal does not reproduce here (+0.66/+1.16%); it is not a confirmed continuing regression.
+
+Supported explanation and exception scope
+Prior profile normalized to active encode frames found budget ancestry0.15%->5.85% and HT cleanup11.70%->19.24%. Source changes route real live reservations through encoder entropy/Tier2 work rather than admitting completed block data after allocation. The new ledger keeps old/replacement capacities, fusion/output overlap and concurrent retained output charged. Both entropy modes share this boundary; MQ additionally admits 64-byte growth and exact-output compaction. These are concrete safety operations, not a backend/fidelity reduction or additional full decoded-image handoff. The hoist changes only repeated invariant label construction; no limits, capacities, event labels, atomic admission or release ordering change.
+
+This supports accepting the measured encoder cost as a deliberate bounded trade-off if root records the safety reason, exact candidate/baseline identities, absolute and percentage cost/spread, and a new validated successor baseline for these cases. It does not prove every nanosecond unavoidable; PERF-03 does not require that stronger claim. Keep the rejected predecessor labelled comparator only. A trade-off for these two volumes on Mac16,13/macOS27.0.1/Swift6.4 is not full-corpus, OS26, concurrency, R4 or release qualification.
+
+Distinct transcode item
+odd8 HT-to-EBCOT medians:
+run04 1220.562->1285.458 us: +64.896 us/+5.32%; paired median+4.49%.
+run05 1326.042->1453.229 us: +127.187 us/+9.59%; paired median+5.77%.
+Candidate p95 rises from1419.17 us in run04 to3504.17 us in run05; run05 baseline p95 is1721.04 us. Candidate SD is699.00 us versus159.35 us baseline. Run05 pairs9/16 have about2315/2047 us candidate excess; AB/BA paired medians are+4.90/+12.97%. Do not discard these samples or represent the +9.59% as a precise stable effect. Run04/05 medians plus the earlier run02 +6.37% justify keeping the PERF-03 investigation open, while the spread prevents treating the entire excess as established fixed accounting cost.
+
+The source explanation is real: candidate JP3DTranscoder.swift:588–661 joins sourcePacketWs, entropyWs and compressedOut in one checked tile Mutex ledger; baseline:587–622 kept a scalar output cap and admitted completed encodings. Candidate Tier12:5037–5044 admits source contributions, :5143–5161 routes the live entropy budget through re-encoding, and :5169–5176 budgets packet assembly. MQCoder.swift:114–133/220–229 admits growth overlap and compact-copy storage before allocation. However this uses a different local ledger and MQ encode path from the profiled encoder's six-lock tracker. The existing profile cannot establish where the transcode excess or outliers occur.
+
+The next sufficient bounded step is a release call-stack diagnostic of odd8 transcode-to-ebcot, normalized to active transcode frames, with the same exact-sample and identity safeguards. If it confirms expected admission/compaction work without a distinct avoidable hotspot, a separately documented trade-off may be justified without recovering predecessor speed. If it finds an accidental copy, repeated invariant work or other distinct hotspot, address that narrow cause and repeat the comparison. No production rewrite is justified solely by the current noisy tail.
+
+No native execution, source edit, gate waiver or final acceptance was performed by this reviewer. Direct Part10+15, direct full38 Part2, multiple active HT sets and other mandatory gates remain independent.

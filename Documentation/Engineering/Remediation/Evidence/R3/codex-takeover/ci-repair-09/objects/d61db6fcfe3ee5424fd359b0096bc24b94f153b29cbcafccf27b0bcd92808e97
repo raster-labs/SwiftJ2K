@@ -1,0 +1,28 @@
+{
+  "state": "PLAN_ONLY_NO_CANDIDATE17_EXECUTION_CLAIM",
+  "prepared_at": "2026-10-31T11:26:10.714393+00:00",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/audit-final.py": "d9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/final-review-source.json": "897e451f2b9348f8ac0c8eaec5a8dbde6bda84b98fb63ddcbead2d0449ad1d10",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/planned-15/audit-plan-final.json": "97fc8ea04faececa62165a32ae31d065aa48670628f7879d1c8f311a81519a3f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-native-verification-16.json": "3e3af1d1eb29c3843b554bce1f564e02738f3dc6bd944bf4e0d270b8d6ef7f1f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16-source.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd"
+  },
+  "planned_specs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/planned-17/thread-final-17.json": "64d67c81366d759eee7b78f788a17a03bc0387bfcc93202ca975dd15f4409c99",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/planned-17/audit-plan-preparation.json": "7195a2065a3f2bec0934e34f8e00e722916eed26d902f2437ea504d3000c0b24",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/planned-17/address-final-17.json": "0938eb804c375015b3db424455468e9bb5b5e0fd7dc5e4b0a6ef12c41b55f70e"
+  },
+  "pending": [
+    "Frozen17 source/manifest and writer positive stop",
+    "Exact reviewed17 fixture diff and independent source review",
+    "Root native17 plan and every completed ordinary/inventory/sanitizer receipt",
+    "Version17 auditor maintenance limited to recognising explicit approved fixture changes, plus independent review",
+    "CLI16-to17 actual input equivalence and completed independent CLI16 native review"
+  ],
+  "native_execution": false,
+  "repository_edits": false,
+  "whole_r3": "NOT_ACCEPTED"
+}

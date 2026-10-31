@@ -1,0 +1,9 @@
+Provisional HTTPS/shared-close test review; no native execution.
+
+Lifetime: immediate weaknil after lexical do scope is not proved by delegate-tail acknowledgement. Finished Foundation operations/block captures/autorelease and compiler async-frame ownership may remain briefly. Preserve immediate logical hasActiveOwners assertion, and separately observe eventual actual deinit after a strong-owner helper returns using a non-self-capturing latch/callback, bounded asynchronously. No observed nativefailure claimed.
+
+Confirmed test failure-path issue: original sends in HTTPS pre-readclose and stale-success tests omit probe.track, so failures before registered/beforePublication cannot wake waiters. TCP counterparts already use track. Stale HTTPS success test also lacks catch releasing beforePublication/closeJoining if fresh send throws. Sent writer/root request to mirror TCP tracking+cleanup.
+
+Completion/cancellation one-winner cases meaningfully script both lock orders and repeated late callbacks. The scripted invalidation-order case tests the state machine, not actual Foundation callback acknowledgement. The separate real URLProtocol request with paused delegate queue and two close tasks covers actual owned-session join; pre-start close then late sender verifies no session resurrection; oldsuccess/oldclose after new response verifies generation and state protection.
+
+Keep join claims precise: HTTPS proof joins requested task completion/invalidation and callback-tail publication. HTTP worker owner completion acknowledges finite I/O plus locked-result publication; it does not prove OS-thread exit or all stale sender ARC/result memory has been released. DNS latency and upper client/cache mutations after an already-returned transport response remain outside this bounded claim.

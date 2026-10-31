@@ -1,0 +1,26 @@
+{
+  "state": "SOURCE_REPAIR_COMPLETE_PENDING_INDEPENDENT_REVIEW_AND_NATIVE",
+  "finished_at": "2026-10-31T11:30:09.992393+00:00",
+  "writer": "/root/jpip_fixture_repairs17",
+  "finding": "FIXTURE17-01",
+  "source_writes_stopped": true,
+  "native_executed": false,
+  "git_or_network_used": false,
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "before": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d",
+    "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": "c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7"
+  },
+  "after": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "23314e244f111192be0a9da20d188933a8029c63133dfb128c033e6b3554b8f3",
+    "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": "a8a5132490d352a810c180bcc65f6ca08c3f11ddbc5417cefe1e3b9b45c138dc"
+  },
+  "report_sha256": "26bfd467325a5b14f3b95c620d98056472a65e31fdf6ebbc29cb3ce1fe2c8333",
+  "diff_sha256": "5ebccfc6486dda4d8b2efb57f2e3ae93311276fe6fdb12d5467558c11373186b",
+  "reverse_normalisation_matches_before": true,
+  "original17_report_sha256": "f0d718beb98a6d80eb808103c248737045db2302ec9ed4072be633efe1de6f9d",
+  "original17_source_sha256": "85aa8e9c5b0ccfe9b4c3c77ed5f3d8b5cb4b93513c0bbd8a62ad3b2bfeb7b56d",
+  "whole_r3_accepted": false
+}

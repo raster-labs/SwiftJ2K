@@ -1,0 +1,199 @@
+{
+  "state": "FAILED_ORDINARY17_PROVENANCE_VERIFIED",
+  "at": "2026-10-31T11:32:25.822576+00:00",
+  "source_files": 2282,
+  "source_manifest_sha256": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+  "source_stable_before_review": true,
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17-source.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/report-swift-testing.xml": "0811ed15148618d461fd16cd8d738cc7896ebd0987b99ab993d718c221ea3527",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/result.json": "159e0d995b493f78edc2ff33ef728f206b03bda7fa26041a89653487627f085d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/source-before.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/source-after.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stdout": "1e5c3e75a763dbb0cc65b450425e047c10d1e491abb615b9b9707be7d288abac",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.log": "aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/command.json": "da9a2138b61f81d5985f1d53b4faafb417337fbb788e3e3ef8088e274fe6ba71",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stderr": "11a112279472e09aa741c2b70d2c829d492a47da1652a01502f2577a403a8642",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-11.txt": "ee829accff9d8cf8360b7c6db18958d6705f9071ddee249c68574abeabebd8f4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-11-source.json": "406f1ecada1cd33b3c044f421fc8dd26262bbc9362b2ed7b64412e4dc43ffc16",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-12.txt": "2283d36ee76a79b098d06245402b50723562db07b7063637f6022343b895f4d2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-12-source.json": "f133917dd79a5d4a9e86c7d7740ec80ce69a720b042b4f5bf353c966169db1d1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-sampled-native-review-13.txt": "a2c60a1db9b28ddaa38c0564d8f32934b0ea09f7e65e00f7ed1c44acf99e2f3e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-sampled-native-review-13-source.json": "fce4246312173dfcf0c9207a76d71ce6237056b553b6ee859031bab4d15b72cc",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-14.txt": "937df492fbc0d392a87b175d92e4e8cd383ac4de8e640addee9bea8bce28e2b5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-review-15.txt": "1cb4931f5d9b9df10090bf0006e89eed96a5c75dfaf46a2b025dffa74065fb7b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-review-15-source.json": "abab48d6d29c5a55d439acb94006004b20f3b643f2022c0d134503e8b48b76c3"
+  },
+  "result": {
+    "finished_at": "2026-10-31T11:27:42.144780+00:00",
+    "exit_code": 1,
+    "elapsed_seconds": 125.60815575000001,
+    "changed_inputs": [],
+    "log_sha256": "aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stdout",
+        "sha256": "1e5c3e75a763dbb0cc65b450425e047c10d1e491abb615b9b9707be7d288abac",
+        "bytes": 361206
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stderr",
+        "sha256": "11a112279472e09aa741c2b70d2c829d492a47da1652a01502f2577a403a8642",
+        "bytes": 20076
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 1,
+    "built_cli_products_at_completion": {
+      "debug": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-17/arm64-apple-macosx/debug/swiftj2k-cli",
+        "sha256": "cb355068a9fc6edbfbc9b3bca68d9245b9e5190399213917dbd80e6292bf1cca"
+      }
+    }
+  },
+  "command": {
+    "started_at": "2026-10-31T11:25:36.444377+00:00",
+    "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17",
+    "command": [
+      "swift",
+      "test",
+      "--scratch-path",
+      "../candidate-build-17",
+      "--disable-sandbox",
+      "--build-system",
+      "native",
+      "--cache-path",
+      "../swiftpm-cache",
+      "--config-path",
+      "../swiftpm-config",
+      "--security-path",
+      "../swiftpm-security",
+      "-j",
+      "4",
+      "--xunit-output",
+      "../validation/candidate-full-17/report.xml"
+    ],
+    "wrapper_sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "test_environment": {
+      "SWIFTJ2K_TEST_CLI_PATH": null,
+      "ASAN_OPTIONS": null,
+      "TSAN_OPTIONS": null
+    },
+    "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+    "base_head": "immutable diagnostic snapshot; see provenance",
+    "source_files": 2282,
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n",
+    "output_capture": {
+      "version": 1,
+      "stdout": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stdout",
+      "stderr": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stderr",
+      "merged": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.log",
+      "merge_policy": "Whole LF-terminated lines under one lock; EOF fragments receive one synthetic LF. Cross-stream chronological ordering is not guaranteed."
+    },
+    "spawned_pid": 55716
+  },
+  "xctest_passed": 1034,
+  "swift_testing_declarations": 324,
+  "failed_declarations": [
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "children": [
+        {
+          "tag": "failure",
+          "attrib": {
+            "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+          },
+          "text": null
+        }
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "absoluteDeadlineCancelsSilentResponse()",
+      "children": [
+        {
+          "tag": "failure",
+          "attrib": {
+            "message": "Expectation failed: ContinuousClock.now - start < .seconds(2) (error)"
+          },
+          "text": null
+        }
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "children": [
+        {
+          "tag": "failure",
+          "attrib": {
+            "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+          },
+          "text": null
+        }
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "children": [
+        {
+          "tag": "failure",
+          "attrib": {
+            "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\") (error)"
+          },
+          "text": null
+        }
+      ]
+    }
+  ],
+  "unchanged_HTTPS_inputs": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78"
+  },
+  "changed_implementation_from15": {
+    "Sources/SwiftJ2KCLI/CLIVerbs.swift": {
+      "before": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43",
+      "after": "1b92d632abea8abe1aea4180b01045e3fcfddd1b32d11259e0832d29c00f535c"
+    },
+    "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": {
+      "before": null,
+      "after": "c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": {
+      "before": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5",
+      "after": "39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": {
+      "before": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+      "after": "15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1"
+    }
+  },
+  "issues": [
+    {
+      "line": 3147,
+      "text": "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:336:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "line": 3154,
+      "text": "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "line": 3159,
+      "text": "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:308:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "line": 3167,
+      "text": "\u2718 Test absoluteDeadlineCancelsSilentResponse() recorded an issue at CodexR3HTTPStreamingTests.swift:179:9: Expectation failed: ContinuousClock.now - start < .seconds(2)"
+    }
+  ],
+  "sanitizer17_results_present": []
+}

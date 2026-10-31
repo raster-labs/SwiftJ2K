@@ -1,0 +1,29 @@
+{
+  "started_at": "2026-10-31T06:51:32.428921+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-01",
+  "command": [
+    "swift",
+    "test",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--scratch-path",
+    "../candidate-build-01",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--skip-build",
+    "--filter",
+    "stalledTCPTransportsCancelAndTimeoutPromptly|httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel"
+  ],
+  "wrapper_sha256": "09f4fed6ac18bed458e6fcbac8b0c578ce0859dd1ffe016e033809534524726e",
+  "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1342,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+}

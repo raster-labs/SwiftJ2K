@@ -1,0 +1,24 @@
+{
+  "finished_at": "2026-10-31T08:21:50.959907+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 0.117804209,
+  "changed_inputs": [],
+  "log_sha256": "c0af820258293588de42a9168b39ce6c775c57b7247a98a27e35e4f52d89a71e",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/stream-capture-probe-08/native.stdout",
+      "sha256": "a2990a3f993bd431f346af9883059ee44cc3a2b91e9292c99aa584e8dbb9b7f6",
+      "bytes": 1001
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/stream-capture-probe-08/native.stderr",
+      "sha256": "d649e9ea59eb06f985d5fd8460080a4f092d5f5de86857061547b26e0c131b00",
+      "bytes": 1001
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 2,
+  "wrapper_exit_code": 0
+}

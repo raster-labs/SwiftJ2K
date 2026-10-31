@@ -1,0 +1,59 @@
+--- frozen17/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
++++ candidate18/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
+@@ -423,7 +423,7 @@
+             peer.mark("request.\(index)")
+         }
+         defer { peer.close() }
+-        try await peer.waitFor("accept.started")
++        try await peer.waitForStartup()
+         let clock = ContinuousClock()
+         let httpTransport = JPIPTransport(baseURL: URL(string: "http://127.0.0.1:\(peer.port)")!)
+         let httpTask = Task {
+@@ -638,7 +638,7 @@
+             if try connection.readHTTPRequest() != nil { peer.mark("request.\(index)") }
+         }
+         defer { httpPeer.close() }
+-        try await httpPeer.waitFor("accept.started")
++        try await httpPeer.waitForStartup()
+         let clock = ContinuousClock()
+         let httpSession = JPIPStreamingSession(
+             serverURL: URL(string: "http://127.0.0.1:\(httpPeer.port)/jpip")!
+@@ -683,7 +683,7 @@
+             peer.mark("request.\(index)")
+         }
+         defer { wsPeer.close() }
+-        try await wsPeer.waitFor("accept.started")
++        try await wsPeer.waitForStartup()
+         let wsSession = JPIPStreamingSession(
+             serverURL: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!
+         )
+--- frozen17/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift
++++ candidate18/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift
+@@ -242,7 +242,7 @@
+             }
+         }
+         defer { peer.close() }
+-        try await peer.waitFor("accept.started")
++        try await peer.waitForStartup()
+         let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+         do {
+             peer.mark("first.send.begin")
+--- frozen17/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift
++++ candidate18/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift
+@@ -94,6 +94,16 @@
+ 
+     var failures: [String] { state.withLock { $0.failures } }
+ 
++    /// Startup is protected before callers create their client operation. A
++    /// failed readiness wait must also close and observe this peer's workers.
++    func waitForStartup() async throws {
++        do { try await waitFor("accept.started") }
++        catch {
++            let stopped = await stopAndObserve()
++            throw R3ScriptedPeerFailure("Peer startup failed: \(error); stopped=\(stopped); \(diagnostics)")
++        }
++    }
++
+     func waitFor(_ phase: String) async throws {
+         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+         while true {

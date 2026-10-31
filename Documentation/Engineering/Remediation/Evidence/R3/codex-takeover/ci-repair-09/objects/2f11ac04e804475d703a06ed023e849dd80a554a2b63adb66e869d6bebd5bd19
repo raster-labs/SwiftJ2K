@@ -1,0 +1,30 @@
+Independent HTTPS successor review — frozen candidate10
+Reviewer: /root/independent_jpip_review; 2026-10-31.
+
+Disposition: the narrow test-harness correction is justified and preserves the existing assertions and limits. No new source finding. The supplied focused10 local gate is verified PASS. Full ordinary, complete sanitizer and exact-head hosted qualification are not established by this review; no whole-R3 or external-peer acceptance follows.
+
+Identity and exact delta
+Snapshot work/candidate-snapshot-10 contains 1,857 files; manifest SHA256 a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2. The before/after hash receipt is independent-https-review-10-source.json. Exactly one file differs from frozen09: Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift, SHA256 f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3, 29,200 bytes. Every production file and all other tests are byte-identical to frozen09.
+
+At lines 175 onwards, the active-trickle fixture now declares Content-Type: image/jpp-stream and its readiness failure includes submitted one-byte chunks, received accumulator bytes and protocol-start status. Independently reversing only those two edits reproduces the complete frozen09 file byte-for-byte. The one-byte input, 10 ms cadence, two-second readiness window, 120 ms watchdog, less-than-two-second interruption assertion, resource limits, cleanup, and separate silent read(deadline:) test remain unchanged. No declaration/argument, assertion or concurrency setting was removed or weakened.
+
+Probe evidence and attribution
+I read the standalone probe source and verified its prepared source hash, compile/run commands, retained logs/raw streams, execution-identity references and binary hash. Source SHA256 5d22c0c4c379709fb9bddd05023c3f837ff6cb4a9bc610ea4f6c0c9f9af03631; binary SHA-256: 3593cd040eb3e394862b5c291763ade54473836f3cee831dd8fb2fc0fb7e76e5. The binary identity was observed after execution; it is not an argv-time binary attestation. The wrapper's source manifests bind the unchanged frozen09 repository; the external probe source/binary are separately bound by execution-identity.json and the prepared source receipt.
+
+The probe imports Foundation, runs two sequential URLProtocol/URLSessionDataDelegate scenarios and does not link SwiftJ2K production code. It uses the same one-byte/10 ms emission and two-second cancellation in both cases. Without Content-Type, 201 callbacks/bytes were submitted and no response or body callback reached the delegate before cancellation. With image/jpp-stream, 201 callbacks/bytes were submitted, one response and 200 body callbacks/bytes were received, and first body receipt occurred at 0.000939583 seconds from scenario creation. Both tasks completed and sessions invalidated. Raw JSON SHA-256: 6a495ccac18fb5f83b6e65f0001712663c1f7bcb8fb3d7c5a908074d81170b60 matches the recorded observations.
+
+This supports the reported header-dependent delivery difference on that local runtime and the explicit JPIP content-type harness repair. It does not establish a private Foundation MIME-sniffing/buffering mechanism, a portable timing benchmark, a real TLS exchange, or independent JPIP interoperability. The sample counts do not establish data loss: cancellation ends a still-active stream. No claim is made that production needed modification.
+
+Source-review linkage
+The unchanged production/source assessment is independent-https-review-09.txt, SHA-256: 1592738834e88180faf319b87d6ae06ad5a194254c3eb6ccfc947e87cfa7a84e, with its hash-qualified source receipt. Its HTTPS storage, close-generation and completion conclusions apply to the identical production bytes. Its boundaries remain: observable callback/header/owned-buffer accounting excludes opaque URLSession internal buffers and measured RSS; HTTPS join acknowledges task completion/invalidation callback tail; HTTP owner join acknowledges finite I/O and locked-result publication, not physical thread exit or release of every stale sender reference. DNS latency and higher client/session interleavings outside registered transport operations are not universally qualified.
+
+Focused native receipt — PASS, exact scope
+work/validation/candidate-focused-10: exit 0, source-before/source-after equal the 1,857-file frozen10 manifest, raw capture complete, both capture threads joined, no capture error. Local Apple Swift 6.4, arm64 macOS target. Command filter is CodexR3HTTPStreamingTests|CodexR3TransportCloseTests|waveletWholeSampleSymmetricBoundaryCompliance, using a fresh candidate-build-10 scratch path.
+
+XML and raw log independently show 22 declarations in 3 suites passed in 0.143 seconds, including 9 parameter argument starts. The previously failing active-trickle test passed in 0.142 seconds; the unchanged silent deadline passed in 0.124 seconds. Total wrapper elapsed 37.381140083 seconds includes compilation. These whole-test durations are observations, not replacements for their internal assertions or a performance qualification. No failure or skip event appears in the focused test stream.
+
+Log SHA256 ac79764cabad3108a36308610ca4dd56ea2bd79bbe84c8706656f760a5c7aead; raw stdout SHA-256: 1d6484bde2981d192a32ef0275c780a066e9f8d30ffc9a462b33cd0a61568a3a; raw stderr SHA-256: 1389bf334a467787ebc47220f9fc77385a521344bcb0ed346863fa7b52549139. Result, command, XML, streams and source manifests are individually hashed in this review receipt.
+
+Historical focused09 remains FAILED: exit 1 and original log SHA-256: 638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994 are preserved. Successor10's pass does not rewrite that evidence. Full10 ordinary/sanitizer and hosted Linux results remain separate pending gates at this review's completion. The five direct external qualification gates remain unexecuted/unwaived.
+
+Positive STOP: review complete; no native/compiler/server/oracle execution or repository/source edits by this reviewer. Scope recommendation is the exact test-only delta and the supplied focused local gate, not whole-R3 acceptance.

@@ -1,0 +1,32 @@
+{
+  "started_at": "2026-10-31T06:58:16.221073+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/performance-baseline-source",
+  "command": [
+    "swift",
+    "build",
+    "--package-path",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline",
+    "--scratch-path",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-baseline-build",
+    "--cache-path",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/swiftpm-cache",
+    "--config-path",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/swiftpm-config",
+    "--security-path",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/swiftpm-security",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "-c",
+    "release",
+    "-j",
+    "4",
+    "--product",
+    "r3-profile"
+  ],
+  "wrapper_sha256": "09f4fed6ac18bed458e6fcbac8b0c578ce0859dd1ffe016e033809534524726e",
+  "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1279,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+}

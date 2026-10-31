@@ -1,0 +1,1184 @@
+Building for debugging...
+[Starting]
+[5 / 43]
+[9 / 44] SwiftJ2K
+[11 / 45] SwiftJ2K
+[17 / 49] SwiftJ2K3D
+[19 / 51] SwiftJ2K3D
+[24 / 56] SwiftJ2KJPIP
+[30 / 62] SwiftJ2KJPIP
+[37 / 71] SwiftJ2KJPIP
+[40 / 70] SwiftJ2KJPIP
+[45 / 71]
+[47 / 77] SwiftJ2KJPIP
+[53 / 81] swiftj2k-cli-product
+[55 / 81] swiftj2k-cli-product
+[55 / 81] SwiftJ2KJPIP
+[58 / 81] SwiftJ2K3D
+[67 / 84] SwiftJ2K3DTests-product
+[69 / 100]
+[70 / 100]
+[76 / 100] SwiftJ2KJPIPTests-product
+[77 / 100] SwiftJ2KJPIPTests-product
+[78 / 100] SwiftJ2KJPIPTests-product
+[80 / 100] SwiftJ2KJPIPTests-product
+[82 / 100] SwiftJ2KJPIPTests-product
+[85 / 102] SwiftJ2KCLI
+[85 / 102] SwiftJ2KJPIPTests-product
+[87 / 102] SwiftJ2KJPIPTests-product
+[89 / 103] SwiftJ2KCLI
+[93 / 105] swiftj2k-cli-product
+[96 / 104] SwiftJ2KTests-product
+[106 / 115] SwiftJ2KTests-product
+[109 / 115] SwiftJ2KTests-product
+[113 / 119] SwiftJ2KTests-product
+[115 / 119] SwiftJ2KTests-product
+[117 / 120] SwiftJ2KTests-product
+[119 / 123] SwiftJ2K3DTests-product
+Build complete! (15.57 sec)
+Test Suite 'Selected tests' started at 2026-10-30 21:55:23.604.
+Test Suite 'SwiftJ2KTests.xctest' started at 2026-10-30 21:55:23.610.
+Test Suite 'SwiftJ2KTests.xctest' passed at 2026-10-30 21:55:23.610.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 21:55:23.610.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+Test Suite 'Selected tests' started at 2026-10-30 21:55:23.724.
+Test Suite 'SwiftJ2KJPIPTests.xctest' started at 2026-10-30 21:55:23.730.
+Test Suite 'SwiftJ2KJPIPTests.xctest' passed at 2026-10-30 21:55:23.730.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 21:55:23.730.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+Test Suite 'Selected tests' started at 2026-10-30 21:55:23.793.
+Test Suite 'SwiftJ2K3DTests.xctest' started at 2026-10-30 21:55:23.798.
+Test Suite 'JP3DComplianceTests' started at 2026-10-30 21:55:23.799.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testAllProgressionOrdersAreEnumerated]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testAllProgressionOrdersAreEnumerated]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testAllSubbandsPresent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testAllSubbandsPresent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth10]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth10]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth12]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth12]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth16]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth16]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth8]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testBitExactRoundTripBitDepth8]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsCODMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsCODMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsQCDMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsQCDMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSIZMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSIZMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSODMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSODMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSOTMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamContainsSOTMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamEndsWithEOCMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamEndsWithEOCMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamStartsWithSOCMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamStartsWithSOCMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamWithOnlySOCAndEOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCodestreamWithOnlySOCAndEOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCOMMarkerAbsenceDoesNotBreakParser]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCOMMarkerAbsenceDoesNotBreakParser]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceProgressCallbackIsInvoked]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceProgressCallbackIsInvoked]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportDecoderResultHasWarningsArray]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportDecoderResultHasWarningsArray]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportEncoderResultHasCompressionRatio]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportEncoderResultHasCompressionRatio]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportTileCountMatchesExpected]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testComplianceReportTileCountMatchesExpected]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCompressionModeTargetBitrateIsNotLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testCompressionModeTargetBitrateIsNotLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceIsNotPartialForValidData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceIsNotPartialForValidData]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformancePreservesComponentCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformancePreservesComponentCount]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceProducesCorrectBitDepth]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceProducesCorrectBitDepth]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceProducesCorrectDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceProducesCorrectDimensions]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceTilesDecodedPositive]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecoderConformanceTilesDecodedPositive]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecompositionLevelsRecordedInCOD]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDecompositionLevelsRecordedInCOD]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDeepDecompositionLevels]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDeepDecompositionLevels]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDuplicateSIZMarkerInCodestream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testDuplicateSIZMarkerInCodestream]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceLosslessFlagSet]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceLosslessFlagSet]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceLossyFlagNotSet]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceLossyFlagNotSet]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceResultContainsData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceResultContainsData]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceResultDimensionsMatch]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceResultDimensionsMatch]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceTileCountPositive]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testEncoderConformanceTileCountPositive]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceDecoderRejectsEmptyData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceDecoderRejectsEmptyData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceDecoderRejectsMissingSOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceDecoderRejectsMissingSOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceEmptyDataThrows]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceEmptyDataThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceMissingSOCThrows]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceMissingSOCThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTolerateErrorsModeHandlesTruncated]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTolerateErrorsModeHandlesTruncated]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTruncatedAfterSIZ]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTruncatedAfterSIZ]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTruncatedAfterSOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceTruncatedAfterSOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceUnsupportedMarkerHandled]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testErrorResilienceUnsupportedMarkerHandled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testHighBitDepthVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testHighBitDepthVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropCodestreamHasExpectedTileCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropCodestreamHasExpectedTileCount]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropCodestreamIsParseableAfterEncode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropCodestreamIsParseableAfterEncode]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropDecoderConfigDefault]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropDecoderConfigDefault]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropDecoderConfigThumbnail]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropDecoderConfigThumbnail]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropPacketSequencerAllProgressionOrders]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropPacketSequencerAllProgressionOrders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropProfileCompatibilityLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInteropProfileCompatibilityLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInvalidMarkerValueFF00IsHandled]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInvalidMarkerValueFF00IsHandled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInvalidSIZSegmentTooShortThrows]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testInvalidSIZSegmentTooShortThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeComponentBitDepthPreserved]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeComponentBitDepthPreserved]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeConvenienceInitCreatesCorrectDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeConvenienceInitCreatesCorrectDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeIsSingleSliceFalseForDepthGT1]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeIsSingleSliceFalseForDepthGT1]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeIsSingleSliceTrueForDepth1]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeIsSingleSliceTrueForDepth1]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeValidationThrowsForZeroDimension]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeValidationThrowsForZeroDimension]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeVoxelCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testJ2KVolumeVoxelCount]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLargerVolumeEncodesWithoutError]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLargerVolumeEncodesWithoutError]' passed (0.041 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLLLSubbandIsApproximation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLLLSubbandIsApproximation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLosslessWaveletFlagInCodestream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLosslessWaveletFlagInCodestream]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLossyWaveletFlagInCodestream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testLossyWaveletFlagInCodestream]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testManyQualityLayers]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testManyQualityLayers]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumCODValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumCODValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumCOMValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumCOMValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumEOCValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumEOCValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumQCDValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumQCDValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSIZValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSIZValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSOCValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSOCValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSODValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSODValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSOTValue]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMarkerEnumSOTValue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumValidCodestreamHasOneTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumValidCodestreamHasOneTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumValidCodestreamIsParseable]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumValidCodestreamIsParseable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumVolumeEncodeDecodeRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMinimumVolumeEncodeDecodeRoundTrip]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMissingEOCIsHandledGracefully]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testMissingEOCIsHandledGracefully]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamBitDepth]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamBitDepth]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamComponentCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamComponentCount]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamSIZMatchesInput]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamSIZMatchesInput]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamTileSizeMatchesTilingConfig]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testParsedCodestreamTileSizeMatchesTilingConfig]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintHTJ2KLosslessIsLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintHTJ2KLosslessIsLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintHTJ2KLossyIsHTJ2K]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintHTJ2KLossyIsHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintLosslessIsValid]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintLosslessIsValid]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintLossyIsValid]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProfileConstraintLossyIsValid]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderCPRLS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderCPRLS]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderLRCPS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderLRCPS]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderPCRLS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderPCRLS]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderRawValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderRawValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderRLCPS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderRLCPS]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderSLRCP]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testProgressionOrderSLRCP]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceDecoderRespectsSetting]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceDecoderRespectsSetting]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceMultipleLayers]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceMultipleLayers]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceSingleLayer]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQualityLayerConformanceSingleLayer]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceLossless]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceLossy]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceLossy]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceVisuallyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testQuantizationConformanceVisuallyLossless]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testROICodingConformanceEncodesWithoutError]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testROICodingConformanceEncodesWithoutError]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testROICodingConformanceRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testROICodingConformanceRoundTrip]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripHTJ2KLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripHTJ2KLossless]' passed (0.060 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless12Bit]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless12Bit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless16Bit]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless16Bit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless8Bit]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossless8Bit]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLosslessMultiComponent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLosslessMultiComponent]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossyProducesDecodedVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripLossyProducesDecodedVolume]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripPreservesVoxelCountLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testRoundTripPreservesVoxelCountLossless]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileDataNonEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileDataNonEmpty]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileGridComputationIsCorrect]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileGridComputationIsCorrect]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileGridWithOddDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileGridWithOddDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileIndexingIsMonotonicInCodestream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileIndexingIsMonotonicInCodestream]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileRegionClampsToVolumeBoundary]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTileRegionClampsToVolumeBoundary]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingConformanceMultipleTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingConformanceMultipleTiles]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingConformanceSingleTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingConformanceSingleTile]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetBatchValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetBatchValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetDefaultValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetDefaultValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetStreamingValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingPresetStreamingValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingValidationPassesForPositiveSizes]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingValidationPassesForPositiveSizes]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingValidationThrowsForZeroTileSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testTilingValidationThrowsForZeroTileSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationCodestreamMinimumLength]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationCodestreamMinimumLength]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationCODPrecedesQCD]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationCODPrecedesQCD]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationEOCIsLastTwoBytes]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationEOCIsLastTwoBytes]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationSIZFollowsSOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationSIZFollowsSOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationSOCMarkerPosition]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationSOCMarkerPosition]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationTileGridMatchesSIZ]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testValidationTileGridMatchesSIZ]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testWaveletSubbandCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DComplianceTests testWaveletSubbandCount]' passed (0.000 seconds).
+Test Suite 'JP3DComplianceTests' passed at 2026-10-30 21:55:24.003.
+	 Executed 121 tests, with 0 failures (0 unexpected) in 0.200 (0.205) seconds
+Test Suite 'JP3DConfigurationValidationTests' started at 2026-10-30 21:55:24.003.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testDecoderConfigurationDefaults]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testDecoderConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testDecoderThumbnailPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testDecoderThumbnailPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationDefaults]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationLosslessPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationLosslessPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationLossyPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testEncoderConfigurationLossyPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testHTJ2KConfigurationFromPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testHTJ2KConfigurationFromPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testTilingConfigurationValidation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DConfigurationValidationTests testTilingConfigurationValidation]' passed (0.000 seconds).
+Test Suite 'JP3DConfigurationValidationTests' passed at 2026-10-30 21:55:24.004.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JP3DCoreTypeTests' started at 2026-10-30 21:55:24.004.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsClampsDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsClampsDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsSubscript]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCoefficientsSubscript]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLosslessHTJ2K]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLosslessHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossy]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossyHTJ2K]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeLossyHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeTargetBitrate]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeTargetBitrate]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeVisuallyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testCompressionModeVisuallyLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testPrecinctConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testPrecinctConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testPrecinctLinearIndex]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testPrecinctLinearIndex]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testProgressionOrderAllCases]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testProgressionOrderAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionBasicConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionBasicConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionClamped]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionClamped]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionContainsPoint]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionContainsPoint]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionEmpty]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionEquatable]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionEquatable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionIntersection]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionIntersection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionNoIntersection]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionNoIntersection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionOriginConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testRegionOriginConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testSendableConformance]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testSendableConformance]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testSubbandAllCases]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testSubbandAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTileConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTileConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTileLinearIndex]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTileLinearIndex]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationAllTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationAllTiles]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationBoundaryTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationBoundaryTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationOddDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationOddDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationPresets]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationPresets]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationPrimeDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationPrimeDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTileGrid]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTileGrid]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTilesIntersectingRegion]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTilesIntersectingRegion]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTotalTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationTotalTiles]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationValidation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationVolumeSmallerThanTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testTilingConfigurationVolumeSmallerThanTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeBasicConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeBasicConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeBitDepthClamping]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeBitDepthClamping]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentBytesPerSample]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentBytesPerSample]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentProperties]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentProperties]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentSubsampled]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeComponentSubsampled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeConvenienceInitClampsValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeConvenienceInitClampsValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeConvenienceProperties]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeConvenienceProperties]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEmptyDimensionsRejected]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEmptyDimensionsRejected]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEquatable]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEquatable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEstimatedMemorySize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEstimatedMemorySize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEstimatedMemorySizeMultipleComponents]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeEstimatedMemorySizeMultipleComponents]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeFullInitializer]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeFullInitializer]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeInvalidComponentBitDepthRejected]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeInvalidComponentBitDepthRejected]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataCustomFields]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataCustomFields]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeMetadataEmpty]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeModalityAllCases]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeModalityAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeNegativeSpacing]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeNegativeSpacing]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeNonUniformDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeNonUniformDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeOverflowProtection]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeOverflowProtection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeRGBConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeRGBConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeSignedConstruction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeSignedConstruction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeSingleVoxel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeSingleVoxel]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeThinZAxis]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeThinZAxis]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeValidation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeZeroComponents]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCoreTypeTests testVolumeZeroComponents]' passed (0.000 seconds).
+Test Suite 'JP3DCoreTypeTests' passed at 2026-10-30 21:55:24.012.
+	 Executed 60 tests, with 0 failures (0 unexpected) in 0.005 (0.007) seconds
+Test Suite 'JP3DCrossPlatformTests' started at 2026-10-30 21:55:24.012.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testCompressionModePropertiesAreConsistent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testCompressionModePropertiesAreConsistent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testProgressionOrderCasesAllPresent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testProgressionOrderCasesAllPresent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testRegionIntersectionIsConsistent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testRegionIntersectionIsConsistent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testTilingConfigurationIsConsistent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testTilingConfigurationIsConsistent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testVolumeConstructionIsConsistent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DCrossPlatformTests testVolumeConstructionIsConsistent]' passed (0.000 seconds).
+Test Suite 'JP3DCrossPlatformTests' passed at 2026-10-30 21:55:24.012.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'JP3DDecoderTests' started at 2026-10-30 21:55:24.012.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamBuilderEndsWithEOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamBuilderEndsWithEOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamBuilderMinimalBuild]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamBuilderMinimalBuild]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamRoundTripTileCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testCodestreamRoundTripTileCount]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderBitDepth16]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderBitDepth16]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderConfigurationDefault]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderConfigurationDefault]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderConfigurationThumbnail]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderConfigurationThumbnail]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderDefaultConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderDefaultConfiguration]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderHandlesCorruptedMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderHandlesCorruptedMarker]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderIsNotPartialForValidData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderIsNotPartialForValidData]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderLosslessRoundTrip]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderLosslessRoundTripMultipleComponents]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderLosslessRoundTripMultipleComponents]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderMultipleComponents]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderMultipleComponents]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderNonSquareVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderNonSquareVolume]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderPeekMetadata]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderPeekMetadata]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderPreservesComponentCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderPreservesComponentCount]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderProducesCorrectDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderProducesCorrectDimensions]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderProgressCallback]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderProgressCallback]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderRejectsEmptyData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderRejectsEmptyData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultComponentDataNotEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultComponentDataNotEmpty]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultIsNotPartialForCompleteInput]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultIsNotPartialForCompleteInput]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultVolumeIsNotEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultVolumeIsNotEmpty]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultWarningsEmptyForCleanDecode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderResultWarningsEmptyForCleanDecode]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderSingleComponent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderSingleComponent]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderSingleVoxelVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderSingleVoxelVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderThickVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderThickVolume]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderThrowsOnMalformedData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderThrowsOnMalformedData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderTilesDecodedCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderTilesDecodedCount]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderTilesTotal]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderTilesTotal]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderToleratesTruncatedTileData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderToleratesTruncatedTileData]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderWithTolerateErrorsEnabled]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testDecoderWithTolerateErrorsEnabled]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripMediumVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripMediumVolume]' passed (0.010 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripMultipleTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripMultipleTiles]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripSingleSlice]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripSingleSlice]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripSmallVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testLosslessRoundTripSmallVolume]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsDecompositionLevels]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsDecompositionLevels]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsLosslessFlag]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsLosslessFlag]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsMultipleTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsMultipleTiles]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsTileCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserExtractsTileCount]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserHandlesMinimalCodestream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserHandlesMinimalCodestream]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserPreservesLosslessQuantizationFlag]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserPreservesLosslessQuantizationFlag]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserRejectsEmptyData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserRejectsEmptyData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserRejectsMissingSOC]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserRejectsMissingSOC]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserTileDataNonEmpty]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserTileDataNonEmpty]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserTileGrid]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testParserTileGrid]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderCanCancel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderCanCancel]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderCanReset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderCanReset]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderFinalResultMatchesFull]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderFinalResultMatchesFull]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderProgressFractions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderProgressFractions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderQualityMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderQualityMode]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderResolutionMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderResolutionMode]' passed (0.010 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderSliceBatchContainsCorrectDepth]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderSliceBatchContainsCorrectDepth]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderSliceMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testProgressiveDecoderSliceMode]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderAccuracyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderAccuracyLossless]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderClampsToBounds]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderClampsToBounds]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderEmptyIntersection]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderEmptyIntersection]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderFullVolumeRegion]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderFullVolumeRegion]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSingleVoxelRegion]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSingleVoxelRegion]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSkipsTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSkipsTiles]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSubRegion]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderSubRegion]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderTiledDecodedCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderTiledDecodedCount]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderZeroWidthClampedRegion]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DDecoderTests testROIDecoderZeroWidthClampedRegion]' passed (0.000 seconds).
+Test Suite 'JP3DDecoderTests' passed at 2026-10-30 21:55:24.143.
+	 Executed 61 tests, with 0 failures (0 unexpected) in 0.129 (0.131) seconds
+Test Suite 'JP3DEncoderTests' started at 2026-10-30 21:55:24.143.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testAllProgressionOrders]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testAllProgressionOrders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testAllProgressionOrdersExist]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testAllProgressionOrdersExist]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testClampedConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testClampedConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCodestreamBuilderBasic]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCodestreamBuilderBasic]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCodestreamBuilderMultipleTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCodestreamBuilderMultipleTiles]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeHTJ2K]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeLossy]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeLossy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeTargetBitrate]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeTargetBitrate]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeVisuallyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testCompressionModeVisuallyLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testConfigurationEquality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testConfigurationEquality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testDequantizeRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testDequantizeRoundTrip]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderCompressionRatio]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderCompressionRatio]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderEmptyComponents]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderEmptyComponents]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderHTJ2KMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderHTJ2KMode]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderInvalidDataSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderInvalidDataSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderInvalidDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderInvalidDimensions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLargerVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLargerVolume]' passed (0.007 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLosslessSmallVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLosslessSmallVolume]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLossySmallVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderLossySmallVolume]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMixedBitDepth16]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMixedBitDepth16]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMultiComponent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMultiComponent]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMultipleTilesParallel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderMultipleTilesParallel]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderNonPowerOf2Dimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderNonPowerOf2Dimensions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderParallelConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderParallelConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderRawData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderRawData]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderSingleSliceVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderSingleSliceVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderSingleTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderSingleTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderTargetBitrate]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderTargetBitrate]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderVisuallyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderVisuallyLossless]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderWithCustomTiling]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderWithCustomTiling]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderWithProgressCallback]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncoderWithProgressCallback]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncodingStageNames]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testEncodingStageNames]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testLosslessPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testLosslessPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testLossyPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testLossyPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerCPRLS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerCPRLS]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerLRCPS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerLRCPS]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerPCRLS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerPCRLS]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerRLCPS]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerRLCPS]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerSLRCP]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testPacketSequencerSLRCP]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testProgressionOrderRawValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testProgressionOrderRawValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQualityLayerFormation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQualityLayerFormation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQuantizeLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQuantizeLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQuantizeLossy]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testQuantizeLossy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlLosslessStepSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlLosslessStepSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlLossyStepSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlLossyStepSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlTargetBitrateStepSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlTargetBitrateStepSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlVisuallyLossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testRateControlVisuallyLossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamingPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamingPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterBasic]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterBasic]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterCancel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterCancel]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterCannotAddAfterFinalize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterCannotAddAfterFinalize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterInvalidSliceIndex]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterInvalidSliceIndex]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterInvalidSliceSize]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterInvalidSliceSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterOutOfOrder]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterOutOfOrder]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterProgressCallback]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterProgressCallback]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterReceivedSliceCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testStreamWriterReceivedSliceCount]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDataExtraction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDataExtraction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDataExtractionInvalidComponent]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDataExtractionInvalidComponent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerDefaultConfig]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerDefaultConfig]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerMultipleTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerMultipleTiles]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerPartialTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerPartialTiles]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerSingleTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileDecomposerSingleTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileLinearIndex]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testTileLinearIndex]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testVisuallyLosslessPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testVisuallyLosslessPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testZeroQualityLayersRejected]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DEncoderTests testZeroQualityLayersRejected]' passed (0.000 seconds).
+Test Suite 'JP3DEncoderTests' passed at 2026-10-30 21:55:24.178.
+	 Executed 66 tests, with 0 failures (0 unexpected) in 0.032 (0.035) seconds
+Test Suite 'JP3DHTJ2KTests' started at 2026-10-30 21:55:24.178.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testAdaptivePreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testAdaptivePreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBalancedPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBalancedPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeHTEquality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeHTEquality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeInequality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeInequality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeLegacyEquality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBlockModeLegacyEquality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithHTJ2KConfigInsertsCAPMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithHTJ2KConfigInsertsCAPMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithHTJ2KConfigInsertsCPFMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithHTJ2KConfigInsertsCPFMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithoutHTJ2KConfigOmitsCAPMarker]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testBuilderWithoutHTJ2KConfigOmitsCAPMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerContainsCorrectMagicBytes]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerContainsCorrectMagicBytes]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerLengthForDefaultConfig]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerLengthForDefaultConfig]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerMixedModeBitSet]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCAPMarkerMixedModeBitSet]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecAdaptiveModeSelectsHTForDenseData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecAdaptiveModeSelectsHTForDenseData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecAdaptiveModeSelectsLegacyForSparseData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecAdaptiveModeSelectsLegacyForSparseData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodesTileHTRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodesTileHTRoundTrip]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodesTileLegacyRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodesTileLegacyRoundTrip]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodeThrowsOnTruncatedData]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecDecodeThrowsOnTruncatedData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeLargeVolumeTile]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeLargeVolumeTile]' passed (0.019 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeSingleVoxel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeSingleVoxel]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeZeroCoefficients]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodeDecodeZeroCoefficients]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodesTileWithHTMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodesTileWithHTMode]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodesTileWithLegacyMode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCodecEncodesTileWithLegacyMode]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testConfigurationEquality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testConfigurationEquality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testConfigurationInequality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testConfigurationInequality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCPFMarkerContainsCorrectMagicBytes]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCPFMarkerContainsCorrectMagicBytes]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCPFMarkerLengthForLosslessConfig]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCPFMarkerLengthForLosslessConfig]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCustomConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testCustomConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testDefaultConfigurationPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testDefaultConfigurationPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeDecodeRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeDecodeRoundTrip]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeDecodeVoxelValues]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeDecodeVoxelValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeProducesNonEmptyCAPHeader]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KEncodeProducesNonEmptyCAPHeader]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLosslessPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLosslessPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLossyDefaultPSNR]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLossyDefaultPSNR]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLossyPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KLossyPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KSignalledDetection]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testHTJ2KSignalledDetection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testIsHybridHTJ2KFalseForPureHTJ2K]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testIsHybridHTJ2KFalseForPureHTJ2K]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testLowLatencyPreset]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testLowLatencyPreset]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testParsedCodestreamContainsHTJ2KTilesAfterHTJ2KEncode]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testParsedCodestreamContainsHTJ2KTilesAfterHTJ2KEncode]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testParsedCodestreamStandardEncodeHasNoHTJ2KTiles]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testParsedCodestreamStandardEncodeHasNoHTJ2KTiles]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testPassCountClampedToOne]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testPassCountClampedToOne]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeEmptyWarningsForValidInput]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeEmptyWarningsForValidInput]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeHTJ2KToStandardProducesDecodableStream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeHTJ2KToStandardProducesDecodableStream]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodePreservesVolumeDimensions]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodePreservesVolumeDimensions]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodePreservesWaveletLevels]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodePreservesWaveletLevels]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscoderDefaultConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscoderDefaultConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscoderReverseConfiguration]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscoderReverseConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeStandardToHTJ2KProducesValidCodingStream]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeStandardToHTJ2KProducesValidCodingStream]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeTileCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DHTJ2KTests testTranscodeTileCount]' passed (0.003 seconds).
+Test Suite 'JP3DHTJ2KTests' passed at 2026-10-30 21:55:24.220.
+	 Executed 47 tests, with 0 failures (0 unexpected) in 0.041 (0.042) seconds
+Test Suite 'JP3DMemoryUsageTests' started at 2026-10-30 21:55:24.220.
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testCompressionRatioIsPositive]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testCompressionRatioIsPositive]' passed (0.020 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testRepeatedEncodeDecodeDoesNotLeak]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testRepeatedEncodeDecodeDoesNotLeak]' passed (0.109 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testTileCountMatchesTilingGrid]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMemoryUsageTests testTileCountMatchesTilingGrid]' passed (0.006 seconds).
+Test Suite 'JP3DMemoryUsageTests' passed at 2026-10-30 21:55:24.356.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.135 (0.136) seconds
+Test Suite 'JP3DMetalCPUEquivalenceTests' started at 2026-10-30 21:55:24.356.
+Test Case '-[SwiftJ2K3DTests.JP3DMetalCPUEquivalenceTests testLosslessMetalAndCPUProduceSameTileCount]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMetalCPUEquivalenceTests testLosslessMetalAndCPUProduceSameTileCount]' passed (0.029 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMetalCPUEquivalenceTests testMetalAndCPUEncodeProduceSameVolumeShape]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMetalCPUEquivalenceTests testMetalAndCPUEncodeProduceSameVolumeShape]' passed (0.011 seconds).
+Test Suite 'JP3DMetalCPUEquivalenceTests' passed at 2026-10-30 21:55:24.396.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.040 (0.040) seconds
+Test Suite 'JP3DMetalDWTTests' started at 2026-10-30 21:55:24.396.
+Test Case '-[SwiftJ2K3DTests.JP3DMetalDWTTests testMetalDWTForwardInverseRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMetalDWTTests testMetalDWTForwardInverseRoundTrip]' passed (0.042 seconds).
+Test Suite 'JP3DMetalDWTTests' passed at 2026-10-30 21:55:24.438.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.042 (0.042) seconds
+Test Suite 'JP3DMultiSpectralTests' started at 2026-10-30 21:55:24.438.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsCustom]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsCustom]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsFull]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsFull]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsResolutionLevelClamping]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecodeOptionsResolutionLevelClamping]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderActorCreation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderActorCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderClassifyPixels]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderClassifyPixels]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderInvalidBandIndexThrows]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderInvalidBandIndexThrows]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testDecoderRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderActorCreation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderActorCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderComputeStatistics]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderComputeStatistics]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderConfigurationDefault]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderConfigurationDefault]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderConfigurationQualityLayersClamping]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderConfigurationQualityLayersClamping]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderEncodeSmallVolume]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderEncodeSmallVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderMismatchedBandCountThrows]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderMismatchedBandCountThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderWithInterBandPrediction]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testEncoderWithInterBandPrediction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeCreation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeDimensionClamping]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeDimensionClamping]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeSpectralRange]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeSpectralRange]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeSpectralRangeNoBands]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testMultiSpectralVolumeSpectralRangeNoBands]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserActorCreation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserActorCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserComputeCorrelationMatrix]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserComputeCorrelationMatrix]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserComputeNDVIIndex]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserComputeNDVIIndex]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserThrowsWithTooFewBands]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralAnalyserThrowsWithTooFewBands]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandEquality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandEquality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandInequality]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandInequality]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandInitialisation]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralBandInitialisation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralClassificationAllCases]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralClassificationAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralConfigurationDefault]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralConfigurationDefault]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralIndexAllCases]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralIndexAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectral]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectral]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectralMinimumClamped]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectralMinimumClamped]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectralSingleBand]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingHyperspectralSingleBand]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingNearInfrared]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingNearInfrared]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingVisible]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DMultiSpectralTests testSpectralMappingVisible]' passed (0.000 seconds).
+Test Suite 'JP3DMultiSpectralTests' passed at 2026-10-30 21:55:24.446.
+	 Executed 33 tests, with 0 failures (0 unexpected) in 0.007 (0.008) seconds
+Test Suite 'JP3DProgressionOrderIntegrationTests' started at 2026-10-30 21:55:24.446.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testCPRLSProgression]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testCPRLSProgression]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testLRCPSProgression]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testLRCPSProgression]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testPCRLSProgression]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testPCRLSProgression]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testRLCPSProgression]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testRLCPSProgression]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testSLRCPProgression]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DProgressionOrderIntegrationTests testSLRCPProgression]' passed (0.006 seconds).
+Test Suite 'JP3DProgressionOrderIntegrationTests' passed at 2026-10-30 21:55:24.474.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.029 (0.029) seconds
+Test Suite 'JP3DRoundTripTests' started at 2026-10-30 21:55:24.474.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests test16BitRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests test16BitRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testHTJ2KLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testHTJ2KLosslessRoundTrip]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testHTJ2KLossyRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testHTJ2KLossyRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testLosslessRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testLossyPSNRRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testLossyPSNRRoundTrip]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testMultiComponentRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testMultiComponentRoundTrip]' passed (0.014 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testMultipleQualityLayersRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testMultipleQualityLayersRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testSingleSliceVolumeRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testSingleSliceVolumeRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testTargetBitrateRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testTargetBitrateRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testVisuallyLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DRoundTripTests testVisuallyLosslessRoundTrip]' passed (0.007 seconds).
+Test Suite 'JP3DRoundTripTests' passed at 2026-10-30 21:55:24.540.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.065 (0.066) seconds
+Test Suite 'JP3DTilingIntegrationTests' started at 2026-10-30 21:55:24.540.
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testBatchTilingRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testBatchTilingRoundTrip]' passed (0.006 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testNonPowerOf2DimensionsRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testNonPowerOf2DimensionsRoundTrip]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testStreamingTilingRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DTilingIntegrationTests testStreamingTilingRoundTrip]' passed (0.038 seconds).
+Test Suite 'JP3DTilingIntegrationTests' passed at 2026-10-30 21:55:24.589.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.048 (0.048) seconds
+Test Suite 'JP3DWaveletTests' started at 2026-10-30 21:55:24.589.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testCoefficientStorageSizeAfterForward]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testCoefficientStorageSizeAfterForward]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDecompositionLevelsStoredCorrectly]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDecompositionLevelsStoredCorrectly]' passed (0.003 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDeepVolume8x8x32]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDeepVolume8x8x32]' passed (0.007 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDepth1NoZTransform]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testDepth1NoZTransform]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testEmptyDataThrowsInvalidParameter]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testEmptyDataThrowsInvalidParameter]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testFull3DRoundTrip8x8x4]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testFull3DRoundTrip8x8x4]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testHeight1NoYTransform]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testHeight1NoYTransform]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testIrreversible97CustomConfig16x16x4]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testIrreversible97CustomConfig16x16x4]' passed (0.004 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testIrreversible97DefaultLossyRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testIrreversible97DefaultLossyRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testMultiLevel2x2xy1z]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testMultiLevel2x2xy1z]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testMultiLevel3x3xy2z_32x32x8]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testMultiLevel3x3xy2z_32x32x8]' passed (0.025 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testNonPow2_13x11x5]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testNonPow2_13x11x5]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testNonPow2_7x5x3_oneLevel]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testNonPow2_7x5x3_oneLevel]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testOriginalDimensionsStoredInDecomposition]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testOriginalDimensionsStoredInDecomposition]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testPeriodicBoundaryRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testPeriodicBoundaryRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip16x16x8TwoLevels]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip16x16x8TwoLevels]' passed (0.007 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip4x4x1Lossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip4x4x1Lossless]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip8x8x4Lossless]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testRoundTrip8x8x4Lossless]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSeparableAndFull3DRoundTripEquivalence]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSeparableAndFull3DRoundTripEquivalence]' passed (0.002 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSingleVoxel1x1x1]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSingleVoxel1x1x1]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSymmetricBoundaryNonPowerOf2]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testSymmetricBoundaryNonPowerOf2]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testThinVolume64x64x1]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testThinVolume64x64x1]' passed (0.010 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testWidth1NoXTransform]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testWidth1NoXTransform]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroDepthThrowsInvalidParameter]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroDepthThrowsInvalidParameter]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroHeightThrowsInvalidParameter]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroHeightThrowsInvalidParameter]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroLevelsIsIdentity]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroLevelsIsIdentity]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroPaddingBoundaryRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroPaddingBoundaryRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroWidthThrowsInvalidParameter]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZeroWidthThrowsInvalidParameter]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZOnlyVolume1x1x16]' started.
+Test Case '-[SwiftJ2K3DTests.JP3DWaveletTests testZOnlyVolume1x1x16]' passed (0.000 seconds).
+Test Suite 'JP3DWaveletTests' passed at 2026-10-30 21:55:24.661.
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.072 (0.073) seconds
+Test Suite 'V10_18_TrueSelectiveParityTests' started at 2026-10-30 21:55:24.661.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testCombinedResolutionLevelAndROI]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testCombinedResolutionLevelAndROI]' passed (0.195 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testFullDecodeLosslessRoundTripBaseline]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testFullDecodeLosslessRoundTripBaseline]' passed (0.144 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionDeterministic]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionDeterministic]' passed (0.192 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionLevel2Shape]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionLevel2Shape]' passed (0.099 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionShape]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testPartialResolutionShape]' passed (0.133 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testResolutionLevel0IsBitExactFullDecode]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testResolutionLevel0IsBitExactFullDecode]' passed (0.090 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testROIDecodeMatchesFullDecodeCropped]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testROIDecodeMatchesFullDecodeCropped]' passed (0.224 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testROIDecodeMatchesFullDecodeCroppedAtCorner]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testROIDecodeMatchesFullDecodeCroppedAtCorner]' passed (0.197 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testZNarrowROIBitExactWithFullCropped]' started.
+Test Case '-[SwiftJ2K3DTests.V10_18_TrueSelectiveParityTests testZNarrowROIBitExactWithFullCropped]' passed (0.385 seconds).
+Test Suite 'V10_18_TrueSelectiveParityTests' passed at 2026-10-30 21:55:26.321.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 1.659 (1.660) seconds
+Test Suite 'V10_28_JP3DDecoderPartialOverloadsParityTests' started at 2026-10-30 21:55:26.321.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testConfigurationPropagatesThroughOverload]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testConfigurationPropagatesThroughOverload]' passed (0.130 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeRegionAndResolutionLevelOverloadBitExact]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeRegionAndResolutionLevelOverloadBitExact]' passed (0.189 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeRegionOverloadBitExact]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeRegionOverloadBitExact]' passed (0.197 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeResolutionLevelOverloadBitExact]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeResolutionLevelOverloadBitExact]' passed (0.195 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeResolutionLevelZeroIsNoOp]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testDecodeResolutionLevelZeroIsNoOp]' passed (0.200 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testNegativeResolutionLevelIsClamped]' started.
+Test Case '-[SwiftJ2K3DTests.V10_28_JP3DDecoderPartialOverloadsParityTests testNegativeResolutionLevelIsClamped]' passed (0.200 seconds).
+Test Suite 'V10_28_JP3DDecoderPartialOverloadsParityTests' passed at 2026-10-30 21:55:27.432.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 1.110 (1.111) seconds
+Test Suite 'V10_30_ProgressStreamParityTests' started at 2026-10-30 21:55:27.432.
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DDecoderProgressStreamDeliversEvents]' started.
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DDecoderProgressStreamDeliversEvents]' passed (0.195 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DEncoderProgressStreamDeliversEvents]' started.
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DEncoderProgressStreamDeliversEvents]' passed (0.133 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DROIDecoderProgressStreamSurfaceIsAvailable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testJP3DROIDecoderProgressStreamSurfaceIsAvailable]' passed (0.195 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testSetProgressCallbackStillWorksAfterProgressStream]' started.
+Test Case '-[SwiftJ2K3DTests.V10_30_ProgressStreamParityTests testSetProgressCallbackStillWorksAfterProgressStream]' passed (0.196 seconds).
+Test Suite 'V10_30_ProgressStreamParityTests' passed at 2026-10-30 21:55:28.151.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.719 (0.720) seconds
+Test Suite 'V10_32_PreWarmSymmetricCompletionTests' started at 2026-10-30 21:55:28.151.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DDecoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DDecoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DEncoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DEncoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DMultiSpectralDecoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DMultiSpectralDecoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DMultiSpectralEncoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DMultiSpectralEncoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DProgressiveDecoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DProgressiveDecoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DROIDecoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DROIDecoderPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DStreamWriterPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DStreamWriterPreWarmCallable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DTranscoderPreWarmCallable]' started.
+Test Case '-[SwiftJ2K3DTests.V10_32_PreWarmSymmetricCompletionTests testJP3DTranscoderPreWarmCallable]' passed (0.000 seconds).
+Test Suite 'V10_32_PreWarmSymmetricCompletionTests' passed at 2026-10-30 21:55:28.153.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'VolumeContractTests' started at 2026-10-30 21:55:28.153.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testDICOMKitJP3DConsumerSurfaceCompatibility]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testDICOMKitJP3DConsumerSurfaceCompatibility]' passed (0.026 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldHTJ2KAndZDeltaRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldHTJ2KAndZDeltaRoundTrip]' passed (0.007 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldLosslessRoundTrip]' passed (0.013 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldROIDecoderRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned16BitCTHounsfieldROIDecoderRoundTrip]' passed (0.013 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned8BitLosslessRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testSigned8BitLosslessRoundTrip]' passed (0.005 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testUnsignedZDeltaNegativeResidualRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testUnsignedZDeltaNegativeResidualRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeDecoderROISubRegionViaContractOptions]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeDecoderROISubRegionViaContractOptions]' passed (0.013 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeEncoderDecoderLosslessContractRoundTrip]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeEncoderDecoderLosslessContractRoundTrip]' passed (0.009 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeResourceLimitsRejectsOversizedVolume]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeResourceLimitsRejectsOversizedVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeTranscoderForwardAndReverse]' started.
+Test Case '-[SwiftJ2K3DTests.VolumeContractTests testVolumeTranscoderForwardAndReverse]' passed (0.006 seconds).
+Test Suite 'VolumeContractTests' passed at 2026-10-30 21:55:28.246.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.093 (0.094) seconds
+Test Suite 'SwiftJ2K3DTests.xctest' passed at 2026-10-30 21:55:28.246.
+	 Executed 490 tests, with 0 failures (0 unexpected) in 4.429 (4.448) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 21:55:28.247.
+	 Executed 490 tests, with 0 failures (0 unexpected) in 4.429 (4.453) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Phase R2 — SwiftJ2K3D Semantics Remediation Regressions" started.
+◇ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" started.
+◇ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" started.
+◇ Suite "Codex R2 volume grid and coefficient workspace regressions" started.
+◇ Suite "Codex R2 volume bridge pixel accounting" started.
+◇ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" started.
+◇ Test "F09: VolumeEncoder, VolumeDecoder, VolumeTranscoder, and JP3DMetalDWT honour ExecutionPolicy and simulated unavailability" started.
+◇ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" started.
+◇ Test "Direct slice reduction uses the requested stride for an odd-sized image" started.
+◇ Test "F01: Parser and decoder reject malformed Part 10 / HT-in-JP3D marker segments and truncated entropy cleanly without traps" started.
+◇ Test "F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic" started.
+◇ Test "Reduced ROI samples, dimensions and origin agree across tile boundaries" started.
+◇ Test "F01: Multi-tile-part SOT concatenation, JP3DStreamWriter, and JP3DMultiSpectralEncoder/Decoder round-trip normatively" started.
+◇ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" started.
+◇ Test "F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly" started.
+◇ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" started.
+◇ Test "F09: VolumeEncoder, VolumeDecoder, and VolumeTranscoder enforce CopyPolicy and emit truthful OperationReport telemetry" started.
+◇ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" started.
+◇ Test "Odd dimensions and odd tile origins select one volume-wide grid" started.
+◇ Test "The legacy disjoint-ROI partial canvas retains its geometry" started.
+◇ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" started.
+◇ Test "Transcode publication is admitted before allocation and preserves builder bytes" started.
+◇ Test "A narrow ROI without any point on the reduced grid fails predictably" started.
+◇ Test "F01: 3-layer irreversible 9-7 3D codestream improves MSE/PSNR monotonically across layers 1, 2, and 3" started.
+◇ Test "F01: Reconciled HT-in-JP3D emits Pcap=0x0042_0000, Lcap=10, Ccap^15 Table A.2, zcb=0, HTMIXED for 32/38-bit, and zero-copy wavelet-domain EBCOT <-> HTJ2K transcode" started.
+◇ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" started.
+◇ Test "Lossy reduced tiles select the same spatial samples as full reconstruction" started.
+◇ Test "F11: Volume spacing and physical origin round-trip across encode, inspect, decode, ROI, reduced resolution, transcode, and discardAncillary" started.
+◇ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" started.
+◇ Test "Volume transcode reports coefficient workspace even for tiny compressed inputs" started.
+◇ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" started.
+◇ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" started.
+◇ Test "Reduced lossy decoding charges nested slice buffers" started.
+◇ Test "Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels" started.
+◇ Test "Lossy transcode reports intermediate volume allocation and reserves the retained source" started.
+◇ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" started.
+◇ Test case passing 1 argument bits → 8 to "Reduced ROI samples, dimensions and origin agree across tile boundaries" started.
+◇ Test case passing 1 argument bits → 32 to "Reduced ROI samples, dimensions and origin agree across tile boundaries" started.
+◇ Test case passing 1 argument bits → 8 to "Odd dimensions and odd tile origins select one volume-wide grid" started.
+◇ Test case passing 1 argument bits → 32 to "Odd dimensions and odd tile origins select one volume-wide grid" started.
+◇ Test case passing 1 argument hasHTMarkers → false to "Transcode publication is admitted before allocation and preserves builder bytes" started.
+◇ Test case passing 1 argument ht → false to "Lossy reduced tiles select the same spatial samples as full reconstruction" started.
+◇ Test case passing 1 argument ht → true to "Lossy reduced tiles select the same spatial samples as full reconstruction" started.
+◇ Test case passing 1 argument hasHTMarkers → true to "Transcode publication is admitted before allocation and preserves builder bytes" started.
+◇ Test case passing 1 argument useROI → false to "Reduced lossy decoding charges nested slice buffers" started.
+◇ Test case passing 1 argument workers → 1 to "Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels" started.
+◇ Test case passing 1 argument useROI → true to "Reduced lossy decoding charges nested slice buffers" started.
+◇ Test case passing 1 argument workers → 2 to "Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels" started.
+✔ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" passed after 0.066 seconds.
+✔ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" passed after 0.095 seconds.
+✔ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" passed after 0.100 seconds.
+✔ Test "Direct slice reduction uses the requested stride for an odd-sized image" passed after 0.101 seconds.
+✔ Test "F01: Parser and decoder reject malformed Part 10 / HT-in-JP3D marker segments and truncated entropy cleanly without traps" passed after 0.101 seconds.
+✔ Test "F09: VolumeEncoder, VolumeDecoder, VolumeTranscoder, and JP3DMetalDWT honour ExecutionPolicy and simulated unavailability" passed after 0.101 seconds.
+✔ Test "F09: VolumeEncoder, VolumeDecoder, and VolumeTranscoder enforce CopyPolicy and emit truthful OperationReport telemetry" passed after 0.101 seconds.
+✔ Test "F01: Multi-tile-part SOT concatenation, JP3DStreamWriter, and JP3DMultiSpectralEncoder/Decoder round-trip normatively" passed after 0.116 seconds.
+✔ Test "F01: 3-layer irreversible 9-7 3D codestream improves MSE/PSNR monotonically across layers 1, 2, and 3" passed after 0.118 seconds.
+✔ Test "The legacy disjoint-ROI partial canvas retains its geometry" passed after 0.132 seconds.
+✔ Test "F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic" passed after 0.132 seconds.
+✔ Test "A narrow ROI without any point on the reduced grid fails predictably" passed after 0.134 seconds.
+✔ Test "Transcode publication is admitted before allocation and preserves builder bytes" with 2 test cases passed after 0.135 seconds.
+✔ Test "F01: Reconciled HT-in-JP3D emits Pcap=0x0042_0000, Lcap=10, Ccap^15 Table A.2, zcb=0, HTMIXED for 32/38-bit, and zero-copy wavelet-domain EBCOT <-> HTJ2K transcode" passed after 0.138 seconds.
+✔ Test "Lossy transcode reports intermediate volume allocation and reserves the retained source" passed after 0.143 seconds.
+✔ Test "F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly" passed after 0.143 seconds.
+✔ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" passed after 0.182 seconds.
+✔ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" passed after 0.183 seconds.
+✔ Test "Reduced ROI samples, dimensions and origin agree across tile boundaries" with 2 test cases passed after 0.184 seconds.
+✔ Test "Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels" with 2 test cases passed after 0.185 seconds.
+✔ Suite "Codex R2 volume bridge pixel accounting" passed after 0.197 seconds.
+✔ Test "Lossy reduced tiles select the same spatial samples as full reconstruction" with 2 test cases passed after 0.206 seconds.
+✔ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" passed after 0.206 seconds.
+✔ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" passed after 0.233 seconds.
+✔ Test "Reduced lossy decoding charges nested slice buffers" with 2 test cases passed after 0.242 seconds.
+✔ Test "Odd dimensions and odd tile origins select one volume-wide grid" with 2 test cases passed after 0.243 seconds.
+✔ Test "F11: Volume spacing and physical origin round-trip across encode, inspect, decode, ROI, reduced resolution, transcode, and discardAncillary" passed after 0.252 seconds.
+✔ Suite "Phase R2 — SwiftJ2K3D Semantics Remediation Regressions" passed after 0.265 seconds.
+✔ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" passed after 0.291 seconds.
+✔ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" passed after 0.299 seconds.
+✔ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" passed after 0.299 seconds.
+✔ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" passed after 0.316 seconds.
+✔ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" passed after 0.344 seconds.
+✔ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" passed after 0.345 seconds.
+✔ Test "Volume transcode reports coefficient workspace even for tiny compressed inputs" passed after 0.363 seconds.
+✔ Suite "Codex R2 volume grid and coefficient workspace regressions" passed after 0.363 seconds.
+✔ Test run with 31 tests in 5 suites passed after 0.363 seconds.

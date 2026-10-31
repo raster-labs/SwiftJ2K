@@ -1,0 +1,280 @@
+{
+  "state": "ACCEPTED_SCOPED_SAFETY_TRADEOFF",
+  "at": "2026-10-31T08:39:57.087331+00:00",
+  "authority": "Root Codex R3 engineering coordinator; human authorised repairs and independent audit. This document does not accept whole R3 or waive external gates.",
+  "contract": "Documentation/PERFORMANCE.md PERF-03; shared file SHA-256 139e83f4c670b514940bcbae2d69560e0b28f866b266019ff8c112c0f388343b",
+  "candidate": "The 52 candidate 03 core files remain byte-identical in frozen candidate 08 and current implementation; see performance-core-identity-08.json.",
+  "comparator": "Rejected 67c8f7ed05379113b1fd41897b289c48a541266c; performance comparator only, not accepted safe baseline",
+  "reason": "Preallocate under atomic live output/workspace ceilings, count old/new buffer overlap and packet/entropy coexistence, and retain denial/cleanup/cancellation behaviour. The predecessor delayed or omitted some of this admission. The repaired code incurs measured bookkeeping cost. No bounds were raised or checks disabled.",
+  "measured_costs": [
+    {
+      "run": "04",
+      "case": "odd8",
+      "operation": "encode-ebcot",
+      "baseline_median_seconds": 0.0011387295,
+      "candidate_median_seconds": 0.0012014375,
+      "absolute_median_cost_seconds": 6.270800000000008e-05,
+      "median_cost_percent": 5.506838981514051,
+      "baseline_spread": {
+        "median": 0.0011387295,
+        "p95": 0.001193583,
+        "minimum": 0.001089708,
+        "maximum": 0.001262,
+        "stddev": 4.1808132211329426e-05
+      },
+      "candidate_spread": {
+        "median": 0.0012014375,
+        "p95": 0.0013977920000000001,
+        "minimum": 0.0011406250000000001,
+        "maximum": 0.001930084,
+        "stddev": 0.00017091839627922012
+      },
+      "rss_change_percent": 0.38610038610038533,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "04",
+      "case": "odd8",
+      "operation": "encode-ht",
+      "baseline_median_seconds": 0.00038737450000000007,
+      "candidate_median_seconds": 0.000456333,
+      "absolute_median_cost_seconds": 6.895849999999994e-05,
+      "median_cost_percent": 17.801507326889077,
+      "baseline_spread": {
+        "median": 0.00038737450000000007,
+        "p95": 0.000404458,
+        "minimum": 0.00036012500000000004,
+        "maximum": 0.00040950000000000003,
+        "stddev": 1.637553670723497e-05
+      },
+      "candidate_spread": {
+        "median": 0.000456333,
+        "p95": 0.00048137500000000003,
+        "minimum": 0.00043075000000000003,
+        "maximum": 0.000482166,
+        "stddev": 1.5156529585071836e-05
+      },
+      "rss_change_percent": 0.0948766603415585,
+      "size_change_percent": -0.21208907741251393
+    },
+    {
+      "run": "04",
+      "case": "odd8",
+      "operation": "transcode-to-ebcot",
+      "baseline_median_seconds": 0.0012205625,
+      "candidate_median_seconds": 0.0012854585,
+      "absolute_median_cost_seconds": 6.489599999999983e-05,
+      "median_cost_percent": 5.316892826053543,
+      "baseline_spread": {
+        "median": 0.0012205625,
+        "p95": 0.0013565410000000002,
+        "minimum": 0.001173791,
+        "maximum": 0.0014305000000000001,
+        "stddev": 6.198222496343951e-05
+      },
+      "candidate_spread": {
+        "median": 0.0012854585,
+        "p95": 0.001419167,
+        "minimum": 0.001200375,
+        "maximum": 0.0015992500000000002,
+        "stddev": 8.791732100395895e-05
+      },
+      "rss_change_percent": 0.09225092250921829,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "04",
+      "case": "medium16",
+      "operation": "encode-ebcot",
+      "baseline_median_seconds": 0.0200525205,
+      "candidate_median_seconds": 0.020390417,
+      "absolute_median_cost_seconds": 0.00033789650000000046,
+      "median_cost_percent": 1.6850574968867438,
+      "baseline_spread": {
+        "median": 0.0200525205,
+        "p95": 0.021314666000000003,
+        "minimum": 0.019283416,
+        "maximum": 0.022690166,
+        "stddev": 0.0007368074300447757
+      },
+      "candidate_spread": {
+        "median": 0.020390417,
+        "p95": 0.022110666,
+        "minimum": 0.019599750000000003,
+        "maximum": 0.022157792000000003,
+        "stddev": 0.0006368350575622595
+      },
+      "rss_change_percent": 1.6759776536312776,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "04",
+      "case": "medium16",
+      "operation": "encode-ht",
+      "baseline_median_seconds": 0.003077125,
+      "candidate_median_seconds": 0.0033891255000000004,
+      "absolute_median_cost_seconds": 0.0003120005000000004,
+      "median_cost_percent": 10.139350855100137,
+      "baseline_spread": {
+        "median": 0.003077125,
+        "p95": 0.0031407920000000003,
+        "minimum": 0.003014,
+        "maximum": 0.003141542,
+        "stddev": 4.073952966459121e-05
+      },
+      "candidate_spread": {
+        "median": 0.0033891255000000004,
+        "p95": 0.0035220420000000004,
+        "minimum": 0.003192125,
+        "maximum": 0.0038985000000000005,
+        "stddev": 0.0001389953992786036
+      },
+      "rss_change_percent": 1.1029411764705843,
+      "size_change_percent": -0.012379301807374787
+    },
+    {
+      "run": "05",
+      "case": "odd8",
+      "operation": "encode-ebcot",
+      "baseline_median_seconds": 0.0012271035000000002,
+      "candidate_median_seconds": 0.00128325,
+      "absolute_median_cost_seconds": 5.614649999999993e-05,
+      "median_cost_percent": 4.5755309148739265,
+      "baseline_spread": {
+        "median": 0.0012271035000000002,
+        "p95": 0.0013732920000000001,
+        "minimum": 0.0011691660000000001,
+        "maximum": 0.002122291,
+        "stddev": 0.00020543775203685883
+      },
+      "candidate_spread": {
+        "median": 0.00128325,
+        "p95": 0.0018601250000000002,
+        "minimum": 0.0012592500000000002,
+        "maximum": 0.0023367920000000003,
+        "stddev": 0.0002627173696735114
+      },
+      "rss_change_percent": 0.38610038610038533,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "05",
+      "case": "odd8",
+      "operation": "encode-ht",
+      "baseline_median_seconds": 0.00041235400000000003,
+      "candidate_median_seconds": 0.00048050050000000003,
+      "absolute_median_cost_seconds": 6.81465e-05,
+      "median_cost_percent": 16.526212914146576,
+      "baseline_spread": {
+        "median": 0.00041235400000000003,
+        "p95": 0.00045375000000000005,
+        "minimum": 0.000397542,
+        "maximum": 0.00045516700000000003,
+        "stddev": 1.9227533088817685e-05
+      },
+      "candidate_spread": {
+        "median": 0.00048050050000000003,
+        "p95": 0.0005257500000000001,
+        "minimum": 0.00046775,
+        "maximum": 0.000528041,
+        "stddev": 1.9220011255473464e-05
+      },
+      "rss_change_percent": 0.0,
+      "size_change_percent": -0.21208907741251393
+    },
+    {
+      "run": "05",
+      "case": "odd8",
+      "operation": "transcode-to-ebcot",
+      "baseline_median_seconds": 0.0013260415000000002,
+      "candidate_median_seconds": 0.0014532290000000001,
+      "absolute_median_cost_seconds": 0.0001271874999999999,
+      "median_cost_percent": 9.591517309224473,
+      "baseline_spread": {
+        "median": 0.0013260415000000002,
+        "p95": 0.001721042,
+        "minimum": 0.0012524580000000001,
+        "maximum": 0.0018372910000000002,
+        "stddev": 0.00015934700159420372
+      },
+      "candidate_spread": {
+        "median": 0.0014532290000000001,
+        "p95": 0.0035041670000000003,
+        "minimum": 0.001293792,
+        "maximum": 0.003621917,
+        "stddev": 0.0006989976489971382
+      },
+      "rss_change_percent": 0.18382352941177516,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "05",
+      "case": "medium16",
+      "operation": "encode-ebcot",
+      "baseline_median_seconds": 0.020854750000000002,
+      "candidate_median_seconds": 0.0209353965,
+      "absolute_median_cost_seconds": 8.064649999999993e-05,
+      "median_cost_percent": 0.38670566657477146,
+      "baseline_spread": {
+        "median": 0.020854750000000002,
+        "p95": 0.022850625000000003,
+        "minimum": 0.019627792,
+        "maximum": 0.023727334000000003,
+        "stddev": 0.001023152857230057
+      },
+      "candidate_spread": {
+        "median": 0.0209353965,
+        "p95": 0.023622167000000003,
+        "minimum": 0.019798542000000002,
+        "maximum": 0.023700375000000003,
+        "stddev": 0.0011161068075132468
+      },
+      "rss_change_percent": 1.6759776536312776,
+      "size_change_percent": 0.0
+    },
+    {
+      "run": "05",
+      "case": "medium16",
+      "operation": "encode-ht",
+      "baseline_median_seconds": 0.0031286670000000003,
+      "candidate_median_seconds": 0.003381541,
+      "absolute_median_cost_seconds": 0.0002528739999999997,
+      "median_cost_percent": 8.082483690338393,
+      "baseline_spread": {
+        "median": 0.0031286670000000003,
+        "p95": 0.0035732500000000005,
+        "minimum": 0.0030033750000000004,
+        "maximum": 0.0037141670000000004,
+        "stddev": 0.0001879484169758106
+      },
+      "candidate_spread": {
+        "median": 0.003381541,
+        "p95": 0.003542542,
+        "minimum": 0.003269292,
+        "maximum": 0.003594208,
+        "stddev": 8.437314200276306e-05
+      },
+      "rss_change_percent": 0.917431192660545,
+      "size_change_percent": -0.012379301807374787
+    }
+  ],
+  "profiles": [
+    "r3-profile-results-01",
+    "r3-profile-results-02"
+  ],
+  "optimisation": "Hoisted invariant scratch-stage string; no cap/growth/admission/event-order change. Sequential series do not establish a causal speedup.",
+  "tradeoff_limits": [
+    "Two synthetic volumes and twelve operation cases, scalar CPU with one worker on Mac16,13/macOS27.0.1/Apple Swift6.4 only.",
+    "No encoded-size growth or median whole-process peak RSS increase above 5% in these runs; reported workspace is conservative admission accounting, not measured heap.",
+    "The accepted scope is the measured median cost. Preserve p95/spread and run 05 candidate-only transcode tails; no tail-latency guarantee or established cause for those outliers.",
+    "Further growth/ledger redesign would change narrow-budget success and overlap/atomicity contracts. Global optimality and recovery of unsafe predecessor speed are not claimed.",
+    "R4 corpus/platform/concurrent performance, historical 2D M6-AUD-007, direct independent peers and hosted CI are separate gates."
+  ],
+  "updated_baseline": "Candidate 03 unchanged core in candidate 08, with complete run 04/run 05 per-case distributions, raw samples and recorded environment, is the successor scoped performance baseline. The rejected67c8f7e remains a comparator only.",
+  "independent_recommendation": "Completed independent performance reviews 03/04 recommend the bounded encoder and odd8 HT-to-EBCOT median-cost trade-off after both path-specific profiles.",
+  "native_condition": "Met for this scope: candidate 08 ordinary full pass, release CLI 246, complete partitioned ASan/TSan with independent final native review 08.",
+  "completed_at": "2026-10-31T08:39:57.087331+00:00",
+  "local_native_decision": "r3-sanitizer-decision-08.json",
+  "core_identity": "performance-core-identity-08.json",
+  "whole_r3_acceptance": "NOT_ACCEPTED; five direct independent gates and hosted CI remain separate."
+}

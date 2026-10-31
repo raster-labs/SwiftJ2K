@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-31T09:28:47.775037+00:00",
+  "provisional_not_frozen": true,
+  "native_executed": false,
+  "files": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "04965901b62995af2b27295fb11053359186cb28145bfdf16a9e6092b65b9e23",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "e8484c2ca59ff66029fd4354c2af7da12975a58b9b118640c170f14102bed658",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "165b03dc87011eeee23ce94955250d9b86127329b6bf05266efe6a5f846981c0"
+  },
+  "disposition": "No new concrete HTTPS/shared-close source issue at advisory checkpoint; deterministic regression tests and immutable review pending."
+}

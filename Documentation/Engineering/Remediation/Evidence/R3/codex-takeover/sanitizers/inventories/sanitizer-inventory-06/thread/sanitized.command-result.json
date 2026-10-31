@@ -1,0 +1,25 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "list",
+    "--scratch-path",
+    "../candidate-tsan-06",
+    "--sanitize",
+    "thread",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "0a824963eeb58b4fa86dfd8b6010d5ba161415ae8c0856b55795213512578928",
+  "stderr_sha256": "e80dd4e06c7be692393f560624f47ca14ec8bc58dfce919d8189dd8a9dc606fc"
+}

@@ -1,0 +1,43 @@
+{
+  "state": "NARROW_AUDITOR_MAINTENANCE_VERIFIED",
+  "old_auditor_sha256": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+  "new_auditor_sha256": "d9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda",
+  "helper_diff_sha256": "0b4683935a24af22dcec0ba2bdc2f6e5b742d852f54827af7d8873f3bca75e33",
+  "unchanged_strict_reconciler_sha256": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+  "normalised_old_auditor_recovered": true,
+  "authorised_fixture_positive": {
+    "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+    "candidate14_sha256": "28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd",
+    "candidate15_sha256": "674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386",
+    "exact_diff_sha256": "b3218f7d2c1a1c6db5a7f9d0a29424c06f9d8aa740877e39d7428fc301f04434",
+    "phase_labels": 10,
+    "normalised_recovery_verified": true,
+    "scope": "Accepted-socket idle expiry1-to0 and diagnostic phase labels only; request/barrier limits unchanged."
+  },
+  "tamper_cases_rejected": [
+    {
+      "case": "changed final manifest hash",
+      "reason": "Unreviewed WebSocket fixture source identity"
+    },
+    {
+      "case": "changed historical manifest hash",
+      "reason": "Unreviewed WebSocket fixture source identity"
+    },
+    {
+      "case": "changed source bytes under pinned manifest",
+      "reason": "Pinned WebSocket fixture bytes/diff changed"
+    },
+    {
+      "case": "changed source and matching unreviewed manifest hash",
+      "reason": "Unreviewed WebSocket fixture source identity"
+    },
+    {
+      "case": "changed reviewed diff bytes",
+      "reason": "Pinned WebSocket fixture bytes/diff changed"
+    }
+  ],
+  "scope": "Only an obsolete historical fixture byte-equality assertion recognises the pinned reviewed15 repair; final-runtime source equality remains unchanged.",
+  "native_execution": false,
+  "repository_edits": false,
+  "checker_sha256": "7a379add3722a74f2c5723b3356448005ab3d85ff72bfb76e7d9c85322871219"
+}

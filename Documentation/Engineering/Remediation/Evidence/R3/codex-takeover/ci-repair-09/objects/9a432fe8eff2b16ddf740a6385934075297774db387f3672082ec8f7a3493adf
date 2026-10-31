@@ -1,0 +1,13 @@
+Provisional candidate09 HTTPS review. No final source approval or native execution.
+
+Confirmed and reported exact-size fallback work amplification. The changing source now uses budget-clamped geometric/terminal capacity, reserving final-copy storage and enforcing callback+old+new overlap; one-byte regression cases600/6000 bytes at exactH+2N budget test copied<=4N and bounded allocations. Static replay in provisional-copy-work-model.json supports these specific schedules, not universal4N; author separately preserved a counterexample to universal4N.
+
+Lifecycle review: pre-publication cancellation latches without invalidating a session still creating its task; framework calls outside state lock; task completion followed by finishTasksAndInvalidate; both flags before owner release; queue-tail continuation intended to wait for invalidation callback exit. Task/data/session identity and single-use guards prevent repeated completion. Frozen source and native/hosted validation still required.
+
+Unconfirmed harness concern forwarded to root/writer: a120ms deadline started before URLSession creation cannot guarantee two trickle callbacks under contention. Suggested split between true read(deadline:) silent integration and readiness-synchronised active-trickle shared-watchdog cancellation lifecycle test, preserving all original bounds and labelling scope honestly.
+
+Latest review: writer replaced trickle readiness assumption with actual received-body readiness followed by shared watchdog arming, explicitly distinct from silent read(deadline:) integration.
+
+Small confirmed cleanup gap sent to writer/root: claimStart then throwing deadline preflight can exit before start without clearing init-owned empty buffer. hasActiveOwners remains true although no session/task/network work exists. This is not claimed as a persistent public leak; recommended expired-deadline regression and unstarted-state cleanup, respecting single-use ownership.
+
+Shared-close landed source advisory: owner registry retained until sender-specific cleanup; shared generation retired before close awaits; no old-close state mutation after awaits; HTTPS success/error publication gates retired generation; pre-read cancellation completes owner and late read throws without session creation; preflight error completes independent broadcast; started-session join occurs at delegate-queue tail. No new source issue at this provisional checkpoint. Tests/frozen source pending; no final approval.

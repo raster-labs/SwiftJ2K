@@ -519,7 +519,7 @@ struct R2JPIPRemediationTests {
         let jp2URL = tmpDir.appendingPathComponent("large_tiled.jp2")
         try encoded.write(to: jp2URL)
 
-        let server = JPIPServer(port: 19_414)
+        let server = JPIPServer(port: 19_415)
         try await server.registerImage(name: "large.jp2", at: jp2URL)
         try await server.start()
         defer { Task { try? await server.stop() } }
@@ -527,7 +527,7 @@ struct R2JPIPRemediationTests {
         // Baseline unconstrained `.incremental` retains all bins (> 2 bins and > 1024 bytes)
         let unconstrained = JPIPStreamingSession(
             server: server,
-            port: 19_414,
+            port: 19_415,
             configuration: try JPIPSessionConfiguration(
                 deliveryMode: .incremental,
                 maxCachedDataBins: 1000,
@@ -542,7 +542,7 @@ struct R2JPIPRemediationTests {
         // 1. `maxCachedDataBins: 2` under `.incremental` caps retained cache bins to <= 2
         let binBoundedSession = JPIPStreamingSession(
             server: server,
-            port: 19_414,
+            port: 19_415,
             configuration: try JPIPSessionConfiguration(
                 deliveryMode: .incremental,
                 maxCachedDataBins: 2,
@@ -557,7 +557,7 @@ struct R2JPIPRemediationTests {
         // 2. `maxCacheSizeBytes: 1024` under `.incremental` caps retained cache bytes to <= 1024
         let byteBoundedSession = JPIPStreamingSession(
             server: server,
-            port: 19_414,
+            port: 19_415,
             configuration: try JPIPSessionConfiguration(
                 deliveryMode: .incremental,
                 maxCachedDataBins: 1000,

@@ -1,0 +1,13 @@
+{
+  "pr": "https://github.com/raster-labs/SwiftJ2K/pull/30",
+  "number": 30,
+  "draft": true,
+  "head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "tree": "934266a4d41b742f8d3f3be8fdf894b8ad033ac8",
+  "base": "46be90fc3bf50429956725ee592687d8ff8e7344",
+  "tested_merge": "5c88ca1961d4a294991310b035a26b7ddce5084c",
+  "merge_tree_matches_head": true,
+  "run": 41186617163,
+  "connector_create": "403 integration permission; authorized existing gh CLI succeeded",
+  "merge_performed": false
+}

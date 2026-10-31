@@ -1,0 +1,20 @@
+{
+  "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+    "before": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+    "after": "20936f356b36f11c1249b686973dc35b2e26cd456307b12a9c9363f11badce46",
+    "limits_identical": true,
+    "test_annotations_preserved": true
+  },
+  "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+    "before": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+    "after": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+    "limits_identical": true,
+    "test_annotations_preserved": true
+  },
+  "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+    "before": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+    "after": "62d657e80faa4a7fc276c68cb45c8d6da1b2b3813ec2abcab3c5bfd8702c5390",
+    "limits_identical": true,
+    "test_annotations_preserved": true
+  }
+}

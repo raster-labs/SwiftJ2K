@@ -504,13 +504,11 @@ enum Oracle {
     static var available: Bool { openJPEG != nil || kakadu != nil }
 
     #if os(macOS) || os(Linux)
-    static func decode(_ tool: String, _ input: URL, _ output: URL) throws -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: tool)
-        process.arguments = ["-i", input.path, "-o", output.path] + (tool.contains("kdu") ? ["-quiet"] : [])
-        process.standardOutput = FileHandle.nullDevice; process.standardError = FileHandle.nullDevice
-        try process.run(); process.waitUntilExit()
-        return process.terminationStatus == 0
+    static func decode(_ tool: String, _ input: URL, _ output: URL) async throws -> Bool {
+        let status = try await CLITestProcess.runDiscardingOutput(
+            ["-i", input.path, "-o", output.path] + (tool.contains("kdu") ? ["-quiet"] : []),
+            executable: URL(fileURLWithPath: tool))
+        return status == 0
     }
     #endif
 }
@@ -532,7 +530,7 @@ func independentDecodersReadSuccessorCodestreams(name: String) async throws {
     try encoded.write(to: input)
     for tool in [Oracle.openJPEG, Oracle.kakadu].compactMap({ $0 }) {
         let output = directory.appendingPathComponent(name + (tool.contains("kdu") ? ".kdu" : ".opj") + ".pgm")
-        #expect(try Oracle.decode(tool, input, output), "\(tool) rejected the successor codestream")
+        #expect(try await Oracle.decode(tool, input, output), "\(tool) rejected the successor codestream")
         let pgm = [UInt8](try Data(contentsOf: output))
         // Locate the raster: header is "P5\n<w> <h>\n<max>\n" possibly with a comment line.
         var fields: [String] = []; var i = 0

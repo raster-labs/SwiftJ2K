@@ -1,0 +1,18 @@
+{
+  "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+    "base_sha256": null,
+    "instrumented_sha256": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113"
+  },
+  "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+    "base_sha256": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+    "instrumented_sha256": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8"
+  },
+  "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+    "base_sha256": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "instrumented_sha256": "af15f8f5359e249b83bbe5a1c2d59430616aa988724b391648a20fb51949024a"
+  },
+  "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+    "base_sha256": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+    "instrumented_sha256": "e6ed95483a45e9fd394ecb5baecd24954db128efb2ab519e26e134106f56b319"
+  }
+}

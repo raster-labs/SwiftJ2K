@@ -1,0 +1,32 @@
+{
+  "state": "PREPARATION_CHECKPOINT03_STOPPED_NOT_PUBLISHED",
+  "at": "2026-10-31T10:53:34.591540+00:00",
+  "current_manifest": "manifest-preparation-03.json",
+  "report_sha256": "89b2b895bfcea3b9cc16d878b5b2ad7c725e8471af5ae0e7f10c974265a8b210",
+  "reviewed_helper_sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/ci-comment-bind-03.json": "43f8663717a964fcb78108fb6c5b6d8c0d972d22866512953a9f4f41556ca0c2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/current-ci-identity-note.json": "40059fb4e99baf6e27b5a0346445ab33873e6b2728b5ac2e7f39e5a8d9be1ac5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.json": "07f6e5b7eb0a1ed46896e2b3566719dcb742bc3599df2cbea3bb9041585af4a1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.stdout": "b0a718b8a6387fa62df2ee25c66d0094f05c72183bc47a065e089df5832831a8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-03.json": "0994352d1c6bab1fbe1d5fb1527f3deabaffedd680282d0625cc3875b9760d49",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-03.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-03.stdout": "85b0b1c019abd9b11c6d03769d53f117ec75a72927eb18d8a90fc8e285aacb0e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-01.json": "73db647781a82dfd9d56bcf92d820a0111afaa854d7d7802fa09973e71da8aef",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-02.json": "b399659ea19550b05f1de3a1dfe3e86dde568210729bd1af3d771044a198ac99",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-03.json": "5b543e9bda84cd06a202089fde8de261befb80737ce62e1c4d46d237f167c1ce",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/pending-inputs-01.json": "4afd5c2ca136800c659c44a9ffc946f560db8cddb41f8583eec2c9b43761c1d5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/pending-inputs-02.json": "8c5ae87b6d5075f73f11085dfd8ffec12c8fad2d10f0f5bf5d3b1f0ed7120087",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/pending-inputs-03.json": "5a4768c229e91b162ee58ec54f107822ef5cc90baaffe08b3f7540d346189748",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/prepare_manifest.py": "fea1dc8e581c794898e1afefad753b65e10b07dfad32312afc291dfa242aa994",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/report-03.txt": "89b2b895bfcea3b9cc16d878b5b2ad7c725e8471af5ae0e7f10c974265a8b210",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/report.txt": "a64f830ce58438d1e26b03b775d21b980ba5a01aebaa01101dd38e3a6a3c3464",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/selection-01.json": "17b2e4dbf03aa7a199434e9ff7e2dfeae48d0ebf4a5c7f51f86caf3755e3b2b0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/source.json": "a03147cdaafd1c995c4621d72411e95e08dfc8f34b3727806cf8b74877ed2b13"
+  },
+  "native_execution": false,
+  "repository_publication": false,
+  "external_gates": "UNEXECUTED_UNWAIVED",
+  "R3": "NOT_ACCEPTED"
+}

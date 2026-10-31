@@ -1,0 +1,16 @@
+Root implementation record — not independent acceptance
+Isolated source: work/SwiftJ2K; branch codex/r3-standards-takeover.
+Original checkout untouched. Claim 1ce94f4b-ebfa-4309-98f6-5530103803d9.
+
+Added repair changes:
+- VolumeCodecAPI performs backend/report qualification before completed and preserves accepted R1 cancellation from the completed callback (post-callback work.check). The first proposed callback change failed R1 and was corrected. Checked multiplication also protects transcode geometry reporting.
+- Part2 synthesis marker builder validates component descriptions, uses normative Xmcc1 and Nmcc/Mmcc index-width flags, rejects oversized single-segment descriptions without casts trapping, and handles index boundaries128/129 and256/257.
+- Parser matches these fields with segment-bounded reads and CBD low15 count mask. It requires Rsiz Part2/MCT capabilities and effective COD array-transform usage to match synthesis markers.
+- Packet builder signals Rsiz0xC100 and COD MCT2 for Part2 synthesis. Unsupported corresponding-profile claims are omitted, with capacity accounting adjusted.
+- New progress, marker-boundary/invalid-signalling, and derived depth-one independent Kakadu HT-payload tests.
+
+Primary normative provenance: ITU-T T801(08/2023) AnnexA tablesA2,A8,A30,A35–A38 and AnnexJ; ITU-T T814(06/2019) A4. Research URLs and capability limits are in work/external-gates-research.txt. Focused functional, resource and loopback checks have run; receipts are in work/validation. Final candidate and independent acceptance remain pending. Rectangular2->1 array synthesis is legal; no withdrawn rectangular objection is reinstated.
+
+Independent payload test changes only dimensional main-header syntax; original Kakadu tile/packet/entropy bytes remain unchanged. This is a narrow decoder/refinement diagnostic, not a direct combined Part10+15 peer result. Full38 peer harness similarly uses independent signed-limb decoding plus exact separately implemented synthesis, not direct38-bit Kakadu output.
+
+Independent root native diagnostics have run on hashed snapshots; failed receipts remain preserved. Final independent reviewers must be separate from these implementers.

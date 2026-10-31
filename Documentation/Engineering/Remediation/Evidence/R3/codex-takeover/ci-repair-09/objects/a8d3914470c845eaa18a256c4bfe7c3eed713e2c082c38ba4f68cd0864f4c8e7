@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Pure static and temporary-fixture checks; no native or repository execution."""
+from pathlib import Path
+import hashlib, json, runpy, tempfile
+
+here = Path(__file__).resolve().parent
+work = here.parent
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read = lambda p: json.loads(Path(p).read_text())
+old_path = work / 'runtime-coverage-15/audit-final.py'
+new_path = here / 'audit-final.py'
+old, new = old_path.read_text(), new_path.read_text()
+start = new.index('def verify_authorised_fixture17(')
+end = new.index('def main():', start)
+normalised = new[:start] + new[end:]
+replacement = "    receipt['authorised_fixture_delta_17'] = verify_authorised_fixture17(\n        source, manifest, m04, work, record, config)\n"
+original = "    preserved = ['Tests/SwiftJ2KJPIPTests/' + name for name in\n                 ['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]\n    require(all(m04[p] == manifest[p] for p in preserved), 'Previously repaired assertions were changed')\n    receipt['unchanged_tests_from_failed_04'] = {p: manifest[p] for p in preserved}\n"
+assert normalised.replace(replacement, original) == old
+assert sha(old_path) == 'd9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda'
+assert sha(work / 'runtime-coverage/reconcile.py') == '18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa'
+code = runpy.run_path(str(new_path)); verify = code['verify_authorised_fixture17']
+manifest = read(work / 'candidate-snapshot-17-source.json')
+historical = read(work / 'candidate-snapshot-04-source.json')
+source = work / 'candidate-snapshot-17'
+rejected = []
+def reject(label, action):
+    try: action()
+    except (ValueError, KeyError, OSError): rejected.append(label)
+    else: raise AssertionError('Invalid auditor input accepted: ' + label)
+
+with tempfile.TemporaryDirectory(prefix='owned-auditor17-fixture-', dir=here) as temporary:
+    temp = Path(temporary)
+    report, receipt = temp/'synthetic-review.txt', temp/'synthetic-source.json'
+    report.write_text('Synthetic hash-pin test only; no independent source-review approval.\n')
+    receipt.write_text('{"state":"SYNTHETIC_PIN_ONLY"}\n')
+    ref = lambda p: {'path': str(p), 'sha256': sha(p)}
+    config = {'fixture17_independent_review': {'report': ref(report), 'source': ref(receipt)}}
+    baseline = verify(source, manifest, historical, work, sha, config)
+    relative = 'Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift'
+    reject('changed final manifest', lambda: verify(source, {**manifest, relative:'0'*64}, historical, work, sha, config))
+    reject('changed historical manifest', lambda: verify(source, manifest, {**historical, relative:'0'*64}, work, sha, config))
+    reject('missing independent review', lambda: verify(source, manifest, historical, work, sha, {}))
+    wrong = {'fixture17_independent_review': {'report': {**ref(report), 'sha256':'0'*64}, 'source':ref(receipt)}}
+    reject('wrong independent review hash', lambda: verify(source, manifest, historical, work, sha, wrong))
+    report.write_text('Changed synthetic review\n')
+    reject('mutated review bytes', lambda: verify(source, manifest, historical, work, sha, config))
+    config = {'fixture17_independent_review': {'report':ref(report), 'source':ref(receipt)}}
+    fixture = temp/'source'
+    for rel in baseline['after']:
+        path = fixture/rel; path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes((source/rel).read_bytes())
+    helper = fixture/'Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift'
+    helper.write_bytes(helper.read_bytes() + b'\n// synthetic tamper\n')
+    reject('mutated new helper bytes', lambda: verify(fixture, manifest, historical, work, sha, config))
+    reject('matching but unreviewed new helper manifest', lambda: verify(fixture,{**manifest,str(helper.relative_to(fixture)):sha(helper)},historical,work,sha,config))
+    # A record callback returning a wrong patch hash models an altered exact diff,
+    # without mutating any real reviewed input.
+    def wrong_patch_record(path):
+        return '0'*64 if str(path).endswith('jpip-fixture-repairs-17/delta.patch') else sha(path)
+    reject('changed exact fixture diff', lambda: verify(source,manifest,historical,work,wrong_patch_record,config))
+
+result = {'state':'NARROW_AUDITOR_MAINTENANCE_SYNTHETIC_CHECKED_NOT_INDEPENDENTLY_APPROVED',
+          'old_auditor_sha256':sha(old_path),'new_auditor_sha256':sha(new_path),
+          'helper_diff_sha256':sha(here/'auditor-delta-from15.patch'),
+          'unchanged_reconciler_sha256':sha(work/'runtime-coverage/reconcile.py'),
+          'normalised_old_auditor_recovered':True,
+          'synthetic_baseline_accepted':True, 'invalid_inputs_rejected':rejected,
+          'review_pair_in_baseline':'Synthetic hash-pin fixture only; no actual17 review approval claimed.',
+          'checker_sha256':sha(__file__), 'native_execution':False,'repository_edits':False,
+          'scope':'Only recognise exact three-file17 fixture delta. Runtime parser, all-source equality, inventory, arguments, XML, capture and historical-failure checks normalise byte-for-byte to15.'}
+p = here/'auditor-delta-check.json';assert not p.exists();p.write_text(json.dumps(result,indent=2)+'\n')
+print(json.dumps(result,indent=2))
