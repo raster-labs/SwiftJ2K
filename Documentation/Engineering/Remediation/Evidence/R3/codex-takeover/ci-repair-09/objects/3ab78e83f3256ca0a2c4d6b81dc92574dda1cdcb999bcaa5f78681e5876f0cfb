@@ -1,0 +1,54 @@
+{
+  "state": "PLANNED_ONLY",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16",
+  "source_manifest_sha256": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+  "wrapper_sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+  "startup_probe_sha256": "2369e7760b948f273329ef09b8f8f3a513d268edf998b70a0423e973f966839b",
+  "gates": [
+    {
+      "label": "candidate-release-build-16",
+      "command": [
+        "swift",
+        "build",
+        "-c",
+        "release",
+        "--scratch-path",
+        "../candidate-build-16",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--product",
+        "swiftj2k-cli"
+      ]
+    },
+    {
+      "label": "candidate-cli-16",
+      "command": [
+        "python3",
+        "Scripts/test-cli.py",
+        "--binary",
+        "../candidate-build-16/release/swiftj2k-cli",
+        "--output",
+        "../cli-integration-16"
+      ]
+    },
+    {
+      "label": "candidate-cli-startup-16",
+      "command": [
+        "python3",
+        "../cli-startup-probe-16.py",
+        "../candidate-build-16/release/swiftj2k-cli",
+        "../cli-startup-results-16"
+      ]
+    }
+  ],
+  "scope": "Fresh16 CLI gates only. Library source/tests unchanged15. Final exact-head hosted full ordinary and partitioned sanitizers still required."
+}

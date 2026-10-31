@@ -1,0 +1,13 @@
+{
+  "recorded_at": "2026-10-31T11:10:07.507200+00:00",
+  "head": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "tree": "4e818309cf03798d3e156517ad936ab380fbe647",
+  "parent": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "branch": "codex/r3-standards-takeover",
+  "staged_files": 436,
+  "implementation_files_identical_to15": 527,
+  "status": "",
+  "supplement_index_sha256": "b05cc28b4195a726a1fe2101ddfebeefb43b923e9a48f03f811ca5440de07c42",
+  "r3_acceptance": "NOT_ACCEPTED",
+  "merge_allowed": false
+}

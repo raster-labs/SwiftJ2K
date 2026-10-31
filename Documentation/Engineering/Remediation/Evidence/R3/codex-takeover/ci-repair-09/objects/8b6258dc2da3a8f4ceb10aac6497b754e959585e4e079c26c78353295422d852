@@ -1,0 +1,586 @@
+--- candidate16/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
++++ candidate17/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
+@@ -414,62 +414,77 @@
+ 
+     @Test("F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout")
+     func stalledTCPTransportsCancelAndTimeoutPromptly() async throws {
+-        // TCP listener that accepts sockets and holds them open without sending bytes
+-        let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+-        final class HeldSockets: @unchecked Sendable {
+-            private let lock = NSLock()
+-            private var sockets: [JPIPTCPConnection] = []
+-            func append(_ c: JPIPTCPConnection) { lock.lock(); sockets.append(c); lock.unlock() }
+-            func closeAll() { lock.lock(); let all = sockets; sockets.removeAll(); lock.unlock(); all.forEach { $0.close() } }
+-        }
+-        let held = HeldSockets()
+-        DispatchQueue.global(qos: .utility).async {
+-            while listener.isOpen {
+-                if let c = try? listener.acceptConnection(timeoutSeconds: 5) {
+-                    held.append(c)
+-                } else {
+-                    break
+-                }
+-            }
+-        }
+-        defer {
+-            listener.close()
+-            held.closeAll()
+-        }
+-
+-        // 1. HTTP transport task cancellation unblocks stalled recv promptly (< 1.5s, vs 30s socket timeout)
+-        let httpTransport = JPIPTransport(baseURL: URL(string: "http://127.0.0.1:\(listener.boundPort)")!)
++        // Read the complete request, then deliberately send no response. Readiness
++        // establishes stalled I/O before measuring cancellation responsiveness.
++        let peer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
++            guard try connection.readHTTPRequest() != nil else {
++                throw R3ScriptedPeerFailure("Request \(index) closed before headers arrived")
++            }
++            peer.mark("request.\(index)")
++        }
++        defer { peer.close() }
++        try await peer.waitFor("accept.started")
+         let clock = ContinuousClock()
+-        let t0 = clock.now
++        let httpTransport = JPIPTransport(baseURL: URL(string: "http://127.0.0.1:\(peer.port)")!)
+         let httpTask = Task {
+-            var req = JPIPRequest(target: "stalled.j2k")
+-            req.streamType = .jppStream
+-            return try await httpTransport.send(req)
+-        }
+-        try await Task.sleep(for: .milliseconds(60))
+-        httpTask.cancel()
+-        await #expect(throws: CancellationError.self) {
+-            _ = try await httpTask.value
+-        }
+-        let httpElapsed = clock.now - t0
+-        #expect(httpElapsed < .seconds(2))
+-        await httpTransport.close()
+-
+-        // 2. WebSocket handshake cancellation unblocks stalled handshake promptly
+-        let t1 = clock.now
++            do {
++                var request = JPIPRequest(target: "stalled.j2k")
++                request.streamType = .jppStream
++                return try await httpTransport.send(request)
++            } catch {
++                peer.recordClientFailure(error, before: "request.1")
++                throw error
++            }
++        }
++        do {
++            try await peer.waitFor("request.1")
++            peer.mark("http.cancel")
++            let cancelledAt = clock.now
++            httpTask.cancel()
++            await #expect(throws: CancellationError.self) { _ = try await httpTask.value }
++            let httpElapsed = clock.now - cancelledAt
++            peer.mark("http.caller.resumed")
++            #expect(httpElapsed < .seconds(2), "\(peer.diagnostics)")
++            await httpTransport.close()
++        } catch {
++            httpTask.cancel()
++            _ = try? await httpTask.value
++            await httpTransport.close()
++            let stopped = await peer.stopAndObserve()
++            throw R3ScriptedPeerFailure("HTTP cancellation setup failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
++        }
++
+         let wsTransport = JPIPWebSocketTransport(
+-            url: URL(string: "ws://127.0.0.1:\(listener.boundPort)/jpip")!,
++            url: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!,
+             requestTimeout: 15.0
+         )
+         let wsConnectTask = Task {
+-            try await wsTransport.connect()
+-        }
+-        try await Task.sleep(for: .milliseconds(60))
+-        wsConnectTask.cancel()
+-        await #expect(throws: CancellationError.self) {
+-            try await wsConnectTask.value
+-        }
+-        #expect((clock.now - t1) < .seconds(2))
++            do { try await wsTransport.connect() }
++            catch {
++                peer.recordClientFailure(error, before: "request.2")
++                throw error
++            }
++        }
++        do {
++            try await peer.waitFor("request.2")
++            peer.mark("websocket.cancel")
++            let cancelledAt = clock.now
++            wsConnectTask.cancel()
++            await #expect(throws: CancellationError.self) { try await wsConnectTask.value }
++            let wsElapsed = clock.now - cancelledAt
++            peer.mark("websocket.caller.resumed")
++            #expect(wsElapsed < .seconds(2), "\(peer.diagnostics)")
++            await wsTransport.disconnect()
++        } catch {
++            wsConnectTask.cancel()
++            _ = try? await wsConnectTask.value
++            await wsTransport.disconnect()
++            let stopped = await peer.stopAndObserve()
++            throw R3ScriptedPeerFailure("WebSocket cancellation setup failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
++        }
++        let stopped = await peer.stopAndObserve()
++        #expect(stopped, "\(peer.diagnostics)")
++        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+     }
+ 
+     // MARK: - F04-10 Corrupt Codestream Propagates Error Instead of Raw Octet-Stream Fallback
+@@ -617,114 +632,115 @@
+ 
+     @Test("RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests")
+     func httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel() async throws {
+-        final class HeldConnections: @unchecked Sendable {
+-            private let lock = NSLock()
+-            private var conns: [JPIPTCPConnection] = []
+-            func append(_ c: JPIPTCPConnection) { lock.lock(); conns.append(c); lock.unlock() }
+-            func closeAll() {
+-                lock.lock()
+-                let snapshot = conns
+-                conns.removeAll()
+-                lock.unlock()
+-                snapshot.forEach { $0.close() }
+-            }
+-        }
+-
+-        // 1. Silent HTTP TCP peer: accepts connection, reads request headers, never sends a response.
+-        let httpListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+-        let heldHTTP = HeldConnections()
+-        DispatchQueue.global(qos: .utility).async {
+-            while httpListener.isOpen {
+-                guard let conn = try? httpListener.acceptConnection(timeoutSeconds: 5) else { break }
+-                heldHTTP.append(conn)
+-                DispatchQueue.global(qos: .utility).async {
+-                    _ = try? conn.readHTTPRequest()
+-                }
+-            }
+-        }
+-        defer {
+-            httpListener.close()
+-            heldHTTP.closeAll()
+-        }
+-
++        // Dedicated foreground workers own blocking accept/read operations. A
++        // completed read leaves the accepted socket held until explicit stop.
++        let httpPeer = try R3OwnedScriptedPeer(connections: 1) { connection, index, peer in
++            if try connection.readHTTPRequest() != nil { peer.mark("request.\(index)") }
++        }
++        defer { httpPeer.close() }
++        try await httpPeer.waitFor("accept.started")
+         let clock = ContinuousClock()
+         let httpSession = JPIPStreamingSession(
+-            serverURL: URL(string: "http://127.0.0.1:\(httpListener.boundPort)/jpip")!
++            serverURL: URL(string: "http://127.0.0.1:\(httpPeer.port)/jpip")!
+         )
+         let t0 = clock.now
+-        do {
+-            _ = try await httpSession.deliverImage(
+-                imageID: "silent.j2k",
+-                options: JPIPStreamingOptions(
+-                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
++        httpPeer.mark("http.deadline.begin")
++        do {
++            do {
++                _ = try await httpSession.deliverImage(
++                    imageID: "silent.j2k",
++                    options: JPIPStreamingOptions(
++                        resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
++                    )
+                 )
+-            )
+-            Issue.record("Expected silent HTTP peer to time out with CodecError(.resourceLimitExceeded)")
+-        } catch let err as CodecError {
+-            #expect(err.category == .resourceLimitExceeded)
+-        }
+-        let httpElapsed = clock.now - t0
+-        #expect(httpElapsed < .seconds(2))
+-        try? await httpSession.close()
+-
+-        // 2. Silent WebSocket TCP peer: completes RFC 6455 HTTP 101 handshake, reads client frame, never replies.
+-        let wsListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+-        let heldWS = HeldConnections()
+-        DispatchQueue.global(qos: .utility).async {
+-            while wsListener.isOpen {
+-                guard let conn = try? wsListener.acceptConnection(timeoutSeconds: 5) else { break }
+-                heldWS.append(conn)
+-                DispatchQueue.global(qos: .utility).async {
+-                    guard let req = try? conn.readHTTPRequest(),
+-                          let key = req.header("Sec-WebSocket-Key") else { return }
+-                    try? conn.writeWebSocketServerHandshake(clientKey: key)
+-                    _ = try? conn.readWebSocketFrame(requireMasked: true)
+-                }
+-            }
+-        }
+-        defer {
+-            wsListener.close()
+-            heldWS.closeAll()
+-        }
+-
+-        // 2a. End-to-end JPIPStreamingSession over ws:// enforces ResourceLimits.deadlineSeconds
++                Issue.record("Expected silent HTTP peer to time out with CodecError(.resourceLimitExceeded)")
++            } catch let error as CodecError {
++                #expect(error.category == .resourceLimitExceeded)
++            }
++            let httpElapsed = clock.now - t0
++            httpPeer.mark("http.deadline.caller.resumed")
++            #expect(httpElapsed < .seconds(2), "\(httpPeer.diagnostics)")
++            try? await httpSession.close()
++        } catch {
++            try? await httpSession.close()
++            let stopped = await httpPeer.stopAndObserve()
++            throw R3ScriptedPeerFailure("HTTP deadline failed: \(error); stopped=\(stopped); \(httpPeer.diagnostics)")
++        }
++        let httpStopped = await httpPeer.stopAndObserve()
++        #expect(httpStopped, "\(httpPeer.diagnostics)")
++
++        // Two clients complete RFC 6455 handshakes, then receive no response to
++        // their request frames. Both original deadline cases stay unchanged.
++        let wsPeer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
++            guard let request = try connection.readHTTPRequest(),
++                  let key = request.header("Sec-WebSocket-Key") else {
++                throw R3ScriptedPeerFailure("WebSocket \(index) has no handshake key")
++            }
++            peer.mark("handshake.read.\(index)")
++            try connection.writeWebSocketServerHandshake(clientKey: key)
++            peer.mark("handshake.written.\(index)")
++            _ = try connection.readWebSocketFrame(requireMasked: true)
++            peer.mark("request.\(index)")
++        }
++        defer { wsPeer.close() }
++        try await wsPeer.waitFor("accept.started")
+         let wsSession = JPIPStreamingSession(
+-            serverURL: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!
++            serverURL: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!
+         )
+         let t1 = clock.now
+-        do {
+-            _ = try await wsSession.deliverImage(
+-                imageID: "silent-ws.j2k",
+-                options: JPIPStreamingOptions(
+-                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
++        wsPeer.mark("session.deadline.begin")
++        do {
++            do {
++                _ = try await wsSession.deliverImage(
++                    imageID: "silent-ws.j2k",
++                    options: JPIPStreamingOptions(
++                        resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
++                    )
+                 )
+-            )
+-            Issue.record("Expected silent WebSocket peer to time out with CodecError(.resourceLimitExceeded)")
+-        } catch let err as CodecError {
+-            #expect(err.category == .resourceLimitExceeded)
+-        }
+-        #expect((clock.now - t1) < .seconds(2))
+-        try? await wsSession.close()
+-
+-        // 2b. Direct JPIPWebSocketTransport request timeout cleans up pendingContinuations
++                Issue.record("Expected silent WebSocket peer to time out with CodecError(.resourceLimitExceeded)")
++            } catch let error as CodecError {
++                #expect(error.category == .resourceLimitExceeded)
++            }
++            let sessionElapsed = clock.now - t1
++            wsPeer.mark("session.deadline.caller.resumed")
++            #expect(sessionElapsed < .seconds(2), "\(wsPeer.diagnostics)")
++            try? await wsSession.close()
++        } catch {
++            try? await wsSession.close()
++            let stopped = await wsPeer.stopAndObserve()
++            throw R3ScriptedPeerFailure("WebSocket session deadline failed: \(error); stopped=\(stopped); \(wsPeer.diagnostics)")
++        }
++
+         let wsTransport = JPIPWebSocketTransport(
+-            url: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!,
++            url: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!,
+             requestTimeout: 30.0
+         )
+-        try await wsTransport.connect(deadline: clock.now + .seconds(2))
+-        let t2 = clock.now
+-        do {
+-            _ = try await wsTransport.sendRequest(
+-                JPIPRequest(target: "silent-ws.j2k"),
+-                timeout: 0.12
+-            )
+-            Issue.record("Expected JPIPWebSocketTransport.sendRequest(timeout: 0.12) to throw CodecError(.resourceLimitExceeded)")
+-        } catch let err as CodecError {
+-            #expect(err.category == .resourceLimitExceeded)
+-        }
+-        #expect((clock.now - t2) < .seconds(2))
+-        #expect(await wsTransport.pendingRequestCount == 0)
+-        await wsTransport.disconnect()
++        do {
++            wsPeer.mark("direct.connect.begin")
++            try await wsTransport.connect(deadline: clock.now + .seconds(2))
++            wsPeer.mark("direct.connect.returned")
++            let t2 = clock.now
++            do {
++                _ = try await wsTransport.sendRequest(
++                    JPIPRequest(target: "silent-ws.j2k"),
++                    timeout: 0.12
++                )
++                Issue.record("Expected JPIPWebSocketTransport.sendRequest(timeout: 0.12) to throw CodecError(.resourceLimitExceeded)")
++            } catch let error as CodecError {
++                #expect(error.category == .resourceLimitExceeded)
++            }
++            let requestElapsed = clock.now - t2
++            wsPeer.mark("direct.request.caller.resumed")
++            #expect(requestElapsed < .seconds(2), "\(wsPeer.diagnostics)")
++            #expect(await wsTransport.pendingRequestCount == 0)
++            await wsTransport.disconnect()
++        } catch {
++            await wsTransport.disconnect()
++            let stopped = await wsPeer.stopAndObserve()
++            throw R3ScriptedPeerFailure("Direct WebSocket deadline failed: \(error); stopped=\(stopped); \(wsPeer.diagnostics)")
++        }
++        let wsStopped = await wsPeer.stopAndObserve()
++        #expect(wsStopped, "\(wsPeer.diagnostics)")
+     }
+ 
+     // MARK: - Helpers
+--- candidate16/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift
++++ candidate17/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift
+@@ -216,48 +216,46 @@
+     }
+ 
+     @Test func descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() async throws {
+-        let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+-        let state = Mutex((connection: Optional<JPIPTCPConnection>.none, done: false, error: Optional<String>.none))
+-        defer {
+-            listener.close()
+-            state.withLock { $0.connection }?.close()
+-        }
+         // Scripted extension peer, not an independent interoperability oracle.
+-        // It emits legal headers followed by independently specified empty-body
+-        // response frames. Eighty short headers dominate either response's peak.
+-        Thread.detachNewThread {
+-            defer { state.withLock { $0.done = true } }
+-            do {
+-                guard let connection = try listener.acceptConnection(timeoutSeconds: 2) else { return }
+-                state.withLock { $0.connection = connection }
+-                defer { connection.close() }
+-                guard let request = try connection.readHTTPRequest(),
+-                      let key = request.header("Sec-WebSocket-Key") else {
+-                    throw J2KError.invalidData("Test handshake has no key")
+-                }
+-                var header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+-                header += "Sec-WebSocket-Accept: \(JPIPRFC6455Crypto.computeAcceptKey(for: key))\r\nSec-WebSocket-Protocol: jpip\r\n"
+-                for index in 0..<80 { header += "X\(index):0\r\n" }
+-                try connection.writeAll(Data((header + "\r\n").utf8))
+-                for _ in 0..<2 {
+-                    let incoming = try connection.readWebSocketFrame(requireMasked: true)
+-                    guard incoming.payload.count >= 9 else { throw J2KError.invalidData("Short test request") }
+-                    var reply = Data([0x02])
+-                    reply.append(incoming.payload[1..<5])
+-                    reply.append(contentsOf: [0, 0, 0, 4, 0, 200, 0, 0])
+-                    try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+-                }
+-            } catch { state.withLock { $0.error = String(describing: error) } }
+-        }
+-        let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(listener.boundPort)/jpip")!)
+-        do {
++        // Explicit fixture close owns socket lifetime, including the interval
++        // between requests; it has no incidental two-second idle I/O expiry.
++        let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
++            guard let request = try connection.readHTTPRequest(),
++                  let key = request.header("Sec-WebSocket-Key") else {
++                throw J2KError.invalidData("Test handshake has no key")
++            }
++            peer.mark("handshake.read")
++            var header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
++            header += "Sec-WebSocket-Accept: \(JPIPRFC6455Crypto.computeAcceptKey(for: key))\r\nSec-WebSocket-Protocol: jpip\r\n"
++            for index in 0..<80 { header += "X\(index):0\r\n" }
++            try connection.writeAll(Data((header + "\r\n").utf8))
++            peer.mark("handshake.written")
++            for index in 1...2 {
++                let incoming = try connection.readWebSocketFrame(requireMasked: true)
++                peer.mark("request.read.\(index)")
++                guard incoming.payload.count >= 9 else { throw J2KError.invalidData("Short test request") }
++                var reply = Data([0x02])
++                reply.append(incoming.payload[1..<5])
++                reply.append(contentsOf: [0, 0, 0, 4, 0, 200, 0, 0])
++                try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
++                peer.mark("response.written.\(index)")
++            }
++        }
++        defer { peer.close() }
++        try await peer.waitFor("accept.started")
++        let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
++        do {
++            peer.mark("first.send.begin")
+             let first = try await transport.send(JPIPRequest(target: "tiny.j2k"), maxBodyBytes: 1,
+                 deadline: ContinuousClock.now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
++            peer.mark("first.send.returned")
+             #expect(first.data.isEmpty)
+             let connecting = await transport.receiveAdmissionSnapshot()
+             #expect(connecting.peakBytes > 10_000)
++            peer.mark("second.send.begin")
+             let second = try await transport.send(JPIPRequest(target: "tiny.j2k"), maxBodyBytes: 1,
+                 deadline: ContinuousClock.now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
++            peer.mark("second.send.returned")
+             #expect(second.data.isEmpty)
+             let reused = await transport.receiveAdmissionSnapshot()
+             #expect(reused.peakBytes < connecting.peakBytes)
+@@ -265,11 +263,12 @@
+             await transport.close()
+         } catch {
+             await transport.close()
+-            throw error
+-        }
+-        let joined = try await observe { state.withLock { $0.done } }
+-        #expect(joined)
+-        #expect(state.withLock { $0.error } == nil)
++            let stopped = await peer.stopAndObserve()
++            throw R3ScriptedPeerFailure("Handshake budget fixture failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
++        }
++        let stopped = await peer.stopAndObserve()
++        #expect(stopped, "\(peer.diagnostics)")
++        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+     }
+ 
+     private func observe(_ predicate: @Sendable () -> Bool) async throws -> Bool {
+--- candidate16/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift
++++ candidate17/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift
+@@ -0,0 +1,140 @@
++// SPDX-License-Identifier: Apache-2.0
++import Foundation
++import Synchronization
++@testable import SwiftJ2KJPIP
++
++/// A scripted test peer with explicitly owned blocking workers and bounded diagnostics.
++/// Completion observes the workers' final publication, not physical OS-thread exit.
++final class R3OwnedScriptedPeer: Sendable {
++    private struct State {
++        var closing = false
++        var acceptFinished = false
++        var workers = 0
++        var connections: [Int: JPIPTCPConnection] = [:]
++        var phases: Set<String> = []
++        var timeline: [String] = []
++        var failures: [String] = []
++    }
++
++    private let listener: JPIPTCPListener
++    private let state = Mutex(State())
++    private let origin = ContinuousClock.now
++
++    var port: Int { listener.boundPort }
++
++    init(connections: Int,
++         operation: @escaping @Sendable (JPIPTCPConnection, Int, R3OwnedScriptedPeer) throws -> Void) throws {
++        precondition(connections > 0)
++        listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
++        let acceptThread = Thread { [self] in
++            defer {
++                mark("accept.finished")
++                state.withLock { $0.acceptFinished = true }
++            }
++            mark("accept.started")
++            do {
++                for index in 1...connections {
++                    // This argument configures accepted-socket idle I/O expiry;
++                    // explicit fixture close owns their lifetime instead.
++                    guard let connection = try listener.acceptConnection(timeoutSeconds: 0) else { break }
++                    let admitted = state.withLock { value in
++                        guard !value.closing else { return false }
++                        value.connections[index] = connection
++                        value.workers += 1
++                        return true
++                    }
++                    guard admitted else { connection.close(); break }
++                    mark("accepted.\(index)")
++                    let worker = Thread { [self] in
++                        defer {
++                            mark("worker.finished.\(index)")
++                            state.withLock { $0.workers -= 1 }
++                        }
++                        do { try operation(connection, index, self) }
++                        catch { recordFailure("peer.\(index): \(error)") }
++                    }
++                    worker.qualityOfService = .userInitiated
++                    worker.start()
++                }
++            } catch { recordFailure("accept: \(error)") }
++        }
++        acceptThread.qualityOfService = .userInitiated
++        acceptThread.start()
++    }
++
++    deinit { close() }
++
++    func mark(_ phase: String) {
++        let elapsed = ContinuousClock.now - origin
++        state.withLock {
++            $0.phases.insert(phase)
++            if $0.timeline.count < 64 { $0.timeline.append("\(elapsed): \(phase)") }
++        }
++    }
++
++    func recordFailure(_ message: String) {
++        state.withLock { if $0.failures.count < 8 { $0.failures.append(message) } }
++    }
++
++    /// An operation that fails before its expected request reaches the peer must
++    /// fail readiness, rather than leave the test waiting for a fabricated arrival.
++    func recordClientFailure(_ error: any Error, before phase: String) {
++        state.withLock {
++            if !$0.phases.contains(phase), $0.failures.count < 8 {
++                $0.failures.append("Client failed before \(phase): \(error)")
++            }
++        }
++    }
++
++    var diagnostics: String {
++        state.withLock {
++            "phases=[\($0.timeline.joined(separator: "; "))]; errors=[\($0.failures.joined(separator: "; "))]; closing=\($0.closing), acceptFinished=\($0.acceptFinished), workers=\($0.workers)"
++        }
++    }
++
++    var failures: [String] { state.withLock { $0.failures } }
++
++    func waitFor(_ phase: String) async throws {
++        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
++        while true {
++            let observation = state.withLock { ($0.phases.contains(phase), $0.failures.first) }
++            if observation.0 { return }
++            if let failure = observation.1 {
++                throw R3ScriptedPeerFailure("Readiness \(phase) failed: \(failure); \(diagnostics)")
++            }
++            guard ContinuousClock.now < deadline else {
++                throw R3ScriptedPeerFailure("Readiness \(phase) timed out; \(diagnostics)")
++            }
++            try await Task.sleep(for: .milliseconds(5))
++        }
++    }
++
++    func close() {
++        let connections = state.withLock { value -> [JPIPTCPConnection] in
++            value.closing = true
++            let connections = Array(value.connections.values)
++            value.connections.removeAll()
++            return connections
++        }
++        listener.close()
++        for connection in connections { connection.close() }
++    }
++
++    /// Bounded asynchronous observation; a false result remains visible to the
++    /// caller. Worker captures keep the owners alive through their final defer.
++    func stopAndObserve() async -> Bool {
++        close()
++        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
++        while true {
++            if state.withLock({ $0.acceptFinished && $0.workers == 0 }) { return true }
++            guard ContinuousClock.now < deadline else { mark("stop.observation.timedOut"); return false }
++            do { try await Task.sleep(for: .milliseconds(5)) }
++            catch { mark("stop.observation.cancelled"); return false }
++        }
++    }
++}
++
++struct R3ScriptedPeerFailure: Error, CustomStringConvertible {
++    let description: String
++    init(_ description: String) { self.description = description }
++}

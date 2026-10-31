@@ -1,0 +1,78 @@
+--- runtime-coverage-15/audit-final.py
++++ runtime-coverage-17/audit-final.py
+@@ -140,6 +140,62 @@
+     return {'path': relative, 'candidate14_sha256': before_hash, 'candidate15_sha256': after_hash,
+             'exact_diff_sha256': diff_hash, 'phase_labels': labels, 'normalised_recovery_verified': True,
+             'scope': 'Accepted-socket idle expiry1-to0 and diagnostic phase labels only; request/barrier limits unchanged.'}
++
++
++def verify_authorised_fixture17(source, manifest, historical_manifest, work, record, config):
++    """Recognise only the exact frozen16-to17 test-fixture repair.
++
++    This replaces a stale historical preservation assertion, not a runtime
++    equality check. Independent source review is a separately supplied pinned
++    report/source pair; this function verifies its identity, not its prose.
++    """
++    expected_before = {
++        'Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift': '4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd',
++        'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift': '402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5',
++    }
++    expected_after = {
++        'Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift': '15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1',
++        'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift': '39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d',
++        'Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift': 'c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7',
++    }
++    before_path = work / 'candidate-snapshot-16-source.json'
++    before = read(before_path)
++    record(before_path)
++    generated = []
++    for relative, digest in expected_after.items():
++        old_path = work / 'candidate-snapshot-16' / relative
++        new_path = source / relative
++        if relative in expected_before:
++            require(historical_manifest[relative] == before[relative] == expected_before[relative],
++                    'Unreviewed historical fixture source')
++            require(record(old_path) == expected_before[relative], 'Frozen16 fixture changed')
++            old_text = old_path.read_text()
++        else:
++            require(relative not in historical_manifest and relative not in before and not old_path.exists(),
++                    'New17 fixture helper unexpectedly existed in historical source')
++            old_text = ''
++        require(manifest[relative] == record(new_path) == digest, 'Unreviewed17 fixture source')
++        generated.extend(difflib.unified_diff(old_text.splitlines(keepends=True),
++            new_path.read_text().splitlines(keepends=True),
++            fromfile='before/' + relative, tofile='after/' + relative))
++    patch_path = work / 'jpip-fixture-repairs-17/delta.patch'
++    require(record(patch_path) == 'ac3ae18dfff89615bc9e5c78e6d509b55e7744ff54f35c5a6700ab3e3d92db21' and
++            ''.join(generated) == patch_path.read_text(), 'Exact17 fixture diff changed')
++    review = config.get('fixture17_independent_review')
++    require(isinstance(review, dict) and set(review) == {'report', 'source'},
++            'Required independent17 source-review pair not supplied')
++    review_hashes = {}
++    for kind, ref in review.items():
++        require(isinstance(ref, dict) and set(ref) == {'path', 'sha256'} and
++                re.fullmatch(r'[0-9a-f]{64}', ref['sha256']), 'Invalid independent17 review pin')
++        path = Path(ref['path']).resolve()
++        require(path.is_relative_to(work) and path.is_file() and path.stat().st_size > 0,
++                'Missing or out-of-work independent17 review')
++        require(record(path) == ref['sha256'], 'Independent17 review changed')
++        review_hashes[kind] = {'path': str(path), 'sha256': ref['sha256']}
++    return {'before': expected_before, 'after': expected_after,
++            'exact_diff_sha256': record(patch_path), 'independent_review': review_hashes,
++            'scope': 'Exact reviewed17 test repair only. Fresh17 source/runtime equality checks remain unchanged.'}
+ 
+ 
+ def main():
+@@ -383,10 +439,8 @@
+     m04_path = work / 'candidate-snapshot-04-source.json'
+     m04 = read(m04_path)
+     record(m04_path)
+-    preserved = ['Tests/SwiftJ2KJPIPTests/' + name for name in
+-                 ['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]
+-    require(all(m04[p] == manifest[p] for p in preserved), 'Previously repaired assertions were changed')
+-    receipt['unchanged_tests_from_failed_04'] = {p: manifest[p] for p in preserved}
++    receipt['authorised_fixture_delta_17'] = verify_authorised_fixture17(
++        source, manifest, m04, work, record, config)
+     receipt['authorised_websocket_fixture_delta_15'] = verify_authorised_websocket_fixture(
+         source, manifest, m04, work, record)
+     after = source_map(source)

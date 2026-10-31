@@ -1,0 +1,16 @@
+{
+  "original_prepared": {
+    "state": "PREPARED_PENDING_INDEPENDENT_REVIEW",
+    "at": "2026-10-31T11:42:21.891830+00:00",
+    "files": {
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "b6a4998d368e0954bf00a2b862bb9bdb9f5d3ff7adb3ef43d50abf560a5cddc3",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e"
+    }
+  },
+  "current_reviewed_sha256": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e"
+  }
+}

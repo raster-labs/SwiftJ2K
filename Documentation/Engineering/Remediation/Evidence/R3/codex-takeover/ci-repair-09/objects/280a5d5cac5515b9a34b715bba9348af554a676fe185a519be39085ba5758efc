@@ -1,0 +1,29 @@
+{
+  "state": "FIXTURE17_01_CLOSED_SOURCE_ONLY_NATIVE18_UNQUALIFIED",
+  "reviewer": "/root/compiler_portability",
+  "inputs": {
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e",
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1",
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "23314e244f111192be0a9da20d188933a8029c63133dfb128c033e6b3554b8f3",
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d",
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": "a8a5132490d352a810c180bcc65f6ca08c3f11ddbc5417cefe1e3b9b45c138dc",
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": "c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7",
+    "work/jpip-fixture-cleanup-18/source.json": "7a22439707a354261e5cc5d1e9e9fce0076cacd796cd5312b414753531f675d3",
+    "work/jpip-fixture-cleanup-18/report.txt": "26bfd467325a5b14f3b95c620d98056472a65e31fdf6ebbc29cb3ce1fe2c8333",
+    "work/jpip-fixture-cleanup-18/delta.patch": "5ebccfc6486dda4d8b2efb57f2e3ae93311276fe6fdb12d5467558c11373186b",
+    "work/independent-fixture-review-17/source.json": "cdfaec25c87c94a7b33dd78c295ed348383ef913ac3f00bea94cfae71030aae6"
+  },
+  "inputs_stable": true,
+  "prior_review17_inputs_preserved": true,
+  "reverse_normalisation_verified": true,
+  "native_execution": false,
+  "source_edits": false,
+  "artifacts": {
+    "R3OwnedScriptedPeer.swift": "a8a5132490d352a810c180bcc65f6ca08c3f11ddbc5417cefe1e3b9b45c138dc",
+    "independent-delta.patch": "7c941238dab2f71a15073078e00bf122f83031c74871a6395fd16b57645e792d",
+    "CodexR3WebSocketBudgetTests.swift": "23314e244f111192be0a9da20d188933a8029c63133dfb128c033e6b3554b8f3",
+    "report.txt": "cd76fb85f1dae37c803f27b334d59842c145d5cca2642e78b524c5fae3d254b0",
+    "CodexR3IndependentTests.swift": "3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e"
+  },
+  "stop": true
+}

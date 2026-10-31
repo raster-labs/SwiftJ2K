@@ -216,48 +216,46 @@ struct CodexR3WebSocketBudgetTests {
     }
 
     @Test func descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() async throws {
-        let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
-        let state = Mutex((connection: Optional<JPIPTCPConnection>.none, done: false, error: Optional<String>.none))
-        defer {
-            listener.close()
-            state.withLock { $0.connection }?.close()
-        }
         // Scripted extension peer, not an independent interoperability oracle.
-        // It emits legal headers followed by independently specified empty-body
-        // response frames. Eighty short headers dominate either response's peak.
-        Thread.detachNewThread {
-            defer { state.withLock { $0.done = true } }
-            do {
-                guard let connection = try listener.acceptConnection(timeoutSeconds: 2) else { return }
-                state.withLock { $0.connection = connection }
-                defer { connection.close() }
-                guard let request = try connection.readHTTPRequest(),
-                      let key = request.header("Sec-WebSocket-Key") else {
-                    throw J2KError.invalidData("Test handshake has no key")
-                }
-                var header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                header += "Sec-WebSocket-Accept: \(JPIPRFC6455Crypto.computeAcceptKey(for: key))\r\nSec-WebSocket-Protocol: jpip\r\n"
-                for index in 0..<80 { header += "X\(index):0\r\n" }
-                try connection.writeAll(Data((header + "\r\n").utf8))
-                for _ in 0..<2 {
-                    let incoming = try connection.readWebSocketFrame(requireMasked: true)
-                    guard incoming.payload.count >= 9 else { throw J2KError.invalidData("Short test request") }
-                    var reply = Data([0x02])
-                    reply.append(incoming.payload[1..<5])
-                    reply.append(contentsOf: [0, 0, 0, 4, 0, 200, 0, 0])
-                    try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
-                }
-            } catch { state.withLock { $0.error = String(describing: error) } }
+        // Explicit fixture close owns socket lifetime, including the interval
+        // between requests; it has no incidental two-second idle I/O expiry.
+        let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
+            guard let request = try connection.readHTTPRequest(),
+                  let key = request.header("Sec-WebSocket-Key") else {
+                throw J2KError.invalidData("Test handshake has no key")
+            }
+            peer.mark("handshake.read")
+            var header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            header += "Sec-WebSocket-Accept: \(JPIPRFC6455Crypto.computeAcceptKey(for: key))\r\nSec-WebSocket-Protocol: jpip\r\n"
+            for index in 0..<80 { header += "X\(index):0\r\n" }
+            try connection.writeAll(Data((header + "\r\n").utf8))
+            peer.mark("handshake.written")
+            for index in 1...2 {
+                let incoming = try connection.readWebSocketFrame(requireMasked: true)
+                peer.mark("request.read.\(index)")
+                guard incoming.payload.count >= 9 else { throw J2KError.invalidData("Short test request") }
+                var reply = Data([0x02])
+                reply.append(incoming.payload[1..<5])
+                reply.append(contentsOf: [0, 0, 0, 4, 0, 200, 0, 0])
+                try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+                peer.mark("response.written.\(index)")
+            }
         }
-        let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(listener.boundPort)/jpip")!)
+        defer { peer.close() }
+        try await peer.waitForStartup()
+        let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
         do {
+            peer.mark("first.send.begin")
             let first = try await transport.send(JPIPRequest(target: "tiny.j2k"), maxBodyBytes: 1,
                 deadline: ContinuousClock.now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+            peer.mark("first.send.returned")
             #expect(first.data.isEmpty)
             let connecting = await transport.receiveAdmissionSnapshot()
             #expect(connecting.peakBytes > 10_000)
+            peer.mark("second.send.begin")
             let second = try await transport.send(JPIPRequest(target: "tiny.j2k"), maxBodyBytes: 1,
                 deadline: ContinuousClock.now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+            peer.mark("second.send.returned")
             #expect(second.data.isEmpty)
             let reused = await transport.receiveAdmissionSnapshot()
             #expect(reused.peakBytes < connecting.peakBytes)
@@ -265,11 +263,12 @@ struct CodexR3WebSocketBudgetTests {
             await transport.close()
         } catch {
             await transport.close()
-            throw error
+            let stopped = await peer.stopAndObserve()
+            throw R3ScriptedPeerFailure("Handshake budget fixture failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
         }
-        let joined = try await observe { state.withLock { $0.done } }
-        #expect(joined)
-        #expect(state.withLock { $0.error } == nil)
+        let stopped = await peer.stopAndObserve()
+        #expect(stopped, "\(peer.diagnostics)")
+        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
     }
 
     private func observe(_ predicate: @Sendable () -> Bool) async throws -> Bool {

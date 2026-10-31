@@ -1919,7 +1919,6 @@ private func runJPIPServer(_ context: CodecContext, started: ContinuousClock.Ins
     } else {
         try write("jpip server listening on \(host):\(actualPort) (\(registered.count) targets)\n", to: .standardOutput)
     }
-    fflush(stdout)
 
     if let targetReqCount = maxRequests {
         while !Task.isCancelled {

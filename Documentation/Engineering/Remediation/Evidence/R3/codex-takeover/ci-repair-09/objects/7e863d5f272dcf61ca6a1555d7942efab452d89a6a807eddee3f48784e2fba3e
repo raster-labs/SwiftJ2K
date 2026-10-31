@@ -1,0 +1,24 @@
+{
+  "state": "NARROW_AUDITOR_MAINTENANCE_SYNTHETIC_CHECKED_NOT_INDEPENDENTLY_APPROVED",
+  "old_auditor_sha256": "d9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda",
+  "new_auditor_sha256": "087a92352d550e7556e50ab85ba156cf223cfec08800abdd7666678eb5c710a6",
+  "helper_diff_sha256": "1b0a900ba6a9f893c31c9baebdc2a4ee2a027ee411602804b2ed9578684ef19b",
+  "unchanged_reconciler_sha256": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+  "normalised_old_auditor_recovered": true,
+  "synthetic_baseline_accepted": true,
+  "invalid_inputs_rejected": [
+    "changed final manifest",
+    "changed historical manifest",
+    "missing independent review",
+    "wrong independent review hash",
+    "mutated review bytes",
+    "mutated new helper bytes",
+    "matching but unreviewed new helper manifest",
+    "changed exact fixture diff"
+  ],
+  "review_pair_in_baseline": "Synthetic hash-pin fixture only; no actual17 review approval claimed.",
+  "checker_sha256": "a8d3914470c845eaa18a256c4bfe7c3eed713e2c082c38ba4f68cd0864f4c8e7",
+  "native_execution": false,
+  "repository_edits": false,
+  "scope": "Only recognise exact three-file17 fixture delta. Runtime parser, all-source equality, inventory, arguments, XML, capture and historical-failure checks normalise byte-for-byte to15."
+}

@@ -1,0 +1,35 @@
+{
+  "sha": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "node_id": "C_kwDOUeVE1toAKGYzYzYzZTNkZjY3ZGRmNjljZmFjY2Q1NTllMzU4MWVhOGVhY2RmYmU",
+  "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "author": {
+    "name": "SureshKViswanathan",
+    "email": "suresh@raster.in",
+    "date": "2026-10-31T11:10:07Z"
+  },
+  "committer": {
+    "name": "SureshKViswanathan",
+    "email": "suresh@raster.in",
+    "date": "2026-10-31T11:10:07Z"
+  },
+  "tree": {
+    "sha": "4e818309cf03798d3e156517ad936ab380fbe647",
+    "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/trees/4e818309cf03798d3e156517ad936ab380fbe647"
+  },
+  "message": "Make JPIP streaming portable and verify request shutdown",
+  "parents": [
+    {
+      "sha": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+      "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+      "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/7f1b123c1c8705666b3c19838f3ed22c00dc6145"
+    }
+  ],
+  "verification": {
+    "verified": false,
+    "reason": "unsigned",
+    "signature": null,
+    "payload": null,
+    "verified_at": null
+  }
+}

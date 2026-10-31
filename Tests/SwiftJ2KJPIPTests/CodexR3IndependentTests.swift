@@ -414,62 +414,77 @@ struct CodexR3IndependentTests {
 
     @Test("F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout")
     func stalledTCPTransportsCancelAndTimeoutPromptly() async throws {
-        // TCP listener that accepts sockets and holds them open without sending bytes
-        let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
-        final class HeldSockets: @unchecked Sendable {
-            private let lock = NSLock()
-            private var sockets: [JPIPTCPConnection] = []
-            func append(_ c: JPIPTCPConnection) { lock.lock(); sockets.append(c); lock.unlock() }
-            func closeAll() { lock.lock(); let all = sockets; sockets.removeAll(); lock.unlock(); all.forEach { $0.close() } }
+        // Read the complete request, then deliberately send no response. Readiness
+        // establishes stalled I/O before measuring cancellation responsiveness.
+        let peer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
+            guard try connection.readHTTPRequest() != nil else {
+                throw R3ScriptedPeerFailure("Request \(index) closed before headers arrived")
+            }
+            peer.mark("request.\(index)")
         }
-        let held = HeldSockets()
-        DispatchQueue.global(qos: .utility).async {
-            while listener.isOpen {
-                if let c = try? listener.acceptConnection(timeoutSeconds: 5) {
-                    held.append(c)
-                } else {
-                    break
-                }
+        defer { peer.close() }
+        try await peer.waitForStartup()
+        let clock = ContinuousClock()
+        let httpTransport = JPIPTransport(baseURL: URL(string: "http://127.0.0.1:\(peer.port)")!)
+        let httpTask = Task {
+            do {
+                var request = JPIPRequest(target: "stalled.j2k")
+                request.streamType = .jppStream
+                return try await httpTransport.send(request)
+            } catch {
+                peer.recordClientFailure(error, before: "request.1")
+                throw error
             }
         }
-        defer {
-            listener.close()
-            held.closeAll()
+        do {
+            try await peer.waitFor("request.1")
+            peer.mark("http.cancel")
+            let cancelledAt = clock.now
+            httpTask.cancel()
+            await #expect(throws: CancellationError.self) { _ = try await httpTask.value }
+            let httpElapsed = clock.now - cancelledAt
+            peer.mark("http.caller.resumed")
+            #expect(httpElapsed < .seconds(2), "\(peer.diagnostics)")
+            await httpTransport.close()
+        } catch {
+            httpTask.cancel()
+            _ = try? await httpTask.value
+            await httpTransport.close()
+            let stopped = await peer.stopAndObserve()
+            throw R3ScriptedPeerFailure("HTTP cancellation setup failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
         }
 
-        // 1. HTTP transport task cancellation unblocks stalled recv promptly (< 1.5s, vs 30s socket timeout)
-        let httpTransport = JPIPTransport(baseURL: URL(string: "http://127.0.0.1:\(listener.boundPort)")!)
-        let clock = ContinuousClock()
-        let t0 = clock.now
-        let httpTask = Task {
-            var req = JPIPRequest(target: "stalled.j2k")
-            req.streamType = .jppStream
-            return try await httpTransport.send(req)
-        }
-        try await Task.sleep(for: .milliseconds(60))
-        httpTask.cancel()
-        await #expect(throws: CancellationError.self) {
-            _ = try await httpTask.value
-        }
-        let httpElapsed = clock.now - t0
-        #expect(httpElapsed < .seconds(2))
-        await httpTransport.close()
-
-        // 2. WebSocket handshake cancellation unblocks stalled handshake promptly
-        let t1 = clock.now
         let wsTransport = JPIPWebSocketTransport(
-            url: URL(string: "ws://127.0.0.1:\(listener.boundPort)/jpip")!,
+            url: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!,
             requestTimeout: 15.0
         )
         let wsConnectTask = Task {
-            try await wsTransport.connect()
+            do { try await wsTransport.connect() }
+            catch {
+                peer.recordClientFailure(error, before: "request.2")
+                throw error
+            }
         }
-        try await Task.sleep(for: .milliseconds(60))
-        wsConnectTask.cancel()
-        await #expect(throws: CancellationError.self) {
-            try await wsConnectTask.value
+        do {
+            try await peer.waitFor("request.2")
+            peer.mark("websocket.cancel")
+            let cancelledAt = clock.now
+            wsConnectTask.cancel()
+            await #expect(throws: CancellationError.self) { try await wsConnectTask.value }
+            let wsElapsed = clock.now - cancelledAt
+            peer.mark("websocket.caller.resumed")
+            #expect(wsElapsed < .seconds(2), "\(peer.diagnostics)")
+            await wsTransport.disconnect()
+        } catch {
+            wsConnectTask.cancel()
+            _ = try? await wsConnectTask.value
+            await wsTransport.disconnect()
+            let stopped = await peer.stopAndObserve()
+            throw R3ScriptedPeerFailure("WebSocket cancellation setup failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
         }
-        #expect((clock.now - t1) < .seconds(2))
+        let stopped = await peer.stopAndObserve()
+        #expect(stopped, "\(peer.diagnostics)")
+        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
     }
 
     // MARK: - F04-10 Corrupt Codestream Propagates Error Instead of Raw Octet-Stream Fallback
@@ -617,114 +632,115 @@ struct CodexR3IndependentTests {
 
     @Test("RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests")
     func httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel() async throws {
-        final class HeldConnections: @unchecked Sendable {
-            private let lock = NSLock()
-            private var conns: [JPIPTCPConnection] = []
-            func append(_ c: JPIPTCPConnection) { lock.lock(); conns.append(c); lock.unlock() }
-            func closeAll() {
-                lock.lock()
-                let snapshot = conns
-                conns.removeAll()
-                lock.unlock()
-                snapshot.forEach { $0.close() }
-            }
+        // Dedicated foreground workers own blocking accept/read operations. A
+        // completed read leaves the accepted socket held until explicit stop.
+        let httpPeer = try R3OwnedScriptedPeer(connections: 1) { connection, index, peer in
+            if try connection.readHTTPRequest() != nil { peer.mark("request.\(index)") }
         }
-
-        // 1. Silent HTTP TCP peer: accepts connection, reads request headers, never sends a response.
-        let httpListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
-        let heldHTTP = HeldConnections()
-        DispatchQueue.global(qos: .utility).async {
-            while httpListener.isOpen {
-                guard let conn = try? httpListener.acceptConnection(timeoutSeconds: 5) else { break }
-                heldHTTP.append(conn)
-                DispatchQueue.global(qos: .utility).async {
-                    _ = try? conn.readHTTPRequest()
-                }
-            }
-        }
-        defer {
-            httpListener.close()
-            heldHTTP.closeAll()
-        }
-
+        defer { httpPeer.close() }
+        try await httpPeer.waitForStartup()
         let clock = ContinuousClock()
         let httpSession = JPIPStreamingSession(
-            serverURL: URL(string: "http://127.0.0.1:\(httpListener.boundPort)/jpip")!
+            serverURL: URL(string: "http://127.0.0.1:\(httpPeer.port)/jpip")!
         )
         let t0 = clock.now
+        httpPeer.mark("http.deadline.begin")
         do {
-            _ = try await httpSession.deliverImage(
-                imageID: "silent.j2k",
-                options: JPIPStreamingOptions(
-                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+            do {
+                _ = try await httpSession.deliverImage(
+                    imageID: "silent.j2k",
+                    options: JPIPStreamingOptions(
+                        resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+                    )
                 )
-            )
-            Issue.record("Expected silent HTTP peer to time out with CodecError(.resourceLimitExceeded)")
-        } catch let err as CodecError {
-            #expect(err.category == .resourceLimitExceeded)
-        }
-        let httpElapsed = clock.now - t0
-        #expect(httpElapsed < .seconds(2))
-        try? await httpSession.close()
-
-        // 2. Silent WebSocket TCP peer: completes RFC 6455 HTTP 101 handshake, reads client frame, never replies.
-        let wsListener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
-        let heldWS = HeldConnections()
-        DispatchQueue.global(qos: .utility).async {
-            while wsListener.isOpen {
-                guard let conn = try? wsListener.acceptConnection(timeoutSeconds: 5) else { break }
-                heldWS.append(conn)
-                DispatchQueue.global(qos: .utility).async {
-                    guard let req = try? conn.readHTTPRequest(),
-                          let key = req.header("Sec-WebSocket-Key") else { return }
-                    try? conn.writeWebSocketServerHandshake(clientKey: key)
-                    _ = try? conn.readWebSocketFrame(requireMasked: true)
-                }
+                Issue.record("Expected silent HTTP peer to time out with CodecError(.resourceLimitExceeded)")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
             }
+            let httpElapsed = clock.now - t0
+            httpPeer.mark("http.deadline.caller.resumed")
+            #expect(httpElapsed < .seconds(2), "\(httpPeer.diagnostics)")
+            try? await httpSession.close()
+        } catch {
+            try? await httpSession.close()
+            let stopped = await httpPeer.stopAndObserve()
+            throw R3ScriptedPeerFailure("HTTP deadline failed: \(error); stopped=\(stopped); \(httpPeer.diagnostics)")
         }
-        defer {
-            wsListener.close()
-            heldWS.closeAll()
-        }
+        let httpStopped = await httpPeer.stopAndObserve()
+        #expect(httpStopped, "\(httpPeer.diagnostics)")
 
-        // 2a. End-to-end JPIPStreamingSession over ws:// enforces ResourceLimits.deadlineSeconds
+        // Two clients complete RFC 6455 handshakes, then receive no response to
+        // their request frames. Both original deadline cases stay unchanged.
+        let wsPeer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
+            guard let request = try connection.readHTTPRequest(),
+                  let key = request.header("Sec-WebSocket-Key") else {
+                throw R3ScriptedPeerFailure("WebSocket \(index) has no handshake key")
+            }
+            peer.mark("handshake.read.\(index)")
+            try connection.writeWebSocketServerHandshake(clientKey: key)
+            peer.mark("handshake.written.\(index)")
+            _ = try connection.readWebSocketFrame(requireMasked: true)
+            peer.mark("request.\(index)")
+        }
+        defer { wsPeer.close() }
+        try await wsPeer.waitForStartup()
         let wsSession = JPIPStreamingSession(
-            serverURL: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!
+            serverURL: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!
         )
         let t1 = clock.now
+        wsPeer.mark("session.deadline.begin")
         do {
-            _ = try await wsSession.deliverImage(
-                imageID: "silent-ws.j2k",
-                options: JPIPStreamingOptions(
-                    resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+            do {
+                _ = try await wsSession.deliverImage(
+                    imageID: "silent-ws.j2k",
+                    options: JPIPStreamingOptions(
+                        resourceLimits: try ResourceLimits(deadlineSeconds: 0.12)
+                    )
                 )
-            )
-            Issue.record("Expected silent WebSocket peer to time out with CodecError(.resourceLimitExceeded)")
-        } catch let err as CodecError {
-            #expect(err.category == .resourceLimitExceeded)
+                Issue.record("Expected silent WebSocket peer to time out with CodecError(.resourceLimitExceeded)")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+            let sessionElapsed = clock.now - t1
+            wsPeer.mark("session.deadline.caller.resumed")
+            #expect(sessionElapsed < .seconds(2), "\(wsPeer.diagnostics)")
+            try? await wsSession.close()
+        } catch {
+            try? await wsSession.close()
+            let stopped = await wsPeer.stopAndObserve()
+            throw R3ScriptedPeerFailure("WebSocket session deadline failed: \(error); stopped=\(stopped); \(wsPeer.diagnostics)")
         }
-        #expect((clock.now - t1) < .seconds(2))
-        try? await wsSession.close()
 
-        // 2b. Direct JPIPWebSocketTransport request timeout cleans up pendingContinuations
         let wsTransport = JPIPWebSocketTransport(
-            url: URL(string: "ws://127.0.0.1:\(wsListener.boundPort)/jpip")!,
+            url: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!,
             requestTimeout: 30.0
         )
-        try await wsTransport.connect(deadline: clock.now + .seconds(2))
-        let t2 = clock.now
         do {
-            _ = try await wsTransport.sendRequest(
-                JPIPRequest(target: "silent-ws.j2k"),
-                timeout: 0.12
-            )
-            Issue.record("Expected JPIPWebSocketTransport.sendRequest(timeout: 0.12) to throw CodecError(.resourceLimitExceeded)")
-        } catch let err as CodecError {
-            #expect(err.category == .resourceLimitExceeded)
+            wsPeer.mark("direct.connect.begin")
+            try await wsTransport.connect(deadline: clock.now + .seconds(2))
+            wsPeer.mark("direct.connect.returned")
+            let t2 = clock.now
+            do {
+                _ = try await wsTransport.sendRequest(
+                    JPIPRequest(target: "silent-ws.j2k"),
+                    timeout: 0.12
+                )
+                Issue.record("Expected JPIPWebSocketTransport.sendRequest(timeout: 0.12) to throw CodecError(.resourceLimitExceeded)")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+            let requestElapsed = clock.now - t2
+            wsPeer.mark("direct.request.caller.resumed")
+            #expect(requestElapsed < .seconds(2), "\(wsPeer.diagnostics)")
+            #expect(await wsTransport.pendingRequestCount == 0)
+            await wsTransport.disconnect()
+        } catch {
+            await wsTransport.disconnect()
+            let stopped = await wsPeer.stopAndObserve()
+            throw R3ScriptedPeerFailure("Direct WebSocket deadline failed: \(error); stopped=\(stopped); \(wsPeer.diagnostics)")
         }
-        #expect((clock.now - t2) < .seconds(2))
-        #expect(await wsTransport.pendingRequestCount == 0)
-        await wsTransport.disconnect()
+        let wsStopped = await wsPeer.stopAndObserve()
+        #expect(wsStopped, "\(wsPeer.diagnostics)")
     }
 
     // MARK: - Helpers

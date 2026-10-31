@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Append stopped documentation pins in a new manifest; preserve the earlier checkpoint."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+BASE = OUT / 'manifest-publication-18.json'
+REVIEW = WORK / 'independent-publication-doc-review-18'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+assert sha(BASE) == 'f8e493c01e0caedb786eab9fd80d4e9d505fd8c412d09a67e0546c24563f3159'
+assert sha(REVIEW / 'report.txt') == '133837ac0b03611dc8ed03177566aa48b4dc84e4959a4a02d58a3e7502138ee5'
+assert sha(REVIEW / 'source.json') == '886c78ac276b8feb63053134eaf9b29e3494bd764c2d4aac85cf533c65df431b'
+review = json.loads((REVIEW / 'source.json').read_text())
+assert review['state'] == 'CORRECTED_DOCS_ACCEPTABLE_FOR_AUTHORISED_DRAFT_PUBLICATION_ONLY'
+assert review['stop'] is True and review['remaining_material_wording_findings'] == []
+for field in ['reviewed_publication_hashes', 'inputs']:
+    for name, digest in review[field].items():
+        assert sha(Path(name)) == digest, name
+for name, digest in review['artifacts'].items():
+    assert sha(REVIEW / name) == digest, name
+
+scope = json.loads((OUT / 'incremental-scope-18.json').read_text())
+scope['state'] = 'FINAL_INCREMENTAL18_SELECTION_WITH_REVIEWED_DOCS_NOT_ACCEPTED'
+scope['finalized_at'] = datetime.now(timezone.utc).isoformat()
+scope['documentation'] = {
+    'state': 'STOPPED_CORRECTED_DOCS_REVIEWED_FOR_DRAFT_PUBLICATION_ONLY',
+    'report': ref(REVIEW / 'report.txt'), 'source': ref(REVIEW / 'source.json'),
+    'reviewed_publication_hashes': review['reviewed_publication_hashes'],
+    'boundary': 'Later exact publication/source/index/run links may be substituted without changing claims; those future body/link bytes are not selected here.',
+}
+scope['remaining_root_steps'] = [
+    'Review this final explicit manifest and verify existing claim/stopped source and documentation writers.',
+    'Root-only append-only package and source18 draft-PR publication.',
+    'Retain and independently review subsequent actual exact-head hosted feedback separately.',
+]
+scope['excluded'] = [item for item in scope['excluded'] if item != 'Mutable current documents and future PR-link body']
+scope['excluded'].append('Future PR-link body and unreviewed future documentation changes')
+scope['supersedes'] = 'Earlier incremental-scope-18.json documentation-pending checkpoint only; historical failure/runtime boundaries are unchanged.'
+save('incremental-scope-final-18.json', scope)
+
+manifest = json.loads(BASE.read_text())
+manifest['candidate_label'] = ('Candidate18 final incremental draft-publication evidence with stopped corrected documentation review; '
+    'source-reviewed repair, scoped CLI16 input-equivalent reuse; ordinary17 and hosted15 FAILED; '
+    'sanitizer17 UNEXECUTED, native18 unqualified; R3 NOT_ACCEPTED')
+for item in manifest['supplemental']:
+    if item['file']['path'] == str(OUT / 'incremental-scope-18.json'):
+        item['file'] = ref(OUT / 'incremental-scope-final-18.json')
+        item['role'] = 'incremental18-final-scope-and-publication-boundaries'
+manifest['reviews'].append({
+    'report': ref(REVIEW / 'report.txt'), 'source': ref(REVIEW / 'source.json'),
+    'completed': True, 'supporting': [],
+})
+paths = [Path(name) for name in review['reviewed_publication_hashes']]
+paths += [path for path in sorted(REVIEW.iterdir()) if path.is_file() and path.name not in ['report.txt', 'source.json']]
+paths += [WORK / 'publication-docs-18/prepared-source.json', Path(__file__)]
+for path in sorted(set(paths)):
+    manifest['supplemental'].append({
+        'file': ref(path), 'role': 'incremental18-final-docs-' + path.relative_to(WORK).as_posix().replace('/', '--'),
+    })
+save('manifest-final-18.json', manifest)
+save('selection-final-18.json', {
+    'state': 'FINAL_INCREMENTAL18_SELECTION_NOT_PUBLISHED',
+    'base_checkpoint': ref(BASE), 'manifest': ref(OUT / 'manifest-final-18.json'),
+    'scope': ref(OUT / 'incremental-scope-final-18.json'),
+    'native_runs': len(manifest['native_runs']), 'review_pairs': len(manifest['reviews']),
+    'hosted_runs': len(manifest['hosted_runs']), 'hosted_job_logs': 7,
+    'supplemental_receipts': len(manifest['supplemental']),
+    'required_local_selection_missing': [], 'future_hosted18': 'PENDING_SOURCE18_PUBLICATION',
+    'native18_success_claimed': False, 'R3': 'NOT_ACCEPTED',
+})
+print(json.dumps({'manifest_sha256': sha(OUT / 'manifest-final-18.json'),
+                  'review_pairs': len(manifest['reviews']),
+                  'supplemental_receipts': len(manifest['supplemental'])}, indent=2))

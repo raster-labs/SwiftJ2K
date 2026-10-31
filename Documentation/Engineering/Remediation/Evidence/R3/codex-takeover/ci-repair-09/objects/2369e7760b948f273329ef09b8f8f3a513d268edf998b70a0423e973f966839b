@@ -1,0 +1,58 @@
+from pathlib import Path
+import hashlib, json, os, re, selectors, signal, subprocess, sys, time
+
+binary = Path(sys.argv[1]).resolve()
+fixture = Path('Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2').resolve()
+out = Path(sys.argv[2]).resolve()
+out.mkdir(exist_ok=False)
+results = []
+for mode in ('text', 'json'):
+    command = [str(binary), 'jpip', 'server', '--single-file', str(fixture), '--host', '127.0.0.1', '--port', '0']
+    if mode == 'json': command.append('--json')
+    started = time.monotonic()
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    received = bytearray()
+    forced = False
+    failure = None
+    try:
+        with selectors.DefaultSelector() as ready:
+            ready.register(p.stdout, selectors.EVENT_READ)
+            deadline = started + 5
+            while b'\n' not in received:
+                remaining = deadline - time.monotonic()
+                assert remaining > 0, 'No startup line within probe deadline'
+                assert ready.select(remaining), 'No startup data within probe deadline'
+                chunk = os.read(p.stdout.fileno(), 65536)
+                assert chunk, 'Process closed stdout before startup line'
+                received.extend(chunk)
+        assert p.poll() is None, 'Process exited before live startup observation'
+        line = bytes(received).split(b'\n', 1)[0].decode('utf-8')
+        if mode == 'json':
+            report = json.loads(line)
+            assert report['command'] == 'jpip' and report['role'] == 'server' and report['status'] == 'running'
+            assert report['registeredTargets'] == 1 and 0 < report['port'] <= 65535
+        else:
+            assert re.fullmatch(r'jpip server listening on 127\.0\.0\.1:[1-9][0-9]* \(1 targets\)', line), line
+        ready_seconds = time.monotonic() - started
+    except BaseException as error:
+        failure = repr(error)
+    finally:
+        if p.poll() is None: p.send_signal(signal.SIGINT)
+        try:
+            rest, stderr = p.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            forced = True
+            p.kill()
+            rest, stderr = p.communicate()
+        stdout = bytes(received) + rest
+        (out / (mode + '.stdout')).write_bytes(stdout)
+        (out / (mode + '.stderr')).write_bytes(stderr)
+        results.append({'mode': mode, 'command': command, 'pid': p.pid,
+                        'startup_observed_while_alive': failure is None,
+                        'ready_seconds': ready_seconds if failure is None else None,
+                        'returncode': p.returncode, 'process_joined': p.poll() is not None,
+                        'forced_kill': forced, 'failure': failure})
+    (out / 'results.json').write_text(json.dumps({'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+        'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(), 'cases': results}, indent=2) + '\n')
+    assert failure is None and not forced and p.returncode == 130, results[-1]
+print('PASS: text and JSON startup visible through pipes while server alive; SIGINT exits130 and both children joined.')

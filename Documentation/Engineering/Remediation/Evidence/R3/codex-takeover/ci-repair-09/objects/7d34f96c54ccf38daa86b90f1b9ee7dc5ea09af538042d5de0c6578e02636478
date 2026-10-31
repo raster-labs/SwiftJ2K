@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Prepare explicit incremental18 evidence; never execute native/Git/network or publish."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+WORKSPACE = WORK.parent
+REPO = WORK / 'SwiftJ2K'
+CORPUS = REPO / 'Documentation/Engineering/Remediation/Evidence/R3/codex-takeover'
+HELPER = WORK / 'ci-repair-evidence-14/package.py'
+INDEX15 = CORPUS / 'ci-repair-09/indexes/b05cc28b4195a726a1fe2101ddfebeefb43b923e9a48f03f811ca5440de07c42.json'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def read(name):
+    return json.loads((WORK / name).read_text())
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+assert sha(HELPER) == '588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83'
+assert sha(CORPUS / 'generated-index.json') == '6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54'
+assert sha(INDEX15) == INDEX15.stem
+
+maps = {v: read(f'candidate-snapshot-{v}-source.json') for v in ['16', '17', '18']}
+fixture_paths = {
+    'Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift',
+    'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift',
+    'Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift',
+}
+delta = {path: {'candidate16': maps['16'].get(path), 'candidate18': maps['18'].get(path)}
+         for path in sorted(set(maps['16']) | set(maps['18']))
+         if maps['16'].get(path) != maps['18'].get(path)}
+assert set(delta) == fixture_paths, delta
+for path in fixture_paths:
+    assert sha(WORK / 'candidate-snapshot-18' / path) == maps['18'][path]
+    assert sha(REPO / path) == maps['18'][path]
+
+prior_equivalence = read('runtime-coverage-17/source-cli-equivalence-17.json')
+cli_inputs = prior_equivalence['cli_input_hashes']
+assert len(cli_inputs) == prior_equivalence['matched_cli_inputs'] == 512
+for path, expected in cli_inputs.items():
+    for version in ['16', '18']:
+        assert maps[version][path] == expected, (version, path)
+        assert sha(WORK / f'candidate-snapshot-{version}' / path) == expected, (version, path)
+    assert sha(REPO / path) == expected, path
+native16 = read('independent-cli-portability-16/native-source.json')
+assert native16['state'] == 'CLI16_NATIVE_RECEIPTS_VERIFIED'
+assert native16['cli_checks'] == 246 and len(native16['startup_cases']) == 2
+save('cli16-input-equivalence18.json', {
+    'state': '512_ACTUAL_CLI_INPUTS_IDENTICAL_16_TO18_NO_NATIVE18_EXECUTION',
+    'at': datetime.now(timezone.utc).isoformat(),
+    'method': 'Use the independently reviewed17 CLI input set; hash each actual frozen16/frozen18/current repository input; prove entire16-to18 source-manifest delta is exactly three test fixture files.',
+    'matched_cli_inputs': 512, 'cli_input_hashes': cli_inputs, 'source_delta16_to18': delta,
+    'snapshot16_manifest': ref(WORK / 'candidate-snapshot-16-source.json'),
+    'snapshot18_manifest': ref(WORK / 'candidate-snapshot-18-source.json'),
+    'reviewed17_input_set': ref(WORK / 'runtime-coverage-17/source-cli-equivalence-17.json'),
+    'cli16_native_review': ref(WORK / 'independent-cli-portability-16/native-source.json'),
+    'cli16_binary_sha256_from_verified_receipt': native16['binary_sha256'],
+    'cli16_checks': 246, 'cli16_startup_modes': ['text', 'json'],
+    'scope': 'Input-equivalent applicability of scoped CLI16 receipts only; no fresh18 release/CLI/ordinary/sanitizer or hosted execution claimed.',
+    'native_executed': False, 'repository_edited': False,
+})
+
+labels = ['candidate-release-build-16', 'candidate-cli-16', 'candidate-cli-startup-16', 'candidate-full-17']
+runs = []
+for label in labels:
+    directory = WORK / 'validation' / label
+    result = json.loads((directory / 'result.json').read_text())
+    assert result.get('finished_at') and type(result.get('exit_code')) is int
+    assert result['exit_code'] == (1 if label == 'candidate-full-17' else 0)
+    entry = {key: ref(directory / filename) for key, filename in (
+        ('result', 'result.json'), ('command', 'command.json'),
+        ('before', 'source-before.json'), ('after', 'source-after.json'))}
+    entry['reports'] = [ref(path) for path in sorted(directory.rglob('*.xml'))]
+    entry['diagnostic_only'] = False
+    runs.append(entry)
+unexecuted17 = [gate['label'] for gate in read('planned-native-sequence-17.json')['gates']
+                if gate['label'] != 'candidate-full-17']
+assert len(unexecuted17) == 6
+for label in unexecuted17:
+    assert not (WORK / 'validation' / label / 'result.json').exists(), label
+
+pair_names = [
+    ('independent-cli-portability-16/report.txt', 'independent-cli-portability-16/source.json'),
+    ('independent-cli-portability-16/native-report.txt', 'independent-cli-portability-16/native-source.json'),
+    ('hosted-failure-diagnosis-16/report.txt', 'hosted-failure-diagnosis-16/source.json'),
+    ('independent-fixture-review-17/report.txt', 'independent-fixture-review-17/source.json'),
+    ('independent-fixture-review-18/report.txt', 'independent-fixture-review-18/source.json'),
+    ('runtime-coverage-17/failed-review.txt', 'runtime-coverage-17/failed-review-source.json'),
+    ('https-failure17-review/report.txt', 'https-failure17-review/source.json'),
+]
+reviews = []
+for report, source in pair_names:
+    report_path, source_path = WORK / report, WORK / source
+    receipt = json.loads(source_path.read_text())
+    expected = receipt.get('report_sha256') or receipt.get('files', {}).get(str(report_path)) or receipt.get('artifacts', {}).get(report_path.name)
+    assert expected == sha(report_path), (report, expected)
+    for name, digest in receipt.get('artifacts', {}).items():
+        assert sha(source_path.parent / name) == digest, name
+    reviews.append({'report': ref(report_path), 'source': ref(source_path), 'completed': True, 'supporting': []})
+
+run_id = 41195752705
+job_ids = [124521448589, 124521448690, 124521448725, 124521448753, 124521448768, 124521448786, 124521448817]
+host_review = read(f'ci-downloads/run-{run_id}-attempt1-review.json')
+assert host_review['state'] == 'FAILED_HOSTED_RUN_RETAINED_NO_QUALIFICATION'
+for path, detail in host_review['raw_logs'].items():
+    assert sha(Path(path)) == detail['sha256'] and Path(path).stat().st_size == detail['bytes']
+jobs = read(f'ci-downloads/run-{run_id}-attempt1-jobs.json')['jobs']
+assert {job['id'] for job in jobs} == set(job_ids)
+assert all(job['status'] == 'completed' and job['conclusion'] for job in jobs)
+hosted = [{'run_id': run_id, 'attempt': 1,
+    'metadata': ref(WORK / f'ci-downloads/run-{run_id}-attempt1-jobs.json'),
+    'logs': [{'job_id': job_id, 'file': ref(WORK / f'ci-downloads/run-{run_id}-attempt1-job{job_id}.log')} for job_id in job_ids],
+    'review': ref(WORK / f'ci-downloads/run-{run_id}-attempt1-review.json')}]
+
+scope = {
+    'state': 'INCREMENTAL18_FAILURE_AND_SOURCE_EVIDENCE_READY_FOR_ROOT_REVIEW_NOT_ACCEPTED',
+    'at': datetime.now(timezone.utc).isoformat(),
+    'published08_index': ref(CORPUS / 'generated-index.json'), 'published15_index': ref(INDEX15),
+    'source18_manifest': ref(WORK / 'candidate-snapshot-18-source.json'),
+    'source18': 'Source-reviewed CLI16 repair plus three test-fixture files; fixture17 finding closed18 at source level only.',
+    'cli16_reuse': ref(OUT / 'cli16-input-equivalence18.json'),
+    'native18': 'No native18 result selected or success claimed. Source-only review does not qualify runtime.',
+    'native17': {'ordinary': 'FAILED: four unchanged HTTPS declarations; exact raw/XML/reviews retained.',
+                 'remaining_stages': {label: 'UNEXECUTED' for label in unexecuted17}},
+    'hosted15': {'run_id': run_id, 'attempt': 1, 'state': host_review['state'],
+                 'linux': 'Four jobs failed compilation; tests/release stages unexecuted.',
+                 'macos': 'Ordinary failed three issues, five external skips; sanitizer stages unexecuted.',
+                 'strict_reconstruction': 'Rejected incomplete retention; partial XML is diagnosis only.'},
+    'runtime17_helper': 'Unapproved maintenance, retained for provenance only; no final successful17 audit or sanitizer proof exists.',
+    'diagnostic19': 'Excluded entirely; active or future diagnostic observations do not qualify source18.',
+    'documentation': 'Current mutable STATUS/capability/PR-body inputs omitted. Root may supply final pins separately; no documentation approval is inferred.',
+    'publication_order': 'Root reviews this append-only incremental selection, publishes source18 to existing draft PR, then retains actual new exact-head hosted feedback separately.',
+    'future_exact_head_hosted': 'PENDING_SOURCE18_PUBLICATION; no Linux/macOS18 pass assumed.',
+    'remaining_root_steps': ['Review final input selection and existing claim/stopped source writers',
+                             'Pin/review final documentation separately if publication requires it',
+                             'Root-only package/feature publication and subsequent hosted receipt review'],
+    'external_gates': 'Five independent direct gates remain UNEXECUTED_UNWAIVED',
+    'R3': 'NOT_ACCEPTED', 'merge_allowed': False, 'R4': 'GATED',
+    'excluded': ['Binaries/build/cache trees', 'Full source snapshot trees', 'Broad unrelated application/project inventory',
+                 'Mutable current documents and future PR-link body', 'All diagnostic19 files and unexecuted native stages'],
+    'preparation_actions': 'Filesystem/hash/receipt processing only; no native/Git/network/repository publication.',
+}
+save('incremental-scope-18.json', scope)
+
+directory_names = [
+    'cli-portability-16', 'cli-integration-16', 'cli-startup-results-16',
+    'independent-cli-portability-16', 'hosted-failure-diagnosis-16',
+    'jpip-fixture-repairs-17', 'jpip-fixture-cleanup-18',
+    'independent-fixture-review-17', 'independent-fixture-review-18',
+    'runtime-coverage-17', 'https-failure17-review',
+]
+paired_paths = {str(WORK / name) for pair in pair_names for name in pair}
+extra = []
+suffixes = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+            '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
+for name in directory_names:
+    for path in sorted((WORK / name).rglob('*')):
+        if path.is_file() and '__pycache__' not in path.parts and str(path) not in paired_paths:
+            assert path.suffix.lower() in suffixes, path
+            extra.append(path)
+for version in ['16', '17', '18']:
+    extra += [WORK / f'candidate-snapshot-{version}-source.json', WORK / f'candidate-snapshot-{version}-provenance.json']
+extra += [WORK / name for name in [
+    'planned-native-sequence-16.json', 'run-native-sequence-16.py',
+    'planned-native-sequence-17.json', 'run-native-sequence-17.py',
+    'cli-startup-probe-16.py', 'cli-native-verification-16.json', 'run-validation.py',
+    'snapshot-candidate.py', 'hosted-evidence/reconstruct.py',
+    'hosted-source-provider-review-15.json', 'publication-commit-15.json',
+    'publication-remote-commit-15.json', 'publication-pr-30-update15.json',
+    'ci-downloads/run-41195752705-attempt1-expected.json',
+    'ci-downloads/run-41195752705-attempt1-initial.json',
+    'ci-downloads/run-41195752705-tested-merge.json', 'ci-downloads/run-41195752705-workflow.yml',
+]]
+extra += [OUT / 'cli16-input-equivalence18.json', OUT / 'incremental-scope-18.json', Path(__file__)]
+manifest = {
+    'schema': 'swiftj2k-r3-ci-repair-inputs-v1', 'workspace': str(WORKSPACE), 'repository': str(REPO),
+    'candidate_label': 'Candidate18 source-reviewed incremental publication evidence; scoped CLI16 input-equivalent reuse; ordinary17 and hosted15 FAILED, sanitizer17 UNEXECUTED, native18 unqualified; R3 NOT_ACCEPTED',
+    'published_base_label': 'Append to immutable08 and published15 b05cc28b index; published source15 f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe is historical, not source18 hosted qualification.',
+    'prior_index': ref(CORPUS / 'generated-index.json'),
+    'native_runs': runs, 'reviews': reviews, 'hosted_runs': hosted,
+    'supplemental': [{'file': ref(path), 'role': 'incremental18-' + path.relative_to(WORK).as_posix().replace('/', '--')}
+                     for path in sorted(set(extra))],
+}
+assert not any('/SwiftJ2K/Documentation/' in entry['file']['path'] or 'diagnostic-19' in entry['file']['path']
+               for entry in manifest['supplemental'])
+save('manifest-publication-18.json', manifest)
+save('selection-18.json', {
+    'state': 'INCREMENTAL18_SELECTION_NOT_PUBLISHED', 'manifest': ref(OUT / 'manifest-publication-18.json'),
+    'scope': ref(OUT / 'incremental-scope-18.json'), 'reviewed_helper': ref(HELPER),
+    'native_runs': len(runs), 'review_pairs': len(reviews), 'hosted_runs': len(hosted),
+    'hosted_job_logs': len(job_ids), 'supplemental_receipts': len(manifest['supplemental']),
+    'mutable_documentation_pinned': False, 'native18_success_claimed': False, 'R3': 'NOT_ACCEPTED',
+})
+print(json.dumps({'manifest_sha256': sha(OUT / 'manifest-publication-18.json'),
+                  'native_runs': len(runs), 'review_pairs': len(reviews),
+                  'supplemental_receipts': len(manifest['supplemental'])}, indent=2))

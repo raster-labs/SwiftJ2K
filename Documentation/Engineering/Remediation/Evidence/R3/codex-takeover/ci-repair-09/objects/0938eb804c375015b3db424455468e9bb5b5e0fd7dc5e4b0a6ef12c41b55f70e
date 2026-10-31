@@ -1,0 +1,29 @@
+{
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17",
+  "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-17/address/all.ids",
+  "ordinary": {
+    "label": "ordinary-final",
+    "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17",
+    "swift_testing_xml": [
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/report-swift-testing.xml"
+    ]
+  },
+  "partitions": [
+    {
+      "label": "address-jpip-final",
+      "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-17",
+      "swift_testing_xml": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-17/report-swift-testing.xml"
+      ],
+      "expected_ids": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-17/address/jpip.ids"
+    },
+    {
+      "label": "address-complement-final",
+      "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-17",
+      "swift_testing_xml": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-17/report-swift-testing.xml"
+      ],
+      "expected_ids": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-17/address/complement.ids"
+    }
+  ]
+}
