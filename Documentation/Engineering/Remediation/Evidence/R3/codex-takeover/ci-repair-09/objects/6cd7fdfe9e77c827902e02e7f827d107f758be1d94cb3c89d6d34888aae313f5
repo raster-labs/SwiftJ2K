@@ -1,0 +1,13 @@
+Independent WorkerHandoffPeer lifetime21 source review
+
+Disposition: no material finding in the exact accepted-socket timeout1-to0 change plus explanatory comment. This closes a fixture-contract mismatch at source level only; it does not prove the cause of hosted18 acceptedCount=4 or qualify new native execution.
+
+Independently compared the stopped current CodexR3WorkerHandoffTests.swift and writer after-copy against frozen18 and writer before-copy. Removing exactly the two new comment lines and restoring the single timeout argument0-to1 reproduces every original byte. The independent diff matches the writer diff. Both @Test declarations, all response/count/cancellation assertions, deliberately oversized/close/stale branches, worker registration and cleanup/completion-observation code are unchanged.
+
+The unchanged production socket implementation passes this argument from acceptConnection into the accepted JPIPTCPConnection; it does not impose a deadline on accept(). configureSocket applies SO_RCVTIMEO and SO_SNDTIMEO only for positive intervals. Thus this delta removes the fixture's incidental one-second accepted-socket idle expiry. The fixture deliberately keeps a connection reusable across separately scheduled async sends, so incidental idle expiry can invalidate its accepted-count assumptions; explicit fixture close and scripted close/stale branches continue to own termination. No production timeout or operation deadline was changed.
+
+Ownership/cleanup inspection: admitted sockets are retained under the state mutex and counted before worker launch. close() closes the listener, marks the fixture closed, resumes the cancellation waiter and closes retained connections. Both tests close transport/peer on success and error, then observe existing worker-final publication via waitForCompletion; the cancellation path also cancels/awaits its child. Worker captures keep owners alive until their defer publishes completion. This is the existing logical completion boundary, not a new guarantee of physical OS-thread exit or a universal timed join.
+
+Scope is only the stopped worker test, writer artifacts and unchanged socket helper. Mutable admission22 and other current source work are not reviewed or pinned. Actual Linux/macOS test execution remains root-owned. The hosted18 failure remains failed; this static repair alone cannot assign sole causation, establish robustness under scheduling load or waive any gate.
+
+No native/compiler/network/Git/publication or repository/source edit was performed. Only read-only source/hash inspection and new work receipts. Whole R3 remains NOT_ACCEPTED and all five direct external gates remain unwaived. Positive STOP for this bounded source review.

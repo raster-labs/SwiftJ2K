@@ -1,0 +1,1028 @@
+{
+  "scope": "All38 Swift files in SwiftJ2KJPIPTests, lexical import/conditional inventory reviewed with source",
+  "swift_files": 38,
+  "modules": {
+    "Foundation": 21,
+    "Dispatch": 4,
+    "Synchronization": 8,
+    "Testing": 18,
+    "SwiftJ2KJPIP": 38,
+    "Darwin": 3,
+    "Glibc": 2,
+    "FoundationNetworking": 1,
+    "CryptoKit": 1,
+    "SwiftJ2K": 27,
+    "SwiftJ2K3D": 23,
+    "XCTest": 18
+  },
+  "unconditional_platform_imports": [
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 10,
+      "module": "CryptoKit",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 11,
+      "module": "Darwin",
+      "guards": []
+    }
+  ],
+  "imports": [
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+      "line": 3,
+      "module": "Dispatch",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+      "line": 4,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+      "line": 5,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+      "line": 6,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "line": 3,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "line": 4,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "line": 7,
+      "module": "Darwin",
+      "guards": [
+        "#if canImport(Darwin)"
+      ]
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "line": 9,
+      "module": "Glibc",
+      "guards": [
+        "#elseif canImport(Glibc)"
+      ]
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 3,
+      "module": "Dispatch",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 4,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 5,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 6,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+      "line": 8,
+      "module": "FoundationNetworking",
+      "guards": [
+        "#if canImport(FoundationNetworking)"
+      ]
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 9,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 10,
+      "module": "CryptoKit",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 11,
+      "module": "Darwin",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 12,
+      "module": "Dispatch",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 13,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 14,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 16,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+      "line": 17,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift",
+      "line": 4,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift",
+      "line": 5,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift",
+      "line": 6,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift",
+      "line": 3,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift",
+      "line": 4,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift",
+      "line": 5,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 3,
+      "module": "Dispatch",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 4,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 5,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 6,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 9,
+      "module": "Darwin",
+      "guards": [
+        "#if canImport(Darwin)"
+      ]
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+      "line": 11,
+      "module": "Glibc",
+      "guards": [
+        "#elseif canImport(Glibc)"
+      ]
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+      "line": 3,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+      "line": 4,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift",
+      "line": 5,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift",
+      "line": 9,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift",
+      "line": 10,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift",
+      "line": 11,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift",
+      "line": 12,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift",
+      "line": 13,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+      "line": 3,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+      "line": 4,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+      "line": 5,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift",
+      "line": 1,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift",
+      "line": 2,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift",
+      "line": 3,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift",
+      "line": 4,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift",
+      "line": 19,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift",
+      "line": 20,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift",
+      "line": 21,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift",
+      "line": 22,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift",
+      "line": 15,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift",
+      "line": 16,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift",
+      "line": 17,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift",
+      "line": 18,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift",
+      "line": 13,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift",
+      "line": 14,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift",
+      "line": 16,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift",
+      "line": 13,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift",
+      "line": 14,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift",
+      "line": 16,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift",
+      "line": 6,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift",
+      "line": 7,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift",
+      "line": 8,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift",
+      "line": 9,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift",
+      "line": 10,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift",
+      "line": 19,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift",
+      "line": 20,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift",
+      "line": 21,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift",
+      "line": 22,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift",
+      "line": 13,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift",
+      "line": 14,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift",
+      "line": 16,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift",
+      "line": 15,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift",
+      "line": 16,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift",
+      "line": 17,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift",
+      "line": 18,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTests.swift",
+      "line": 13,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTests.swift",
+      "line": 14,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTests.swift",
+      "line": 16,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift",
+      "line": 17,
+      "module": "XCTest",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift",
+      "line": 18,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift",
+      "line": 19,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift",
+      "line": 12,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift",
+      "line": 13,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift",
+      "line": 14,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift",
+      "line": 15,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift",
+      "line": 16,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift",
+      "line": 7,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift",
+      "line": 8,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift",
+      "line": 9,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift",
+      "line": 10,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2CacheRecencyTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2CacheRecencyTests.swift",
+      "line": 3,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2CacheRecencyTests.swift",
+      "line": 4,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift",
+      "line": 3,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift",
+      "line": 4,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift",
+      "line": 5,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift",
+      "line": 18,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift",
+      "line": 19,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift",
+      "line": 20,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift",
+      "line": 21,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift",
+      "line": 22,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift",
+      "line": 3,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift",
+      "line": 4,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift",
+      "line": 5,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift",
+      "line": 15,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift",
+      "line": 16,
+      "module": "Testing",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift",
+      "line": 17,
+      "module": "SwiftJ2K",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift",
+      "line": 18,
+      "module": "SwiftJ2K3D",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift",
+      "line": 19,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift",
+      "line": 3,
+      "module": "Synchronization",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift",
+      "line": 4,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift",
+      "line": 2,
+      "module": "Foundation",
+      "guards": []
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift",
+      "line": 3,
+      "module": "SwiftJ2KJPIP",
+      "guards": []
+    }
+  ]
+}

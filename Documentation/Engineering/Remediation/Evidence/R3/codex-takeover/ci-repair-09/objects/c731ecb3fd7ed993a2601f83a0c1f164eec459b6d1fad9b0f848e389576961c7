@@ -1,0 +1,13 @@
+Independent test-target portability20 source review
+
+Disposition: the exact two-import deletion is acceptable at source level. No material finding in this bounded change. Native/Linux compilation remains unqualified by this review.
+
+Independently verified current Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift against frozen18 and the stopped writer copies. Removing exactly one import CryptoKit line and one import Darwin line, including their terminating newlines, reproduces the current file byte-for-byte. Before hash 3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e; after hash 981a54ac94388417006da101c60a424c73a896e420cd835ee6c49acb81b844bd. The independently generated diff exactly matches the writer's patch.
+
+Every remaining byte of this file is preserved. Its 13 @Test attributes, 1 @Suite attribute, 97 #expect assertions and 4 #require assertions remain present, with declarations, helpers, test selection, values, deadlines and conditional logic unchanged. These static counts supplement exact byte equality; they are not runtime coverage.
+
+Neither removed module has a use in the remaining body. No CryptoKit digest/key/cipher symbol remains; the apparent send/close operations are methods on package session/transport/peer objects, and handshake generation already goes through the package connection helper. The deletion introduces no dependency, replacement cryptography, fallback, platform exclusion or changed timing. Removing the unused Darwin import also removes that known Linux-incompatible import.
+
+Scope is only this stopped file and its writer records. Root separately authorised worker21 and mutable admission22 work; this receipt makes no whole-checkout equality claim and does not review those changes. Fresh root-owned Linux test compilation may expose additional compiler/runtime failures. The hosted18 failures and skipped sanitizers remain failures/unexecuted; no retrospective acceptance.
+
+Only filesystem/source/hash processing and new work review receipts were performed. No source/repository edit, native/compiler/network/Git/publication action. Writer artifacts and the reviewed target were stable. Whole R3 remains NOT_ACCEPTED and all five direct external gates remain unwaived. Positive STOP for this source-only review.

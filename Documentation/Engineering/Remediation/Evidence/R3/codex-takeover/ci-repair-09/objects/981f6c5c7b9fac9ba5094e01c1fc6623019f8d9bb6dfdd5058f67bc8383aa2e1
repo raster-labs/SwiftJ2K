@@ -1,0 +1,27 @@
+{
+  "state": "WORKER21_BOUNDED_SOURCE_REVIEW_COMPLETE_NO_NATIVE_QUALIFICATION",
+  "finished_at": "2026-10-31T12:01:42.016980+00:00",
+  "scope": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/source.json": "ace81447054b2cea73ef0990122ff83e444ff0448298137fc50a26c2d6afb599",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/report.txt": "66ccfa2ccc5be199b07a04d1de93b577d1d2562787afb80b75db9aaee17f3f77",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/source.diff": "821350dbe544ee5640d95006ff6593963d1a7d6180e7ad36551a535c49d866ad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/CodexR3WorkerHandoffTests.before.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/CodexR3WorkerHandoffTests.after.swift": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-18/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-18/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-worker-fixture-review-21/independent-delta.patch": "821350dbe544ee5640d95006ff6593963d1a7d6180e7ad36551a535c49d866ad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-worker-fixture-review-21/report.txt": "6cd7fdfe9e77c827902e02e7f827d107f758be1d94cb3c89d6d34888aae313f5"
+  },
+  "report_sha256": "6cd7fdfe9e77c827902e02e7f827d107f758be1d94cb3c89d6d34888aae313f5",
+  "reverse_normalisation_exact": true,
+  "production_socket_helper_unchanged": true,
+  "hosted_failure_causation_proven": false,
+  "native_execution": false,
+  "source_edited": false,
+  "network_git_publication": false,
+  "whole_r3": "NOT_ACCEPTED",
+  "positive_stop": true
+}

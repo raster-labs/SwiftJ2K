@@ -1,0 +1,13 @@
+--- a/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift
++++ b/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift
+@@ -113,7 +113,9 @@
+         Thread.detachNewThread {
+             defer { peer.finishedWorker() }
+             while peer.listener.isOpen {
+-                guard let connection = try? peer.listener.acceptConnection(timeoutSeconds: 1) else { continue }
++                // Explicit fixture close and the close/stale response branches own
++                // accepted-socket lifetime; idle timeouts must not defeat reuse.
++                guard let connection = try? peer.listener.acceptConnection(timeoutSeconds: 0) else { continue }
+                 let admitted = peer.state.withLock { state in
+                     guard !state.closed else { return false }
+                     state.connections.append(connection)

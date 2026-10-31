@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Pin stopped incremental receipts only; never read mutable22 source or publish."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+WORKSPACE = WORK.parent
+REPO = WORK / 'SwiftJ2K'
+CORPUS = REPO / 'Documentation/Engineering/Remediation/Evidence/R3/codex-takeover'
+HELPER = WORK / 'ci-repair-evidence-14/package.py'
+RUN = 41198397609
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def load(name):
+    return json.loads((WORK / name).read_text())
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+assert sha(HELPER) == '588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83'
+prior08 = CORPUS / 'generated-index.json'
+assert sha(prior08) == '6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54'
+published_indexes = [prior08]
+for digest in ['b05cc28b4195a726a1fe2101ddfebeefb43b923e9a48f03f811ca5440de07c42',
+               '32cd2286bd185114c986701b8d0726cefd68ce7f60c8a83cd50488e27d2fa18e']:
+    path = CORPUS / 'ci-repair-09/indexes' / (digest + '.json')
+    assert sha(path) == digest
+    published_indexes.append(path)
+
+directory = WORK / 'validation/diagnostic-https-full-19'
+result = json.loads((directory / 'result.json').read_text())
+assert result.get('finished_at') and result['exit_code'] == 0
+native = {key: ref(directory / name) for key, name in [
+    ('result', 'result.json'), ('command', 'command.json'),
+    ('before', 'source-before.json'), ('after', 'source-after.json')]}
+native['reports'] = [ref(path) for path in sorted(directory.rglob('*.xml'))]
+native['diagnostic_only'] = True
+execution = load('independent-diagnostic19-execution-review/source.json')
+assert execution['writes_stopped'] is True and execution['diagnostic_outcome'] == 'PASS'
+assert execution['unmodified_candidate_qualified'] is False and execution['failed17_closed'] is False
+
+pair_names = [
+    ('hosted-failure-review-18/report.txt', 'hosted-failure-review-18/source.json'),
+    ('https-diagnostic-19/report.txt', 'https-diagnostic-19/source.json'),
+    ('independent-diagnostic19-review/report.txt', 'independent-diagnostic19-review/source.json'),
+    ('independent-diagnostic19-execution-review/report.txt', 'independent-diagnostic19-execution-review/source.json'),
+    ('test-portability-20/report.txt', 'test-portability-20/source.json'),
+    ('independent-test-portability-20/report.txt', 'independent-test-portability-20/source.json'),
+    ('worker-fixture-lifetime-21/report.txt', 'worker-fixture-lifetime-21/source.json'),
+    ('independent-worker-fixture-review-21/report.txt', 'independent-worker-fixture-review-21/source.json'),
+]
+reviews = []
+for report, source in pair_names:
+    report_path, source_path = WORK / report, WORK / source
+    receipt = json.loads(source_path.read_text())
+    assert any(receipt.get(key) is True for key in ['stop', 'writes_stopped', 'positive_stop']), source
+    expected = (receipt.get('report_sha256') or receipt.get('artifacts', {}).get('report.txt')
+                or receipt.get('review_artifacts', {}).get('report.txt'))
+    if isinstance(expected, dict):
+        expected = expected['sha256']
+    assert expected == sha(report_path), report
+    reviews.append({'report': ref(report_path), 'source': ref(source_path), 'completed': True, 'supporting': []})
+
+jobs = load(f'ci-downloads/run-{RUN}-attempt1-jobs.json')['jobs']
+final_run = load(f'ci-downloads/run-{RUN}-attempt1-final.json')
+assert len(jobs) == 7 and len({job['id'] for job in jobs}) == 7
+assert all(job['run_id'] == RUN and job['status'] == 'completed' for job in jobs)
+assert final_run['id'] == RUN and final_run['run_attempt'] == 1
+assert final_run['status'] == 'completed' and final_run['conclusion'] == 'failure'
+hosted = {
+    'run_id': RUN, 'attempt': 1,
+    'metadata': ref(WORK / f'ci-downloads/run-{RUN}-attempt1-jobs.json'),
+    'logs': [{'job_id': job['id'], 'file': ref(WORK / f"ci-downloads/run-{RUN}-attempt1-job{job['id']}.log")}
+             for job in sorted(jobs, key=lambda job: job['id'])],
+    'review': ref(WORK / 'hosted-failure-review-18/source.json'),
+}
+
+pending = {
+    'state': 'PREPARATION_ONLY_SOURCE22_MUTABLE_NOT_FOR_PUBLICATION',
+    'prepared_at': datetime.now(timezone.utc).isoformat(),
+    'published_indexes_preserved': [ref(path) for path in published_indexes],
+    'selection': 'Only stopped hosted18, diagnostic19, source20 and source21 records are pinned.',
+    'hosted18': {
+        'run': RUN, 'attempt': 1, 'state': 'FAILED',
+        'macos': '1034 XCTest passed; Swift Testing324 =313 passed +6 failed +5 skipped. Sanitizers unexecuted; retention incomplete and strict reconstruction rejected.',
+        'linux': 'Four production builds passed, then test compilation failed on CryptoKit; release steps skipped.',
+        'diagnostic_xml': 'Exact retained ordinary XML only; not a complete reconstruction or acceptance proof.',
+    },
+    'diagnostic19': {
+        'state': 'INSTRUMENTED_DIAGNOSTIC_ONLY_PASS',
+        'native_manifest_flag': 'diagnostic_only=true',
+        'scope': 'Observed phase intervals only. Does not qualify unmodified18, close failed17/18, establish sole cause or approve a permanent policy.',
+    },
+    'source20_21': 'Completed source reviews only; no fresh combined22 native result or hosted success inferred.',
+    'pending22': [
+        'Root positively stopped/frozen22 source, exact manifest/provenance and current source/CI pins.',
+        'Completed independent source22 review, including admission-fixture changes and all final deltas.',
+        'Root-authorised completed native22 command/result/raw/XML/identity receipts and independent scope/coverage decisions; no unexecuted plan is treated as a pass.',
+        'Stopped final documentation/PR-body pins and independent publication-wording review.',
+        'New final explicit manifest, stable-source full packager dry run, root claim/review and publication decision.',
+    ],
+    'postpublication': 'Any subsequent exact-head hosted run is retained/reviewed separately after source publication; no future pass assumed.',
+    'validation_boundary': 'This checkpoint verifies immutable record integrity only. Full helper assemble/index generation is deferred because it captures current source22 identity while that source is mutable.',
+    'excluded': ['All mutable22 source/docs and invented22 native/review receipts',
+                 'Binaries/build/cache/full source snapshot trees',
+                 'Broad private process inventories and secret-bearing local operational commands'],
+    'R3': 'NOT_ACCEPTED', 'merge_allowed': False, 'R4': 'GATED',
+    'five_direct_external_gates': 'UNEXECUTED_UNWAIVED',
+    'publication': 'Root only; this preparatory manifest must not be published.',
+}
+save('pending-inputs-01.json', pending)
+
+paired = {str(WORK / name) for pair in pair_names for name in pair}
+allowed_suffixes = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+                    '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
+extra = []
+for name in ['hosted-failure-review-18', 'https-diagnostic-19', 'independent-diagnostic19-review',
+             'independent-diagnostic19-execution-review', 'test-portability-20',
+             'independent-test-portability-20', 'worker-fixture-lifetime-21',
+             'independent-worker-fixture-review-21']:
+    for path in sorted((WORK / name).rglob('*')):
+        if path.is_file() and '__pycache__' not in path.parts and str(path) not in paired:
+            assert path.suffix.lower() in allowed_suffixes, path
+            extra.append(path)
+extra += [WORK / name for name in [
+    'hosted-source-provider-review-18.json', 'publication-commit-18.json', 'publication-remote-commit-18.json',
+    'ci-downloads/run-41198397609-attempt1-final.json', 'ci-downloads/run-41198397609-attempt1-initial.json',
+    'ci-downloads/run-41198397609-tested-merge.json', 'ci-downloads/run-41198397609-workflow.yml',
+    'candidate-diagnostic-19-source.json', 'candidate-diagnostic-19-provenance.json',
+    'planned-https-diagnostic-19.json', 'diagnostic19-launch.json',
+    'https-diagnostic-19-extracted-events.json', 'run-validation.py', 'hosted-evidence/reconstruct.py',
+]]
+extra += [OUT / 'pending-inputs-01.json', Path(__file__)]
+assert all('/SwiftJ2K/' not in str(path) for path in extra)
+assert all(path.name not in ['environment-after.json', 'other-native-after.txt'] for path in extra)
+# Inspect only selected text for actual credential-shaped values without echoing them.
+secret_patterns = [rb'gh[pousr]_[A-Za-z0-9]{30,}', rb'github_pat_[A-Za-z0-9_]{40,}',
+                   rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----']
+import re
+for path in set(extra):
+    data = path.read_bytes()
+    assert not any(re.search(pattern, data) for pattern in secret_patterns), 'Secret-shaped content requires exclusion: ' + str(path)
+
+manifest = {
+    'schema': 'swiftj2k-r3-ci-repair-inputs-v1', 'workspace': str(WORKSPACE), 'repository': str(REPO),
+    'candidate_label': 'Candidate22 PREPARATION ONLY while source22 is mutable: failed hosted18, diagnostic-only19, source-only20/21; no22 qualification; R3 NOT_ACCEPTED',
+    'published_base_label': 'Immutable published08 plus15 b05cc28b and18 32cd2286 indexes; no current22 Git identity or qualification asserted.',
+    'prior_index': ref(prior08), 'native_runs': [native], 'reviews': reviews, 'hosted_runs': [hosted],
+    'supplemental': [{'file': ref(path), 'role': 'incremental22-preparation-' + path.relative_to(WORK).as_posix().replace('/', '--')}
+                     for path in sorted(set(extra))],
+}
+save('manifest-preparation-01.json', manifest)
+save('selection-01.json', {
+    'state': 'STOPPED_INPUTS_PINNED_SOURCE22_UNQUALIFIED',
+    'manifest': ref(OUT / 'manifest-preparation-01.json'), 'pending': ref(OUT / 'pending-inputs-01.json'),
+    'reviewed_helper': ref(HELPER), 'native_runs': 1, 'all_selected_native_diagnostic_only': True,
+    'review_pairs': len(reviews), 'hosted_runs': 1, 'hosted_job_logs': 7,
+    'supplemental_receipts': len(manifest['supplemental']),
+    'full_assemble_deferred_until_source22_frozen': True, 'R3': 'NOT_ACCEPTED',
+})
+print(json.dumps({'manifest_sha256': sha(OUT / 'manifest-preparation-01.json'),
+                  'review_pairs': len(reviews), 'supplemental_receipts': len(manifest['supplemental']),
+                  'full_assemble': 'DEFERRED_MUTABLE_SOURCE22'}, indent=2))

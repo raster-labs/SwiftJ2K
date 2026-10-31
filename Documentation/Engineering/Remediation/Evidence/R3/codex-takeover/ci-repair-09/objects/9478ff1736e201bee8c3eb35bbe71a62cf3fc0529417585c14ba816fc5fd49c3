@@ -1,0 +1,123 @@
+{
+  "state": "INDEPENDENT_DIAGNOSTIC_EXECUTION_REVIEW_STOPPED",
+  "reviewer": "/root/independent_jpip_review",
+  "completed_at": "2026-10-31T11:54:15.115946+00:00",
+  "inputs": {
+    "validation/diagnostic-https-full-19/report-swift-testing.xml": {
+      "sha256": "48e1f686291e2101e7e3b4e98428f9b2926113c231cbb780e11bfb4ea2a026fa",
+      "bytes": 44773
+    },
+    "validation/diagnostic-https-full-19/result.json": {
+      "sha256": "30916b68b1050f249186b2b0495b7c80772a9e9b2baa2b37765080fca67bb8b3",
+      "bytes": 1227
+    },
+    "validation/diagnostic-https-full-19/source-before.json": {
+      "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2",
+      "bytes": 381161
+    },
+    "validation/diagnostic-https-full-19/source-after.json": {
+      "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2",
+      "bytes": 381161
+    },
+    "validation/diagnostic-https-full-19/native.stdout": {
+      "sha256": "fe893e097cc3cd1c95e7dadf69d19709034c74d86c3d1bd29570428017a9d1cf",
+      "bytes": 453992
+    },
+    "validation/diagnostic-https-full-19/native.log": {
+      "sha256": "9a95955b202f017ab0d1193de204b997e3e1a335a3a5011ec53bf6f95c4600ab",
+      "bytes": 473554
+    },
+    "validation/diagnostic-https-full-19/command.json": {
+      "sha256": "85fd5a37bea257e9d6b856fc72aadce2cb66c8a0f02d1726eeee35c0ea48e30c",
+      "bytes": 1717
+    },
+    "validation/diagnostic-https-full-19/native.stderr": {
+      "sha256": "f4e2fa6251ddd05997bc4578a8be4d9e2397680a3a979f589e5bbdf84246f041",
+      "bytes": 19562
+    },
+    "candidate-diagnostic-19-source.json": {
+      "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2",
+      "bytes": 381161
+    },
+    "candidate-diagnostic-19-provenance.json": {
+      "sha256": "00cdbe4890eae3f15b5904b67ad0358df9f820683f6d4c7c8ad3fc13f27533b9",
+      "bytes": 298
+    },
+    "https-diagnostic-19/source.json": {
+      "sha256": "5cbfe9d53aad8b7bab33a317f32ccb7791b26dfbb9ce69c4bc63d54ac19c2312",
+      "bytes": 2830
+    },
+    "https-diagnostic-19/diagnostic-source-manifest.json": {
+      "sha256": "70bcbf992b5e48e53736d3398fd2a702ada7fb7ddf518139e463fac3de501143",
+      "bytes": 381161
+    },
+    "https-diagnostic-19/overlay-delta.patch": {
+      "sha256": "fc36256fbdb4b85f84abcbed3464f47278e89a84b01b562634d9f497bd0f59be",
+      "bytes": 29302
+    },
+    "https-diagnostic-19/report.txt": {
+      "sha256": "5dd6ecb5786e3676c3d93cc788584ad48fd091638f372cd75edf42d9fb420ce0",
+      "bytes": 6293
+    },
+    "independent-diagnostic19-review/report.txt": {
+      "sha256": "4c6bb6d2320ef85e45f8b6394b57fbf82ecfb11d8ac420bab03b4de5c370f027",
+      "bytes": 7856
+    },
+    "independent-diagnostic19-review/source.json": {
+      "sha256": "ba76742fa4b52439ed96e36bf072e6bdf5e9365baa0047c8bf50532cf6d095c5",
+      "bytes": 3913
+    },
+    "https-failure17-review/report.txt": {
+      "sha256": "5a49da758b0cb4f33e6ed7c6bf7c840209975d59087fb69dd53cf4ed229adf61",
+      "bytes": 8004
+    },
+    "https-failure17-review/source.json": {
+      "sha256": "2f46e64334310ebde4f097e47796c225faffd88b7d44eabfe8faf171a603f579",
+      "bytes": 5041
+    },
+    "validation/candidate-full-17/result.json": {
+      "sha256": "159e0d995b493f78edc2ff33ef728f206b03bda7fa26041a89653487627f085d",
+      "bytes": 1218
+    },
+    "validation/candidate-full-17/native.log": {
+      "sha256": "aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0",
+      "bytes": 381282
+    }
+  },
+  "inputs_stable_before_after": true,
+  "source_files_verified_before_after": 2283,
+  "review_artifacts": {
+    "report.txt": {
+      "sha256": "98de248b5e11b2b735fe5ba458125e6623bf227667bc7277adb87ce3067d1f77",
+      "bytes": 9968
+    },
+    "analyse.py": {
+      "sha256": "4f7e8c03013769a116b5784d6dcd13138b8a65b6ea03bec4b8e24a76b1fc7b67",
+      "bytes": 7865
+    },
+    "analysis.json": {
+      "sha256": "8741efcd6466a803bee0b4ffdb8ff108c35dc55904c45ae0407181579f51b57d",
+      "bytes": 236891
+    }
+  },
+  "counts": {
+    "xctest_starts": 1034,
+    "xctest_passes": 1034,
+    "swift_testing_starts": 324,
+    "swift_testing_passes": 324,
+    "swift_testing_suites": 41
+  },
+  "phase_records": 561,
+  "flushes": 5,
+  "observed_dropped_events": 0,
+  "observed_dropped_owners": 0,
+  "selected_invocations_with_complete_resume_wake_pairs": 5,
+  "diagnostic_outcome": "PASS",
+  "unmodified_candidate_qualified": false,
+  "failed17_closed": false,
+  "sole_cause_established": false,
+  "whole_r3_accepted": false,
+  "native_executed_by_reviewer": false,
+  "repository_or_historical_evidence_modified": false,
+  "writes_stopped": true
+}

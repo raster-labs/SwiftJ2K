@@ -1,0 +1,50 @@
+from pathlib import Path
+import json,hashlib,re,difflib,datetime
+w=Path(__file__).resolve().parent.parent;o=Path(__file__).resolve().parent;b=w/'candidate-snapshot-18';n=w/'candidate-snapshot-22';d=w/'admission-fixture-cleanup-22';rel='Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+old=(b/rel).read_text();new=(n/rel).read_text();m=json.loads((w/'candidate-snapshot-22-source.json').read_text());m18=json.loads((w/'candidate-snapshot-18-source.json').read_text())
+assert len(m)==2405
+for p,h in m.items():assert sha(n/p)==h,p
+assert sha(n/rel)=='5bd55bb8f77ac3f4dddbe96cf09502965deb556310536c72f8e61ae9e316e4a9'
+assert (d/'CodexR3AdmissionTests.before.swift').read_text()==old
+assert (d/'CodexR3AdmissionTests.after.swift').read_text()==new
+patch=''.join(difflib.unified_diff(old.splitlines(keepends=True),new.splitlines(keepends=True),fromfile='before/'+rel,tofile='after/'+rel))
+assert patch==(d/'source.diff').read_text()
+def block(text,start):
+ opening=text.index('{',start);depth=1;i=opening+1
+ while depth:
+  depth+=(text[i]=='{')-(text[i]=='}');i+=1
+ return text[opening+1:i-1],i
+pattern=r'@Test func (\w+)\([^\n]*?\) (?:async )?throws \{'
+def tests(t):return {x.group(1):block(t,x.start())[0] for x in re.finditer(pattern,t)}
+ot=tests(old);nt=tests(new);assert len(ot)==10 and len(nt)==11
+added=set(nt)-set(ot);assert added=={'admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion'}
+wrappernames=[]
+for name,body in ot.items():
+ nb=nt[name]
+ if '        defer { peer.stop() }\n' in body:
+  prefix,remaining=body.split('        defer { peer.stop() }\n',1)
+  assert nb.startswith(prefix+'        do {\n'),name
+  suffix='        } catch {\n            await peer.stop()\n            throw error\n        }\n        await peer.stop()\n    '
+  assert nb.endswith(suffix),name
+  inside=nb[len(prefix+'        do {\n'):-len(suffix)]
+  recovered=''.join(line[4:] if line.startswith('    ') else line for line in inside.splitlines(keepends=True))+'    '
+  assert recovered==remaining,name
+  wrappernames.append(name)
+ else:assert nb==body,name
+assert len(wrappernames)==6
+assert old.count('#expect(')==40 and old.count('Issue.record(')==5
+assert new.count('#expect(')==48 and new.count('Issue.record(')==5
+scripts={}
+for cls,olds,newadmit in [('HandshakeReportPeer','            defer { peer.group.leave() }\n            ','guard peer.lifetime.admit(connection) else { return }'),('RepeatedPushAdmissionPeer','            defer { peer.group.leave() }\n            ','guard peer.lifetime.admit(connection) else { return }'),('HeaderOnlyAdmissionPeer','            defer { group.leave() }\n            ','guard peer.lifetime.admit(connection) else { break }')]:
+ oldclass=old[old.index('private final class '+cls):];newclass=new[new.index('private final class '+cls):]
+ ob=block(oldclass,oldclass.index('Thread.detachNewThread'))[0]
+ nb=block(newclass,newclass.index('lifetime.start'))[0]
+ ol=[x.strip() for x in ob.splitlines() if x.strip() and not any(z in x for z in ['defer { peer.group.leave() }','defer { group.leave() }','peer.connection.withLock { $0 = connection }','peer.connections.withLock { $0.append(connection) }'])]
+ nl=[x.strip() for x in nb.splitlines() if x.strip() and x.strip()!=newadmit]
+ assert ol==nl,cls
+ scripts[cls]={'normalised_script_sha256':hashlib.sha256(('\n'.join(ol)).encode()).hexdigest(),'original_script_lines_preserved':True,'accepted_socket_timeouts':re.findall(r'acceptConnection\(timeoutSeconds: (\d+)\)',ob)}
+changes=[p for p,h in m.items() if (p.startswith('Sources/') or p.startswith('Tests/') or p=='Package.swift') and m18.get(p)!=h]
+assert set(changes)=={rel,'Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift','Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift'},changes
+inputs=[n/rel,b/rel,n/'Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift',n/'Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift',w/'candidate-snapshot-22-source.json',w/'candidate-snapshot-22-provenance.json',w/'candidate-snapshot-18-source.json',d/'source.diff',d/'preservation.json',d/'before.json',d/'CodexR3AdmissionTests.before.swift',d/'CodexR3AdmissionTests.after.swift',w/'hosted-timing18-diagnosis/report.txt',w/'hosted-timing18-diagnosis/source.json']
+r={'state':'INDEPENDENT_STATIC_PRESERVATION_CHECK','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'inputs_before':{str(p.relative_to(w)):{'sha256':sha(p),'bytes':p.stat().st_size} for p in inputs},'all_frozen22_inputs_verified':len(m),'exact_diff_reproduced':True,'original_test_bodies_recovered_exactly':True,'original_declarations':list(ot),'new_declarations':list(added),'six_cleanup_wrappers':wrappernames,'original_expectations':40,'new_expectations':8,'original_Issue_records':5,'scripts':scripts,'implementation_delta18_to22':changes,'native_executed':False}
+(o/'checks.json').write_text(json.dumps(r,indent=2)+'\n');print(json.dumps({k:r[k] for k in ['all_frozen22_inputs_verified','original_test_bodies_recovered_exactly','six_cleanup_wrappers','scripts','implementation_delta18_to22']},indent=2))

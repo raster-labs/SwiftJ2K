@@ -1,0 +1,11 @@
+WorkerHandoffPeer fixture lifetime repair21 — implementation only
+
+Root authorised only the accepted-socket timeout change and explanatory comment in CodexR3WorkerHandoffTests.swift. Active and canonical claims were verified as invocation1ce94f4b-ebfa-4309-98f6-5530103803d9 immediately before editing and remain unchanged.
+
+Changed acceptConnection(timeoutSeconds:1) to0 and added a two-line comment explaining that explicit fixture close and scripted close/stale response branches own accepted-socket lifetime. The one-second idle receive/send expiry conflicts with these tests' deliberate connection reuse between asynchronous client requests. JPIPTCPSocket.swift:313-330 passes this argument into the newly accepted connection; it does not time or poll accept(). configureSocket:580-590 applies SO_RCVTIMEO/SO_SNDTIMEO only for positive values. This removes the incidental fixture socket expiry while leaving listener accept/loop behaviour unchanged.
+
+Exact preservation check: removing only the new comment and restoring timeoutSeconds:1 reproduces the entire before file byte-for-byte. Both test declarations, all response assertions, accepted counts32/33/34 and1/2/3, cancellation assertions, deliberate oversized/close/stale branches, worker registration and existing close/completion observation are unchanged. No production request deadline, concurrency, test selection, utility, dependency or other source/document file was edited. The production socket source remains byte-identical.
+
+Before SHA2565dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663. After SHA2562d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2. Exact before/after copies, unified diff and claim/source hashes are retained in this directory.
+
+This repairs an independently identified fixture-contract mismatch. It does not prove that this expiry caused the hosted acceptedCount4 observation, does not reclassify any failed run and does not qualify source21. No native/compiler/codec/server, Git, network or CI execution was performed. Independent source review and root-owned validation remain required. Existing completion observation means its defined worker-final-publication boundary; no new physical-thread-exit guarantee is asserted. Positive STOP: source and receipts complete; no further edits planned.

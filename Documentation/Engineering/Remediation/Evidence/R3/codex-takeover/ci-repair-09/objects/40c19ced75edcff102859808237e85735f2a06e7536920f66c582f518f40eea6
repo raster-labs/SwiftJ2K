@@ -1,0 +1,56 @@
+from pathlib import Path
+import difflib, hashlib, json, re
+
+base = Path(__file__).resolve().parent
+work = base.parent
+source = work / 'candidate-snapshot-18'
+repository = work / 'SwiftJ2K'
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+manifest = json.loads((base / 'overlay-source.json').read_text())
+original = json.loads((work / 'candidate-snapshot-18-source.json').read_text())
+combined = dict(original)
+delta = []
+
+def assertions(text):
+    result, start = [], 0
+    while True:
+        start = text.find('#expect(', start)
+        if start < 0:
+            return result
+        end, depth = start + len('#expect('), 1
+        while depth:
+            if text[end] == '(':
+                depth += 1
+            elif text[end] == ')':
+                depth -= 1
+            end += 1
+        result.append(re.sub(r'\s+', '', text[start:end]))
+        start = end
+
+for relative, row in manifest.items():
+    path = base / 'overlay' / relative
+    new = path.read_text()
+    old = (source / relative).read_text() if row['base_sha256'] else ''
+    assert sha(path) == row['instrumented_sha256']
+    if old:
+        assert sha(source / relative) == sha(repository / relative) == row['base_sha256']
+        expressions = r'(?:\.seconds\([^)]+\)|\.milliseconds\([^)]+\)|deadlineSeconds:\s*[0-9.]+|timeout:\s*[0-9.]+|qualityOfService\s*=\s*[^\n]+|maxConcurrentOperationCount\s*=\s*[^\n]+|isSuspended\s*=\s*[^\n]+)'
+        assert re.findall(expressions, old) == re.findall(expressions, new)
+        assert re.findall(r'@Test[^\n]*', old) == re.findall(r'@Test[^\n]*', new)
+        assert assertions(old) == assertions(new)
+    assert all(line.rstrip() == line for line in new.splitlines())
+    combined[relative] = row['instrumented_sha256']
+    delta.extend(difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True),
+        fromfile='frozen18/' + relative, tofile='diagnostic19/' + relative))
+
+(base / 'overlay-delta.patch').write_text(''.join(delta))
+(base / 'diagnostic-source-manifest.json').write_text(json.dumps(combined, indent=2) + '\n')
+result = {'state': 'STATIC_SOURCE_CHECKS_ONLY', 'base_files': len(original),
+          'derived_files': len(combined), 'overlay_files': len(manifest),
+          'main_traced_inputs_unchanged': True, 'test_declarations_and_expectations_unchanged': True,
+          'named_deadlines_queue_priorities_and_suspension_policy_unchanged': True,
+          'delta_sha256': sha(base / 'overlay-delta.patch'),
+          'derived_manifest_sha256': sha(base / 'diagnostic-source-manifest.json'),
+          'native_executed': False}
+(base / 'static-check-result.json').write_text(json.dumps(result, indent=2) + '\n')
+print(json.dumps(result, indent=2))

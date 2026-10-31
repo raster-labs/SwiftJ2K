@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""Append frozen22 receipts without publication or any native execution."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+import re
+import runpy
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+WORKSPACE = WORK.parent
+REPO = WORK / 'SwiftJ2K'
+CORPUS = REPO / 'Documentation/Engineering/Remediation/Evidence/R3/codex-takeover'
+HELPER = WORK / 'ci-repair-evidence-14/package.py'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def read(path):
+    return json.loads(path.read_text())
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+def corpus_fingerprint():
+    files = {p.relative_to(CORPUS).as_posix(): {'sha256': sha(p), 'bytes': p.stat().st_size}
+             for p in sorted(CORPUS.rglob('*')) if p.is_file()}
+    return {'files': len(files), 'bytes': sum(v['bytes'] for v in files.values()),
+            'map_sha256': hashlib.sha256(h['canonical'](files)).hexdigest(),
+            'map_format': 'helper canonical JSON of relative-path to sha256/bytes'}
+
+assert sha(HELPER) == '588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83'
+h = runpy.run_path(str(HELPER), run_name='reviewed_evidence_helper_22_preparation')
+old_path = OUT / 'manifest-preparation-01.json'
+assert sha(old_path) == 'b08fe64020bf6b2026d067261f2a432d392434bef10f81100242d71ce1b57780'
+manifest = read(old_path)
+prior_indexes = read(OUT / 'pending-inputs-01.json')['published_indexes_preserved']
+for item in prior_indexes:
+    assert sha(Path(item['path'])) == item['sha256']
+corpus_before = corpus_fingerprint()
+
+frozen_path = WORK / 'candidate-snapshot-22-source.json'
+assert sha(frozen_path) == '41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96'
+frozen = read(frozen_path)
+assert len(frozen) == 2405
+for name, digest in frozen.items():
+    assert sha(WORK / 'candidate-snapshot-22' / name) == digest, name
+implementation = h['identity'](REPO)
+ci = h['identity'](REPO, ci=True)
+for identity in [implementation, ci]:
+    for name, details in identity['files'].items():
+        assert frozen.get(name) == details['sha256'], name
+    expected_names = {name for name in frozen if any(name == root or name.startswith(root + '/')
+                      for root in (['.github'] if identity is ci else ['Package.swift', 'Sources', 'Tests', 'Scripts']))}
+    assert expected_names == set(identity['files']), 'Current scoped source differs from frozen22'
+
+cli_path = WORK / 'cli16-input-equivalence22.json'
+cli = read(cli_path)
+assert cli['snapshot22_manifest_sha256'] == sha(frozen_path)
+assert cli['matched_cli_inputs'] == len(cli['cli_input_hashes']) == 512
+prior_cli = cli['prior_reviewed_equivalence18']
+assert sha(Path(prior_cli['path'])) == prior_cli['sha256']
+for name, digest in cli['cli_input_hashes'].items():
+    assert frozen[name] == digest
+    for directory in ['candidate-snapshot-16', 'candidate-snapshot-22', 'SwiftJ2K']:
+        assert sha(WORK / directory / name) == digest, (directory, name)
+save('source-binding-02.json', {
+    'state': 'FROZEN22_SOURCE_AND_CURRENT_SCOPED_IDENTITY_VERIFIED',
+    'at': datetime.now(timezone.utc).isoformat(),
+    'frozen_manifest': ref(frozen_path), 'frozen_files_checked': len(frozen),
+    'implementation': implementation, 'ci': ci,
+    'scoped_cli_equivalence': ref(cli_path), 'scoped_cli_inputs_checked_in_16_22_current': 512,
+    'scope': 'Hash equality only. Existing CLI16 reuse stays input-scoped; not a fresh22 CLI/full sanitizer/hosted qualification.',
+    'native_executed': False,
+})
+
+plan_path = WORK / 'planned-native-sequence-22.json'
+plan = read(plan_path)
+assert plan['source_manifest_sha256'] == sha(frozen_path)
+assert len(plan['gates']) == 7
+for i, label in enumerate(['candidate-full-22', 'candidate-jpip-asan-22']):
+    directory = WORK / 'validation' / label
+    result, command = read(directory / 'result.json'), read(directory / 'command.json')
+    assert result['finished_at'] and result['exit_code'] == i
+    assert result['changed_inputs'] == [] and result['capture_errors'] == []
+    assert result['capture_complete'] and result['capture_threads_joined']
+    assert command['command'] == plan['gates'][i]['command']
+    assert read(directory / 'source-before.json') == frozen == read(directory / 'source-after.json')
+    native = {key: ref(directory / name) for key, name in [
+        ('result', 'result.json'), ('command', 'command.json'),
+        ('before', 'source-before.json'), ('after', 'source-after.json')]}
+    native['reports'] = [ref(p) for p in sorted(directory.rglob('*.xml'))]
+    native['diagnostic_only'] = False
+    manifest['native_runs'].append(native)
+unexecuted = []
+for gate in plan['gates'][2:]:
+    assert not (WORK / 'validation' / gate['label'] / 'result.json').exists(), gate['label']
+    unexecuted.append({'label': gate['label'], 'state': 'UNEXECUTED'})
+
+pairs = [
+    ('admission-fixture-cleanup-22/report.txt', 'admission-fixture-cleanup-22/source.json'),
+    ('independent-admission-fixture-review-22/report.txt', 'independent-admission-fixture-review-22/source.json'),
+    ('runtime-coverage-22/failed-review.txt', 'runtime-coverage-22/failed-review-source.json'),
+]
+assert sha(WORK / pairs[1][0]) == '2dc9970e1e3dfdcaa5ea7edd2cbdecc44e5b277461e498db0213aa1359e78938'
+assert sha(WORK / pairs[2][0]) == '2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a'
+for report_name, source_name in pairs:
+    report, source = WORK / report_name, WORK / source_name
+    receipt = read(source)
+    if 'writes_stopped' in receipt:
+        assert receipt['writes_stopped'] is True
+    else:
+        assert receipt['status'].startswith('positively stopped;')
+    expected = (receipt.get('report_sha256') or receipt.get('artifacts', {}).get('report.txt')
+                or receipt.get('receipt_files', {}).get('report.txt'))
+    if isinstance(expected, dict):
+        expected = expected['sha256']
+    assert sha(report) == expected
+    manifest['reviews'].append({'report': ref(report), 'source': ref(source), 'completed': True, 'supporting': []})
+
+scope = {
+    'state': 'FROZEN22_COMPLETED_NATIVE_RECEIPTS_PINNED_FINAL_DOCUMENT_REVIEW_PENDING',
+    'at': datetime.now(timezone.utc).isoformat(),
+    'prior_preparation': ref(old_path), 'published_indexes_preserved': prior_indexes,
+    'candidate22': {
+        'source': ref(frozen_path), 'source_files': 2405,
+        'ordinary': {'state': 'PASS', 'xctest_passed': 1034, 'swift_testing_passed': 325, 'total_passed': 1359},
+        'jpip_asan': {'state': 'FAIL', 'xctest_passed': 544, 'swift_testing_passed': 100,
+                      'swift_testing_failed': 4, 'recognised_sanitizer_diagnostics': 0,
+                      'qualification': 'Failed HTTPS test issues; no complete sanitizer qualification.'},
+        'remaining_gates': unexecuted,
+        'runtime_review': 'Completed failed-sequence reconciliation only. Unapproved auditor22 derivative/specs/probes are excluded.',
+        'cli': 'Existing16 results reusable only for the verified512 input role set; no fresh22 CLI run claimed.',
+    },
+    'historical_meanings': {
+        'hosted18': 'FAILED: Mac6issues/5skips, sanitizers skipped, incomplete retention rejected; Linux production builds passed then CryptoKit test compilation failed.',
+        'ordinary17': 'FAILED and preserved in immutable published18; no retroactive closure.',
+        'diagnostic19': 'Instrumented diagnostic-only pass; never qualifies unmodified18/22 or closes17/18 failures.',
+        'source20_21': 'Stopped bounded source reviews plus the actual native22 results; earlier hosted cause not proved.',
+    },
+    'pending_prepublication': [
+        'Root exact final stopped publication-doc-draft-22b document and PR-body pins.',
+        'Completed stopped independent publication-document22 review pair and any root-approved corrections.',
+        'New final document-inclusive manifest/dry run and root-only claim/stopped-writer/publication decision.',
+    ],
+    'postpublication_pending': 'Subsequent exact-head hosted feedback is separate after publication, not an initial local-package prerequisite or assumed pass.',
+    'excluded': ['All diagnostic23 inputs/results', 'Unapproved auditor22 preparation/specs/probes',
+                 'Unreviewed or mutable final docs/body', 'Binaries/build/cache/full snapshot trees',
+                 'Broad private process inventories and secret-bearing operational commands'],
+    'R3': 'NOT_ACCEPTED', 'merge_allowed': False, 'R4': 'GATED',
+    'five_direct_external_gates': 'UNEXECUTED_UNWAIVED',
+    'publication': 'Root only. This documentation-pending manifest is not for publication.',
+}
+save('pending-inputs-02.json', scope)
+
+paired = {str(WORK / name) for pair in pairs for name in pair}
+extras = []
+for name in ['admission-fixture-cleanup-22', 'independent-admission-fixture-review-22']:
+    extras.extend(p for p in sorted((WORK / name).iterdir()) if p.is_file() and str(p) not in paired)
+extras.extend(WORK / name for name in [
+    'candidate-snapshot-22-source.json', 'candidate-snapshot-22-provenance.json',
+    'cli16-input-equivalence22.json', 'planned-native-sequence-22.json',
+    'native22-launch-preflight.json', 'run-native-sequence-22.py',
+    'runtime-coverage-22/check-completed22.py',
+    'runtime-coverage-22/completed22-failed-sequence-check.json',
+])
+extras.extend([OUT / 'source-binding-02.json', OUT / 'pending-inputs-02.json', Path(__file__)])
+already = {entry['file']['path'] for entry in manifest['supplemental']}
+for path in sorted(set(extras)):
+    assert str(path) not in already, path
+    manifest['supplemental'].append({'file': ref(path), 'role': 'incremental22-completed-' + path.relative_to(WORK).as_posix().replace('/', '--')})
+manifest['candidate_label'] = 'Frozen candidate22 DOCUMENT REVIEW PENDING: ordinary1359 PASS; JPIP ASan4 HTTPS issues FAIL; remaining5 UNEXECUTED; diagnostic19 only; R3 NOT_ACCEPTED'
+manifest['published_base_label'] = 'Immutable published08/15/18 retained; frozen22 source extends published18 e67136ade691af045570706d401f80d612359d0c. No Git verification or22 hosted pass asserted.'
+
+# Scan only explicitly selected text records; never print possible secret values.
+patterns = [rb'gh[pousr]_[A-Za-z0-9]{30,}', rb'github_pat_[A-Za-z0-9_]{40,}',
+            rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----']
+all_refs = [entry['file'] for entry in manifest['supplemental']]
+all_refs += [entry[key] for entry in manifest['reviews'] for key in ['report', 'source']]
+for item in all_refs:
+    path = Path(item['path'])
+    assert path.name not in ['environment-after.json', 'other-native-after.txt']
+    assert not any('diagnostic23' in part or 'diagnostic-23' in part for part in path.parts)
+    data = path.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == item['sha256']
+    assert not any(re.search(pattern, data) for pattern in patterns), 'Secret-shaped content: ' + str(path)
+
+manifest_path = OUT / 'manifest-candidate-22-02.json'
+save(manifest_path.name, manifest)
+package, index_path, impl_after, ci_after = h['assemble'](manifest_path)
+assert impl_after == implementation and ci_after == ci
+existing = 0
+for relative, data in package.payloads.items():
+    target = package.destination / relative
+    if target.exists():
+        assert target.read_bytes() == data
+        existing += 1
+corpus_after = corpus_fingerprint()
+assert corpus_before == corpus_after
+receipt = {
+    'state': 'DOCUMENTATION_PENDING_READ_ONLY_DRY_RUN_PASS_NO_PUBLICATION',
+    'at': datetime.now(timezone.utc).isoformat(), 'manifest': ref(manifest_path),
+    'reviewed_helper': ref(HELPER), 'published': False,
+    'index': str(package.destination / index_path), 'index_sha256': index_path.stem,
+    'artifact_roles': len(package.artifacts), 'proposed_payloads': len(package.payloads),
+    'proposed_payload_bytes': sum(len(data) for data in package.payloads.values()),
+    'existing_identical_payloads': existing, 'currently_absent_payloads': len(package.payloads) - existing,
+    'prior_08_references': sum(a['storage'] == 'prior-08-reference' for a in package.artifacts),
+    'native_runs': len(manifest['native_runs']), 'candidate22_completed_native_runs': 2,
+    'diagnostic19_native_runs': 1, 'review_pairs': len(manifest['reviews']),
+    'hosted_runs': len(manifest['hosted_runs']), 'hosted_job_logs': 7,
+    'supplemental_receipts': len(manifest['supplemental']),
+    'implementation_scope_sha256': implementation['scope_sha256'],
+    'ci_scope_sha256': ci['scope_sha256'],
+    'published_corpus_before': corpus_before, 'published_corpus_after': corpus_after,
+    'published_corpus_unchanged': True, 'repository_writes': False, 'native_execution': False,
+    'R3': 'NOT_ACCEPTED', 'final_document_review_pending': True,
+}
+save('dry-run-candidate-22-02.json', receipt)
+print(json.dumps(receipt, indent=2))

@@ -1,0 +1,20 @@
+{
+  "state": "SOURCE_REPAIR_COMPLETE_PENDING_INDEPENDENT_REVIEW_AND_NATIVE",
+  "writer": "/root/compiler_portability",
+  "scope": "WorkerHandoffPeer accepted-socket timeout and comment only",
+  "before_sha256": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663",
+  "after_sha256": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2",
+  "reverse_normalisation_exact": true,
+  "claim_verified": true,
+  "native_execution": false,
+  "git_network_ci_actions": false,
+  "hosted_causation_proven": false,
+  "artifacts": {
+    "before.json": "3c0506c23a41e3ce141b00e8dc05b8c0b0ffe73c1194ce696b4c3b7406d8dba8",
+    "CodexR3WorkerHandoffTests.before.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663",
+    "report.txt": "66ccfa2ccc5be199b07a04d1de93b577d1d2562787afb80b75db9aaee17f3f77",
+    "CodexR3WorkerHandoffTests.after.swift": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2",
+    "source.diff": "821350dbe544ee5640d95006ff6593963d1a7d6180e7ad36551a535c49d866ad"
+  },
+  "stop": true
+}
