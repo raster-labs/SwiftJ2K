@@ -1,0 +1,7 @@
+{
+  "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3f91b5b1e691d7433fe68c6ab2095b4eb30f2ed5a75c9bf39fb3a75e9b851d65",
+  "Sources/SwiftJ2KJPIP/JPIP.swift": "071b1d3ea2dca72d663ebaefb504ef75a22de21e2300eee8346cd8ba5d30912c",
+  "Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift": "31874b17950dd333859878cbb16d0122aa56b1388b3f383867c1966fffdb2c84",
+  "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+  "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "273167d783512c239483c9ef2426d825d63e3320c4abf478add4979593d9c752"
+}

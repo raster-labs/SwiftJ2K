@@ -1,0 +1,34 @@
+{
+  "state": "EXPLICIT_POINT_IN_TIME_PREPARATORY_SELECTION",
+  "base_manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/manifest-preparation-02.json",
+    "sha256": "bd0769612e071f38ad6e5737fbca635edd41a641807e0fe74a5d55765e219e42"
+  },
+  "manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-01.json",
+    "sha256": "73db647781a82dfd9d56bcf92d820a0111afaa854d7d7802fa09973e71da8aef"
+  },
+  "generator": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/prepare_manifest.py",
+    "sha256": "fea1dc8e581c794898e1afefad753b65e10b07dfad32312afc291dfa242aa994"
+  },
+  "reviewed_packager": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py",
+    "sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83"
+  },
+  "native_runs": 25,
+  "review_pairs": 12,
+  "hosted_runs": 1,
+  "supplemental_receipts": 222,
+  "completed15_observed": [
+    "candidate-jpip-asan-15",
+    "candidate-full-15",
+    "candidate-asan-inventory-15"
+  ],
+  "pending15": [
+    "candidate-complement-asan-15",
+    "candidate-tsan-inventory-15",
+    "candidate-jpip-tsan-15",
+    "candidate-complement-tsan-15"
+  ]
+}

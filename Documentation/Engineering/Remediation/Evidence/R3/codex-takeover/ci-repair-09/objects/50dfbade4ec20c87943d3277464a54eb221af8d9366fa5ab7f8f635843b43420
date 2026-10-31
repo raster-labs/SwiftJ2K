@@ -1,0 +1,14 @@
+Provisional HTTPS-CLOSE-01 bounded repair review requirements
+
+1. Register each request owner under a unique ID and capture publication generation before first send suspension.
+2. At close entry, retire generation and clear only its channel/telemetry state before any await. Capture owners; cancel outside their locks and await independent non-consuming finish.
+3. Retain retiring owners in the registry (or a closing group) until truly finished so duplicate close joins them too.
+4. Request completion cleanup removes only its captured unique registry entry. Old close resumes without clearing new-generation state; old sender checks generation before path/peak/result publication.
+5. Pre-start cancel+join must finish without requiring later read scheduling. A later read of that cancelled single-use object must throw the cancellation without creating a session; no post-close resurrection. Once startup is claimed, latch cancel and join through normal callback completion/invalidation.
+6. Preflight deadline failure wakes all finish waiters and releases empty buffer; duplicate read does not clear another active invocation.
+7. Started request join predicate must follow the delegate-queue tail acknowledgement, not merely invalidation callback entry. Separate waiters never consume sender Result.
+8. Deterministic tests: real ready silent request close; duplicate close while held invalidation/finish; successful late response held before actor publication then closed; replacement request can publish while old cleanup resumes; pre-read cancellation/join then late read; expired deadline join.
+
+No source/native changes by reviewer. Scope is HTTPS only. Existing detached TCP work is outside this repair; do not generalise HTTPS close proof to it.
+
+Scope update from root: a separate reviewer confirmed TCP-CLOSE-01 and root extended the writer to narrowly shared HTTP11/HTTPS owner-generation cancellation/join. This reviewer covers HTTPS and shared close; compiler_portability reviews TCP-specific delta. Shared generation must protect both paths, without claiming getaddrinfo cancellation provides bounded DNS join latency. Earlier HTTPS-only statement records the scope when the finding was raised, not the final authorised patch scope.

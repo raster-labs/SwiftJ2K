@@ -1,0 +1,43 @@
+Candidate14 independent runtime preparation — stopped
+
+Prepared two versioned reconciliation specs under planned-14/ and a byte-preserved
+copy of the previously reviewed audit-final.py. No repository changes, native
+execution, codec/fixture/server execution or final coverage claim.
+
+Verified all1,857 frozen14 source files and the exact four-file delta from10.
+Candidate14 production differs from09 in JPIPHTTPSRequest.swift, so this plan
+requires fresh14 release and CLI receipts. The246 CLI checks are required, not
+yet claimed executed by this preparation.
+
+Six failed historical receipts were independently rebound to their source
+manifests and exact raw streams: focused09, full10, diagnostic full11/full12,
+sampled full13 and the standalone Swift interpreter queue-policy crash. They
+remain failures and are never included as passing gates.
+
+Focused14 has been independently reconciled:23 executed Swift Testing
+declarations, four parameterised declarations and nine argument starts, all
+passed. Both raw streams and the merged line multiset match their receipts;
+the1,857-file source identity is unchanged. This does not prove final discovery,
+ordinary full coverage or sanitizer coverage.
+
+After all root gates finish, run the unchanged reconciler for both specs:
+  python3 work/runtime-coverage/reconcile.py --spec work/runtime-coverage-14/planned-14/thread-final-14.json --output work/r3-sanitizer-execution-proof-thread-14.json
+  python3 work/runtime-coverage/reconcile.py --spec work/runtime-coverage-14/planned-14/address-final-14.json --output work/r3-sanitizer-execution-proof-address-14.json
+
+Then align a new final audit-plan filename with the completed independent14
+source review reports, retaining the preparation plan unchanged. The auditor
+requires full ordinary runtime, fresh release/CLI, both inventory receipts,
+both exact JPIP/complement partition unions and the two reconciliation proofs:
+  python3 work/runtime-coverage-14/audit-final.py --config FINAL_PLAN --output NEW_AUDIT_RECEIPT
+
+The auditor independently reparses runtime identities, XML and exact parameter
+argument-start multisets; verifies complete raw captures, commands, source
+hashes and unsuppressed sanitizer logs; and rejects absent, changed, skipped
+or failed evidence. Complete partitioned sanitizer execution is distinct from
+fully concurrent cross-target sanitizer execution.
+
+Five direct independent peer gates remain UNEXECUTED/UNWAIVED. Nothing here
+accepts wholeR3, hostedCI, macOS26, Linux or additional hardware, or permits merge.
+
+Positive STOP: preparation/report writes frozen. Resume only for final completed
+receipt reconciliation or a changed candidate. Root exclusively owns native work.

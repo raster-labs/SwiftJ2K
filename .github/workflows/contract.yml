@@ -58,8 +58,9 @@ jobs:
   macos:
     # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`);
     # Swift 6.2 and 6.4 are qualified in the `linux` and `independent-consumer` jobs.
-    # External-oracle tests (`ojph_expand`, `kdu_expand`, `opj_decompress`) skip via
-    # `withKnownIssue(isIntermittent: true)` when those third-party binaries are absent.
+    # Five external-oracle declarations (`ojph_expand`, `kdu_expand`,
+    # `opj_decompress`) use @Test(.enabled(if: ...)) when tools are unavailable.
+    # Their explicit skips remain unexecuted oracle checks, not passing evidence.
     name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
     timeout-minutes: 30

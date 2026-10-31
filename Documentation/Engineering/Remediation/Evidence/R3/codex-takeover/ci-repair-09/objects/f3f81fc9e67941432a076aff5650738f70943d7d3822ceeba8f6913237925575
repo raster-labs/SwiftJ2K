@@ -1,0 +1,26 @@
+{
+  "state": "READ_ONLY_PREPARATORY_DRY_RUN",
+  "started_at": "2026-10-31T10:34:28.518282+00:00",
+  "exit_code": 0,
+  "helper_sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83",
+  "manifest_sha256": "bd0769612e071f38ad6e5737fbca635edd41a641807e0fe74a5d55765e219e42",
+  "stdout_sha256": "deb0ee5fc2f8ac75abbacf03d8eb3f06c1df02f6242c50f116f7e392f62af3d4",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "prior08_index_before": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+  "prior08_index_after": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+  "supplement_before": null,
+  "supplement_after": null,
+  "repository_publication_performed": false,
+  "output": {
+    "published": false,
+    "state": "NOT_ACCEPTED",
+    "index": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/ci-repair-09/indexes/266f70cced26f097d135abf54eff47eef0f4dd94196bb8adce08145a413a62f7.json",
+    "index_sha256": "266f70cced26f097d135abf54eff47eef0f4dd94196bb8adce08145a413a62f7",
+    "artifact_roles": 318,
+    "new_payloads": 250,
+    "new_payload_bytes": 11811069,
+    "prior_08_references": 23,
+    "implementation_scope_sha256": "c1dda15f6a62a411f558e32d238cfc5c58aee242941b180b353eaa2320bdf82b",
+    "ci_scope_sha256": "5dc8a7aa823b87cf063ce45e994067e13a2653d0cdf503c874513c5c43ce9ef3"
+  }
+}

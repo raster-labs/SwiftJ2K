@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 327, in <module>
+    main()
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 314, in main
+    package, index_path, implementation, ci = assemble(args.manifest.absolute())
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 250, in assemble
+    runs = [native_run(package, e) for e in manifest.get('native_runs', [])]
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 250, in <listcomp>
+    runs = [native_run(package, e) for e in manifest.get('native_runs', [])]
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 155, in native_run
+    path, data, _ = package.read_ref(entry[key])
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 113, in read_ref
+    require(not any(p in EXCLUDED or re.fullmatch(r'.*-build(?:-\d+)?', p) for p in path.relative_to(self.workspace).parts[:-1]), 'Build/cache input refused')
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py", line 46, in require
+    raise ValueError(message)
+ValueError: Build/cache input refused

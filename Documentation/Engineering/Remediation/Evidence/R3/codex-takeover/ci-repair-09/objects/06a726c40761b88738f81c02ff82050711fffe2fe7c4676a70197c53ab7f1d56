@@ -1,0 +1,28 @@
+{
+  "baseline_head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "before_transport_sha256": "fae584536249be159b28728c7e056d2cc3d5e4a2f59ca2be11dc1130f97a740e",
+  "files": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "sha256": "3f91b5b1e691d7433fe68c6ab2095b4eb30f2ed5a75c9bf39fb3a75e9b851d65",
+      "bytes": 25639
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "sha256": "dc25045fee251989ebaf9e5dbfb52290a3c5f8a3dd02e27641428efc6991e49d",
+      "bytes": 17848
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "sha256": "62d89c0b6c4c3f3889cb89614c5849f455ac16ea9de415f45243f5342e068067",
+      "bytes": 22452
+    }
+  },
+  "static_checks": [
+    "Non-HTTPS prefix byte-identical",
+    "Path/query helpers and transport suffix byte-identical",
+    "HTTPS request URL/method/timeout/Accept construction byte-identical",
+    "No bytes(for:) or data(for:) in changed implementation",
+    "No native execution"
+  ],
+  "native_validation": "NOT RUN by implementer; root owns frozen native and hosted gates",
+  "evidence_limits": "URLProtocol/scripted delegate transport harness only, not TLS or independent JPIP peer proof. URLSession opaque internal and already-allocated callback buffers are not preadmitted by our code."
+}

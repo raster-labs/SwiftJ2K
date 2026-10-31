@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Preserve failed ASan14 evidence; never generate a success proof or run native tools."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import json
+import runpy
+import re
+import xml.etree.ElementTree as ET
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'asan-failed14-check.json'
+if out.exists(): raise SystemExit('Refusing failed receipt overwrite')
+audit = runpy.run_path(str(here / 'audit-final.py'))
+require, sha, source_map = (audit[k] for k in ['require', 'sha', 'source_map'])
+helper = runpy.run_path(str(work / 'runtime-coverage/reconcile.py'))
+read = lambda p: json.loads(Path(p).read_text())
+source = work / 'candidate-snapshot-14'
+manifest_path = work / 'candidate-snapshot-14-source.json'
+manifest = read(manifest_path)
+require(source_map(source) == manifest, 'Frozen14 source changed')
+plan = read(work / 'planned-native-sequence-14.json')
+planned = {g['label']: g for g in plan['gates']}
+receipt = {'state': 'ASAN_JPIP_FAILED_COMPLEMENT_UNEXECUTED_NO_FINAL_PROOF',
+           'at': datetime.now(timezone.utc).isoformat(), 'files': {}, 'runs': {}}
+
+def record(p):
+    p = Path(p).resolve()
+    digest = sha(p)
+    require(str(p) not in receipt['files'] or receipt['files'][str(p)] == digest,
+            'Input changed during audit')
+    receipt['files'][str(p)] = digest
+    return digest
+
+for label, expected_exit in [('candidate-asan-inventory-14', 0), ('candidate-jpip-asan-14', 1)]:
+    d = work / 'validation' / label
+    command, result = read(d / 'command.json'), read(d / 'result.json')
+    require(result['exit_code'] == result['wrapper_exit_code'] == expected_exit and result['changed_inputs'] == [],
+            'Wrong exit/source drift: ' + label)
+    require(read(d / 'source-before.json') == read(d / 'source-after.json') == manifest and
+            command['source_files'] == len(manifest), 'Source identity differs: ' + label)
+    require(Path(command['cwd']).resolve() == source and command['command'] == planned[label]['command'],
+            'Command differs from planned14: ' + label)
+    require(command['wrapper_sha256'] == record(work / 'run-validation.py') == plan['wrapper_sha256'],
+            'Wrapper identity differs')
+    require(command['test_environment'] == {'SWIFTJ2K_TEST_CLI_PATH': None, 'ASAN_OPTIONS': None, 'TSAN_OPTIONS': None},
+            'Suppression/override environment changed')
+    require(result['capture_complete'] and result['capture_threads_joined'] and result['capture_errors'] == [],
+            'Incomplete capture: ' + label)
+    require(record(d / 'native.log') == result['log_sha256'], 'Merged log changed')
+    require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing raw stream')
+    diagnostic_matches = []
+    for kind, value in result['native_streams'].items():
+        p = d / ('native.' + kind)
+        require(p.resolve() == Path(value['path']).resolve() and record(p) == value['sha256'] and
+                p.stat().st_size == value['bytes'], 'Raw capture changed')
+        diagnostic_matches += audit['DIAGNOSTIC'].findall(p.read_text())
+    require(Counter((d / 'native.log').read_bytes().splitlines()) ==
+            Counter((d / 'native.stdout').read_bytes().splitlines()) +
+            Counter((d / 'native.stderr').read_bytes().splitlines()), 'Merged/raw line mismatch')
+    for value in result.get('built_cli_products_at_completion', {}).values():
+        require(record(value['path']) == value['sha256'], 'Recorded CLI binary changed')
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    receipt['runs'][label] = {'exit_code': expected_exit, 'elapsed_seconds': result['elapsed_seconds'],
+        'raw_capture_verified': True, 'source_files': len(manifest),
+        'sanitizer_diagnostic_matches': diagnostic_matches, 'command': command['command'],
+        'log_sha256': result['log_sha256']}
+
+idir = work / 'sanitizer-inventory-14/address'
+inv = read(idir / 'inventory.json')
+require(inv['sanitizer'] == 'address' and inv['equal_to_ordinary'] and inv['disjoint'] and inv['union_equals_full'],
+        'Discovery failed its internal checks')
+sets = {kind: helper['ids'](idir / (kind + '.ids')) for kind in ['all', 'jpip', 'complement']}
+require(not sets['jpip'] & sets['complement'] and sets['jpip'] | sets['complement'] == sets['all'],
+        'Discovery partition differs')
+require(sets['all'] == helper['ids'](work / 'sanitizer-inventory-14/thread/all.ids'),
+        'Address/thread discovery differs')
+for kind in ['reference', 'sanitized']:
+    entry = inv[kind]
+    require(entry['exit_code'] == 0, 'Failed discovery command')
+    raw_ids = (idir / (kind + '.stdout')).read_text().splitlines()
+    require(len(raw_ids) == len(set(raw_ids)) and set(raw_ids) == sets['all'], 'Discovery IDs differ')
+    for stream in ['stdout', 'stderr']:
+        require(record(idir / (kind + '.' + stream)) == entry[stream + '_sha256'], 'Discovery stream changed')
+for p in idir.iterdir():
+    if p.is_file(): record(p)
+d = work / 'validation/candidate-jpip-asan-14'
+bindings, titles = helper['display_map'](source, sets['all'])
+parsed = helper['parse_log'](d / 'native.stdout', {v:k for k,v in bindings.items()}, strict=False)
+xml = helper['xml_ids']([d / 'report-swift-testing.xml'], sets['all'], strict=False)
+expected = 'SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests/staleCleanupCannotCloseReplacementHandshake(_:)'
+# The unchanged success-proof parser deliberately rejects parameterised failed
+# aggregate completions. Preserve that gap and inspect this failure explicitly;
+# never patch the success proof or fabricate a successful completion.
+require(sets['jpip'] - (set(parsed['xctest']) | set(parsed['swift_testing'])) == {expected} and
+        (set(parsed['xctest']) | set(parsed['swift_testing'])) <= sets['jpip'] and
+        set(xml) - set(parsed['swift_testing']) == {expected}, 'Unexpected failed-run parser gap')
+require(all(value == 'passed' for value in parsed['xctest'].values()), 'Unexpected XCTest failure')
+require(all(v['status'] == 'passed' for v in parsed['swift_testing'].values()) and
+        {k for k,v in xml.items() if v['status'] != 'passed'} == {expected}, 'Unexpected failed declaration')
+require(all(xml[k]['status'] == v['status'] for k,v in parsed['swift_testing'].items()), 'Raw/XML status mismatch')
+raw = (d / 'native.stdout').read_text()
+failed_completion = re.findall(r'^✘ Test staleCleanupCannotCloseReplacementHandshake\(_:\) with (\d+) test cases failed after [0-9.]+ seconds with (\d+) issues\.$', raw, re.M)
+require(failed_completion == [('3', '3')] and sum(parsed['parameter_cases'][expected].values()) == 3,
+        'Parameterized failed completion differs from its three observed starts')
+failed = {expected: {'status': 'failed', 'parameter_count': 3, 'issues': 3,
+                    'binding': 'Explicit failed-aggregate parser plus XML, not a success proof.'}}
+issues = [line for line in raw.splitlines() if 'recorded an issue' in line]
+require(len(issues) == 3 and all('staleCleanupCannotCloseReplacementHandshake' in line and
+        '.barrierTimedOut' in line for line in issues), 'Unexpected issue attribution')
+arguments = {re.search(r'scenario → (\.[A-Za-z]+)', line).group(1) for line in issues}
+require(arguments == {'.timeout', '.duplicateReaderClose', '.cancellation'}, 'Unexpected failing arguments')
+failures = [n for n in ET.parse(d / 'report-swift-testing.xml').iter('failure')]
+require(len(failures) == 3, 'Raw/XML issue count differs')
+receipt['failed_run'] = {'observed_declarations': len(sets['jpip']),
+    'xctest': len(parsed['xctest']), 'swift_testing': len(xml),
+    'success_parser_completion_count': len(parsed['swift_testing']),
+    'failed_declarations': failed, 'issue_lines': issues, 'xml_failure_count': len(failures),
+    'diagnostic_parser_gaps': parsed['diagnostic_gaps'], 'known_or_skipped_lines': parsed['known_or_skipped_log_lines']}
+require(not (work / 'validation/candidate-complement-asan-14/result.json').exists(),
+        'Complement14 completed receipt now exists; update scope before reporting')
+require(not (work / 'r3-sanitizer-execution-proof-address-14.json').exists(), 'Unexpected address proof exists')
+receipt['complement_status_at_audit'] = 'UNEXECUTED_NO_COMPLETED_RECEIPT'
+receipt['address_proof'] = 'NOT_CREATED'
+require(record(work / 'r3-sanitizer-execution-proof-thread-14.json') ==
+        '8ef0ba4a8bb9c68af25cdf066a5a6a2710a7c972e9f2d94dc12ddf91cfec1f7c', 'Thread14 proof changed')
+require(record(here / 'ordinary-cli-partial.json') ==
+        'be9f722a3e5e82f0f6c15e61ac513b6944eda3f2ea5ee1af5d9dc8373d3a998f', 'Partial audit changed')
+for p in [Path(__file__), here / 'audit-final.py', work / 'runtime-coverage/reconcile.py',
+          manifest_path, work / 'planned-native-sequence-14.json']:
+    record(p)
+for title in titles: record(title['source'])
+require(source_map(source) == manifest, 'Frozen14 source changed during failure audit')
+for p,digest in receipt['files'].items(): require(sha(p) == digest, 'Evidence changed during audit: ' + p)
+receipt['boundaries'] = [
+    'The JPIP ASan14 gate FAILED; no AddressSanitizer completion or final local runtime qualification is established.',
+    'No sanitizer diagnostic was found in the inspected raw streams; this does not turn failed assertions into a pass.',
+    'Failure is attributed to observed barrier timeout assertions; its underlying cause is not established by this receipt.',
+    'Ordinary/release/CLI partial and complete thread14 partition proof remain immutable and source-scoped.',
+    'All five direct independent peer gates remain unexecuted/unwaived; no whole-R3 acceptance or merge.',
+    'Reviewer performed no native execution, source changes or deadline relaxation.'
+]
+with out.open('x') as output: output.write(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
+print(json.dumps({'state': receipt['state'], 'source_files': len(manifest),
+    'observed_declarations': len(sets['jpip']), 'xctest': len(parsed['xctest']),
+    'swift_testing': len(xml), 'failed_declarations': list(failed),
+    'issues': len(issues), 'sanitizer_diagnostic_matches': receipt['runs']['candidate-jpip-asan-14']['sanitizer_diagnostic_matches'],
+    'complement': receipt['complement_status_at_audit'], 'address_proof': receipt['address_proof']}, indent=2))

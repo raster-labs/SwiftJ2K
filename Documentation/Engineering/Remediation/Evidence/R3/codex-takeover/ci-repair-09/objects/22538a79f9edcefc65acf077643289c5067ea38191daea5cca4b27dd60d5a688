@@ -1,0 +1,52 @@
+from pathlib import Path
+import shutil,json,hashlib,difflib
+base=Path(__file__).resolve().parent
+previous=base.parent/'https-full-concurrency-diagnosis-11/overlay'
+overlay=base/'overlay'
+shutil.copytree(previous,overlay,dirs_exist_ok=True)
+def replace(s,old,new):
+    assert s.count(old)==1,(old,s.count(old))
+    return s.replace(old,new)
+p=overlay/'Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift'
+s=p.read_text()+'''
+// Diagnostic queue canaries retain neither request nor session. The delayed
+// callback only weakly references the OperationQueue; its queued operation owns
+// only the trace buffer. The request cancels/joins this one-shot at read exit.
+package final class JPIPHTTPSQueueCanary: Sendable {
+    private let timer: JPIPDeadlineWatchdog
+    package init(queue: OperationQueue, trace: JPIPHTTPSPhaseTrace) {
+        trace.mark("canary-immediate-enqueue")
+        queue.addOperation { trace.mark("canary-immediate-execute") }
+        trace.mark("canary-delayed-timer-scheduled after=0.5")
+        timer = JPIPDeadlineWatchdog(after: 0.5) { [weak queue, trace] in
+            trace.mark("canary-delayed-timer-fired")
+            guard let queue else {
+                trace.mark("canary-delayed-queue-already-released")
+                return
+            }
+            trace.mark("canary-delayed-enqueue")
+            queue.addOperation { trace.mark("canary-delayed-execute") }
+        }
+    }
+    package func cancel() { timer.cancel() }
+    deinit { timer.cancel() }
+}
+'''
+p.write_text(s)
+p=overlay/'Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift';s=p.read_text()
+s=replace(s,'    package let diagnosticTrace = JPIPHTTPSPhaseTrace()','    package let diagnosticTrace = JPIPHTTPSPhaseTrace()\n    private var diagnosticCanary: JPIPHTTPSQueueCanary? // Guarded by lock.')
+s=replace(s,'        defer { diagnosticTrace.mark("read-exit"); JPIPHTTPSPhaseTrace.flush() }','        defer {\n            stopDiagnosticCanary()\n            diagnosticTrace.mark("read-exit")\n            JPIPHTTPSPhaseTrace.flush()\n        }')
+s=replace(s,'        queue.name = "com.rasterlab.swiftj2k.jpip.https"','        queue.name = "com.rasterlab.swiftj2k.jpip.https"\n        let canary = JPIPHTTPSQueueCanary(queue: queue, trace: diagnosticTrace)\n        lock.lock()\n        diagnosticCanary = canary\n        lock.unlock()')
+s=replace(s,'    private func claimStart() throws {','    private func stopDiagnosticCanary() {\n        lock.lock()\n        let canary = diagnosticCanary\n        diagnosticCanary = nil\n        lock.unlock()\n        canary?.cancel()\n        diagnosticTrace.mark("canary-cancelled-at-read-exit")\n    }\n\n    private func claimStart() throws {')
+p.write_text(s)
+manifest={};delta=[]
+for p in sorted(overlay.rglob('*.swift')):
+    rel=str(p.relative_to(overlay));old=(previous/rel).read_bytes();new=p.read_bytes()
+    manifest[rel]={'diagnostic11_sha256':hashlib.sha256(old).hexdigest(),'diagnostic12_sha256':hashlib.sha256(new).hexdigest(),'changed_from_11':old!=new}
+    assert not any(line.rstrip()!=line for line in new.decode().splitlines())
+    delta.extend(difflib.unified_diff(old.decode().splitlines(True),new.decode().splitlines(True),fromfile='diagnostic11/'+rel,tofile='diagnostic12/'+rel))
+(base/'delta-vs11.patch').write_text(''.join(delta))
+manifest['generator_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+manifest['delta_sha256']=hashlib.sha256((base/'delta-vs11.patch').read_bytes()).hexdigest()
+(base/'source.json').write_text(json.dumps(manifest,indent=2)+'\n')
+print(json.dumps(manifest,indent=2))

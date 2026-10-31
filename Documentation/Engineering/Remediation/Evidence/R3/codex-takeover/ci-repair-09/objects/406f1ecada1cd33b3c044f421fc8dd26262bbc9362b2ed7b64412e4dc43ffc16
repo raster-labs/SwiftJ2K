@@ -1,0 +1,44 @@
+{
+  "scope": "Independent read-only completed diagnostic11 phase evidence review; no native or source changes",
+  "source_root": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-11",
+  "manifest_sha256": "c9b05bd93f8c28e88d3782124125d211f05e1dde7ce4e7fe5e4adf4f908ec444",
+  "verified_inputs_before_and_after": 1858,
+  "changed_inputs": [],
+  "delta_from10": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+      "base": null,
+      "diagnostic": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "base": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+      "diagnostic": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "base": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+      "diagnostic": "af15f8f5359e249b83bbe5a1c2d59430616aa988724b391648a20fb51949024a"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "base": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+      "diagnostic": "e6ed95483a45e9fd394ecb5baecd24954db128efb2ab519e26e134106f56b319"
+    }
+  },
+  "analysis_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full10-independent-diagnosis/diagnostic11-analysis.json",
+  "analysis_sha256": "e71faa27a4a5dffb9fd6811c22f6fac18b63b4cd2c4f95b10c5256a3859661c8",
+  "report_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-11.txt",
+  "report_sha256": "ee829accff9d8cf8360b7c6db18958d6705f9071ddee249c68574abeabebd8f4",
+  "native_evidence_sha256": {
+    "work/validation/diagnostic-https-full-11/command.json": "5954524ff831d9b32680cda32af19fb45afd4a8839aaec3f641cbd41a11e8a89",
+    "work/validation/diagnostic-https-full-11/native.log": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8",
+    "work/validation/diagnostic-https-full-11/native.stderr": "9e88585adfb3a55389cf7bbe96badccb91b06cc531c443da7130d87bd6a9f6a3",
+    "work/validation/diagnostic-https-full-11/native.stdout": "58c70cb8767ade2c3593a07bf8ead013117b1762857420aa61a83dc930958e11",
+    "work/validation/diagnostic-https-full-11/report-swift-testing.xml": "b94d7f40cc0f90ff41cbc0da038221c1e86accf4fc4e8db1b4c9e9d9e18628c1",
+    "work/validation/diagnostic-https-full-11/result.json": "777492490d3c10d65c20854849e38985441e58e6962d5f48c62deb5854be97e2",
+    "work/validation/diagnostic-https-full-11/source-after.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea",
+    "work/validation/diagnostic-https-full-11/source-before.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea"
+  },
+  "trace_records": 410,
+  "xml_declarations": 323,
+  "xml_failed_declarations": 6,
+  "raw_issues": 8,
+  "acceptance": "Diagnostic failed; original full10 failed and unwaived; no whole-R3 acceptance"
+}

@@ -1,0 +1,51 @@
+{
+  "state": "SCOPED_PUBLICATION_DOCUMENT_REVIEW_COMPLETE",
+  "finished_at": "2026-10-31T11:03:18.224393+00:00",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "80e7a11f412f266a7341e81d5c8d222862bb8f5a531d2f5eba8a9e24840b58c8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "6bb6af1f745af01ae5cd12130ab15621e4f9d92d1768e9dbb3be154a3e210559",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-15.txt": "7486cbbf00152de3f31845620e2672952c09979673ae13302545e62f0fc98109",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/.github/workflows/contract.yml": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-decision-15.json": "21c65fffb87be48485d2569d40f7f115ae55ea1afda5141b046e33e6b18e8bc5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-15.txt": "253a23a3efdfd8773f59f863aaf0580967c43a2ba25015041b32d7574921a038",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-15-before.json": "586f655faeb8fb6e54bda5acf020ed88c7c0ad659107c77b83c680a14790e5fb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-15-corrected-before.json": "f6649b435c9953600ee2f79875db0a3423c2b474c4238d1aaecd030aa571d363",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/final-implementation-identity-15.json": "83b4f8dacca4e8b8ecddd1e407111a4c9ebd8c1febcd9ac9a16c84180e2cdadc",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/common-contract-identity-15.json": "2b4ef163ff2cf197dd558414a01e5dd329ba413be4a2c00b192221c270d2ad33",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/performance-core-identity-15.json": "2cd493e044399a279fc60bb734bbefc4a9275c56f8eea21894962c870ce74f02",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-15-source.json": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03-source.json": "c883b84995d14abff342f7f468d50ba8fc92aba39ca42ccacb9219ffd74249a1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-review-15.txt": "1cb4931f5d9b9df10090bf0006e89eed96a5c75dfaf46a2b025dffa74065fb7b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-review-15-source.json": "abab48d6d29c5a55d439acb94006004b20f3b643f2022c0d134503e8b48b76c3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-15.txt": "823c8c71040346ed78fdf8471f59deda711f67ee5161e4f51892b3302772f404",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-15-source.json": "d53ecacced01ba4661478c6f7044fa28c3d7bb7083c502f9878b708c358bbdfb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-comment-correction-15.json": "94a55f5337b01cb4e1f53b87eb187e1768befb0893c965f565012af037e24f19"
+  },
+  "initial_doc_hashes": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "0cf1fb0a9854cf42ac40930607655ed3a4cccc53cc0f43c9dd047d39f388204c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "caf050df48466dc4c39c968bd4b550c48ac7726c04550a3ed59af9a12d6361fb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-15.txt": "a8a7e592cb138f1e9c1cd0778889fa1c690bb7f5f213f9a437edbc03df567568",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/.github/workflows/contract.yml": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2"
+  },
+  "corrected_doc_hashes": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "80e7a11f412f266a7341e81d5c8d222862bb8f5a531d2f5eba8a9e24840b58c8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "6bb6af1f745af01ae5cd12130ab15621e4f9d92d1768e9dbb3be154a3e210559",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-15.txt": "7486cbbf00152de3f31845620e2672952c09979673ae13302545e62f0fc98109",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/.github/workflows/contract.yml": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-decision-15.json": "21c65fffb87be48485d2569d40f7f115ae55ea1afda5141b046e33e6b18e8bc5"
+  },
+  "stable_corrected_inputs": true,
+  "closed_findings": [
+    "PR WebSocket lifetime overstatement",
+    "Matrix final-candidate row still named08"
+  ],
+  "verified_current_source_test_package_inputs": 527,
+  "unchanged_common_contracts": 7,
+  "profiled_codec_identity_inputs": 52,
+  "source_manifest_sha256": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+  "whole_r3_accepted": false,
+  "native_executed_by_reviewer": false,
+  "repository_edits_by_reviewer": false,
+  "publication_by_reviewer": false,
+  "remaining_publication_step": "Replace the PR final-link placeholder with independently verified exact source/index/hosted-run links after feature publication; no qualification claim change."
+}

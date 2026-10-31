@@ -1,0 +1,41 @@
+Portable bounded HTTPS delegate transport — implementation handoff
+
+Baseline: 7f1b123c1c8705666b3c19838f3ed22c00dc6145 (published PR30 baseline). Canonical claim checked before source writes: 1ce94f4b-ebfa-4309-98f6-5530103803d9. Scope is the HTTPS path in JPIPTransport.swift, the new narrowly scoped JPIPHTTPSRequest.swift helper, and CodexR3HTTPStreamingTests.swift. Separate R3VolumeRemediationTests.swift compiler edits are owned by the other writer.
+
+Changed behaviour: the unsupported URLSession.bytes(for:) path is replaced on all platforms by a request-owned URLSessionDataDelegate. No data(for:) fallback, disabled HTTPS branch, altered TLS trust delegate or increased limit was introduced. The original configuration (including protocolClasses) is used. The public request URL/query, GET method, Accept header and timeout construction are byte-identical; the rest of JPIPTransport outside its HTTPS implementation is byte-identical. Status acceptance remains 200..<300, headers use the same parser, channel/path negotiation is preserved, and public deadline/cancellation rechecks remain in place.
+
+Ownership and completion proof:
+1. Each invocation claims one helper exactly once. The continuation is installed before session/task work. Cancellation before task publication latches under the state lock; it never invalidates a session that is about to create a task. Suspended task creation and publication share that lock. Cancellation after publication captures and cancels only that task, outside the lock.
+2. Response/body callbacks use the same lock and a serial delegate queue. Admission errors latch the original error and cancel the task. Later callbacks cannot alter the failure or a completed result. Completion stores Result under the lock; the continuation itself carries only Void.
+3. Task completion (or proven no-task startup) precedes finishTasksAndInvalidate. Publication requires both task-completed and session-invalidated flags in either order. Members owning session/task/buffer/continuation are cleared once. The Void wake-up is queued after the final delegate callback on the serial queue; the caller acquires the lock to take Result. No state lock is held across cancel, invalidation, harness callbacks, watchdog cancellation or continuation resumption.
+4. The existing dedicated JPIPDeadlineWatchdog enforces absolute elapsed deadlines, including trickling responses. External task cancellation has its own handler. Both cancellation and deadline are rechecked after completion. Already-expired preflight clears unstarted buffer ownership; a second invocation fails its single-use claim without clearing the active invocation.
+
+Storage proof:
+Header admission precedes creation of our parsed dictionary and charges exposed Foundation header strings/descriptors, our dictionary and possible channel-ID copying with checked arithmetic. Announced Content-Length is checked against payload and minimum body/result overlap before body storage allocation. Body storage uses Data(count:capacity), tracked capacity independent of received byte count, and checked growth. Each growth admits incoming callback Data.count + old capacity + new capacity plus final old/new result-copy overlap before allocating/copying. A final exact-sized body is copied only after its overlap has been reserved. No raw pointer escapes its scoped Data borrow.
+Geometric growth is clamped to min(body policy, floor((storage-header)/2), storage-header-oldCapacity-incomingCount). This reserves room for the final body and avoids repeated exact-size allocation near the limit. Counters record actual accumulation allocations and copied body bytes for deterministic work tests.
+URLSession has already allocated callback Data and its exposed HTTP response before invoking us. Those visible owners are checked at callback receipt; we cannot pre-admit their allocation or opaque TLS, networking, cache, queued-callback buffers and allocator overhead. peak is conservative observable response workspace, not total process RSS or a promise to bound all Foundation internals.
+
+Added transport harness regressions (not TLS or independent JPIP peer qualification):
+- Exact multi-chunk H+16 overlap succeeds; H+15 denies before prior 3-byte accumulation changes.
+- Header descriptors, declared Content-Length (payload and storage), unknown cumulative length, oversized individual callback, invalid status/non-HTTP response, and empty body handling.
+- One-byte arrivals at N=600 and6000 with body policy2N but storageH+2N: exactN succeeds, copy work<=4N and<=15 accumulation allocations; next byte denies without copies. The4N claim is only for these one-byte cases.
+- Shared HTTPS URLProtocol success exercises request/configuration/Accept/query, multi-chunk data, custom header and channel/path metadata. Delegate-bound announced/unknown oversize errors return only after cleanup.
+- Real read(deadline:) silent integration retains120ms deadline and<2s completion bound. Separate active-trickle test waits asynchronously for two bytes actually received by our accumulator, then arms the same120ms watchdog and verifies<2s interruption and cleanup. The active-trickle test explicitly does not claim to cover read(deadline:) timer setup; the silent test covers that setup.
+- Task cancellation with following successful request, cancellation before session/task publication, no-task preflight expiry, scripted invalidation-before-completion, both completion/cancel lock orders, late body/error/invalidation callbacks, no remaining helper owners, and weak delegate release.
+Only per-request delegate delivery is temporarily suspended in scripted race tests to choose a deterministic order; no blocking cooperative-executor waits or suite concurrency caps were added.
+
+Executed verification: git diff --check passed; all three files passed a static trailing-whitespace check; source checks prove non-HTTPS prefix/suffix and request construction preservation. The new implementation contains neither bytes(for:) nor data(for:). No Swift/native/compiler/server/oracle execution, commit or push was performed. Prior59 receipts and failed hosted evidence were not changed.
+Static arithmetic exploration: work/https-accumulation-model.txt records65,532 partition/budget schedules through N14; admitted overlap remained within its budget, observed successful copies<=6N. This is finite Python-model evidence, not a universal proof or Swift test result. It preserves an earlier failed universal4N assertion (N10, chunks1/1/2/1/4/1, budget21,41copied); production tests make only the narrower one-byte4N assertion.
+
+Native work for root: freeze the three files with the separate compiler fix, compile/run CodexR3HTTPStreamingTests on the frozen source, then the full ordinary campaign and complete ASan/TSan partitions. Hosted Linux arm64 Swift6.4 is still required to close the original portability blocker; do not infer it from local macOS compilation. Existing TLS/independent-peer gates are not waived by these harness tests.
+
+Final scoped SHA-256:
+Sources/SwiftJ2KJPIP/JPIPTransport.swift
+3f91b5b1e691d7433fe68c6ab2095b4eb30f2ed5a75c9bf39fb3a75e9b851d65
+Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+dc25045fee251989ebaf9e5dbfb52290a3c5f8a3dd02e27641428efc6991e49d
+Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+62d89c0b6c4c3f3889cb89614c5849f455ac16ea9de415f45243f5342e068067
+
+Receipts: work/https-portability-before.json, work/https-portability-source.json, work/https-accumulation-model.txt. Independent reviewer has received the evolving source and identified the two fixes above; root owns final independent acceptance and native validation.
+Positive STOP: all scoped source/test/report writes complete and frozen. No new child was spawned; existing ws_budget child remains stopped.

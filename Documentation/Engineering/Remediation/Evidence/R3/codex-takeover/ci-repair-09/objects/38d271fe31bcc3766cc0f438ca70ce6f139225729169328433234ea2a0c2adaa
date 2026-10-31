@@ -1,0 +1,19 @@
+{
+  "snapshot": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12",
+  "manifest_sha256": "eb5fd36fc93d8809b05cfe8dea40342fc6308d43aa70a4a6fd33efdbde43a101",
+  "verified_inputs": 1858,
+  "changed_inputs": [],
+  "delta_vs11": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+      "before": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113",
+      "after": "acdcc892d063f22543cdd69d53cf9f90aeb1a7291da3bb19e4a1cd4ce711b6dc"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "before": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8",
+      "after": "0a6fb4f0579e110fc525f80675048dd69d8a44e85741fa31e344e905c4c24928"
+    }
+  },
+  "author_receipt_sha256": "a2e06fa1bfaa0f872e604c9e365ea19476f388587820656b15c2f2d7fc2c9fe8",
+  "overlay_report_sha256": "1d0fcfd31817ee80c8a88f9f0fa1ca2ab70f09df7fd22eed3039698e62d6ff8a",
+  "delta_sha256": "df9cc98d3218a959fc2ffcd62abb3c3bdccfb5eb422d9f220aecebef86a7eb14"
+}

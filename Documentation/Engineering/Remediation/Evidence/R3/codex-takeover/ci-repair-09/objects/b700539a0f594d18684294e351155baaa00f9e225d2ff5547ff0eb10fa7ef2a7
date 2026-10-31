@@ -1,0 +1,22 @@
+--- R3VolumeRemediationTests.before.swift
++++ R3VolumeRemediationTests.swift
+@@ -647,7 +647,8 @@
+         #expect(Array(ramp[4..<8]) == [0, 0, 0, 17])
+ 
+         JP3DWaveletEngine.inverse53_1D(&ramp, length: 8, cas: 0)
+-        #expect(ramp == (0..<8).map { Int64(10 + 17 * $0) })
++        let expectedRamp: [Int64] = (0..<8).map { Int64(10 + 17 * $0) }
++        #expect(ramp == expectedRamp)
+ 
+         // Odd-offset (cas = 1) even-length linear ramp must also round-trip bit-exact with PWS extension.
+         var oddCasRamp: [Int64] = (0..<8).map { Int64(25 + 13 * $0) }
+@@ -655,7 +656,8 @@
+         #expect(oddCasRamp[4] == -13)
+         #expect(Array(oddCasRamp[5..<8]) == [0, 0, 0])
+         JP3DWaveletEngine.inverse53_1D(&oddCasRamp, length: 8, cas: 1)
+-        #expect(oddCasRamp == (0..<8).map { Int64(25 + 13 * $0) })
++        let expectedOddCasRamp: [Int64] = (0..<8).map { Int64(25 + 13 * $0) }
++        #expect(oddCasRamp == expectedOddCasRamp)
+     }
+ 
+     // MARK: - 6. Phase R3 Rework Coverage (F01-01..04 & REG-01..03)

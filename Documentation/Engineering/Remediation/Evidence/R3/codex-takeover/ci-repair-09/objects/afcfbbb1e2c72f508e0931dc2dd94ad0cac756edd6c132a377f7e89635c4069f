@@ -1,0 +1,13 @@
+--- proof13/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
++++ fixture14/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
+@@ -240,7 +240,9 @@
+         Thread.detachNewThread { [self] in
+             defer { finishedWorker(connectionID: nil) }
+             while listener.isOpen {
+-                guard let connection = try? listener.acceptConnection(timeoutSeconds: 1) else { continue }
++                // This argument configures the accepted socket, not accept polling.
++                // Explicit close/join owns the held peer's lifetime, including idle reuse.
++                guard let connection = try? listener.acceptConnection(timeoutSeconds: 0) else { continue }
+                 let id: Int? = state.withLock { state in
+                     guard !state.closed else { return nil }
+                     state.accepted += 1

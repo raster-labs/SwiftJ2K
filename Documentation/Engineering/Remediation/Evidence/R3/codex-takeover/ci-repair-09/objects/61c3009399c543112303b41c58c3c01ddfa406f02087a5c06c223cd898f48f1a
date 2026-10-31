@@ -1,0 +1,32 @@
+HTTPS full-concurrency diagnosis 11 — DIAGNOSTIC OVERLAY FROZEN
+
+No main-checkout source/test edits. Parent explicitly authorised read-only diagnosis and separate instrumentation. No Swift/native/server/test execution by this writer.
+
+Observed full10 failures:
+- completionAndCancellationHaveOneWinner(false), delegate deinit, shared HTTPS success: deadline errors after roughly9s suite elapsed. Generic deadline text alone does not distinguish preflight from final caller check.
+- active trickle: protocol submitted101 one-byte chunks, accumulator0 at readiness failure despite explicit Content-Type. A prior separate idle probe establishes header-dependent delivery only; it does not explain this loaded execution.
+- TCP lifecycle tests and older explicit deadline tests passed. Their aggregate pass is not proof that every HTTPS phase is timely.
+
+Read-only inventory:
+- Full10 log has no hidden Build complete/SwiftPM contention. Both Process.waitUntilExit sites remain inside dedicated Thread callbacks in CLITestProcessSupport.swift.
+- Remaining sync waits: CodexR3IndependentTests.swift293 accept semaphore uses a global userInitiated accept; CodexR3AdmissionTests.swift241/298/335 joins dedicated peers from stop(); OwnershipTests.swift113/121 waits dedicated writer. These are potential scheduling contributors but no receipt proves causality; no changes proposed solely from search hits. JPIPCacheTests Thread.sleep occurs in the earlier XCTest campaign, not the concurrent SwiftTesting phase.
+- HTTPS URLSession uses a serial OperationQueue without explicit underlyingQueue/QoS. read() resumes on the generic executor under the package language configuration; production encode/decode selects that executor via @concurrent. Shared-pool starvation is a hypothesis requiring phase measurements, not a confirmed defect.
+- Advisory reviewer notes oversize tests accept any resourceLimitExceeded with an incidental2s operation deadline; their current pass cannot uniquely establish payload admission. This proof gap is recorded for later scoped correction, not changed here.
+
+Overlay use by root:
+Copy overlay/ files over an independent copy of frozen10, preserving Package.swift and all test selections/limits/traits. The overlay adds JPIPHTTPSPhaseTrace and diagnostic-only records in HTTPS request, transport and harness. source.json binds frozen inputs, generated files, generator, delta and full10 native log. Do not merge the tracer into product source.
+
+Every record contains monotonic DispatchTime nanoseconds, owner UUID or URLProtocol host/test function, and event. Request read-entry links UUID to hostname. Phases cover caller/test entry, caller-before-read/send, read-entry with remaining deadline, deadline preflight/error, continuation entry, session construction, task publication/resume, URLProtocol start/response/chunk1/chunk100, first delegate body/header disposition, watchdog/cancel, task completion, session invalidation, queue-tail enqueue/execution, caller resume/result/final deadline check and read exit. Readiness clock start/success/failure is explicit.
+
+Hot paths only capture timestamps/strings into per-instance Mutex buffers; first-body uses a once set. Test/caller correlation uses a separate buffer; registration uses a global store registry only at trace initialisation. Callback capture does not take a global output lock. Sort events by ns for analysis: flush groups are not chronological. No print/file write occurs in delegate/protocol/watchdog callbacks. Buffered records are emitted at request read exit or relevant test exit. Logging can still perturb scheduling and its observer effect must be acknowledged; repeated diagnostic failure is not a substitute for an uninstrumented gate.
+
+Interpretation:
+- A large caller-before-read to read-entry gap is executor dispatch delay before startup.
+- A large session/task-create gap is synchronous factory work or scheduling of the executing thread.
+- Protocol response-submit to delegate response-entry separates Foundation delivery/queue delay; response allowance to first body distinguishes a held response from subsequent buffering.
+- Task completion→invalidation→tail→caller-woke separates Foundation cleanup from Swift continuation dispatch.
+- deadline-preflight-error vs deadline-final-check locates the generic error.
+
+All main-checkout traced inputs still match frozen10 hashes. Static overlay whitespace/source checks passed. Native compile and full concurrent diagnostic run remain root-owned and unexecuted here. All writes stopped.
+
+Final overlay also records watchdog scheduling, exact delegate admission errors, and the original HTTPS transport catch error before its deadline remapping. Thus an oversize-test category pass can be checked against the actual admission reason. Stores are diagnostic-only and retained until process exit; their overhead is outside production resource accounting and must not be used as a memory-qualification result.

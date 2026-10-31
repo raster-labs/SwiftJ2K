@@ -1,0 +1,58 @@
+Independent HTTPS and shared transport-close review — immutable candidate 09
+Reviewer: /root/independent_jpip_review; 2026-10-31.
+
+Disposition: no new confirmed blocking production-source defect found in the reviewed HTTPS/shared-close delta. The provisional source findings described below are closed on these exact bytes. Execution acceptance remains OPEN: focused09 compiled but exited 1, with 21/22 declarations passing and active-trickle readiness failing. This is not a clean native gate, Linux portability acceptance, TLS/independent-peer qualification, or whole-R3 acceptance.
+
+Identity and scope
+Reviewed work/candidate-snapshot-09, 1,857 files; manifest SHA-256: 224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b. Base/provenance names 7f1b123c1c8705666b3c19838f3ed22c00dc6145. All seven files match work/https-portability-close-source.json byte lengths and hashes. Full manifest verified before/after. No native execution, repository/source modification, commit or publication by this reviewer.
+
+Authoritative scope: JPIPHTTPSRequest.swift; HTTPS and shared owner/generation/close changes in JPIPTransport.swift; completion broadcast and shared interfaces in JPIPTransportRequestLifetime.swift; publication/completion ordering in JPIPWorkerHandoff.swift; CodexR3HTTPStreamingTests.swift; TransportLifecycleProbe.swift. TCP-specific worker/fixture review belongs to compiler_portability; its source hash is recorded here for the shared boundary, without claiming an independent re-audit of that entire path.
+
+Exact source hashes
+Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d
+Sources/SwiftJ2KJPIP/JPIPTransport.swift
+3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a
+Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift
+da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64
+Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift
+a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7
+Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+72d8cee42d0c9bb9edcbb9980bf2edfbba51720fe8b79b47a709159b87d826eb
+Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift
+1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d
+Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
+3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8
+
+HTTPS storage and API assessment
+The unavailable bytes(for:) call is removed and replaced by a request-owned URLSessionDataDelegate streaming path. Public transport signatures, request formatting/Accept header, configuration copying, default TLS handling, status rejection and channel extraction remain intact. No completion-handler data(for:) whole-body buffering, external executable, dependency, platform-minimum change or new fixture is introduced. Package.swift and all existing frozen08 JPIP test files are unchanged. New observers/helpers are package-scoped; production observers default to nil.
+
+JPIPHTTPSRequest.swift50–90 checks exposed header text/descriptors before building the extra dictionary, and checks declared body storage using checked arithmetic. Lines93–175 account for the callback Data, retained accumulation capacity, old/new allocation overlap and final exact-sized result copy before further owned allocation/copy. Capacity is represented by allocated Data.count, independently of received bodyCount. Scoped pointer copies use counts/offsets established by checked admission and do not escape or span suspension. URLSession has already allocated callback/header objects before invocation; opaque TLS/network/cache/queued-callback buffers and allocator padding are not claimed as pre-admitted or measured RSS.
+
+The provisional quadratic fallback is closed: lines 110–125 clamp geometric growth to a terminal capacity that reserves final output and respects callback overlap, instead of repeatedly selecting nextCount near the storage ceiling. Tests use body policy 2N and exact storage H+2N for 600/6,000 one-byte callbacks; they check exact payload/capacity, copied bytes <= 4N for those schedules, bounded accumulation allocations, and denial without extra copy on the next byte. The mixed 3+5-byte test checks H+16 success and H+15 denial before growth. These are specific deterministic work assertions, not a universal 4N claim or a performance benchmark; the author's exploratory counterexample to universal 4N remains preserved.
+
+HTTPS lifecycle assessment
+Lines225–329 enforce single-use startup, locked cancellation/error choice and no session invalidation while a task is being created. Cancellation before read starts clears the buffer and completes the independent join latch; late read throws the latched failure before creating any session. The earlier deadline-preflight cleanup gap is closed at 305–313: the successful claimant releases its unstarted buffer and completes the join. It cannot clear another read invocation's live state.
+
+Started requests cancel their captured task. Task completion produces the locked result and clears the accumulator, then requests finishTasksAndInvalidate. Session/task identities and once-only continuation extraction reject obsolete/repeated callbacks. Both completion and invalidation must be observed; continuation/join signalling is queued behind the completing delegate callback. The queue-tail closure retains only the completion latch and signal, not the request. Framework cancellation/invalidation calls, observers and continuation resumes occur outside the request lock, avoiding inversion with the deadline watchdog. The sender acquires the same result lock after a Void wake-up. Cancellation and deadline are rechecked before success publication.
+
+The immediate weak-nil assumption has been removed. The test keeps immediate logical owner-cleanup verification, then observes an actual deinit event after a scoped strong-owner helper returns, bounded by an independent watchdog. This tests release of the delegate ownership cycle without promising synchronous Foundation/autorelease/async-frame destruction.
+
+Shared close and provisional finding closure
+HTTPS-CLOSE-01 is SOURCE CLOSED on these bytes. JPIPTransport registers each request owner with a unique ID and captured generation before suspension. close retires the generation, captures/cancels owners and clears retired state before its first await. It leaves registry entries until each sender's own defer, so duplicate closes can join the same retiring owners. HTTPS success and error paths reject an obsolete generation before telemetry/path/response publication. Old close performs no shared-state mutation after awaiting; old sender cleanup removes only its own ID. Later requests may use the replacement generation.
+
+JPIPRequestCompletion is an idempotent mutex-protected broadcast. Waiters register or observe finished under the same mutex; finish resumes them outside it. It never consumes the sender's Result. Thus close can await completion independently of transport actor publication. For HTTPS the signal follows task completion/invalidation callback tail. For HTTP the worker callback follows finite I/O and locked result publication; it precedes continuation resume/physical thread return. Neither proves OS-thread exit nor destruction of every result reference retained by a stale sender. Opaque getaddrinfo/system DNS may delay HTTP completion; no universal close-latency guarantee follows.
+
+Tests and remaining boundaries
+New tests cover declared/unknown/single-callback/descriptor admission, exact storage, empty/invalid response, metadata/request preservation, silent absolute deadline, task cancellation/recovery, cancellation on either side of task publication, expired preflight, scripted invalidation/completion orders, one-winner completion/cancellation, deinit, duplicate close of a real silent URLProtocol request with its delegate queue held, close before read startup, and late old success/close around replacement channel publication.
+
+Failure-aware probe.track now wakes barriers if original sends fail before their expected events. The old-success test releases both held gates and joins tasks when replacement fails. The readiness concern is addressed structurally: active-trickle testing waits for actual received body bytes before arming the shared watchdog, and explicitly distinguishes that lifecycle test from the separate read(deadline:) silent integration. Its execution is nevertheless failing, as recorded below. Scripted delegate callbacks prove state-machine order only; the separate actual URLProtocol cases supply callback-path coverage. URLProtocol is not a TLS exchange or independent JPIP peer.
+
+The bounded transport close claim covers HTTP(S) owners registered at entry. It does not add a higher-level client/session generation state machine for work before transport registration or after a response has already returned, nor establish all facade/embedded-server close interleavings. No direct native 3D JPIP, repository WebSocket-extension, combined Part 10+15, full 38-bit Part 2, or multiple transmitted nonempty HT-set external gate is accepted or waived.
+
+Focused native evidence received during review — FAILED, preserved
+work/validation/candidate-focused-09: command filter CodexR3HTTPStreamingTests|CodexR3TransportCloseTests|waveletWholeSampleSymmetricBoundaryCompliance; Apple Swift 6.4 local build completed. Exit 1 after 40.101920208 seconds including build; Swift Testing 22 declarations/3 suites, 21 passed and 1 failed after 2.011 seconds. Failure: sharedWatchdogInterruptsAnAlreadyActiveTrickle, CodexR3HTTPStreamingTests.swift175, readiness error 'HTTPS trickle harness did not become active' after 2.010 seconds. No claim is made that MIME sniffing/coalescing or any other suspected cause is established. Root has assigned targeted diagnosis; no timeout increase or successful rerun is inferred.
+
+The remaining 21 declarations include all new close/publication/pre-start/one-winner/deinit/admission/copy-work tests and the real 120 ms silent deadline. Their individual successes support those narrow paths but do not turn the filtered run into a pass. Result/source-before/source-after, raw streams, byte counts, XML 22/1 and log hash independently verify; source remains unchanged. Log SHA-256: 638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994; raw capture complete, threads joined, no capture errors. Full 09 ordinary/sanitizer/hosted Linux qualification is not established by this receipt.
+
+Evidence identities, before/after manifest and report hash are recorded in independent-https-review-09-source.json. Positive STOP: source review complete for frozen09; native gate remains failed/open, later repair requires its own immutable delta review.

@@ -1,0 +1,171 @@
+{
+  "state": "SCOPED_FOCUSED_RECEIPT_RECONCILED",
+  "at": "2026-10-31T10:30:09.190838+00:00",
+  "source_files": 1857,
+  "declarations": 23,
+  "parameter_declarations": 4,
+  "parameter_argument_starts": 9,
+  "runtime": {
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/expiredDeadlineReleasesUnstartedOwners()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:)": {
+      "status": "passed",
+      "parameter_count": 2
+    },
+    "SwiftJ2K3DTests.R3VolumeRemediationTests/waveletWholeSampleSymmetricBoundaryCompliance()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/headersEmptyBodyStatusAndResponseTypeRemainChecked()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/completionAndCancellationHaveOneWinner(cancelFirst:)": {
+      "status": "passed",
+      "parameter_count": 2
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)": {
+      "status": "passed",
+      "parameter_count": 3
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/repeatedTransportCloseJoinsTheSameSilentHTTPSOwner()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/delegateRejectsOversizedAnnouncedOrUnknownBody(declared:)": {
+      "status": "passed",
+      "parameter_count": 2
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/completedRequestEventuallyReleasesItsDelegateOwnership()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/taskCancellationJoinsAndAllowsFollowingRequest()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/absoluteDeadlineCancelsSilentResponse()": {
+      "status": "passed",
+      "parameter_count": null
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/sharedWatchdogInterruptsAnAlreadyActiveTrickle()": {
+      "status": "passed",
+      "parameter_count": null
+    }
+  },
+  "arguments": {
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/delegateRejectsOversizedAnnouncedOrUnknownBody(declared:)": {
+      "1 arguments declared \u2192 true": 1,
+      "1 arguments declared \u2192 false": 1
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/completionAndCancellationHaveOneWinner(cancelFirst:)": {
+      "1 arguments cancelFirst \u2192 false": 1,
+      "1 arguments cancelFirst \u2192 true": 1
+    },
+    "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:)": {
+      "1 arguments inPublicationGap \u2192 false": 1,
+      "1 arguments inPublicationGap \u2192 true": 1
+    },
+    "SwiftJ2KJPIPTests.CodexR3TransportCloseTests/repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)": {
+      "1 arguments mode \u2192 \"reused\"": 1,
+      "1 arguments mode \u2192 \"fresh\"": 1,
+      "1 arguments mode \u2192 \"retry\"": 1
+    }
+  },
+  "raw_capture_verified": true,
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/report-swift-testing.xml": "4a5eed0bd5efe94bdb9f6a9012cce9bdb71df3ffe58393f3985b26530e1ac54f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/result.json": "1744882af1bfc85dbce99b544999a3badc2c0046d92ffbc429da8cce8f8c7c66",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/source-before.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/source-after.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/native.stdout": "29df7be3386f6e0d838d846274929828da32ab2d4c27d0c5741f4b3892e5eafe",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/native.log": "905c4481e4de441ea97dae1088fa75f8177ddb3570039e616531fc78e56b7ada",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/command.json": "6ea99e1be1983f295b5120603be983eb8da8e4b93724f4a20dd6473c275046fb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-14/native.stderr": "6d4cc5925b8ab820fc715216b7b2826c2dc3bb283685fbbacc40685dfbb1bae9",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/check-focused.py": "3f99f7cf9527a0dd374b02f7af581ef06d93db11925505cb5fba67ccac266743",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14-source.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-08/thread/all.ids": "4d6101a88eacf91f753a004c494e61c00f29c25e69cdc8a951577d5371db04a3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR2VolumeGridTests.swift": "0c2d58db81cb26b69711ac3e5313fd7349deadea6a8b9e355ea043586211827a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR2VolumePixelAccountingTests.swift": "bc8f7f3802f148137585932560440e03bd40078c3632efdb83577dbeed610d7f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3LayerBudgetTests.swift": "b26d47e6c62a4268e9f4c17a188040c477747326aa0b191328479a4b7c0f3f03",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3Part2MarkerTests.swift": "c8a9de037b96a53b9c5e7b2aacc34c6e5db3ddb7f8769ddbab266a09b42e3a90",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3ProgressTests.swift": "1db195a9cadc2088aa765a4720c381c2ac91a6497c0283a65982d61a1bdc4d4e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3ResourceTests.swift": "97e2ea6b3159965d6528c99b028ff3832f35e5be0f707cdeb40b6cb7b519b9d1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift": "18a2ded7459b48405f7bba099a9a7d7948ed1fb6dbb801aacfe534a536955479",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R2VolumeRemediationTests.swift": "78a1510aa0115371ab9ecf383998b9427aa0a758559187361e99a4b49eecdf43",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift": "2dd6de0ce92fbbff261833289c9fd53a88fe48a5c7aeb9ea500e310e46de5b71",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift": "cd26ff026365ce3e3dd912236bdd587f38ea8ba20e9edf2c7885b88f186c912c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift": "1c3852957deb5233ad2f87696d0b6bcef5c7fb3832a40fa1f461da20295332a2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift": "5c9176c73f78ebfcc5d767b068e91cfe924864f367fd120501b790c5ee0ef538",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift": "3eea1370857a4a3caefe24c3da38d480460f60ab1f4899f2bb19d3aaf28dd77e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift": "6393e609054cec2835cc44cd6123829a2c614dea99125a8b608e665149a011e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift": "4d8130bc414abf98d02dbb1ad65c889c510e8bb569d6477429dde14b6ba9f6d6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CLIBreadthAndConsumerTests.swift": "11d07069ea2ef4dcadffa94a7182da08161c157c3bee97908e5e0ad011521486",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CodexR3JPPReassemblyResourceTests.swift": "92b3e8f347f61260a19ec4c04b3964c4057ac5f0deb9ea9f8ab1b37f1c29a9a8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/IndependentR2AuditTests.swift": "c1eec9044e3af903db0d3ad3bef30841c488db6c4ee6d7582300551a77eddb4a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R1RemediationTests.swift": "f12fca3308e302901673ed4266e7b8e75c1d2330b455f9ac12a9f5189cf3dd9a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2CLIExtraSampleOrderingTests.swift": "be9f933e3135e4af9f442fe87d272a65f3345f70cb43cbeaa0777764152a5419",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2ColourAlphaPreservationTests.swift": "f2bfe40b3678fd30d1a1761028f0ffbb9682fae8c1135cdfc461966ccdd2094a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2ICCModelPreservationTests.swift": "8592f2c7913b40057a621a6f4c4811751e3acc56e2f28e221efb8c91a494853f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2LegacyBudgetProbes.swift": "5b667d979bd7712a8775450fd1571f9b5f39452c14b22080cd009af79a74151b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2RemediationTests.swift": "0674a1351166b601a1a651980fa56def857eb40e956e36537f7691bd1e2db75b"
+  },
+  "boundaries": [
+    "This proves only the23 executed focused declarations and9 argument starts.",
+    "The old inventory plus observed XML IDs was used only for source display binding, not final14 discovery.",
+    "Full ordinary, complete sanitizer partitions, release/CLI and independent-peer gates remain separate.",
+    "No native tests, Swift tools, codecs or servers were run by this reviewer."
+  ]
+}

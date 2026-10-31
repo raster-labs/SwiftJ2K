@@ -1,0 +1,198 @@
+// Diagnostic harness only; no SwiftJ2K production source is linked or changed.
+import Foundation
+import Synchronization
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+private struct ProbeCounts: Codable, Sendable {
+    var contentType: String?
+    var submittedCallbacks = 0
+    var submittedBytes = 0
+    var responseCallbacks = 0
+    var receivedCallbacks = 0
+    var receivedBytes = 0
+    var firstResponseSeconds: Double?
+    var firstDataSeconds: Double?
+    var effectiveMIMEType: String?
+    var completionError: String?
+    var completed = false
+    var invalidated = false
+    var elapsedSeconds = 0.0
+}
+
+private final class ProbeScenario: Sendable {
+    let contentType: String?
+    let startedAt = DispatchTime.now().uptimeNanoseconds
+    private let state: Mutex<ProbeCounts>
+
+    init(contentType: String?) {
+        self.contentType = contentType
+        state = Mutex(ProbeCounts(contentType: contentType))
+    }
+
+    private var elapsed: Double {
+        Double(DispatchTime.now().uptimeNanoseconds - startedAt) / 1_000_000_000
+    }
+
+    func submitted(_ count: Int) {
+        state.withLock { $0.submittedCallbacks += 1; $0.submittedBytes += count }
+    }
+
+    func response(_ response: URLResponse) {
+        let now = elapsed
+        state.withLock {
+            $0.responseCallbacks += 1
+            if $0.firstResponseSeconds == nil { $0.firstResponseSeconds = now }
+            $0.effectiveMIMEType = response.mimeType
+        }
+    }
+
+    func received(_ count: Int) {
+        let now = elapsed
+        state.withLock {
+            $0.receivedCallbacks += 1
+            $0.receivedBytes += count
+            if $0.firstDataSeconds == nil { $0.firstDataSeconds = now }
+        }
+    }
+
+    func completed(_ error: (any Error)?) {
+        state.withLock { $0.completed = true; $0.completionError = error.map { String(describing: $0) } }
+    }
+
+    func invalidated() {
+        let now = elapsed
+        state.withLock { $0.invalidated = true; $0.elapsedSeconds = now }
+    }
+
+    func snapshot() -> ProbeCounts { state.withLock { $0 } }
+}
+
+private final class ProbeProtocol: URLProtocol, @unchecked Sendable {
+    private static let scenarios = Mutex<[String: ProbeScenario]>([:])
+    // Instance state and callbacks are confined to queue; registry uses Mutex.
+    private let queue = DispatchQueue(label: "jpip.trickle-delivery-probe.protocol")
+    private var timer: (any DispatchSourceTimer)?
+    private var stopped = false
+
+    static func register(_ scenario: ProbeScenario) -> (URL, URLSessionConfiguration) {
+        let host = UUID().uuidString.lowercased() + ".invalid"
+        scenarios.withLock { $0[host] = scenario }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ProbeProtocol.self]
+        configuration.timeoutIntervalForRequest = 5
+        return (URL(string: "https://\(host)/jpip")!, configuration)
+    }
+
+    static func remove(_ url: URL) { scenarios.withLock { _ = $0.removeValue(forKey: url.host ?? "") } }
+    override class func canInit(with request: URLRequest) -> Bool {
+        scenarios.withLock { $0[request.url?.host ?? ""] != nil }
+    }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        queue.async { [self] in
+            guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+                  let url = request.url else { return }
+            let headers = scenario.contentType.map { ["Content-Type": $0] } ?? [:]
+            guard let response = HTTPURLResponse(url: url, statusCode: 200,
+                httpVersion: "HTTP/1.1", headerFields: headers) else { return }
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            let tick = DispatchSource.makeTimerSource(queue: queue)
+            tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+            tick.setEventHandler { [weak self] in
+                guard let self, !self.stopped else { return }
+                let data = Data([42])
+                scenario.submitted(data.count)
+                self.client?.urlProtocol(self, didLoad: data)
+            }
+            timer = tick
+            tick.resume()
+        }
+    }
+
+    override func stopLoading() {
+        queue.async { [self] in
+            stopped = true
+            timer?.cancel()
+            timer = nil
+        }
+    }
+}
+
+private final class ProbeRequest: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private struct State {
+        var session: URLSession?
+        var task: URLSessionDataTask?
+        var continuation: CheckedContinuation<ProbeCounts, Never>?
+    }
+    // Owned publication and release use Mutex; delegate callbacks are serial.
+    private let state = Mutex(State())
+    private let scenario: ProbeScenario
+    private let timeoutQueue = DispatchQueue(label: "jpip.trickle-delivery-probe.deadline")
+
+    init(scenario: ProbeScenario) { self.scenario = scenario; super.init() }
+
+    func run(url: URL, configuration: URLSessionConfiguration) async -> ProbeCounts {
+        await withCheckedContinuation { signal in
+            let queue = OperationQueue()
+            queue.maxConcurrentOperationCount = 1
+            let session = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
+            let task = session.dataTask(with: URLRequest(url: url))
+            state.withLock { $0.session = session; $0.task = task; $0.continuation = signal }
+            timeoutQueue.asyncAfter(deadline: .now() + .seconds(2)) { [weak self] in
+                self?.state.withLock { $0.task }?.cancel()
+            }
+            task.resume()
+        }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
+        scenario.response(response)
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        scenario.received(data.count)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        scenario.completed(error)
+        session.finishTasksAndInvalidate()
+    }
+
+    func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
+        scenario.invalidated()
+        let signal = state.withLock { value in
+            let signal = value.continuation
+            value.continuation = nil
+            value.task = nil
+            value.session = nil
+            return signal
+        }
+        let counts = scenario.snapshot()
+        session.delegateQueue.addOperation { signal?.resume(returning: counts) }
+    }
+}
+
+@main private struct TrickleDeliveryProbe {
+    static func main() async throws {
+        // Sequential runs avoid comparing two concurrently loaded sessions.
+        // Both use the same two-second timer, data cadence and serial callbacks.
+        var results: [ProbeCounts] = []
+        let contentTypes: [String?] = [nil, "image/jpp-stream"]
+        for contentType in contentTypes {
+            let scenario = ProbeScenario(contentType: contentType)
+            let (url, configuration) = ProbeProtocol.register(scenario)
+            let operation = ProbeRequest(scenario: scenario)
+            results.append(await operation.run(url: url, configuration: configuration))
+            ProbeProtocol.remove(url)
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        print(String(decoding: try encoder.encode(results), as: UTF8.self))
+    }
+}

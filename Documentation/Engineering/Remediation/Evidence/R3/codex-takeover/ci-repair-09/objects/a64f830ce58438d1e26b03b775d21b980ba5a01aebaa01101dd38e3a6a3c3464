@@ -1,0 +1,61 @@
+Candidate15 supplemental evidence preparation — STOPPED, NOT PUBLISHED
+
+The current proposed input is manifest-preparation-02.json. It explicitly pins
+25 completed native receipts, 12 completed paired source/reviews, all seven logs
+from the first failed hosted run, and 234 additional selected receipts. The source
+review and exact frozen15 WebSocket fixture delta are included. Current mutable
+root documentation and draft review files are not pinned.
+
+All completed candidate14 campaigns are retained. Ordinary/release/CLI14 and
+complete sequential partitioned ThreadSanitizer14 have their scoped successful
+receipts, exact thread execution proof and stopped independent native assessment.
+JPIP AddressSanitizer14 remains FAILED with three barrier arguments; ASan14's
+complement remains UNEXECUTED. No address14 execution proof exists or is invented.
+The failure logs, inventories, partial runtime checks and explicit disposition
+remain visible; absence of a sanitizer diagnostic does not turn assertion failure
+into a passing run.
+
+At this selection's cut-off, completed15 result files existed for JPIP ASan15,
+ordinary full15 and ASan inventory15. They were read and pinned, not assumed.
+The completed address inventory's auxiliary IDs/command receipts are also selected.
+The remaining15 native plan entries and final runtime/review decisions are listed
+in pending-inputs-02.json. This manifest is a point-in-time preparation, not a
+final qualification or an instruction to publish incomplete evidence.
+
+Pre-publication requirements are final local native/coverage/reuse decisions,
+stopped final documentation and its independent review, final source/CI identity,
+and root's review of a NEW explicit final manifest under the existing claim with
+all source writers stopped. Initial supplement publication then precedes feature
+commit/push and the subsequent exact-head hosted run. Later hosted job logs,
+retention reconstruction/runtime proofs and PR identity belong separately in
+work/outputs and PR links; they are post-publication pending, not prerequisites
+to the initial supplement. This ordering supersedes ambiguous wording in the
+older14 preparation report; those historical bytes are preserved unchanged.
+
+The reviewed helper is ci-repair-evidence-14/package.py, SHA256
+588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83.
+Root's bounded helper review is included. No helper change or synthetic test rerun
+was needed. Its fixed repository destination remains codex-takeover/ci-repair-09,
+with immutable content-addressed objects and versioned indexes.
+
+Read-only dry-run02 passed: 459 artifact roles, 348 proposed payloads including
+index/README, 16,764,539 bytes and 34 verified prior08 references. Proposed index
+SHA256 is 38825af23ebc405c7cb87652cc5344b751c9484ef434c7b256734629f5b42d81.
+The real supplement directory remained absent and the prior08 index remained
+6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54.
+These are receipt-integrity checks, not native or R3 acceptance.
+
+The separate current CI identity captured by dry-run differs from frozen15:
+contract.yml's observed current hash is e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2,
+while frozen15 records 4e79bfd26401e342233ebf8e6c903d0c0472bcb5e6f50e32c7431556ec59f18f.
+Root was notified. This is point-in-time identity only; no current CI body was
+pinned as supplemental source and no earlier native pass qualifies that change.
+Final publication must use the stopped/reviewed CI identity separately.
+
+Broad environment-after.json and other-native-after.txt remain local-only and
+excluded. Scoped R3 process receipts, raw native streams and source/review hashes
+remain exact. No binaries, build trees or full source snapshots were selected.
+No native compiler/test/codec/server, repository write, commit, push or publication
+was performed by this agent. Earlier manifests, indexes, helper files and failed
+receipts remain unchanged. All five direct peers remain UNEXECUTED/UNWAIVED;
+R3 is NOT_ACCEPTED and R4 stays gated. Positive stop: preparation writes complete.

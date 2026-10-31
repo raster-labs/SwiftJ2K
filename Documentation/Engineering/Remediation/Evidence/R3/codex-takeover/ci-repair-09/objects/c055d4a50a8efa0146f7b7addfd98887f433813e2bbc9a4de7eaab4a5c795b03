@@ -1,0 +1,50 @@
+Candidate14 supplemental evidence preparation — STOPPED, NOT PUBLISHED
+
+Current proposed input: manifest-preparation-02.json. It selects 17 completed
+native run receipts: all selected09–13 successes/failures plus focused/full/
+release/CLI14. It retains 9 completed historical source/review pairs, all seven
+logs and metadata/review for hosted failure 41186617163 attempt 1, diagnostic
+sources/patches/helpers, raw native streams/XML and exact snapshot identities.
+The first failed interpreter probe and all failed ordinary/diagnostic runs remain
+failed. Only changed source/test files are included; no full snapshots, build
+outputs or executable binaries are selected.
+
+The completed14 receipt selection is a point-in-time preparation. Sanitizer
+inventories/partitions, final independent14 source/runtime/coverage decisions,
+updated documentation review, and the subsequent exact-head hosted receipts
+remain required. pending-inputs-02.json lists those explicitly. Use a NEW final
+manifest when root has the remaining completed evidence; never silently convert
+pending entries to passes or overwrite earlier manifests/indexes.
+
+The original09 helper rejected legitimate native build-run receipt directory
+names. dry-run-01.* preserves that failure. A separate14 helper narrowly permits
+only direct named receipt leaves under work/validation/<run-label>, preserving
+all completion/hash/source/XML checks and actual/nested build/cache exclusions.
+The original helper is unchanged. helper-fix-report.txt and its source receipt
+explain the delta. All 24 synthetic tests passed, including six new boundary
+cases. Root must independently review this helper delta before publication.
+
+Read-only dry-run02 succeeded: 318 artifact roles, 250 proposed payloads including
+index/README, 11,811,069 bytes and 23 verified prior08 object references. Its proposed
+immutable index digest is 266f70cced26f097d135abf54eff47eef0f4dd94196bb8adce08145a413a62f7.
+The real supplement directory remained absent before/after dry-run; prior08 index
+stayed 6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54.
+These are packaging-integrity checks, not validation or acceptance conclusions.
+
+The output destination intentionally remains the fixed ci-repair-09 directory
+specified by the original helper design. Only the input manifest/helper version
+is14. Publication is root-only, under its existing exclusive claim and after all
+source writers stop; the helper flag is an acknowledgement, not claim acquisition.
+No publication, Git/network activity, native compiler/test/codec/server execution,
+or repository/source edits were performed by this preparation agent. Synthetic
+fixtures existed only under this work directory and were removed.
+
+Per root's scope correction, broad environment-after.json and other-native-after.txt
+remain local only and are excluded from revised02. The unexecuted initial01
+manifest is local failure history and must not be used for publication. Scoped
+R3 process-tree/marker receipts and cautious independent diagnostic conclusions
+are retained. Raw native test streams remain exact and unmodified.
+
+All five direct peer gates remain UNEXECUTED/UNWAIVED. R3 is NOT_ACCEPTED and R4
+remains gated. Positive stop: all preparation writes are complete; no native
+ownership or running process remains with this agent.

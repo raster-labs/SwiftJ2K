@@ -1,0 +1,20 @@
+Candidate14 supplemental evidence preparation
+
+Use the versioned helper in this directory after independent review of its
+narrow receipt-path correction; the original09 helper and published08 package
+remain immutable. The final destination is intentionally still ci-repair-09.
+
+Read-only verification:
+  python3 work/ci-repair-evidence-14/package.py work/ci-repair-evidence-14/manifest-preparation-02.json
+
+Do not publish a preparatory manifest. Root alone may prepare a NEW final manifest
+with all completed gates/reviews and publish under its existing exclusive claim,
+after all source writers stop:
+  python3 work/ci-repair-evidence-14/package.py PATH_TO_REVIEWED_FINAL_MANIFEST --publish --writers-stopped
+
+Keep every prior manifest/index immutable. See the original09 USAGE for the
+unchanged schema, receipt requirements, identity scope and acceptance boundaries.
+The initial01 manifest/dry-run remain local failure history; revised02 excludes
+broad environment and unrelated-project process inventory. Pending inputs are
+listed separately in pending-inputs-02.json and must not be silently treated as
+passes. No merge, release or R4 activation follows from packaging.

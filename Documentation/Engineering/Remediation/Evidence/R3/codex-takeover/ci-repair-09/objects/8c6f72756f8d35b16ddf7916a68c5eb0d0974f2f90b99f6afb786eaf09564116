@@ -1,0 +1,13 @@
+{
+  "state": "DIAGNOSTIC_INSTRUMENTATION_ONLY",
+  "created_at": "2026-10-31T10:02:10.510839+00:00",
+  "base": "candidate-snapshot-10",
+  "changed_inputs": [
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift",
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift"
+  ],
+  "files": 1858,
+  "purpose": "Full ordinary concurrency phase attribution; timing instrumentation can perturb scheduling. Not final qualification."
+}

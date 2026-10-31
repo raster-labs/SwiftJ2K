@@ -11,12 +11,14 @@ import SwiftJ2K
 /// The continuation carries no result references and supplies only a wake-up.
 package enum JPIPBlockingWorker {
     package static func run<Value: Sendable>(
+        onCompletion: (@Sendable () -> Void)? = nil,
         _ operation: @escaping @Sendable () throws -> Value
     ) async throws -> Value {
         let handoff = JPIPWorkerHandoff<Value>()
         await withCheckedContinuation { (completion: CheckedContinuation<Void, Never>) in
             Thread.detachNewThread {
                 handoff.publish(Result(catching: operation))
+                onCompletion?()
                 completion.resume()
             }
         }

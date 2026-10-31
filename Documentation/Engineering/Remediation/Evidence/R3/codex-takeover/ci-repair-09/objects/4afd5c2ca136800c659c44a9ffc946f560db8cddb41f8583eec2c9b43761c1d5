@@ -1,0 +1,86 @@
+{
+  "state": "PREPARATION_ONLY_NOT_FOR_FINAL_PUBLICATION",
+  "prepared_at": "2026-10-31T10:49:04.833439+00:00",
+  "candidate": "candidate-snapshot-15",
+  "reviewed_packager": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py",
+    "sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83"
+  },
+  "packager_root_review": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/root-helper-review-14.json",
+    "sha256": "bb98daef4418b8cc526e476d23f168e8dc03f33e3e19d8abd95087b034e5eff6"
+  },
+  "completed_native_selected": [
+    "candidate-asan-inventory-14",
+    "candidate-asan-inventory-15",
+    "candidate-cli-09",
+    "candidate-cli-14",
+    "candidate-complement-tsan-14",
+    "candidate-focused-09",
+    "candidate-focused-10",
+    "candidate-focused-14",
+    "candidate-full-10",
+    "candidate-full-14",
+    "candidate-full-15",
+    "candidate-jpip-asan-14",
+    "candidate-jpip-asan-15",
+    "candidate-jpip-tsan-14",
+    "candidate-release-build-09",
+    "candidate-release-build-14",
+    "candidate-tsan-inventory-14",
+    "diagnostic-https-full-11",
+    "diagnostic-https-full-12",
+    "diagnostic-sampled-full-13",
+    "foundation-queue-policy-13",
+    "queue-policy-build-13",
+    "queue-policy-run-13",
+    "trickle-probe-build-10",
+    "trickle-probe-run-10"
+  ],
+  "completed15_receipts_observed": [
+    "candidate-jpip-asan-15",
+    "candidate-full-15",
+    "candidate-asan-inventory-15"
+  ],
+  "candidate14_disposition": {
+    "ordinary_release_CLI": "Source-scoped pass; exact receipts and independent review retained.",
+    "thread_sanitizer": "Complete sequential partitioned coverage; exact thread14 execution proof retained.",
+    "jpip_address_sanitizer": "FAILED: three WebSocket barrier arguments; no pass inferred from absent sanitizer diagnostics.",
+    "address_complement": "UNEXECUTED; no completed receipt or address14 execution proof exists."
+  },
+  "prepublication_pending": {
+    "native15": [
+      "candidate-complement-asan-15",
+      "candidate-tsan-inventory-15",
+      "candidate-jpip-tsan-15",
+      "candidate-complement-tsan-15"
+    ],
+    "local_evidence": [
+      "Final15 complete ordinary and both complete sanitizer partition execution/argument proofs.",
+      "Independent final15 native/runtime/coverage assessment and root scoped local gate decision.",
+      "Release/CLI14 carry-forward to15 only with exact production/package/scripts/fixtures and artifact/report proof.",
+      "Stopped final capability/status documentation and independent documentation review; current root drafts are mutable and unpinned.",
+      "Final source/CI identities and final explicit manifest review by root under its existing claim and stopped writers."
+    ]
+  },
+  "postpublication_pending": {
+    "order": "Initial reviewed supplement publication precedes feature commit/push and the subsequent exact-head hosted run.",
+    "evidence": [
+      "Published head/tree/base/tested-merge identity and PR links.",
+      "Subsequent hosted run job metadata and every exact raw job log.",
+      "Hosted retention reconstruction and exact runtime/declaration/argument coverage assessment."
+    ],
+    "storage": "Retain later hosted receipts separately in work/outputs and PR links; they are not prerequisites to the initial supplement publication."
+  },
+  "excluded_local_only": [
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full-concurrency-diagnosis-12/environment-after.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full-concurrency-diagnosis-12/other-native-after.txt"
+  ],
+  "mutable_documentation": "No current root documentation content or draft review directory is pinned here.",
+  "external_gates": {
+    "state": "UNEXECUTED_UNWAIVED",
+    "R3": "NOT_ACCEPTED",
+    "R4": "GATED"
+  },
+  "publication": "Root only; no native, repository publication, commit or push by this preparation agent."
+}

@@ -56,9 +56,9 @@ struct CodexR3WebSocketLifecycleTests {
                 return result
             }
             oldRequest = request
-            try await eventually { peer.firstRequestReceived }
+            try await eventually("stale cleanup \(scenario): first request received") { peer.firstRequestReceived }
             if scenario == .cancellation { request.cancel() }
-            try await eventually { await probe.isParked }
+            try await eventually("stale cleanup \(scenario): old cleanup parked") { await probe.isParked }
             let oldResult = await request.value
             switch scenario {
             case .timeout: #expect(oldResult == .limited)
@@ -71,9 +71,9 @@ struct CodexR3WebSocketLifecycleTests {
             reconnect = next
             // B has sent its HTTP request and installed a fresh read budget; its
             // peer deliberately withholds 101 while A's old callback is released.
-            try await eventually { peer.secondHandshakeParked }
+            try await eventually("stale cleanup \(scenario): replacement handshake parked") { peer.secondHandshakeParked }
             await probe.release()
-            try await eventually { await probe.cleanupAcknowledged }
+            try await eventually("stale cleanup \(scenario): old cleanup acknowledged") { await probe.cleanupAcknowledged }
             peer.releaseSecondHandshake()
             try await next.value
             let response = try await transport.sendRequest(JPIPRequest(target: "replacement.j2k"),
@@ -82,7 +82,7 @@ struct CodexR3WebSocketLifecycleTests {
             #expect(response.data == Data([23]))
             #expect(await transport.pendingRequestCount == 0)
             #expect(completions.withLock { $0 } == 1)
-            try await eventually { await probe.readerCloseAcknowledged }
+            try await eventually("stale cleanup \(scenario): old reader close acknowledged") { await probe.readerCloseAcknowledged }
         } catch {
             await probe.release()
             peer.releaseSecondHandshake()
@@ -92,12 +92,12 @@ struct CodexR3WebSocketLifecycleTests {
             _ = await oldRequest?.value
             _ = try? await reconnect?.value
             peer.close()
-            try? await eventually { peer.isFinished }
+            try? await eventually("stale cleanup \(scenario): peer workers stopped after failure") { peer.isFinished }
             throw error
         }
         await transport.disconnect()
         peer.close()
-        try await eventually { peer.isFinished }
+        try await eventually("stale cleanup \(scenario): peer workers stopped") { peer.isFinished }
     }
 
     @Test(arguments: [false, true])
@@ -112,7 +112,7 @@ struct CodexR3WebSocketLifecycleTests {
         do {
             // A's finite handshake worker has returned success or failure, but
             // its result is held before mutating connection state.
-            try await eventually { await probe.isParked }
+            try await eventually("obsolete handshake rejected=\(rejected): outcome parked") { await probe.isParked }
             await transport.disconnect()
             try await transport.connect(deadline: ContinuousClock.now + .seconds(10))
             let before = try await transport.sendRequest(JPIPRequest(target: "before.j2k"),
@@ -134,24 +134,24 @@ struct CodexR3WebSocketLifecycleTests {
             await transport.disconnect()
             _ = try? await oldConnect.value
             peer.close()
-            try? await eventually { peer.isFinished }
+            try? await eventually("obsolete handshake rejected=\(rejected): peer workers stopped after failure") { peer.isFinished }
             throw error
         }
         await transport.disconnect()
         peer.close()
-        try await eventually { peer.isFinished }
+        try await eventually("obsolete handshake rejected=\(rejected): peer workers stopped") { peer.isFinished }
     }
 
-    private func eventually(_ condition: @Sendable () async -> Bool) async throws {
+    private func eventually(_ phase: String, _ condition: @Sendable () async -> Bool) async throws {
         let deadline = ContinuousClock.now + .seconds(2)
         while !(await condition()), ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(5))
         }
-        guard await condition() else { throw LifecycleTestError.barrierTimedOut }
+        guard await condition() else { throw LifecycleTestError.barrierTimedOut(phase: phase) }
     }
 }
 
-private enum LifecycleTestError: Error { case barrierTimedOut }
+private enum LifecycleTestError: Error { case barrierTimedOut(phase: String) }
 
 /// A cooperative barrier: waiting releases the actor and never blocks a pool thread.
 private actor LifecycleProbe {
@@ -222,7 +222,9 @@ private final class LifecyclePeer: @unchecked Sendable {
         Thread.detachNewThread {
             defer { peer.state.withLock { $0.workers -= 1 } }
             while peer.listener.isOpen {
-                guard let connection = try? peer.listener.acceptConnection(timeoutSeconds: 1) else { continue }
+                // This timeout belongs to accepted sockets, not listener polling.
+                // Explicit shutdown and worker completion govern the held peer lifetime.
+                guard let connection = try? peer.listener.acceptConnection(timeoutSeconds: 0) else { continue }
                 let index = peer.state.withLock { state -> Int? in
                     guard !state.closed else { return nil }
                     state.connections.append(connection)

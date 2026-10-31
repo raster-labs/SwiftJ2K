@@ -1,0 +1,37 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "baseline": "work/candidate-snapshot-10",
+  "files": {
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+      "before_sha256": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+      "sha256": "20936f356b36f11c1249b686973dc35b2e26cd456307b12a9c9363f11badce46",
+      "bytes": 2736,
+      "timing_and_limit_expressions": "identical",
+      "old_test_annotations": "preserved"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "before_sha256": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "bytes": 30185,
+      "timing_and_limit_expressions": "identical",
+      "old_test_annotations": "preserved"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+      "before_sha256": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+      "sha256": "62d657e80faa4a7fc276c68cb45c8d6da1b2b3813ec2abcab3c5bfd8702c5390",
+      "bytes": 15067,
+      "timing_and_limit_expressions": "identical",
+      "old_test_annotations": "preserved"
+    }
+  },
+  "delta_sha256": "178f694a9f30b7a4be890ef3f1a45e87d962e02ceabaa7bfe9ee25c80461bd17",
+  "production_files_unchanged": [
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift",
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift"
+  ],
+  "scope": "Only two established test-proof defects; no scheduling repair",
+  "native_execution": "NONE; root owns compile/test/servers",
+  "pre09_tests": "untouched; all three edited paths were introduced after frozen08"
+}

@@ -1,0 +1,11 @@
+Provisional independent TCP close delta assessment
+
+The captured registry/generation/owner changes address R3-TCP-CLOSE-01 at the source level. No new blocking TCP source defect was found in this bounded review. This is not final frozen-source acceptance or runtime proof.
+
+The owner is registered before the first suspension. close retires the shared request generation before awaiting anything, snapshots and cancels old owners, closes the idle socket, clears shared path/accounting, then joins captured completions. It makes no shared-state writes after those awaits. A sender removes only its own UUID. A resumed success closes its captured survivor and throws before publishing receive telemetry, connection, or negotiated path when its generation was retired.
+
+JPIPHTTPRequestOwner serialises start/cancel state; cancellation before beginWorker marks completion but permanently prevents worker startup. Once started, acknowledgement waits for finite I/O and the existing locked result publication. Serialised token cancellation prevents a second cancellation acknowledgement from preceding an earlier captured socket close. The completion signal intentionally precedes the sender continuation and OS thread tail. It does not promise every result buffer has been released or the worker OS thread has exited. No hard hostname-resolution cancellation bound is claimed.
+
+New deterministic tests cover fresh connection, detached reused socket, stale-idle retry, duplicate closes joining a held worker, cancellation before worker startup, and obsolete response/close cleanup alongside an allowed fresh generation. Test gates use cooperative continuations except the completion gate on the dedicated finite I/O worker. None uses Task.cancel to simulate transport.close. A public JPIPClient.close/JPIPStreamingSession.close test while initial cnew is held was requested as a remaining coverage improvement because the documented close chain includes client session publication.
+
+Existing transport reuse, retry and cancellation paths remain structurally present. Native regressions, sanitizers, hosted portability and a stable frozen09 diff review remain the coordinator's work. Only these review artifacts were written; no source edits or native commands. Positive stop.

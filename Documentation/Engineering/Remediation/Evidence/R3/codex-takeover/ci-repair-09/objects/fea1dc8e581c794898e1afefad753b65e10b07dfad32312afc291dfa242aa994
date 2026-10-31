@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Create a new explicit preparatory manifest; no native or repository writes."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+WORKSPACE = WORK.parent
+BASE = WORK / 'ci-repair-evidence-14/manifest-preparation-02.json'
+HELPER = WORK / 'ci-repair-evidence-14/package.py'
+REVIEW = WORK / 'ci-repair-evidence-14/root-helper-review-14.json'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+review = json.loads(REVIEW.read_text())
+assert review['state'] == 'REVIEWED_BOUNDED_HELPER_CHANGE'
+assert review['inputs'][str(HELPER)] == sha(HELPER)
+manifest = json.loads(BASE.read_text())
+manifest['candidate_label'] = ('Candidate15 preparation: all completed14 receipts retained, '
+    'including failed JPIP AddressSanitizer14 and unexecuted ASan14 complement; '
+    'successor15 native/local final reviews incomplete, subsequent exact-head hosted CI post-publication pending')
+
+selected_runs = {Path(e['result']['path']).parent.name for e in manifest['native_runs']}
+def add_run(label):
+    if label in selected_runs:
+        return
+    directory = WORK / 'validation' / label
+    result = json.loads((directory / 'result.json').read_text())
+    assert result.get('finished_at') and type(result.get('exit_code')) is int, label
+    entry = {key: ref(directory / filename) for key, filename in (
+        ('result', 'result.json'), ('command', 'command.json'),
+        ('before', 'source-before.json'), ('after', 'source-after.json'))}
+    entry['reports'] = [ref(p) for p in sorted(directory.rglob('*.xml'))]
+    entry['diagnostic_only'] = False
+    manifest['native_runs'].append(entry)
+    selected_runs.add(label)
+
+for label in ['candidate-tsan-inventory-14', 'candidate-jpip-tsan-14',
+              'candidate-complement-tsan-14', 'candidate-asan-inventory-14',
+              'candidate-jpip-asan-14']:
+    add_run(label)
+assert not (WORK / 'validation/candidate-complement-asan-14/result.json').exists()
+assert not (WORK / 'r3-sanitizer-execution-proof-address-14.json').exists()
+
+plan15 = json.loads((WORK / 'planned-native-sequence-15.json').read_text())
+completed15, pending15 = [], []
+for gate in plan15['gates']:
+    label = gate['label']
+    result = WORK / 'validation' / label / 'result.json'
+    if result.exists():
+        add_run(label)
+        completed15.append(label)
+    else:
+        pending15.append(label)
+
+for report, source in [
+    ('independent-https-review-14.txt', 'independent-https-review-14-source.json'),
+    ('independent-final-native-review-14.txt', 'independent-final-native-review-14-source.json'),
+    ('independent-jpip-review-15.txt', 'independent-jpip-review-15-source.json'),
+]:
+    manifest['reviews'].append({'report': ref(WORK / report), 'source': ref(WORK / source),
+                               'completed': True, 'supporting': []})
+
+extra = [WORK / name for name in [
+    'ci-repair-evidence-14/root-helper-review-14.json',
+    'ci-repair-evidence-14/dry-run-02.json',
+    'ci-repair-evidence-14/dry-run-02.stdout',
+    'ci-repair-evidence-14/dry-run-02.stderr',
+    'ci-repair-evidence-14/report.txt', 'ci-repair-evidence-14/source.json',
+    'independent-final-native-check-14.py',
+    'independent-final-native-review-14-initial.json',
+    'independent-final-native14-initial-check.stdout',
+    'independent-asan-failure-14.json',
+    'r3-sanitizer-execution-proof-thread-14.json',
+    'https-full10-independent-diagnosis/candidate14-source-before.json',
+    'https-full10-independent-diagnosis/source15-before.json',
+    'candidate-snapshot-15-source.json', 'candidate-snapshot-15-provenance.json',
+    'common-contract-identity-15.json', 'final-implementation-identity-15.json',
+    'performance-core-identity-15.json',
+    'planned-native-sequence-15.json', 'run-native-sequence-15.py',
+    'candidate-snapshot-15/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift',
+]]
+
+# Only named stopped evidence directories are expanded. The output manifest is
+# fully explicit and pinned; no future files are silently collected at publish.
+suffixes = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+            '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
+for name in ['runtime-coverage-14', 'sanitizer-inventory-14', 'websocket-peer-lifetime-15']:
+    for path in sorted((WORK / name).rglob('*')):
+        if path.is_file() and '__pycache__' not in path.parts:
+            assert path.suffix.lower() in suffixes, path
+            extra.append(path)
+
+already = {item['file']['path'] for item in manifest['supplemental']}
+for path in sorted(set(extra)):
+    if str(path) not in already:
+        manifest['supplemental'].append({'file': ref(path),
+            'role': 'supplement-' + path.relative_to(WORK).as_posix().replace('/', '--')})
+        already.add(str(path))
+
+# These receipts contain unrelated application/project inventory and stay local.
+local_only = {
+    str(WORK / 'https-full-concurrency-diagnosis-12/environment-after.json'),
+    str(WORK / 'https-full-concurrency-diagnosis-12/other-native-after.txt'),
+}
+assert not any(item['file']['path'] in local_only for item in manifest['supplemental'])
+assert not any('/work/SwiftJ2K/Documentation/' in item['file']['path']
+               for item in manifest['supplemental'])
+assert not any('/documentation-review-14/' in item['file']['path']
+               for item in manifest['supplemental'])
+
+pending = {
+    'state': 'PREPARATION_ONLY_NOT_FOR_FINAL_PUBLICATION',
+    'prepared_at': datetime.now(timezone.utc).isoformat(),
+    'candidate': 'candidate-snapshot-15',
+    'reviewed_packager': ref(HELPER), 'packager_root_review': ref(REVIEW),
+    'completed_native_selected': sorted(selected_runs),
+    'completed15_receipts_observed': completed15,
+    'candidate14_disposition': {
+        'ordinary_release_CLI': 'Source-scoped pass; exact receipts and independent review retained.',
+        'thread_sanitizer': 'Complete sequential partitioned coverage; exact thread14 execution proof retained.',
+        'jpip_address_sanitizer': 'FAILED: three WebSocket barrier arguments; no pass inferred from absent sanitizer diagnostics.',
+        'address_complement': 'UNEXECUTED; no completed receipt or address14 execution proof exists.',
+    },
+    'prepublication_pending': {
+        'native15': pending15,
+        'local_evidence': [
+            'Final15 complete ordinary and both complete sanitizer partition execution/argument proofs.',
+            'Independent final15 native/runtime/coverage assessment and root scoped local gate decision.',
+            'Release/CLI14 carry-forward to15 only with exact production/package/scripts/fixtures and artifact/report proof.',
+            'Stopped final capability/status documentation and independent documentation review; current root drafts are mutable and unpinned.',
+            'Final source/CI identities and final explicit manifest review by root under its existing claim and stopped writers.',
+        ],
+    },
+    'postpublication_pending': {
+        'order': 'Initial reviewed supplement publication precedes feature commit/push and the subsequent exact-head hosted run.',
+        'evidence': [
+            'Published head/tree/base/tested-merge identity and PR links.',
+            'Subsequent hosted run job metadata and every exact raw job log.',
+            'Hosted retention reconstruction and exact runtime/declaration/argument coverage assessment.',
+        ],
+        'storage': 'Retain later hosted receipts separately in work/outputs and PR links; they are not prerequisites to the initial supplement publication.',
+    },
+    'excluded_local_only': sorted(local_only),
+    'mutable_documentation': 'No current root documentation content or draft review directory is pinned here.',
+    'external_gates': {'state': 'UNEXECUTED_UNWAIVED', 'R3': 'NOT_ACCEPTED', 'R4': 'GATED'},
+    'publication': 'Root only; no native, repository publication, commit or push by this preparation agent.',
+}
+save('manifest-preparation-01.json', manifest)
+save('pending-inputs-01.json', pending)
+save('selection-01.json', {
+    'state': 'EXPLICIT_POINT_IN_TIME_PREPARATORY_SELECTION',
+    'base_manifest': ref(BASE), 'manifest': ref(OUT / 'manifest-preparation-01.json'),
+    'generator': ref(Path(__file__)), 'reviewed_packager': ref(HELPER),
+    'native_runs': len(manifest['native_runs']), 'review_pairs': len(manifest['reviews']),
+    'hosted_runs': len(manifest['hosted_runs']), 'supplemental_receipts': len(manifest['supplemental']),
+    'completed15_observed': completed15, 'pending15': pending15,
+})
+print(json.dumps({'native_runs': len(manifest['native_runs']), 'review_pairs': len(manifest['reviews']),
+    'supplemental_receipts': len(manifest['supplemental']),
+    'completed15_observed': completed15, 'pending15': pending15}, indent=2))

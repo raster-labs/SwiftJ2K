@@ -1,0 +1,46 @@
+{
+  "scope": "Independent diagnostic12 overlay and completed native phase evidence review; no native or source edits",
+  "source_root": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12",
+  "manifest_sha256": "eb5fd36fc93d8809b05cfe8dea40342fc6308d43aa70a4a6fd33efdbde43a101",
+  "verified_inputs_before_and_after": 1858,
+  "changed_inputs": [],
+  "source_before_receipt_sha256": "38d271fe31bcc3766cc0f438ca70ce6f139225729169328433234ea2a0c2adaa",
+  "reviewed_overlay": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+      "before": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113",
+      "after": "acdcc892d063f22543cdd69d53cf9f90aeb1a7291da3bb19e4a1cd4ce711b6dc"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "before": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8",
+      "after": "0a6fb4f0579e110fc525f80675048dd69d8a44e85741fa31e344e905c4c24928"
+    }
+  },
+  "additional_reviewed_source": {
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d"
+  },
+  "analysis_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full10-independent-diagnosis/diagnostic12-analysis.json",
+  "analysis_sha256": "c410cd30a0baccd029a7e807464a90d0de605514fa0e3adfecb6310aed9dfb52",
+  "report_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-12.txt",
+  "report_sha256": "2283d36ee76a79b098d06245402b50723562db07b7063637f6022343b895f4d2",
+  "native_evidence_sha256": {
+    "work/validation/diagnostic-https-full-12/command.json": "72cbf98d337a2448d6268a15d1fd3db6a41964af3dd65bc9ed334c094a17bcf1",
+    "work/validation/diagnostic-https-full-12/native.log": "7771302c1f4eaa91b3ad6cfe3fdfca68138d1a163fba512e3ac710055ba46d91",
+    "work/validation/diagnostic-https-full-12/native.stderr": "390390c98a091013aae251c6877d824cc8cbdbb5e4d437a8e9e131aad97a1e7f",
+    "work/validation/diagnostic-https-full-12/native.stdout": "6b3fcf3080197b0d6967dee44a4b005e8f5e0c9d663df8f9ac42d481885c4af2",
+    "work/validation/diagnostic-https-full-12/report-swift-testing.xml": "5a7a403f605bb890261108c3bacfc0df334059a0222610e1fe9a7961890411cb",
+    "work/validation/diagnostic-https-full-12/result.json": "f3bbb85699d1403a58e792833ba8e082f429e5cb7c433250910da09769d0005c",
+    "work/validation/diagnostic-https-full-12/source-after.json": "536aca6f8402aab7c89d815bf6e33d3f5a3104212fe58c6401fcd6cdc7eb4d03",
+    "work/validation/diagnostic-https-full-12/source-before.json": "536aca6f8402aab7c89d815bf6e33d3f5a3104212fe58c6401fcd6cdc7eb4d03"
+  },
+  "post_run_environment_evidence_sha256": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full-concurrency-diagnosis-12/environment-after.json": "cf867a8ab21cee6c526e30834a5992347962c936e3bef1b32b60de4da780bddd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full-concurrency-diagnosis-12/other-native-after.txt": "3bc6af8ac383adeb17bd537ba8a3da8b13e7c20173924e8416aba88ebb349a6b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-full-concurrency-diagnosis-12/active-processes.txt": "e1d21080cf1e6974106f343f86cb1915b8dd76e47163d63dda03a4e2e5d5b8d4"
+  },
+  "trace_records": 503,
+  "observed_canary_pairs": 28,
+  "xml_declarations": 323,
+  "xml_failed_declarations": 10,
+  "raw_issues": 13,
+  "acceptance": "Diagnostic12 and original full10 failed/unwaived; no whole-R3 acceptance"
+}

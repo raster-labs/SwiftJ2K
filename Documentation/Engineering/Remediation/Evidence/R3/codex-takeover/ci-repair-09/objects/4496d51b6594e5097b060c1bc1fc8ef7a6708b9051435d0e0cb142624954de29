@@ -1,0 +1,113 @@
+from pathlib import Path
+import hashlib,json,re
+base=Path(__file__).resolve().parent
+source=base.parent/'SwiftJ2K'
+overlay=base/'overlay'
+manifest={}
+def save(path,before,after):
+    p=overlay/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(after)
+    manifest[path]={'base_sha256':hashlib.sha256(before.encode()).hexdigest() if before else None,'instrumented_sha256':hashlib.sha256(after.encode()).hexdigest()}
+def replace(text,old,new,count=1):
+    assert text.count(old)==count,(old,text.count(old),count)
+    return text.replace(old,new)
+helper='''// DIAGNOSTIC OVERLAY ONLY. Do not merge this phase tracer.
+import Foundation
+import Synchronization
+
+package final class JPIPHTTPSPhaseTrace: Sendable {
+    private struct Event: Sendable { let stamp: UInt64; let owner: String; let event: String }
+    private final class Store: Sendable { let events = Mutex<[Event]>([]) }
+    private static let stores = Mutex<[Store]>([])
+    private static let correlation = Store()
+    private static let output = Mutex(())
+    private let store = Store()
+    private let once = Mutex<Set<String>>([])
+    package let id = UUID().uuidString
+    package init() { Self.stores.withLock { $0.append(store) } }
+    package static func record(owner: String, event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        correlation.events.withLock { $0.append(Event(stamp: stamp, owner: owner, event: event)) }
+    }
+    package static func flush() {
+        let captures = [correlation] + stores.withLock { $0 }
+        var completed: [Event] = []
+        for capture in captures {
+            completed += capture.events.withLock { stored in
+                let result = stored
+                stored = []
+                return result
+            }
+        }
+        output.withLock { _ in
+            for item in completed {
+                print("HTTPS_PHASE ns=\(item.stamp) owner=\(item.owner) event=\(item.event)")
+            }
+        }
+    }
+    package func mark(_ event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        store.events.withLock { $0.append(Event(stamp: stamp, owner: id, event: event)) }
+    }
+    package func first(_ event: String) {
+        if once.withLock({ $0.insert(event).inserted }) { mark(event) }
+    }
+}
+'''
+save('Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift','',helper)
+p='Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift';old=(source/p).read_text();s=old
+s=replace(s,'    private let lock = NSLock()','    package let diagnosticTrace = JPIPHTTPSPhaseTrace()\n    private let lock = NSLock()')
+s=replace(s,'        try claimStart()','        diagnosticTrace.mark("read-entry host=\\(request.url?.host ?? "nil") remaining=\\(String(describing: deadline.map { ContinuousClock.now.duration(to: $0) }))")\n        defer { diagnosticTrace.mark("read-exit"); JPIPHTTPSPhaseTrace.flush() }\n        try claimStart()')
+s=replace(s,'        do {\n            watchdog =','        do {\n            diagnosticTrace.mark("deadline-preflight")\n            watchdog =')
+s=replace(s,'                    self?.cancel(CodecError','                    self?.diagnosticTrace.mark("watchdog-fired")\n                    self?.cancel(CodecError')
+s=replace(s,'        } catch {\n            discardBeforeSessionCreation()','        } catch {\n            diagnosticTrace.mark("deadline-preflight-error \\(error)")\n            discardBeforeSessionCreation()')
+s=replace(s,'            await withCheckedContinuation { signal in','            await withCheckedContinuation { signal in\n                diagnosticTrace.mark("continuation-entered")')
+s=replace(s,'        defer { watchdog?.cancel() }','        diagnosticTrace.mark("watchdog-scheduled-if-deadline")\n        defer { watchdog?.cancel() }')
+s=replace(s,'        let completed = try takeResult()','        diagnosticTrace.mark("caller-woke")\n        let completed = try takeResult()\n        diagnosticTrace.mark("result-taken")')
+s=replace(s,'        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }','        diagnosticTrace.mark("deadline-final-check")\n        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }\n        diagnosticTrace.mark("read-return")')
+s=replace(s,'        lock.lock()\n        continuation = signal','        diagnosticTrace.mark("start-entry")\n        lock.lock()\n        continuation = signal')
+s=replace(s,'        let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)','        diagnosticTrace.mark("session-create-before")\n        let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)\n        diagnosticTrace.mark("session-created")')
+s=replace(s,'        let created = owner.dataTask(with: request)','        diagnosticTrace.mark("task-create-before")\n        let created = owner.dataTask(with: request)')
+s=replace(s,'        afterTaskPublication?(owner, created)','        diagnosticTrace.mark("task-published")\n        afterTaskPublication?(owner, created)\n        diagnosticTrace.mark("publication-hook-returned")')
+s=replace(s,'        created.resume()','        diagnosticTrace.mark("task-resume-before")\n        created.resume()\n        diagnosticTrace.mark("task-resume-after")')
+s=replace(s,'    package func cancel(_ error: any Error = CancellationError()) {','    package func cancel(_ error: any Error = CancellationError()) {\n        diagnosticTrace.mark("cancel-entry \\(error)")')
+s=replace(s,'completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {','completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {\n        diagnosticTrace.mark("response-callback-entry")')
+s=replace(s,'        completionHandler(allow ? .allow : .cancel)','        diagnosticTrace.mark("response-callback-disposition allow=\\(allow)")\n        completionHandler(allow ? .allow : .cancel)')
+s=replace(s,'public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {','public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {\n        diagnosticTrace.first("body-first-entry")')
+s=replace(s,'public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {','public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {\n        diagnosticTrace.mark("task-completion-entry \\(String(describing: error))")')
+s=replace(s,'public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {','public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {\n        diagnosticTrace.mark("session-invalidation-entry")')
+s=replace(s,'        session.delegateQueue.addOperation { [completion] in','        diagnosticTrace.mark("tail-enqueued")\n        session.delegateQueue.addOperation { [completion, diagnosticTrace] in\n            diagnosticTrace.mark("tail-executing")')
+s=replace(s,'            catch { failure = error }','            catch { diagnosticTrace.mark("delegate-admission-error \(error)"); failure = error }',count=2)
+save(p,old,s)
+p='Sources/SwiftJ2KJPIP/JPIPTransport.swift';old=(source/p).read_text();s=old
+s=replace(s,'            let result = try await operation.read(urlRequest, configuration: session.configuration,','            operation.diagnosticTrace.mark("transport-before-read")\n            let result = try await operation.read(urlRequest, configuration: session.configuration,')
+s=replace(s,'                                                  deadline: deadline, afterTaskPublication: taskObserver)','                                                  deadline: deadline, afterTaskPublication: taskObserver)\n            operation.diagnosticTrace.mark("transport-after-read")')
+s=replace(s,'            return result.response\n        } catch {','            return result.response\n        } catch {\n            operation.diagnosticTrace.mark("transport-original-error \(error)")\n            JPIPHTTPSPhaseTrace.flush()')
+save(p,old,s)
+p='Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift';old=(source/p).read_text();s=old
+for name in ['sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()','sharedWatchdogInterruptsAnAlreadyActiveTrickle()','completionAndCancellationHaveOneWinner(cancelFirst: Bool)','completedRequestEventuallyReleasesItsDelegateOwnership()']:
+    start='func '+name+' async throws {'
+    s=replace(s,start,start+'\n        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry")\n        defer { JPIPHTTPSPhaseTrace.flush() }')
+s=replace(s,'        let result = try await transport.send(JPIPRequest(target: "a b.j2k"),','        JPIPHTTPSPhaseTrace.record(owner: fixture.url.host!, event: "success-caller-before-send")\n        let result = try await transport.send(JPIPRequest(target: "a b.j2k"),')
+s=replace(s,'        let request = Task {\n            try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration, deadline: nil)','        operation.diagnosticTrace.mark("trickle-caller-task-creation host=\\(fixture.url.host!)")\n        let request = Task {\n            operation.diagnosticTrace.mark("trickle-request-task-entered")\n            return try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration, deadline: nil)')
+s=replace(s,'            let setupDeadline = ContinuousClock.now.advanced(by: .seconds(2))','            let setupDeadline = ContinuousClock.now.advanced(by: .seconds(2))\n            operation.diagnosticTrace.mark("trickle-readiness-clock-start")')
+s=replace(s,'                    throw J2KError.invalidState("HTTPS trickle harness did not become active: " +','                    operation.diagnosticTrace.mark("trickle-readiness-expired submitted=\\(scenario.deliveredChunks) received=\\(operation.receivedBodyBytes)")\n                    throw J2KError.invalidState("HTTPS trickle harness did not become active: " +')
+s=replace(s,'            // Test the shared watchdog','            operation.diagnosticTrace.mark("trickle-readiness-success received=\\(operation.receivedBodyBytes)")\n            // Test the shared watchdog')
+s=replace(s,'            let result = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,','            operation.diagnosticTrace.mark("scripted-caller-before-read cancelFirst=\\(cancelFirst)")\n            let result = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,')
+s=replace(s,'            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,\n                deadline: .now.advanced(by: .seconds(2)))\n            #expect(!operation.hasActiveOwners)','            operation.diagnosticTrace.mark("deinit-helper-before-read")\n            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,\n                deadline: .now.advanced(by: .seconds(2)))\n            operation.diagnosticTrace.mark("deinit-helper-after-read")\n            #expect(!operation.hasActiveOwners)')
+s=replace(s,'    private let state = Mutex(State())','    private let state = Mutex(State())\n    private let diagnosticTrace = JPIPHTTPSPhaseTrace()')
+s=replace(s,'    private let queue = DispatchQueue(label: "jpip.https.protocol-harness")','    private let queue = DispatchQueue(label: "jpip.https.protocol-harness")\n    private let diagnosticTrace = JPIPHTTPSPhaseTrace()')
+s=replace(s,'        state.withLock { $0.request = request }','        diagnosticTrace.mark("protocol-queue-start host=\(request.url?.host ?? "nil")")\n        state.withLock { $0.request = request }')
+s=replace(s,'    func delivered() { state.withLock { $0.delivered += 1 } }','''    func delivered() {
+        let snapshot = state.withLock { value in
+            value.delivered += 1
+            return (value.delivered, value.request?.url?.host ?? "nil")
+        }
+        if snapshot.0 == 1 || snapshot.0 == 100 {
+            diagnosticTrace.mark("protocol-submitted-chunks=\\(snapshot.0) host=\\(snapshot.1)")
+        }
+    }''')
+s=replace(s,'    override func startLoading() {','    override func startLoading() {\n        diagnosticTrace.mark("protocol-startLoading-entry host=\(request.url?.host ?? "nil")")')
+s=replace(s,'            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)','            diagnosticTrace.mark("protocol-response-submit host=\(url.host ?? "nil")")\n            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)')
+save(p,old,s)
+(base/'overlay-source.json').write_text(json.dumps(manifest,indent=2)+'\n')
+print(json.dumps(manifest,indent=2))

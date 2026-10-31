@@ -1,0 +1,16 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "probe_sha256": "5d22c0c4c379709fb9bddd05023c3f837ff6cb4a9bc610ea4f6c0c9f9af03631",
+  "probe_bytes": 7786,
+  "unchanged_focused09_test_sha256": "72d8cee42d0c9bb9edcbb9980bf2edfbba51720fe8b79b47a709159b87d826eb",
+  "native_execution": "NOT RUN; root owns exclusive native lane",
+  "comparison": "Identical one-byte chunks every 10 ms; absent vs image/jpp-stream Content-Type; same 2-second cancellation timer; serial delegate queue; task completion then session invalidation acknowledgement",
+  "metrics": [
+    "protocol submitted callbacks and bytes",
+    "delegate response callbacks",
+    "delegate body callbacks and bytes",
+    "first response and first data elapsed seconds",
+    "task completion and session invalidation acknowledgement"
+  ],
+  "scope": "Standalone URLSession delivery diagnostic, no SwiftJ2K linkage and no TLS peer qualification"
+}

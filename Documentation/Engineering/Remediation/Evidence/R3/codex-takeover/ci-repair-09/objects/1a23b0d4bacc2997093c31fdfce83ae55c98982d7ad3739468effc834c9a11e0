@@ -1,0 +1,41 @@
+Candidate 15 runtime evidence preparation
+
+The strict reconciliation helper remains unchanged. Both sanitizer partitions
+for each mode and the ordinary run must use the exact frozen candidate 15
+manifest. No mixed-source sanitizer carry-forward is allowed.
+
+The first complete JPIP AddressSanitizer run supplies affected-target coverage;
+there is no separate focused15 run. The seven root native gates are pinned in
+planned-15/audit-plan.json and preparation.json. The two proof specifications
+are planned-15/thread-final-15.json and address-final-15.json.
+
+Release and CLI14 reuse is separately supported by equality of all 512 actual
+production/package/script/resource/fixture inputs between frozen14 and15,
+plus the already audited release binary and 246 exact expected process exits.
+The source snapshots differ only in two documentation files and the reviewed
+WebSocket test fixture. This does not reuse ordinary or sanitizer14 execution.
+
+The secondary auditor required one narrow maintenance change: its old assertion
+that the WebSocket lifecycle test file was still byte-identical to04 became
+obsolete after the authorised15 fixture repair. It now pins both14/15 source
+hashes and the exact reviewed diff, and verifies that removing only diagnostic
+phase labels and restoring the accepted-socket timeout recovers14 byte-for-byte.
+The other two historical test preservation checks remain intact. Normalising
+this auditor change recovers the prior auditor exactly, demonstrating that all
+final-source/runtime/capture/inventory/argument checks remain unchanged. Five
+tamper cases are rejected. The prior auditors and proofs remain immutable.
+Independent review of this maintenance change is required before final audit
+acceptance; auditor-delta-check.json is implementation verification only.
+
+After all required native receipts pass, generate both immutable proofs using
+work/runtime-coverage/reconcile.py, then run audit-final.py with a new final
+audit-plan filename that additionally binds the completed independent source
+and auditor-delta reviews. Never overwrite prior preparation or proof files.
+
+The failed JPIP ASan14 receipt and unexecuted complement14 remain explicit in
+work/runtime-coverage-14/asan-failed14-check.json. No address14 proof or final14
+qualification was generated. Five independent direct peer gates remain
+unexecuted/unwaived. Nothing here accepts whole R3 or permits merge.
+
+This reviewer has performed no native execution or repository edits. Root owns
+all Swift, test, codec, fixture and server execution.

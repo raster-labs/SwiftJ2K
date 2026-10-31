@@ -1,0 +1,144 @@
+{
+  "source_manifest_sha256": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+  "verified_inputs": 1857,
+  "changed_inputs": [],
+  "capture": {
+    "finished_at": "2026-10-31T10:22:14.804227+00:00",
+    "exit_code": 1,
+    "elapsed_seconds": 87.527159125,
+    "changed_inputs": [],
+    "log_sha256": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stdout",
+        "sha256": "ae8c4f6c4c2ba0943653c14036c484b708d4859610f5fc1f4854e06d09004e5e",
+        "bytes": 361291
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stderr",
+        "sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+        "bytes": 252
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 1
+  },
+  "sample_result": {
+    "purpose": "Sample unchanged candidate10 at the beginning of Swift Testing; diagnostic only.",
+    "at": "2026-10-31T10:20:47.303274+00:00",
+    "helper_sha256": "08baa05f184430954ad31f49ed72f6799cd5d0693ae92be5ad6ba051ca40cc65",
+    "command": [
+      "swift",
+      "test",
+      "--scratch-path",
+      "../candidate-build-10",
+      "--disable-sandbox",
+      "--build-system",
+      "native",
+      "--cache-path",
+      "../swiftpm-cache",
+      "--config-path",
+      "../swiftpm-config",
+      "--security-path",
+      "../swiftpm-security",
+      "-j",
+      "4",
+      "--skip-build",
+      "--xunit-output",
+      "../validation/diagnostic-sampled-full-13/report.xml"
+    ],
+    "samples": [
+      {
+        "pid": 48911,
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "Sampling process 48911 for 1 second with 5 milliseconds of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 48911 written to file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/sample-48911.txt\n",
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/sample-48911.txt",
+        "sha256": "89ade974051ab5d2130148748ff0ca00762eeb711450e55ef395e9c29eb955b4"
+      }
+    ],
+    "observer_errors": [],
+    "child_pid": 48809,
+    "marker_observed_at": "2026-10-31T10:21:48.163784+00:00",
+    "own_test_children": [
+      [
+        "48911",
+        "48809",
+        "17.1",
+        "57648",
+        "00:00",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec/swift/pm/swiftpm-testing-helper"
+      ]
+    ],
+    "exit_code": 1,
+    "observer_joined": true,
+    "finished_at": "2026-10-31T10:22:14.689603+00:00"
+  },
+  "sample_headers": [
+    "    109 Thread_12446598   DispatchQueue_1: com.apple.main-thread  (serial)",
+    "    109 Thread_12446601   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446602   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446603   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446604   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446605   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446606   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446607   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446608   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446609   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446611   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)",
+    "    109 Thread_12446612",
+    "    109 Thread_12446622"
+  ],
+  "sample_helper_sha256": "08baa05f184430954ad31f49ed72f6799cd5d0693ae92be5ad6ba051ca40cc65",
+  "xml_declarations": 323,
+  "xml_failed_declarations": [
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+      "name": "repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)",
+      "time": "9.303570541"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+      "time": "10.105973833999998"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "time": "10.168500708"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "time": "10.152254333"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "time": "10.169210334"
+    }
+  ],
+  "raw_issues": [
+    "\u2718 Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) recorded an issue with 1 argument mode \u2192 \"reused\" at CodexR3TransportCloseTests.swift:55:13: Expectation failed: peer.acceptedCount == (mode == \"retry\" ? 2 : 1)",
+    "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:300:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")",
+    "\u2718 Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() recorded an issue at CodexR3HTTPStreamingTests.swift:175:6: Caught error: Internal error: Invalid state: HTTPS trickle harness did not become active: protocol submitted 118 one-byte chunks; accumulator received 0 bytes; protocol started: true",
+    "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:328:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+    "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+  ],
+  "evidence": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/command.json": "dc3d2b0968d8d761f2db8634899b30a231946ac31edef14b6800aebac79fd2da",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.log": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stdout": "ae8c4f6c4c2ba0943653c14036c484b708d4859610f5fc1f4854e06d09004e5e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/report-swift-testing.xml": "2f2fbdf9d622bc9641c47de3b50d0f8d0e1f1be5ba59da192e7ffac8fb070fbe",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/result.json": "49b38bd64b1631ac9251ebbab0a2ee6088a3f5ab8d13acbc8a86792180a6c09a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/processes-at-marker.txt": "0716b13582ac783e823f1e5de0ceacae5223382f8890d98e96b3bade94fed723",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/result.json": "47eece2a4683c43c13a1749951dca0dc4583f2d0616fe43a4c95d9b6da429cba",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/sample-48911.txt": "89ade974051ab5d2130148748ff0ca00762eeb711450e55ef395e9c29eb955b4"
+  }
+}

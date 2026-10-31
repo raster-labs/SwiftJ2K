@@ -1,0 +1,25 @@
+{
+  "scope": "Framework testcase elapsed durations, not profiler samples or causal attribution",
+  "tests": {
+    "SwiftJ2KTests.acceleratedDecodeAndEncodeAreByteIdenticalAcrossAllLosslessFixtures()": {
+      "candidate-full-08": 26.949082917,
+      "candidate-full-10": 26.444677208
+    },
+    "SwiftJ2KTests.acceleratedHTJ2KAndTranscodeAreByteIdenticalAcrossAllFixtures()": {
+      "candidate-full-08": 17.275174459000002,
+      "candidate-full-10": 14.448778792
+    },
+    "SwiftJ2KTests.sameTokenCannotAuthoriseConcurrentOverlappingBorrows()": {
+      "candidate-full-08": 7.41318225,
+      "candidate-full-10": 7.958428791
+    },
+    "SwiftJ2KJPIPTests.CodexR3IndependentTests.rfc6455FragmentedMessageSurvivesInterleavedControlFrame()": {
+      "candidate-full-08": 7.76390575,
+      "candidate-full-10": 8.11632975
+    },
+    "SwiftJ2KJPIPTests.CodexR3IndependentTests.httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel()": {
+      "candidate-full-08": 8.987713291,
+      "candidate-full-10": 9.589984959
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "baseline_snapshot": "work/candidate-snapshot-09",
+  "modified_files": {
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "before_sha256": "72d8cee42d0c9bb9edcbb9980bf2edfbba51720fe8b79b47a709159b87d826eb",
+      "sha256": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+      "bytes": 29200
+    }
+  },
+  "preservation": "Exact normalisation of the explicit Content-Type and expanded readiness error reproduces the frozen09 file byte-for-byte; other six HTTPS-close files match the frozen09 receipt.",
+  "probe_evidence": {
+    "path": "work/validation/trickle-probe-run-10/native.stdout",
+    "sha256": "6a495ccac18fb5f83b6e65f0001712663c1f7bcb8fb3d7c5a908074d81170b60",
+    "absent_content_type": {
+      "submittedBytes": 201,
+      "submittedCallbacks": 201,
+      "receivedBytes": 0,
+      "receivedCallbacks": 0,
+      "responseCallbacks": 0,
+      "completed": true,
+      "invalidated": true
+    },
+    "explicit_content_type": {
+      "submittedBytes": 201,
+      "submittedCallbacks": 201,
+      "receivedBytes": 200,
+      "receivedCallbacks": 200,
+      "responseCallbacks": 1,
+      "firstDataSeconds": 0.000939583,
+      "completed": true,
+      "invalidated": true
+    }
+  },
+  "unchanged_bounds": {
+    "chunk_bytes": 1,
+    "chunk_interval_ms": 10,
+    "readiness_seconds": 2,
+    "watchdog_seconds": 0.12,
+    "interruption_seconds_less_than": 2
+  },
+  "native_execution_by_writer": "NONE; root ran the standalone diagnostic and owns frozen tests",
+  "qualification": "Observed header-dependent URLSession delivery only; no claim about private MIME mechanism, TLS peer interoperability, or production fix"
+}
