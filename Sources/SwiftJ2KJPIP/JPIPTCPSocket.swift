@@ -1864,7 +1864,8 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         subprotocol: String = "jpip",
         maxHeaderBytes: Int = 65_536,
         maxBodyBytes: Int = 0,
-        maximumStorageBytes: Int = Int.max
+        maximumStorageBytes: Int = Int.max,
+        phaseObserver: (@Sendable (String) -> Void)? = nil
     ) throws -> (subprotocol: String?, peakWorkspaceBytes: Int) {
         let clientKey = JPIPRFC6455Crypto.randomClientKey()
         let expectedAccept = JPIPRFC6455Crypto.computeAcceptKey(for: clientKey)
@@ -1890,6 +1891,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
               accept.trimmingCharacters(in: .whitespaces) == expectedAccept else {
             throw J2KError.invalidData("RFC 6455 Sec-WebSocket-Accept verification failed.")
         }
+        phaseObserver?("ws.header.read")
         return (resp.header("Sec-WebSocket-Protocol"), resp.peakWorkspaceBytes)
     }
 

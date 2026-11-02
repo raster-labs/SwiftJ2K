@@ -176,6 +176,34 @@ package struct JPIPHTTPSResponseBuffer {
     }
 }
 
+package final class JPIPHTTPSPhaseLog: @unchecked Sendable {
+    // SAFETY: `entries` is guarded by `lock`. Holds only value-type strings and
+    // timestamps; never retains JPIPHTTPSRequest, URLSession, Task, or Continuation.
+    private let lock = NSLock()
+    private let start = ContinuousClock.now
+    private var entries: [String] = []
+
+    package init() {}
+
+    package func record(_ phase: String) {
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+        let entry = String(format: "%.6fs: %@", seconds, phase)
+        lock.lock()
+        if entries.count < 64 {
+            entries.append(entry)
+        }
+        lock.unlock()
+    }
+
+    package var summary: String {
+        lock.lock()
+        let snapshot = entries
+        lock.unlock()
+        return "httpsPhases=[\(snapshot.joined(separator: "; "))]"
+    }
+}
+
 /// One request, one task, and one serial delegate queue on both Darwin and
 /// FoundationNetworking. Cancellation never invalidates a session while task
 /// creation is pending. Task completion precedes finishTasksAndInvalidate;
@@ -196,16 +224,20 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
     private var taskCompleted = false
     private var invalidated = false
     private let completion = JPIPRequestCompletion()
+    private let phaseLog: JPIPHTTPSPhaseLog
     private let deinitObserver: (@Sendable () -> Void)?
 
     package var isFinished: Bool { completion.isFinished }
+    package var phaseDiagnostics: String { phaseLog.summary }
     package func waitForCompletion() async { await completion.wait() }
     package func cancelForTransportClose() { cancel() }
 
     package init(maximumBodyBytes: Int, maximumStorageBytes: Int,
+                 phaseLog: JPIPHTTPSPhaseLog = JPIPHTTPSPhaseLog(),
                  deinitObserver: (@Sendable () -> Void)? = nil) {
         buffer = JPIPHTTPSResponseBuffer(maximumBodyBytes: maximumBodyBytes,
                                          maximumStorageBytes: maximumStorageBytes)
+        self.phaseLog = phaseLog
         self.deinitObserver = deinitObserver
         super.init()
     }
@@ -228,14 +260,20 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
     ) async throws -> JPIPHTTPSResult {
         try claimStart()
+        phaseLog.record("read.start")
         let watchdog: JPIPDeadlineWatchdog?
+        let phaseLog = self.phaseLog
         do {
             watchdog = try deadline.map { deadline in
-                JPIPDeadlineWatchdog(after: try JPIPTransport.remainingSeconds(until: deadline)) { [weak self] in
+                let remaining = try JPIPTransport.remainingSeconds(until: deadline)
+                phaseLog.record(String(format: "watchdog.armed(%.3fs)", remaining))
+                return JPIPDeadlineWatchdog(after: remaining) { [weak self, phaseLog] in
+                    phaseLog.record("watchdog")
                     self?.cancel(CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed."))
                 }
             }
         } catch {
+            phaseLog.record("watchdog.preflight.failed(\(type(of: error)))")
             discardBeforeSessionCreation()
             throw error
         }
@@ -246,11 +284,26 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
                       beforeTaskPublication: beforeTaskPublication, afterTaskPublication: afterTaskPublication)
             }
         } onCancel: {
+            self.phaseLog.record("task.onCancel")
             self.cancel(CancellationError())
         }
-        let completed = try takeResult()
-        try Task.checkCancellation()
-        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }
+        phaseLog.record("resume")
+        let completed: JPIPHTTPSResult
+        do {
+            completed = try takeResult()
+            phaseLog.record("takeResult.ok")
+        } catch {
+            phaseLog.record("takeResult.failed(\(type(of: error)))")
+            throw error
+        }
+        do {
+            try Task.checkCancellation()
+            if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }
+            phaseLog.record("postJoinDeadlineRecheck.ok")
+        } catch {
+            phaseLog.record("postJoinDeadlineRecheck.failed(\(type(of: error)))")
+            throw error
+        }
         return completed
     }
 
@@ -282,6 +335,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             result = .failure(failure)
             buffer = nil
             lock.unlock()
+            phaseLog.record("cancelled.beforeTaskPublication")
             owner.finishTasksAndInvalidate()
             return
         }
@@ -290,8 +344,10 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         let created = owner.dataTask(with: request)
         task = created
         lock.unlock()
+        phaseLog.record("task.published")
         afterTaskPublication?(owner, created)
         created.resume()
+        phaseLog.record("task.resumed")
     }
 
     private func claimStart() throws {
@@ -318,7 +374,12 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
 
     package func cancel(_ error: any Error = CancellationError()) {
         lock.lock()
-        guard !taskCompleted else { lock.unlock(); return }
+        guard !taskCompleted else {
+            lock.unlock()
+            phaseLog.record("cancel(ignored:taskCompleted,error=\(type(of: error)))")
+            return
+        }
+        let latched = (failure == nil)
         if failure == nil { failure = error }
         let capturedTask = task
         let neverStarted = !started
@@ -328,6 +389,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             invalidated = true
         }
         lock.unlock()
+        phaseLog.record("cancel(latched=\(latched),hasTask=\(capturedTask != nil),neverStarted=\(neverStarted),error=\(type(of: error)))")
         capturedTask?.cancel()
         if neverStarted { completion.finish() }
     }
@@ -342,6 +404,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             catch { failure = error }
         }
         lock.unlock()
+        phaseLog.record("didReceiveResponse(allow=\(allow))")
         completionHandler(allow ? .allow : .cancel)
         if !allow { dataTask.cancel() }
     }
@@ -372,8 +435,10 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             } catch { result = .failure(error) }
         }
         buffer = nil
+        let alreadyInvalidated = invalidated
         let signal = releaseIfFinishedLocked()
         lock.unlock()
+        phaseLog.record("didComplete(hasError=\(error != nil),invalidated=\(alreadyInvalidated))")
         // No task callbacks remain on our serial queue before invalidation is
         // requested. Do not use invalidateAndCancel as a task-completion join.
         session.finishTasksAndInvalidate()
@@ -385,18 +450,23 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         guard self.session === session else { lock.unlock(); return }
         invalidated = true
         if let error, failure == nil, !taskCompleted { failure = error }
+        let wasTaskCompleted = taskCompleted
         let pending = taskCompleted ? nil : task
         let signal = releaseIfFinishedLocked()
         lock.unlock()
+        phaseLog.record("invalidation(hasError=\(error != nil),taskCompleted=\(wasTaskCompleted))")
         pending?.cancel()
         resume(signal, afterCallbacksOn: session)
     }
 
     private func resume(_ signal: CheckedContinuation<Void, Never>?, afterCallbacksOn session: URLSession) {
         guard let signal else { return }
+        phaseLog.record("queue.tail.enqueued")
         // A serial-queue tail operation runs only after the completing delegate
         // callback has returned. It carries the wake-up, never the owning result.
-        session.delegateQueue.addOperation { [completion] in
+        let phaseLog = self.phaseLog
+        session.delegateQueue.addOperation { [completion, phaseLog] in
+            phaseLog.record("queue.tail")
             completion.finish()
             signal.resume()
         }

@@ -17,14 +17,61 @@ struct CodexR3SocketLifetimeTests {
     // MARK: - Synchronization Primitives for Deterministic Ordering
 
     private final class Gate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var isSignaled = false
+        private var asyncWaiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
         private let sema = DispatchSemaphore(value: 0)
 
         func signal() {
-            sema.signal()
+            lock.lock()
+            let firstSignal = !isSignaled
+            isSignaled = true
+            let waiters = Array(asyncWaiters.values)
+            asyncWaiters.removeAll()
+            lock.unlock()
+            if firstSignal {
+                sema.signal()
+            }
+            for waiter in waiters {
+                waiter.resume(returning: true)
+            }
         }
 
+        /// Synchronous wait for dedicated non-cooperative GCD worker threads / syscallSeam callbacks only.
         func wait(timeoutSeconds: TimeInterval = 5.0) -> Bool {
-            sema.wait(timeout: .now() + timeoutSeconds) == .success
+            lock.lock()
+            if isSignaled {
+                lock.unlock()
+                return true
+            }
+            lock.unlock()
+            let ok = sema.wait(timeout: .now() + timeoutSeconds) == .success
+            if ok {
+                sema.signal()
+            }
+            return ok
+        }
+
+        /// Non-blocking wait for async @Test functions on the Swift Concurrency cooperative pool.
+        func waitAsync(timeoutSeconds: TimeInterval = 5.0) async -> Bool {
+            let waiterID = UUID()
+            return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                lock.lock()
+                if isSignaled {
+                    lock.unlock()
+                    continuation.resume(returning: true)
+                    return
+                }
+                asyncWaiters[waiterID] = continuation
+                lock.unlock()
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + timeoutSeconds) { [weak self] in
+                    guard let self else { return }
+                    self.lock.lock()
+                    let expired = self.asyncWaiters.removeValue(forKey: waiterID)
+                    self.lock.unlock()
+                    expired?.resume(returning: false)
+                }
+            }
         }
     }
 
@@ -121,7 +168,7 @@ struct CodexR3SocketLifetimeTests {
             workerDone.signal()
         }
 
-        #expect(workerDone.wait(timeoutSeconds: 5.0))
+        #expect(await workerDone.waitAsync(timeoutSeconds: 5.0))
         let conn = try acceptResult.value.get()
         #expect(conn == nil)
         #expect(counts.value.poll == 0)
@@ -180,7 +227,7 @@ struct CodexR3SocketLifetimeTests {
             workerDone.signal()
         }
 
-        #expect(enteredBorrow.wait(timeoutSeconds: 5.0))
+        #expect(await enteredBorrow.waitAsync(timeoutSeconds: 5.0))
 
         // Close twice while the worker holds the listener borrow before poll/accept.
         listener.close()
@@ -197,7 +244,7 @@ struct CodexR3SocketLifetimeTests {
         #expect(counts.value.close == 0)
 
         releaseBorrow.signal()
-        #expect(workerDone.wait(timeoutSeconds: 5.0))
+        #expect(await workerDone.waitAsync(timeoutSeconds: 5.0))
         try await waiterTask.value
 
         let accepted = try workerOutcome.value.get()
@@ -248,14 +295,17 @@ struct CodexR3SocketLifetimeTests {
             workerDone.signal()
         }
 
-        let clientConn = try JPIPTCPConnection.connect(
-            host: "127.0.0.1",
-            port: listener.boundPort,
-            timeoutInterval: 5.0
-        )
+        let boundPort = listener.boundPort
+        let clientConn = try await JPIPBlockingWorker.run {
+            try JPIPTCPConnection.connect(
+                host: "127.0.0.1",
+                port: boundPort,
+                timeoutInterval: 5.0
+            )
+        }
         defer { clientConn.close() }
 
-        #expect(pausedBeforePublication.wait(timeoutSeconds: 5.0))
+        #expect(await pausedBeforePublication.waitAsync(timeoutSeconds: 5.0))
         #expect(events.value.pausedClientFD >= 0)
 
         // Retire listener while the accepted socket is still unexposed before publication.
@@ -263,7 +313,7 @@ struct CodexR3SocketLifetimeTests {
         #expect(!listener.isOpen)
 
         resumePublicationCheck.signal()
-        #expect(workerDone.wait(timeoutSeconds: 5.0))
+        #expect(await workerDone.waitAsync(timeoutSeconds: 5.0))
         try await listener.waitForCloseCompletion()
 
         let published = try acceptOutcome.value.get()
@@ -272,7 +322,9 @@ struct CodexR3SocketLifetimeTests {
         #expect(events.value.listenerClosed == 1)
 
         // Client must observe immediate EOF on the closed accepted socket.
-        let eofBytes = try clientConn.readToEOFForTesting(maxAllowedBytes: 64)
+        let eofBytes = try await JPIPBlockingWorker.run {
+            try clientConn.readToEOFForTesting(maxAllowedBytes: 64)
+        }
         #expect(eofBytes.isEmpty)
     }
 
@@ -561,7 +613,7 @@ struct CodexR3SocketLifetimeTests {
             workerDone.signal()
         }
 
-        #expect(enteredReadBorrow.wait(timeoutSeconds: 5.0))
+        #expect(await enteredReadBorrow.waitAsync(timeoutSeconds: 5.0))
 
         // Initiate close while the read borrower still holds slot 700.
         conn.close()
@@ -572,7 +624,7 @@ struct CodexR3SocketLifetimeTests {
 
         // Release the read borrower; physical close must now make slot 700 available for reuse.
         releaseReadBorrow.signal()
-        #expect(workerDone.wait(timeoutSeconds: 5.0))
+        #expect(await workerDone.waitAsync(timeoutSeconds: 5.0))
         try await conn.waitForCloseCompletion()
         #expect(table.value.closeGen1 == 1)
         #expect(table.value.availableForReuse)
@@ -626,22 +678,22 @@ struct CodexR3SocketLifetimeTests {
             _ = try? conn2.readExact(count: 1)
             ioDone.signal()
         }
-        #expect(enteredIO.wait(timeoutSeconds: 5.0))
+        #expect(await enteredIO.waitAsync(timeoutSeconds: 5.0))
 
         DispatchQueue(label: "test.r3.socket.t5.close2").async {
             conn2.close()
             closeDone.signal()
         }
-        #expect(enteredShutdown.wait(timeoutSeconds: 5.0))
+        #expect(await enteredShutdown.waitAsync(timeoutSeconds: 5.0))
 
         // Let I/O finish and release its borrow while control-borrow shutdown is still in progress.
         releaseIO.signal()
-        #expect(ioDone.wait(timeoutSeconds: 5.0))
+        #expect(await ioDone.waitAsync(timeoutSeconds: 5.0))
         #expect(!orderLog.value.contains("physical.close"))
 
         // Now let shutdown finish; the control borrower releases last and performs physical close.
         releaseShutdown.signal()
-        #expect(closeDone.wait(timeoutSeconds: 5.0))
+        #expect(await closeDone.waitAsync(timeoutSeconds: 5.0))
         try await conn2.waitForCloseCompletion()
         #expect(orderLog.value == ["shutdown.begin", "io.end", "shutdown.end", "physical.close"])
     }
@@ -741,12 +793,12 @@ struct CodexR3SocketLifetimeTests {
                 workerDone.signal()
             }
 
-            #expect(paused.wait(timeoutSeconds: 5.0))
+            #expect(await paused.waitAsync(timeoutSeconds: 5.0))
             conn.close()
             #expect(state.value.closed == 0)
 
             resume.signal()
-            #expect(workerDone.wait(timeoutSeconds: 5.0))
+            #expect(await workerDone.waitAsync(timeoutSeconds: 5.0))
             try await conn.waitForCloseCompletion()
 
             #expect(state.value.closed == 1)
@@ -810,8 +862,8 @@ struct CodexR3SocketLifetimeTests {
                 wDone.signal()
             }
 
-            #expect(readPaused.wait(timeoutSeconds: 5.0))
-            #expect(writePaused.wait(timeoutSeconds: 5.0))
+            #expect(await readPaused.waitAsync(timeoutSeconds: 5.0))
+            #expect(await writePaused.waitAsync(timeoutSeconds: 5.0))
             #expect(conn.lockTracker.currentCount == 2)
 
             // Two simultaneous close callers + multiple async waiters before and after close completion.
@@ -826,12 +878,12 @@ struct CodexR3SocketLifetimeTests {
 
             // Release reader first; writer still holds its borrow.
             releaseRead.signal()
-            #expect(rDone.wait(timeoutSeconds: 5.0))
+            #expect(await rDone.waitAsync(timeoutSeconds: 5.0))
             #expect(metrics.value.closeCount == 0)
 
             // Release writer last; physical close and waiter resumption now fire with 0 held operation locks.
             releaseWrite.signal()
-            #expect(wDone.wait(timeoutSeconds: 5.0))
+            #expect(await wDone.waitAsync(timeoutSeconds: 5.0))
             try await waiter1.value
             try await waiter2.value
             try await conn.waitForCloseCompletion() // Waiter registered after completion
@@ -889,19 +941,22 @@ struct CodexR3SocketLifetimeTests {
         }
 
         let recvStarted = Gate()
-        let clientConn = try JPIPTCPConnection.connect(
-            host: "127.0.0.1",
-            port: listener.boundPort,
-            timeoutInterval: 5.0,
-            observer: { event in
-                if case .afterConnectionBorrowAcquired(let op, _) = event, op == .readExact {
-                    recvStarted.signal()
+        let boundPort = listener.boundPort
+        let clientConn = try await JPIPBlockingWorker.run {
+            try JPIPTCPConnection.connect(
+                host: "127.0.0.1",
+                port: boundPort,
+                timeoutInterval: 5.0,
+                observer: { event in
+                    if case .afterConnectionBorrowAcquired(let op, _) = event, op == .readExact {
+                        recvStarted.signal()
+                    }
                 }
-            }
-        )
+            )
+        }
         defer { clientConn.close() }
 
-        #expect(acceptDone.wait(timeoutSeconds: 5.0))
+        #expect(await acceptDone.waitAsync(timeoutSeconds: 5.0))
         let serverConn = try #require(acceptedBox.value)
         defer { serverConn.close() }
 
@@ -943,19 +998,21 @@ struct CodexR3SocketLifetimeTests {
             }
             let borrowEntered = Gate()
             let borrowRelease = Gate()
-            let borrowClient = try JPIPTCPConnection.connect(
-                host: "127.0.0.1",
-                port: listener.boundPort,
-                timeoutInterval: 30.0,
-                observer: { event in
-                    if case .afterConnectionBorrowAcquired(let op, _) = event, op == .readExact {
-                        borrowEntered.signal()
-                        _ = borrowRelease.wait(timeoutSeconds: 5.0)
+            let borrowClient = try await JPIPBlockingWorker.run {
+                try JPIPTCPConnection.connect(
+                    host: "127.0.0.1",
+                    port: boundPort,
+                    timeoutInterval: 30.0,
+                    observer: { event in
+                        if case .afterConnectionBorrowAcquired(let op, _) = event, op == .readExact {
+                            borrowEntered.signal()
+                            _ = borrowRelease.wait(timeoutSeconds: 5.0)
+                        }
                     }
-                }
-            )
+                )
+            }
             defer { borrowClient.close() }
-            #expect(acceptBorrowDone.wait(timeoutSeconds: 5.0))
+            #expect(await acceptBorrowDone.waitAsync(timeoutSeconds: 5.0))
             let borrowServer = try #require(acceptedBorrowBox.value)
             defer { borrowServer.close() }
 
@@ -971,11 +1028,11 @@ struct CodexR3SocketLifetimeTests {
                 }
                 borrowDone.signal()
             }
-            #expect(borrowEntered.wait(timeoutSeconds: 5.0))
+            #expect(await borrowEntered.waitAsync(timeoutSeconds: 5.0))
             let borrowCancelStart = ContinuousClock.now
             borrowToken.cancel()
             borrowRelease.signal()
-            #expect(borrowDone.wait(timeoutSeconds: 5.0))
+            #expect(await borrowDone.waitAsync(timeoutSeconds: 5.0))
             #expect(ContinuousClock.now - borrowCancelStart < .seconds(1))
             #expect(borrowErr.value != nil)
             try await borrowClient.waitForCloseCompletion()
@@ -987,7 +1044,9 @@ struct CodexR3SocketLifetimeTests {
         // Write 32 bytes from serverConn so clientConn's readExact(count: 64) observes and drains
         // the first 32 bytes (POLLIN transitions 1 -> 0) and remains unfinished awaiting the remaining
         // 32 bytes against a 30s SO_RCVTIMEO (from which blocking in the subsequent recv() is inferred).
-        try serverConn.writeAll(Data(repeating: 0x42, count: 32))
+        try await JPIPBlockingWorker.run {
+            try serverConn.writeAll(Data(repeating: 0x42, count: 32))
+        }
         var preRecvPfd = pollfd(fd: clientConn.descriptor.debugFD, events: Int16(POLLIN), revents: 0)
         #expect(poll(&preRecvPfd, 1, 1000) == 1)
         #expect((preRecvPfd.revents & Int16(POLLIN)) != 0)
@@ -1004,7 +1063,7 @@ struct CodexR3SocketLifetimeTests {
             }
             recvDone.signal()
         }
-        #expect(recvStarted.wait(timeoutSeconds: 5.0))
+        #expect(await recvStarted.waitAsync(timeoutSeconds: 5.0))
 
         // Observe that the 32 kernel-buffered bytes are drained (POLLIN == 0), showing native
         // readExact progress past the first 32 bytes while the 64-byte read remains unfinished
@@ -1018,15 +1077,15 @@ struct CodexR3SocketLifetimeTests {
                 recvDrainedFirstHalf = true
                 break
             }
-            usleep(1_000)
+            try await Task.sleep(for: .milliseconds(1))
         }
         #expect(recvDrainedFirstHalf)
         // Observe that readExact(count: 64) remains unfinished across a 50ms window (30s SO_RCVTIMEO).
-        #expect(!recvDone.wait(timeoutSeconds: 0.05))
+        #expect(!(await recvDone.waitAsync(timeoutSeconds: 0.05)))
 
         let recvCancelStart = ContinuousClock.now
         recvToken.cancel()
-        #expect(recvDone.wait(timeoutSeconds: 5.0))
+        #expect(await recvDone.waitAsync(timeoutSeconds: 5.0))
         #expect(ContinuousClock.now - recvCancelStart < .seconds(1))
         let capturedRecvError = try #require(recvError.value)
         #expect(!String(describing: capturedRecvError).contains("timed out"))
@@ -1048,18 +1107,20 @@ struct CodexR3SocketLifetimeTests {
             accept2Done.signal()
         }
         let sendStarted = Gate()
-        let sendClient = try JPIPTCPConnection.connect(
-            host: "127.0.0.1",
-            port: listener.boundPort,
-            timeoutInterval: 30.0,
-            observer: { event in
-                if case .afterConnectionBorrowAcquired(let op, _) = event, op == .writeAll {
-                    sendStarted.signal()
+        let sendClient = try await JPIPBlockingWorker.run {
+            try JPIPTCPConnection.connect(
+                host: "127.0.0.1",
+                port: boundPort,
+                timeoutInterval: 30.0,
+                observer: { event in
+                    if case .afterConnectionBorrowAcquired(let op, _) = event, op == .writeAll {
+                        sendStarted.signal()
+                    }
                 }
-            }
-        )
+            )
+        }
         defer { sendClient.close() }
-        #expect(accept2Done.wait(timeoutSeconds: 5.0))
+        #expect(await accept2Done.waitAsync(timeoutSeconds: 5.0))
         let idlePeer = try #require(accepted2Box.value)
         defer { idlePeer.close() }
 
@@ -1080,7 +1141,7 @@ struct CodexR3SocketLifetimeTests {
             }
             sendDone.signal()
         }
-        #expect(sendStarted.wait(timeoutSeconds: 5.0))
+        #expect(await sendStarted.waitAsync(timeoutSeconds: 5.0))
 
         // Observe via poll() that native send progress delivered bytes to idlePeer (POLLIN == 1)
         // and saturated sendClient's socket send buffer (POLLOUT == 0).
@@ -1095,15 +1156,15 @@ struct CodexR3SocketLifetimeTests {
                 sendBufferSaturatedInKernel = true
                 break
             }
-            usleep(1_000)
+            try await Task.sleep(for: .milliseconds(1))
         }
         #expect(sendBufferSaturatedInKernel)
         // Observe that writeAll remains unfinished under backpressure across a 50ms window (30s SO_SNDTIMEO).
-        #expect(!sendDone.wait(timeoutSeconds: 0.05))
+        #expect(!(await sendDone.waitAsync(timeoutSeconds: 0.05)))
 
         let sendCancelStart = ContinuousClock.now
         sendToken.cancel()
-        #expect(sendDone.wait(timeoutSeconds: 5.0))
+        #expect(await sendDone.waitAsync(timeoutSeconds: 5.0))
         #expect(ContinuousClock.now - sendCancelStart < .seconds(1))
         let capturedSendError = try #require(sendError.value)
         #expect(!String(describing: capturedSendError).contains("timed out"))
@@ -1277,58 +1338,62 @@ struct CodexR3SocketLifetimeTests {
             #expect(port > 0)
 
             // Persistent HTTP/1.1 keep-alive requests followed by invalid-Connection upgrade (HTTP 400) and valid upgrade (HTTP 101).
-            let httpConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutInterval: 5.0)
-            defer { httpConn.close() }
+            let (httpResp1, httpResp2, badUpgradeResp) = try await JPIPBlockingWorker.run {
+                let httpConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutInterval: 5.0)
+                defer { httpConn.close() }
 
-            try httpConn.writeHTTPRequest(
-                method: "GET",
-                pathAndQuery: "/jpip?target=sample.j2k&fsiz=8,8&cnew=http&type=jpp-stream",
-                hostHeader: "127.0.0.1:\(port)"
-            )
-            let httpResp1 = try httpConn.readHTTPResponse()
+                try httpConn.writeHTTPRequest(
+                    method: "GET",
+                    pathAndQuery: "/jpip?target=sample.j2k&fsiz=8,8&cnew=http&type=jpp-stream",
+                    hostHeader: "127.0.0.1:\(port)"
+                )
+                let resp1 = try httpConn.readHTTPResponse()
+
+                try httpConn.writeHTTPRequest(
+                    method: "GET",
+                    pathAndQuery: "/jpip?target=sample.j2k&fsiz=8,8&type=jpp-stream",
+                    hostHeader: "127.0.0.1:\(port)"
+                )
+                let resp2 = try httpConn.readHTTPResponse()
+
+                // Invalid Connection header on WebSocket upgrade must return HTTP 400 Bad Request.
+                try httpConn.writeHTTPRequest(
+                    method: "GET",
+                    pathAndQuery: "/jpip",
+                    hostHeader: "127.0.0.1:\(port)",
+                    headers: [
+                        "Upgrade": "websocket",
+                        "Connection": "keep-alive",
+                        "Sec-WebSocket-Key": JPIPRFC6455Crypto.randomClientKey(),
+                        "Sec-WebSocket-Version": "13"
+                    ]
+                )
+                let badResp = try httpConn.readHTTPResponse()
+                return (resp1, resp2, badResp)
+            }
             #expect(httpResp1.statusCode == 200)
             #expect(!httpResp1.body.isEmpty)
-
-            try httpConn.writeHTTPRequest(
-                method: "GET",
-                pathAndQuery: "/jpip?target=sample.j2k&fsiz=8,8&type=jpp-stream",
-                hostHeader: "127.0.0.1:\(port)"
-            )
-            let httpResp2 = try httpConn.readHTTPResponse()
             #expect(httpResp2.statusCode == 200)
-
-            // Invalid Connection header on WebSocket upgrade must return HTTP 400 Bad Request.
-            try httpConn.writeHTTPRequest(
-                method: "GET",
-                pathAndQuery: "/jpip",
-                hostHeader: "127.0.0.1:\(port)",
-                headers: [
-                    "Upgrade": "websocket",
-                    "Connection": "keep-alive",
-                    "Sec-WebSocket-Key": JPIPRFC6455Crypto.randomClientKey(),
-                    "Sec-WebSocket-Version": "13"
-                ]
-            )
-            let badUpgradeResp = try httpConn.readHTTPResponse()
             #expect(badUpgradeResp.statusCode == 400)
-            httpConn.close()
 
             // Valid RFC 6455 WebSocket upgrade and binary JPIP request frame exchange.
-            let wsConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutInterval: 5.0)
-            defer { wsConn.close() }
-            let handshake = try wsConn.performWebSocketClientHandshake(
-                pathAndQuery: "/jpip",
-                hostHeader: "127.0.0.1:\(port)"
-            )
-            #expect(handshake.subprotocol == "jpip")
-
             let encoder = JPIPWebSocketMessageEncoder()
             var wsReq = JPIPRequest(target: "sample.j2k")
             wsReq.fsiz = (width: 8, height: 8)
             wsReq.cnew = .http
-            let reqFrame = encoder.encodeRequest(wsReq, requestID: 7)
-            try wsConn.writeWebSocketFrame(opcode: .binary, payload: reqFrame.serialize(), masked: true)
-            let wireReply = try wsConn.readWebSocketFrame(requireMasked: false)
+            let reqFramePayload = encoder.encodeRequest(wsReq, requestID: 7).serialize()
+            let (wsConn, handshakeSubprotocol, wireReply) = try await JPIPBlockingWorker.run {
+                let conn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutInterval: 5.0)
+                let handshake = try conn.performWebSocketClientHandshake(
+                    pathAndQuery: "/jpip",
+                    hostHeader: "127.0.0.1:\(port)"
+                )
+                try conn.writeWebSocketFrame(opcode: .binary, payload: reqFramePayload, masked: true)
+                let reply = try conn.readWebSocketFrame(requireMasked: false)
+                return (conn, handshake.subprotocol, reply)
+            }
+            defer { wsConn.close() }
+            #expect(handshakeSubprotocol == "jpip")
             #expect(wireReply.opcode == .binary)
             let appReply = try #require(JPIPWebSocketFrame.deserialize(from: wireReply.payload))
             let decodedResp = try #require(encoder.decodeResponse(from: appReply))
@@ -1540,9 +1605,9 @@ struct CodexR3SocketLifetimeTests {
 
             // Stop and restart wsServer while the old upgrade hop is in flight between JPIPServer and wsServer.
             try await wsServer.stop()
-            #expect(staleUpgradeClientDone.wait(timeoutSeconds: 5.0))
+            #expect(await staleUpgradeClientDone.waitAsync(timeoutSeconds: 5.0))
             // Confirm the server-side `serveWebSocketUpgrade` worker is STILL paused at the hop barrier after stop().
-            #expect(!serverUpgradeWorkerCompleted.wait(timeoutSeconds: 0.05))
+            #expect(!(await serverUpgradeWorkerCompleted.waitAsync(timeoutSeconds: 0.05)))
 
             await wsServer.configureTestingHooks()
             try await wsServer.start()
@@ -1555,7 +1620,7 @@ struct CodexR3SocketLifetimeTests {
             // join both the resumed server-side worker and the direct hop task, and assert receiving decision + admission counters.
             await upgradeHopRelease.open()
             let staleUpgradeDecision = await directServerUpgradeHopTask.value
-            #expect(serverUpgradeWorkerCompleted.wait(timeoutSeconds: 5.0))
+            #expect(await serverUpgradeWorkerCompleted.waitAsync(timeoutSeconds: 5.0))
             #expect(!staleUpgradeDecision.isSuccess)
             #expect(staleUpgradeDecision.connectionID == nil)
             #expect(staleUpgradeDecision.generation == nil)

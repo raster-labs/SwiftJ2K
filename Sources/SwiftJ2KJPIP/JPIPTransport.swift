@@ -106,9 +106,15 @@ public actor JPIPTransport {
     private var lastReceivePeakBytes = 0
     private var requestGeneration = UUID()
     private var activeRequests: [UUID: any JPIPTransportRequestOwner] = [:]
+    private var closingWebSockets: [UUID: JPIPWebSocketTransport] = [:]
+    private var allCreatedWebSockets: [JPIPWebSocketTransport] = []
     private var lifecycleObserver: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?
     private var httpsTaskPublicationObserver: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
     private var httpWorkerCompletionObserver: (@Sendable () -> Void)?
+    private var wsHandshakePhaseObserver: (@Sendable (String) -> Void)?
+    package private(set) var lastHTTPSPhaseDiagnostics = ""
+    package private(set) var lastWebSocketHandshakePhaseDiagnostics = ""
+    package private(set) var createdWebSocketTransportCount = 0
 
     package func setRequestLifecycleObserver(
         _ observer: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?,
@@ -120,8 +126,35 @@ public actor JPIPTransport {
         httpWorkerCompletionObserver = httpWorkerCompleting
     }
 
+    package func setWebSocketHandshakePhaseObserver(
+        _ observer: (@Sendable (String) -> Void)?
+    ) async {
+        wsHandshakePhaseObserver = observer
+        if let wsTransport {
+            await wsTransport.setHandshakePhaseObserver(observer)
+        }
+    }
+
     package var requestOwnershipSnapshot: (registered: Int, unfinished: Int) {
         (activeRequests.count, activeRequests.values.filter { !$0.isFinished }.count)
+    }
+
+    package var webSocketActivitySnapshot: (
+        createdTransports: Int,
+        activeHandshakes: Int,
+        activeReaders: Int,
+        activeSockets: Int
+    ) {
+        var handshakes = 0
+        var readers = 0
+        var sockets = 0
+        for ws in allCreatedWebSockets {
+            let snap = ws.closeController.activitySnapshot
+            handshakes += snap.activeHandshakes
+            readers += snap.activeReaders
+            sockets += snap.activeSockets
+        }
+        return (createdWebSocketTransportCount, handshakes, readers, sockets)
     }
 
     /// Creates a new JPIP transport targeting a remote or loopback HTTP(S) URL.
@@ -236,36 +269,12 @@ public actor JPIPTransport {
                                           maximumStorageBytes: storageLimit)
         }
         if scheme == "ws" || scheme == "wss" {
-            let ws: JPIPWebSocketTransport
-            if let existingWS = self.wsTransport {
-                ws = existingWS
-            } else {
-                let created = JPIPWebSocketTransport(
-                    url: baseURL,
-                    reconnectionConfig: .disabled,
-                    requestTimeout: timeoutInterval
-                )
-                self.wsTransport = created
-                ws = created
-            }
-            if await ws.connectionState != .connected {
-                try await ws.connect(deadline: deadline, maxBodyBytes: maxBodyBytes,
-                    maximumStorageBytes: maximumStorageBytes ?? 512 * 1024 * 1024)
-                lastReceivePeakBytes = await ws.takeHandshakeReceivePeakBytes()
-            }
-            let remTimeout = try deadline.map { try Self.remainingSeconds(until: $0) }
-            let response = try await ws.sendRequest(request, timeout: remTimeout, maxBodyBytes: maxBodyBytes,
-                maximumStorageBytes: maximumStorageBytes ?? 512 * 1024 * 1024)
-            if response.data.count > maxBodyBytes {
-                throw CodecError(
-                    .resourceLimitExceeded,
-                    "JPIP WebSocket response payload (\(response.data.count) bytes) exceeds limit (\(maxBodyBytes) bytes)."
-                )
-            }
-            if let negotiatedPath = JPIPResponseParser.extractChannelPath(from: response.headers) {
-                setChannelPath(negotiatedPath)
-            }
-            return response
+            return try await sendViaWebSocket(
+                request,
+                maxBodyBytes: maxBodyBytes,
+                deadline: deadline,
+                maximumStorageBytes: maximumStorageBytes ?? 512 * 1024 * 1024
+            )
         }
         guard scheme == "http" else {
             throw J2KError.invalidParameter("Unsupported JPIP HTTP URL scheme '\(scheme)'.")
@@ -285,6 +294,97 @@ public actor JPIPTransport {
     package func takeUnaccountedPushPayloadBytes() async -> Int {
         guard let wsTransport else { return 0 }
         return await wsTransport.takeUnaccountedPushPayloadBytes()
+    }
+
+    // MARK: - WebSocket Transport Ownership & Coalesced First-Send / Close Joining
+
+    private func sendViaWebSocket(
+        _ request: JPIPRequest,
+        maxBodyBytes: Int,
+        deadline: ContinuousClock.Instant?,
+        maximumStorageBytes: Int
+    ) async throws -> JPIPResponse {
+        // Single ownership is established and published synchronously before any suspension point.
+        let ws: JPIPWebSocketTransport
+        if let existingWS = self.wsTransport, !existingWS.closeController.isRetired {
+            ws = existingWS
+        } else {
+            let created = JPIPWebSocketTransport(
+                url: baseURL,
+                reconnectionConfig: .disabled,
+                requestTimeout: timeoutInterval,
+                handshakePhaseObserver: wsHandshakePhaseObserver
+            )
+            self.wsTransport = created
+            self.createdWebSocketTransportCount += 1
+            self.allCreatedWebSockets.append(created)
+            ws = created
+        }
+
+        let owner = JPIPWebSocketRequestOwner(ws: ws)
+        let requestID = UUID()
+        let generation = requestGeneration
+        let observer = lifecycleObserver
+        activeRequests[requestID] = owner
+        defer {
+            activeRequests.removeValue(forKey: requestID)
+        }
+
+        await observer?(.registered, requestID)
+        guard owner.beginOperation(),
+              generation == requestGeneration,
+              !ws.closeController.isRetired else {
+            owner.operationFinished()
+            throw CancellationError()
+        }
+        defer {
+            owner.operationFinished()
+        }
+
+        do {
+            if let handshakePeak = try await ws.ensureConnected(
+                deadline: deadline,
+                maxBodyBytes: maxBodyBytes,
+                maximumStorageBytes: maximumStorageBytes
+            ) {
+                lastReceivePeakBytes = max(lastReceivePeakBytes, handshakePeak)
+            }
+            lastWebSocketHandshakePhaseDiagnostics = await ws.lastHandshakePhaseDiagnostics
+            let remTimeout = try deadline.map { try Self.remainingSeconds(until: $0) }
+            let response = try await ws.sendRequest(
+                request,
+                timeout: remTimeout,
+                maxBodyBytes: maxBodyBytes,
+                maximumStorageBytes: maximumStorageBytes
+            )
+            await observer?(.beforePublication, requestID)
+            guard generation == requestGeneration, !ws.closeController.isRetired else {
+                throw CancellationError()
+            }
+            try Task.checkCancellation()
+            if let deadline {
+                _ = try Self.remainingSeconds(until: deadline)
+            }
+            if response.data.count > maxBodyBytes {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "JPIP WebSocket response payload (\(response.data.count) bytes) exceeds limit (\(maxBodyBytes) bytes)."
+                )
+            }
+            if let negotiatedPath = JPIPResponseParser.extractChannelPath(from: response.headers) {
+                setChannelPath(negotiatedPath)
+            }
+            return response
+        } catch {
+            lastWebSocketHandshakePhaseDiagnostics = await ws.lastHandshakePhaseDiagnostics
+            if generation != requestGeneration || owner.isCancelled || ws.closeController.isRetired {
+                throw CancellationError()
+            }
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            throw error
+        }
     }
 
     // MARK: - Real POSIX TCP HTTP/1.1 Transport (Off Cooperative Pool + Cancellation & Deadline Safe)
@@ -561,7 +661,10 @@ public actor JPIPTransport {
         let observer = lifecycleObserver
         let taskObserver = httpsTaskPublicationObserver
         activeRequests[requestID] = operation
-        defer { activeRequests.removeValue(forKey: requestID) }
+        defer {
+            lastHTTPSPhaseDiagnostics = operation.phaseDiagnostics
+            activeRequests.removeValue(forKey: requestID)
+        }
         do {
             await observer?(.registered, requestID)
             let result = try await operation.read(urlRequest, configuration: session.configuration,
@@ -656,12 +759,19 @@ public actor JPIPTransport {
         lastReceivePeakBytes = 0
         tcpConnection?.close()
         tcpConnection = nil
-        let ws = wsTransport
-        wsTransport = nil
+        if let ws = wsTransport {
+            ws.cancelForTransportCloseSynchronously()
+            closingWebSockets[closeID] = ws
+            wsTransport = nil
+        }
+        let wsToJoin = Array(closingWebSockets.values)
         session.finishTasksAndInvalidate()
         await observer?(.closeJoining, closeID)
-        if let ws { await ws.disconnect() }
+        for ws in wsToJoin {
+            await ws.waitForTransportCloseCompletion()
+        }
         for owner in closing { await owner.waitForCompletion() }
+        closingWebSockets.removeValue(forKey: closeID)
         await observer?(.closeJoined, closeID)
         // No shared-state mutation after awaiting: newer requests own the new
         // generation's connection, path, telemetry and registry entries.

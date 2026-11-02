@@ -244,6 +244,7 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.select_simulator.outputs.udid }}" \
             -derivedDataPath .build/ios-derived-data \
             -clonedSourcePackagesDirPath .build/ios-source-packages \
+            CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build/ios-evidence/xcodebuild-build.log
           rm -rf .swiftpm
       - name: Execute iOS Simulator tests
@@ -256,6 +257,7 @@ jobs:
             -derivedDataPath .build/ios-derived-data \
             -clonedSourcePackagesDirPath .build/ios-source-packages \
             -resultBundlePath .build/ios-evidence/ios-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build/ios-evidence/xcodebuild-test.log
           rm -rf .swiftpm
       - name: Verify and retain iOS Simulator test inventory and evidence

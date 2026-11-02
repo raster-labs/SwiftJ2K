@@ -73,6 +73,56 @@ package final class JPIPHTTPRequestOwner: JPIPTransportRequestOwner, Sendable {
     package func waitForCompletion() async { await completion.wait() }
 }
 
+/// Tracks an in-flight WebSocket request on `JPIPTransport` so `JPIPTransport.close()`
+/// cancels and joins both the request and the underlying `JPIPWebSocketTransport`'s
+/// handshake worker, socket, and detached reader thread before returning.
+package final class JPIPWebSocketRequestOwner: JPIPTransportRequestOwner, Sendable {
+    private struct State {
+        var began = false
+        var cancelled = false
+    }
+    private let state = Mutex(State())
+    private let completion = JPIPRequestCompletion()
+    package let ws: JPIPWebSocketTransport
+    package var isFinished: Bool { completion.isFinished }
+
+    package init(ws: JPIPWebSocketTransport) {
+        self.ws = ws
+    }
+
+    package func beginOperation() -> Bool {
+        state.withLock { state in
+            guard !state.cancelled, !state.began else { return false }
+            state.began = true
+            return true
+        }
+    }
+
+    package var isCancelled: Bool {
+        state.withLock { $0.cancelled }
+    }
+
+    package func cancelForTransportClose() {
+        let neverStarted = state.withLock { state in
+            state.cancelled = true
+            return !state.began
+        }
+        ws.cancelForTransportCloseSynchronously()
+        if neverStarted {
+            completion.finish()
+        }
+    }
+
+    package func operationFinished() {
+        completion.finish()
+    }
+
+    package func waitForCompletion() async {
+        await ws.waitForTransportCloseCompletion()
+        await completion.wait()
+    }
+}
+
 /// Internal deterministic lifecycle observations. Production observers are nil.
 package enum JPIPTransportLifecycleEvent: Hashable, Sendable {
     case registered, beforePublication, closeJoining, closeJoined

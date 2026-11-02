@@ -269,46 +269,48 @@ struct CodexR3IndependentTests {
     // MARK: - F04-06 RFC 6455 Fragmented Message With Interleaved Control Frame
 
     @Test("F04-06: RFC 6455 fragmented binary message survives interleaved FIN=1 ping control frame")
-    func rfc6455FragmentedMessageSurvivesInterleavedControlFrame() throws {
-        let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
-        defer { listener.close() }
+    func rfc6455FragmentedMessageSurvivesInterleavedControlFrame() async throws {
+        let (firstFrame, secondFrame) = try await JPIPBlockingWorker.run {
+            let listener = try JPIPTCPListener(host: "127.0.0.1", port: 0)
+            defer { listener.close() }
 
-        final class AcceptedBox: @unchecked Sendable {
-            private let lock = NSLock()
-            private var conn: JPIPTCPConnection?
-            func store(_ c: JPIPTCPConnection?) { lock.lock(); conn = c; lock.unlock() }
-            func load() -> JPIPTCPConnection? { lock.lock(); defer { lock.unlock() }; return conn }
+            final class AcceptedBox: @unchecked Sendable {
+                private let lock = NSLock()
+                private var conn: JPIPTCPConnection?
+                func store(_ c: JPIPTCPConnection?) { lock.lock(); conn = c; lock.unlock() }
+                func load() -> JPIPTCPConnection? { lock.lock(); defer { lock.unlock() }; return conn }
+            }
+            let acceptedBox = AcceptedBox()
+            let acceptSema = DispatchSemaphore(value: 0)
+            DispatchQueue.global(qos: .userInitiated).async {
+                acceptedBox.store(try? listener.acceptConnection(timeoutSeconds: 5))
+                acceptSema.signal()
+            }
+
+            let clientConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: listener.boundPort, timeoutSeconds: 5)
+            defer { clientConn.close() }
+            acceptSema.wait()
+            let serverConn = try #require(acceptedBox.load())
+            defer { serverConn.close() }
+
+            // Server writes:
+            //   1. Fragment 1: FIN=0, opcode=.binary (0x02), payload=[1, 2, 3]
+            //   2. Interleaved control frame: FIN=1, opcode=.ping (0x09), payload=[0x99]
+            //   3. Fragment 2: FIN=1, opcode=.continuation (0x00), payload=[4, 5, 6]
+            var rawWire = Data()
+            rawWire.append(contentsOf: [0x02, 0x03, 1, 2, 3])
+            rawWire.append(contentsOf: [0x89, 0x01, 0x99])
+            rawWire.append(contentsOf: [0x80, 0x03, 4, 5, 6])
+            try serverConn.writeAll(rawWire)
+
+            // First read returns the interleaved ping immediately
+            let first = try clientConn.readWebSocketFrame(requireMasked: false)
+            // Second read completes the fragmented binary message [1, 2, 3, 4, 5, 6]
+            let second = try clientConn.readWebSocketFrame(requireMasked: false)
+            return (first, second)
         }
-        let acceptedBox = AcceptedBox()
-        let acceptSema = DispatchSemaphore(value: 0)
-        DispatchQueue.global(qos: .userInitiated).async {
-            acceptedBox.store(try? listener.acceptConnection(timeoutSeconds: 5))
-            acceptSema.signal()
-        }
-
-        let clientConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: listener.boundPort, timeoutSeconds: 5)
-        defer { clientConn.close() }
-        acceptSema.wait()
-        let serverConn = try #require(acceptedBox.load())
-        defer { serverConn.close() }
-
-        // Server writes:
-        //   1. Fragment 1: FIN=0, opcode=.binary (0x02), payload=[1, 2, 3]
-        //   2. Interleaved control frame: FIN=1, opcode=.ping (0x09), payload=[0x99]
-        //   3. Fragment 2: FIN=1, opcode=.continuation (0x00), payload=[4, 5, 6]
-        var rawWire = Data()
-        rawWire.append(contentsOf: [0x02, 0x03, 1, 2, 3])
-        rawWire.append(contentsOf: [0x89, 0x01, 0x99])
-        rawWire.append(contentsOf: [0x80, 0x03, 4, 5, 6])
-        try serverConn.writeAll(rawWire)
-
-        // First read returns the interleaved ping immediately
-        let firstFrame = try clientConn.readWebSocketFrame(requireMasked: false)
         #expect(firstFrame.opcode == .ping)
         #expect(firstFrame.payload == Data([0x99]))
-
-        // Second read completes the fragmented binary message [1, 2, 3, 4, 5, 6]
-        let secondFrame = try clientConn.readWebSocketFrame(requireMasked: false)
         #expect(secondFrame.opcode == .binary)
         #expect(secondFrame.fin)
         #expect(secondFrame.payload == Data([1, 2, 3, 4, 5, 6]))
@@ -504,14 +506,16 @@ struct CodexR3IndependentTests {
         }
 
         // Live HTTP wire request returns 422 Unprocessable Content (not 200 OK raw bytes)
-        let conn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutSeconds: 5)
-        defer { conn.close() }
-        try conn.writeHTTPRequest(
-            method: "GET",
-            pathAndQuery: "/jpip?target=corrupt.j2k&type=jpp-stream",
-            hostHeader: "127.0.0.1:\(port)"
-        )
-        let wireResp = try conn.readHTTPResponse(maxBodyBytes: 65_536)
+        let wireResp = try await JPIPBlockingWorker.run {
+            let conn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: port, timeoutSeconds: 5)
+            defer { conn.close() }
+            try conn.writeHTTPRequest(
+                method: "GET",
+                pathAndQuery: "/jpip?target=corrupt.j2k&type=jpp-stream",
+                hostHeader: "127.0.0.1:\(port)"
+            )
+            return try conn.readHTTPResponse(maxBodyBytes: 65_536)
+        }
         #expect(wireResp.statusCode == 422)
 
         try await server.stop()

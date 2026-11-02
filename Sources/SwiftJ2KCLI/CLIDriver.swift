@@ -1762,7 +1762,7 @@ private func run() async throws -> Int32 {
     }
 }
 
-nonisolated func drive() -> Int32 {
+package nonisolated func drive() -> Int32 {
     _ = signal(SIGPIPE, SIG_IGN)
     _ = signal(SIGINT, SIG_IGN)
     let work = Task.detached { () -> Int32 in
@@ -1786,5 +1786,3 @@ nonisolated func drive() -> Int32 {
     interrupt.cancel()
     return status.withLock { $0 }
 }
-
-exit(drive())

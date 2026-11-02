@@ -12,14 +12,23 @@ let package = Package(
     products: [.library(name: "SwiftJ2K", targets: ["SwiftJ2K"]),
                .library(name: "SwiftJ2K3D", targets: ["SwiftJ2K3D"]),
                .library(name: "SwiftJ2KJPIP", targets: ["SwiftJ2KJPIP"]),
-               .executable(name: "swiftj2k-cli", targets: ["SwiftJ2KCLI"])],
+               .executable(name: "swiftj2k-cli", targets: ["swiftj2k-cli"])],
     targets: [
         .target(name: "CZlibShim", linkerSettings: [.linkedLibrary("z")]),
         .target(name: "SwiftJ2K"),
         .target(name: "SwiftJ2K3D", dependencies: ["SwiftJ2K"]),
         .target(name: "SwiftJ2KJPIP", dependencies: ["SwiftJ2K", "SwiftJ2K3D"]),
-        .executableTarget(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D", "SwiftJ2KJPIP", "CZlibShim"]),
-        .testTarget(name: "SwiftJ2KTests", dependencies: ["SwiftJ2K", "SwiftJ2KCLI"], resources: [.copy("Fixtures")]),
+        .target(name: "SwiftJ2KCLI", dependencies: ["SwiftJ2K", "SwiftJ2K3D", "SwiftJ2KJPIP", "CZlibShim"]),
+        .executableTarget(name: "swiftj2k-cli", dependencies: ["SwiftJ2KCLI"], path: "Sources/SwiftJ2KCLIMain"),
+        .testTarget(
+            name: "SwiftJ2KTests",
+            dependencies: [
+                "SwiftJ2K",
+                "SwiftJ2KCLI",
+                .target(name: "swiftj2k-cli", condition: .when(platforms: [.macOS, .linux]))
+            ],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "SwiftJ2K3DTests", dependencies: ["SwiftJ2K3D", "SwiftJ2K"]),
         .testTarget(name: "SwiftJ2KJPIPTests", dependencies: ["SwiftJ2KJPIP", "SwiftJ2K3D", "SwiftJ2K"])
     ],

@@ -120,8 +120,16 @@ struct CodexR3HTTPStreamingTests {
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
         let transport = JPIPTransport(baseURL: fixture.url, configuration: fixture.configuration)
-        let result = try await transport.send(JPIPRequest(target: "a b.j2k"), maxBodyBytes: 8,
-            deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+        let result: JPIPResponse
+        do {
+            result = try await transport.send(JPIPRequest(target: "a b.j2k"), maxBodyBytes: 8,
+                deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
+        } catch {
+            let phases = await transport.lastHTTPSPhaseDiagnostics
+            await transport.close()
+            Issue.record("sharedHTTPSPath failed: \(error); \(phases)")
+            throw error
+        }
         #expect(result.statusCode == 200)
         #expect(result.channelID == "abc")
         #expect(result.data == Data([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -137,6 +145,10 @@ struct CodexR3HTTPStreamingTests {
         let queryItems = URLComponents(url: sent.url!, resolvingAgainstBaseURL: false)?.queryItems
         let target = queryItems?.first { $0.name == "target" }?.value
         #expect(target == "a b.j2k")
+        let phases = await transport.lastHTTPSPhaseDiagnostics
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains("resume"), "\(phases)")
         await transport.close()
     }
 
@@ -174,10 +186,16 @@ struct CodexR3HTTPStreamingTests {
         do {
             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
                 deadline: start.advanced(by: .milliseconds(120)))
-            Issue.record("Expected absolute HTTPS deadline")
-        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }
-        #expect(ContinuousClock.now - start < .seconds(2))
-        #expect(!operation.hasActiveOwners)
+            Issue.record("Expected absolute HTTPS deadline; \(operation.phaseDiagnostics)")
+        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
+        #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        let phases = operation.phaseDiagnostics
+        #expect(phases.contains(": watchdog"), "\(phases)")
+        #expect(phases.contains("cancel(latched=true"), "\(phases)")
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains(": resume"), "\(phases)")
     }
 
     @Test func sharedWatchdogInterruptsAnAlreadyActiveTrickle() async throws {
@@ -327,10 +345,26 @@ struct CodexR3HTTPStreamingTests {
                     task.cancel()
                     operation.urlSession(owner, task: task, didCompleteWithError: URLError(.cancelled))
                 })
-            #expect(!cancelFirst)
-            #expect(result.response.data == Data([42]))
-        } catch is CancellationError { #expect(cancelFirst) }
-        #expect(!operation.hasActiveOwners)
+            #expect(!cancelFirst, "\(operation.phaseDiagnostics)")
+            #expect(result.response.data == Data([42]), "\(operation.phaseDiagnostics)")
+        } catch is CancellationError {
+            #expect(cancelFirst, "\(operation.phaseDiagnostics)")
+        } catch {
+            Issue.record("Unexpected error in completionAndCancellationHaveOneWinner(cancelFirst: \(cancelFirst)): \(error); \(operation.phaseDiagnostics)")
+            throw error
+        }
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        let phases = operation.phaseDiagnostics
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains(": resume"), "\(phases)")
+        if cancelFirst {
+            #expect(phases.contains("cancel(latched=true"), "\(phases)")
+            #expect(phases.contains("takeResult.failed"), "\(phases)")
+        } else {
+            #expect(phases.contains("cancel(ignored:taskCompleted"), "\(phases)")
+            #expect(phases.contains("postJoinDeadlineRecheck.ok"), "\(phases)")
+        }
     }
 
     @Test func completedRequestEventuallyReleasesItsDelegateOwnership() async throws {
@@ -338,26 +372,40 @@ struct CodexR3HTTPStreamingTests {
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
         let released = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        let phaseLog = JPIPHTTPSPhaseLog()
         func completeRequest() async throws {
             let operation = JPIPHTTPSRequest(maximumBodyBytes: 8, maximumStorageBytes: 65_536,
+                phaseLog: phaseLog,
                 deinitObserver: {
+                    phaseLog.record("deinit")
                     released.continuation.yield(true)
                     released.continuation.finish()
                 })
-            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
-                deadline: .now.advanced(by: .seconds(2)))
-            #expect(!operation.hasActiveOwners)
+            do {
+                _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
+                    deadline: .now.advanced(by: .seconds(2)))
+            } catch {
+                Issue.record("completedRequestEventuallyReleasesItsDelegateOwnership read failed: \(error); \(phaseLog.summary)")
+                throw error
+            }
+            #expect(!operation.hasActiveOwners, "\(phaseLog.summary)")
         }
         try await completeRequest()
         // Foundation/autorelease and async-frame ARC may release the delegate
         // after read returns. Observe actual deinit without retaining it or
         // promising synchronous destruction at the return boundary.
         let watchdog = JPIPDeadlineWatchdog(after: 2) {
+            phaseLog.record("deinit.watchdog.expired")
             released.continuation.yield(false)
             released.continuation.finish()
         }
         defer { watchdog.cancel() }
-        for await didDeinitialise in released.stream { #expect(didDeinitialise); break }
+        for await didDeinitialise in released.stream { #expect(didDeinitialise, "\(phaseLog.summary)"); break }
+        let phases = phaseLog.summary
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains(": resume"), "\(phases)")
+        #expect(phases.contains("postJoinDeadlineRecheck.ok"), "\(phases)")
     }
 
     @Test func repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() async throws {

@@ -244,6 +244,7 @@ struct CodexR3WebSocketBudgetTests {
         defer { peer.close() }
         try await peer.waitForStartup()
         let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+        await transport.setWebSocketHandshakePhaseObserver { peer.mark($0) }
         do {
             peer.mark("first.send.begin")
             let first = try await transport.send(JPIPRequest(target: "tiny.j2k"), maxBodyBytes: 1,
@@ -267,8 +268,254 @@ struct CodexR3WebSocketBudgetTests {
             throw R3ScriptedPeerFailure("Handshake budget fixture failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
         }
         let stopped = await peer.stopAndObserve()
-        #expect(stopped, "\(peer.diagnostics)")
-        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        let diagnostics = peer.diagnostics
+        #expect(stopped, "\(diagnostics)")
+        #expect(peer.failures.isEmpty, "\(diagnostics)")
+        #expect(diagnostics.contains("ws.header.read"), "\(diagnostics)")
+        #expect(diagnostics.contains("ws.publication"), "\(diagnostics)")
+        #expect(diagnostics.contains("ws.actor.resume"), "\(diagnostics)")
+    }
+
+    @Test func overlappingFirstSendsAndCloseWithTracingShareSingleTransportAndJoinAllReaders() async throws {
+        // 1. Overlapping first sends with tracing enabled must share a single JPIPWebSocketTransport,
+        //    coalesce onto one handshake/reader/socket, and join completely on close().
+        do {
+            let releaseHandshake = DispatchSemaphore(value: 0)
+            let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
+                guard let request = try connection.readHTTPRequest(),
+                      let key = request.header("Sec-WebSocket-Key") else {
+                    throw J2KError.invalidData("Missing Sec-WebSocket-Key")
+                }
+                peer.mark("part1.upgrade.read")
+                _ = releaseHandshake.wait(timeout: .now() + 5.0)
+                try connection.writeWebSocketServerHandshake(clientKey: key)
+                peer.mark("part1.upgrade.written")
+                for index in 1...2 {
+                    let incoming = try connection.readWebSocketFrame(requireMasked: true)
+                    peer.mark("part1.frame.read.\(index)")
+                    guard incoming.payload.count >= 9 else {
+                        throw J2KError.invalidData("Short WebSocket request frame")
+                    }
+                    var reply = Data([0x02])
+                    reply.append(incoming.payload[1..<5])
+                    reply.append(contentsOf: [0, 0, 0, 5, 0, 200, 0, 0, UInt8(40 + index)])
+                    try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+                    peer.mark("part1.frame.written.\(index)")
+                }
+            }
+            defer {
+                releaseHandshake.signal()
+                peer.close()
+            }
+            try await peer.waitForStartup()
+
+            let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+            let observedPhases = Mutex<[String]>([])
+            await transport.setWebSocketHandshakePhaseObserver { phase in
+                observedPhases.withLock { $0.append(phase) }
+                peer.mark(phase)
+            }
+
+            let sendA = Task {
+                try await transport.send(
+                    JPIPRequest(target: "a.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            let sendB = Task {
+                try await transport.send(
+                    JPIPRequest(target: "b.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            do {
+                try await peer.waitFor("part1.upgrade.read")
+                let bothRegistered = try await observeAsync {
+                    let ownership = await transport.requestOwnershipSnapshot
+                    return ownership.registered == 2 && ownership.unfinished == 2
+                }
+                #expect(bothRegistered, "\(peer.diagnostics)")
+                let midActivity = await transport.webSocketActivitySnapshot
+                #expect(midActivity.createdTransports == 1)
+                #expect(midActivity.activeHandshakes == 1)
+
+                releaseHandshake.signal()
+                let respA = try await sendA.value
+                let respB = try await sendB.value
+                #expect(respA.statusCode == 200)
+                #expect(respB.statusCode == 200)
+                #expect(Set([respA.data, respB.data]) == Set([Data([41]), Data([42])]))
+
+                let connectedActivity = await transport.webSocketActivitySnapshot
+                #expect(connectedActivity.createdTransports == 1)
+                #expect(connectedActivity.activeHandshakes == 0)
+                #expect(connectedActivity.activeReaders == 1)
+                #expect(connectedActivity.activeSockets == 1)
+
+                let phases = observedPhases.withLock { $0 }
+                #expect(phases.filter { $0 == "ws.connect.start" }.count == 1, "\(phases)")
+                #expect(phases.filter { $0 == "ws.header.read" }.count == 1, "\(phases)")
+                #expect(phases.filter { $0 == "ws.publication" }.count == 1, "\(phases)")
+                #expect(phases.filter { $0 == "ws.actor.resume" }.count == 1, "\(phases)")
+
+                await withTaskGroup(of: Void.self) { group in
+                    group.addTask { await transport.close() }
+                    group.addTask { await transport.close() }
+                }
+
+                let closedActivity = await transport.webSocketActivitySnapshot
+                let closedOwnership = await transport.requestOwnershipSnapshot
+                #expect(closedActivity.createdTransports == 1)
+                #expect(closedActivity.activeHandshakes == 0)
+                #expect(closedActivity.activeReaders == 0)
+                #expect(closedActivity.activeSockets == 0)
+                #expect(closedOwnership.registered == 0)
+                #expect(closedOwnership.unfinished == 0)
+            } catch {
+                releaseHandshake.signal()
+                sendA.cancel()
+                sendB.cancel()
+                _ = try? await sendA.value
+                _ = try? await sendB.value
+                await transport.close()
+                _ = await peer.stopAndObserve()
+                throw error
+            }
+            let stopped = await peer.stopAndObserve()
+            #expect(stopped, "\(peer.diagnostics)")
+            #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        }
+
+        // 2. Overlapping first sends + close() during handshake AND during active reader frame wait
+        //    with tracing enabled must cancel and join without leaving any hidden reader or socket.
+        do {
+            let peer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
+                guard let request = try connection.readHTTPRequest(),
+                      let key = request.header("Sec-WebSocket-Key") else {
+                    throw J2KError.invalidData("Missing Sec-WebSocket-Key on connection \(index)")
+                }
+                peer.mark("conn.\(index).upgrade.read")
+                if index == 1 {
+                    // Connection 1 withholds 101 response until client close() cancels the socket.
+                    _ = try? connection.readHTTPRequest()
+                    return
+                }
+                // Connection 2 completes 101 upgrade, reads the first frame, then withholds reply until close().
+                try connection.writeWebSocketServerHandshake(clientKey: key)
+                peer.mark("conn.2.upgrade.written")
+                _ = try connection.readWebSocketFrame(requireMasked: true)
+                peer.mark("conn.2.frame.read")
+                _ = try? connection.readWebSocketFrame(requireMasked: true)
+            }
+            defer { peer.close() }
+            try await peer.waitForStartup()
+
+            let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+            await transport.setWebSocketHandshakePhaseObserver { peer.mark("trace.\($0)") }
+
+            // 2A: Close while two overlapping first sends are in the middle of the handshake.
+            let hsSend1 = Task {
+                try await transport.send(
+                    JPIPRequest(target: "hs1.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            let hsSend2 = Task {
+                try await transport.send(
+                    JPIPRequest(target: "hs2.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            try await peer.waitFor("conn.1.upgrade.read")
+            let bothInHandshake = try await observeAsync {
+                let own = await transport.requestOwnershipSnapshot
+                let act = await transport.webSocketActivitySnapshot
+                return own.registered == 2 && act.createdTransports == 1 && act.activeHandshakes == 1
+            }
+            #expect(bothInHandshake, "\(peer.diagnostics)")
+
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await transport.close() }
+                group.addTask { await transport.close() }
+            }
+
+            await #expect(throws: CancellationError.self) { _ = try await hsSend1.value }
+            await #expect(throws: CancellationError.self) { _ = try await hsSend2.value }
+
+            let afterHandshakeClose = await transport.webSocketActivitySnapshot
+            let ownAfterHandshakeClose = await transport.requestOwnershipSnapshot
+            #expect(afterHandshakeClose.createdTransports == 1)
+            #expect(afterHandshakeClose.activeHandshakes == 0)
+            #expect(afterHandshakeClose.activeReaders == 0)
+            #expect(afterHandshakeClose.activeSockets == 0)
+            #expect(ownAfterHandshakeClose.registered == 0)
+            #expect(ownAfterHandshakeClose.unfinished == 0)
+
+            // 2B: Close while two overlapping sends in the next generation share the live reader thread.
+            let liveSend1 = Task {
+                try await transport.send(
+                    JPIPRequest(target: "live1.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            let liveSend2 = Task {
+                try await transport.send(
+                    JPIPRequest(target: "live2.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            try await peer.waitFor("conn.2.frame.read")
+            let bothInLiveRequest = try await observeAsync {
+                let own = await transport.requestOwnershipSnapshot
+                let act = await transport.webSocketActivitySnapshot
+                return own.registered == 2 && act.createdTransports == 2 && act.activeReaders == 1 && act.activeSockets == 1
+            }
+            #expect(bothInLiveRequest, "\(peer.diagnostics)")
+
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await transport.close() }
+                group.addTask { await transport.close() }
+            }
+
+            await #expect(throws: CancellationError.self) { _ = try await liveSend1.value }
+            await #expect(throws: CancellationError.self) { _ = try await liveSend2.value }
+
+            let afterLiveClose = await transport.webSocketActivitySnapshot
+            let ownAfterLiveClose = await transport.requestOwnershipSnapshot
+            #expect(afterLiveClose.createdTransports == 2)
+            #expect(afterLiveClose.activeHandshakes == 0)
+            #expect(afterLiveClose.activeReaders == 0)
+            #expect(afterLiveClose.activeSockets == 0)
+            #expect(ownAfterLiveClose.registered == 0)
+            #expect(ownAfterLiveClose.unfinished == 0)
+
+            let stopped = await peer.stopAndObserve()
+            #expect(stopped, "\(peer.diagnostics)")
+            #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        }
+    }
+
+    private func observeAsync(_ predicate: @Sendable () async -> Bool) async throws -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while !(await predicate()), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        return await predicate()
     }
 
     private func observe(_ predicate: @Sendable () -> Bool) async throws -> Bool {
