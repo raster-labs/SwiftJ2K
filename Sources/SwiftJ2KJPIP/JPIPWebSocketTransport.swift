@@ -389,6 +389,7 @@ package final class JPIPWebSocketReadBudget: @unchecked Sendable {
     private struct RequestLimit {
         let body: Int
         let storage: Int
+        let allowsIdleReads: Bool
         var consumedBody = 0
         var completed = false
     }
@@ -423,27 +424,47 @@ package final class JPIPWebSocketReadBudget: @unchecked Sendable {
     }
 
     private var activeStorageLimit: Int {
-        requests.values.reduce(storageLimit) { $1.completed ? $0 : min($0, $1.storage) }
+        var limit: Int?
+        for request in requests.values where !request.completed {
+            limit = min(limit ?? request.storage, request.storage)
+        }
+        return limit ?? storageLimit
     }
 
     private func remainingBody(for requestID: UInt32?) -> Int {
         if let requestID, let request = requests[requestID], !request.completed {
             return request.body - request.consumedBody
         }
-        var remaining = bodyLimit
-        var hasActiveRequest = false
+        var remaining: Int?
         for request in requests.values where !request.completed {
-            hasActiveRequest = true
-            remaining = min(remaining, request.body - request.consumedBody)
+            let requestRemaining = request.body - request.consumedBody
+            remaining = min(remaining ?? requestRemaining, requestRemaining)
         }
         // Idle legacy pushes share a bounded queue. During a request, only new
         // wire bytes consume its allowance; older queued owners consume storage.
-        return hasActiveRequest ? remaining : max(0, bodyLimit - queuedPayloadBytes)
+        return remaining ?? max(0, bodyLimit - queuedPayloadBytes)
     }
 
-    private func admit(_ reading: Int, queue: Int? = nil, delivered: Int? = nil) throws {
+    private func syncActivePolicy() {
+        var minBody: Int?
+        var minStorage: Int?
+        var idleAllowed: Bool?
+        for request in requests.values where !request.completed {
+            minBody = min(minBody ?? request.body, request.body)
+            minStorage = min(minStorage ?? request.storage, request.storage)
+            idleAllowed = (idleAllowed ?? true) && request.allowsIdleReads
+        }
+        if let minBody, let minStorage, let idleAllowed {
+            bodyLimit = minBody
+            storageLimit = minStorage
+            allowsIdleReads = idleAllowed
+        }
+        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+    }
+
+    private func admit(_ reading: Int, queue: Int? = nil, delivered: Int? = nil, limit: Int? = nil) throws {
         let total = try Self.add(reading, Self.add(queue ?? queuedBytes(), delivered ?? deliveredStorageBytes))
-        guard total <= activeStorageLimit else {
+        guard total <= (limit ?? activeStorageLimit) else {
             throw CodecError(.resourceLimitExceeded, "WebSocket frame, decoded response and queued pushes exceed remaining storage before allocation.")
         }
         peakBytes = max(peakBytes, total)
@@ -454,9 +475,10 @@ package final class JPIPWebSocketReadBudget: @unchecked Sendable {
         guard maxBodyBytes >= 0, maximumStorageBytes > 0 else {
             throw CodecError(.invalidArgument, "WebSocket receive limits must be nonnegative with positive storage.")
         }
+        let candidateLimit = requests.values.reduce(maximumStorageBytes) { $1.completed ? $0 : min($0, $1.storage) }
+        try admit(readingBytes, limit: candidateLimit)
         bodyLimit = maxBodyBytes
         storageLimit = maximumStorageBytes
-        try admit(readingBytes)
         allowsIdleReads = allowBackgroundPush
         readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
         lock.broadcast()
@@ -471,27 +493,38 @@ package final class JPIPWebSocketReadBudget: @unchecked Sendable {
         }
         // Results of the preceding request now belong to its caller. The new
         // allowance is supplied after that caller accounts for retained owners.
-        if requests.isEmpty {
-            deliveredStorageBytes = 0
-            peakBytes = 0
-            payloadAllocations = 0
+        // Commit shared policy and per-request ledger resets only after preflight succeeds.
+        let wasEmpty = requests.isEmpty
+        let candidateDelivered = wasEmpty ? 0 : deliveredStorageBytes
+        let candidateLimit = requests.reduce(maximumStorageBytes) {
+            ($1.key == id || $1.value.completed) ? $0 : min($0, $1.value.storage)
         }
-        bodyLimit = maxBodyBytes
-        storageLimit = maximumStorageBytes
-        allowsIdleReads = !pauseAfterResponse
+        let total = try Self.add(readingBytes, Self.add(queuedBytes(), candidateDelivered))
+        guard total <= candidateLimit else {
+            throw CodecError(.resourceLimitExceeded, "WebSocket frame, decoded response and queued pushes exceed remaining storage before allocation.")
+        }
+        if wasEmpty {
+            deliveredStorageBytes = 0
+            peakBytes = total
+            payloadAllocations = 0
+        } else {
+            peakBytes = max(peakBytes, total)
+        }
         // Queued owners still consume storage, but their bytes belong to an
         // earlier transfer round. The caller has already charged that round.
-        requests[id] = RequestLimit(body: maxBodyBytes, storage: maximumStorageBytes)
-        do { try admit(readingBytes) }
-        catch { requests.removeValue(forKey: id); throw error }
-        readEnabled = true
+        requests[id] = RequestLimit(
+            body: maxBodyBytes,
+            storage: maximumStorageBytes,
+            allowsIdleReads: !pauseAfterResponse
+        )
+        syncActivePolicy()
         lock.broadcast()
     }
 
     package func endRequest(_ id: UInt32) {
         lock.lock(); defer { lock.unlock() }
         requests.removeValue(forKey: id)
-        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+        syncActivePolicy()
         lock.broadcast()
     }
 
@@ -500,7 +533,7 @@ package final class JPIPWebSocketReadBudget: @unchecked Sendable {
     package func pauseAfterResponse(_ id: UInt32) {
         lock.lock(); defer { lock.unlock() }
         requests[id]?.completed = true
-        readEnabled = allowsIdleReads || requests.values.contains { !$0.completed }
+        syncActivePolicy()
     }
 
     package func waitUntilReadAllowed() -> Bool {
@@ -1657,13 +1690,18 @@ public actor JPIPWebSocketTransport {
             )
         }
 
+        let effectiveTimeout = max(0.001, timeout ?? requestTimeout)
+        guard effectiveTimeout.isFinite else {
+            throw J2KError.invalidParameter("WebSocket timeout must be finite.")
+        }
+
         let requestID = nextRequestID
-        nextRequestID = nextRequestID == UInt32.max ? 1 : (nextRequestID + 1)
         let originBudget = readBudget
         let generation = connectionGeneration
         let observer = lifecycleObserver
         try originBudget.beginRequest(requestID, maxBodyBytes: maxBodyBytes, maximumStorageBytes: maximumStorageBytes,
                                     pauseAfterResponse: pauseAfterResponse)
+        nextRequestID = nextRequestID == UInt32.max ? 1 : (nextRequestID + 1)
         defer { originBudget.endRequest(requestID) }
 
         let frame = encoder.encodeRequest(request, requestID: requestID)
@@ -1674,11 +1712,6 @@ public actor JPIPWebSocketTransport {
 
         if let response = pendingResponses.removeValue(forKey: requestID) {
             return response
-        }
-
-        let effectiveTimeout = max(0.001, timeout ?? requestTimeout)
-        guard effectiveTimeout.isFinite else {
-            throw J2KError.invalidParameter("WebSocket timeout must be finite.")
         }
         let cancelToken = JPIPSocketCancellationToken()
         guard cancelToken.bind(connection: conn) else { throw CancellationError() }

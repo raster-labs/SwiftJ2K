@@ -794,6 +794,214 @@ struct CodexR3WebSocketBudgetTests {
         #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
     }
 
+    @Test func rejectedConcurrentRequestAndConfigurePreserveActivePolicyAndSharedConnection() async throws {
+        // Part 1: Direct unit verification of transactional admission in JPIPWebSocketReadBudget.
+        do {
+            let budget = JPIPWebSocketReadBudget()
+            defer { budget.close() }
+
+            try budget.beginRequest(1, maxBodyBytes: 100, maximumStorageBytes: 4096, pauseAfterResponse: false)
+            try budget.reservePush(payloadBytes: 10, requestID: 1)
+            budget.willAllocatePayload()
+
+            let beforeLimits = budget.configuredLimits
+            let beforeSnap = budget.snapshot
+            #expect(beforeLimits.body == 100)
+            #expect(beforeLimits.storage == 4096)
+            #expect(beforeLimits.backgroundPush == true)
+            #expect(beforeSnap.payloadAllocationCount == 1)
+
+            // Rejected overlapping beginRequest B must not overwrite bodyLimit, storageLimit, or allowsIdleReads.
+            do {
+                try budget.beginRequest(2, maxBodyBytes: 1, maximumStorageBytes: 1, pauseAfterResponse: true)
+                Issue.record("Expected overlapping beginRequest B to fail storage preflight")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+            #expect(budget.configuredLimits == beforeLimits)
+            #expect(budget.snapshot == beforeSnap)
+
+            // Rejected configure must also leave all configured limits and snapshot counters intact.
+            do {
+                try budget.configure(maxBodyBytes: 1, maximumStorageBytes: 1, allowBackgroundPush: false)
+                Issue.record("Expected configure with insufficient storage to fail preflight")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+            #expect(budget.configuredLimits == beforeLimits)
+            #expect(budget.snapshot == beforeSnap)
+
+            // Active request A must still be able to reserve its response under its 100 / 4096 limits.
+            try budget.reserveResponse(bodyBytes: 1, decodedStorageBytes: 1, requestID: 1)
+            budget.pauseAfterResponse(1)
+            budget.endRequest(1)
+            #expect(budget.configuredLimits == beforeLimits)
+
+            // While idle (requests.isEmpty), a rejected beginRequest must not zero deliveredStorageBytes,
+            // peakBytes, or payloadAllocations, nor overwrite configuredLimits.
+            let idleSnapBeforeReject = budget.snapshot
+            #expect(idleSnapBeforeReject.retainedStorageBytes > 1)
+            #expect(idleSnapBeforeReject.peakStorageBytes > 1)
+            #expect(idleSnapBeforeReject.payloadAllocationCount == 1)
+            do {
+                try budget.beginRequest(3, maxBodyBytes: 1, maximumStorageBytes: 1, pauseAfterResponse: true)
+                Issue.record("Expected idle beginRequest with insufficient storage to fail preflight")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+            #expect(budget.configuredLimits == beforeLimits)
+            #expect(budget.snapshot == idleSnapBeforeReject)
+
+            // Overlapping admitted request B that finishes before A must restore A's larger limits and idle policy.
+            let budget2 = JPIPWebSocketReadBudget()
+            defer { budget2.close() }
+            try budget2.beginRequest(10, maxBodyBytes: 100, maximumStorageBytes: 4096, pauseAfterResponse: false)
+            try budget2.beginRequest(11, maxBodyBytes: 50, maximumStorageBytes: 2048, pauseAfterResponse: true)
+            #expect(budget2.configuredLimits.body == 50)
+            #expect(budget2.configuredLimits.storage == 2048)
+            #expect(budget2.configuredLimits.backgroundPush == false)
+            budget2.pauseAfterResponse(11)
+            budget2.endRequest(11)
+            #expect(budget2.configuredLimits.body == 100)
+            #expect(budget2.configuredLimits.storage == 4096)
+            #expect(budget2.configuredLimits.backgroundPush == true)
+            try budget2.reserveResponse(bodyBytes: 80, decodedStorageBytes: 3000, requestID: 10)
+            budget2.pauseAfterResponse(10)
+            budget2.endRequest(10)
+        }
+
+        // Part 2: End-to-end shared WebSocket connection regression proving A completes,
+        // rejected overlapping B does not mutate limits or close the socket, and C reuses the same connection.
+        do {
+            let releaseAResponse = DispatchSemaphore(value: 0)
+            let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
+                guard let request = try connection.readHTTPRequest(),
+                      let key = request.header("Sec-WebSocket-Key") else {
+                    throw J2KError.invalidData("Missing Sec-WebSocket-Key")
+                }
+                try connection.writeWebSocketServerHandshake(clientKey: key)
+                peer.mark("shared.handshake")
+
+                // Read Request A and push a 64-byte data bin before A's response.
+                let incomingA = try connection.readWebSocketFrame(requireMasked: true)
+                guard incomingA.payload.count >= 9 else {
+                    throw J2KError.invalidData("Short WebSocket frame for request A")
+                }
+                peer.mark("shared.a.read")
+                let encoder = JPIPWebSocketMessageEncoder()
+                let pushedBin = JPIPDataBin(
+                    binClass: .precinct,
+                    binID: 1,
+                    data: Data(repeating: 0x5A, count: 64),
+                    isComplete: true
+                )
+                let pushPayload = encoder.encodeDataBin(pushedBin, requestID: nil).serialize()
+                try connection.writeWebSocketFrame(opcode: .binary, payload: pushPayload, masked: false)
+                peer.mark("shared.a.push.written")
+
+                _ = releaseAResponse.wait(timeout: .now() + 5.0)
+                var replyA = Data([0x02])
+                replyA.append(incomingA.payload[1..<5])
+                replyA.append(contentsOf: [0, 0, 0, 36, 0, 200, 0, 0])
+                replyA.append(Data(repeating: 0x41, count: 32))
+                try connection.writeWebSocketFrame(opcode: .binary, payload: replyA, masked: false)
+                peer.mark("shared.a.response.written")
+
+                // Read subsequent Request C on the same WebSocket connection.
+                let incomingC = try connection.readWebSocketFrame(requireMasked: true)
+                guard incomingC.payload.count >= 9 else {
+                    throw J2KError.invalidData("Short WebSocket frame for request C")
+                }
+                peer.mark("shared.c.read")
+                var replyC = Data([0x02])
+                replyC.append(incomingC.payload[1..<5])
+                replyC.append(contentsOf: [0, 0, 0, 5, 0, 200, 0, 0, 0x43])
+                try connection.writeWebSocketFrame(opcode: .binary, payload: replyC, masked: false)
+                peer.mark("shared.c.response.written")
+            }
+            defer {
+                releaseAResponse.signal()
+                peer.close()
+            }
+            try await peer.waitForStartup()
+
+            let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+            let taskA = Task {
+                try await transport.send(
+                    JPIPRequest(target: "a.j2k"),
+                    maxBodyBytes: 256,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            do {
+                try await peer.waitFor("shared.a.push.written")
+                let pushQueued = try await observeAsync {
+                    await transport.receiveAdmissionSnapshot().queuedBytes >= 64
+                }
+                #expect(pushQueued, "\(peer.diagnostics)")
+
+                let ws = try #require(await transport.currentWebSocketTransportForTesting)
+                let budget = await ws.currentReadBudgetForTesting
+                let activeLimitsBeforeB = budget.configuredLimits
+                #expect(activeLimitsBeforeB.body == 256)
+                #expect(activeLimitsBeforeB.storage == 65_536)
+                #expect(activeLimitsBeforeB.backgroundPush == false)
+
+                // Overlapping request B cannot admit the already-queued 64-byte push into maximumStorageBytes = 1.
+                do {
+                    _ = try await transport.send(
+                        JPIPRequest(target: "b.j2k"),
+                        maxBodyBytes: 1,
+                        deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                        maximumStorageBytes: 1
+                    )
+                    Issue.record("Expected overlapping request B to fail receive-budget admission")
+                } catch let error as CodecError {
+                    #expect(error.category == .resourceLimitExceeded)
+                }
+
+                // Active policy on the shared budget must remain A's (256, 65_536, false).
+                #expect(budget.configuredLimits == activeLimitsBeforeB)
+
+                // Release A's 32-byte response; A must succeed without hitting B's rejected 1-byte limit.
+                releaseAResponse.signal()
+                let respA = try await taskA.value
+                #expect(respA.statusCode == 200)
+                #expect(respA.data == Data(repeating: 0x41, count: 32))
+
+                // Send request C over the same WebSocket connection without reconnecting.
+                let respC = try await transport.send(
+                    JPIPRequest(target: "c.j2k"),
+                    maxBodyBytes: 256,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                    maximumStorageBytes: 65_536
+                )
+                #expect(respC.statusCode == 200)
+                #expect(respC.data == Data([0x43]))
+
+                let activity = await transport.webSocketActivitySnapshot
+                #expect(activity.createdTransports == 1)
+                #expect(activity.activeReaders == 1)
+                #expect(activity.activeSockets == 1)
+
+                await transport.close()
+            } catch {
+                releaseAResponse.signal()
+                taskA.cancel()
+                _ = try? await taskA.value
+                await transport.close()
+                _ = await peer.stopAndObserve()
+                throw error
+            }
+
+            let stopped = await peer.stopAndObserve()
+            #expect(stopped, "\(peer.diagnostics)")
+            #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        }
+    }
+
     private func observeAsync(_ predicate: @Sendable () async -> Bool) async throws -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while !(await predicate()), ContinuousClock.now < deadline {
