@@ -7,6 +7,7 @@ import Testing
 @Suite("R3 blocking-worker result publication")
 struct CodexR3WorkerHandoffTests {
     @Test func workerCreatedConnectionsPublishBeforeCloseAndReuse() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try WorkerHandoffPeer()
         let transport = JPIPTransport(baseURL: peer.url)
         do {
@@ -44,6 +45,7 @@ struct CodexR3WorkerHandoffTests {
     }
 
     @Test func workerErrorAndCancellationDoNotPublishAReusableConnection() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try WorkerHandoffPeer()
         let transport = JPIPTransport(baseURL: peer.url)
         var cancelledRequest: Task<JPIPResponse, any Error>?

@@ -75,6 +75,7 @@ struct CodexR3AdmissionTests {
     }
 
     @Test func admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         struct Observation: Sendable {
             var accepted = false
             var openBeforeStop = false

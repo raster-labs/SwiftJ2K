@@ -454,6 +454,7 @@ struct CodexR3IndependentTests {
             throw R3ScriptedPeerFailure("HTTP cancellation setup failed: \(error); stopped=\(stopped); \(peer.diagnostics)")
         }
 
+        await JPIPTestCooperativeQuiescence.settle()
         let wsTransport = JPIPWebSocketTransport(
             url: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!,
             requestTimeout: 15.0
@@ -713,6 +714,7 @@ struct CodexR3IndependentTests {
             throw R3ScriptedPeerFailure("WebSocket session deadline failed: \(error); stopped=\(stopped); \(wsPeer.diagnostics)")
         }
 
+        await JPIPTestCooperativeQuiescence.settle()
         let wsTransport = JPIPWebSocketTransport(
             url: URL(string: "ws://127.0.0.1:\(wsPeer.port)/jpip")!,
             requestTimeout: 30.0

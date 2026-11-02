@@ -132,6 +132,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T1: Listener closed twice before accept returns nil with zero poll/accept syscalls")
     func closedBeforeAcceptReturnsNilWithZeroSyscalls() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let counts = AtomicBox((poll: 0, accept: 0, close: 0))
         let seam = JPIPSocketSyscallSeam(
             pollListen: { _, _ in
@@ -180,6 +181,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T2: Close while listener borrower held retires immediately and defers physical close until release")
     func closeWhileBorrowerHeldBeforePollRetiresAndDefersPhysicalClose() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let enteredBorrow = Gate()
         let releaseBorrow = Gate()
         let counts = AtomicBox((poll: 0, accept: 0, close: 0, closeEvents: 0))
@@ -259,6 +261,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T3: Real loopback accept paused before publication closes accepted fd once on listener close and client sees EOF")
     func lateSuccessfulAcceptBeforePublicationClosesClientFDOnceAndClientReadsEOF() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let pausedBeforePublication = Gate()
         let resumePublicationCheck = Gate()
         let events = AtomicBox((abortedClientClosed: 0, listenerClosed: 0, pausedClientFD: Int32(-1)))
@@ -332,6 +335,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T4: Stale readiness EAGAIN, EINTR, POLLNVAL/POLLERR, and fcntl setup failures retire cleanly without spin or leak")
     func staleReadinessAndEINTRAndPollErrorsAndFcntlSetupFailures() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         // 4A: Stale readiness (poll returns POLLIN, accept returns EAGAIN, close ordered before retry).
         do {
             let counts = AtomicBox((poll: 0, accept: 0, close: 0))
@@ -534,6 +538,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot")
     func deterministicDescriptorNumberReuseModelNeverTargetsRecycledSlot() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         struct SlotState {
             var generation = 1
             var availableForReuse = false
@@ -702,6 +707,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers")
     func connectionOperationsLockHierarchyConcurrentBorrowersAndWaiters() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let operations: [JPIPSocketOperationKind] = [
             .writeAll,
             .readExact,
@@ -920,6 +926,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation")
     func nativeConnectedCancellationAndAcceptedSocketFlagsAndTimeouts() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let listenerCloseEvents = AtomicBox(0)
         let listener = try JPIPTCPListener(
             port: 0,
@@ -987,6 +994,7 @@ struct CodexR3SocketLifetimeTests {
         clientConn.setReceiveTimeout(seconds: 30)
 
         // 3A. Explicit borrow-before-I/O cancellation coverage (canceling after borrow acquisition, before entering native recv).
+        await JPIPTestCooperativeQuiescence.settle()
         do {
             let acceptBorrowDone = Gate()
             let acceptedBorrowBox = AtomicBox<JPIPTCPConnection?>(nil)
@@ -1029,6 +1037,7 @@ struct CodexR3SocketLifetimeTests {
                 borrowDone.signal()
             }
             #expect(await borrowEntered.waitAsync(timeoutSeconds: 5.0))
+            await JPIPTestCooperativeQuiescence.settle()
             let borrowCancelStart = ContinuousClock.now
             borrowToken.cancel()
             borrowRelease.signal()
@@ -1044,6 +1053,7 @@ struct CodexR3SocketLifetimeTests {
         // Write 32 bytes from serverConn so clientConn's readExact(count: 64) observes and drains
         // the first 32 bytes (POLLIN transitions 1 -> 0) and remains unfinished awaiting the remaining
         // 32 bytes against a 30s SO_RCVTIMEO (from which blocking in the subsequent recv() is inferred).
+        await JPIPTestCooperativeQuiescence.settle()
         try await JPIPBlockingWorker.run {
             try serverConn.writeAll(Data(repeating: 0x42, count: 32))
         }
@@ -1082,6 +1092,7 @@ struct CodexR3SocketLifetimeTests {
         #expect(recvDrainedFirstHalf)
         // Observe that readExact(count: 64) remains unfinished across a 50ms window (30s SO_RCVTIMEO).
         #expect(!(await recvDone.waitAsync(timeoutSeconds: 0.05)))
+        await JPIPTestCooperativeQuiescence.settle()
 
         let recvCancelStart = ContinuousClock.now
         recvToken.cancel()
@@ -1098,6 +1109,7 @@ struct CodexR3SocketLifetimeTests {
         // poll() that bytes have arrived in idlePeer's receive buffer (POLLIN == 1) and sendClient's
         // send buffer is saturated (POLLOUT == 0) while writeAll remains unfinished (from which blocking
         // in native send() under backpressure is inferred) before canceling via JPIPSocketCancellationToken.
+        await JPIPTestCooperativeQuiescence.settle()
         let accept2Done = Gate()
         let accepted2Box = AtomicBox<JPIPTCPConnection?>(nil)
         DispatchQueue(label: "test.r3.socket.t7.accept2").async {
@@ -1161,6 +1173,7 @@ struct CodexR3SocketLifetimeTests {
         #expect(sendBufferSaturatedInKernel)
         // Observe that writeAll remains unfinished under backpressure across a 50ms window (30s SO_SNDTIMEO).
         #expect(!(await sendDone.waitAsync(timeoutSeconds: 0.05)))
+        await JPIPTestCooperativeQuiescence.settle()
 
         let sendCancelStart = ContinuousClock.now
         sendToken.cancel()
@@ -1179,6 +1192,7 @@ struct CodexR3SocketLifetimeTests {
 
     @Test("T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly")
     func serverAndWebSocketLifecycleInterleavingsRebindAndTransportIntegration() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let codestream = try await J2KEncoder(encodingConfiguration: J2KEncodingConfiguration(
             quality: 1.0,
             lossless: true,

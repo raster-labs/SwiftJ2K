@@ -12,11 +12,13 @@ name: Milestone 1 contract
 # `Package.swift` preserves the `swift-tools-version: 6.2` manifest floor and
 # `.macOS(.v26), .iOS(.v26), .tvOS(.v26), .visionOS(.v26), .watchOS(.v26)` minima.
 #
-# Five external feature checks (combined Part 10+15; native 3D JPIP; exact
-# repository WebSocket extension; direct full-38-bit Part 2 synthesis/output;
-# multiple transmitted nonempty HT sets) and the five `@Test(.enabled(if: ...))`
-# external-oracle declarations (`ojph_expand`, `kdu_expand`, `opj_decompress`)
-# remain PENDING_OWNER_INPUT, UNEXECUTED and UNWAIVED.
+# Five direct external interoperability checks (combined Part 10+15; native 3D
+# JPIP; exact repository WebSocket extension; direct full-38-bit Part 2
+# synthesis/output; multiple transmitted nonempty HT sets) are ON_HOLD_BY_OWNER /
+# DEFERRED / UNEXECUTED per Owner Update 15 (2 November 2026); the five
+# `@Test(.enabled(if: ...))` external-oracle declarations (`ojph_expand`,
+# `kdu_expand`, `opj_decompress`) remain UNEXECUTED when external CLI binaries
+# are absent on hosted runners.
 
 on:
   pull_request:
@@ -372,7 +374,7 @@ jobs:
                       "reason": "Requires macOS Foundation.Process and swiftj2k-cli child process execution; guarded by #if os(macOS) || os(Linux)",
                       "declarations": INAPPLICABLE_MACOS_ONLY_CLI_TESTS,
                   },
-                  "five_external_feature_gates_state": "PENDING_OWNER_INPUT / UNEXECUTED / UNWAIVED",
+                  "five_external_feature_gates_state": "ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED",
               }
               (ROOT / "ios-reconciliation.json").write_text(json.dumps(reconciliation, indent=2) + "\n")
               emit("reconciliation", **reconciliation)

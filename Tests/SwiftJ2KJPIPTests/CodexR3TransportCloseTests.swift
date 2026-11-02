@@ -9,6 +9,7 @@ struct CodexR3TransportCloseTests {
     private enum ProbeFailure: Error, Equatable { case startup, later }
 
     @Test func lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let probe = TransportLifecycleProbe(gatingFirst: [.beforePublication])
         let held = Task { await probe.observe(.beforePublication, UUID()) }
         try await probe.wait(.beforePublication)
@@ -38,6 +39,7 @@ struct CodexR3TransportCloseTests {
     }
 
     @Test func publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try TransportClosePeer()
         defer { peer.close() }
         let client = JPIPClient(serverURL: peer.url)
@@ -60,6 +62,7 @@ struct CodexR3TransportCloseTests {
 
     @Test(arguments: ["fresh", "reused", "retry"])
     func repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode: String) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try TransportClosePeer()
         let transport = JPIPTransport(baseURL: peer.url)
         let gate = HTTPCompletionGate()
@@ -117,6 +120,7 @@ struct CodexR3TransportCloseTests {
     }
 
     @Test func closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try TransportClosePeer()
         defer { peer.close() }
         let transport = JPIPTransport(baseURL: peer.url)
@@ -150,6 +154,7 @@ struct CodexR3TransportCloseTests {
     }
 
     @Test func staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try TransportClosePeer()
         defer { peer.close() }
         let transport = JPIPTransport(baseURL: peer.url)
