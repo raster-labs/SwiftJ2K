@@ -97,6 +97,7 @@ final class R3OwnedScriptedPeer: Sendable {
     /// Startup is protected before callers create their client operation. A
     /// failed readiness wait must also close and observe this peer's workers.
     func waitForStartup() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         do { try await waitFor("accept.started") }
         catch {
             let stopped = await stopAndObserve()
@@ -147,4 +148,27 @@ final class R3OwnedScriptedPeer: Sendable {
 struct R3ScriptedPeerFailure: Error, CustomStringConvertible {
     let description: String
     init(_ description: String) { self.description = description }
+}
+
+/// Waits for the initial full-workspace Swift Testing startup burst of synchronous CPU-bound
+/// codec tasks (`SwiftJ2KTests`, `SwiftJ2K3DTests`) on a 3-vCPU runner to drain from the global
+/// cooperative FIFO queue before a test starts its operation deadline clock.
+/// Called only once before a test creates its client/peer or starts its deadline clock; never
+/// called between overlapping child tasks within a test, and never alters any deadline or assertion.
+enum JPIPTestCooperativeQuiescence {
+    static func settle() async {
+        let maxWait = ContinuousClock.now.advanced(by: .seconds(35))
+        var fastRounds = 0
+        while fastRounds < 6 && ContinuousClock.now < maxWait {
+            let t0 = ContinuousClock.now
+            await Task { }.value
+            let hop = ContinuousClock.now - t0
+            if hop < .milliseconds(8) {
+                fastRounds += 1
+                try? await Task.sleep(for: .milliseconds(15))
+            } else {
+                fastRounds = 0
+            }
+        }
+    }
 }

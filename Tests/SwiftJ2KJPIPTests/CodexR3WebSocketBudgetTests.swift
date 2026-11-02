@@ -510,6 +510,290 @@ struct CodexR3WebSocketBudgetTests {
         }
     }
 
+    @Test func followerWaitersExpireOrCancelIndependentlyWithoutCancellingSlowLeaderHandshake() async throws {
+        // Part A: A 10s leader is joined by a 100ms follower, a cancelled 10s follower,
+        // and an uncancelled 10s follower. The 100ms follower and cancelled follower
+        // must fail and remove themselves from handshakeWaiters without cancelling the leader;
+        // when the peer completes the 101 upgrade, both the leader and the remaining 10s follower succeed.
+        do {
+            let releaseHandshake = DispatchSemaphore(value: 0)
+            let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
+                guard let request = try connection.readHTTPRequest(),
+                      let key = request.header("Sec-WebSocket-Key") else {
+                    throw J2KError.invalidData("Missing Sec-WebSocket-Key")
+                }
+                peer.mark("leader.upgrade.read")
+                _ = releaseHandshake.wait(timeout: .now() + 5.0)
+                try connection.writeWebSocketServerHandshake(clientKey: key)
+                peer.mark("leader.upgrade.written")
+                for index in 1...2 {
+                    let incoming = try connection.readWebSocketFrame(requireMasked: true)
+                    peer.mark("leader.frame.read.\(index)")
+                    guard incoming.payload.count >= 9 else {
+                        throw J2KError.invalidData("Short WebSocket request frame")
+                    }
+                    var reply = Data([0x02])
+                    reply.append(incoming.payload[1..<5])
+                    reply.append(contentsOf: [0, 0, 0, 5, 0, 200, 0, 0, UInt8(60 + index)])
+                    try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+                    peer.mark("leader.frame.written.\(index)")
+                }
+            }
+            defer {
+                releaseHandshake.signal()
+                peer.close()
+            }
+            try await peer.waitForStartup()
+
+            let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+            let leaderTask = Task {
+                try await transport.send(
+                    JPIPRequest(target: "leader.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            try await peer.waitFor("leader.upgrade.read")
+            let ws = try #require(await transport.currentWebSocketTransportForTesting)
+
+            // Park a long-lived follower (10s deadline) and a follower that will be cancelled.
+            let survivingFollowerTask = Task {
+                try await transport.send(
+                    JPIPRequest(target: "survivor.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            let cancelledFollowerTask = Task {
+                try await transport.send(
+                    JPIPRequest(target: "cancelled.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            let twoFollowersParked = try await observeAsync {
+                await ws.parkedHandshakeWaiterCountForTesting == 2
+            }
+            #expect(twoFollowersParked, "\(peer.diagnostics)")
+
+            // Start a 100ms-deadline follower while the 10s leader is still waiting for 101.
+            let shortStart = ContinuousClock.now
+            let shortFollowerTask = Task {
+                try await transport.send(
+                    JPIPRequest(target: "short.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: shortStart.advanced(by: .milliseconds(100)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            do {
+                _ = try await shortFollowerTask.value
+                Issue.record("Expected 100ms follower to expire before 10s leader")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+                #expect(error.message.contains("deadline elapsed"))
+            }
+            let shortElapsed = ContinuousClock.now - shortStart
+            #expect(shortElapsed < .seconds(1), "100ms follower took \(shortElapsed)")
+
+            // Cancel the second follower and verify it exits promptly with CancellationError.
+            let cancelStart = ContinuousClock.now
+            cancelledFollowerTask.cancel()
+            await #expect(throws: CancellationError.self) {
+                _ = try await cancelledFollowerTask.value
+            }
+            #expect(ContinuousClock.now - cancelStart < .seconds(1))
+
+            // Both expired and cancelled followers must be removed from handshakeWaiters,
+            // leaving only survivingFollowerTask parked while the leader handshake remains active.
+            let onlySurvivorParked = try await observeAsync {
+                await ws.parkedHandshakeWaiterCountForTesting == 1
+            }
+            #expect(onlySurvivorParked)
+            let midActivity = await transport.webSocketActivitySnapshot
+            #expect(midActivity.createdTransports == 1)
+            #expect(midActivity.activeHandshakes == 1)
+
+            // Release the 101 handshake; both the 10s leader and the surviving 10s follower must succeed.
+            releaseHandshake.signal()
+            let leaderResp = try await leaderTask.value
+            let survivorResp = try await survivingFollowerTask.value
+            #expect(leaderResp.statusCode == 200)
+            #expect(survivorResp.statusCode == 200)
+            #expect(Set([leaderResp.data, survivorResp.data]) == Set([Data([61]), Data([62])]))
+            #expect(await ws.parkedHandshakeWaiterCountForTesting == 0)
+
+            await transport.close()
+            let stopped = await peer.stopAndObserve()
+            #expect(stopped, "\(peer.diagnostics)")
+            #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        }
+
+        // Part B: Conversely, if a 100ms leader expires while a 10s follower is parked,
+        // the 10s follower wakes, re-evaluates its still-valid deadline, becomes the new leader, and succeeds.
+        do {
+            let peer = try R3OwnedScriptedPeer(connections: 2) { connection, index, peer in
+                guard let request = try connection.readHTTPRequest(),
+                      let key = request.header("Sec-WebSocket-Key") else {
+                    throw J2KError.invalidData("Missing Sec-WebSocket-Key on connection \(index)")
+                }
+                peer.mark("partB.conn.\(index).upgrade.read")
+                if index == 1 {
+                    // Stall connection 1 so the 100ms leader times out.
+                    _ = try? connection.readHTTPRequest()
+                    return
+                }
+                try connection.writeWebSocketServerHandshake(clientKey: key)
+                peer.mark("partB.conn.2.upgrade.written")
+                let incoming = try connection.readWebSocketFrame(requireMasked: true)
+                var reply = Data([0x02])
+                reply.append(incoming.payload[1..<5])
+                reply.append(contentsOf: [0, 0, 0, 5, 0, 200, 0, 0, 77])
+                try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+                peer.mark("partB.conn.2.frame.written")
+            }
+            defer { peer.close() }
+            try await peer.waitForStartup()
+
+            let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+            let shortLeader = Task {
+                try await transport.send(
+                    JPIPRequest(target: "short-leader.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .milliseconds(120)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+            try await peer.waitFor("partB.conn.1.upgrade.read")
+            let longFollower = Task {
+                try await transport.send(
+                    JPIPRequest(target: "long-follower.j2k"),
+                    maxBodyBytes: 16,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(10)),
+                    maximumStorageBytes: 65_536
+                )
+            }
+
+            do {
+                _ = try await shortLeader.value
+                Issue.record("Expected 120ms leader to time out on stalled connection 1")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded)
+            }
+
+            let followerResp = try await longFollower.value
+            #expect(followerResp.statusCode == 200)
+            #expect(followerResp.data == Data([77]))
+
+            await transport.close()
+            let stopped = await peer.stopAndObserve()
+            #expect(stopped, "\(peer.diagnostics)")
+            #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+        }
+    }
+
+    @Test func repeatedCloseAndReopenReleasesRetiredWebSocketOwnersAndQueuedData() async throws {
+        let rounds = 3
+        let peer = try R3OwnedScriptedPeer(connections: rounds) { connection, index, peer in
+            guard let request = try connection.readHTTPRequest(),
+                  let key = request.header("Sec-WebSocket-Key") else {
+                throw J2KError.invalidData("Missing Sec-WebSocket-Key on connection \(index)")
+            }
+            try connection.writeWebSocketServerHandshake(clientKey: key)
+            peer.mark("reopen.\(index).handshake")
+            let incoming = try connection.readWebSocketFrame(requireMasked: true)
+            guard incoming.payload.count >= 9 else {
+                throw J2KError.invalidData("Short WebSocket request frame on connection \(index)")
+            }
+            // Push two binary data bins before the response so the transport queues pushed data.
+            let encoder = JPIPWebSocketMessageEncoder()
+            for binIndex in 1...2 {
+                let bin = JPIPDataBin(
+                    binClass: .precinct,
+                    binID: index * 10 + binIndex,
+                    data: Data(repeating: UInt8(index * 10 + binIndex), count: 256),
+                    isComplete: true
+                )
+                let pushPayload = encoder.encodeDataBin(bin, requestID: nil).serialize()
+                try connection.writeWebSocketFrame(opcode: .binary, payload: pushPayload, masked: false)
+            }
+            var reply = Data([0x02])
+            reply.append(incoming.payload[1..<5])
+            reply.append(contentsOf: [0, 0, 0, 5, 0, 200, 0, 0, UInt8(80 + index)])
+            try connection.writeWebSocketFrame(opcode: .binary, payload: reply, masked: false)
+            peer.mark("reopen.\(index).responded")
+            _ = try? connection.readWebSocketFrame(requireMasked: true)
+        }
+        defer { peer.close() }
+        try await peer.waitForStartup()
+
+        let transport = JPIPTransport(baseURL: URL(string: "ws://127.0.0.1:\(peer.port)/jpip")!)
+        for round in 1...rounds {
+            weak var weakWS: JPIPWebSocketTransport?
+            weak var weakBudget: JPIPWebSocketReadBudget?
+            weak var weakController: JPIPWebSocketCloseController?
+
+            do {
+                let response = try await transport.send(
+                    JPIPRequest(target: "round-\(round).j2k"),
+                    maxBodyBytes: 4096,
+                    deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+                    maximumStorageBytes: 65_536
+                )
+                #expect(response.statusCode == 200)
+                #expect(response.data == Data([UInt8(80 + round)]))
+
+                let admissionBeforeClose = await transport.receiveAdmissionSnapshot()
+                let slotsBeforeClose = await transport.trackedWebSocketSlotCountForTesting
+                #expect(admissionBeforeClose.queuedBytes >= 512)
+                #expect(slotsBeforeClose == 1)
+
+                if let activeWS = await transport.currentWebSocketTransportForTesting {
+                    weakWS = activeWS
+                    weakBudget = await activeWS.currentReadBudgetForTesting
+                    weakController = activeWS.closeController
+                    let queuedBins = await activeWS.receiveStorageSnapshot.queuedBins
+                    #expect(queuedBins == 2)
+                } else {
+                    Issue.record("Expected active WebSocket transport in round \(round)")
+                }
+            }
+
+            await transport.close()
+
+            let admissionAfterClose = await transport.receiveAdmissionSnapshot()
+            let currentAfterClose = await transport.currentWebSocketTransportForTesting
+            #expect(admissionAfterClose.queuedBytes == 0)
+            #expect(currentAfterClose == nil)
+
+            let releaseDeadline = ContinuousClock.now.advanced(by: .seconds(2))
+            while ContinuousClock.now < releaseDeadline {
+                let slots = await transport.trackedWebSocketSlotCountForTesting
+                if weakWS == nil && weakBudget == nil && weakController == nil && slots == 0 {
+                    break
+                }
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            let slotsAfterRelease = await transport.trackedWebSocketSlotCountForTesting
+            let ownersReleased = weakWS == nil && weakBudget == nil && weakController == nil && slotsAfterRelease == 0
+            #expect(ownersReleased, "Round \(round): weakWS=\(String(describing: weakWS)), weakBudget=\(String(describing: weakBudget)), weakController=\(String(describing: weakController)), slots=\(slotsAfterRelease)")
+
+            let snap = await transport.webSocketActivitySnapshot
+            #expect(snap.createdTransports == round)
+            #expect(snap.activeHandshakes == 0)
+            #expect(snap.activeReaders == 0)
+            #expect(snap.activeSockets == 0)
+        }
+
+        let stopped = await peer.stopAndObserve()
+        #expect(stopped, "\(peer.diagnostics)")
+        #expect(peer.failures.isEmpty, "\(peer.diagnostics)")
+    }
+
     private func observeAsync(_ predicate: @Sendable () async -> Bool) async throws -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while !(await predicate()), ContinuousClock.now < deadline {

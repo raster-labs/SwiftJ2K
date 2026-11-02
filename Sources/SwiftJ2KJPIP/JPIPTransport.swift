@@ -107,7 +107,11 @@ public actor JPIPTransport {
     private var requestGeneration = UUID()
     private var activeRequests: [UUID: any JPIPTransportRequestOwner] = [:]
     private var closingWebSockets: [UUID: JPIPWebSocketTransport] = [:]
-    private var allCreatedWebSockets: [JPIPWebSocketTransport] = []
+    private struct WeakWebSocketEntry {
+        weak var transport: JPIPWebSocketTransport?
+        weak var closeController: JPIPWebSocketCloseController?
+    }
+    private var trackedWebSockets: [WeakWebSocketEntry] = []
     private var lifecycleObserver: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?
     private var httpsTaskPublicationObserver: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
     private var httpWorkerCompletionObserver: (@Sendable () -> Void)?
@@ -115,6 +119,32 @@ public actor JPIPTransport {
     package private(set) var lastHTTPSPhaseDiagnostics = ""
     package private(set) var lastWebSocketHandshakePhaseDiagnostics = ""
     package private(set) var createdWebSocketTransportCount = 0
+
+    package var currentWebSocketTransportForTesting: JPIPWebSocketTransport? {
+        wsTransport
+    }
+
+    package var trackedWebSocketSlotCountForTesting: Int {
+        pruneTrackedWebSockets()
+        return trackedWebSockets.count
+    }
+
+    private func pruneTrackedWebSockets() {
+        trackedWebSockets.removeAll { entry in
+            guard let controller = entry.closeController else { return true }
+            if entry.transport == nil {
+                let snap = controller.activitySnapshot
+                return snap.activeHandshakes == 0 && snap.activeReaders == 0 && snap.activeSockets == 0
+            }
+            if controller.isRetired {
+                let snap = controller.activitySnapshot
+                if snap.activeHandshakes == 0 && snap.activeReaders == 0 && snap.activeSockets == 0 && wsTransport !== entry.transport {
+                    return true
+                }
+            }
+            return false
+        }
+    }
 
     package func setRequestLifecycleObserver(
         _ observer: (@Sendable (JPIPTransportLifecycleEvent, UUID) async -> Void)?,
@@ -145,11 +175,13 @@ public actor JPIPTransport {
         activeReaders: Int,
         activeSockets: Int
     ) {
+        pruneTrackedWebSockets()
         var handshakes = 0
         var readers = 0
         var sockets = 0
-        for ws in allCreatedWebSockets {
-            let snap = ws.closeController.activitySnapshot
+        for entry in trackedWebSockets {
+            guard let controller = entry.closeController else { continue }
+            let snap = controller.activitySnapshot
             handshakes += snap.activeHandshakes
             readers += snap.activeReaders
             sockets += snap.activeSockets
@@ -309,6 +341,7 @@ public actor JPIPTransport {
         if let existingWS = self.wsTransport, !existingWS.closeController.isRetired {
             ws = existingWS
         } else {
+            pruneTrackedWebSockets()
             let created = JPIPWebSocketTransport(
                 url: baseURL,
                 reconnectionConfig: .disabled,
@@ -317,7 +350,9 @@ public actor JPIPTransport {
             )
             self.wsTransport = created
             self.createdWebSocketTransportCount += 1
-            self.allCreatedWebSockets.append(created)
+            self.trackedWebSockets.append(
+                WeakWebSocketEntry(transport: created, closeController: created.closeController)
+            )
             ws = created
         }
 
@@ -743,6 +778,20 @@ public actor JPIPTransport {
         return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
     }
 
+    private func drainClosingWebSockets(for closeID: UUID) async {
+        let wsToJoin = Array(closingWebSockets.values)
+        for ws in wsToJoin {
+            await ws.waitForTransportCloseCompletion()
+        }
+        closingWebSockets.removeValue(forKey: closeID)
+    }
+
+    private func drainClosingRequests(_ closing: [any JPIPTransportRequestOwner]) async {
+        for owner in closing {
+            await owner.waitForCompletion()
+        }
+    }
+
     /// Closes the transport and cleans up resources.
     /// HTTP(S) requests active at entry are cancelled and joined. Later requests
     /// belong to a new generation and are unaffected by this close's cleanup.
@@ -752,7 +801,7 @@ public actor JPIPTransport {
         // each sender finishes, so overlapping closes join the same old owners.
         requestGeneration = UUID()
         let closeID = requestGeneration
-        let closing = Array(activeRequests.values)
+        var closing = Array(activeRequests.values)
         let observer = lifecycleObserver
         for owner in closing { owner.cancelForTransportClose() }
         channelPathOverride = nil
@@ -764,14 +813,12 @@ public actor JPIPTransport {
             closingWebSockets[closeID] = ws
             wsTransport = nil
         }
-        let wsToJoin = Array(closingWebSockets.values)
         session.finishTasksAndInvalidate()
         await observer?(.closeJoining, closeID)
-        for ws in wsToJoin {
-            await ws.waitForTransportCloseCompletion()
-        }
-        for owner in closing { await owner.waitForCompletion() }
-        closingWebSockets.removeValue(forKey: closeID)
+        await drainClosingWebSockets(for: closeID)
+        await drainClosingRequests(closing)
+        closing.removeAll(keepingCapacity: false)
+        pruneTrackedWebSockets()
         await observer?(.closeJoined, closeID)
         // No shared-state mutation after awaiting: newer requests own the new
         // generation's connection, path, telemetry and registry entries.

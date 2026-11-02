@@ -381,8 +381,8 @@ jobs:
                   problems.append("xcresult summary did not pass with 0 failures")
               if len(set(xctest_passed)) != 1037 or len(xctest_failed) != 0:
                   problems.append(f"Expected 1037 XCTest passes and 0 failures on iOS Simulator, got {len(set(xctest_passed))} passed / {len(xctest_failed)} failed")
-              if st_total_declarations != 324 or st_passed_declarations != 319 or len(st_skips) != 5:
-                  problems.append(f"Expected 324 compiled Swift Testing declarations (319 passed, 5 skipped), got {st_total_declarations} ({st_passed_declarations} passed, {len(st_skips)} skipped)")
+              if st_total_declarations != 326 or st_passed_declarations != 321 or len(st_skips) != 5:
+                  problems.append(f"Expected 326 compiled Swift Testing declarations (321 passed, 5 skipped), got {st_total_declarations} ({st_passed_declarations} passed, {len(st_skips)} skipped)")
               if st_skipped_names != sorted(UNEXECUTED_EXTERNAL_ORACLE_TESTS):
                   problems.append(f"Unexpected skipped test list on iOS Simulator: {st_skipped_names}")
 

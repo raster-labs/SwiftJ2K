@@ -114,6 +114,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .complete,
             headers: ["JPIP-cnew": "cid=abc,path=/negotiated", "Content-Length": "8", "X-Probe": "kept"],
             chunks: [Data([1, 2, 3]), Data([4, 5, 6, 7, 8])])
@@ -154,6 +155,7 @@ struct CodexR3HTTPStreamingTests {
 
     @Test(arguments: [true, false])
     func delegateRejectsOversizedAnnouncedOrUnknownBody(declared: Bool) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .complete,
             headers: declared ? ["Content-Length": "9"] : [:],
             chunks: declared ? [] : [Data(repeating: 1, count: 5), Data(repeating: 2, count: 4)])
@@ -178,6 +180,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func absoluteDeadlineCancelsSilentResponse() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -199,6 +202,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func sharedWatchdogInterruptsAnAlreadyActiveTrickle() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .trickle,
             headers: ["Content-Type": "image/jpp-stream"])
         let fixture = HTTPSHarnessProtocol.register(scenario)
@@ -240,6 +244,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func taskCancellationJoinsAndAllowsFollowingRequest() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -265,6 +270,7 @@ struct CodexR3HTTPStreamingTests {
 
     @Test(arguments: [false, true])
     func cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap: Bool) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -281,6 +287,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func expiredDeadlineReleasesUnstartedOwners() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -297,6 +304,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -325,6 +333,7 @@ struct CodexR3HTTPStreamingTests {
 
     @Test(arguments: [false, true])
     func completionAndCancellationHaveOneWinner(cancelFirst: Bool) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -368,6 +377,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func completedRequestEventuallyReleasesItsDelegateOwnership() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .complete, chunks: [Data([42])])
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -409,6 +419,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -451,6 +462,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
@@ -486,6 +498,7 @@ struct CodexR3HTTPStreamingTests {
     }
 
     @Test func oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let old = HTTPSHarnessScenario(mode: .complete,
             headers: ["JPIP-cnew": "cid=old,path=/old"], chunks: [Data([1])])
         let fixture = HTTPSHarnessProtocol.register(old)

@@ -30,6 +30,7 @@ private enum ObservedRequestResult: Sendable, Equatable {
 struct CodexR3WebSocketLifecycleTests {
     @Test(arguments: CleanupScenario.allCases)
     fileprivate func staleCleanupCannotCloseReplacementHandshake(_ scenario: CleanupScenario) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try LifecyclePeer(first: scenario == .duplicateReaderClose ? .malformedPush : .silent,
                                      holdSecondHandshake: true)
         let probe = LifecycleProbe(before: scenario.before, after: scenario.after)
@@ -102,6 +103,7 @@ struct CodexR3WebSocketLifecycleTests {
 
     @Test(arguments: [false, true])
     func obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected: Bool) async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         let peer = try LifecyclePeer(first: rejected ? .rejectedHandshake : .echo, holdSecondHandshake: false)
         let probe = LifecycleProbe(before: rejected ? .beforeHandshakeFailure : .beforeHandshakePublication, after: nil)
         let transport = JPIPWebSocketTransport(url: peer.url, reconnectionConfig: .disabled)

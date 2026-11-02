@@ -80,14 +80,14 @@ package final class JPIPWebSocketRequestOwner: JPIPTransportRequestOwner, Sendab
     private struct State {
         var began = false
         var cancelled = false
+        var ws: JPIPWebSocketTransport?
     }
-    private let state = Mutex(State())
+    private let state: Mutex<State>
     private let completion = JPIPRequestCompletion()
-    package let ws: JPIPWebSocketTransport
     package var isFinished: Bool { completion.isFinished }
 
     package init(ws: JPIPWebSocketTransport) {
-        self.ws = ws
+        self.state = Mutex(State(ws: ws))
     }
 
     package func beginOperation() -> Bool {
@@ -103,23 +103,37 @@ package final class JPIPWebSocketRequestOwner: JPIPTransportRequestOwner, Sendab
     }
 
     package func cancelForTransportClose() {
-        let neverStarted = state.withLock { state in
+        let (neverStarted, ws) = state.withLock { state -> (Bool, JPIPWebSocketTransport?) in
             state.cancelled = true
-            return !state.began
+            let neverStarted = !state.began
+            let ws = state.ws
+            if neverStarted {
+                state.ws = nil
+            }
+            return (neverStarted, ws)
         }
-        ws.cancelForTransportCloseSynchronously()
+        ws?.cancelForTransportCloseSynchronously()
         if neverStarted {
             completion.finish()
         }
     }
 
     package func operationFinished() {
+        state.withLock { state in
+            state.ws = nil
+        }
         completion.finish()
     }
 
     package func waitForCompletion() async {
-        await ws.waitForTransportCloseCompletion()
+        let ws = state.withLock { $0.ws }
+        if let ws {
+            await ws.waitForTransportCloseCompletion()
+        }
         await completion.wait()
+        state.withLock { state in
+            state.ws = nil
+        }
     }
 }
 

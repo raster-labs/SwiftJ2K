@@ -741,6 +741,55 @@ public struct JPIPWebSocketReconnectionConfig: Sendable {
 
 // MARK: - WebSocket Transport Close & Drain Controller
 
+/// Single-shot thread-safe handshake waiter token used by `ensureConnected` followers.
+/// Allows a follower's per-waiter deadline watchdog, task cancellation handler,
+/// `closeController.cancelForTransportClose()`, or the leader's handshake completion
+/// to resume the follower continuation at most once, while removing the follower from
+/// `handshakeWaiters` without cancelling the leader's handshake.
+package final class JPIPHandshakeWaiterToken: @unchecked Sendable {
+    // SAFETY: All mutable state is guarded by `lock`.
+    private let lock = NSLock()
+    package let id: UUID
+    private var continuation: CheckedContinuation<Void, any Error>?
+    private var outcome: Result<Void, any Error>?
+
+    package init(id: UUID = UUID()) {
+        self.id = id
+    }
+
+    package var isResolved: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return outcome != nil
+    }
+
+    package func install(_ cont: CheckedContinuation<Void, any Error>) {
+        lock.lock()
+        if let existingOutcome = outcome {
+            lock.unlock()
+            cont.resume(with: existingOutcome)
+            return
+        }
+        continuation = cont
+        lock.unlock()
+    }
+
+    @discardableResult
+    package func resolve(_ result: Result<Void, any Error>) -> Bool {
+        lock.lock()
+        guard outcome == nil else {
+            lock.unlock()
+            return false
+        }
+        outcome = result
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(with: result)
+        return true
+    }
+}
+
 /// Thread-safe close and drain barrier for `JPIPWebSocketTransport` when owned by `JPIPTransport`.
 /// Guarantees that retiring a WebSocket transport synchronously cancels in-flight handshakes,
 /// wakes any parked reader budget, closes active sockets, prevents post-close connection startup,
@@ -750,6 +799,7 @@ package final class JPIPWebSocketCloseController: @unchecked Sendable {
     private let lock = NSLock()
     private var retired = false
     private var handshakeTokens: [UInt64: JPIPSocketCancellationToken] = [:]
+    private var handshakeWaiterTokens: [UUID: JPIPHandshakeWaiterToken] = [:]
     private var activeConnections: [UInt64: JPIPTCPConnection] = [:]
     private var activeBudgets: [UInt64: JPIPWebSocketReadBudget] = [:]
     private var activeReaders: Set<UInt64> = []
@@ -767,6 +817,24 @@ package final class JPIPWebSocketCloseController: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return (handshakeTokens.count, activeReaders.count, activeConnections.count, retired)
+    }
+
+    package func registerHandshakeWaiter(_ waiter: JPIPHandshakeWaiterToken) -> Bool {
+        lock.lock()
+        if retired {
+            lock.unlock()
+            _ = waiter.resolve(.failure(CancellationError()))
+            return false
+        }
+        handshakeWaiterTokens[waiter.id] = waiter
+        lock.unlock()
+        return true
+    }
+
+    package func unregisterHandshakeWaiter(id: UUID) {
+        lock.lock()
+        handshakeWaiterTokens.removeValue(forKey: id)
+        lock.unlock()
     }
 
     package func beginHandshake(generation: UInt64, token: JPIPSocketCancellationToken) -> Bool {
@@ -851,9 +919,12 @@ package final class JPIPWebSocketCloseController: @unchecked Sendable {
         lock.lock()
         retired = true
         let tokens = Array(handshakeTokens.values)
+        let waiters = Array(handshakeWaiterTokens.values)
+        handshakeWaiterTokens.removeAll()
         let budgets = Array(activeBudgets.values)
         let connections = Array(activeConnections.values)
         lock.unlock()
+        for waiter in waiters { _ = waiter.resolve(.failure(CancellationError())) }
         for token in tokens { token.cancel() }
         for budget in budgets { budget.close() }
         for conn in connections { conn.close() }
@@ -930,10 +1001,18 @@ public actor JPIPWebSocketTransport {
     /// Monotonic connection generation to isolate reader loops across reconnects.
     private var connectionGeneration: UInt64 = 0
     private var pendingConnect: (generation: UInt64, token: JPIPSocketCancellationToken)?
-    private var handshakeWaiters: [UUID: CheckedContinuation<Void, any Error>] = [:]
+    private var handshakeWaiters: [UUID: JPIPHandshakeWaiterToken] = [:]
     private var lifecycleObserver: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
     private var handshakePhaseObserver: (@Sendable (String) -> Void)?
     package private(set) var lastHandshakePhaseDiagnostics = ""
+
+    package var parkedHandshakeWaiterCountForTesting: Int {
+        handshakeWaiters.values.filter { !$0.isResolved }.count
+    }
+
+    package var currentReadBudgetForTesting: JPIPWebSocketReadBudget {
+        readBudget
+    }
 
     package func setLifecycleObserver(
         _ observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
@@ -956,24 +1035,51 @@ public actor JPIPWebSocketTransport {
         resumeHandshakeWaiters(throwing: CancellationError())
         await disconnect()
         await closeController.waitForDrain()
+        clearRetiredState()
+    }
+
+    private func clearRetiredState() {
+        pendingConnect?.token.cancel()
+        pendingConnect = nil
+        resumeHandshakeWaiters(throwing: CancellationError())
+        for (_, continuation) in pendingContinuations {
+            continuation.resume(throwing: CancellationError())
+        }
+        pendingContinuations.removeAll(keepingCapacity: false)
+        pendingResponses.removeAll(keepingCapacity: false)
+        pendingErrors.removeAll(keepingCapacity: false)
+        receivedDataBins.removeAll(keepingCapacity: false)
+        readBudget.drainPushes()
+        readBudget.resetReading()
+        readBudget.close()
+        let emptyBudget = JPIPWebSocketReadBudget()
+        emptyBudget.close()
+        readBudget = emptyBudget
+        unconsumedHandshakePeakBytes = 0
+        unaccountedPushPayloadBytes = 0
+        tcpConnection?.close()
+        tcpConnection = nil
+        lifecycleObserver = nil
+        handshakePhaseObserver = nil
+        connectionState = .disconnected
     }
 
     private func resumeHandshakeWaiters(throwing error: (any Error)? = nil) {
         let waiters = Array(handshakeWaiters.values)
         handshakeWaiters.removeAll()
         for waiter in waiters {
+            closeController.unregisterHandshakeWaiter(id: waiter.id)
             if let error {
-                waiter.resume(throwing: error)
+                _ = waiter.resolve(.failure(error))
             } else {
-                waiter.resume()
+                _ = waiter.resolve(.success(()))
             }
         }
     }
 
-    private func cancelHandshakeWaiter(_ id: UUID) {
-        if let waiter = handshakeWaiters.removeValue(forKey: id) {
-            waiter.resume(throwing: CancellationError())
-        }
+    private func removeHandshakeWaiter(_ id: UUID) {
+        handshakeWaiters.removeValue(forKey: id)
+        closeController.unregisterHandshakeWaiter(id: id)
     }
 
     /// Transport statistics.
@@ -1078,17 +1184,49 @@ public actor JPIPWebSocketTransport {
                 }
                 connectionState = .disconnected
             case .connecting, .closing:
-                let waiterID = UUID()
+                let remaining = try deadline.map { try JPIPTransport.remainingSeconds(until: $0) }
+                let waiterToken = JPIPHandshakeWaiterToken()
+                let waiterID = waiterToken.id
+                guard closeController.registerHandshakeWaiter(waiterToken) else {
+                    throw CancellationError()
+                }
+                handshakeWaiters[waiterID] = waiterToken
+                let closeController = self.closeController
+                let watchdog = remaining.map { rem in
+                    JPIPDeadlineWatchdog(after: rem) { [weak self] in
+                        let expired = CodecError(
+                            .resourceLimitExceeded,
+                            "JPIP WebSocket handshake deadline elapsed."
+                        )
+                        if waiterToken.resolve(.failure(expired)) {
+                            closeController.unregisterHandshakeWaiter(id: waiterID)
+                            Task { [weak self] in
+                                await self?.removeHandshakeWaiter(waiterID)
+                            }
+                        }
+                    }
+                }
+                defer {
+                    watchdog?.cancel()
+                    closeController.unregisterHandshakeWaiter(id: waiterID)
+                    handshakeWaiters.removeValue(forKey: waiterID)
+                }
                 try await withTaskCancellationHandler {
                     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                         if Task.isCancelled || closeController.isRetired {
-                            continuation.resume(throwing: CancellationError())
-                            return
+                            _ = waiterToken.resolve(.failure(CancellationError()))
+                            handshakeWaiters.removeValue(forKey: waiterID)
+                            closeController.unregisterHandshakeWaiter(id: waiterID)
                         }
-                        handshakeWaiters[waiterID] = continuation
+                        waiterToken.install(continuation)
                     }
-                } onCancel: {
-                    Task { await self.cancelHandshakeWaiter(waiterID) }
+                } onCancel: { [weak self] in
+                    if waiterToken.resolve(.failure(CancellationError())) {
+                        closeController.unregisterHandshakeWaiter(id: waiterID)
+                        Task { [weak self] in
+                            await self?.removeHandshakeWaiter(waiterID)
+                        }
+                    }
                 }
                 try Task.checkCancellation()
                 if closeController.isRetired {
@@ -1183,7 +1321,6 @@ public actor JPIPWebSocketTransport {
             throw CancellationError()
         }
         pendingConnect = (gen, cancelToken)
-        var deadlineTimedOut = false
         let watchdog = remainingDeadline.map { remaining in
             recordPhase(String(format: "ws.watchdog.armed(%.3fs)", remaining))
             return JPIPDeadlineWatchdog(after: remaining) {
@@ -1226,19 +1363,30 @@ public actor JPIPWebSocketTransport {
                 connectionState = .disconnected
             }
             let mappedError: any Error
-            if Task.isCancelled || closeController.isRetired {
+            let isLeaderLocalAbort: Bool
+            if closeController.isRetired {
                 mappedError = CancellationError()
+                isLeaderLocalAbort = false
+            } else if Task.isCancelled {
+                mappedError = CancellationError()
+                isLeaderLocalAbort = true
             } else if let deadline, ContinuousClock.now >= deadline {
-                deadlineTimedOut = true
                 mappedError = CodecError(.resourceLimitExceeded, "JPIP WebSocket handshake deadline elapsed.")
-            } else if deadlineTimedOut {
+                isLeaderLocalAbort = true
+            } else if watchdog?.isExpired == true {
                 mappedError = CodecError(.resourceLimitExceeded, "JPIP WebSocket handshake deadline elapsed.")
+                isLeaderLocalAbort = true
             } else if cancelToken.cancelled {
                 mappedError = CancellationError()
+                isLeaderLocalAbort = true
             } else {
                 mappedError = error
+                isLeaderLocalAbort = false
             }
-            resumeHandshakeWaiters(throwing: mappedError)
+            // If the leader failed only because of its own task cancellation or its own deadline,
+            // wake remaining followers without throwing so they re-evaluate their own deadlines
+            // and take over the connection attempt if still valid.
+            resumeHandshakeWaiters(throwing: isLeaderLocalAbort ? nil : mappedError)
             throw mappedError
         }
 
@@ -1257,7 +1405,7 @@ public actor JPIPWebSocketTransport {
             closeController.endHandshakeWithoutReader(generation: gen)
             connectionGeneration &+= 1
             connectionState = .disconnected
-            resumeHandshakeWaiters(throwing: CancellationError())
+            resumeHandshakeWaiters(throwing: closeController.isRetired ? CancellationError() : nil)
             throw CancellationError()
         }
         if let deadline, ContinuousClock.now > deadline {
@@ -1268,7 +1416,7 @@ public actor JPIPWebSocketTransport {
             connectionGeneration &+= 1
             connectionState = .disconnected
             let elapsedErr = CodecError(.resourceLimitExceeded, "JPIP WebSocket handshake deadline elapsed.")
-            resumeHandshakeWaiters(throwing: elapsedErr)
+            resumeHandshakeWaiters(throwing: nil)
             throw elapsedErr
         }
         recordPhase("ws.postResumeDeadlineRecheck.ok")
@@ -1346,10 +1494,27 @@ public actor JPIPWebSocketTransport {
         budget: JPIPWebSocketReadBudget,
         observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
     ) {
+        let closeController = transport.closeController
         defer {
             connection.close()
-            transport.closeController.endReader(generation: generation)
+            closeController.endReader(generation: generation)
         }
+        Self.runReaderLoopBody(
+            connection: connection,
+            generation: generation,
+            transport: transport,
+            budget: budget,
+            observer: observer
+        )
+    }
+
+    nonisolated private static func runReaderLoopBody(
+        connection: JPIPTCPConnection,
+        generation: UInt64,
+        transport: JPIPWebSocketTransport,
+        budget: JPIPWebSocketReadBudget,
+        observer: (@Sendable (JPIPWebSocketLifecycleEvent, UInt64) async -> Void)?
+    ) {
         var terminalError: (any Error)?
         while connection.isOpen {
             guard budget.waitUntilReadAllowed() else { break }
@@ -1397,9 +1562,11 @@ public actor JPIPWebSocketTransport {
     }
 
     nonisolated private static func performActorCallAndWait(_ action: @escaping @Sendable () async -> Void) {
-        let work = Task { await action() }
         let sema = DispatchSemaphore(value: 0)
-        Task { await work.value; sema.signal() }
+        Task {
+            await action()
+            sema.signal()
+        }
         sema.wait()
     }
 
