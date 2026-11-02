@@ -1006,6 +1006,12 @@ struct CodexR3SocketLifetimeTests {
             }
             let borrowEntered = Gate()
             let borrowRelease = Gate()
+            let borrowHoldState = AtomicBox((
+                holdingInObserver: false,
+                stillHeldWhenCancelled: false,
+                releaseWaitSucceeded: false,
+                lockCountAtCancel: -1
+            ))
             let borrowClient = try await JPIPBlockingWorker.run {
                 try JPIPTCPConnection.connect(
                     host: "127.0.0.1",
@@ -1013,8 +1019,13 @@ struct CodexR3SocketLifetimeTests {
                     timeoutInterval: 30.0,
                     observer: { event in
                         if case .afterConnectionBorrowAcquired(let op, _) = event, op == .readExact {
+                            borrowHoldState.withLock { $0.holdingInObserver = true }
                             borrowEntered.signal()
-                            _ = borrowRelease.wait(timeoutSeconds: 5.0)
+                            let released = borrowRelease.wait(timeoutSeconds: 5.0)
+                            borrowHoldState.withLock {
+                                $0.releaseWaitSucceeded = released
+                                $0.holdingInObserver = false
+                            }
                         }
                     }
                 )
@@ -1026,6 +1037,7 @@ struct CodexR3SocketLifetimeTests {
 
             let borrowToken = JPIPSocketCancellationToken()
             #expect(borrowToken.bind(connection: borrowClient))
+            await JPIPTestCooperativeQuiescence.settle()
             let borrowDone = Gate()
             let borrowErr = AtomicBox<Error?>(nil)
             DispatchQueue(label: "test.r3.socket.t7.recv.borrow").async {
@@ -1037,12 +1049,20 @@ struct CodexR3SocketLifetimeTests {
                 borrowDone.signal()
             }
             #expect(await borrowEntered.waitAsync(timeoutSeconds: 5.0))
-            await JPIPTestCooperativeQuiescence.settle()
             let borrowCancelStart = ContinuousClock.now
             borrowToken.cancel()
+            let heldAtCancel = borrowHoldState.value.holdingInObserver
+            let locksAtCancel = borrowClient.lockTracker.currentCount
+            borrowHoldState.withLock {
+                $0.stillHeldWhenCancelled = heldAtCancel
+                $0.lockCountAtCancel = locksAtCancel
+            }
             borrowRelease.signal()
             #expect(await borrowDone.waitAsync(timeoutSeconds: 5.0))
             #expect(ContinuousClock.now - borrowCancelStart < .seconds(1))
+            #expect(borrowHoldState.value.stillHeldWhenCancelled)
+            #expect(borrowHoldState.value.releaseWaitSucceeded)
+            #expect(borrowHoldState.value.lockCountAtCancel == 0)
             #expect(borrowErr.value != nil)
             try await borrowClient.waitForCloseCompletion()
             borrowServer.close()
@@ -1092,7 +1112,6 @@ struct CodexR3SocketLifetimeTests {
         #expect(recvDrainedFirstHalf)
         // Observe that readExact(count: 64) remains unfinished across a 50ms window (30s SO_RCVTIMEO).
         #expect(!(await recvDone.waitAsync(timeoutSeconds: 0.05)))
-        await JPIPTestCooperativeQuiescence.settle()
 
         let recvCancelStart = ContinuousClock.now
         recvToken.cancel()
@@ -1173,7 +1192,6 @@ struct CodexR3SocketLifetimeTests {
         #expect(sendBufferSaturatedInKernel)
         // Observe that writeAll remains unfinished under backpressure across a 50ms window (30s SO_SNDTIMEO).
         #expect(!(await sendDone.waitAsync(timeoutSeconds: 0.05)))
-        await JPIPTestCooperativeQuiescence.settle()
 
         let sendCancelStart = ContinuousClock.now
         sendToken.cancel()
