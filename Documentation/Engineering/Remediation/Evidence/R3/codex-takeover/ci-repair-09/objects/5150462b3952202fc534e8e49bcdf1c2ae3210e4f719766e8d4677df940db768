@@ -1,0 +1,76 @@
+{
+  "simulator": {
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "name": "iPhone Air",
+    "udid": "E9831162-F0AD-46C2-9524-155D91C8DD09",
+    "initial_state": "Shutdown",
+    "booted_by_this_run": true
+  },
+  "xcresult_result": "Passed",
+  "xcresult_total_test_count": 1360,
+  "xcresult_passed_tests": 1355,
+  "xcresult_skipped_tests": 5,
+  "xcresult_failed_tests": 0,
+  "build_log_sha256": "63b34bcd48114cb3d7821a4c85415c434b0f984d34161f29f547bc8b66ee3403",
+  "test_log_sha256": "8a71b32db3e1603313b0fc144560e99621d53e958cdc146757affab2c070e207",
+  "xcresult_summary_sha256": "a3d967879b295ff26b8e7e5cc7c57edddc2bf016b38126affc6e1c517486f8b3",
+  "xctest": {
+    "started": 1037,
+    "passed": 1037,
+    "failed": 0,
+    "ios_only_background_transfer_tests_executed": [
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testBackgroundTransferServiceInitialization",
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testBackgroundTransferServiceTransferStatus",
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testBackgroundTransferServiceTransferTask"
+    ]
+  },
+  "swift_testing": {
+    "bundle_runs": [
+      {
+        "tests": 156,
+        "suites": 11,
+        "seconds": 54.304
+      },
+      {
+        "tests": 112,
+        "suites": 19,
+        "seconds": 5.17
+      },
+      {
+        "tests": 55,
+        "suites": 10,
+        "seconds": 4.82
+      }
+    ],
+    "compiled_declarations_on_ios": 323,
+    "compiled_suites_on_ios": 40,
+    "passed_declarations_on_ios": 318,
+    "skipped_external_oracle_declarations_on_ios": 5,
+    "skipped_external_oracle_names": [
+      "independentDecodersReadSuccessorCodestreams(name:)",
+      "independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)",
+      "independentOraclesCrossDecodePart1BreadthEncodings()",
+      "independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()",
+      "independentOraclesVerifyTranscodedOutputsInBothDirections(name:)"
+    ]
+  },
+  "inapplicable_macos_only_cli_process_declarations": {
+    "count": 10,
+    "counted_as_ios_pass": false,
+    "counted_as_ios_skip": false,
+    "reason": "Requires macOS Foundation.Process and swiftj2k-cli child process execution; guarded by #if os(macOS) || os(Linux)",
+    "declarations": [
+      "SwiftJ2KTests.CLITestProcessSupportTests/activeBuildResolution()",
+      "SwiftJ2KTests.CLITestProcessSupportTests/pipeCapacityDoesNotDeadlock()",
+      "SwiftJ2KTests.CodexR3CLIHostTests/onceVerificationUsesTheAcceptedBindAddress(host:)",
+      "SwiftJ2KTests.CodexR3CLIHostTests/invalidBindAddressFailsWithoutATrap()",
+      "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliMultiFormat16BitAndCompareMetrics()",
+      "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions()",
+      "SwiftJ2KTests.R1RemediationTests/cliRemediationSubprocessRegressions()",
+      "SwiftJ2KTests.R2RemediationTests/normativePNGSbitReadWriteAndValidation()",
+      "SwiftJ2KTests.R2RemediationTests/tiffPhotometricInterpretationSemanticsAndRejection()",
+      "SwiftJ2KTests.R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation()"
+    ]
+  },
+  "five_external_feature_gates_state": "PENDING_OWNER_INPUT / UNEXECUTED / UNWAIVED"
+}

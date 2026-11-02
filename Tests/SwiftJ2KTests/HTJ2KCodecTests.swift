@@ -51,9 +51,13 @@ enum HTJ2KFixtures {
 }
 
 enum HTOracle {
+    #if os(macOS) || os(Linux)
     static let openJPH = ["/opt/homebrew/bin/ojph_expand", "/usr/local/bin/ojph_expand"].first {
         FileManager.default.isExecutableFile(atPath: $0)
     }
+    #else
+    static let openJPH: String? = nil
+    #endif
     static let openJPEG = Oracle.openJPEG
     static let kakadu = Oracle.kakadu
     static var available: Bool { openJPH != nil || openJPEG != nil || kakadu != nil }

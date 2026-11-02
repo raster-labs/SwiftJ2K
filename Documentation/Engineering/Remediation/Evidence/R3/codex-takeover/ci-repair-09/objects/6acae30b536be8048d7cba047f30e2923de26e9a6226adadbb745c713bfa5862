@@ -1,0 +1,6 @@
+{
+  "created_at": "2026-11-02T07:54:49.158924+00:00",
+  "base_head": "af6d52e055d726456dcb3025e3e1addf9bd55231",
+  "files": 2543,
+  "scope": "Frozen production/test/doc/script inputs after Codex feedback 6 documentation reconciliation and positive writer stops. Only STATUS.md and R3_CAPABILITY_MATRIX.md changed from candidate-snapshot-27; all 541 implementation inputs and CI workflows are byte-identical to candidate-snapshot-27. No acceptance claim."
+}

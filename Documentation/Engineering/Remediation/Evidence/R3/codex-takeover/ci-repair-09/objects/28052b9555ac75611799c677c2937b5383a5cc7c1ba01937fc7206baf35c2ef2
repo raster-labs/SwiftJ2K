@@ -1,0 +1,36 @@
+{
+  "recorded_at": "2026-11-02T08:02:53.204134+00:00",
+  "authority": "Human-authorised R3 CI scope update \u2014 2 November 2026",
+  "user_instruction": "Ask Antigravity to finish the CI work, limit to macOS and iOS and continue your audit. \u2026 Use tokens wisely. \u2026 For five features, we haven\u2019t yet demonstrated that independent check - I\u2019ll check and inform you.",
+  "sole_r3_implementer": "Antigravity Gemini 4 Argon High (conversation 6f28647a-39a6-4a0a-8303-30b57a122458)",
+  "claim_path": "/Users/raster/Documents/Codex/2026-10-13/che/work/swiftj2k-audit/audit.claim",
+  "invocation_id": "antigravity-r3-handback-20261102-6f28647a",
+  "ci_scope": {
+    "platforms_in_scope": [
+      "macOS",
+      "iOS"
+    ],
+    "linux_state": "OUT_OF_CURRENT_SCOPE_BY_OWNER",
+    "linux_historical_receipts_preserved": true,
+    "workflow_path": "work/SwiftJ2K/.github/workflows/contract.yml",
+    "requirements": [
+      "Minimum workflow changes for macOS and actual iOS simulator build/test execution",
+      "Retain contract and consumer checks on Apple runners as appropriate",
+      "Validate supported library targets on iOS; identify macOS-only CLI/process tests explicitly rather than counting skipped/inapplicable tests as iOS passes",
+      "Preserve tools floor, deployment minima, contracts and functionality; disclose unavailable toolchain/runtime coverage",
+      "No permission/protection changes",
+      "Publish authorised feature branch/PR for exact-head Apple CI"
+    ]
+  },
+  "five_external_feature_gates": {
+    "state": "PENDING_OWNER_INPUT",
+    "execution_state": "UNEXECUTED",
+    "waived": false,
+    "peer_research_deferred_pending_owner_update": true
+  },
+  "codex_auditor": {
+    "thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+    "monitor_id": "audit-swiftj2k-r3-then-r4",
+    "monitor_status": "ACTIVE"
+  }
+}

@@ -502,10 +502,11 @@ private final class HTTPSHarnessScenario: Sendable {
     func delivered() { state.withLock { $0.delivered += 1 } }
 }
 
-private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+private final class HTTPSHarnessProtocol: URLProtocol {
     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
-    // SAFETY: per-instance mutable fields and protocol callbacks use this serial
-    // queue. The registry and observations use Mutex; no blocking executor waits.
+    // Only this private serial queue accesses timer/stopped and emits callbacks.
+    // WorkItems bridge this legacy URLProtocol lifetime without claiming that
+    // URLProtocol is Sendable. Registry and observations remain Mutex-protected.
     private let queue = DispatchQueue(label: "jpip.https.protocol-harness")
     private var timer: (any DispatchSourceTimer)?
     private var stopped = false
@@ -527,7 +528,9 @@ private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
     }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        queue.async { [self] in
+        let request = self.request
+        let client = self.client
+        queue.async(execute: DispatchWorkItem { [self] in
             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
                   let url = request.url else { return }
             scenario.begin(request)
@@ -544,21 +547,21 @@ private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
             } else {
                 let tick = DispatchSource.makeTimerSource(queue: queue)
                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
-                tick.setEventHandler { [weak self] in
+                tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
                     guard let self, !self.stopped else { return }
                     scenario.delivered()
-                    self.client?.urlProtocol(self, didLoad: Data([42]))
-                }
+                    client?.urlProtocol(self, didLoad: Data([42]))
+                })
                 timer = tick
                 tick.resume()
             }
-        }
+        })
     }
     override func stopLoading() {
-        queue.async { [self] in
+        queue.async(execute: DispatchWorkItem { [self] in
             stopped = true
             timer?.cancel()
             timer = nil
-        }
+        })
     }
 }

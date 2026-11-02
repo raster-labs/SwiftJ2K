@@ -1,0 +1,1181 @@
+[0/1] Planning build
+Building for debugging...
+[0/13] Write sources
+[7/13] Copying Fixtures
+[8/13] Write swift-version--58304C5D6DBC2206.txt
+[9/13] Compiling CZlibShim CZlibShim.c
+[11/45] Emitting module SwiftJ2K
+[12/45] Compiling SwiftJ2K Wavelet53.swift
+[13/45] Compiling SwiftJ2K Wavelet97.swift
+[14/45] Compiling SwiftJ2K CodecAPI.swift
+[15/45] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[16/45] Compiling SwiftJ2K JP2Boxes.swift
+[17/45] Compiling SwiftJ2K JP2Container.swift
+[18/45] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[19/45] Compiling SwiftJ2K Errors.swift
+[20/45] Compiling SwiftJ2K Image.swift
+[21/54] Compiling SwiftJ2K ImageDescriptor.swift
+[22/54] Compiling SwiftJ2K ImageStorage.swift
+[23/54] Compiling SwiftJ2K LegacyImageBridge.swift
+[24/54] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[25/54] Compiling SwiftJ2K Options.swift
+[26/54] Compiling SwiftJ2K Telemetry.swift
+[27/54] Compiling SwiftJ2K Transcoding.swift
+[28/54] Compiling SwiftJ2K Volume.swift
+[29/54] Compiling SwiftJ2K VolumePixelAccounting.swift
+[30/54] Compiling SwiftJ2K AcceleratedCodec.swift
+[31/54] Compiling SwiftJ2K AccelerationRuntime.swift
+[32/54] Compiling SwiftJ2K MetalAcceleration.swift
+[33/54] Compiling SwiftJ2K SIMDAcceleration.swift
+[34/54] Compiling SwiftJ2K BitIO.swift
+[35/54] Compiling SwiftJ2K BitPlaneCoder.swift
+[36/54] Compiling SwiftJ2K BoundedByteWriter.swift
+[37/54] Compiling SwiftJ2K Codestream.swift
+[38/54] Compiling SwiftJ2K ColourTransform.swift
+[39/54] Compiling SwiftJ2K ContextModeling.swift
+[40/54] Compiling SwiftJ2K HTBlockCoder.swift
+[41/54] Compiling SwiftJ2K HTTables.swift
+[42/54] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[43/54] Compiling SwiftJ2K LosslessPipeline.swift
+[44/54] Compiling SwiftJ2K MQCoder.swift
+[45/54] Compiling SwiftJ2K Part1Pipeline.swift
+[46/54] Compiling SwiftJ2K Quantization.swift
+[47/54] Compiling SwiftJ2K ROI.swift
+[48/54] Compiling SwiftJ2K TagTree.swift
+[49/54] Compiling SwiftJ2K Tier2.swift
+[50/80] Emitting module SwiftJ2K3D
+[51/80] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[52/80] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[53/80] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[54/80] Compiling SwiftJ2K3D JP3DRateControl.swift
+[55/80] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[56/80] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[57/80] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[58/80] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[59/80] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[60/80] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[61/80] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[62/80] Compiling SwiftJ2K3D JP3DDecoder.swift
+[63/80] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[64/80] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[65/80] Compiling SwiftJ2K3D JP3DEncoder.swift
+[66/80] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[67/80] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[68/80] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[69/80] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[70/80] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[71/80] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[72/80] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[73/80] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[74/80] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[75/80] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[76/88] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[77/88] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[78/88] Compiling SwiftJ2K3D JP3DTiling.swift
+[79/88] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[80/88] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[81/88] Compiling SwiftJ2K3D JP3DTypes.swift
+[82/88] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[83/88] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[84/132] Emitting module SwiftJ2KJPIP
+[85/141] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[86/141] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[87/141] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[88/141] Compiling SwiftJ2KJPIP JPIPHTTPSRequest.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[89/141] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[90/146] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[91/146] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[92/146] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[93/146] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[94/146] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[95/146] Compiling SwiftJ2KJPIP JPIP.swift
+[96/146] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[97/146] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[98/146] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+[99/146] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[105/146] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+[106/146] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+[107/146] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+[108/146] Compiling SwiftJ2K3DTests R3VolumeRemediationTests.swift
+[109/146] Compiling SwiftJ2K3DTests VolumeContractTests.swift
+[110/146] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[111/146] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+[112/146] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[113/146] Compiling SwiftJ2KJPIP JPIPServer.swift
+[114/146] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+[115/146] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+[116/146] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+[117/146] Emitting module SwiftJ2K3DTests
+[128/146] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+[129/146] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+[130/146] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+[131/146] Compiling SwiftJ2KJPIP JPIPTransport.swift
+[132/146] Compiling SwiftJ2KJPIP JPIPTransportRequestLifetime.swift
+[133/146] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+[134/146] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+[135/146] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+[136/146] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+[137/181] Emitting module SwiftJ2KJPIPTests
+[138/190] Compiling SwiftJ2KJPIPTests JPIPHTJ2KSupportTests.swift
+[139/190] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+[140/190] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+[141/190] Compiling SwiftJ2KJPIPTests JPIPServerComponentTests.swift
+[142/190] Compiling SwiftJ2KJPIPTests JPIPServerPushTests.swift
+[143/190] Compiling SwiftJ2KJPIPTests JPIPServerTests.swift
+[144/190] Compiling SwiftJ2KJPIPTests JPIPSessionPersistenceTests.swift
+[145/190] Compiling SwiftJ2KJPIPTests JPIPTests.swift
+[146/190] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+[147/190] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+[148/190] Compiling SwiftJ2KJPIPTests CodexR3WorkerHandoffTests.swift
+[149/190] Compiling SwiftJ2KJPIPTests IndependentR2RemainingTests.swift
+[150/190] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+[151/190] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+[152/190] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+[153/190] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+[154/190] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+[155/190] Compiling SwiftJ2KJPIPTests JPIPContractTests.swift
+[156/190] Compiling SwiftJ2KJPIPTests JPIPDataBinGeneratorTests.swift
+[157/190] Compiling SwiftJ2KJPIPTests JPIPEndToEndTests.swift
+[158/190] Compiling SwiftJ2KCLI main.swift
+[159/190] Emitting module SwiftJ2KCLI
+[160/190] Compiling SwiftJ2KCLI CLIImageIO.swift
+[161/190] Compiling SwiftJ2KCLI CLIVerbs.swift
+[161/190] Write Objects.LinkFileList
+[162/190] Linking swiftj2k-cli
+[163/190] Applying swiftj2k-cli
+[165/211] Emitting module SwiftJ2KTests
+[166/217] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+[167/217] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+[168/217] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+[169/217] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+[170/217] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+[171/217] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+[172/217] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+[173/217] Compiling SwiftJ2KJPIPTests R3OwnedScriptedPeer.swift
+[174/217] Compiling SwiftJ2KJPIPTests TransportLifecycleProbe.swift
+[175/217] Compiling SwiftJ2KTests AccelerationTests.swift
+[176/217] Compiling SwiftJ2KTests BehaviourTests.swift
+[177/217] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[178/217] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+[179/217] Compiling SwiftJ2KTests CLITestProcessSupport.swift
+[180/217] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[181/217] Compiling SwiftJ2KTests CodexR3CLIHostTests.swift
+[182/217] Compiling SwiftJ2KTests OwnershipTests.swift
+[183/217] Compiling SwiftJ2KTests Part1BreadthTests.swift
+[184/217] Compiling SwiftJ2KTests R1RemediationTests.swift
+[185/217] Compiling SwiftJ2KTests R2CLIExtraSampleOrderingTests.swift
+[186/217] Compiling SwiftJ2KTests R2ColourAlphaPreservationTests.swift
+[187/217] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+[188/217] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+[189/217] Compiling SwiftJ2KTests R2RemediationTests.swift
+[190/217] Compiling SwiftJ2KTests SampleAccessTests.swift
+[191/217] Compiling SwiftJ2KTests SharedStorageTests.swift
+[192/217] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+[193/217] Compiling SwiftJ2KTests LosslessCodecTests.swift
+[199/217] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+[200/217] Compiling SwiftJ2KTests ContainerTests.swift
+[201/217] Compiling SwiftJ2KTests ContractTests.swift
+[202/217] Compiling SwiftJ2KTests DescriptorTests.swift
+[203/217] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+[204/217] Compiling SwiftJ2KTests IndependentR2AuditTests.swift
+[205/217] Compiling SwiftJ2KTests LimitTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[216/219] Compiling SwiftJ2KPackageTests runner.swift
+[217/219] Emitting module SwiftJ2KPackageTests
+[217/219] Write Objects.LinkFileList
+[218/219] Linking SwiftJ2KPackageTests
+Build complete! (34.76s)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Codex R3 JPP reconstruction admission" started.
+◇ Test roiMaxShiftPreservesLosslessAndPrioritisesForegroundAtLowBitrate() started.
+◇ Test invalidResourceProfilesAndProgressFailPredictably() started.
+◇ Test htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test lossy97RateDistortionCurveIsMonotonicAndGuardBitsWork() started.
+◇ Test publicOperationsRejectForeignBytesAndAdvertiseScalarLosslessCoverage() started.
+◇ Suite "Milestone 12 — CLI & Consumer Breadth Tests" started.
+◇ Suite "R2 legacy decode combined-budget probes" started.
+◇ Test encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Suite "Byte-order sample access" started.
+◇ Test multiTileMultiLayerPrecinctsProgressionsAndPOCRoundTrip() started.
+◇ Test codecOptionsAreValidatedExplicitly() started.
+◇ Test independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test readerRequirementsBoxRoundTripAndFeatureEvaluation() started.
+◇ Suite "Phase R1 — Core & CLI Audit Remediation Regressions" started.
+◇ Test decodeIntoCallerStorageKeepsIdentityAndLeavesPaddingUntouched() started.
+◇ Test reentrantLeaseOperationsRejectWithoutDeadlocking() started.
+◇ Suite "CLI subprocess harness" started.
+◇ Test syntheticExactSamplesAndPadding(precision:) started.
+◇ Suite "Phase R2 — Core, Container & CLI Semantics Remediation Regressions" started.
+◇ Test safeSampleAccessHonoursExplicitBigEndian() started.
+◇ Suite "Descriptor validation" started.
+◇ Suite "R2 CLI extra-sample meaning and PNG ordering" started.
+◇ Suite "Independent R2 audit probes" started.
+◇ Suite R2ICCModelPreservationTests started.
+◇ Suite "R3 JPIP CLI bind and verification addresses" started.
+◇ Suite R2ColourAlphaPreservationTests started.
+◇ Test resourceLimitsGateAdmission() started.
+◇ Test sealedOwnerSupportsConcurrentReadersAndNestedRead() started.
+◇ Test headerOnlyInputIsMalformedNotAnImage() started.
+◇ Test truncatedCodestreamsFailWithDefinedErrors() started.
+◇ Test singleBitCorruptionNeverTrapsOrHangs() started.
+◇ Test borrowedStorageRejectsForgedLeasesAndPublication() started.
+◇ Test htj2kSharedStorageAndZeroIntermediateFilesProof() started.
+◇ Test abandonedDestinationInvalidatesItsReservedOwner() started.
+◇ Test configurationsAndBackendRequestsRejectUnsupportedChoices() started.
+◇ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() started.
+◇ Test independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test mutationsOfStrideAndByteOrderAreCaughtByTheSharedStorageChecks() started.
+◇ Test unknownMeasurementsStayUnknownAndMetadataIsBounded() started.
+◇ Test packetBitCoderStuffsAfterFF() started.
+◇ Test colourCodestreamsInspectAndDecode() started.
+◇ Test extremeValuesSurviveEveryPrecision() started.
+◇ Test degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test encoderRejectsSamplesOutsideDeclaredPrecision() started.
+◇ Test safeSampleWriterRejectsOutOfRangeWithoutTruncating() started.
+◇ Test transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits() started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() started.
+◇ Test waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test independentOraclesCrossDecodePart1BreadthEncodings() started.
+◇ Test progressIsMonotonicAndCompletesAfterPublication() started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() started.
+◇ Test acceleratedPart1BreadthAndContainersAreByteIdenticalAcrossAllFixtures() started.
+◇ Test refusedLayoutLeavesDestinationReusableAndCancelledWorkInvalidatesIt() started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test decoderPreservesTaskCancellationError() started.
+◇ Test independentAllocationAndMemoryCeilingsAreEnforced() started.
+◇ Test sameTokenCannotAuthoriseConcurrentOverlappingBorrows() started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 3 arguments levels → 0, blockWidth → 64, blockHeight → 64 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test explicitLargerMetadataLimitIsHonoured() started.
+◇ Test roundTripThroughCallerStorageWithDifferentStridesOnEachSide() started.
+◇ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test encoderRefusesMetadataItCannotCarry() started.
+◇ Test irreversible97FixtureDecodesWithLossyFidelityAndPart2IsRejected(variant:expected:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test singleBitCorruptionOnHTJ2KNeverTrapsOrHangs() started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test failedFillInvalidatesDestination() started.
+◇ Test htj2kExtremeValuesAndKMaxReversibleGainRegression() started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test mqCoderRoundTripsRandomSymbolsOverAllContexts() started.
+◇ Test encodeAndDecodeJP2JPHAndJPXContainersWithMetadataAndResolution() started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 3 arguments levels → 1, blockWidth → 16, blockHeight → 16 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test fourComponentRGBARoundTripsLosslessAndLossy() started.
+◇ Test directKernelParityAndPredecessorAuditRegressions() started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test pixelAndDimensionLimitsRejectBeforeAllocation() started.
+◇ Test boundedWriterRejectsInvalidReservationsWithoutAllocating() started.
+◇ Test rgbPlanarAndInterleavedRoundTripWithRCTAndICTAndNoMCT() started.
+◇ Test independentPublicCallShapesReportTheirActualCoverage() started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to encoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test encoderIgnoresRowPaddingAndReadsSharedStorageOnce() started.
+◇ Test integerOverflowWithExplicitLargeLimitsThrows() started.
+◇ Test paddedStorageCountsTowardsDecodedLimit() started.
+◇ Test boundedWriterGrowthAndDirectCopiesPublishIndependentBytes() started.
+◇ Test imageRetainsAdapterUntilLastImageReleaseExactlyOnce() started.
+◇ Test cancelledEncodeLeavesTheSourceIntactAndPublishesNothing() started.
+◇ Test nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() started.
+◇ Test metadataAndDestinationLimitsUseCallerBudget() started.
+◇ Test cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 3 arguments levels → 2, blockWidth → 32, blockHeight → 8 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test boxReaderRejectsInvalidExtendedLengthsAndTruncatedBoxes() started.
+◇ Test htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test cancellationIsCheckedBeforeAllocatingStorage() started.
+◇ Test case passing 1 argument precision → 12 to syntheticExactSamplesAndPadding(precision:) started.
+◇ Test independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test invalidPart1BreadthOptionsAreRejectedExplicitly() started.
+◇ Test metadataICCAndNestingDepthResourceLimitsAreEnforced() started.
+◇ Test signedSamplesRoundTripAcrossBitDepthsAndExtremes() started.
+◇ Test case passing 1 argument precision → 16 to syntheticExactSamplesAndPadding(precision:) started.
+◇ Test transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput() started.
+◇ Test containerStructuralInvariantsAreValidatedStrictly() started.
+◇ Test case passing 3 arguments levels → 3, blockWidth → 4, blockHeight → 4 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test bothCopyPoliciesUseTheSharedPathAndReportNoCopy() started.
+◇ Test htSignallingAndUnsupportedPassStructuresFailPredictably() started.
+◇ Test paletteAndComponentMappingWith12BitAndDirectChannels() started.
+◇ Test safeWriterRejectsOutOfRangeInsteadOfTruncating() started.
+◇ Test syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test executionPolicyAndAvailabilityMatrixHonoursContract() started.
+◇ Test cancellationDuringDecodeInvalidatesTheDestination() started.
+◇ Test descriptorMutationRejectsInvalidStridesAndOffsets() started.
+◇ Test concurrentAdaptersReserveExactlyOneWriter() started.
+◇ Test boundedWriterRejectsGrowthBeforeAllocationAndPreservesPrefix() started.
+◇ Test htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() started.
+◇ Test independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test tagTreeEncodesAndDecodesInclusionAndZeroBitPlanes() started.
+◇ Test acceleratedHTJ2KAndTranscodeAreByteIdenticalAcrossAllFixtures() started.
+◇ Test incompatibleDestinationIsRejectedInPreflight() started.
+◇ Test case passing 3 arguments levels → 5, blockWidth → 64, blockHeight → 64 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test transcodeBetweenJP2AndJPHContainersPreservesAndDiscardsMetadata() started.
+◇ Test independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test cancellationDuringSyntheticRowsInvalidatesDestination() started.
+◇ Test acceleratedDecodeAndEncodeAreByteIdenticalAcrossAllLosslessFixtures() started.
+◇ Test concurrentReadersOfOneCallerOwnerAgreeWhileAMutationAttemptFails() started.
+◇ Test adaptersShareWriterAuthorityAndRejectForgedLease() started.
+◇ Test cancellationInsideWriteCannotPublishPartialImage() started.
+◇ Test allocatingDecodeUsesTheSameFinalOutputPathWithOneAllocation() started.
+◇ Test nearLosslessEnforcesMaximumAbsoluteErrorBound() started.
+◇ Test case passing 3 arguments levels → 6, blockWidth → 8, blockHeight → 512 to htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" started.
+◇ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" started.
+◇ Test "Reconstruction validates tile identifiers before synthesizing a probe" started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test "M12-AUD-002: CLI batch parallel worker pool (--threads) and 3D/JPIP/benchmark/completions" started.
+◇ Test "M12-AUD-001 & M12-AUD-003: CLI 16-bit PNG, TIFF, PGM, RAW, and compare endian/signedness accuracy" started.
+◇ Test writesGoldenBytesForPackedAndPadded12And16BitSamples() started.
+◇ Test "Consumer migration bridge: 12-bit signed/unsigned and planar/interleaved RGB round-trip" started.
+◇ Test initialisesExternalSampleBytesAtOddAddressWithoutChangingPadding() started.
+◇ Test refusesShortProviderBeforeLoadingSample() started.
+◇ Test outOfPrecisionWriteInvalidatesDestination() started.
+◇ Test readsIndependentGoldenBytesFromOddPhysicalAddress() started.
+◇ Test rejectsCoordinatesBeforeOffsetArithmetic() started.
+◇ Test "Reported workspace, input and destination form a usable exact-fit budget with retained cache" started.
+◇ Test "Combined crop and reduction count full, intermediate and returned logical pixels" started.
+◇ Test "Retained cache and compressed-copy admission occurs before parser or pixel allocation" started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 1, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 1, height → 7 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 7, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 2, height → 2 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 3, height → 5 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 65, height → 1 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 1, height → 65 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 17, height → 33 to degenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 1, height → 1 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 2 arguments width → 1, height → 9 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 9, height → 1 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 2, height → 3 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 33, height → 17 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 2 arguments width → 64, height → 64 to waveletForwardInverseIsIdentity(width:height:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test publicOperationsRejectForeignBytesAndAdvertiseScalarLosslessCoverage() passed after 0.667 seconds.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test invalidResourceProfilesAndProgressFailPredictably() passed after 1.198 seconds.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+✔ Test readerRequirementsBoxRoundTripAndFeatureEvaluation() passed after 1.326 seconds.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_n1.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_b32.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_b16_n2.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.ojph_lrcp.j2c" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_l3.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_tiles.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_layers.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_layers_lrcp.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_ht_precincts.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_htmix.j2k" to allHTJ2KFixturesDecodeToExactSamples(key:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 2 arguments variant → "irreversible97", expected → "9/7" to irreversible97FixtureDecodesWithLossyFidelityAndPart2IsRejected(variant:expected:) started.
+◇ Test "M12-CX-01 + follow-up: 64x64 8-bit single-strip & multi-strip TIFF combined live-memory, 16-bit contract storage pre-strip check, and lifetime telemetry" started.
+◇ Test "R1-CODE-02: pre-allocation parser admission reaches 1-component SIZ, small <=16-entry QCD, larger-budget control, and 16384-component SIZ" started.
+✔ Test codecOptionsAreValidatedExplicitly() passed after 1.669 seconds.
+◇ Test "M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions" started.
+◇ Test "M12-CX-01 rework: duplicate StripOffsets/StripByteCounts replacement overlap, ARC deinit multi-strip ownership proof, and tag+strip workspace boundary" started.
+◇ Test case passing 3 arguments levels → 0, blockWidth → 64, blockHeight → 64 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 3 arguments levels → 1, blockWidth → 16, blockHeight → 16 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 3 arguments levels → 2, blockWidth → 32, blockHeight → 8 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 3 arguments levels → 3, blockWidth → 4, blockHeight → 4 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 3 arguments levels → 5, blockWidth → 64, blockHeight → 64 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test case passing 3 arguments levels → 6, blockWidth → 8, blockHeight → 512 to encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) started.
+◇ Test "F13: cancellation inside .completed progress callback aborts Encoder, Decoder, ImageDestination, and Transcoder" started.
+◇ Test "M6-AUD-006 rework: repeated main-header and tile-part POC simultaneous growth admission and zero-allocation validateHTSignalling" started.
+◇ Test "M6-AUD-006: multiple small retained COC/QCC/COM structures accumulate to reject a final individually-fitting payload before allocation" started.
+✔ Test decodeIntoCallerStorageKeepsIdentityAndLeavesPaddingUntouched() passed after 1.945 seconds.
+◇ Test "Concurrent stdout/stderr drains and stdin join before subprocess completion" started.
+◇ Test "CLI resolution uses the active scratch build and rejects an invalid explicit path" started.
+✔ Test reentrantLeaseOperationsRejectWithoutDeadlocking() passed after 1.956 seconds.
+◇ Test case passing 1 argument name → "g16_1x1_max" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) started.
+◇ Test case passing 1 argument point → .sealing to cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test case passing 1 argument point → .validatingSealedStorage to cancellationInProviderFinalisationPreventsPublication(_:) started.
+◇ Test "F08: Normative T.801 M.6.2 rejects undefined DCM bits and unverified shifted-DCM masks while preserving verified Kakadu v8.x JPX fixtures" started.
+◇ Test case passing 1 argument variant → "precincts" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "sop_eph" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "rpcl" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "cprl" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "kdu_tileparts" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "kdu_plt" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "tiled" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "layers2" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "bypass" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "termall" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "segsym" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test case passing 1 argument variant → "kdu_ht" to supportedSyntaxVariantsDecodeExactly(variant:) started.
+◇ Test "F12: Duplicate jp2c boxes are deterministically rejected in JP2/JPH (.malformedInput) and JPX (.unsupportedFeature)" started.
+◇ Test case passing 2 arguments width → 1, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 1, height → 7 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 7, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 2, height → 2 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 3, height → 5 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 65, height → 1 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 1, height → 65 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+◇ Test case passing 2 arguments width → 17, height → 33 to htj2kDegenerateGeometriesRoundTrip(width:height:) started.
+✔ Test safeSampleAccessHonoursExplicitBigEndian() passed after 2.480 seconds.
+◇ Test "M12-CX-04: TIFF PhotometricInterpretation handles WhiteIsZero and Palette Color (single- and multi-strip) and rejects YCbCr/CMYK/invalid tags" started.
+◇ Test "F07: Public J2KImage, J2KDecoder, and toContractImage preserve straight, premultiplied, and absent alpha without altering samples" started.
+◇ Test "F08: JP2ReaderRequirementsBox uses normative Table M.14 feature codes, masks, and disjunctive/conjunctive evaluation" started.
+✔ Test syntheticExactSamplesAndPadding(precision:) with 2 test cases passed after 2.480 seconds.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_1x1_max|g16_1x1_max.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_zero|g16_8x8_zero.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_8x8_const|g16_8x8_const.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_5x3_ramp_extremes|g12_5x3_ramp_extremes.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_17x9_alternating|g16_17x9_alternating.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_64x64_random|g16_64x64_random.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g12_129x67_gradient|g12_129x67_gradient.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g16_256x256_smooth|g16_256x256_smooth.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g08_37x23_random|g08_37x23_random.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_n1.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_b32.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_n2_b16.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.opj_rpcl.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test case passing 1 argument key → "g10_300x200_gradient|g10_300x200_gradient.kdu_l3.j2k" to independentCodestreamsDecodeToTheGeneratedSamples(key:) started.
+◇ Test "F09, F10 & F11 CLI: 3D NRRD geometry round-trip (including negative --origin), --copy-policy require-sharing rejection, and JPIP --components validation" started.
+◇ Test rejectsMisalignedOffsetsAndStrides() started.
+◇ Test rejectsArithmeticOverflowBeforeAllocation() started.
+◇ Test "TIFF unspecified extras retain colour roles through JP2 encoding" started.
+◇ Test "F07: J2KDecoder, J2KImage.toContractImage, and J2KTranscoder preserve pclr/cmap, cdef, and ICC semantics" started.
+◇ Test rejectsInvalidGeometryAndPrecision() started.
+◇ Test "M12-CX-03: PNG sBIT preserves significant samples normatively on read/write and rejects invalid/unequal sBIT or unscaled clipping" started.
+◇ Test "TIFF missing, invalid and inconsistent ExtraSamples fail as malformed input" started.
+◇ Test semanticMetadataMustAgreeWithComponents() started.
+◇ Test paddedOddDimensionsAndPrecision() started.
+◇ Test "PNG rejects sBIT after PLTE, duplicate sBIT and misplaced palette chunks" started.
+◇ Test "PNG output preserves canonical roles and rejects unspecified or premultiplied extras" started.
+◇ Test finalRowNeedsOnlyItsActualSampleBytes() started.
+◇ Test "TIFF WhiteIsZero changes grey samples only, including unspecified extras" started.
+◇ Test deterministicLayoutMutation() started.
+◇ Test rejectsOverlappingPlanesAndIncompleteMapping() started.
+◇ Test "TIFF ExtraSamples 0, 1 and 2 retain distinct RGB/grey interpretation" started.
+◇ Test "TIFF writer rejects unknown colour instead of inventing a photometric meaning" started.
+◇ Test "PNG sBIT before optional PLTE preserves exact significant samples" started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.layers3_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.layers3_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.bypass_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.reset_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.restart_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.causal_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.erterm_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.segsym_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.allstyles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.bypass_restart_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.allstyles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles37x29_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles64_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_tiles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.tiles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.origin_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.pcrl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.cprl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.rpcl_precincts_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.everything_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g12_129x67_gradient.syntax.everything_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.layers3_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.layers3_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.bypass_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.reset_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.restart_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.causal_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.erterm_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.segsym_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.allstyles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.bypass_restart_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.allstyles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles37x29_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles64_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_tiles_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.tiles_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.origin_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.pcrl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.cprl_precincts_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.rpcl_precincts_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.everything_opj.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test case passing 1 argument file → "g16_64x64_random.syntax.everything_kdu.j2k" to syntaxCoverageVariantsDecodeExactly(file:) started.
+◇ Test "Undefined DCM requirements cannot be satisfied by shifting supported feature bits" started.
+◇ Test "Premultiplied alpha survives public legacy bridge and decoder" started.
+◇ Test case passing 1 argument name → "g16_1x1_max" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g08_37x23_random" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) started.
+◇ Test case passing 1 argument file → "jp2_g16_lossless.opj.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_g16_lossless.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_s16_lossless.opj.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_s16_lossless.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgb8_rct.opj.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgb8_rct.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgb8_ict_lossy.opj.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgb8_ict_lossy.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgba8_cdef.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_rgb8_icc_res_meta.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jp2_pal8_pclr_cmap_resc.kdu.jp2" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jph_g16_lossless.kdu.jph" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jph_rgb8_rct.kdu.jph" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jph_rgba8_cdef.kdu.jph" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jpx_rgb8_part1.kdu.jpx" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument file → "jpx_rgb8_htj2k.kdu.jpx" to independentContainerFixturesInspectAndDecode(file:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.opj_rct" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.kdu_rct" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.kdu_nomct" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.opj_ict" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.kdu_ict" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.opj_tiles_layers" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.opj_layers_poc" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb8_64x48_gradient.kdu_tiles_layers_precincts" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgba8_32x24_pattern.kdu" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "rgb12_33x25_pattern.kdu_rct" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s08_37x23_signed.opj_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s08_37x23_signed.kdu_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s12_45x31_signed.opj_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s12_45x31_signed.kdu_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s16_64x48_signed.opj_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s16_64x48_signed.kdu_rev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "s16_64x48_signed.kdu_irrev" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_smooth.opj_expounded" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_smooth.kdu_derived" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_smooth.kdu_expounded_gb4" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "g08_64x64_smooth.opj_roi" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 1 argument name → "g08_64x64_smooth.kdu_roi" to independentPart1BreadthFixturesDecodeCorrectly(name:) started.
+◇ Test case passing 4 arguments name → "g12_129x67_gradient", variant → "opj", prefix → 6, padding → 10 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test case passing 4 arguments name → "g16_17x9_alternating", variant → "kdu", prefix → 2, padding → 4 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test case passing 4 arguments name → "g12_129x67_gradient", variant → "kdu_l3", prefix → 0, padding → 0 to decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) started.
+◇ Test "F07/F08: ICC-only GRAY plus extras and CMYK retain the declared model and exact opaque profile" started.
+◇ Test "F07: dropping an unspecified extra preserves a complete RGB ICC tuple" started.
+◇ Test onceVerificationUsesTheAcceptedBindAddress(host:) started.
+◇ Test invalidBindAddressFailsWithoutATrap() started.
+◇ Test "F07: permuted and alpha-only component views retain sample meaning" started.
+◇ Test "F07: container output requires an explicit colour representation" started.
+◇ Test "F08: shifted-mask compatibility depends on actual baseline structure, not COM attribution" started.
+◇ Test "F07/F08: native enumerated colour survives core, legacy, JPX and metadata-discard round trips" started.
+✔ Test headerOnlyInputIsMalformedNotAnImage() passed after 6.012 seconds.
+✔ Test resourceLimitsGateAdmission() passed after 6.012 seconds.
+✔ Test truncatedCodestreamsFailWithDefinedErrors() passed after 6.012 seconds.
+✔ Test borrowedStorageRejectsForgedLeasesAndPublication() passed after 6.012 seconds.
+✔ Test abandonedDestinationInvalidatesItsReservedOwner() passed after 6.014 seconds.
+✔ Test configurationsAndBackendRequestsRejectUnsupportedChoices() passed after 6.021 seconds.
+✔ Test colourCodestreamsInspectAndDecode() passed after 6.025 seconds.
+✔ Test packetBitCoderStuffsAfterFF() passed after 6.025 seconds.
+✔ Test unknownMeasurementsStayUnknownAndMetadataIsBounded() passed after 6.025 seconds.
+✔ Test extremeValuesSurviveEveryPrecision() passed after 6.038 seconds.
+✔ Test encoderRejectsSamplesOutsideDeclaredPrecision() passed after 6.039 seconds.
+✔ Test allHTJ2KFixturesDecodeToExactSamples(key:) with 120 test cases passed after 6.039 seconds.
+✔ Test degenerateGeometriesRoundTrip(width:height:) with 8 test cases passed after 6.039 seconds.
+✔ Test safeSampleWriterRejectsOutOfRangeWithoutTruncating() passed after 6.039 seconds.
+✔ Test transcodePreservesAndDiscardsCOMMetadataAndEnforcesMetadataLimits() passed after 6.039 seconds.
+✔ Test htj2kSharedStorageAndZeroIntermediateFilesProof() passed after 6.039 seconds.
+✔ Test waveletForwardInverseIsIdentity(width:height:) with 6 test cases passed after 6.039 seconds.
+✔ Test roiMaxShiftPreservesLosslessAndPrioritisesForegroundAtLowBitrate() passed after 6.039 seconds.
+✔ Test singleBitCorruptionNeverTrapsOrHangs() passed after 6.041 seconds.
+✔ Test independentAllocationAndMemoryCeilingsAreEnforced() passed after 6.040 seconds.
+✔ Test sameTokenCannotAuthoriseConcurrentOverlappingBorrows() passed after 6.040 seconds.
+✔ Test progressIsMonotonicAndCompletesAfterPublication() passed after 6.041 seconds.
+✔ Test lossy97RateDistortionCurveIsMonotonicAndGuardBitsWork() passed after 6.041 seconds.
+✔ Test multiTileMultiLayerPrecinctsProgressionsAndPOCRoundTrip() passed after 6.041 seconds.
+✔ Test boundedHTJ2KAndTranscodeFuzzingNeverTrapsOrHangs() passed after 6.041 seconds.
+✔ Test mutationsOfStrideAndByteOrderAreCaughtByTheSharedStorageChecks() passed after 6.041 seconds.
+✔ Test explicitLargerMetadataLimitIsHonoured() passed after 6.006 seconds.
+✔ Test encoderOutputDecodesExactlyWithDefaultOptions(name:) with 10 test cases passed after 6.041 seconds.
+✔ Test encoderRefusesMetadataItCannotCarry() passed after 6.006 seconds.
+✔ Test failedFillInvalidatesDestination() passed after 6.013 seconds.
+✔ Test htj2kExtremeValuesAndKMaxReversibleGainRegression() passed after 6.022 seconds.
+✔ Test irreversible97FixtureDecodesWithLossyFidelityAndPart2IsRejected(variant:expected:) with 1 test case passed after 6.023 seconds.
+✔ Test mqCoderRoundTripsRandomSymbolsOverAllContexts() passed after 6.025 seconds.
+✔ Test encoderOptionsRoundTrip(levels:blockWidth:blockHeight:) with 6 test cases passed after 6.028 seconds.
+✔ Test encodeAndDecodeJP2JPHAndJPXContainersWithMetadataAndResolution() passed after 6.028 seconds.
+✔ Test pixelAndDimensionLimitsRejectBeforeAllocation() passed after 6.013 seconds.
+✔ Test boundedWriterRejectsInvalidReservationsWithoutAllocating() passed after 6.013 seconds.
+✔ Test independentPublicCallShapesReportTheirActualCoverage() passed after 6.013 seconds.
+✔ Test integerOverflowWithExplicitLargeLimitsThrows() passed after 6.014 seconds.
+✔ Test paddedStorageCountsTowardsDecodedLimit() passed after 6.014 seconds.
+✔ Test boundedWriterGrowthAndDirectCopiesPublishIndependentBytes() passed after 6.014 seconds.
+✔ Test imageRetainsAdapterUntilLastImageReleaseExactlyOnce() passed after 6.014 seconds.
+✔ Test fourComponentRGBARoundTripsLosslessAndLossy() passed after 6.028 seconds.
+✔ Test directKernelParityAndPredecessorAuditRegressions() passed after 6.028 seconds.
+✔ Test truncatedHTJ2KCodestreamsFailWithDefinedErrorsInDecodeAndTranscode() passed after 6.015 seconds.
+✔ Test metadataAndDestinationLimitsUseCallerBudget() passed after 6.015 seconds.
+✔ Test supportedSyntaxVariantsDecodeExactly(variant:) with 12 test cases passed after 6.015 seconds.
+✔ Test roundTripThroughCallerStorageWithDifferentStridesOnEachSide() passed after 6.032 seconds.
+✔ Test boxReaderRejectsInvalidExtendedLengthsAndTruncatedBoxes() passed after 5.932 seconds.
+✔ Test htj2kDegenerateGeometriesRoundTrip(width:height:) with 8 test cases passed after 5.932 seconds.
+✔ Test independentCodestreamsDecodeToTheGeneratedSamples(key:) with 51 test cases passed after 5.947 seconds.
+✔ Test rgbPlanarAndInterleavedRoundTripWithRCTAndICTAndNoMCT() passed after 6.033 seconds.
+✔ Test singleBitCorruptionOnHTJ2KNeverTrapsOrHangs() passed after 6.049 seconds.
+✔ Test acceleratedPart1BreadthAndContainersAreByteIdenticalAcrossAllFixtures() passed after 6.083 seconds.
+✔ Test invalidPart1BreadthOptionsAreRejectedExplicitly() passed after 5.947 seconds.
+✔ Test metadataICCAndNestingDepthResourceLimitsAreEnforced() passed after 5.951 seconds.
+✔ Test containerStructuralInvariantsAreValidatedStrictly() passed after 5.958 seconds.
+✔ Test bothCopyPoliciesUseTheSharedPathAndReportNoCopy() passed after 5.961 seconds.
+✔ Test htSignallingAndUnsupportedPassStructuresFailPredictably() passed after 5.962 seconds.
+✔ Test paletteAndComponentMappingWith12BitAndDirectChannels() passed after 5.962 seconds.
+✔ Test safeWriterRejectsOutOfRangeInsteadOfTruncating() passed after 5.963 seconds.
+✔ Test signedSamplesRoundTripAcrossBitDepthsAndExtremes() passed after 5.963 seconds.
+✔ Test syntaxCoverageVariantsDecodeExactly(file:) with 44 test cases passed after 5.963 seconds.
+✔ Test transcodeResourceAccountingAndTelemetryCoverTargetGeometryEncodingsAndOutput() passed after 5.963 seconds.
+✔ Test descriptorMutationRejectsInvalidStridesAndOffsets() passed after 5.993 seconds.
+✔ Test boundedWriterRejectsGrowthBeforeAllocationAndPreservesPrefix() passed after 5.995 seconds.
+✔ Test htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:) with 10 test cases passed after 5.995 seconds.
+✔ Test executionPolicyAndAvailabilityMatrixHonoursContract() passed after 5.995 seconds.
+✔ Test independentContainerFixturesInspectAndDecode(file:) with 16 test cases passed after 5.995 seconds.
+✔ Test tagTreeEncodesAndDecodesInclusionAndZeroBitPlanes() passed after 5.995 seconds.
+✔ Test incompatibleDestinationIsRejectedInPreflight() passed after 5.995 seconds.
+✔ Test transcodeBetweenJP2AndJPHContainersPreservesAndDiscardsMetadata() passed after 5.994 seconds.
+✔ Test independentPart1BreadthFixturesDecodeCorrectly(name:) with 22 test cases passed after 5.994 seconds.
+✔ Test decodeWritesOnlySampleBytesOfTheCallerAllocation(name:variant:prefix:padding:) with 3 test cases passed after 5.994 seconds.
+✔ Test adaptersShareWriterAuthorityAndRejectForgedLease() passed after 6.002 seconds.
+◇ Test case passing 1 argument host → " 127.0.0.1 " to onceVerificationUsesTheAcceptedBindAddress(host:) started.
+◇ Test case passing 1 argument host → " 	
+ " to onceVerificationUsesTheAcceptedBindAddress(host:) started.
+◇ Test case passing 1 argument host → "" to onceVerificationUsesTheAcceptedBindAddress(host:) started.
+◇ Test case passing 1 argument host → " * " to onceVerificationUsesTheAcceptedBindAddress(host:) started.
+◇ Test case passing 1 argument host → " 0.0.0.0 " to onceVerificationUsesTheAcceptedBindAddress(host:) started.
+✔ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" passed after 6.058 seconds.
+✔ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" passed after 6.048 seconds.
+✔ Test "Reconstruction validates tile identifiers before synthesizing a probe" passed after 6.048 seconds.
+✔ Test allocatingDecodeUsesTheSameFinalOutputPathWithOneAllocation() passed after 6.108 seconds.
+✔ Test writesGoldenBytesForPackedAndPadded12And16BitSamples() passed after 6.046 seconds.
+✔ Test initialisesExternalSampleBytesAtOddAddressWithoutChangingPadding() passed after 6.046 seconds.
+✔ Test refusesShortProviderBeforeLoadingSample() passed after 6.046 seconds.
+✔ Test outOfPrecisionWriteInvalidatesDestination() passed after 6.046 seconds.
+✔ Test readsIndependentGoldenBytesFromOddPhysicalAddress() passed after 6.046 seconds.
+✔ Test rejectsCoordinatesBeforeOffsetArithmetic() passed after 6.046 seconds.
+✔ Test "Reported workspace, input and destination form a usable exact-fit budget with retained cache" passed after 6.047 seconds.
+✔ Test "Retained cache and compressed-copy admission occurs before parser or pixel allocation" passed after 6.037 seconds.
+✔ Test "Combined crop and reduction count full, intermediate and returned logical pixels" passed after 6.038 seconds.
+✔ Test "Consumer migration bridge: 12-bit signed/unsigned and planar/interleaved RGB round-trip" passed after 6.049 seconds.
+✔ Test "M12-CX-01 rework: duplicate StripOffsets/StripByteCounts replacement overlap, ARC deinit multi-strip ownership proof, and tag+strip workspace boundary" passed after 4.584 seconds.
+✔ Test "M12-CX-01 + follow-up: 64x64 8-bit single-strip & multi-strip TIFF combined live-memory, 16-bit contract storage pre-strip check, and lifetime telemetry" passed after 4.633 seconds.
+✔ Test "M6-AUD-006: multiple small retained COC/QCC/COM structures accumulate to reject a final individually-fitting payload before allocation" passed after 4.492 seconds.
+✔ Test "M6-AUD-006 rework: repeated main-header and tile-part POC simultaneous growth admission and zero-allocation validateHTSignalling" passed after 4.510 seconds.
+✔ Test "CLI resolution uses the active scratch build and rejects an invalid explicit path" passed after 4.308 seconds.
+✔ Test "R1-CODE-02: pre-allocation parser admission reaches 1-component SIZ, small <=16-entry QCD, larger-budget control, and 16384-component SIZ" passed after 4.638 seconds.
+✔ Test "F12: Duplicate jp2c boxes are deterministically rejected in JP2/JPH (.malformedInput) and JPX (.unsupportedFeature)" passed after 3.790 seconds.
+✔ Test "F08: Normative T.801 M.6.2 rejects undefined DCM bits and unverified shifted-DCM masks while preserving verified Kakadu v8.x JPX fixtures" passed after 4.158 seconds.
+✔ Test "F08: JP2ReaderRequirementsBox uses normative Table M.14 feature codes, masks, and disjunctive/conjunctive evaluation" passed after 3.784 seconds.
+✔ Test rejectsMisalignedOffsetsAndStrides() passed after 1.559 seconds.
+✔ Test rejectsArithmeticOverflowBeforeAllocation() passed after 1.559 seconds.
+✔ Test "TIFF unspecified extras retain colour roles through JP2 encoding" passed after 1.559 seconds.
+✔ Test rejectsInvalidGeometryAndPrecision() passed after 1.558 seconds.
+✔ Test "TIFF missing, invalid and inconsistent ExtraSamples fail as malformed input" passed after 1.554 seconds.
+✔ Test semanticMetadataMustAgreeWithComponents() passed after 1.554 seconds.
+✔ Test paddedOddDimensionsAndPrecision() passed after 1.554 seconds.
+✔ Test "PNG rejects sBIT after PLTE, duplicate sBIT and misplaced palette chunks" passed after 1.506 seconds.
+✔ Test "PNG output preserves canonical roles and rejects unspecified or premultiplied extras" passed after 1.506 seconds.
+✔ Test finalRowNeedsOnlyItsActualSampleBytes() passed after 1.506 seconds.
+✔ Test "TIFF WhiteIsZero changes grey samples only, including unspecified extras" passed after 1.506 seconds.
+✔ Test deterministicLayoutMutation() passed after 1.506 seconds.
+✔ Test rejectsOverlappingPlanesAndIncompleteMapping() passed after 1.493 seconds.
+✔ Test "TIFF ExtraSamples 0, 1 and 2 retain distinct RGB/grey interpretation" passed after 1.493 seconds.
+✔ Test "TIFF writer rejects unknown colour instead of inventing a photometric meaning" passed after 1.491 seconds.
+✔ Test "PNG sBIT before optional PLTE preserves exact significant samples" passed after 1.488 seconds.
+✔ Test "Undefined DCM requirements cannot be satisfied by shifting supported feature bits" passed after 0.711 seconds.
+✔ Test "Premultiplied alpha survives public legacy bridge and decoder" passed after 0.711 seconds.
+✔ Test "F07: J2KDecoder, J2KImage.toContractImage, and J2KTranscoder preserve pclr/cmap, cdef, and ICC semantics" passed after 1.563 seconds.
+✔ Test "F07/F08: ICC-only GRAY plus extras and CMYK retain the declared model and exact opaque profile" passed after 0.371 seconds.
+✔ Test "F07: dropping an unspecified extra preserves a complete RGB ICC tuple" passed after 0.341 seconds.
+✔ Test "F07: Public J2KImage, J2KDecoder, and toContractImage preserve straight, premultiplied, and absent alpha without altering samples" passed after 3.788 seconds.
+✔ Test "F07: container output requires an explicit colour representation" passed after 0.257 seconds.
+✔ Test "F07: permuted and alpha-only component views retain sample meaning" passed after 0.257 seconds.
+✔ Test "F08: shifted-mask compatibility depends on actual baseline structure, not COM attribution" passed after 0.257 seconds.
+✔ Test sealedOwnerSupportsConcurrentReadersAndNestedRead() passed after 6.269 seconds.
+✔ Test resourceLimitsAndCancellationAreEnforcedForHTJ2KAndTranscoder() passed after 6.269 seconds.
+✔ Test decoderPreservesTaskCancellationError() passed after 6.268 seconds.
+✔ Test "F07/F08: native enumerated colour survives core, legacy, JPX and metadata-discard round trips" passed after 0.257 seconds.
+✔ Test cancellationInProviderFinalisationPreventsPublication(_:) with 2 test cases passed after 6.217 seconds.
+✔ Test cancellationIsCheckedBeforeAllocatingStorage() passed after 6.132 seconds.
+✔ Test refusedLayoutLeavesDestinationReusableAndCancelledWorkInvalidatesIt() passed after 6.269 seconds.
+✔ Test encoderIgnoresRowPaddingAndReadsSharedStorageOnce() passed after 6.219 seconds.
+✔ Test concurrentAdaptersReserveExactlyOneWriter() passed after 6.133 seconds.
+✔ Test "Concurrent stdout/stderr drains and stdin join before subprocess completion" passed after 4.315 seconds.
+✔ Test cancellationDuringSyntheticRowsInvalidatesDestination() passed after 6.131 seconds.
+✔ Test cancellationInsideWriteCannotPublishPartialImage() passed after 6.131 seconds.
+✔ Test cancellationDuringDecodeInvalidatesTheDestination() passed after 6.133 seconds.
+✔ Suite "Codex R3 JPP reconstruction admission" passed after 6.271 seconds.
+✔ Suite "Byte-order sample access" passed after 6.271 seconds.
+✔ Suite "R2 legacy decode combined-budget probes" passed after 6.271 seconds.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Suite "Descriptor validation" passed after 6.279 seconds.
+✔ Suite "R2 CLI extra-sample meaning and PNG ordering" passed after 6.279 seconds.
+◇ Test case passing 1 argument name → "g16_8x8_zero" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Suite "Independent R2 audit probes" passed after 6.280 seconds.
+✔ Suite R2ICCModelPreservationTests passed after 6.280 seconds.
+✔ Suite R2ColourAlphaPreservationTests passed after 6.280 seconds.
+✔ Suite "CLI subprocess harness" passed after 6.304 seconds.
+✔ Test htj2kEncoderOptionsRoundTrip(levels:blockWidth:blockHeight:) with 6 test cases passed after 6.306 seconds.
+✔ Test nearLosslessEnforcesMaximumAbsoluteErrorBound() passed after 6.172 seconds.
+✔ Test "F13: cancellation inside .completed progress callback aborts Encoder, Decoder, ImageDestination, and Transcoder" passed after 4.564 seconds.
+◇ Test case passing 1 argument name → "g16_8x8_const" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+◇ Test case passing 1 argument name → "g16_8x8_const" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test independentOraclesDecodeSuccessorJP2JPHAndJPXContainers() passed after 6.337 seconds.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test concurrentReadersOfOneCallerOwnerAgreeWhileAMutationAttemptFails() passed after 6.279 seconds.
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_64x64_random" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test invalidBindAddressFailsWithoutATrap() passed after 0.489 seconds.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test onceVerificationUsesTheAcceptedBindAddress(host:) with 5 test cases passed after 0.551 seconds.
+✔ Suite "R3 JPIP CLI bind and verification addresses" passed after 6.559 seconds.
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test case passing 1 argument name → "g12_129x67_gradient" to independentOraclesVerifyTranscodedOutputsInBothDirections(name:) started.
+✔ Test independentOraclesCrossDecodePart1BreadthEncodings() passed after 6.627 seconds.
+◇ Test case passing 1 argument name → "g08_37x23_random" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test "M12-AUD-001 & M12-AUD-003: CLI 16-bit PNG, TIFF, PGM, RAW, and compare endian/signedness accuracy" passed after 6.472 seconds.
+✔ Test "M12-CX-03: PNG sBIT preserves significant samples normatively on read/write and rejects invalid/unequal sBIT or unscaled clipping" passed after 1.982 seconds.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) started.
+✔ Test "M12-CX-04: TIFF PhotometricInterpretation handles WhiteIsZero and Palette Color (single- and multi-strip) and rejects YCbCr/CMYK/invalid tags" passed after 4.243 seconds.
+◇ Test case passing 1 argument name → "g16_256x256_smooth" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test "F09, F10 & F11 CLI: 3D NRRD geometry round-trip (including negative --origin), --copy-policy require-sharing rejection, and JPIP --components validation" passed after 2.067 seconds.
+✔ Suite "Phase R2 — Core, Container & CLI Semantics Remediation Regressions" passed after 6.773 seconds.
+✔ Test independentOraclesVerifyTranscodedOutputsInBothDirections(name:) with 4 test cases passed after 6.785 seconds.
+✔ Test independentHTDecodersReadSuccessorHTJ2KCodestreams(name:) with 10 test cases passed after 6.845 seconds.
+✔ Test "M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions" passed after 5.268 seconds.
+✔ Suite "Phase R1 — Core & CLI Audit Remediation Regressions" passed after 6.938 seconds.
+✔ Test "M12-AUD-002: CLI batch parallel worker pool (--threads) and 3D/JPIP/benchmark/completions" passed after 6.831 seconds.
+✔ Suite "Milestone 12 — CLI & Consumer Breadth Tests" passed after 7.035 seconds.
+✔ Test nativeTranscodeHandlesMultiTileMultiLayerPrecinctsAndReblocking() passed after 6.911 seconds.
+◇ Test case passing 1 argument name → "g08_37x23_random" to independentDecodersReadSuccessorCodestreams(name:) started.
+◇ Test case passing 1 argument name → "g10_300x200_gradient" to independentDecodersReadSuccessorCodestreams(name:) started.
+✔ Test cancelledEncodeLeavesTheSourceIntactAndPublishesNothing() passed after 7.644 seconds.
+✔ Test independentDecodersReadSuccessorCodestreams(name:) with 10 test cases passed after 7.963 seconds.
+✔ Test nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:) with 10 test cases passed after 7.988 seconds.
+✔ Test acceleratedHTJ2KAndTranscodeAreByteIdenticalAcrossAllFixtures() passed after 15.459 seconds.
+✔ Test acceleratedDecodeAndEncodeAreByteIdenticalAcrossAllLosslessFixtures() passed after 25.668 seconds.
+✔ Test run with 166 tests in 13 suites passed after 25.811 seconds.

@@ -35,14 +35,24 @@ private func repoRootURL() -> URL {
 }
 
 private func containerFixtureURL(_ name: String) -> URL {
-    repoRootURL()
+    if let resourceURL = Bundle.module.resourceURL {
+        let bundled = resourceURL
+            .appendingPathComponent("Fixtures/Containers")
+            .appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: bundled.path) {
+            return bundled
+        }
+    }
+    return repoRootURL()
         .appendingPathComponent("Tests/SwiftJ2KTests/Fixtures/Containers")
         .appendingPathComponent(name)
 }
 
+#if os(macOS) || os(Linux)
 private func runR2CLI(_ args: [String]) async throws -> CLITestProcessResult {
     try await CLITestProcess.run(args)
 }
+#endif
 
 private func makeJP2Box(_ type: String, payload: [UInt8]) -> [UInt8] {
     let length = UInt32(8 + payload.count)
@@ -1103,6 +1113,7 @@ struct R2RemediationTests {
 
     // MARK: M12-CX-03 — Normative W3C PNG `sBIT` Representation & Byte-Layout Verification
 
+    #if os(macOS) || os(Linux)
     @Test("M12-CX-03: PNG sBIT preserves significant samples normatively on read/write and rejects invalid/unequal sBIT or unscaled clipping")
     func normativePNGSbitReadWriteAndValidation() async throws {
         let tmpDir = FileManager.default.temporaryDirectory
@@ -1598,4 +1609,5 @@ struct R2RemediationTests {
             ]).status == 2
         )
     }
+    #endif
 }

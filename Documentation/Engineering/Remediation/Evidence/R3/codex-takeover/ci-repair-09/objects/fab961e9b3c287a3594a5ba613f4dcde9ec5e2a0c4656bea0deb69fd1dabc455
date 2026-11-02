@@ -1,0 +1,54 @@
+SwiftJ2K Phase R3 — Focused 24 & Hosted 22 Reconciliation Report (Antigravity)
+=============================================================================
+Date: 2026-11-02
+Owner: Antigravity (6f28647a-39a6-4a0a-8303-30b57a122458)
+Role: Sole R3 implementation writer (non-approving; independent acceptance remains with Codex)
+
+1. Focused 24 Native Validation Reconciliation (`work/validation/candidate-https-focused-24`)
+---------------------------------------------------------------------------------------------
+- Artifact directory: `/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-https-focused-24`
+- Command: `swift test --filter CodexR3HTTPStreamingTests --xunit-output .../report-swift-testing.xml`
+- Exit status: `0` (`elapsed_seconds` in `result.json`: `37.006557083000004`; XML `<testsuite>` `time` in `report-swift-testing.xml`: `0.145176791`)
+- Raw / XML reconciliation:
+  - `report-swift-testing.xml` (`sha256: b24380b6a2fe5ee6299245e6b0526c2f1dfe29ae966fa0f6ca243e8a27d3b824`):
+    17 `<testcase>` declarations in one suite (`SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests`), `0` failures, `0` errors, `0` skipped.
+  - `native.log` (`sha256: 9918844948873782fd36639cdbfffa84054b58f76435f263e0f2bfe30530dd79`).
+  - Parameterized declarations: `3`; Boolean argument starts in `native.stdout`: `6` (`completionAndCancellationHaveOneWinner(cancelFirst:)` x2, `rejectsOversizedHeadersBeforeBodyDelivery(mode:)` x2, `rejectsTransferSizeBeforeExceedingBodyAllowance(announced:)` x2).
+  - XCTest execution records: `0` (zero XCTest execution records; no separately printed `Executed 0` summary).
+- Source snapshot reconciliation against `work/candidate-snapshot-24`:
+  - All `2,542` tracked/unignored files and all `540` implementation inputs (`Package.swift`, `Sources/**`, `Tests/**`, `Scripts/**`) match `work/candidate-snapshot-24` byte-for-byte (`0` differences; before/after maps agree).
+  - Only `Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift` differs among the `540` implementation inputs versus candidate 22; the `27,250`-byte test prefix is unchanged.
+  - Unpublished harness repair patch `outputs/SwiftJ2K-R3-Unpublished-Harness-24.patch` (`sha256: 5ca0bc427bd451751ef26a674de7a541d862fb4f23ecdb9c3496682bf1152490`) transforms `Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift` from `HEAD` (`5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78`) to `40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7`.
+- Line-550 compiler warning & limitation assessment:
+  - Diagnostic: `CodexR3HTTPStreamingTests.swift:550:39: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope`
+  - Technical assessment: `startLoading()` binds `let request = self.request` and `let client = self.client` at lines 531–532 before `queue.async(execute: DispatchWorkItem { [self] in ... })`, so the outer finite setup `DispatchWorkItem` closure implicitly strongly captures `client`, whereas the nested repeating timer handler at line 550 captures `[weak self, weak client]`. It does not establish a retained timer cycle. Asynchronous `stopLoading()` remains best-effort (does not join an already-executing queue block).
+  - Scope boundary: Focused local pass only; not broad, sanitizer, Linux, TLS, or interoperability qualification.
+
+2. Hosted 22 CI Run Reconciliation (`run 41201993850`, attempt 1)
+-----------------------------------------------------------------
+- Run ID: `41201993850` (attempt `1`, conclusion: `failure`, independently reconciled `FAILED`)
+- Published PR #30 head SHA: `af6d52e055d726456dcb3025e3e1addf9bd55231`
+- Tested merge commit SHA: `7b45184f6d50a079c6c9ac92502449fd09fe4e96`
+- Tested tree SHA: `e3058819be67cba5728f7f3c31de61a3715084ba`
+- Job outcomes (7 jobs: 2 passed, 5 failed):
+  1. `124539451295` (`Independent consumer resolves at tools 6.2`): `success`
+  2. `124539451415` (`Shared contract byte-identity`): `success`
+  3. `124539451408` (`Swift 6.4 / ubuntu-24.04-arm`): `failure` (`Run swift build` passed; `Run swift test` failed compiling `CodexR3HTTPStreamingTests.swift` at `505:67`, `531:20`, `531:73`, `559:13`; `0` runtime starts; both release steps skipped)
+  4. `124539451411` (`Swift 6.2 / ubuntu-24.04-arm`): `failure` (`Run swift build` passed; `Run swift test` failed compiling `CodexR3HTTPStreamingTests.swift` at `505:67`, `531:20`, `531:73`, `559:13`; `0` runtime starts; both release steps skipped)
+  5. `124539451424` (`Swift 6.4 / ubuntu-24.04`): `failure` (`Run swift build` passed; `Run swift test` failed compiling `CodexR3HTTPStreamingTests.swift` at `505:67`, `531:20`, `531:73`, `559:13`; `0` runtime starts; both release steps skipped)
+  6. `124539451477` (`Swift 6.2 / ubuntu-24.04`): `failure` (`Run swift build` passed; `Run swift test` failed compiling `CodexR3HTTPStreamingTests.swift` at `505:67`, `531:20`, `531:73`, `559:13`; `0` runtime starts; both release steps skipped)
+  7. `124539451449` (`macOS 26 / Xcode 26.6 (Swift 6.3.3)`, raw-log `sha256: 0278f5ecd2cd5864dde0c79b81dbef84898fd44d230b32be4ead981346abda84`): `failure`
+     - `Run swift build`: `success`
+     - `Ordinary tests`: `failure`
+       - XCTest: `1,034` started, `1,034` passed, `0` failed.
+       - Swift Testing: `325` declarations across `41` suites (`320` started, `315` passed, `5` failed, `5` skipped hosted oracle test declarations in `J2KHTInteroperabilityTests` / `JP3DComplianceTests`; these `5` skipped hosted test declarations are distinct from the `5` required direct external peer acceptance gates: `Direct independent combined Part 10+15`, `Independent native 3D JPIP`, `Independent exact repository WebSocket extension`, `Direct full38 Part 2 output`, and `Multiple transmitted nonempty HT sets`, which remain `UNEXECUTED` and `UNWAIVED`).
+       - 5 failures:
+         1. `CodexR3HTTPStreamingTests.completedRequestEventuallyReleasesItsDelegateOwnership()` (`41.03s`) -> `CodecError(resourceLimitExceeded, "JPIP operation deadline elapsed.")`
+         2. `CodexR3HTTPStreamingTests.completionAndCancellationHaveOneWinner(cancelFirst: false)` (`40.76s`) -> `CodecError(resourceLimitExceeded, "JPIP operation deadline elapsed.")`
+         3. `CodexR3HTTPStreamingTests.sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()` (`40.73s`) -> `CodecError(resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")`
+         4. `CodexR3HTTPStreamingTests.absoluteDeadlineCancelsSilentResponse()` (`41.37s`) -> `Expectation failed: (ContinuousClock.now - start -> 5.048004416 seconds) < (.seconds(2) -> 2.0 seconds)`
+         5. `CodexR3WebSocketLifecycleTests.staleCleanupCannotCloseReplacementHandshake(.timeout)` (`12.21s`) -> `.barrierTimedOut(phase: "stale cleanup timeout: first request received")`
+     - `Address sanitizer` & `Thread sanitizer`: `skipped` (did not execute)
+     - `Retain exact test evidence in downloadable logs`: `failure` (`retention_complete: false`, `31` missing paths and `24` footer problems; only `ordinary/full-swift-testing.xml` emitted).
+     - Strict reconstructor (`work/hosted-evidence/reconstruct.py`): exits with code `1` (`Emitter recorded retention problems or incomplete evidence`) and creates no output bundle.
+     - Diagnostic-only XML reconstructed in `work/antigravity-reconciliation-24-22/ordinary-diagnostic-swift-testing.xml` (`46,021` bytes across `12` chunks, `sha256: 1e897010c65ad7e3b6d00a7cd4b085b41f680c3006255eecc68b47ffdc8d49e0`).

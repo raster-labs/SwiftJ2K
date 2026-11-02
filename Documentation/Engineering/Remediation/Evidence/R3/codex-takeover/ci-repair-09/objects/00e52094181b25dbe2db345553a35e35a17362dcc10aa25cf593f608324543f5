@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="TestResults" errors="0" tests="0" failures="0" skipped="0" time="8.7833e-05"/>
+    <testsuite name="TestResults" errors="0" tests="25" failures="0" skipped="0" time="0.668297583">
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="connectionOperationsLockHierarchyConcurrentBorrowersAndWaiters()" time="0.006765375"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="staleReadinessAndEINTRAndPollErrorsAndFcntlSetupFailures()" time="0.006371208"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="deterministicDescriptorNumberReuseModelNeverTargetsRecycledSlot()" time="0.006314042"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="closeWhileBorrowerHeldBeforePollRetiresAndDefersPhysicalClose()" time="0.006641458"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="nativeConnectedCancellationAndAcceptedSocketFlagsAndTimeouts()" time="0.113465375"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="serverAndWebSocketLifecycleInterleavingsRebindAndTransportIntegration()" time="0.667875417"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="closedBeforeAcceptReturnsNilWithZeroSyscalls()" time="0.006339125"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3SocketLifetimeTests" name="lateSuccessfulAcceptBeforePublicationClosesClientFDOnceAndClientReadsEOF()" time="0.006327292"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="completedRequestEventuallyReleasesItsDelegateOwnership()" time="0.0080915"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="absoluteDeadlineCancelsSilentResponse()" time="0.127979917"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary()" time="0.006325125"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="repeatedTransportCloseJoinsTheSameSilentHTTPSOwner()" time="0.008258541"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain()" time="0.006381125"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="sharedWatchdogInterruptsAnAlreadyActiveTrickle()" time="0.142324875"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="expiredDeadlineReleasesUnstartedOwners()" time="0.006432542"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact()" time="0.006317708"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="taskCancellationJoinsAndAllowsFollowingRequest()" time="0.008479167"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()" time="0.008356958"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest()" time="0.006749042"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:)" time="0.006629083"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="completionAndCancellationHaveOneWinner(cancelFirst:)" time="0.007168708"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="headersEmptyBodyStatusAndResponseTypeRemainChecked()" time="0.006435125"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="delegateRejectsOversizedAnnouncedOrUnknownBody(declared:)" time="0.008132459"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks()" time="0.01432425"/>
+        <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath()" time="0.008554458"/>
+    </testsuite>
+    <testsuite name="TestResults" errors="0" tests="0" failures="0" skipped="0" time="9.4375e-05"/>
+</testsuites>

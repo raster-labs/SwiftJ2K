@@ -190,7 +190,7 @@ private var posixSendFlags: Int32 {
 }
 
 @inline(__always)
-private func currentPOSIXErrno() -> Int32 {
+package func currentPOSIXErrno() -> Int32 {
     #if canImport(Darwin)
     return Darwin.errno
     #else
@@ -198,33 +198,489 @@ private func currentPOSIXErrno() -> Int32 {
     #endif
 }
 
+// MARK: - Scoped Descriptor Lifetime & Narrow Test Seam
+
+package enum JPIPSocketOperationKind: Sendable, Equatable {
+    case listenerAccept
+    case setReceiveTimeout
+    case setSendTimeout
+    case writeAll
+    case readExact
+    case readToEOF
+    case readHTTPRequest
+    case readHTTPResponse
+    case readWebSocketFrame
+}
+
+package enum JPIPSocketLifecycleEvent: Sendable, Equatable {
+    case afterListenerBorrowAcquired(fd: Int32)
+    case beforeListenerPoll(fd: Int32)
+    case beforeListenerAccept(fd: Int32)
+    case beforeAcceptedPublication(listenFD: Int32, clientFD: Int32)
+    case abortedAcceptedClientClosed(clientFD: Int32, closeErrno: Int32?)
+    case afterConnectionBorrowAcquired(op: JPIPSocketOperationKind, fd: Int32)
+    case beforeControlShutdown(fd: Int32)
+    case afterControlShutdown(fd: Int32)
+    case beforePhysicalClose(fd: Int32, heldOperationLocks: Int)
+    case afterPhysicalClose(fd: Int32, errno: Int32?, heldOperationLocks: Int)
+    case beforeWaiterResume(heldOperationLocks: Int)
+}
+
+/// Narrow per-instance syscall seam for deterministic lifetime-model and
+/// stale-readiness/error-injection tests (`T1`–`T6`). Always `nil` in production.
+package struct JPIPSocketSyscallSeam: Sendable {
+    package var getFlags: (@Sendable (Int32) -> (rc: Int32, errno: Int32))?
+    package var setFlags: (@Sendable (Int32, Int32) -> (rc: Int32, errno: Int32))?
+    package var pollListen: (@Sendable (Int32, Int32) -> (rc: Int32, revents: Int16, errno: Int32))?
+    package var acceptClient: (@Sendable (Int32) -> (clientFD: Int32, errno: Int32))?
+    package var configureAccepted: (@Sendable (Int32, TimeInterval) -> Void)?
+    package var recvBytes: (@Sendable (Int32, UnsafeMutableRawPointer, Int) -> (rc: Int, errno: Int32))?
+    package var sendBytes: (@Sendable (Int32, UnsafeRawPointer, Int) -> (rc: Int, errno: Int32))?
+    package var setSockOpt: (@Sendable (Int32, Int32, Int32, TimeInterval) -> (rc: Int32, errno: Int32))?
+    package var shutdownSocket: (@Sendable (Int32) -> (rc: Int32, errno: Int32))?
+    package var closeDescriptor: (@Sendable (Int32) -> (rc: Int32, errno: Int32))?
+
+    package init(
+        getFlags: (@Sendable (Int32) -> (rc: Int32, errno: Int32))? = nil,
+        setFlags: (@Sendable (Int32, Int32) -> (rc: Int32, errno: Int32))? = nil,
+        pollListen: (@Sendable (Int32, Int32) -> (rc: Int32, revents: Int16, errno: Int32))? = nil,
+        acceptClient: (@Sendable (Int32) -> (clientFD: Int32, errno: Int32))? = nil,
+        configureAccepted: (@Sendable (Int32, TimeInterval) -> Void)? = nil,
+        recvBytes: (@Sendable (Int32, UnsafeMutableRawPointer, Int) -> (rc: Int, errno: Int32))? = nil,
+        sendBytes: (@Sendable (Int32, UnsafeRawPointer, Int) -> (rc: Int, errno: Int32))? = nil,
+        setSockOpt: (@Sendable (Int32, Int32, Int32, TimeInterval) -> (rc: Int32, errno: Int32))? = nil,
+        shutdownSocket: (@Sendable (Int32) -> (rc: Int32, errno: Int32))? = nil,
+        closeDescriptor: (@Sendable (Int32) -> (rc: Int32, errno: Int32))? = nil
+    ) {
+        self.getFlags = getFlags
+        self.setFlags = setFlags
+        self.pollListen = pollListen
+        self.acceptClient = acceptClient
+        self.configureAccepted = configureAccepted
+        self.recvBytes = recvBytes
+        self.sendBytes = sendBytes
+        self.setSockOpt = setSockOpt
+        self.shutdownSocket = shutdownSocket
+        self.closeDescriptor = closeDescriptor
+    }
+}
+
 @inline(__always)
-private func posixCloseSocket(_ fd: Int32) {
-    guard fd >= 0 else { return }
+private func posixShutdownSocket(_ fd: Int32, seam: JPIPSocketSyscallSeam? = nil) -> Int32? {
+    guard fd >= 0 else { return EBADF }
+    if let hook = seam?.shutdownSocket {
+        let res = hook(fd)
+        return res.rc == 0 ? nil : max(1, res.errno)
+    }
     #if canImport(Darwin)
-    _ = Darwin.shutdown(fd, SHUT_RDWR)
-    _ = Darwin.close(fd)
+    let rc = Darwin.shutdown(fd, SHUT_RDWR)
     #else
-    _ = Glibc.shutdown(fd, Int32(SHUT_RDWR))
-    _ = Glibc.close(fd)
+    let rc = Glibc.shutdown(fd, Int32(SHUT_RDWR))
     #endif
+    return rc == 0 ? nil : max(1, currentPOSIXErrno())
+}
+
+/// Executes a single physical `close(fd)` without calling `shutdown` and without
+/// retrying on `EINTR` or any other error (preventing closure of a recycled fd).
+@inline(__always)
+package func posixCloseDescriptorOnly(_ fd: Int32, seam: JPIPSocketSyscallSeam? = nil) -> Int32? {
+    guard fd >= 0 else { return EBADF }
+    if let hook = seam?.closeDescriptor {
+        let res = hook(fd)
+        return res.rc == 0 ? nil : max(1, res.errno)
+    }
+    #if canImport(Darwin)
+    let rc = Darwin.close(fd)
+    #else
+    let rc = Glibc.close(fd)
+    #endif
+    return rc == 0 ? nil : max(1, currentPOSIXErrno())
+}
+
+@inline(__always)
+private func posixSetNonBlocking(_ fd: Int32, enabled: Bool, seam: JPIPSocketSyscallSeam? = nil) -> Int32? {
+    let flags: Int32
+    if let getHook = seam?.getFlags {
+        let res = getHook(fd)
+        guard res.rc >= 0 else { return max(1, res.errno) }
+        flags = res.rc
+    } else {
+        let rc = fcntl(fd, F_GETFL, 0)
+        guard rc >= 0 else { return max(1, currentPOSIXErrno()) }
+        flags = rc
+    }
+    let updatedFlags = enabled ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK)
+    if let setHook = seam?.setFlags {
+        let res = setHook(fd, updatedFlags)
+        guard res.rc == 0 else { return max(1, res.errno) }
+    } else {
+        let rc = fcntl(fd, F_SETFL, updatedFlags)
+        guard rc == 0 else { return max(1, currentPOSIXErrno()) }
+    }
+    return nil
+}
+
+/// Reference-counted descriptor ownership state machine shared by ``JPIPTCPListener``
+/// and ``JPIPTCPConnection``.
+///
+/// Concurrency proof (`@unchecked Sendable`):
+/// `lock` is a pure leaf lock protecting `fd`, `admissionOpen`, `activeBorrows`,
+/// `controlShutdownClaimed`, `physicalCloseClaimed`, `terminalResult`, and `waiters`.
+/// No syscall, callback, or continuation resumption ever executes while `lock` is held.
+package final class JPIPSocketDescriptor: @unchecked Sendable {
+    package enum Kind: Sendable, Equatable {
+        case listener
+        case connection
+    }
+
+    package final class Borrow: @unchecked Sendable {
+        private let releaseLock = NSLock()
+        private var isReleased = false
+        package let descriptor: JPIPSocketDescriptor
+        package let fd: Int32
+
+        fileprivate init(descriptor: JPIPSocketDescriptor, fd: Int32) {
+            self.descriptor = descriptor
+            self.fd = fd
+        }
+
+        package var isRetired: Bool {
+            !descriptor.isOpen
+        }
+
+        package func release() {
+            releaseLock.lock()
+            if isReleased {
+                releaseLock.unlock()
+                return
+            }
+            isReleased = true
+            releaseLock.unlock()
+            descriptor.releaseBorrow()
+        }
+
+        deinit {
+            release()
+        }
+    }
+
+    private let lock = NSLock()
+    package let kind: Kind
+    private var fd: Int32
+    private var admissionOpen: Bool = true
+    private var activeBorrows: Int = 0
+    private var controlShutdownClaimed: Bool = false
+    private var physicalCloseClaimed: Bool = false
+    private var terminalResult: Result<Void, J2KError>?
+    private var recordedCloseErrno: Int32?
+    private var physicalCloseCount: Int = 0
+    private var shutdownCount: Int = 0
+    private var waiters: [CheckedContinuation<Result<Void, J2KError>, Never>] = []
+    package let syscallSeam: JPIPSocketSyscallSeam?
+    private let observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?
+    private let operationLockCounter: (@Sendable () -> Int)?
+
+    package init(
+        kind: Kind,
+        fd: Int32,
+        syscallSeam: JPIPSocketSyscallSeam? = nil,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)? = nil,
+        operationLockCounter: (@Sendable () -> Int)? = nil
+    ) {
+        self.kind = kind
+        self.fd = fd
+        self.syscallSeam = syscallSeam
+        self.observer = observer
+        self.operationLockCounter = operationLockCounter
+    }
+
+    package var isOpen: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return admissionOpen && fd >= 0
+    }
+
+    package var debugFD: Int32 {
+        lock.lock()
+        defer { lock.unlock() }
+        return fd
+    }
+
+    package var snapshot: (
+        admissionOpen: Bool,
+        activeBorrows: Int,
+        physicalCloseClaimed: Bool,
+        physicalCloseCompleted: Bool,
+        physicalCloseCount: Int,
+        shutdownCount: Int,
+        closeErrno: Int32?
+    ) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (
+            admissionOpen,
+            activeBorrows,
+            physicalCloseClaimed,
+            terminalResult != nil,
+            physicalCloseCount,
+            shutdownCount,
+            recordedCloseErrno
+        )
+    }
+
+    package func borrow(operation: JPIPSocketOperationKind) -> Borrow? {
+        let borrowedFD: Int32
+        let currentObserver: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?
+        lock.lock()
+        guard admissionOpen, fd >= 0 else {
+            lock.unlock()
+            return nil
+        }
+        activeBorrows += 1
+        borrowedFD = fd
+        currentObserver = observer
+        lock.unlock()
+
+        if kind == .listener {
+            currentObserver?(.afterListenerBorrowAcquired(fd: borrowedFD))
+        } else {
+            currentObserver?(.afterConnectionBorrowAcquired(op: operation, fd: borrowedFD))
+        }
+        return Borrow(descriptor: self, fd: borrowedFD)
+    }
+
+    package func borrowOrThrow(operation: JPIPSocketOperationKind) throws -> Borrow {
+        guard let token = borrow(operation: operation) else {
+            throw J2KError.networkError("TCP connection is closed.")
+        }
+        return token
+    }
+
+    package func acquireBorrow(operation: JPIPSocketOperationKind) throws -> Borrow {
+        try borrowOrThrow(operation: operation)
+    }
+
+    /// Atomically checks whether listener admission remains open at the point
+    /// an accepted connection is about to be published to the caller.
+    package func admitAcceptedPublication() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return admissionOpen && fd >= 0
+    }
+
+    package func notify(_ event: JPIPSocketLifecycleEvent) {
+        observer?(event)
+    }
+
+    /// Atomically retires listener admission on an unexpected `poll`/`accept`/setup
+    /// error while an active borrower is held, so `isOpen` becomes `false` before
+    /// `acceptConnection` throws and caller `while listener.isOpen` loops cannot spin.
+    package func retireOnUnexpectedError() {
+        initiateClose()
+    }
+
+    /// Handles `POLLNVAL` on an open listener as an invariant/descriptor error without
+    /// issuing a physical `close` on an invalid descriptor.
+    package func retireOnPollInvalidDescriptor() {
+        let toResume: [CheckedContinuation<Result<Void, J2KError>, Never>]
+        let outcome: Result<Void, J2KError> = .failure(
+            J2KError.networkError("poll() reported POLLNVAL on listening socket (errno=\(EBADF))")
+        )
+        lock.lock()
+        admissionOpen = false
+        fd = -1
+        physicalCloseClaimed = true
+        if terminalResult == nil {
+            recordedCloseErrno = EBADF
+            terminalResult = outcome
+        }
+        let finalOutcome = terminalResult ?? outcome
+        toResume = waiters
+        waiters.removeAll()
+        lock.unlock()
+
+        if !toResume.isEmpty {
+            let heldLocks = operationLockCounter?() ?? 0
+            observer?(.beforeWaiterResume(heldOperationLocks: heldLocks))
+        }
+        for waiter in toResume {
+            waiter.resume(returning: finalOutcome)
+        }
+    }
+
+    package func initiateClose() {
+        switch kind {
+        case .listener:
+            var fdToClose: Int32 = -1
+            var currentSeam: JPIPSocketSyscallSeam?
+            var currentObserver: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?
+            lock.lock()
+            admissionOpen = false
+            if activeBorrows == 0 && !physicalCloseClaimed && fd >= 0 {
+                physicalCloseClaimed = true
+                fdToClose = fd
+                fd = -1
+                currentSeam = syscallSeam
+                currentObserver = observer
+            }
+            lock.unlock()
+
+            if fdToClose >= 0 {
+                performPhysicalCloseAndPublish(
+                    fdToClose: fdToClose,
+                    seam: currentSeam,
+                    observer: currentObserver,
+                    opLocksAtClaim: 0
+                )
+            }
+
+        case .connection:
+            var controlFD: Int32 = -1
+            var claimPhysicalDirectly = false
+            var directFD: Int32 = -1
+            var currentSeam: JPIPSocketSyscallSeam?
+            var currentObserver: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?
+            lock.lock()
+            admissionOpen = false
+            if !controlShutdownClaimed && fd >= 0 {
+                controlShutdownClaimed = true
+                activeBorrows += 1
+                shutdownCount += 1
+                controlFD = fd
+                currentSeam = syscallSeam
+                currentObserver = observer
+            } else if activeBorrows == 0 && !physicalCloseClaimed && fd >= 0 {
+                physicalCloseClaimed = true
+                claimPhysicalDirectly = true
+                directFD = fd
+                fd = -1
+                currentSeam = syscallSeam
+                currentObserver = observer
+            }
+            lock.unlock()
+
+            if controlFD >= 0 {
+                currentObserver?(.beforeControlShutdown(fd: controlFD))
+                _ = posixShutdownSocket(controlFD, seam: currentSeam)
+                currentObserver?(.afterControlShutdown(fd: controlFD))
+                releaseBorrow()
+            } else if claimPhysicalDirectly && directFD >= 0 {
+                let opLocks = operationLockCounter?() ?? 0
+                performPhysicalCloseAndPublish(
+                    fdToClose: directFD,
+                    seam: currentSeam,
+                    observer: currentObserver,
+                    opLocksAtClaim: opLocks
+                )
+            }
+        }
+    }
+
+    fileprivate func releaseBorrow() {
+        var fdToClose: Int32 = -1
+        var currentSeam: JPIPSocketSyscallSeam?
+        var currentObserver: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?
+        var opLocks = 0
+        lock.lock()
+        precondition(activeBorrows > 0, "JPIPSocketDescriptor borrow count underflow")
+        activeBorrows -= 1
+        if !admissionOpen && activeBorrows == 0 && !physicalCloseClaimed && fd >= 0 {
+            physicalCloseClaimed = true
+            fdToClose = fd
+            fd = -1
+            currentSeam = syscallSeam
+            currentObserver = observer
+            opLocks = operationLockCounter?() ?? 0
+        }
+        lock.unlock()
+
+        if fdToClose >= 0 {
+            performPhysicalCloseAndPublish(
+                fdToClose: fdToClose,
+                seam: currentSeam,
+                observer: currentObserver,
+                opLocksAtClaim: opLocks
+            )
+        }
+    }
+
+    private func performPhysicalCloseAndPublish(
+        fdToClose: Int32,
+        seam: JPIPSocketSyscallSeam?,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)?,
+        opLocksAtClaim: Int
+    ) {
+        let preLocks = max(opLocksAtClaim, operationLockCounter?() ?? 0)
+        observer?(.beforePhysicalClose(fd: fdToClose, heldOperationLocks: preLocks))
+        let closeErr = posixCloseDescriptorOnly(fdToClose, seam: seam)
+        let postLocks = max(preLocks, operationLockCounter?() ?? 0)
+        observer?(.afterPhysicalClose(fd: fdToClose, errno: closeErr, heldOperationLocks: postLocks))
+
+        let outcome: Result<Void, J2KError>
+        if let closeErr {
+            outcome = .failure(J2KError.networkError("Socket physical close failed (errno=\(closeErr))"))
+        } else {
+            outcome = .success(())
+        }
+
+        lock.lock()
+        physicalCloseCount += 1
+        recordedCloseErrno = closeErr
+        terminalResult = outcome
+        let toResume = waiters
+        waiters.removeAll()
+        lock.unlock()
+
+        if !toResume.isEmpty {
+            let resumeLocks = operationLockCounter?() ?? 0
+            observer?(.beforeWaiterResume(heldOperationLocks: resumeLocks))
+        }
+        for waiter in toResume {
+            waiter.resume(returning: outcome)
+        }
+    }
+
+    package func waitForCloseCompletion() async throws {
+        initiateClose()
+        let outcome: Result<Void, J2KError> = await withCheckedContinuation { continuation in
+            lock.lock()
+            if let existing = terminalResult {
+                lock.unlock()
+                continuation.resume(returning: existing)
+                return
+            }
+            waiters.append(continuation)
+            lock.unlock()
+        }
+        try outcome.get()
+    }
 }
 
 // MARK: - JPIPTCPListener
 
-/// Thread-safe POSIX IPv4 TCP listening socket.
+/// Thread-safe POSIX IPv4 TCP listening socket with scoped descriptor ownership
+/// and nonblocking finite readiness polling.
 ///
 /// Concurrency proof (`@unchecked Sendable`):
-/// `fd` is mutated exclusively under `lock` (`acceptConnection` snapshots `fd` under `lock`
-/// before calling `accept`, and `close()` atomically swaps `fd` to `-1` under `lock` before
-/// calling `shutdown`/`close` to unblock any concurrent `accept`). `boundPort` is immutable.
+/// `descriptor` (`JPIPSocketDescriptor`) synchronizes admission retirement, active
+/// borrowers, single physical `close(fd)`, and completion waiters under its leaf lock.
+/// `boundHost` and `boundPort` are immutable after initialization.
 package final class JPIPTCPListener: @unchecked Sendable {
-    private let lock = NSLock()
-    private var fd: Int32
+    package static let pollQuantumMilliseconds: Int32 = 50
+    package let descriptor: JPIPSocketDescriptor
     package let boundHost: String
     package let boundPort: Int
 
-    package init(host: String = "127.0.0.1", port: Int) throws {
+    package convenience init(host: String = "127.0.0.1", port: Int) throws {
+        try self.init(host: host, port: port, syscallSeam: nil, observer: nil)
+    }
+
+    package init(
+        host: String = "127.0.0.1",
+        port: Int,
+        syscallSeam: JPIPSocketSyscallSeam? = nil,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)? = nil
+    ) throws {
         guard port >= 0 && port <= 65535 else {
             throw J2KError.invalidParameter("Invalid TCP listening port: \(port)")
         }
@@ -258,7 +714,7 @@ package final class JPIPTCPListener: @unchecked Sendable {
                 inet_pton(AF_INET, cstr, &addr.sin_addr)
             }
             if parsed != 1 {
-                posixCloseSocket(sock)
+                _ = posixCloseDescriptorOnly(sock, seam: syscallSeam)
                 throw J2KError.invalidParameter("Invalid IPv4 bind address: \(host)")
             }
         }
@@ -270,13 +726,13 @@ package final class JPIPTCPListener: @unchecked Sendable {
         }
         guard bindResult == 0 else {
             let err = currentPOSIXErrno()
-            posixCloseSocket(sock)
+            _ = posixCloseDescriptorOnly(sock, seam: syscallSeam)
             throw J2KError.networkError("Failed to bind \(host):\(port) (errno=\(err))")
         }
 
         guard listen(sock, 128) == 0 else {
             let err = currentPOSIXErrno()
-            posixCloseSocket(sock)
+            _ = posixCloseDescriptorOnly(sock, seam: syscallSeam)
             throw J2KError.networkError("Failed to listen on \(host):\(port) (errno=\(err))")
         }
 
@@ -289,13 +745,45 @@ package final class JPIPTCPListener: @unchecked Sendable {
         }
         guard nameResult == 0 else {
             let err = currentPOSIXErrno()
-            posixCloseSocket(sock)
+            _ = posixCloseDescriptorOnly(sock, seam: syscallSeam)
             throw J2KError.networkError("getsockname failed (errno=\(err))")
         }
 
-        self.fd = sock
+        if let flagErr = posixSetNonBlocking(sock, enabled: true, seam: syscallSeam) {
+            _ = posixCloseDescriptorOnly(sock, seam: syscallSeam)
+            throw J2KError.networkError("Failed to set O_NONBLOCK on listening socket (errno=\(flagErr))")
+        }
+
+        self.descriptor = JPIPSocketDescriptor(
+            kind: .listener,
+            fd: sock,
+            syscallSeam: syscallSeam,
+            observer: observer
+        )
         self.boundHost = normalizedHost.isEmpty ? "127.0.0.1" : normalizedHost
         self.boundPort = Int(UInt16(bigEndian: actualAddr.sin_port))
+    }
+
+    /// Package-only initializer for deterministic descriptor-number reuse model tests (`T5`).
+    package init(
+        syntheticFD: Int32,
+        boundHost: String = "127.0.0.1",
+        boundPort: Int = 0,
+        syscallSeam: JPIPSocketSyscallSeam,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)? = nil
+    ) throws {
+        if let flagErr = posixSetNonBlocking(syntheticFD, enabled: true, seam: syscallSeam) {
+            _ = posixCloseDescriptorOnly(syntheticFD, seam: syscallSeam)
+            throw J2KError.networkError("Failed to set O_NONBLOCK on synthetic listening socket (errno=\(flagErr))")
+        }
+        self.descriptor = JPIPSocketDescriptor(
+            kind: .listener,
+            fd: syntheticFD,
+            syscallSeam: syscallSeam,
+            observer: observer
+        )
+        self.boundHost = boundHost
+        self.boundPort = boundPort
     }
 
     deinit {
@@ -303,67 +791,177 @@ package final class JPIPTCPListener: @unchecked Sendable {
     }
 
     package var isOpen: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return fd >= 0
+        descriptor.isOpen
     }
 
-    /// Blocks the calling OS thread until a client connects or the listener closes.
-    /// Must be invoked from a non-cooperative OS thread/DispatchQueue.
+    /// Blocks the calling dedicated OS thread/DispatchQueue (using finite 50ms `poll`
+    /// readiness quanta on the nonblocking listener) until a client connects or the
+    /// listener retires. `timeoutSeconds` configures the accepted socket only.
     package func acceptConnection(timeoutSeconds: Int = 30) throws -> JPIPTCPConnection? {
-        let listenFD: Int32 = {
-            lock.lock()
-            defer { lock.unlock() }
-            return fd
-        }()
-        guard listenFD >= 0 else { return nil }
+        guard let borrow = descriptor.borrow(operation: .listenerAccept) else {
+            return nil
+        }
+        defer { borrow.release() }
 
+        let seam = descriptor.syscallSeam
         while true {
-            var clientAddr = sockaddr_storage()
-            var clientLen = socklen_t(MemoryLayout<sockaddr_storage>.size)
-            let clientFD = withUnsafeMutablePointer(to: &clientAddr) { ptr in
-                ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                    accept(listenFD, sa, &clientLen)
-                }
+            guard !borrow.isRetired else { return nil }
+            descriptor.notify(.beforeListenerPoll(fd: borrow.fd))
+            guard !borrow.isRetired else { return nil }
+
+            let pollRC: Int32
+            let revents: Int16
+            let pollErr: Int32
+            if let pollHook = seam?.pollListen {
+                let res = pollHook(borrow.fd, Self.pollQuantumMilliseconds)
+                pollRC = res.rc
+                revents = res.revents
+                pollErr = res.errno
+            } else {
+                var pfd = pollfd(fd: borrow.fd, events: Int16(POLLIN), revents: 0)
+                pollRC = poll(&pfd, nfds_t(1), Self.pollQuantumMilliseconds)
+                revents = pfd.revents
+                pollErr = pollRC < 0 ? currentPOSIXErrno() : 0
             }
-            if clientFD >= 0 {
-                return JPIPTCPConnection(connectedFD: clientFD, timeoutSeconds: timeoutSeconds)
-            }
-            let err = currentPOSIXErrno()
-            if err == EINTR {
+
+            if pollRC == 0 {
                 continue
             }
-            if !isOpen || err == EBADF || err == EINVAL || err == ECONNABORTED {
+            if pollRC < 0 {
+                if pollErr == EINTR {
+                    guard !borrow.isRetired else { return nil }
+                    continue
+                }
+                if borrow.isRetired {
+                    return nil
+                }
+                descriptor.retireOnUnexpectedError()
+                throw J2KError.networkError("poll() failed on listening socket (errno=\(pollErr))")
+            }
+
+            guard !borrow.isRetired else { return nil }
+
+            if (revents & Int16(POLLNVAL)) != 0 {
+                descriptor.retireOnPollInvalidDescriptor()
+                throw J2KError.networkError("poll() reported POLLNVAL on open listening socket.")
+            }
+            if (revents & Int16(POLLERR | POLLHUP)) != 0 && (revents & Int16(POLLIN)) == 0 {
+                if borrow.isRetired { return nil }
+                descriptor.retireOnUnexpectedError()
+                throw J2KError.networkError("poll() reported error/hangup (revents=\(revents)) on listening socket.")
+            }
+            if (revents & Int16(POLLIN)) == 0 {
+                continue
+            }
+
+            guard !borrow.isRetired else { return nil }
+            descriptor.notify(.beforeListenerAccept(fd: borrow.fd))
+            guard !borrow.isRetired else { return nil }
+
+            let clientFD: Int32
+            let acceptErr: Int32
+            if let acceptHook = seam?.acceptClient {
+                let res = acceptHook(borrow.fd)
+                clientFD = res.clientFD
+                acceptErr = res.errno
+            } else {
+                var clientAddr = sockaddr_storage()
+                var clientLen = socklen_t(MemoryLayout<sockaddr_storage>.size)
+                clientFD = withUnsafeMutablePointer(to: &clientAddr) { ptr in
+                    ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                        accept(borrow.fd, sa, &clientLen)
+                    }
+                }
+                acceptErr = clientFD < 0 ? currentPOSIXErrno() : 0
+            }
+
+            if clientFD >= 0 {
+                let timeoutInterval = TimeInterval(timeoutSeconds)
+                if let flagErr = posixSetNonBlocking(clientFD, enabled: false, seam: seam) {
+                    _ = posixCloseDescriptorOnly(clientFD, seam: seam)
+                    if borrow.isRetired { return nil }
+                    descriptor.retireOnUnexpectedError()
+                    throw J2KError.networkError("Failed to clear O_NONBLOCK on accepted socket (errno=\(flagErr))")
+                }
+                if let configHook = seam?.configureAccepted {
+                    configHook(clientFD, timeoutInterval)
+                } else {
+                    JPIPTCPConnection.configureExclusiveSocket(clientFD, timeoutInterval: timeoutInterval)
+                }
+                descriptor.notify(.beforeAcceptedPublication(listenFD: borrow.fd, clientFD: clientFD))
+                guard descriptor.admitAcceptedPublication() else {
+                    let closeErr = posixCloseDescriptorOnly(clientFD, seam: seam)
+                    descriptor.notify(.abortedAcceptedClientClosed(clientFD: clientFD, closeErrno: closeErr))
+                    return nil
+                }
+                return JPIPTCPConnection(
+                    alreadyConfiguredFD: clientFD,
+                    syscallSeam: seam,
+                    observer: nil
+                )
+            }
+
+            if borrow.isRetired {
                 return nil
             }
-            throw J2KError.networkError("accept() failed (errno=\(err))")
+            if acceptErr == EINTR || acceptErr == EAGAIN || acceptErr == EWOULDBLOCK || acceptErr == ECONNABORTED {
+                continue
+            }
+            descriptor.retireOnUnexpectedError()
+            throw J2KError.networkError("accept() failed (errno=\(acceptErr))")
         }
     }
 
     package func close() {
-        let oldFD: Int32 = {
-            lock.lock()
-            defer { lock.unlock() }
-            let current = fd
-            fd = -1
-            return current
-        }()
-        if oldFD >= 0 {
-            posixCloseSocket(oldFD)
-        }
+        descriptor.initiateClose()
+    }
+
+    package func waitForCloseCompletion() async throws {
+        try await descriptor.waitForCloseCompletion()
     }
 }
 
 // MARK: - Socket Cancellation Token
+
+/// Tracks active connection operation locks (`readLock`, `writeLock`, `wsReadLock`) so tests
+/// and lifecycle observers can verify that no operation lock is ever held across physical
+/// descriptor close or close-completion waiter resumption.
+package final class JPIPOperationLockTracker: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    package init() {}
+
+    package func enter(_ opLock: NSLock) {
+        lock.lock()
+        count += 1
+        lock.unlock()
+        opLock.lock()
+    }
+
+    package func exit(_ opLock: NSLock) {
+        opLock.unlock()
+        lock.lock()
+        count -= 1
+        lock.unlock()
+    }
+
+    package var currentCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+}
 
 /// Thread-safe cancellation token bridging structured Swift concurrency cancellation
 /// (`withTaskCancellationHandler`) to blocking POSIX `connect` / `recv` / `send` operations.
 ///
 /// Concurrency proof (`@unchecked Sendable`):
 /// All mutable state (`isCancelled`, `connectingFD`, `activeConnection`) is guarded by `lock`.
-/// `endFailedConnectAttempt()` clears `connectingFD` under `lock` *before* `posixCloseSocket`
-/// closes the descriptor, and `cancel()` invokes non-blocking `shutdown(fd, SHUT_RDWR)` while
-/// holding `lock`, guaranteeing `shutdown` can never target a closed or recycled file descriptor.
+/// `endFailedConnectAttempt()` clears `connectingFD` under `lock` *before* `posixCloseDescriptorOnly`
+/// closes the exclusive pre-publication descriptor, and `cancel()` invokes non-blocking
+/// `shutdown(fd, SHUT_RDWR)` while holding `lock`, guaranteeing `shutdown` can never target
+/// a closed or recycled file descriptor.
 package final class JPIPSocketCancellationToken: @unchecked Sendable {
     private let lock = NSLock()
     private var isCancelled = false
@@ -420,11 +1018,7 @@ package final class JPIPSocketCancellationToken: @unchecked Sendable {
         lock.lock()
         isCancelled = true
         if connectingFD >= 0 {
-            #if canImport(Darwin)
-            _ = Darwin.shutdown(connectingFD, SHUT_RDWR)
-            #else
-            _ = Glibc.shutdown(connectingFD, Int32(SHUT_RDWR))
-            #endif
+            _ = posixShutdownSocket(connectingFD)
         }
         connToClose = activeConnection
         activeConnection = nil
@@ -439,17 +1033,18 @@ package final class JPIPSocketCancellationToken: @unchecked Sendable {
 /// and RFC 6455 WebSocket binary/control frames.
 ///
 /// Concurrency proof (`@unchecked Sendable`):
-/// `fd` is synchronized by `fdLock` (`close()` atomically swaps `fd` to `-1` and calls
-/// `shutdown`/`close`). `readLock` serializes `readBuffer` and `recv` operations; `wsReadLock`
-/// serializes RFC 6455 fragmented-message reassembly state across interleaved control frames;
-/// `writeLock` serializes `send` operations so full-duplex WebSocket/server-push writes never
-/// race with concurrent frame reads.
+/// Socket descriptor lifecycle is managed by `descriptor` (`JPIPSocketDescriptor`), whose
+/// leaf lock guards borrow counting, retirement, control-borrow `shutdown(SHUT_RDWR)`, and
+/// single physical `close(fd)` after the last borrower releases. Every operation acquires
+/// its `JPIPSocketDescriptor.Borrow` before acquiring `readLock`, `writeLock`, or `wsReadLock`,
+/// and unlocks the operation lock before `borrow.release()`, guaranteeing that no operation
+/// lock is ever held during physical close or waiter resumption.
 package final class JPIPTCPConnection: @unchecked Sendable {
-    private let fdLock = NSLock()
+    package let descriptor: JPIPSocketDescriptor
+    package let lockTracker: JPIPOperationLockTracker
     private let readLock = NSLock()
     private let wsReadLock = NSLock()
     private let writeLock = NSLock()
-    private var fd: Int32
     private var readBuffer = [UInt8]()
     private var readOffset: Int = 0
     private var wsFragmentedOpcode: JPIPRFC6455Opcode?
@@ -460,19 +1055,34 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     private var lineScanBytes = 0
 
     package var httpDelimiterScanWork: (headerPositions: Int, lineBytes: Int) {
-        readLock.lock()
-        defer { readLock.unlock() }
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
         return (headerScanPositions, lineScanBytes)
     }
 
-    package init(connectedFD: Int32, timeoutSeconds: Int = 30) {
-        self.fd = connectedFD
-        Self.configureSocket(connectedFD, timeoutInterval: TimeInterval(timeoutSeconds))
+    package convenience init(connectedFD: Int32, timeoutSeconds: Int = 30) {
+        self.init(connectedFD: connectedFD, timeoutInterval: TimeInterval(timeoutSeconds))
     }
 
-    package init(connectedFD: Int32, timeoutInterval: TimeInterval) {
-        self.fd = connectedFD
-        Self.configureSocket(connectedFD, timeoutInterval: timeoutInterval)
+    package convenience init(connectedFD: Int32, timeoutInterval: TimeInterval) {
+        Self.configureExclusiveSocket(connectedFD, timeoutInterval: timeoutInterval)
+        self.init(alreadyConfiguredFD: connectedFD)
+    }
+
+    package init(
+        alreadyConfiguredFD: Int32,
+        syscallSeam: JPIPSocketSyscallSeam? = nil,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)? = nil
+    ) {
+        let tracker = JPIPOperationLockTracker()
+        self.lockTracker = tracker
+        self.descriptor = JPIPSocketDescriptor(
+            kind: .connection,
+            fd: alreadyConfiguredFD,
+            syscallSeam: syscallSeam,
+            observer: observer,
+            operationLockCounter: { tracker.currentCount }
+        )
     }
 
     package static func connect(host: String, port: Int, timeoutSeconds: Int = 30) throws -> JPIPTCPConnection {
@@ -483,7 +1093,8 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         host: String,
         port: Int,
         timeoutInterval: TimeInterval,
-        cancellationToken: JPIPSocketCancellationToken? = nil
+        cancellationToken: JPIPSocketCancellationToken? = nil,
+        observer: (@Sendable (JPIPSocketLifecycleEvent) -> Void)? = nil
     ) throws -> JPIPTCPConnection {
         guard port > 0 && port <= 65535 else {
             throw J2KError.invalidParameter("Invalid remote TCP port: \(port)")
@@ -516,13 +1127,13 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             let sock = socket(info.pointee.ai_family, info.pointee.ai_socktype, info.pointee.ai_protocol)
             if sock >= 0 {
                 if let cancellationToken, !cancellationToken.beginConnect(fd: sock) {
-                    posixCloseSocket(sock)
+                    _ = posixCloseDescriptorOnly(sock)
                     throw CancellationError()
                 }
-                Self.configureSocket(sock, timeoutInterval: timeoutInterval)
+                Self.configureExclusiveSocket(sock, timeoutInterval: timeoutInterval)
                 let rc = DarwinOrGlibcConnect(sock, info.pointee.ai_addr, info.pointee.ai_addrlen)
                 if rc == 0 {
-                    let conn = JPIPTCPConnection(connectedFD: sock, timeoutInterval: timeoutInterval)
+                    let conn = JPIPTCPConnection(alreadyConfiguredFD: sock, observer: observer)
                     if let cancellationToken, !cancellationToken.completeConnect(connection: conn) {
                         conn.close()
                         throw CancellationError()
@@ -531,7 +1142,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 }
                 lastErrno = currentPOSIXErrno()
                 cancellationToken?.endFailedConnectAttempt()
-                posixCloseSocket(sock)
+                _ = posixCloseDescriptorOnly(sock)
                 if cancellationToken?.cancelled == true {
                     throw CancellationError()
                 }
@@ -563,7 +1174,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private static func makeTimeval(_ interval: TimeInterval) -> timeval {
+    package static func makeTimeval(_ interval: TimeInterval) -> timeval {
         guard interval > 0, interval.isFinite else {
             return timeval(tv_sec: 0, tv_usec: 0)
         }
@@ -576,7 +1187,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         #endif
     }
 
-    private static func configureSocket(_ sock: Int32, timeoutInterval: TimeInterval) {
+    package static func configureExclusiveSocket(_ sock: Int32, timeoutInterval: TimeInterval) {
         var one: Int32 = 1
         _ = setsockopt(sock, Int32(IPPROTO_TCP), TCP_NODELAY, &one, socklen_t(MemoryLayout<Int32>.size))
         #if canImport(Darwin)
@@ -594,21 +1205,29 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     }
 
     package func setReceiveTimeout(interval: TimeInterval) {
-        fdLock.lock()
-        let sock = fd
-        fdLock.unlock()
-        guard sock >= 0 else { return }
-        var tv = Self.makeTimeval(interval)
-        _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        guard let borrow = try? descriptor.acquireBorrow(operation: .setReceiveTimeout) else { return }
+        defer { borrow.release() }
+        guard !borrow.isRetired else { return }
+        if let hook = descriptor.syscallSeam?.setSockOpt {
+            _ = hook(borrow.fd, SOL_SOCKET, SO_RCVTIMEO, interval)
+        } else {
+            var tv = Self.makeTimeval(interval)
+            let optLen = socklen_t(MemoryLayout<timeval>.size)
+            _ = setsockopt(borrow.fd, SOL_SOCKET, SO_RCVTIMEO, &tv, optLen)
+        }
     }
 
     package func setSendTimeout(interval: TimeInterval) {
-        fdLock.lock()
-        let sock = fd
-        fdLock.unlock()
-        guard sock >= 0 else { return }
-        var tv = Self.makeTimeval(interval)
-        _ = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        guard let borrow = try? descriptor.acquireBorrow(operation: .setSendTimeout) else { return }
+        defer { borrow.release() }
+        guard !borrow.isRetired else { return }
+        if let hook = descriptor.syscallSeam?.setSockOpt {
+            _ = hook(borrow.fd, SOL_SOCKET, SO_SNDTIMEO, interval)
+        } else {
+            var tv = Self.makeTimeval(interval)
+            let optLen = socklen_t(MemoryLayout<timeval>.size)
+            _ = setsockopt(borrow.fd, SOL_SOCKET, SO_SNDTIMEO, &tv, optLen)
+        }
     }
 
     deinit {
@@ -616,52 +1235,51 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     }
 
     package var isOpen: Bool {
-        fdLock.lock()
-        defer { fdLock.unlock() }
-        return fd >= 0
-    }
-
-    private func currentFD() throws -> Int32 {
-        fdLock.lock()
-        defer { fdLock.unlock() }
-        guard fd >= 0 else {
-            throw J2KError.networkError("TCP connection is closed.")
-        }
-        return fd
+        descriptor.isOpen
     }
 
     package func close() {
-        let oldFD: Int32 = {
-            fdLock.lock()
-            defer { fdLock.unlock() }
-            let cur = fd
-            fd = -1
-            return cur
-        }()
-        if oldFD >= 0 {
-            posixCloseSocket(oldFD)
-        }
+        descriptor.initiateClose()
+    }
+
+    package func waitForCloseCompletion() async throws {
+        try await descriptor.waitForCloseCompletion()
     }
 
     // MARK: - Raw Binary Write & Buffered Read
 
     package func writeAll(_ data: Data) throws {
         guard !data.isEmpty else { return }
-        writeLock.lock()
-        defer { writeLock.unlock() }
+        let borrow = try descriptor.acquireBorrow(operation: .writeAll)
+        defer { borrow.release() }
+        lockTracker.enter(writeLock)
+        defer { lockTracker.exit(writeLock) }
 
-        let sock = try currentFD()
         try data.withUnsafeBytes { rawBuf in
             guard let base = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
             var sent = 0
             while sent < rawBuf.count {
-                let n = send(sock, base.advanced(by: sent), rawBuf.count - sent, posixSendFlags)
+                guard !borrow.isRetired else {
+                    throw J2KError.networkError("TCP send aborted because connection closed after \(sent)/\(rawBuf.count) bytes.")
+                }
+                let n: Int
+                let err: Int32
+                if let sendHook = descriptor.syscallSeam?.sendBytes {
+                    let res = sendHook(borrow.fd, base.advanced(by: sent), rawBuf.count - sent)
+                    n = res.rc
+                    err = res.errno
+                } else {
+                    n = send(borrow.fd, base.advanced(by: sent), rawBuf.count - sent, posixSendFlags)
+                    err = n < 0 ? currentPOSIXErrno() : 0
+                }
                 if n > 0 {
                     sent += n
-                } else if n < 0 && currentPOSIXErrno() == EINTR {
+                } else if n < 0 && err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP send interrupted by connection close after \(sent)/\(rawBuf.count) bytes.")
+                    }
                     continue
                 } else {
-                    let err = currentPOSIXErrno()
                     throw J2KError.networkError("TCP send failed after \(sent)/\(rawBuf.count) bytes (errno=\(err))")
                 }
             }
@@ -680,15 +1298,33 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private func fillOnceLocked(maxReadBytes: Int = 16384) throws -> Int {
+    private func performRecv(
+        borrow: JPIPSocketDescriptor.Borrow,
+        buffer: UnsafeMutableRawPointer,
+        count: Int
+    ) -> (result: Int, errno: Int32) {
+        if let recvHook = descriptor.syscallSeam?.recvBytes {
+            let res = recvHook(borrow.fd, buffer, count)
+            return (res.rc, res.errno)
+        }
+        let n = recv(borrow.fd, buffer, count, 0)
+        return (n, n < 0 ? currentPOSIXErrno() : 0)
+    }
+
+    private func fillOnceLocked(
+        maxReadBytes: Int = 16384,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> Int {
         guard maxReadBytes > 0 else {
             throw CodecError(.resourceLimitExceeded, "TCP read allowance exhausted before allocation.")
         }
-        let sock = try currentFD()
         var scratch = [UInt8](repeating: 0, count: min(16384, maxReadBytes))
         while true {
-            let n = scratch.withUnsafeMutableBytes { buf in
-                recv(sock, buf.baseAddress!, buf.count, 0)
+            guard !borrow.isRetired else {
+                throw J2KError.networkError("TCP connection is closed.")
+            }
+            let (n, err) = scratch.withUnsafeMutableBytes { buf in
+                performRecv(borrow: borrow, buffer: buf.baseAddress!, count: buf.count)
             }
             if n > 0 {
                 readBuffer.append(contentsOf: scratch[0..<n])
@@ -696,8 +1332,12 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             } else if n == 0 {
                 return 0
             } else {
-                let err = currentPOSIXErrno()
-                if err == EINTR { continue }
+                if err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP connection is closed.")
+                    }
+                    continue
+                }
                 if err == EAGAIN || err == EWOULDBLOCK {
                     throw J2KError.networkError("TCP receive timed out.")
                 }
@@ -715,14 +1355,20 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
         if count == 0 { return Data() }
 
-        readLock.lock()
-        defer { readLock.unlock() }
+        let borrow = try descriptor.acquireBorrow(operation: .readExact)
+        defer { borrow.release() }
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
 
-        return try readExactLocked(count: count)
+        return try readExactLocked(count: count, borrow: borrow)
     }
 
     /// The announced length is admitted by the caller before this one allocation.
-    private func readExactLocked(count: Int) throws -> Data {
+    private func readExactLocked(
+        count: Int,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> Data {
+        if count == 0 { return Data() }
         var output = Data(count: count)
         let buffered = min(count, readBuffer.count - readOffset)
         if buffered > 0 {
@@ -730,23 +1376,45 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             readOffset += buffered
             compactReadBufferLocked()
         }
-        let socket = try currentFD()
         try output.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
             guard let base = bytes.baseAddress else { return }
             var offset = buffered
             while offset < count {
-                let received = recv(socket, base.advanced(by: offset), count - offset, 0)
-                if received > 0 { offset += received }
-                else if received < 0 && currentPOSIXErrno() == EINTR { continue }
-                else { throw J2KError.networkError("TCP read failed before the complete admitted payload arrived.") }
+                guard !borrow.isRetired else {
+                    throw J2KError.networkError("TCP read failed before the complete admitted payload arrived.")
+                }
+                let (received, err) = performRecv(
+                    borrow: borrow,
+                    buffer: base.advanced(by: offset),
+                    count: count - offset
+                )
+                if received > 0 {
+                    offset += received
+                } else if received < 0 && err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP read failed before the complete admitted payload arrived.")
+                    }
+                    continue
+                } else {
+                    throw J2KError.networkError("TCP read failed before the complete admitted payload arrived.")
+                }
             }
         }
         return output
     }
 
-    private func readToEOF(maxAllowedBytes: Int) throws -> Data {
-        readLock.lock()
-        defer { readLock.unlock() }
+    package func readToEOFForTesting(maxAllowedBytes: Int) throws -> Data {
+        let borrow = try descriptor.acquireBorrow(operation: .readToEOF)
+        defer { borrow.release() }
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
+        return try readToEOFLocked(maxAllowedBytes: maxAllowedBytes, borrow: borrow)
+    }
+
+    private func readToEOFLocked(
+        maxAllowedBytes: Int,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> Data {
         let buffered = readBuffer.count - readOffset
         guard buffered <= maxAllowedBytes else {
             throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body exceeds limit before allocation.")
@@ -754,24 +1422,40 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         var output = Data(readBuffer[readOffset..<readBuffer.count])
         readOffset = readBuffer.count
         compactReadBufferLocked()
-        let socket = try currentFD()
         while true {
+            guard !borrow.isRetired else {
+                throw J2KError.networkError("TCP read failed inside an EOF-delimited body.")
+            }
             let remaining = maxAllowedBytes - output.count
             if remaining == 0 {
                 var extra: UInt8 = 0
-                let count = withUnsafeMutablePointer(to: &extra) { recv(socket, $0, 1, 0) }
+                let (count, err) = withUnsafeMutablePointer(to: &extra) { ptr in
+                    performRecv(borrow: borrow, buffer: UnsafeMutableRawPointer(ptr), count: 1)
+                }
                 if count == 0 { return output }
-                if count < 0 && currentPOSIXErrno() == EINTR { continue }
+                if count < 0 && err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP read failed at the EOF-delimited body limit.")
+                    }
+                    continue
+                }
                 if count > 0 { throw CodecError(.resourceLimitExceeded, "EOF-delimited HTTP body exceeds limit before allocation.") }
                 throw J2KError.networkError("TCP read failed at the EOF-delimited body limit.")
             }
             // Grow the read window with observed data, so a short response never
             // allocates a large speculative scratch buffer.
             var scratch = [UInt8](repeating: 0, count: min(16384, min(remaining, max(1, output.count))))
-            let count = scratch.withUnsafeMutableBytes { recv(socket, $0.baseAddress, $0.count, 0) }
+            let (count, err) = scratch.withUnsafeMutableBytes { buf in
+                performRecv(borrow: borrow, buffer: buf.baseAddress!, count: buf.count)
+            }
             if count == 0 { return output }
             if count < 0 {
-                if currentPOSIXErrno() == EINTR { continue }
+                if err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP read failed inside an EOF-delimited body.")
+                    }
+                    continue
+                }
                 throw J2KError.networkError("TCP read failed inside an EOF-delimited body.")
             }
             let nextCount = output.count + count // count is bounded by remaining.
@@ -782,7 +1466,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private func readLineCRLFLocked(maxLineBytes: Int) throws -> String {
+    private func readLineCRLFLocked(
+        maxLineBytes: Int,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> String {
         // readOffset and buffer indices stay fixed until a complete line returns.
         // A new fill therefore only requires examining newly appended bytes.
         var scanIndex = readOffset
@@ -814,7 +1501,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                     throw CodecError(.resourceLimitExceeded, "HTTP line exceeds \(maxLineBytes) bytes without CRLF.")
                 }
             }
-            let got = try fillOnceLocked(maxReadBytes: 1)
+            let got = try fillOnceLocked(maxReadBytes: 1, borrow: borrow)
             if got == 0 {
                 throw J2KError.networkError("Unexpected EOF while reading HTTP line.")
             }
@@ -822,7 +1509,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
     }
 
     /// Reads until `\r\n\r\n` (or `\n\n`). Returns `nil` cleanly on immediate EOF before any byte.
-    private func readHeaderBlockLocked(maxHeaderBytes: Int) throws -> [UInt8]? {
+    private func readHeaderBlockLocked(
+        maxHeaderBytes: Int,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> [UInt8]? {
         var scanIndex = readOffset
         while true {
             let available = readBuffer.count - readOffset
@@ -856,7 +1546,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             if available > maxHeaderBytes {
                 throw CodecError(.resourceLimitExceeded, "HTTP header block exceeds \(maxHeaderBytes) bytes.")
             }
-            let got = try fillOnceLocked(maxReadBytes: 1)
+            let got = try fillOnceLocked(maxReadBytes: 1, borrow: borrow)
             if got == 0 {
                 if (readBuffer.count - readOffset) == 0 {
                     return nil
@@ -866,10 +1556,13 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         }
     }
 
-    private func readChunkedBodyLocked(maxBodyBytes: Int) throws -> Data {
+    private func readChunkedBodyLocked(
+        maxBodyBytes: Int,
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> Data {
         var out = Data()
         while true {
-            let sizeLine = try readLineCRLFLocked(maxLineBytes: 4096)
+            let sizeLine = try readLineCRLFLocked(maxLineBytes: 4096, borrow: borrow)
             let hexPart = sizeLine.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
             let trimmedHex = hexPart.trimmingCharacters(in: .whitespaces)
             guard let chunkSize = Int(trimmedHex, radix: 16), chunkSize >= 0 else {
@@ -878,7 +1571,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             if chunkSize == 0 {
                 // Consume trailing headers until empty line
                 while true {
-                    let trailer = try readLineCRLFLocked(maxLineBytes: 8192)
+                    let trailer = try readLineCRLFLocked(maxLineBytes: 8192, borrow: borrow)
                     if trailer.isEmpty { break }
                 }
                 return out
@@ -887,7 +1580,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             guard !ov, nextTotal <= maxBodyBytes else {
                 throw CodecError(.resourceLimitExceeded, "Chunked HTTP body exceeds limit (\(maxBodyBytes) bytes).")
             }
-            let chunk = try readExactLocked(count: chunkSize)
+            let chunk = try readExactLocked(count: chunkSize, borrow: borrow)
             // Old output + chunk + replacement equal twice nextTotal, rather
             // than relying on an untracked Array/Data growth capacity.
             var replacement = Data(count: nextTotal)
@@ -895,7 +1588,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             replacement.replaceSubrange(out.count..<nextTotal, with: chunk)
             out = replacement
             // Consume trailing CRLF after chunk payload
-            _ = try readLineCRLFLocked(maxLineBytes: 16)
+            _ = try readLineCRLFLocked(maxLineBytes: 16, borrow: borrow)
         }
     }
 
@@ -905,11 +1598,12 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         maxHeaderBytes: Int = 65536,
         maxBodyBytes: Int = 64 * 1024 * 1024
     ) throws -> JPIPHTTPWireRequest? {
-        readLock.lock()
-        var unlocked = false
-        defer { if !unlocked { readLock.unlock() } }
+        let borrow = try descriptor.acquireBorrow(operation: .readHTTPRequest)
+        defer { borrow.release() }
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
 
-        guard let headerBytes = try readHeaderBlockLocked(maxHeaderBytes: maxHeaderBytes) else {
+        guard let headerBytes = try readHeaderBlockLocked(maxHeaderBytes: maxHeaderBytes, borrow: borrow) else {
             return nil
         }
         guard let headerText = String(bytes: headerBytes, encoding: .utf8) ?? String(bytes: headerBytes, encoding: .isoLatin1) else {
@@ -939,7 +1633,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
 
         let te = headers.first { $0.key.lowercased() == "transfer-encoding" }?.value.lowercased() ?? ""
         if te.contains("chunked") {
-            let body = try readChunkedBodyLocked(maxBodyBytes: maxBodyBytes)
+            let body = try readChunkedBodyLocked(maxBodyBytes: maxBodyBytes, borrow: borrow)
             return JPIPHTTPWireRequest(method: method, target: target, version: version, headers: headers, body: body)
         }
 
@@ -950,10 +1644,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             }
             contentLen = parsed
         }
-        unlocked = true
-        readLock.unlock()
-
-        let body = contentLen > 0 ? try readExact(count: contentLen, maxAllowedBytes: maxBodyBytes) : Data()
+        guard contentLen <= maxBodyBytes else {
+            throw CodecError(.resourceLimitExceeded, "Requested TCP payload (\(contentLen) bytes) exceeds limit (\(maxBodyBytes) bytes).")
+        }
+        let body = contentLen > 0 ? try readExactLocked(count: contentLen, borrow: borrow) : Data()
         return JPIPHTTPWireRequest(method: method, target: target, version: version, headers: headers, body: body)
     }
 
@@ -1018,9 +1712,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         guard maxHeaderBytes >= 0, maxBodyBytes >= 0, maximumStorageBytes > 0 else {
             throw CodecError(.invalidArgument, "Invalid HTTP response admission limits.")
         }
-        readLock.lock()
-        var unlocked = false
-        defer { if !unlocked { readLock.unlock() } }
+        let borrow = try descriptor.acquireBorrow(operation: .readHTTPResponse)
+        defer { borrow.release() }
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
 
         func add(_ a: Int, _ b: Int) throws -> Int {
             let (value, overflow) = a.addingReportingOverflow(b)
@@ -1036,7 +1731,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         // byte copy. No text or descriptor arrays are created until the scan admits them.
         let rawCap = min(65_536, min(maxHeaderBytes, max(0, (maximumStorageBytes - 4) / 3)))
         func parseHeaders() throws -> (String, Int, String, [String: String], Int) {
-            guard let bytes = try readHeaderBlockLocked(maxHeaderBytes: rawCap) else {
+            guard let bytes = try readHeaderBlockLocked(maxHeaderBytes: rawCap, borrow: borrow) else {
                 throw J2KError.networkError("Server closed connection before sending HTTP response headers.")
             }
             var start = 0
@@ -1114,7 +1809,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 let fixed = 4 * MemoryLayout<Substring>.stride
                 let available = remainingStorage - output.count
                 guard available > fixed else { throw CodecError(.resourceLimitExceeded, "HTTP chunk framing exceeds remaining storage.") }
-                let line = try readLineCRLFLocked(maxLineBytes: min(maximum, (available - fixed) / 12))
+                let line = try readLineCRLFLocked(maxLineBytes: min(maximum, (available - fixed) / 12), borrow: borrow)
                 peak = max(peak, try add(retainedHeaders, add(output.count, add(multiply(line.utf8.count, 6), fixed))))
                 return line
             }
@@ -1135,12 +1830,12 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 let next = try add(output.count, count)
                 guard next <= bodyCap else { throw CodecError(.resourceLimitExceeded, "Chunked HTTP body exceeds remaining header/body storage before allocation.") }
                 peak = max(peak, try add(retainedHeaders, add(multiply(next, 2), 4)))
-                let chunk = try readExactLocked(count: count)
+                let chunk = try readExactLocked(count: count, borrow: borrow)
                 var replacement = Data(count: next)
                 replacement.replaceSubrange(0..<output.count, with: output)
                 replacement.replaceSubrange(output.count..<next, with: chunk)
                 output = replacement
-                guard try readExactLocked(count: 2) == Data([0x0D, 0x0A]) else { throw J2KError.invalidData("Missing HTTP chunk terminator.") }
+                guard try readExactLocked(count: 2, borrow: borrow) == Data([0x0D, 0x0A]) else { throw J2KError.invalidData("Missing HTTP chunk terminator.") }
             }
         }
 
@@ -1148,16 +1843,16 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             guard let cl = Int(clStr.trimmingCharacters(in: .whitespaces)), cl >= 0 else {
                 throw J2KError.invalidData("Invalid Content-Length '\(clStr)'.")
             }
-            unlocked = true
-            readLock.unlock()
-            let body = try readExact(count: cl, maxAllowedBytes: min(maxBodyBytes, remainingStorage / 2))
+            let maxAllowed = min(maxBodyBytes, remainingStorage / 2)
+            guard cl <= maxAllowed else {
+                throw CodecError(.resourceLimitExceeded, "Requested TCP payload (\(cl) bytes) exceeds limit (\(maxAllowed) bytes).")
+            }
+            let body = try readExactLocked(count: cl, borrow: borrow)
             return try response(body, bufferFactor: 2)
         }
 
         // Connection: close EOF-delimited body
-        unlocked = true
-        readLock.unlock()
-        let body = try readToEOF(maxAllowedBytes: min(maxBodyBytes, remainingStorage / 3))
+        let body = try readToEOFLocked(maxAllowedBytes: min(maxBodyBytes, remainingStorage / 3), borrow: borrow)
         return try response(body, bufferFactor: 3)
     }
 
@@ -1271,8 +1966,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
         requireMasked: Bool? = nil,
         budget: JPIPWebSocketReadBudget? = nil
     ) throws -> JPIPRFC6455WireFrame {
-        wsReadLock.lock()
-        defer { wsReadLock.unlock() }
+        let borrow = try descriptor.acquireBorrow(operation: .readWebSocketFrame)
+        defer { borrow.release() }
+        lockTracker.enter(wsReadLock)
+        defer { lockTracker.exit(wsReadLock) }
         var returnedMessage = false
         defer {
             if !returnedMessage {
@@ -1284,7 +1981,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
 
         while true {
             try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: 0, control: true)
-            let hdr2 = try readWebSocketExact(count: 2)
+            let hdr2 = try readWebSocketExact(count: 2, borrow: borrow)
             let b0 = hdr2[hdr2.startIndex]
             let b1 = hdr2[hdr2.startIndex + 1]
             let fin = (b0 & 0x80) != 0
@@ -1313,10 +2010,10 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             if len7 < 126 {
                 payloadLen = len7
             } else if len7 == 126 {
-                let ext = try readWebSocketExact(count: 2)
+                let ext = try readWebSocketExact(count: 2, borrow: borrow)
                 payloadLen = (Int(ext[ext.startIndex]) << 8) | Int(ext[ext.startIndex + 1])
             } else {
-                let ext = try readWebSocketExact(count: 8)
+                let ext = try readWebSocketExact(count: 8, borrow: borrow)
                 var u64: UInt64 = 0
                 for idx in ext.indices {
                     u64 = (u64 << 8) | UInt64(ext[idx])
@@ -1342,9 +2039,9 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                     throw CodecError(.resourceLimitExceeded, "RFC 6455 control frame exceeds limit (\(maxFrameBytes) bytes).")
                 }
                 try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: payloadLen, control: true)
-                let maskKey = isMasked ? try readWebSocketExact(count: 4) : Data()
+                let maskKey = isMasked ? try readWebSocketExact(count: 4, borrow: borrow) : Data()
                 if payloadLen > 0 { budget?.willAllocatePayload() }
-                var chunk = try readWebSocketExact(count: payloadLen)
+                var chunk = try readWebSocketExact(count: payloadLen, borrow: borrow)
                 Self.unmaskWebSocketPayload(&chunk, maskKey: maskKey)
                 budget?.didReadMessage(bytes: chunk.count, retainedFragments: wsFragmentedPayload.count)
                 returnedMessage = true
@@ -1371,9 +2068,9 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             }
 
             try budget?.admitFrame(fragmentedBytes: wsFragmentedPayload.count, payloadBytes: payloadLen, control: false)
-            let maskKey = isMasked ? try readWebSocketExact(count: 4) : Data()
+            let maskKey = isMasked ? try readWebSocketExact(count: 4, borrow: borrow) : Data()
             let prefixCount = budget == nil ? 0 : min(payloadLen, max(0, 27 - wsFragmentedPayload.count))
-            var prefix = try readWebSocketExact(count: prefixCount)
+            var prefix = try readWebSocketExact(count: prefixCount, borrow: borrow)
             Self.unmaskWebSocketPayload(&prefix, maskKey: maskKey)
             if let budget {
                 var applicationPrefix = Data(wsFragmentedPayload.prefix(27))
@@ -1383,7 +2080,7 @@ package final class JPIPTCPConnection: @unchecked Sendable {
             // The announced application body and every simultaneous receive/
             // fragment buffer have been admitted before this owning allocation.
             if payloadLen > 0 { budget?.willAllocatePayload() }
-            var chunk = try readWebSocketExact(count: payloadLen, prefix: prefix)
+            var chunk = try readWebSocketExact(count: payloadLen, prefix: prefix, borrow: borrow)
             Self.unmaskWebSocketPayload(&chunk, maskKey: maskKey, startingAt: prefixCount)
             if opcode == .continuation { wsFragmentedPayload.append(chunk) }
             else {
@@ -1404,12 +2101,15 @@ package final class JPIPTCPConnection: @unchecked Sendable {
 
     /// Reads exactly the admitted bytes, without the HTTP reader's scratch buffer
     /// or read-ahead. Existing handshake bytes are consumed under the same lock.
-    private func readWebSocketExact(count: Int, prefix: Data = Data()) throws -> Data {
+    private func readWebSocketExact(
+        count: Int,
+        prefix: Data = Data(),
+        borrow: JPIPSocketDescriptor.Borrow
+    ) throws -> Data {
         guard count >= prefix.count else { throw J2KError.invalidData("Invalid WebSocket prefix length.") }
         if count == 0 { return Data() }
-        readLock.lock()
-        defer { readLock.unlock() }
-        let sock = try currentFD()
+        lockTracker.enter(readLock)
+        defer { lockTracker.exit(readLock) }
         var output = Data(count: count)
         try output.withUnsafeMutableBytes { (destination: UnsafeMutableRawBufferPointer) in
             guard let base = destination.baseAddress else { return }
@@ -1432,11 +2132,26 @@ package final class JPIPTCPConnection: @unchecked Sendable {
                 readOffset = 0
             }
             while filled < count {
-                let n = recv(sock, base.advanced(by: filled), count - filled, 0)
-                if n > 0 { filled += n }
-                else if n < 0 && currentPOSIXErrno() == EINTR { continue }
-                else if n == 0 { throw J2KError.networkError("Unexpected EOF in WebSocket payload.") }
-                else { throw J2KError.networkError("TCP recv failed while reading WebSocket payload (errno=\(currentPOSIXErrno())).") }
+                guard !borrow.isRetired else {
+                    throw J2KError.networkError("TCP recv failed while reading WebSocket payload (connection closed).")
+                }
+                let (n, err) = performRecv(
+                    borrow: borrow,
+                    buffer: base.advanced(by: filled),
+                    count: count - filled
+                )
+                if n > 0 {
+                    filled += n
+                } else if n < 0 && err == EINTR {
+                    guard !borrow.isRetired else {
+                        throw J2KError.networkError("TCP recv failed while reading WebSocket payload (connection closed).")
+                    }
+                    continue
+                } else if n == 0 {
+                    throw J2KError.networkError("Unexpected EOF in WebSocket payload.")
+                } else {
+                    throw J2KError.networkError("TCP recv failed while reading WebSocket payload (errno=\(err)).")
+                }
             }
         }
         return output

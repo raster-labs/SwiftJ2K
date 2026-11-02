@@ -1,0 +1,130 @@
+Building for debugging...
+[Pre-planning 1 / 387]
+[Planning deferred tasks]
+[86 / 180] SwiftJ2K_SwiftJ2KTests
+[89 / 180]
+[91 / 181] CZlibShim
+[97 / 191]
+[100 / 191]
+[103 / 191] SwiftJ2K
+[113 / 238]
+[120 / 238]
+[122 / 238]
+[126 / 238]
+[129 / 238]
+[134 / 238]
+[135 / 238]
+[136 / 238]
+[137 / 238]
+[139 / 238]
+[150 / 238] SwiftJ2K
+[157 / 239] SwiftJ2K3D
+[165 / 250] SwiftJ2K3D
+[167 / 250] SwiftJ2K3D
+[168 / 250] SwiftJ2K3D
+[180 / 251] SwiftJ2K-product
+[180 / 251] SwiftJ2K3D
+[182 / 266]
+[191 / 266] SwiftJ2KJPIP
+error: SwiftCompile normal arm64 /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftPerFileCompile JPIPTCPSocket.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1069:13: [1;31merror: [1;39margument 'kind' must precede argument 'fd'[0;0m
+[0;36m1067 |[0;0m         self.descriptor = JPIPSocketDescriptor(
+[0;36m1068 |[0;0m             fd: alreadyConfiguredFD,
+[0;36m1069 |[0;0m             kind: .connection,
+     [0;36m|[0;0m             `- [1;31merror: [1;39margument 'kind' must precede argument 'fd'[0;0m
+[0;36m1070 |[0;0m             syscallSeam: syscallSeam,
+[0;36m1071 |[0;0m             operationLockCounter: { tracker.currentCount },
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1195:44: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1193 |[0;0m 
+[0;36m1194 |[0;0m     package func setReceiveTimeout(interval: TimeInterval) {
+[0;36m1195 |[0;0m         guard let borrow = try? [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .setReceiveTimeout) else { return }
+     [0;36m|[0;0m                                            `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1196 |[0;0m         defer { borrow.release() }
+[0;36m1197 |[0;0m         guard !borrow.isRetired else { return }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1202:22: [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'setsockopt'[0;0m
+[0;36m1200 |[0;0m         if let seam = descriptor.syscallSeam {
+[0;36m1201 |[0;0m             _ = withUnsafePointer(to: &tv) { ptr in
+[0;36m1202 |[0;0m                 [4;39mseam[0;0m.[4;39msetsockopt[0;0m(borrow.fd, SOL_SOCKET, SO_RCVTIMEO, ptr, optLen)
+     [0;36m|[0;0m                      `- [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'setsockopt'[0;0m
+[0;36m1203 |[0;0m             }
+[0;36m1204 |[0;0m         } else {
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1210:44: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1208 |[0;0m 
+[0;36m1209 |[0;0m     package func setSendTimeout(interval: TimeInterval) {
+[0;36m1210 |[0;0m         guard let borrow = try? [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .setSendTimeout) else { return }
+     [0;36m|[0;0m                                            `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1211 |[0;0m         defer { borrow.release() }
+[0;36m1212 |[0;0m         guard !borrow.isRetired else { return }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1217:22: [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'setsockopt'[0;0m
+[0;36m1215 |[0;0m         if let seam = descriptor.syscallSeam {
+[0;36m1216 |[0;0m             _ = withUnsafePointer(to: &tv) { ptr in
+[0;36m1217 |[0;0m                 [4;39mseam[0;0m.[4;39msetsockopt[0;0m(borrow.fd, SOL_SOCKET, SO_SNDTIMEO, ptr, optLen)
+     [0;36m|[0;0m                      `- [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'setsockopt'[0;0m
+[0;36m1218 |[0;0m             }
+[0;36m1219 |[0;0m         } else {
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1244:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1242 |[0;0m     package func writeAll(_ data: Data) throws {
+[0;36m1243 |[0;0m         guard !data.isEmpty else { return }
+[0;36m1244 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .writeAll)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1245 |[0;0m         defer { borrow.release() }
+[0;36m1246 |[0;0m         lockTracker.enter(writeLock)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1298:25: [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'recv'[0;0m
+[0;36m1296 |[0;0m     ) -> (result: Int, errno: Int32) {
+[0;36m1297 |[0;0m         if let seam = descriptor.syscallSeam {
+[0;36m1298 |[0;0m             return [4;39mseam[0;0m.[4;39mrecv[0;0m(borrow.fd, buffer, count, 0)
+     [0;36m|[0;0m                         `- [1;31merror: [1;39mvalue of type 'JPIPSocketSyscallSeam' has no member 'recv'[0;0m
+[0;36m1299 |[0;0m         }
+[0;36m1300 |[0;0m         let n = recv(borrow.fd, buffer, count, 0)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1348:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1346 |[0;0m         if count == 0 { return Data() }
+[0;36m1347 |[0;0m 
+[0;36m1348 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .readExact)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1349 |[0;0m         defer { borrow.release() }
+[0;36m1350 |[0;0m         lockTracker.enter(readLock)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1397:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1395 |[0;0m 
+[0;36m1396 |[0;0m     package func readToEOFForTesting(maxAllowedBytes: Int) throws -> Data {
+[0;36m1397 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .readToEOF)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1398 |[0;0m         defer { borrow.release() }
+[0;36m1399 |[0;0m         lockTracker.enter(readLock)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1591:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1589 |[0;0m         maxBodyBytes: Int = 64 * 1024 * 1024
+[0;36m1590 |[0;0m     ) throws -> JPIPHTTPWireRequest? {
+[0;36m1591 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .readHTTPRequest)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1592 |[0;0m         defer { borrow.release() }
+[0;36m1593 |[0;0m         lockTracker.enter(readLock)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1705:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1703 |[0;0m             throw CodecError(.invalidArgument, "Invalid HTTP response admission limits.")
+[0;36m1704 |[0;0m         }
+[0;36m1705 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .readHTTPResponse)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1706 |[0;0m         defer { borrow.release() }
+[0;36m1707 |[0;0m         lockTracker.enter(readLock)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift:1959:37: [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1957 |[0;0m         budget: JPIPWebSocketReadBudget? = nil
+[0;36m1958 |[0;0m     ) throws -> JPIPRFC6455WireFrame {
+[0;36m1959 |[0;0m         let borrow = try [4;39mdescriptor[0;0m.[4;39macquireBorrow[0;0m(operation: .readWebSocketFrame)
+     [0;36m|[0;0m                                     `- [1;31merror: [1;39mvalue of type 'JPIPSocketDescriptor' has no member 'acquireBorrow'[0;0m
+[0;36m1960 |[0;0m         defer { borrow.release() }
+[0;36m1961 |[0;0m         lockTracker.enter(wsReadLock)
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DCacheManager.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DJPIPClient.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DJPIPServer.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DProgressiveDelivery.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DStreamingTypes.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIP.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPAdaptiveQualityEngine.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPBandwidthEstimator.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPBandwidthThrottle.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPClientCacheManager.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPDataBinGenerator.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPHTJ2KSupport.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPMultiResolutionTileManager.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPNetworkFramework.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPPrecinctCache.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPProgressiveDeliveryScheduler.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPProgressiveStreamingPipeline.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPRequest.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPRequestQueue.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPResourceAdmission.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPResponse.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServer.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServerPush.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServerSession.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionManager.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPSessionPersistence.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTranscodingService.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransport.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketClient.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketServer.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift -supplementary-output-file-map /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/supplementaryOutputs-28 -target arm64-apple-macos26.0 -module-can-import-version Darwin 428.0.10 0 -module-can-import-version Network 5000.0.33 6681.1.1 -disable-cross-import-overlay-search -swift-module-cross-import Darwin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Darwin.swiftcrossimport/xlocale.swiftoverlay -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/SwiftJ2KJPIP-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug/PackageFrameworks -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -swift-version 6 -Onone -D SWIFT_PACKAGE -D DEBUG -D SWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work -enable-anonymous-context-mangled-names -file-compilation-dir /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/SDKStatCaches.noindex/macosx27.0-26A425-80c5bbf1d171475443272936d42f90a37231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug/include -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/DerivedSources/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name SwiftJ2KJPIP -package-name swiftj2k -const-gather-protocols-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/SwiftJ2KJPIP_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPSessionPersistence.o -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPTCPSocket.o -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPTranscodingService.o -debug-module-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/SwiftJ2KJPIP.swiftmodule -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPSessionPersistence.o -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPTCPSocket.o -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIP-t.build/Objects-normal/arm64/JPIPTranscodingService.o -index-store-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out -index-system-modules
+[193 / 266] SwiftJ2KJPIP
+error: Build failed
+error: fatalError

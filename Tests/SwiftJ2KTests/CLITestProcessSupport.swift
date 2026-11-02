@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+#if os(macOS) || os(Linux)
 import Foundation
 import Dispatch
 import Synchronization
@@ -207,3 +208,4 @@ struct CLITestProcessSupportTests {
         #expect(result.stderr == Data(String(repeating: line, count: 4096).utf8))
     }
 }
+#endif

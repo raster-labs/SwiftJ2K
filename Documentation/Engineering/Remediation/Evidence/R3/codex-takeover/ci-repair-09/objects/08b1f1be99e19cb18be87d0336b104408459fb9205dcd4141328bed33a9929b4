@@ -1,0 +1,69 @@
+Building for debugging...
+[Using on-disk description]
+[4 / 36] swiftj2k-cli-product
+[9 / 37] SwiftJ2K3DTests-product
+[18 / 59] SwiftJ2KJPIPTests-product
+[19 / 59] SwiftJ2KJPIPTests-product
+[20 / 70] SwiftJ2KTests-product
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m219 |[0;0m         for configuration in [JP3DHTJ2KConfiguration.default,
+[0;36m220 |[0;0m                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+[0;36m221 |[0;0m             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m222 |[0;0m             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+[0;36m223 |[0;0m         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m237 |[0;0m 
+[0;36m238 |[0;0m     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+[0;36m239 |[0;0m         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    [0;36m|[0;0m                                     `- [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m240 |[0;0m         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+[0;36m241 |[0;0m     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[20 / 70] SwiftJ2K3DTests-product
+[22 / 70] SwiftJ2KTests-product
+[24 / 70] SwiftJ2KTests-product
+[26 / 70] SwiftJ2KTests-product
+[29 / 70] SwiftJ2KJPIPTests-product
+[38 / 68] SwiftJ2KTests-product
+[39 / 68] SwiftJ2KJPIPTests-product
+[40 / 68] SwiftJ2KJPIPTests-product
+[42 / 68] SwiftJ2KJPIPTests-product
+[43 / 68] SwiftJ2KJPIPTests-product
+[45 / 68] SwiftJ2KJPIPTests-product
+[47 / 68] SwiftJ2KJPIPTests-product
+[48 / 68] SwiftJ2K3DTests-product
+[49 / 68] SwiftJ2K3DTests-product
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: [1;33mwarning: [1;39m'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture\ImplicitStrongCapture]8;;\]
+[0;36m531 |[0;0m         let request = self.request
+[0;36m532 |[0;0m         let client = self.client
+[0;36m533 |[0;0m         queue.async(execute: DispatchWorkItem { [self] in
+    [0;36m|[0;0m                                               |- [1;39mnote: [1;39m'client' implicitly strongly captured here[0;0m
+    [0;36m|[0;0m                                               `- [1;39mnote: [1;39madd 'client' as a capture list item to silence[0;0m
+[0;36m534 |[0;0m             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+[0;36m535 |[0;0m                   let url = request.url else { return }
+    [0;36m:[0;0m
+[0;36m548 |[0;0m                 let tick = DispatchSource.makeTimerSource(queue: queue)
+[0;36m549 |[0;0m                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+[0;36m550 |[0;0m                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    [0;36m|[0;0m                                                                                   |- [1;33mwarning: [1;39m'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture\ImplicitStrongCapture]8;;\]
+    [0;36m|[0;0m                                                                                   `- [1;39mnote: [1;39mexplicitly assign the capture list item to silence[0;0m
+[0;36m551 |[0;0m                     guard let self, !self.stopped else { return }
+[0;36m552 |[0;0m                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[50 / 68] AllIncludingTests
+[50 / 68] SwiftJ2KJPIPTests-product
+[50 / 68] SwiftJ2K3DTests-product
+[50 / 68] SwiftJ2KTests-product
+[50 / 68] SwiftJ2K3DTests-product
+[52 / 68] SwiftJ2KTests-product
+[54 / 68] SwiftJ2KTests-product
+[56 / 68] SwiftJ2K3DTests-product
+[58 / 68] SwiftJ2K3DTests-product
+[60 / 68] SwiftJ2K3DTests-product
+[62 / 68] SwiftJ2KJPIPTests-product
+[64 / 68] SwiftJ2KJPIPTests-product
+Build complete! (13.41 sec)

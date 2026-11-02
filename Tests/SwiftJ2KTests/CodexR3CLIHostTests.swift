@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+#if os(macOS) || os(Linux)
 import Foundation
 import Testing
 
@@ -34,3 +35,4 @@ struct CodexR3CLIHostTests {
         #expect(result.stderrText.contains("Invalid IPv4 bind address"))
     }
 }
+#endif

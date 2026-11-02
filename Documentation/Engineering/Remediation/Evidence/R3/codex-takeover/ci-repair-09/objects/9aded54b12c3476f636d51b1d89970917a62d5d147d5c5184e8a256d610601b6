@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="TestResults" errors="0" tests="55" failures="0" skipped="0" time="14.708352292">
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="volumetricResourceLimitsConcurrencyAndPreAllocationAdmission()" time="4.0728665" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="monotonicBudgetTelemetryOrderingAndStaleSnapshotRejection()" time="2.642456917" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="oversizedResolutionLevelRejectedWithoutShiftTrap()" time="1.604014458" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="postCompletedProgressCancellationAbortsVolumeOperations()" time="2.64252825" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="volumetricFidelityTruthfulness()" time="3.167507625" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="highBitDepthLosslessExactVoxelPreservation()" time="3.562818292" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="outputGrowthOverlapAndExactJ3DSHeaderBoundaries()" time="3.031349834" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="childTileOutputReservationTransferAndDelayedParentConsumption()" time="14.703330249999999" />
+    <testcase classname="SwiftJ2K3DTests.R1VolumeRemediationTests" name="adversarialInt64MaxCoefficientsThrowWithoutTrapping()" time="1.603866666" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ProgressTests" name="ineligibleTilesDoNotComplete()" time="1.861841584" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="reducedLossyWorkspaceIncludesNestedSlices(useROI:)" time="1.72983225" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="reducedROIUsesSelectedGridOrigin(bits:)" time="2.642463375" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="oddTilesUseGlobalGrid(bits:)" time="3.5461765" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="emptyReducedROIIsDefined()" time="1.801351334" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="disjointROIStillPreservesCanvasGeometry()" time="1.861807583" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="publicationPreflight(hasHTMarkers:)" time="1.852712875" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="sliceReductionHasExplicitStride()" time="1.355082875" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="lossyGridMatchesFullReconstruction(ht:)" time="3.148521542" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumeGridTests" name="coefficientWorkspaceReachesVolumeReport()" time="3.779020625" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3IndependentHTTests" name="independentlyTruncatedRefinementPayloads(rate:)" time="2.829229833" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3IndependentHTTests" name="kakaduLayeredPayloadsDecodeExactly(name:)" time="1.750661" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumePixelAccountingTests" name="reducedVolumeCountsBridgeBuffers(workers:)" time="2.0967475" />
+    <testcase classname="SwiftJ2K3DTests.CodexR2VolumePixelAccountingTests" name="lossyFallbackKeepsOuterBuffersCharged()" time="1.729104208" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="encoderLayerMetadataCannotBypassWorkspaceLimit()" time="0.397424125" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="verificationVolumesAreAdmittedAndReported()" time="1.571474667" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="arrayForwardingCopyIsAdmitted()" time="0.448912959" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="continuedSegmentGrowthBoundary()" time="0.754832" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="entropyFinishRetainsCapacityUntilCompaction()" time="0.754817166" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3ResourceTests" name="deniedPacketHeaderDoesNotAllocate()" time="0.7400955" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3Part2MarkerTests" name="componentIndexBoundaries(_:)" time="0.773196458" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3Part2MarkerTests" name="rejectInconsistentMarkers(_:)" time="1.355129333" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3Part2MarkerTests" name="rejectInvalidDescriptions()" time="0.748376792" />
+    <testcase classname="SwiftJ2K3DTests.R2VolumeRemediationTests" name="volumeGeometryPreservationAndMetadataPolicy()" time="3.393803792" />
+    <testcase classname="SwiftJ2K3DTests.R2VolumeRemediationTests" name="volumeExecutionPolicyEnforcementAndFallback()" time="1.60419175" />
+    <testcase classname="SwiftJ2K3DTests.R2VolumeRemediationTests" name="volumeCopyPolicyAndOperationReportTelemetry()" time="1.43839975" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="multiLayerIrreversibleMonotonicQuality()" time="1.7283195" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="requiredAcceleratedFailureNeverEmitsCompletedProgress()" time="1.397811292" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="waveletWholeSampleSymmetricBoundaryCompliance()" time="1.604086583" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="reconciledHTInJP3DAndWaveletDomainTranscode()" time="1.60460175" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="multiPassHTSigPropMagRefMultiHTAndPlaceholders()" time="1.727706958" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="malformedMarkerAndEntropyRejection()" time="1.727700042" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="multiTilePartStreamWriterAndMultiSpectral()" time="1.727921208" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="byteLevelNormativeMarkersAndNoPrivateFraming()" time="1.970595125" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="multiComponentHeterogeneousAndNonCubicLosslessRoundTrips()" time="3.557496416" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="part2SignedWireLimbsZeroDCOffsetSynthesis()" time="3.809714792" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="preAllocationEntropyBudgetRejectsBeforeAllocating()" time="3.339706708" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="tileHeaderQcdQccCodCocPrecedenceAndWireKmax()" time="1.604475208" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="part2BitSplitDecodeWithinFloorAndBoundedPacketWorkspace()" time="8.951198042" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="capMagbTable4AndRgnfreeHomogeneousEnforcement()" time="1.535853166" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="allFiveProgressionsPacketOrderAndRoundTrip()" time="1.763059541" />
+    <testcase classname="SwiftJ2K3DTests.R3VolumeRemediationTests" name="r1R2RegressionRepairsBitSplitWorkspaceAndAcceleration()" time="1.535888667" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3LayerBudgetTests" name="lazyStreamingSequencerFitsUnder128KiBAcrossAllProgressions()" time="5.736096416" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3LayerBudgetTests" name="indexingSourceAndForwardingBoundary()" time="0.773470333" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3LayerBudgetTests" name="reassemblyOutputCopyBoundary()" time="4.3776865" />
+    <testcase classname="SwiftJ2K3DTests.CodexR3LayerBudgetTests" name="retainedPacketIndexAndSegmentsRejectPreAllocationUnder128KiB()" time="1.438768541" />
+  </testsuite>
+</testsuites>

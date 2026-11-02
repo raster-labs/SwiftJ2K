@@ -13,9 +13,11 @@ import Testing
 
 // MARK: - Helper to locate the built swiftj2k-cli binary
 
+#if os(macOS) || os(Linux)
 private func invokeCLI(_ args: [String], stdinData: Data? = nil) async throws -> CLITestProcessResult {
     try await CLITestProcess.run(args, stdinData: stdinData)
 }
+#endif
 
 @Suite("Milestone 12 — CLI & Consumer Breadth Tests")
 struct CLIBreadthAndConsumerTests {
@@ -94,6 +96,7 @@ struct CLIBreadthAndConsumerTests {
         }
     }
 
+    #if os(macOS) || os(Linux)
     @Test("M12-AUD-001 & M12-AUD-003: CLI 16-bit PNG, TIFF, PGM, RAW, and compare endian/signedness accuracy")
     func cliMultiFormat16BitAndCompareMetrics() async throws {
         let tmp = FileManager.default.temporaryDirectory
@@ -221,4 +224,5 @@ struct CLIBreadthAndConsumerTests {
         #expect(failRes.status == 6)
         #expect(!failRes.stderrText.contains("sensitive-patient-name"))
     }
+    #endif
 }

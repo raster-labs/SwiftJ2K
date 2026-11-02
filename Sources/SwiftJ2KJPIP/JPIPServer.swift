@@ -118,6 +118,20 @@ public actor JPIPServer {
     /// Bandwidth throttle for controlling data rates.
     private var bandwidthThrottle: JPIPBandwidthThrottle
 
+    /// Lifecycle phase for generation-bound start/stop serialization and stale-callback rejection.
+    package enum LifecyclePhase: Sendable, Equatable {
+        case idle
+        case starting(generation: UInt64)
+        case running(generation: UInt64)
+        case stopping(generation: UInt64)
+    }
+
+    /// Current server lifecycle phase.
+    package private(set) var lifecyclePhase: LifecyclePhase
+
+    /// Monotonically increasing server generation counter.
+    package private(set) var lifecycleGeneration: UInt64
+
     /// Whether the server is currently running.
     public private(set) var isRunning: Bool
 
@@ -129,6 +143,25 @@ public actor JPIPServer {
 
     /// Optional WebSocket upgrade delegate (used when embedded inside ``JPIPWebSocketServer``).
     private var webSocketDelegate: JPIPWebSocketServer?
+
+    /// Generation token of the attached WebSocket delegate.
+    private var webSocketDelegateGeneration: UInt64?
+
+    /// Optional per-instance listener syscall seam factory for deterministic tests (`nil` in production).
+    private var listenerSyscallSeamFactory: (@Sendable () -> JPIPSocketSyscallSeam?)?
+
+    /// Optional per-instance listener lifecycle observer factory for deterministic tests (`nil` in production).
+    private var listenerObserverFactory: (@Sendable () -> (@Sendable (JPIPSocketLifecycleEvent) -> Void)?)?
+
+    /// Optional per-instance async hook invoked during `start()` while in `.starting(generation)` (`nil` in production).
+    private var startLifecycleHook: (@Sendable (UInt64) async throws -> Void)?
+
+    /// Optional per-instance async hook invoked during `stop()` while in `.stopping(generation)` (`nil` in production).
+    private var stopLifecycleHook: (@Sendable (UInt64) async -> Void)?
+
+    /// Optional per-instance async hook invoked between listener generation validation and
+    /// `JPIPWebSocketServer.acceptLiveSocketUpgrade` hop (`nil` in production).
+    private var beforeWebSocketUpgradeHopHook: (@Sendable (UInt64, UInt64) async -> Void)?
 
     /// Configuration for the server.
     nonisolated public let configuration: Configuration
@@ -226,15 +259,50 @@ public actor JPIPServer {
             globalLimit: configuration.globalBandwidthLimit,
             perClientLimit: configuration.perClientBandwidthLimit
         )
+        self.lifecyclePhase = .idle
+        self.lifecycleGeneration = 0
         self.isRunning = false
         self.listener = nil
         self.socketPool = nil
         self.webSocketDelegate = nil
+        self.webSocketDelegateGeneration = nil
+        self.listenerSyscallSeamFactory = nil
+        self.listenerObserverFactory = nil
+        self.startLifecycleHook = nil
+        self.stopLifecycleHook = nil
+        self.beforeWebSocketUpgradeHopHook = nil
         self.stats = Statistics()
     }
 
-    package func setWebSocketDelegate(_ delegate: JPIPWebSocketServer?) {
+    package var runningGeneration: UInt64? {
+        if case .running(let g) = lifecyclePhase { return g }
+        return nil
+    }
+
+    package func setWebSocketDelegate(_ delegate: JPIPWebSocketServer?, generation: UInt64? = nil) {
         self.webSocketDelegate = delegate
+        self.webSocketDelegateGeneration = delegate == nil ? nil : generation
+    }
+
+    package func clearWebSocketDelegate(ifMatchingGeneration generation: UInt64) {
+        if self.webSocketDelegateGeneration == generation {
+            self.webSocketDelegate = nil
+            self.webSocketDelegateGeneration = nil
+        }
+    }
+
+    package func configureTestingHooks(
+        listenerSyscallSeamFactory: (@Sendable () -> JPIPSocketSyscallSeam?)? = nil,
+        listenerObserverFactory: (@Sendable () -> (@Sendable (JPIPSocketLifecycleEvent) -> Void)?)? = nil,
+        startLifecycleHook: (@Sendable (UInt64) async throws -> Void)? = nil,
+        stopLifecycleHook: (@Sendable (UInt64) async -> Void)? = nil,
+        beforeWebSocketUpgradeHopHook: (@Sendable (UInt64, UInt64) async -> Void)? = nil
+    ) {
+        self.listenerSyscallSeamFactory = listenerSyscallSeamFactory
+        self.listenerObserverFactory = listenerObserverFactory
+        self.startLifecycleHook = startLifecycleHook
+        self.stopLifecycleHook = stopLifecycleHook
+        self.beforeWebSocketUpgradeHopHook = beforeWebSocketUpgradeHopHook
     }
 
     /// Registers an image or 3D `.jp3d` file for serving.
@@ -283,25 +351,60 @@ public actor JPIPServer {
 
     /// Starts the real POSIX TCP HTTP/1.1 + RFC 6455 WebSocket listener.
     public func start() async throws {
-        guard !isRunning else {
+        switch lifecyclePhase {
+        case .idle:
+            break
+        case .starting:
+            throw J2KError.invalidState("Server is already starting")
+        case .running:
             throw J2KError.invalidState("Server is already running")
+        case .stopping:
+            throw J2KError.invalidState("Server is currently stopping")
         }
 
-        let tcpListener = try JPIPTCPListener(host: bindHost, port: port)
+        lifecycleGeneration &+= 1
+        let generation = lifecycleGeneration
+        lifecyclePhase = .starting(generation: generation)
+        isRunning = false
+
+        let tcpListener: JPIPTCPListener
+        do {
+            if let startLifecycleHook {
+                try await startLifecycleHook(generation)
+            }
+            let seam = listenerSyscallSeamFactory?()
+            let observer = listenerObserverFactory?()
+            tcpListener = try JPIPTCPListener(
+                host: bindHost,
+                port: port,
+                syscallSeam: seam,
+                observer: observer
+            )
+        } catch {
+            lifecyclePhase = .idle
+            isRunning = false
+            throw error
+        }
+
         let pool = JPIPActiveSocketPool()
         self.listener = tcpListener
         self.listeningPort = tcpListener.boundPort
         self.socketPool = pool
+        self.sessions = [:]
+        self.requestQueue = JPIPRequestQueue(maxSize: configuration.maxQueueSize)
+        self.stats.activeClients = 0
+        self.stats.queuedRequests = 0
+        self.lifecyclePhase = .running(generation: generation)
         self.isRunning = true
 
         let serverRef = self
         let maxClients = configuration.maxClients
         let acceptQueue = DispatchQueue(
-            label: "com.rasterlab.swiftj2k.jpip.accept.\(tcpListener.boundPort)",
+            label: "com.rasterlab.swiftj2k.jpip.accept.\(tcpListener.boundPort).gen\(generation)",
             qos: .userInitiated
         )
         let clientQueue = DispatchQueue(
-            label: "com.rasterlab.swiftj2k.jpip.clients.\(tcpListener.boundPort)",
+            label: "com.rasterlab.swiftj2k.jpip.clients.\(tcpListener.boundPort).gen\(generation)",
             qos: .userInitiated,
             attributes: .concurrent
         )
@@ -337,7 +440,7 @@ public actor JPIPServer {
                         conn.close()
                         pool.remove(connID)
                     }
-                    Self.serveClientConnection(conn, server: serverRef)
+                    Self.serveClientConnection(conn, server: serverRef, generation: generation)
                 }
             }
         }
@@ -345,30 +448,52 @@ public actor JPIPServer {
 
     /// Stops the server, closing the listening socket, active client connections, and sessions.
     public func stop() async throws {
-        guard isRunning else {
+        guard case .running(let generation) = lifecyclePhase else {
             throw J2KError.invalidState("Server is not running")
         }
 
+        lifecyclePhase = .stopping(generation: generation)
         isRunning = false
-        listener?.close()
-        listener = nil
-        socketPool?.closeAll()
-        socketPool = nil
+        defer {
+            lifecyclePhase = .idle
+            isRunning = false
+        }
 
-        for (_, session) in sessions {
+        let retiringListener = listener
+        listener = nil
+        let retiringPool = socketPool
+        socketPool = nil
+        let retiringSessions = Array(sessions.values)
+        sessions.removeAll()
+        let retiringQueue = requestQueue
+        requestQueue = JPIPRequestQueue(maxSize: configuration.maxQueueSize)
+        stats.activeClients = 0
+        stats.queuedRequests = 0
+
+        retiringListener?.close()
+        retiringPool?.closeAll()
+
+        if let stopLifecycleHook {
+            await stopLifecycleHook(generation)
+        }
+
+        for session in retiringSessions {
             await session.close()
         }
-        sessions.removeAll()
-        stats.activeClients = 0
 
-        await requestQueue.clear()
+        await retiringQueue.clear()
+
+        if let retiringListener {
+            try await retiringListener.waitForCloseCompletion()
+        }
     }
 
     // MARK: - Blocking Socket Connection Worker (Dedicated DispatchQueue)
 
     nonisolated private static func serveClientConnection(
         _ conn: JPIPTCPConnection,
-        server: JPIPServer
+        server: JPIPServer,
+        generation: UInt64
     ) {
         while conn.isOpen {
             let wireReq: JPIPHTTPWireRequest?
@@ -384,7 +509,7 @@ public actor JPIPServer {
             // Check for RFC 6455 WebSocket upgrade (`Upgrade: websocket`)
             if let upgrade = req.header("Upgrade"),
                upgrade.lowercased() == "websocket" {
-                Self.serveWebSocketUpgrade(req, on: conn, server: server)
+                Self.serveWebSocketUpgrade(req, on: conn, server: server, generation: generation)
                 return
             }
 
@@ -392,7 +517,7 @@ public actor JPIPServer {
             let box = WireOutcomeBox()
             let sema = DispatchSemaphore(value: 0)
             Task {
-                let outcome = await server.handleWireHTTPRequest(req)
+                let outcome = await server.handleWireHTTPRequest(req, generation: generation)
                 box.store(outcome)
                 sema.signal()
             }
@@ -424,7 +549,8 @@ public actor JPIPServer {
     nonisolated private static func serveWebSocketUpgrade(
         _ req: JPIPHTTPWireRequest,
         on conn: JPIPTCPConnection,
-        server: JPIPServer
+        server: JPIPServer,
+        generation: UInt64
     ) {
         guard let clientKey = req.header("Sec-WebSocket-Key"),
               !clientKey.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -441,12 +567,34 @@ public actor JPIPServer {
         let upgradeBox = WSUpgradeBox()
         let sema = DispatchSemaphore(value: 0)
         Task {
-            let delegate = await server.getWebSocketDelegate()
+            let (isGenActive, delegate, delegateGen, hopHook) = await server.getWebSocketDelegate(forServerGeneration: generation)
+            guard isGenActive else {
+                upgradeBox.store(delegate: nil, connectionID: nil, wsGeneration: nil, error: "Server is not running")
+                sema.signal()
+                return
+            }
             if let wsServer = delegate {
-                let res = await wsServer.acceptLiveSocketUpgrade(headers: req.headers, socket: conn)
-                upgradeBox.store(delegate: wsServer, connectionID: res.connectionID, error: res.error)
+                guard let delegateGen else {
+                    upgradeBox.store(delegate: nil, connectionID: nil, wsGeneration: nil, error: "Server is not running")
+                    sema.signal()
+                    return
+                }
+                if let hopHook {
+                    await hopHook(generation, delegateGen)
+                }
+                let res = await wsServer.acceptLiveSocketUpgrade(
+                    headers: req.headers,
+                    socket: conn,
+                    expectedGeneration: delegateGen
+                )
+                upgradeBox.store(
+                    delegate: wsServer,
+                    connectionID: res.connectionID,
+                    wsGeneration: res.generation,
+                    error: res.error
+                )
             } else {
-                upgradeBox.store(delegate: nil, connectionID: UUID().uuidString, error: nil)
+                upgradeBox.store(delegate: nil, connectionID: UUID().uuidString, wsGeneration: nil, error: nil)
             }
             sema.signal()
         }
@@ -474,9 +622,10 @@ public actor JPIPServer {
             conn.setReceiveTimeout(seconds: 0)
         } catch {
             if let wsServer = upgradeBox.delegate, let cid = upgradeBox.connectionID {
+                let wsGen = upgradeBox.wsGeneration
                 let closeSema = DispatchSemaphore(value: 0)
                 Task {
-                    await wsServer.closeConnection(cid)
+                    await wsServer.closeConnection(cid, expectedGeneration: wsGen)
                     closeSema.signal()
                 }
                 closeSema.wait()
@@ -486,11 +635,12 @@ public actor JPIPServer {
 
         let wsDelegate = upgradeBox.delegate
         let wsConnID = upgradeBox.connectionID ?? UUID().uuidString
+        let wsGeneration = upgradeBox.wsGeneration
         defer {
             if let wsServer = wsDelegate {
                 let closeSema = DispatchSemaphore(value: 0)
                 Task {
-                    await wsServer.closeConnection(wsConnID)
+                    await wsServer.closeConnection(wsConnID, expectedGeneration: wsGeneration)
                     closeSema.signal()
                 }
                 closeSema.wait()
@@ -526,7 +676,8 @@ public actor JPIPServer {
                     Task {
                         _ = try? await wsServer.handleFrame(
                             JPIPWebSocketFrame(type: .pong, payload: wireFrame.payload),
-                            from: wsConnID
+                            from: wsConnID,
+                            expectedGeneration: wsGeneration
                         )
                         s.signal()
                     }
@@ -547,7 +698,11 @@ public actor JPIPServer {
                 Task {
                     if let wsServer = wsDelegate {
                         do {
-                            let reply = try await wsServer.handleFrame(appFrame, from: wsConnID)
+                            let reply = try await wsServer.handleFrame(
+                                appFrame,
+                                from: wsConnID,
+                                expectedGeneration: wsGeneration
+                            )
                             replyBox.store(reply)
                         } catch {
                             replyBox.store(JPIPWebSocketFrame(
@@ -557,7 +712,11 @@ public actor JPIPServer {
                             ))
                         }
                     } else {
-                        let reply = await server.handleStandaloneWebSocketFrame(appFrame, encoder: msgEncoder)
+                        let reply = await server.handleStandaloneWebSocketFrame(
+                            appFrame,
+                            encoder: msgEncoder,
+                            generation: generation
+                        )
                         replyBox.store(reply)
                     }
                     s.signal()
@@ -585,10 +744,32 @@ public actor JPIPServer {
         webSocketDelegate
     }
 
+    package func getWebSocketDelegate(
+        forServerGeneration generation: UInt64
+    ) -> (
+        isActive: Bool,
+        delegate: JPIPWebSocketServer?,
+        delegateGeneration: UInt64?,
+        hopHook: (@Sendable (UInt64, UInt64) async -> Void)?
+    ) {
+        guard case .running(let activeGen) = lifecyclePhase, activeGen == generation else {
+            return (false, nil, nil, nil)
+        }
+        return (true, webSocketDelegate, webSocketDelegateGeneration, beforeWebSocketUpgradeHopHook)
+    }
+
     private func handleStandaloneWebSocketFrame(
         _ frame: JPIPWebSocketFrame,
-        encoder: JPIPWebSocketMessageEncoder
+        encoder: JPIPWebSocketMessageEncoder,
+        generation: UInt64
     ) async -> JPIPWebSocketFrame? {
+        guard case .running(let activeGen) = lifecyclePhase, activeGen == generation else {
+            return JPIPWebSocketFrame(
+                type: .error,
+                payload: Data("Server is not running".utf8),
+                requestID: frame.requestID
+            )
+        }
         switch frame.type {
         case .ping:
             return JPIPWebSocketFrame(type: .pong, payload: frame.payload, requestID: frame.requestID)
@@ -601,7 +782,7 @@ public actor JPIPServer {
                 )
             }
             do {
-                let rawResp = try await handleRequest(req)
+                let rawResp = try await handleRequest(req, expectedGeneration: generation)
                 var wsHeaders = rawResp.headers
                 wsHeaders["X-JPIP-Transport"] = "websocket"
                 let resp = JPIPResponse(
@@ -622,7 +803,7 @@ public actor JPIPServer {
             if let cmd = String(data: frame.payload, encoding: .utf8),
                cmd.hasPrefix("close-session:") {
                 let sid = String(cmd.dropFirst("close-session:".count))
-                await closeSession(sid)
+                await closeSession(sid, expectedGeneration: generation)
                 return JPIPWebSocketFrame(
                     type: .control,
                     payload: Data("session-closed:\(sid)".utf8),
@@ -635,7 +816,19 @@ public actor JPIPServer {
         }
     }
 
-    private func handleWireHTTPRequest(_ wireReq: JPIPHTTPWireRequest) async -> (statusCode: Int, headers: [String: String], body: Data) {
+    package func handleWireHTTPRequest(
+        _ wireReq: JPIPHTTPWireRequest,
+        generation: UInt64? = nil
+    ) async -> (statusCode: Int, headers: [String: String], body: Data) {
+        if let generation {
+            guard case .running(let activeGen) = lifecyclePhase, activeGen == generation else {
+                return (
+                    503,
+                    ["Content-Type": "text/plain; charset=utf-8", "Connection": "close"],
+                    Data("Server is not running".utf8)
+                )
+            }
+        }
         let method = wireReq.method.uppercased()
         guard method == "GET" || method == "HEAD" || method == "POST" else {
             return (405, ["Content-Type": "text/plain; charset=utf-8", "Allow": "GET, HEAD, POST"], Data("Method Not Allowed".utf8))
@@ -665,7 +858,7 @@ public actor JPIPServer {
         }
 
         do {
-            let resp = try await handleRequest(parsedReq)
+            let resp = try await handleRequest(parsedReq, expectedGeneration: generation)
             let body = (method == "HEAD") ? Data() : resp.data
             return (resp.statusCode, resp.headers, body)
         } catch let codecErr as CodecError {
@@ -737,9 +930,20 @@ public actor JPIPServer {
     /// - Returns: A JPIP response.
     /// - Throws: ``J2KError`` or ``CodecError`` if the request cannot be handled.
     public func handleRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
-        guard isRunning else {
+        try await handleRequest(request, expectedGeneration: nil)
+    }
+
+    package func handleRequest(
+        _ request: JPIPRequest,
+        expectedGeneration: UInt64?
+    ) async throws -> JPIPResponse {
+        guard case .running(let generation) = lifecyclePhase else {
             throw J2KError.invalidState("Server is not running")
         }
+        if let expectedGeneration, expectedGeneration != generation {
+            throw J2KError.invalidState("Server generation \(expectedGeneration) is no longer active")
+        }
+        let activeQueue = requestQueue
 
         stats.totalRequests += 1
 
@@ -748,28 +952,40 @@ public actor JPIPServer {
 
         // 1. Handle ITU-T Rec. T.808 Clause C.3.3 channel close (`cclose`)
         if let ccloseList = request.cclose, !ccloseList.isEmpty {
-            return try await handleChannelClose(request, ccloseList: ccloseList)
+            return try await handleChannelClose(request, ccloseList: ccloseList, generation: generation)
         }
 
-        // Enqueue the request
-        try await requestQueue.enqueue(request, priority: determinePriority(request))
-        stats.queuedRequests = await requestQueue.size
+        // Enqueue the request on this generation's isolated queue
+        try await activeQueue.enqueue(request, priority: determinePriority(request))
+        let qSizeAfterEnqueue = await activeQueue.size
+        guard case .running(generation) = lifecyclePhase else {
+            _ = await activeQueue.dequeue()
+            throw J2KError.invalidState("Server stopped during request enqueue")
+        }
+        stats.queuedRequests = qSizeAfterEnqueue
 
         // Resolve target name before session creation when `tid` or leading slash is used
         let resolvedRequest = resolveTargetAlias(in: request)
 
-        // Get or create session
-        let session = try await getOrCreateSession(for: resolvedRequest)
+        // Get or create session synchronously within the verified running generation turn
+        let session = try getOrCreateSession(for: resolvedRequest)
 
         // Check bandwidth limits
         let canSend = await bandwidthThrottle.canSend(
             clientID: session.sessionID,
             bytes: 1024
         )
+        guard case .running(generation) = lifecyclePhase else {
+            _ = await activeQueue.dequeue()
+            throw J2KError.invalidState("Server stopped during bandwidth check")
+        }
 
         guard canSend else {
-            _ = await requestQueue.dequeue()
-            stats.queuedRequests = await requestQueue.size
+            _ = await activeQueue.dequeue()
+            let qSize = await activeQueue.size
+            if case .running(generation) = lifecyclePhase {
+                stats.queuedRequests = qSize
+            }
             return JPIPResponse(
                 channelID: session.channelID.isEmpty ? nil : session.channelID,
                 data: Data(),
@@ -783,17 +999,24 @@ public actor JPIPServer {
         do {
             response = try await processRequest(resolvedRequest, session: session)
         } catch {
-            _ = await requestQueue.dequeue()
-            stats.queuedRequests = await requestQueue.size
-            // If `cnew` allocated a session for a nonexistent target, roll it back cleanly
-            if resolvedRequest.cnew != nil && !session.channelID.isEmpty {
-                sessions.removeValue(forKey: session.channelID)
-                stats.activeClients = sessions.count
+            _ = await activeQueue.dequeue()
+            let qSize = await activeQueue.size
+            if case .running(generation) = lifecyclePhase {
+                stats.queuedRequests = qSize
+                // If `cnew` allocated a session for a nonexistent target, roll it back cleanly
+                if resolvedRequest.cnew != nil && !session.channelID.isEmpty {
+                    sessions.removeValue(forKey: session.channelID)
+                    stats.activeClients = sessions.count
+                }
             }
             throw error
         }
 
-        _ = await requestQueue.dequeue()
+        _ = await activeQueue.dequeue()
+        let qSizeAfterDequeue = await activeQueue.size
+        guard case .running(generation) = lifecyclePhase else {
+            throw J2KError.invalidState("Server stopped before request completion")
+        }
         await session.recordRequest(bytesSent: response.data.count)
 
         await bandwidthThrottle.recordSent(
@@ -801,33 +1024,40 @@ public actor JPIPServer {
             bytes: response.data.count
         )
 
-        stats.totalBytesSent += response.data.count
-        stats.queuedRequests = await requestQueue.size
+        if case .running(generation) = lifecyclePhase {
+            stats.totalBytesSent += response.data.count
+            stats.queuedRequests = qSizeAfterDequeue
+        }
 
         return response
     }
 
     private func handleChannelClose(
         _ request: JPIPRequest,
-        ccloseList: [String]
+        ccloseList: [String],
+        generation: UInt64
     ) async throws -> JPIPResponse {
+        var sessionsToClose: [JPIPServerSession] = []
         if ccloseList.contains("*") {
             if let cid = request.cid, sessions[cid] == nil {
                 throw J2KError.invalidParameter("Unknown or already closed JPIP channel ID: \(cid)")
             }
-            for (_, session) in sessions {
-                await session.close()
-            }
+            sessionsToClose = Array(sessions.values)
             sessions.removeAll()
         } else {
             for cidToClose in ccloseList {
                 guard let session = sessions.removeValue(forKey: cidToClose) else {
                     throw J2KError.invalidParameter("Unknown or already closed JPIP channel ID: \(cidToClose)")
                 }
-                await session.close()
+                sessionsToClose.append(session)
             }
         }
-        stats.activeClients = sessions.count
+        if case .running(generation) = lifecyclePhase {
+            stats.activeClients = sessions.count
+        }
+        for session in sessionsToClose {
+            await session.close()
+        }
         let body: Data
         let headers: [String: String]
         if let st = request.streamType {
@@ -886,7 +1116,7 @@ public actor JPIPServer {
 
     /// Gets an existing session, creates a persistent session when `cnew` is requested,
     /// or returns an ephemeral non-persisted session for stateless requests (`cid == nil && cnew == nil`).
-    private func getOrCreateSession(for request: JPIPRequest) async throws -> JPIPServerSession {
+    private func getOrCreateSession(for request: JPIPRequest) throws -> JPIPServerSession {
         if let cid = request.cid {
             if let existingSession = sessions[cid] {
                 return existingSession
@@ -1303,21 +1533,47 @@ public actor JPIPServer {
 
     /// Closes a client session by channel/session ID.
     public func closeSession(_ sessionID: String) async {
+        await closeSession(sessionID, expectedGeneration: nil)
+    }
+
+    package func closeSession(_ sessionID: String, expectedGeneration: UInt64?) async {
+        let activeGeneration: UInt64? = {
+            if case .running(let g) = lifecyclePhase { return g }
+            return nil
+        }()
+        if let expectedGeneration, activeGeneration != expectedGeneration {
+            return
+        }
         if let session = sessions.removeValue(forKey: sessionID) {
+            if activeGeneration != nil {
+                stats.activeClients = sessions.count
+            }
             await session.close()
-            stats.activeClients = sessions.count
             return
         }
         if let match = sessions.first(where: { $0.value.sessionID == sessionID }) {
             sessions.removeValue(forKey: match.key)
+            if activeGeneration != nil {
+                stats.activeClients = sessions.count
+            }
             await match.value.close()
-            stats.activeClients = sessions.count
         }
     }
 
     /// Gets the number of active sessions.
     public func getActiveSessionCount() async -> Int {
         sessions.count
+    }
+
+    package func registerTestingSession(id: String, target: String) {
+        guard case .running = lifecyclePhase else { return }
+        let session = JPIPServerSession(
+            sessionID: id,
+            channelID: id,
+            target: target
+        )
+        sessions[id] = session
+        stats.activeClients = sessions.count
     }
 
     /// Gets the format information for a registered image.
@@ -1367,12 +1623,19 @@ private final class WSUpgradeBox: @unchecked Sendable {
     private let lock = NSLock()
     private(set) var delegate: JPIPWebSocketServer?
     private(set) var connectionID: String?
+    private(set) var wsGeneration: UInt64?
     private(set) var error: String?
 
-    func store(delegate: JPIPWebSocketServer?, connectionID: String?, error: String?) {
+    func store(
+        delegate: JPIPWebSocketServer?,
+        connectionID: String?,
+        wsGeneration: UInt64?,
+        error: String?
+    ) {
         lock.lock()
         self.delegate = delegate
         self.connectionID = connectionID
+        self.wsGeneration = wsGeneration
         self.error = error
         lock.unlock()
     }

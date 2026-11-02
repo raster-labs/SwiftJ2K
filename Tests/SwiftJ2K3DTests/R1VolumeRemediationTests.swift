@@ -483,17 +483,25 @@ struct R1VolumeRemediationTests {
         )
         let runtimeFailStorage = StorageTelemetry.Recorder()
         let waveBarriers = (0..<(runtimeTileCount / 2)).map { _ in VolumeConcurrencyTelemetry.RendezvousBarrier(parties: 2) }
+        let waveFirstWorkerDoneGates = (0..<(runtimeTileCount / 2)).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
         let waveParentGates = (0..<(runtimeTileCount / 2)).map { _ in VolumeConcurrencyTelemetry.PhaseGate() }
         let waveExitCounts = Mutex(Array(repeating: 0, count: runtimeTileCount / 2))
         let runtimeFailConcurrency = VolumeConcurrencyTelemetry.Recorder(
             onWorkerEnter: { tileIdx, _ in
                 if let idx = tileIdx, idx / 2 < waveBarriers.count {
-                    await waveBarriers[idx / 2].arriveAndWait()
+                    let wave = idx / 2
+                    await waveBarriers[wave].arriveAndWait()
+                    if wave < 2, idx % 2 == 1 {
+                        await waveFirstWorkerDoneGates[wave].wait()
+                    }
                 }
             },
             onWorkerExit: { tileIdx in
                 if let idx = tileIdx, idx / 2 < waveParentGates.count {
                     let wave = idx / 2
+                    if idx % 2 == 0 {
+                        waveFirstWorkerDoneGates[wave].open()
+                    }
                     let done = waveExitCounts.withLock { counts -> Int in
                         counts[wave] += 1
                         return counts[wave]

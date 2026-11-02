@@ -1,0 +1,1045 @@
+﻿2026-10-31T12:38:18.5995448Z Current runner version: '2.338.2'
+2026-10-31T12:38:18.6069233Z ##[group]Runner Image Provisioner
+2026-10-31T12:38:18.6070590Z Hosted Compute Agent
+2026-10-31T12:38:18.6071668Z Version: 20261021.618
+2026-10-31T12:38:18.6072722Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-31T12:38:18.6074113Z Build Date: 2026-10-21T00:45:21Z
+2026-10-31T12:38:18.6075336Z Worker ID: {d1e23ce0-ac09-41f6-8c17-716b76e5030e}
+2026-10-31T12:38:18.6076958Z Region: eastus2
+2026-10-31T12:38:18.6077843Z Cloud: Azure
+2026-10-31T12:38:18.6078726Z ##[endgroup]
+2026-10-31T12:38:18.6081106Z ##[group]Operating System
+2026-10-31T12:38:18.6082154Z Ubuntu
+2026-10-31T12:38:18.6083088Z 24.04.5
+2026-10-31T12:38:18.6083932Z LTS
+2026-10-31T12:38:18.6084724Z ##[endgroup]
+2026-10-31T12:38:18.6085839Z ##[group]Runner Image
+2026-10-31T12:38:18.6087116Z Image: ubuntu-24.04
+2026-10-31T12:38:18.6088115Z Version: 20261025.353.1
+2026-10-31T12:38:18.6090232Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-31T12:38:18.6093044Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+2026-10-31T12:38:18.6094665Z ##[endgroup]
+2026-10-31T12:38:18.6096865Z ##[group]GITHUB_TOKEN Permissions
+2026-10-31T12:38:18.6099581Z Contents: read
+2026-10-31T12:38:18.6100729Z Metadata: read
+2026-10-31T12:38:18.6101615Z ##[endgroup]
+2026-10-31T12:38:18.6104600Z Secret source: Actions
+2026-10-31T12:38:18.6106378Z Cache mode: write
+2026-10-31T12:38:18.6107753Z Prepare workflow directory
+2026-10-31T12:38:18.6923664Z Prepare all required actions
+2026-10-31T12:38:18.6999101Z Getting action download info
+2026-10-31T12:38:18.8944268Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-31T12:38:19.2355256Z Complete job name: Swift 6.2 / ubuntu-24.04
+2026-10-31T12:38:19.3030593Z ##[group]Checking docker version
+2026-10-31T12:38:19.3044048Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-31T12:38:20.3748440Z '1.48'
+2026-10-31T12:38:20.3768362Z Docker daemon API version: '1.48'
+2026-10-31T12:38:20.3769553Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-31T12:38:20.3964580Z '1.48'
+2026-10-31T12:38:20.3981238Z Docker client API version: '1.48'
+2026-10-31T12:38:20.3988267Z ##[endgroup]
+2026-10-31T12:38:20.3991829Z ##[group]Clean up resources from previous jobs
+2026-10-31T12:38:20.3997986Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=734a3a"
+2026-10-31T12:38:20.4213036Z ##[command]/usr/bin/docker network prune --force --filter "label=734a3a"
+2026-10-31T12:38:20.4376719Z ##[endgroup]
+2026-10-31T12:38:20.4378022Z ##[group]Create local container network
+2026-10-31T12:38:20.4389561Z ##[command]/usr/bin/docker network create --label 734a3a github_network_106b5142e8fd4b7797aff6811d85eaf3
+2026-10-31T12:38:20.4920653Z deea1c50faf89d31487b87acd41a53dd48339d2cec2db4272094e0976711db9a
+2026-10-31T12:38:20.4946548Z ##[endgroup]
+2026-10-31T12:38:20.4972567Z ##[group]Starting job container
+2026-10-31T12:38:20.4995463Z ##[command]/usr/bin/docker pull swift:6.2-noble
+2026-10-31T12:38:20.8234975Z 6.2-noble: Pulling from library/swift
+2026-10-31T12:38:20.9147156Z 7a48b8f0e5c7: Pulling fs layer
+2026-10-31T12:38:20.9148873Z b86902419d4e: Pulling fs layer
+2026-10-31T12:38:20.9149858Z 1c2595a2d0f3: Pulling fs layer
+2026-10-31T12:38:20.9150632Z 1ff2c6c61347: Pulling fs layer
+2026-10-31T12:38:20.9151731Z 1ff2c6c61347: Waiting
+2026-10-31T12:38:21.0911029Z 7a48b8f0e5c7: Verifying Checksum
+2026-10-31T12:38:21.0912528Z 7a48b8f0e5c7: Download complete
+2026-10-31T12:38:21.1393712Z 1ff2c6c61347: Verifying Checksum
+2026-10-31T12:38:21.1400163Z 1ff2c6c61347: Download complete
+2026-10-31T12:38:21.4569264Z b86902419d4e: Verifying Checksum
+2026-10-31T12:38:21.4570015Z b86902419d4e: Download complete
+2026-10-31T12:38:22.4365761Z 7a48b8f0e5c7: Pull complete
+2026-10-31T12:38:24.5962283Z 1c2595a2d0f3: Verifying Checksum
+2026-10-31T12:38:24.5963297Z 1c2595a2d0f3: Download complete
+2026-10-31T12:38:29.6155842Z b86902419d4e: Pull complete
+2026-10-31T12:38:46.9086630Z 1c2595a2d0f3: Pull complete
+2026-10-31T12:38:46.9197731Z 1ff2c6c61347: Pull complete
+2026-10-31T12:38:46.9242770Z Digest: sha256:e508ef1e4be68087f720de622b91cbf1e32799a7aa96134b35e6f1a1d656db7a
+2026-10-31T12:38:46.9256727Z Status: Downloaded newer image for swift:6.2-noble
+2026-10-31T12:38:46.9266842Z docker.io/library/swift:6.2-noble
+2026-10-31T12:38:46.9362671Z ##[command]/usr/bin/docker create --name 28b90d53e23c42e79a1d7328dacfac44_swift62noble_1c9a9f --label 734a3a --workdir /__w/SwiftJ2K/SwiftJ2K --network github_network_106b5142e8fd4b7797aff6811d85eaf3  -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true -v "/var/run/docker.sock":"/var/run/docker.sock" -v "/home/runner/work":"/__w" -v "/home/runner/actions-runner/cached/2.338.2/externals":"/__e":ro -v "/home/runner/work/_temp":"/__w/_temp" -v "/home/runner/work/_actions":"/__w/_actions" -v "/opt/hostedtoolcache":"/__t" -v "/home/runner/work/_temp/_github_home":"/github/home" -v "/home/runner/work/_temp/_github_workflow":"/github/workflow" --entrypoint "tail" swift:6.2-noble "-f" "/dev/null"
+2026-10-31T12:38:46.9681262Z b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:38:46.9708827Z ##[command]/usr/bin/docker start b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:38:47.5710394Z b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:38:47.5734014Z ##[command]/usr/bin/docker ps --all --filter id=b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-31T12:38:47.5881905Z b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0 Up Less than a second
+2026-10-31T12:38:47.5907861Z ##[command]/usr/bin/docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:38:47.6137407Z HOME=/github/home
+2026-10-31T12:38:47.6137940Z GITHUB_ACTIONS=true
+2026-10-31T12:38:47.6138287Z CI=true
+2026-10-31T12:38:47.6138773Z PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-10-31T12:38:47.6139448Z SWIFT_SIGNING_KEY=52BB7E3DE28A71BE22EC05FFEF80A866B47A981F
+2026-10-31T12:38:47.6140028Z SWIFT_PLATFORM=ubuntu24.04
+2026-10-31T12:38:47.6140614Z SWIFT_BRANCH=swift-6.2.4-release
+2026-10-31T12:38:47.6141069Z SWIFT_VERSION=swift-6.2.4-RELEASE
+2026-10-31T12:38:47.6141819Z SWIFT_WEBROOT=https://download.swift.org
+2026-10-31T12:38:47.6163951Z ##[endgroup]
+2026-10-31T12:38:47.6174174Z ##[group]Waiting for all services to be ready
+2026-10-31T12:38:47.6176089Z ##[endgroup]
+2026-10-31T12:38:47.6498236Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-10-31T12:38:47.6498978Z with:
+2026-10-31T12:38:47.6499212Z   persist-credentials: false
+2026-10-31T12:38:47.6499500Z   repository: raster-labs/SwiftJ2K
+2026-10-31T12:38:47.6501988Z   token: ***
+2026-10-31T12:38:47.6502231Z   ssh-strict: true
+2026-10-31T12:38:47.6502471Z   ssh-user: git
+2026-10-31T12:38:47.6502670Z   clean: true
+2026-10-31T12:38:47.6502884Z   sparse-checkout-cone-mode: true
+2026-10-31T12:38:47.6503143Z   fetch-depth: 1
+2026-10-31T12:38:47.6503344Z   fetch-tags: false
+2026-10-31T12:38:47.6503547Z   show-progress: true
+2026-10-31T12:38:47.6503756Z   lfs: false
+2026-10-31T12:38:47.6503940Z   submodules: false
+2026-10-31T12:38:47.6504148Z   set-safe-directory: true
+2026-10-31T12:38:47.6504392Z   allow-unsafe-pr-checkout: false
+2026-10-31T12:38:47.6504853Z ##[endgroup]
+2026-10-31T12:38:47.6570410Z ##[command]/usr/bin/docker exec  b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T12:38:48.1379824Z Syncing repository: raster-labs/SwiftJ2K
+2026-10-31T12:38:48.1381618Z ##[group]Getting Git version info
+2026-10-31T12:38:48.1382023Z Working directory is '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T12:38:48.1382571Z [command]/usr/bin/git version
+2026-10-31T12:38:48.1487490Z git version 2.43.0
+2026-10-31T12:38:48.1498719Z ##[endgroup]
+2026-10-31T12:38:48.1517692Z Temporarily overriding HOME='/__w/_temp/27617d9b-1845-4622-9c03-68fa95127529' before making global git config changes
+2026-10-31T12:38:48.1518885Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T12:38:48.1523609Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T12:38:48.1568274Z Deleting the contents of '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T12:38:48.1571171Z ##[group]Initializing the repository
+2026-10-31T12:38:48.1576613Z [command]/usr/bin/git init /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T12:38:48.1620262Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-31T12:38:48.1621068Z hint: is subject to change. To configure the initial branch name to use in all
+2026-10-31T12:38:48.1621602Z hint: of your new repositories, which will suppress this warning, call:
+2026-10-31T12:38:48.1621974Z hint: 
+2026-10-31T12:38:48.1622341Z hint: 	git config --global init.defaultBranch <name>
+2026-10-31T12:38:48.1622664Z hint: 
+2026-10-31T12:38:48.1622987Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-31T12:38:48.1623527Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-31T12:38:48.1623914Z hint: 
+2026-10-31T12:38:48.1624125Z hint: 	git branch -m <name>
+2026-10-31T12:38:48.1639629Z Initialized empty Git repository in /__w/SwiftJ2K/SwiftJ2K/.git/
+2026-10-31T12:38:48.1668185Z [command]/usr/bin/git remote add origin https://github.com/raster-labs/SwiftJ2K
+2026-10-31T12:38:48.1701442Z ##[endgroup]
+2026-10-31T12:38:48.1702126Z ##[group]Disabling automatic garbage collection
+2026-10-31T12:38:48.1706776Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-31T12:38:48.1744936Z ##[endgroup]
+2026-10-31T12:38:48.1745816Z ##[group]Setting up auth
+2026-10-31T12:38:48.1752687Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T12:38:48.1794578Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T12:38:48.2078413Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T12:38:48.2148361Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T12:38:48.2406256Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T12:38:48.2453123Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T12:38:48.2706944Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-31T12:38:48.2761290Z ##[endgroup]
+2026-10-31T12:38:48.2762045Z ##[group]Fetching the repository
+2026-10-31T12:38:48.2776786Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7b45184f6d50a079c6c9ac92502449fd09fe4e96:refs/remotes/pull/30/merge
+2026-10-31T12:38:49.5517973Z From https://github.com/raster-labs/SwiftJ2K
+2026-10-31T12:38:49.5518730Z  * [new ref]         7b45184f6d50a079c6c9ac92502449fd09fe4e96 -> pull/30/merge
+2026-10-31T12:38:49.5539585Z ##[endgroup]
+2026-10-31T12:38:49.5540323Z ##[group]Determining the checkout info
+2026-10-31T12:38:49.5542995Z ##[endgroup]
+2026-10-31T12:38:49.5548801Z [command]/usr/bin/git sparse-checkout disable
+2026-10-31T12:38:49.5599526Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-31T12:38:49.5640028Z ##[group]Checking out the ref
+2026-10-31T12:38:49.5644042Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/30/merge
+2026-10-31T12:38:49.8759874Z Note: switching to 'refs/remotes/pull/30/merge'.
+2026-10-31T12:38:49.8761065Z 
+2026-10-31T12:38:49.8761525Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-31T12:38:49.8762458Z changes and commit them, and you can discard any commits you make in this
+2026-10-31T12:38:49.8763323Z state without impacting any branches by switching back to a branch.
+2026-10-31T12:38:49.8763759Z 
+2026-10-31T12:38:49.8764066Z If you want to create a new branch to retain commits you create, you may
+2026-10-31T12:38:49.8764611Z do so (now or later) by using -c with the switch command. Example:
+2026-10-31T12:38:49.8764923Z 
+2026-10-31T12:38:49.8765052Z   git switch -c <new-branch-name>
+2026-10-31T12:38:49.8765260Z 
+2026-10-31T12:38:49.8765391Z Or undo this operation with:
+2026-10-31T12:38:49.8765586Z 
+2026-10-31T12:38:49.8765685Z   git switch -
+2026-10-31T12:38:49.8765875Z 
+2026-10-31T12:38:49.8766373Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-31T12:38:49.8766846Z 
+2026-10-31T12:38:49.8767221Z HEAD is now at 7b45184 Merge af6d52e055d726456dcb3025e3e1addf9bd55231 into 46be90fc3bf50429956725ee592687d8ff8e7344
+2026-10-31T12:38:49.8785081Z ##[endgroup]
+2026-10-31T12:38:49.8847092Z [command]/usr/bin/git log -1 --format=%H
+2026-10-31T12:38:49.8881544Z 7b45184f6d50a079c6c9ac92502449fd09fe4e96
+2026-10-31T12:38:49.8892325Z ##[group]Removing auth
+2026-10-31T12:38:49.8896360Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T12:38:49.8935565Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T12:38:49.9187556Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T12:38:49.9220731Z http.https://github.com/.extraheader
+2026-10-31T12:38:49.9223495Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-31T12:38:49.9264482Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T12:38:49.9506811Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T12:38:49.9545575Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T12:38:49.9785561Z ##[endgroup]
+2026-10-31T12:38:50.0027616Z ##[group]Run swift --version
+2026-10-31T12:38:50.0027954Z [36;1mswift --version[0m
+2026-10-31T12:38:50.0031231Z shell: sh -e {0}
+2026-10-31T12:38:50.0031462Z ##[endgroup]
+2026-10-31T12:38:50.1119344Z Swift version 6.2.4 (swift-6.2.4-RELEASE)
+2026-10-31T12:38:50.1119912Z Target: x86_64-unknown-linux-gnu
+2026-10-31T12:38:50.1224618Z ##[group]Run swift build
+2026-10-31T12:38:50.1224909Z [36;1mswift build[0m
+2026-10-31T12:38:50.1225223Z shell: sh -e {0}
+2026-10-31T12:38:50.1225426Z ##[endgroup]
+2026-10-31T12:38:50.7874196Z Building for debugging...
+2026-10-31T12:38:50.7956654Z [0/12] Write sources
+2026-10-31T12:38:50.8651611Z [4/12] Write swift-version-24593BA9C3E375BF.txt
+2026-10-31T12:38:50.8652038Z [4/12] Compiling CZlibShim CZlibShim.c
+2026-10-31T12:38:57.6018738Z [7/42] Emitting module SwiftJ2K
+2026-10-31T12:39:11.4039599Z [8/51] Compiling SwiftJ2K Wavelet53.swift
+2026-10-31T12:39:11.4052013Z [9/51] Compiling SwiftJ2K Wavelet97.swift
+2026-10-31T12:39:11.4059773Z [10/51] Compiling SwiftJ2K CodecAPI.swift
+2026-10-31T12:39:11.4071101Z [11/51] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+2026-10-31T12:39:11.4083022Z [12/51] Compiling SwiftJ2K JP2Boxes.swift
+2026-10-31T12:39:11.4086850Z [13/51] Compiling SwiftJ2K JP2Container.swift
+2026-10-31T12:39:11.4087543Z [14/51] Compiling SwiftJ2K JP2ReaderRequirements.swift
+2026-10-31T12:39:11.4088124Z [15/51] Compiling SwiftJ2K Errors.swift
+2026-10-31T12:39:11.4088614Z [16/51] Compiling SwiftJ2K Image.swift
+2026-10-31T12:39:11.4976728Z [17/51] Compiling SwiftJ2K ImageDescriptor.swift
+2026-10-31T12:39:11.4978956Z [18/51] Compiling SwiftJ2K ImageStorage.swift
+2026-10-31T12:39:11.4979865Z [19/51] Compiling SwiftJ2K LegacyImageBridge.swift
+2026-10-31T12:39:11.4980671Z [20/51] Compiling SwiftJ2K LegacyPixelAccounting.swift
+2026-10-31T12:39:11.4981389Z [21/51] Compiling SwiftJ2K Options.swift
+2026-10-31T12:39:11.4982061Z [22/51] Compiling SwiftJ2K Telemetry.swift
+2026-10-31T12:39:11.4982747Z [23/51] Compiling SwiftJ2K Transcoding.swift
+2026-10-31T12:39:11.4983459Z [24/51] Compiling SwiftJ2K Volume.swift
+2026-10-31T12:39:11.4984179Z [25/51] Compiling SwiftJ2K VolumePixelAccounting.swift
+2026-10-31T12:39:11.5094514Z [26/51] Compiling SwiftJ2K AcceleratedCodec.swift
+2026-10-31T12:39:11.5096867Z [27/51] Compiling SwiftJ2K AccelerationRuntime.swift
+2026-10-31T12:39:11.5097903Z [28/51] Compiling SwiftJ2K MetalAcceleration.swift
+2026-10-31T12:39:11.5104434Z [29/51] Compiling SwiftJ2K SIMDAcceleration.swift
+2026-10-31T12:39:11.5104991Z [30/51] Compiling SwiftJ2K BitIO.swift
+2026-10-31T12:39:11.5116045Z [31/51] Compiling SwiftJ2K BitPlaneCoder.swift
+2026-10-31T12:39:11.5116904Z [32/51] Compiling SwiftJ2K BoundedByteWriter.swift
+2026-10-31T12:39:11.5117495Z [33/51] Compiling SwiftJ2K Codestream.swift
+2026-10-31T12:39:11.5118018Z [34/51] Compiling SwiftJ2K ColourTransform.swift
+2026-10-31T12:39:11.5118569Z [35/51] Compiling SwiftJ2K ContextModeling.swift
+2026-10-31T12:39:21.1954430Z [36/51] Compiling SwiftJ2K HTBlockCoder.swift
+2026-10-31T12:39:21.1956597Z [37/51] Compiling SwiftJ2K HTTables.swift
+2026-10-31T12:39:21.1957502Z [38/51] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+2026-10-31T12:39:21.1958104Z [39/51] Compiling SwiftJ2K LosslessPipeline.swift
+2026-10-31T12:39:21.1958630Z [40/51] Compiling SwiftJ2K MQCoder.swift
+2026-10-31T12:39:21.1959212Z [41/51] Compiling SwiftJ2K Part1Pipeline.swift
+2026-10-31T12:39:21.1959755Z [42/51] Compiling SwiftJ2K Quantization.swift
+2026-10-31T12:39:21.1960265Z [43/51] Compiling SwiftJ2K ROI.swift
+2026-10-31T12:39:21.1960727Z [44/51] Compiling SwiftJ2K TagTree.swift
+2026-10-31T12:39:21.1961212Z [45/51] Compiling SwiftJ2K Tier2.swift
+2026-10-31T12:39:21.2969117Z [46/52] Wrapping AST for SwiftJ2K for debugging
+2026-10-31T12:39:30.6828979Z [48/78] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+2026-10-31T12:39:30.6830113Z [49/78] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+2026-10-31T12:39:30.6831207Z [50/78] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+2026-10-31T12:39:30.6832069Z [51/78] Compiling SwiftJ2K3D JP3DRateControl.swift
+2026-10-31T12:39:30.6832999Z [52/78] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+2026-10-31T12:39:30.6833696Z [53/78] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+2026-10-31T12:39:30.6834359Z [54/78] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+2026-10-31T12:39:30.6835500Z [55/78] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+2026-10-31T12:39:41.9795535Z [56/86] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+2026-10-31T12:39:41.9796568Z [57/86] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+2026-10-31T12:39:41.9797238Z [58/86] Compiling SwiftJ2K3D JP3DTiling.swift
+2026-10-31T12:39:41.9797947Z [59/86] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+2026-10-31T12:39:41.9798612Z [60/86] Compiling SwiftJ2K3D JP3DTranscoder.swift
+2026-10-31T12:39:41.9799181Z [61/86] Compiling SwiftJ2K3D JP3DTypes.swift
+2026-10-31T12:39:41.9799777Z [62/86] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+2026-10-31T12:39:41.9800397Z [63/86] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+2026-10-31T12:39:55.3330106Z [64/86] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+2026-10-31T12:39:55.3330818Z [65/86] Compiling SwiftJ2K3D JP3DConfiguration.swift
+2026-10-31T12:39:55.3331482Z [66/86] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+2026-10-31T12:39:55.3332126Z [67/86] Compiling SwiftJ2K3D JP3DDecoder.swift
+2026-10-31T12:39:55.3332737Z [68/86] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+2026-10-31T12:39:55.3333398Z [69/86] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+2026-10-31T12:39:55.3334384Z [70/86] Compiling SwiftJ2K3D JP3DEncoder.swift
+2026-10-31T12:39:55.3334901Z [71/86] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+2026-10-31T12:39:55.3335431Z [72/86] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+2026-10-31T12:39:55.3335956Z [73/86] Emitting module SwiftJ2K3D
+2026-10-31T12:39:55.3336672Z [74/86] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+2026-10-31T12:39:55.3337341Z [75/86] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+2026-10-31T12:39:55.3338085Z [76/86] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+2026-10-31T12:39:55.3338811Z [77/86] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+2026-10-31T12:39:55.3339489Z [78/86] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+2026-10-31T12:39:55.3340124Z [79/86] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+2026-10-31T12:39:55.3340743Z [80/86] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+2026-10-31T12:39:55.3341402Z [81/86] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+2026-10-31T12:39:55.4353239Z [82/87] Wrapping AST for SwiftJ2K3D for debugging
+2026-10-31T12:39:56.9740135Z [84/115] Emitting module SwiftJ2KJPIP
+2026-10-31T12:40:03.5527726Z [85/124] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+2026-10-31T12:40:03.5538496Z [86/124] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+2026-10-31T12:40:03.5539384Z [87/124] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+2026-10-31T12:40:03.5540085Z [88/124] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+2026-10-31T12:40:03.5540861Z [89/124] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+2026-10-31T12:40:03.5541477Z [90/124] Compiling SwiftJ2KJPIP JPIP.swift
+2026-10-31T12:40:03.5542169Z [91/124] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+2026-10-31T12:40:03.5542983Z [92/124] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+2026-10-31T12:40:03.5544452Z [93/124] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+2026-10-31T12:40:05.4925304Z [94/124] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+2026-10-31T12:40:05.4928173Z [95/124] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+2026-10-31T12:40:05.4929044Z [96/124] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+2026-10-31T12:40:05.4929834Z [97/124] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+2026-10-31T12:40:05.4930589Z [98/124] Compiling SwiftJ2KJPIP JPIPHTTPSRequest.swift
+2026-10-31T12:40:05.4931710Z [99/124] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+2026-10-31T12:40:05.4933416Z [100/124] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+2026-10-31T12:40:05.4934135Z [101/124] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+2026-10-31T12:40:05.4935026Z [102/124] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+2026-10-31T12:40:05.4980483Z [103/124] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+2026-10-31T12:40:05.4981745Z [104/124] Compiling SwiftJ2KJPIP JPIPRequest.swift
+2026-10-31T12:40:05.4982972Z [105/124] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+2026-10-31T12:40:05.4983899Z [106/124] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+2026-10-31T12:40:05.4984785Z [107/124] Compiling SwiftJ2KJPIP JPIPResponse.swift
+2026-10-31T12:40:05.4985602Z [108/124] Compiling SwiftJ2KJPIP JPIPServer.swift
+2026-10-31T12:40:05.4986684Z [109/124] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+2026-10-31T12:40:05.4987570Z [110/124] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+2026-10-31T12:40:05.4988456Z [111/124] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+2026-10-31T12:40:07.4078816Z [112/124] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+2026-10-31T12:40:07.4080208Z [113/124] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+2026-10-31T12:40:07.4081037Z [114/124] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+2026-10-31T12:40:07.4081525Z [115/124] Compiling SwiftJ2KJPIP JPIPTransport.swift
+2026-10-31T12:40:07.4081973Z [116/124] Compiling SwiftJ2KJPIP JPIPTransportRequestLifetime.swift
+2026-10-31T12:40:07.4082424Z [117/124] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+2026-10-31T12:40:07.4082808Z [118/124] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+2026-10-31T12:40:07.4083518Z [119/124] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+2026-10-31T12:40:07.4083922Z [120/124] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+2026-10-31T12:40:07.5202730Z [121/125] Wrapping AST for SwiftJ2KJPIP for debugging
+2026-10-31T12:40:16.6718045Z [123/129] Compiling SwiftJ2KCLI CLIImageIO.swift
+2026-10-31T12:40:16.6718793Z [124/129] Emitting module SwiftJ2KCLI
+2026-10-31T12:40:16.6719414Z [125/129] Compiling SwiftJ2KCLI main.swift
+2026-10-31T12:40:16.6720111Z [126/129] Compiling SwiftJ2KCLI CLIVerbs.swift
+2026-10-31T12:40:16.7674451Z [127/130] Wrapping AST for SwiftJ2KCLI for debugging
+2026-10-31T12:40:16.7678458Z [128/130] Write Objects.LinkFileList
+2026-10-31T12:40:17.0709307Z [129/130] Linking swiftj2k-cli
+2026-10-31T12:40:17.0732588Z Build complete! (86.41s)
+2026-10-31T12:40:17.0859987Z ##[group]Run swift test
+2026-10-31T12:40:17.0860277Z [36;1mswift test[0m
+2026-10-31T12:40:17.0860588Z shell: sh -e {0}
+2026-10-31T12:40:17.0860797Z ##[endgroup]
+2026-10-31T12:40:17.7828400Z [0/1] Planning build
+2026-10-31T12:40:17.7979997Z Building for debugging...
+2026-10-31T12:40:17.8027490Z [0/17] Write sources
+2026-10-31T12:40:17.8313499Z [3/21] Copying Fixtures
+2026-10-31T12:40:17.8616638Z [4/21] Write swift-version-24593BA9C3E375BF.txt
+2026-10-31T12:40:38.4051601Z [6/83] Compiling SwiftJ2KJPIPTests CodexR3AdmissionTests.swift
+2026-10-31T12:40:38.4059774Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.4061891Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T12:40:38.4077200Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T12:40:38.4097264Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T12:40:38.4099150Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.4101076Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.4101849Z 223 |         }
+2026-10-31T12:40:38.4102041Z 
+2026-10-31T12:40:38.4103608Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.4105645Z 237 | 
+2026-10-31T12:40:38.4106535Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T12:40:38.4107386Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T12:40:38.4109054Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.4110853Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.4111620Z 241 |     }
+2026-10-31T12:40:38.4111792Z 
+2026-10-31T12:40:38.4112399Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T12:40:38.5317586Z [7/83] Compiling SwiftJ2KJPIPTests CodexR3HTTPDelimiterTests.swift
+2026-10-31T12:40:38.5339493Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.5342009Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T12:40:38.5343615Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T12:40:38.5344818Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T12:40:38.5347135Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.5349333Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.5350538Z 223 |         }
+2026-10-31T12:40:38.5350981Z 
+2026-10-31T12:40:38.5353157Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.5355328Z 237 | 
+2026-10-31T12:40:38.5356137Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T12:40:38.5357695Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T12:40:38.5359488Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.5361327Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.5362092Z 241 |     }
+2026-10-31T12:40:38.5362275Z 
+2026-10-31T12:40:38.5362895Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T12:40:38.6620047Z [8/83] Compiling SwiftJ2KJPIPTests CodexR3HTTPStreamingTests.swift
+2026-10-31T12:40:38.6623577Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.6626551Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T12:40:38.6627665Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T12:40:38.6628939Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T12:40:38.6631098Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.6633303Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.6634367Z 223 |         }
+2026-10-31T12:40:38.6634807Z 
+2026-10-31T12:40:38.6637046Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.6639305Z 237 | 
+2026-10-31T12:40:38.6640160Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T12:40:38.6641406Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T12:40:38.6643506Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.6645656Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.6647365Z 241 |     }
+2026-10-31T12:40:38.6647838Z 
+2026-10-31T12:40:38.6648684Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T12:40:38.7618688Z [9/83] Compiling SwiftJ2KJPIPTests CodexR3IndependentTests.swift
+2026-10-31T12:40:38.7622144Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.7624807Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T12:40:38.7626596Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T12:40:38.7627927Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T12:40:38.7630050Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.7632340Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.7633489Z 223 |         }
+2026-10-31T12:40:38.7633937Z 
+2026-10-31T12:40:38.7635686Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.7638257Z 237 | 
+2026-10-31T12:40:38.7639129Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T12:40:38.7640415Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T12:40:38.7642513Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.7644734Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.7645753Z 241 |     }
+2026-10-31T12:40:38.7646135Z 
+2026-10-31T12:40:38.7647244Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T12:40:38.8689224Z [10/83] Compiling SwiftJ2KJPIPTests CodexR3TakeoverJPIPTests.swift
+2026-10-31T12:40:38.8692908Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.8695567Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T12:40:38.8696933Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T12:40:38.8698193Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T12:40:38.8700361Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.8702586Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.8703725Z 223 |         }
+2026-10-31T12:40:38.8704198Z 
+2026-10-31T12:40:38.8706043Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.8708943Z 237 | 
+2026-10-31T12:40:38.8709757Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T12:40:38.8711006Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T12:40:38.8713065Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T12:40:38.8715138Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T12:40:38.8716619Z 241 |     }
+2026-10-31T12:40:38.8717007Z 
+2026-10-31T12:40:38.8718186Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T12:40:45.2578025Z [11/88] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+2026-10-31T12:40:45.2579720Z [12/88] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+2026-10-31T12:40:45.2581202Z [13/88] Compiling SwiftJ2KJPIPTests JPIPServerComponentTests.swift
+2026-10-31T12:40:45.2582228Z [14/88] Compiling SwiftJ2KJPIPTests JPIPServerPushTests.swift
+2026-10-31T12:40:45.2583198Z [15/88] Compiling SwiftJ2KJPIPTests JPIPServerTests.swift
+2026-10-31T12:40:45.2584082Z [16/88] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+2026-10-31T12:40:45.2585029Z [17/88] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+2026-10-31T12:40:45.2586008Z [18/88] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+2026-10-31T12:40:45.2587260Z [19/88] Compiling SwiftJ2K3DTests R3VolumeRemediationTests.swift
+2026-10-31T12:40:51.3977592Z [25/97] Emitting module SwiftJ2K3DTests
+2026-10-31T12:40:51.3990272Z [26/97] Compiling SwiftJ2KJPIPTests CodexR3TransportCloseTests.swift
+2026-10-31T12:40:51.3992033Z [27/97] Compiling SwiftJ2KJPIPTests CodexR3WebSocketBudgetTests.swift
+2026-10-31T12:40:51.3994890Z [28/97] Compiling SwiftJ2KJPIPTests CodexR3WebSocketLifecycleTests.swift
+2026-10-31T12:40:51.3997472Z [29/97] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+2026-10-31T12:40:51.4003825Z [30/97] Compiling SwiftJ2KJPIPTests CodexR3WorkerHandoffTests.swift
+2026-10-31T12:40:52.7557940Z [31/97] Compiling SwiftJ2K3DTests VolumeContractTests.swift
+2026-10-31T12:40:52.7558952Z [32/97] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+2026-10-31T12:40:52.7559957Z [33/97] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+2026-10-31T12:40:52.7561556Z [34/97] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+2026-10-31T12:40:52.7562371Z [35/97] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+2026-10-31T12:40:52.7563295Z [36/97] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+2026-10-31T12:40:52.7564185Z [37/97] Compiling SwiftJ2KJPIPTests JPIPContractTests.swift
+2026-10-31T12:40:52.7564974Z [38/97] Compiling SwiftJ2KJPIPTests JPIPDataBinGeneratorTests.swift
+2026-10-31T12:40:52.7565922Z [39/97] Compiling SwiftJ2KJPIPTests JPIPEndToEndTests.swift
+2026-10-31T12:40:52.7567002Z [40/97] Compiling SwiftJ2KJPIPTests JPIPHTJ2KSupportTests.swift
+2026-10-31T12:40:58.1519914Z [41/97] Emitting module SwiftJ2KJPIPTests
+2026-10-31T12:40:58.1521932Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1523566Z 503 | }
+2026-10-31T12:40:58.1524075Z 504 | 
+2026-10-31T12:40:58.1524836Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1526575Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1528250Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1529602Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1541008Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1698118Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1699944Z 503 | }
+2026-10-31T12:40:58.1700528Z 504 | 
+2026-10-31T12:40:58.1701348Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1703224Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1705140Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1706583Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1707605Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1708206Z 
+2026-10-31T12:40:58.1709452Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1711007Z 503 | }
+2026-10-31T12:40:58.1711325Z 504 | 
+2026-10-31T12:40:58.1711931Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1712990Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1714017Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1714993Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1715711Z     :
+2026-10-31T12:40:58.1716078Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1716862Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1717690Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1719099Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1720253Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1720827Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1721164Z 
+2026-10-31T12:40:58.1722228Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1723599Z 503 | }
+2026-10-31T12:40:58.1723919Z 504 | 
+2026-10-31T12:40:58.1724518Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1725565Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1727235Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1728237Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1728960Z     :
+2026-10-31T12:40:58.1729328Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1729833Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1730635Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1731984Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1733064Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1733644Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1733990Z 
+2026-10-31T12:40:58.1735574Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1737384Z 503 | }
+2026-10-31T12:40:58.1737708Z 504 | 
+2026-10-31T12:40:58.1738299Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1739360Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1740392Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1741363Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1742347Z     :
+2026-10-31T12:40:58.1742741Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.1743227Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.1743680Z 559 |             stopped = true
+2026-10-31T12:40:58.1744690Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1745729Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.1746468Z 561 |             timer = nil
+2026-10-31T12:40:58.1746748Z 
+2026-10-31T12:40:58.1747371Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.1749163Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1750506Z 503 | }
+2026-10-31T12:40:58.1750788Z 504 | 
+2026-10-31T12:40:58.1751353Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1752569Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1754063Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1755191Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1756137Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1756999Z 
+2026-10-31T12:40:58.1758268Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1759804Z 503 | }
+2026-10-31T12:40:58.1760112Z 504 | 
+2026-10-31T12:40:58.1760700Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1761726Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1762752Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1763701Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1764429Z     :
+2026-10-31T12:40:58.1764766Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1765225Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1765964Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1767619Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1768742Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1769309Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1769654Z 
+2026-10-31T12:40:58.1770721Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1772394Z 503 | }
+2026-10-31T12:40:58.1772716Z 504 | 
+2026-10-31T12:40:58.1773326Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1774411Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1775465Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1776780Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1777528Z     :
+2026-10-31T12:40:58.1777894Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1778387Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1779501Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1780858Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1781925Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1782511Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1782855Z 
+2026-10-31T12:40:58.1784110Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1785696Z 503 | }
+2026-10-31T12:40:58.1785999Z 504 | 
+2026-10-31T12:40:58.1790492Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1791746Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1792819Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1793728Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1794445Z     :
+2026-10-31T12:40:58.1794878Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.1795334Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.1795758Z 559 |             stopped = true
+2026-10-31T12:40:58.1796969Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1797992Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.1798393Z 561 |             timer = nil
+2026-10-31T12:40:58.1798648Z 
+2026-10-31T12:40:58.1799296Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.1806846Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1808541Z 503 | }
+2026-10-31T12:40:58.1808863Z 504 | 
+2026-10-31T12:40:58.1809440Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1810656Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1812019Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1813129Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1814086Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1814664Z 
+2026-10-31T12:40:58.1815899Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1817977Z 503 | }
+2026-10-31T12:40:58.1818308Z 504 | 
+2026-10-31T12:40:58.1818922Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1820000Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1821037Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1822031Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1822761Z     :
+2026-10-31T12:40:58.1823137Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1823654Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1824742Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1826773Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1828305Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1828906Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1829253Z 
+2026-10-31T12:40:58.1830314Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1831698Z 503 | }
+2026-10-31T12:40:58.1832015Z 504 | 
+2026-10-31T12:40:58.1832606Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1833669Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1834732Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1835721Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1836719Z     :
+2026-10-31T12:40:58.1837098Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1837625Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1838421Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1839752Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1840820Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1841399Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1841745Z 
+2026-10-31T12:40:58.1843036Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1844589Z 503 | }
+2026-10-31T12:40:58.1844916Z 504 | 
+2026-10-31T12:40:58.1852883Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1855191Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1856489Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1857494Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1858223Z     :
+2026-10-31T12:40:58.1858588Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.1859084Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.1859560Z 559 |             stopped = true
+2026-10-31T12:40:58.1860577Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1861638Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.1862075Z 561 |             timer = nil
+2026-10-31T12:40:58.1862342Z 
+2026-10-31T12:40:58.1863011Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.1865202Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1866830Z 503 | }
+2026-10-31T12:40:58.1867153Z 504 | 
+2026-10-31T12:40:58.1867748Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1868981Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1870332Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1871655Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1872580Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1873166Z 
+2026-10-31T12:40:58.1874376Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1875867Z 503 | }
+2026-10-31T12:40:58.1876717Z 504 | 
+2026-10-31T12:40:58.1877317Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1878320Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1879301Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1880237Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1880917Z     :
+2026-10-31T12:40:58.1881255Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1881739Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1882549Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1883946Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1885052Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1885596Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1885920Z 
+2026-10-31T12:40:58.1887229Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1888694Z 503 | }
+2026-10-31T12:40:58.1888995Z 504 | 
+2026-10-31T12:40:58.1889580Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1890628Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1891664Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1892612Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1893301Z     :
+2026-10-31T12:40:58.1893645Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1894222Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1895004Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1896684Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1897808Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1898364Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1898694Z 
+2026-10-31T12:40:58.1899988Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1901861Z 503 | }
+2026-10-31T12:40:58.1902163Z 504 | 
+2026-10-31T12:40:58.1906709Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1907799Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1908826Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1909792Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1910503Z     :
+2026-10-31T12:40:58.1910858Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.1911625Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.1912115Z 559 |             stopped = true
+2026-10-31T12:40:58.1913117Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1914168Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.1914603Z 561 |             timer = nil
+2026-10-31T12:40:58.1914875Z 
+2026-10-31T12:40:58.1915535Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.1925286Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1926922Z 503 | }
+2026-10-31T12:40:58.1927335Z 504 | 
+2026-10-31T12:40:58.1927948Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1929294Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1930752Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1931932Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1932906Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1933572Z 
+2026-10-31T12:40:58.1934846Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1936726Z 503 | }
+2026-10-31T12:40:58.1937048Z 504 | 
+2026-10-31T12:40:58.1937636Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1938681Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1939777Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1940739Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1941431Z     :
+2026-10-31T12:40:58.1941791Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1942360Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1943179Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1944621Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1945829Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1946709Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1947021Z 
+2026-10-31T12:40:58.1948042Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1949640Z 503 | }
+2026-10-31T12:40:58.1949925Z 504 | 
+2026-10-31T12:40:58.1950486Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1951602Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1952641Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1953617Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1954335Z     :
+2026-10-31T12:40:58.1954677Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1955169Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1956130Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1957822Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.1958919Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.1959484Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.1959797Z 
+2026-10-31T12:40:58.1961068Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1962685Z 503 | }
+2026-10-31T12:40:58.1963001Z 504 | 
+2026-10-31T12:40:58.1963586Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1964665Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1965729Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1966981Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1967717Z     :
+2026-10-31T12:40:58.1968076Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.1968572Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.1969071Z 559 |             stopped = true
+2026-10-31T12:40:58.1970076Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1971144Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.1971586Z 561 |             timer = nil
+2026-10-31T12:40:58.1971861Z 
+2026-10-31T12:40:58.1972483Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.1979929Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1981270Z 503 | }
+2026-10-31T12:40:58.1983095Z 504 | 
+2026-10-31T12:40:58.1983779Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1985048Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.1986816Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.1987812Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1988623Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1989124Z 
+2026-10-31T12:40:58.1990262Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.1991598Z 503 | }
+2026-10-31T12:40:58.1991856Z 504 | 
+2026-10-31T12:40:58.1992413Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.1993740Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.1994632Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.1995527Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.1996119Z     :
+2026-10-31T12:40:58.1996672Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.1997082Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.1997740Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.1999193Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2000156Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2000699Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2000972Z 
+2026-10-31T12:40:58.2001943Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2003094Z 503 | }
+2026-10-31T12:40:58.2003346Z 504 | 
+2026-10-31T12:40:58.2003971Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2005013Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2006018Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2007300Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2007992Z     :
+2026-10-31T12:40:58.2008339Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2008850Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2009633Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2010976Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2012018Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2012555Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2012884Z 
+2026-10-31T12:40:58.2014083Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2015584Z 503 | }
+2026-10-31T12:40:58.2015884Z 504 | 
+2026-10-31T12:40:58.2016887Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2017902Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2018914Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2019857Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2020650Z     :
+2026-10-31T12:40:58.2021005Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.2021489Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.2021943Z 559 |             stopped = true
+2026-10-31T12:40:58.2022905Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2023981Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.2024459Z 561 |             timer = nil
+2026-10-31T12:40:58.2024685Z 
+2026-10-31T12:40:58.2025244Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.2038291Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2039667Z 503 | }
+2026-10-31T12:40:58.2039976Z 504 | 
+2026-10-31T12:40:58.2040551Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2041775Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2043141Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.2044487Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2045483Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2046065Z 
+2026-10-31T12:40:58.2047525Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2049130Z 503 | }
+2026-10-31T12:40:58.2049441Z 504 | 
+2026-10-31T12:40:58.2050032Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2051072Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2052093Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2053069Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2053773Z     :
+2026-10-31T12:40:58.2054180Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2054666Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2055443Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2057202Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2058333Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2058905Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2059230Z 
+2026-10-31T12:40:58.2060292Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2061634Z 503 | }
+2026-10-31T12:40:58.2061927Z 504 | 
+2026-10-31T12:40:58.2062505Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2063549Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2064557Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2065500Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2066430Z     :
+2026-10-31T12:40:58.2066745Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2067159Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2067830Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2069025Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2069917Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2070404Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2070679Z 
+2026-10-31T12:40:58.2071799Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2073401Z 503 | }
+2026-10-31T12:40:58.2073658Z 504 | 
+2026-10-31T12:40:58.2074151Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2075102Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2075964Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2077048Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2077717Z     :
+2026-10-31T12:40:58.2078016Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.2078426Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.2079012Z 559 |             stopped = true
+2026-10-31T12:40:58.2079928Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2080815Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.2081181Z 561 |             timer = nil
+2026-10-31T12:40:58.2081413Z 
+2026-10-31T12:40:58.2082019Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.2083744Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2084951Z 503 | }
+2026-10-31T12:40:58.2085207Z 504 | 
+2026-10-31T12:40:58.2085690Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2087037Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2088224Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.2089188Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2090067Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2090564Z 
+2026-10-31T12:40:58.2091622Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2092999Z 503 | }
+2026-10-31T12:40:58.2093262Z 504 | 
+2026-10-31T12:40:58.2093748Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2094630Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2095547Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2096707Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2097437Z     :
+2026-10-31T12:40:58.2097793Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2098275Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2099041Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2100444Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2101574Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2102145Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2102476Z 
+2026-10-31T12:40:58.2103512Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2104929Z 503 | }
+2026-10-31T12:40:58.2105245Z 504 | 
+2026-10-31T12:40:58.2106394Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2107448Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2108461Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2109500Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2110197Z     :
+2026-10-31T12:40:58.2110547Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2111026Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2111791Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2113392Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2114449Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2115017Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2115341Z 
+2026-10-31T12:40:58.2116922Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2118482Z 503 | }
+2026-10-31T12:40:58.2118832Z 504 | 
+2026-10-31T12:40:58.2119408Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2120444Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2121463Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2122422Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2123130Z     :
+2026-10-31T12:40:58.2123483Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.2123961Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.2124410Z 559 |             stopped = true
+2026-10-31T12:40:58.2125381Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2126639Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.2127008Z 561 |             timer = nil
+2026-10-31T12:40:58.2127240Z 
+2026-10-31T12:40:58.2127863Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.2129489Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2130717Z 503 | }
+2026-10-31T12:40:58.2130972Z 504 | 
+2026-10-31T12:40:58.2131468Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2132563Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2133836Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.2134801Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2135595Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2136117Z 
+2026-10-31T12:40:58.2137498Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2138825Z 503 | }
+2026-10-31T12:40:58.2139078Z 504 | 
+2026-10-31T12:40:58.2139631Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2140746Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2141601Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2142470Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2143077Z     :
+2026-10-31T12:40:58.2143368Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2143788Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2144448Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2145881Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2147040Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2147546Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2147866Z 
+2026-10-31T12:40:58.2148750Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2149900Z 503 | }
+2026-10-31T12:40:58.2150154Z 504 | 
+2026-10-31T12:40:58.2150706Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2151579Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2152440Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2153325Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2153926Z     :
+2026-10-31T12:40:58.2154226Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2154635Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2155366Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2156791Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2157830Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2158385Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2158713Z 
+2026-10-31T12:40:58.2159909Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2161419Z 503 | }
+2026-10-31T12:40:58.2161715Z 504 | 
+2026-10-31T12:40:58.2162349Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2163366Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2164362Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2165295Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2165987Z     :
+2026-10-31T12:40:58.2166580Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.2167071Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.2167534Z 559 |             stopped = true
+2026-10-31T12:40:58.2168520Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2169560Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.2169982Z 561 |             timer = nil
+2026-10-31T12:40:58.2170252Z 
+2026-10-31T12:40:58.2170903Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:40:58.2172751Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:505:67: warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2174391Z 503 | }
+2026-10-31T12:40:58.2174689Z 504 | 
+2026-10-31T12:40:58.2175359Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2177055Z     |                     |                                             `- warning: conformance of 'HTTPSHarnessProtocol' to protocol 'Sendable' is already unavailable
+2026-10-31T12:40:58.2178441Z     |                     `- note: 'HTTPSHarnessProtocol' inherits conformance to protocol 'Sendable' from superclass here
+2026-10-31T12:40:58.2179540Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2180718Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2181331Z 
+2026-10-31T12:40:58.2182548Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2184070Z 503 | }
+2026-10-31T12:40:58.2184372Z 504 | 
+2026-10-31T12:40:58.2184947Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2185994Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2187161Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2187968Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2188648Z     :
+2026-10-31T12:40:58.2188953Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2189373Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2190054Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2191295Z     |                    `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2192248Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2192722Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2193002Z 
+2026-10-31T12:40:58.2193958Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2195102Z 503 | }
+2026-10-31T12:40:58.2195354Z 504 | 
+2026-10-31T12:40:58.2195839Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2197060Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2197922Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2198741Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2199404Z     :
+2026-10-31T12:40:58.2199697Z 529 |     override func startLoading() {
+2026-10-31T12:40:58.2200106Z 530 |         queue.async { [self] in
+2026-10-31T12:40:58.2200765Z 531 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+2026-10-31T12:40:58.2201927Z     |                                                                         `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure
+2026-10-31T12:40:58.2202826Z 532 |                   let url = request.url else { return }
+2026-10-31T12:40:58.2203297Z 533 |             scenario.begin(request)
+2026-10-31T12:40:58.2203574Z 
+2026-10-31T12:40:58.2204785Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2206556Z 503 | }
+2026-10-31T12:40:58.2206811Z 504 | 
+2026-10-31T12:40:58.2207297Z 505 | private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+2026-10-31T12:40:58.2208240Z     |                     `- note: class 'HTTPSHarnessProtocol' does not conform to the 'Sendable' protocol
+2026-10-31T12:40:58.2209107Z 506 |     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
+2026-10-31T12:40:58.2209915Z 507 |     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+2026-10-31T12:40:58.2210575Z     :
+2026-10-31T12:40:58.2210861Z 557 |     override func stopLoading() {
+2026-10-31T12:40:58.2211265Z 558 |         queue.async { [self] in
+2026-10-31T12:40:58.2211648Z 559 |             stopped = true
+2026-10-31T12:40:58.2212705Z     |             `- error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]
+2026-10-31T12:40:58.2213649Z 560 |             timer?.cancel()
+2026-10-31T12:40:58.2214007Z 561 |             timer = nil
+2026-10-31T12:40:58.2214241Z 
+2026-10-31T12:40:58.2214797Z [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+2026-10-31T12:41:13.9127728Z [65/97] Emitting module SwiftJ2KTests
+2026-10-31T12:41:28.0759832Z [73/103] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+2026-10-31T12:41:28.0760659Z [74/103] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+2026-10-31T12:41:28.0761360Z [75/103] Compiling SwiftJ2KTests R2RemediationTests.swift
+2026-10-31T12:41:28.0762006Z [76/103] Compiling SwiftJ2KTests SampleAccessTests.swift
+2026-10-31T12:41:28.0762642Z [77/103] Compiling SwiftJ2KTests SharedStorageTests.swift
+2026-10-31T12:41:28.0763262Z [78/103] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+2026-10-31T12:41:28.1807155Z [79/104] Wrapping AST for SwiftJ2KTests for debugging
+2026-10-31T12:41:31.7537636Z [81/104] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+2026-10-31T12:41:31.7540016Z [82/104] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+2026-10-31T12:41:31.7541103Z [83/104] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+2026-10-31T12:41:31.7549075Z [84/104] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+2026-10-31T12:41:31.7549996Z [85/104] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+2026-10-31T12:41:31.7550748Z [86/104] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+2026-10-31T12:41:31.7551506Z [87/104] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+2026-10-31T12:41:31.7552513Z [88/104] Compiling SwiftJ2KJPIPTests R3OwnedScriptedPeer.swift
+2026-10-31T12:41:31.7553407Z [89/104] Compiling SwiftJ2KJPIPTests TransportLifecycleProbe.swift
+2026-10-31T12:41:31.8489226Z error: fatalError
+2026-10-31T12:41:31.8611750Z ##[error]Process completed with exit code 1.
+2026-10-31T12:41:31.8779654Z Post job cleanup.
+2026-10-31T12:41:31.8787558Z ##[command]/usr/bin/docker exec  b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T12:41:32.0777068Z [command]/usr/bin/git version
+2026-10-31T12:41:32.0837016Z git version 2.43.0
+2026-10-31T12:41:32.0892077Z Temporarily overriding HOME='/__w/_temp/2f8a2c7c-703c-4b12-ada3-ac3b80e59713' before making global git config changes
+2026-10-31T12:41:32.0917549Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T12:41:32.0918762Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T12:41:32.0948155Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T12:41:32.0979981Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T12:41:32.1311044Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T12:41:32.1368413Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T12:41:32.1708092Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T12:41:32.1743712Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T12:41:32.2272207Z Stop and remove container: 28b90d53e23c42e79a1d7328dacfac44_swift62noble_1c9a9f
+2026-10-31T12:41:32.2277166Z ##[command]/usr/bin/docker rm --force b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:41:32.5677463Z b65fa6d799f3d49933bd6ca2bb347c404686af8324782a94ed445ae5acdb5aa0
+2026-10-31T12:41:32.5730370Z Remove container network: github_network_106b5142e8fd4b7797aff6811d85eaf3
+2026-10-31T12:41:32.5736833Z ##[command]/usr/bin/docker network rm github_network_106b5142e8fd4b7797aff6811d85eaf3
+2026-10-31T12:41:32.6632308Z github_network_106b5142e8fd4b7797aff6811d85eaf3
+2026-10-31T12:41:32.6715671Z Cleaning up orphan processes
+2026-10-31T12:41:32.7124038Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

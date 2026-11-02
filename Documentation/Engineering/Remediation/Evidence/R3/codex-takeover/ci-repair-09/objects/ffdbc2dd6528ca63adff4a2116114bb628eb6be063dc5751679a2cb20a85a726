@@ -1,0 +1,649 @@
+{
+  "state": "FAILED_HOSTED22_RECONCILED_BY_ANTIGRAVITY_NOT_ACCEPTED",
+  "finished_at": "2026-11-02T05:57:33.001967+00:00",
+  "run_id": 41201993850,
+  "attempt": 1,
+  "identity": {
+    "identity": {
+      "GITHUB_REPOSITORY": "raster-labs/SwiftJ2K",
+      "GITHUB_RUN_ID": "41201993850",
+      "GITHUB_RUN_ATTEMPT": "1",
+      "GITHUB_JOB": "macos",
+      "GITHUB_EVENT_NAME": "pull_request",
+      "GITHUB_REF": "refs/pull/30/merge",
+      "GITHUB_SHA": "7b45184f6d50a079c6c9ac92502449fd09fe4e96",
+      "EVIDENCE_PR_HEAD": "af6d52e055d726456dcb3025e3e1addf9bd55231",
+      "EVIDENCE_PR_BASE": "46be90fc3bf50429956725ee592687d8ff8e7344",
+      "EVIDENCE_ORDINARY": "failure",
+      "EVIDENCE_ASAN": "skipped",
+      "EVIDENCE_TSAN": "skipped"
+    },
+    "checkout_head": "7b45184f6d50a079c6c9ac92502449fd09fe4e96",
+    "checkout_tree": "e3058819be67cba5728f7f3c31de61a3715084ba"
+  },
+  "jobs": [
+    {
+      "id": 124539451295,
+      "name": "Independent consumer resolves at tools 6.2",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 124539451408,
+      "name": "Swift 6.4 / ubuntu-24.04-arm",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 124539451411,
+      "name": "Swift 6.2 / ubuntu-24.04-arm",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 124539451415,
+      "name": "Shared contract byte-identity",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 124539451424,
+      "name": "Swift 6.4 / ubuntu-24.04",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 124539451449,
+      "name": "macOS 26 / Xcode 26.6 (Swift 6.3.3)",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 124539451477,
+      "name": "Swift 6.2 / ubuntu-24.04",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "macos": {
+    "job_id": 124539451449,
+    "steps": {
+      "Set up job": "success",
+      "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+      "Run swift --version": "success",
+      "Run xcodebuild -version": "success",
+      "Run swift build": "success",
+      "Ordinary tests": "failure",
+      "Address sanitizer": "skipped",
+      "Thread sanitizer": "skipped",
+      "Retain exact test evidence in downloadable logs": "failure",
+      "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+      "Complete job": "success"
+    },
+    "xctest_starts": 1034,
+    "xctest_passes": 1034,
+    "swift_testing_declarations": 325,
+    "swift_testing_started": 320,
+    "swift_testing_passed": 315,
+    "swift_testing_failed": 5,
+    "swift_testing_skipped": 5,
+    "raw_summary": [
+      3860,
+      [
+        "325",
+        "41",
+        "70.001",
+        "5"
+      ]
+    ],
+    "issues": [
+      {
+        "line": 3606,
+        "message": "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:336:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+      },
+      {
+        "line": 3610,
+        "message": "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:308:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+      },
+      {
+        "line": 3611,
+        "message": "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+      },
+      {
+        "line": 3614,
+        "message": "\u2718 Test absoluteDeadlineCancelsSilentResponse() recorded an issue at CodexR3HTTPStreamingTests.swift:179:9: Expectation failed: (ContinuousClock.now - start \u2192 5.048004416 seconds) < (.seconds(2) \u2192 2.0 seconds)"
+      },
+      {
+        "line": 3826,
+        "message": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut(phase: \"stale cleanup timeout: first request received\")"
+      }
+    ],
+    "xml_failures": [
+      {
+        "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+        "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+        "time": "41.031885917",
+        "messages": [
+          ""
+        ]
+      },
+      {
+        "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+        "name": "absoluteDeadlineCancelsSilentResponse()",
+        "time": "41.372062583",
+        "messages": [
+          ""
+        ]
+      },
+      {
+        "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+        "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+        "time": "40.729483625",
+        "messages": [
+          ""
+        ]
+      },
+      {
+        "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+        "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+        "time": "40.757398334",
+        "messages": [
+          ""
+        ]
+      },
+      {
+        "class": "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests",
+        "name": "staleCleanupCannotCloseReplacementHandshake(_:)",
+        "time": "12.205811792",
+        "messages": [
+          ""
+        ]
+      }
+    ],
+    "xml_skips": [
+      {
+        "class": "SwiftJ2KTests",
+        "name": "independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)",
+        "time": null,
+        "messages": [
+          "No independent HTJ2K decoder installed; oracle coverage unexecuted"
+        ]
+      },
+      {
+        "class": "SwiftJ2KTests",
+        "name": "independentDecodersReadSuccessorCodestreams(name:)",
+        "time": null,
+        "messages": [
+          "No independent JPEG 2000 decoder installed; oracle coverage unexecuted"
+        ]
+      },
+      {
+        "class": "SwiftJ2KTests",
+        "name": "independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()",
+        "time": null,
+        "messages": [
+          "No independent JPEG 2000 decoder installed"
+        ]
+      },
+      {
+        "class": "SwiftJ2KTests",
+        "name": "independentOraclesVerifyTranscodedOutputsInBothDirections(name:)",
+        "time": null,
+        "messages": [
+          "No independent HTJ2K decoder installed; oracle coverage unexecuted"
+        ]
+      },
+      {
+        "class": "SwiftJ2KTests",
+        "name": "independentOraclesCrossDecodePart1BreadthEncodings()",
+        "time": null,
+        "messages": [
+          "No independent JPEG 2000 decoder installed"
+        ]
+      }
+    ]
+  },
+  "retention": {
+    "begin_line": 3960,
+    "end_line": 4005,
+    "record_count": 46,
+    "diagnostic_only_file": "ordinary-diagnostic-swift-testing.xml",
+    "bytes": 46021,
+    "sha256": "1e897010c65ad7e3b6d00a7cd4b085b41f680c3006255eecc68b47ffdc8d49e0",
+    "missing_paths": [
+      "address/all.ids",
+      "address/complement-swift-testing.xml",
+      "address/complement.ids",
+      "address/complement.xml",
+      "address/inventory-mismatch.json",
+      "address/inventory.json",
+      "address/jpip-swift-testing.xml",
+      "address/jpip.ids",
+      "address/jpip.xml",
+      "address/reference.command-result.json",
+      "address/reference.stderr",
+      "address/reference.stdout",
+      "address/sanitized.command-result.json",
+      "address/sanitized.stderr",
+      "address/sanitized.stdout",
+      "ordinary/full.xml",
+      "thread/all.ids",
+      "thread/complement-swift-testing.xml",
+      "thread/complement.ids",
+      "thread/complement.xml",
+      "thread/inventory-mismatch.json",
+      "thread/inventory.json",
+      "thread/jpip-swift-testing.xml",
+      "thread/jpip.ids",
+      "thread/jpip.xml",
+      "thread/reference.command-result.json",
+      "thread/reference.stderr",
+      "thread/reference.stdout",
+      "thread/sanitized.command-result.json",
+      "thread/sanitized.stderr",
+      "thread/sanitized.stdout"
+    ],
+    "footer": {
+      "format": "swiftj2k-ci-evidence-v1",
+      "kind": "end",
+      "files": 1,
+      "bytes": 46021,
+      "problems": [
+        "Missing inventory evidence: address/reference.stdout",
+        "Missing inventory evidence: address/reference.stderr",
+        "Missing inventory evidence: address/reference.command-result.json",
+        "Missing inventory evidence: address/sanitized.stdout",
+        "Missing inventory evidence: address/sanitized.stderr",
+        "Missing inventory evidence: address/sanitized.command-result.json",
+        "Missing inventory evidence: address/inventory.json",
+        "Missing inventory evidence: address/all.ids",
+        "Missing inventory evidence: address/jpip.ids",
+        "Missing inventory evidence: address/complement.ids",
+        "Missing inventory evidence: thread/reference.stdout",
+        "Missing inventory evidence: thread/reference.stderr",
+        "Missing inventory evidence: thread/reference.command-result.json",
+        "Missing inventory evidence: thread/sanitized.stdout",
+        "Missing inventory evidence: thread/sanitized.stderr",
+        "Missing inventory evidence: thread/sanitized.command-result.json",
+        "Missing inventory evidence: thread/inventory.json",
+        "Missing inventory evidence: thread/all.ids",
+        "Missing inventory evidence: thread/jpip.ids",
+        "Missing inventory evidence: thread/complement.ids",
+        "No XML retained for invocation: address/jpip.xml",
+        "No XML retained for invocation: address/complement.xml",
+        "No XML retained for invocation: thread/jpip.xml",
+        "No XML retained for invocation: thread/complement.xml"
+      ],
+      "retention_complete": false,
+      "scope": "Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately"
+    },
+    "strict_reconstructor_exit": 1,
+    "strict_output_directory_exists": false
+  },
+  "linux": [
+    {
+      "job_id": 124539451408,
+      "name": "Swift 6.4 / ubuntu-24.04-arm",
+      "steps": {
+        "Set up job": "success",
+        "Initialize containers": "success",
+        "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Run swift --version": "success",
+        "Run swift build": "success",
+        "Run swift test": "failure",
+        "Run swift build -c release": "skipped",
+        "Run swift test -c release": "skipped",
+        "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Stop containers": "success",
+        "Complete job": "success"
+      },
+      "build_completion": [
+        224,
+        "Build complete! (29.51 secs)"
+      ],
+      "test_step_line": 225,
+      "diagnostics": [
+        [
+          262,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#\u001b]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\u001b\\SendableClosureCaptures\u001b]8;;\u001b\\]"
+        ],
+        [
+          277,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          292,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#\u001b]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\u001b\\SendableClosureCaptures\u001b]8;;\u001b\\]"
+        ]
+      ],
+      "log_sha256": "d8c10e898c485b288423e13c245044e9f2209d6742b531a96caf34de26a94497"
+    },
+    {
+      "job_id": 124539451411,
+      "name": "Swift 6.2 / ubuntu-24.04-arm",
+      "steps": {
+        "Set up job": "success",
+        "Initialize containers": "success",
+        "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Run swift --version": "success",
+        "Run swift build": "success",
+        "Run swift test": "failure",
+        "Run swift build -c release": "skipped",
+        "Run swift test -c release": "skipped",
+        "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Stop containers": "success",
+        "Complete job": "success"
+      },
+      "build_completion": [
+        322,
+        "Build complete! (57.00s)"
+      ],
+      "test_step_line": 323,
+      "diagnostics": [
+        [
+          457,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          472,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          487,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          512,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          527,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          542,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          567,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          582,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          597,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          622,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          637,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          652,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          677,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          692,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          707,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          732,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          747,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          762,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          787,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          802,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          817,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          842,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          857,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          872,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          897,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          912,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          927,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          952,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          967,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          982,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ]
+      ],
+      "log_sha256": "1d856891e0b59d8b87c8da59c1465e16c6e0f79805f301e0d8ecb3b9e9eb387d"
+    },
+    {
+      "job_id": 124539451424,
+      "name": "Swift 6.4 / ubuntu-24.04",
+      "steps": {
+        "Set up job": "success",
+        "Initialize containers": "success",
+        "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Run swift --version": "success",
+        "Run swift build": "success",
+        "Run swift test": "failure",
+        "Run swift build -c release": "skipped",
+        "Run swift test -c release": "skipped",
+        "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Stop containers": "success",
+        "Complete job": "success"
+      },
+      "build_completion": [
+        220,
+        "Build complete! (37.92 secs)"
+      ],
+      "test_step_line": 221,
+      "diagnostics": [
+        [
+          256,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#\u001b]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\u001b\\SendableClosureCaptures\u001b]8;;\u001b\\]"
+        ],
+        [
+          271,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          286,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#\u001b]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\u001b\\SendableClosureCaptures\u001b]8;;\u001b\\]"
+        ]
+      ],
+      "log_sha256": "db9664aa69ffe7402539f27a49f0470411db41d2ac17698f21ad77254191a857"
+    },
+    {
+      "job_id": 124539451477,
+      "name": "Swift 6.2 / ubuntu-24.04",
+      "steps": {
+        "Set up job": "success",
+        "Initialize containers": "success",
+        "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Run swift --version": "success",
+        "Run swift build": "success",
+        "Run swift test": "failure",
+        "Run swift build -c release": "skipped",
+        "Run swift test -c release": "skipped",
+        "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262": "success",
+        "Stop containers": "success",
+        "Complete job": "success"
+      },
+      "build_completion": [
+        322,
+        "Build complete! (86.41s)"
+      ],
+      "test_step_line": 323,
+      "diagnostics": [
+        [
+          465,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          480,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          495,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          520,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          535,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          550,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          575,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          590,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          605,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          630,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          645,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          660,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          685,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          700,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          715,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          740,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          755,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          770,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          795,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          810,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          825,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          850,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          865,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          880,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          905,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          920,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          935,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          960,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:20: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ],
+        [
+          975,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:531:73: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in an isolated closure"
+        ],
+        [
+          990,
+          "/__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:559:13: error: capture of 'self' with non-Sendable type 'HTTPSHarnessProtocol' in a '@Sendable' closure [#SendableClosureCaptures]"
+        ]
+      ],
+      "log_sha256": "bfb9558e7088afc08c52b440695af677ba22bafdffcc82ba7ee8073ebd66648d"
+    }
+  ]
+}

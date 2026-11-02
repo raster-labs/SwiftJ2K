@@ -1,0 +1,93 @@
+{
+  "state": "ANTIGRAVITY_R3_CANDIDATE27_28_SUBMITTED_FOR_CODEX_INDEPENDENT_QUALIFICATION",
+  "submitted_at": "2026-11-02T08:00:42.362339+00:00",
+  "submitter": {
+    "conversation_id": "6f28647a-39a6-4a0a-8303-30b57a122458",
+    "model": "Gemini 4 Argon High",
+    "invocation_id": "antigravity-r3-handback-20261102-6f28647a"
+  },
+  "auditor": {
+    "thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+    "monitor_id": "audit-swiftj2k-r3-then-r4",
+    "authority": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/handoff-20261102/audit-resume-authority.json"
+  },
+  "repository": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K",
+    "branch": "codex/r3-standards-takeover",
+    "published_head": "af6d52e055d726456dcb3025e3e1addf9bd55231",
+    "published_tree": "e3058819be67cba5728f7f3c31de61a3715084ba",
+    "base_main": "46be90fc3bf50429956725ee592687d8ff8e7344",
+    "draft_pr": "https://github.com/raster-labs/SwiftJ2K/pull/30",
+    "tested_merge": "7b45184f6d50a079c6c9ac92502449fd09fe4e96"
+  },
+  "frozen_snapshots": {
+    "candidate_snapshot_26": {
+      "source_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-26-source.json",
+      "source_manifest_sha256": "cc0338180f97aea8aee453001a968c94e36c9741bf6666b95fe534ed88dc876c",
+      "provenance": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-26-provenance.json",
+      "provenance_sha256": "46453472f43b3c6c3f43b29e143f4afa39bf41d7134b8e5442163f47b2ce08a9",
+      "files": 2543,
+      "native_validation": "10/10 stages exit 0 (release build, CLI 246 checks, CLI startup probe, full ordinary 1,034 XCTest + 333 Swift Testing declarations across 42 suites with 333 passed / 0 failed / 0 skipped [report-swift-testing.xml and native.stdout:3459], 2 runtime partitions [656 JPIP + 711 complement] plus 1,367-declaration inventory for ASan, and 2 runtime partitions [656 JPIP + 711 complement] plus 1,367-declaration inventory for TSan)"
+    },
+    "candidate_snapshot_27": {
+      "source_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-27-source.json",
+      "source_manifest_sha256": "aa5eadba966e025b2772d46c7c5a207227401c8fa3644b97fc98a58396af14d4",
+      "provenance": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-27-provenance.json",
+      "provenance_sha256": "124640609d9e400bbb2d48cd85525a11ef61caca85011461a039edb68bebcc7d",
+      "files": 2543,
+      "delta_from_26": [
+        "Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift"
+      ],
+      "production_and_build_inputs_identical_to_26": true,
+      "native_validation": "3/3 JPIP delta stages exit 0 (candidate-jpip-ordinary-27, candidate-jpip-asan-27, candidate-jpip-tsan-27: 544 XCTest + 112 Swift Testing passed each, 0 failures)"
+    },
+    "candidate_snapshot_28": {
+      "source_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-28-source.json",
+      "source_manifest_sha256": "1fc7d57e912a4d4facc55b682d8c0000d7e156534cf92cbb89a6c4f7a90e7078",
+      "provenance": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-28-provenance.json",
+      "provenance_sha256": "6acae30b536be8048d7cba047f30e2923de26e9a6226adadbb745c713bfa5862",
+      "files": 2543,
+      "delta_from_27": [
+        "Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+        "Documentation/Engineering/Remediation/STATUS.md"
+      ],
+      "implementation_and_ci_inputs_identical_to_27": true
+    }
+  },
+  "changed_files_from_published_22": {
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "0e9f5b873ed711b4a743cc5324123baea83720eb035912e977e8ede4c5a1eded",
+    "Sources/SwiftJ2KJPIP/JPIPServer.swift": "71394301cf59094be6999f3070cb16da87c9467147a2fa4f340aeaa89b7f86b1",
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketServer.swift": "ee6a294b78d6e67b5614b8d8d7f99b0dcf8262d4fb814ccb8d8f7e731c848d88",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+    "Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift": "065cc02b2c0258266cf11db8d78f55a879ad0fd7976af1357a7fa4215f28a576",
+    "Documentation/Engineering/Remediation/STATUS.md": "e1c55c0b2fc465e556f617618e5e97257de253729b5794090fe6cc76fb4d81a7",
+    "Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "c36e3f10d1bd3d889303727bcf313c95a335a7c67701eadbe65c52ef9f60c540"
+  },
+  "read_only_evidence_preparation": {
+    "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-27/manifest-candidate-27.json",
+    "manifest_sha256": "3100730d6a9996685403a4e7745ed7115a025f8629d87598f97cfcdfa764c2f4",
+    "dry_run_receipt": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-27/dry-run-candidate-27.json",
+    "dry_run_receipt_sha256": "813567fc8ccb40e17225be2a1f6410095dc1676851fc71ec8641beff452dc074",
+    "proposed_index_sha256": "fb4e50325d5f079e0cb3f8af05191d502fcfc0d6aef0fd0309a7bea73e4658c1",
+    "implementation_scope_sha256": "594f1d3785c66a731c6d6b5d3ef4dd30f9fd86298a5746cd4134304563766f61",
+    "ci_scope_sha256": "018d8ecf684b67e0a9467278ceeafbf393b7b070d0533e2cbafde82995162127",
+    "published_corpus_unchanged": true
+  },
+  "positive_stop": {
+    "source_writers_stopped": true,
+    "native_campaigns_stopped": true,
+    "jpip_servers_stopped": true,
+    "claim_released": true,
+    "claim_release_receipt": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/handoff-20261102/antigravity-claim-release-27.json"
+  },
+  "r3_acceptance": "NOT_ACCEPTED",
+  "merge_allowed": false,
+  "r4_state": "GATED",
+  "unexecuted_external_gates": [
+    "Direct independent combined Part 10+15",
+    "Independent native 3D JPIP",
+    "Independent exact repository WebSocket extension",
+    "Direct full38 Part 2 output",
+    "Multiple transmitted nonempty HT sets"
+  ]
+}

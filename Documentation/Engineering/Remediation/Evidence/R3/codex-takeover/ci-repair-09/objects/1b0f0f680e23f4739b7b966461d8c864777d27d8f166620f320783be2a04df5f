@@ -1,0 +1,127 @@
+{
+  "artifact_dir": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-https-focused-24",
+  "result_json": {
+    "finished_at": "2026-10-31T13:07:32.036191+00:00",
+    "exit_code": 0,
+    "elapsed_seconds": 37.006557083000004,
+    "changed_inputs": [],
+    "log_sha256": "9918844948873782fd36639cdbfffa84054b58f76435f263e0f2bfe30530dd79",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-https-focused-24/native.stdout",
+        "sha256": "2dad4edfdb4634640b282bb0b501d34c8838eb0d7a342f0be7b8c0948933a1ed",
+        "bytes": 4017
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-https-focused-24/native.stderr",
+        "sha256": "dd9cfce50b79112e04c821ede821a68f443180f421a288760392aa41579235d1",
+        "bytes": 37404
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 0,
+    "built_cli_products_at_completion": {
+      "debug": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-24/arm64-apple-macosx/debug/swiftj2k-cli",
+        "sha256": "5cbf35a6d37336f0c1ddf49b4a64dc72824f5a06e0a8b165b451b73b990b868c"
+      }
+    }
+  },
+  "result_json_sha256": "5ea009ada13cb3214b32edd609eaac3184b6102517a11ec5b64c1fcfb9a7f190",
+  "native_stdout_sha256": "2dad4edfdb4634640b282bb0b501d34c8838eb0d7a342f0be7b8c0948933a1ed",
+  "native_stderr_sha256": "dd9cfce50b79112e04c821ede821a68f443180f421a288760392aa41579235d1",
+  "report_swift_testing_xml_sha256": "b24380b6a2fe5ee6299245e6b0526c2f1dfe29ae966fa0f6ca243e8a27d3b824",
+  "xml_summary": {
+    "name": "TestResults",
+    "errors": "0",
+    "tests": "17",
+    "failures": "0",
+    "skipped": "0",
+    "time": "0.145176791"
+  },
+  "xml_testcase_names": [
+    "cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:)",
+    "expiredDeadlineReleasesUnstartedOwners()",
+    "completionAndCancellationHaveOneWinner(cancelFirst:)",
+    "closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest()",
+    "completedRequestEventuallyReleasesItsDelegateOwnership()",
+    "invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain()",
+    "declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact()",
+    "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+    "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+    "absoluteDeadlineCancelsSilentResponse()",
+    "budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks()",
+    "observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary()",
+    "oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath()",
+    "headersEmptyBodyStatusAndResponseTypeRemainChecked()",
+    "taskCancellationJoinsAndAllowsFollowingRequest()",
+    "repeatedTransportCloseJoinsTheSameSilentHTTPSOwner()",
+    "delegateRejectsOversizedAnnouncedOrUnknownBody(declared:)"
+  ],
+  "parameterized_argument_starts_count": 6,
+  "parameterized_argument_starts": [
+    "\u25c7 Test case passing 1 argument declared \u2192 true to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.",
+    "\u25c7 Test case passing 1 argument declared \u2192 false to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.",
+    "\u25c7 Test case passing 1 argument inPublicationGap \u2192 false to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.",
+    "\u25c7 Test case passing 1 argument inPublicationGap \u2192 true to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.",
+    "\u25c7 Test case passing 1 argument cancelFirst \u2192 false to completionAndCancellationHaveOneWinner(cancelFirst:) started.",
+    "\u25c7 Test case passing 1 argument cancelFirst \u2192 true to completionAndCancellationHaveOneWinner(cancelFirst:) started."
+  ],
+  "tracked_unignored_files_count": 2542,
+  "implementation_inputs_count": 540,
+  "changed_files_vs_snapshot_24": [],
+  "unpublished_harness_patch": {
+    "file": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+    "before_head_sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+    "current_sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+    "snapshot24_sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+    "patch_sha256": "445898c7c54cc66c7026b62b428be74b0deb33f781e6ac7bece36302152e59f5"
+  },
+  "compiler_warnings": [
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-24/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]",
+    "warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system."
+  ],
+  "line_550_warning_analysis": "CodexR3HTTPStreamingTests.swift:550 emits a Swift compiler warning because startLoading() binds `let client = self.client` in the outer DispatchWorkItem and implicitly captures `client` strongly in that finite setup closure while capturing `[weak self, weak client]` in the nested repeating timer closure. Runtime ownership is sound (outer setup work item runs once and exits; repeating timer holds `client` weakly), and capturing `[weak self, weak client = client]` or `[self, client]` in the outer closure eliminates the warning cleanly."
+}

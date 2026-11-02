@@ -1,0 +1,32 @@
+Building for debugging...
+[3 / 74] SwiftJ2K3D
+[15 / 96] SwiftJ2KJPIP
+[16 / 106] SwiftJ2K3D
+[19 / 113] SwiftJ2KJPIP
+[22 / 113] SwiftJ2KJPIP
+[27 / 113] SwiftJ2KJPIP
+[29 / 113] swiftj2k-cli-product
+[31 / 113] SwiftJ2KCLI
+[34 / 114] SwiftJ2K3D
+[37 / 114] SwiftJ2K3D
+[40 / 114] SwiftJ2K3D
+[42 / 114] SwiftJ2K3D
+[44 / 114] SwiftJ2K3D
+[47 / 114] SwiftJ2K3D
+[49 / 114]
+[55 / 116]
+[55 / 116] SwiftJ2KJPIP
+[55 / 116] SwiftJ2K3D
+[56 / 126]
+[65 / 126] SwiftJ2K3D
+[71 / 130] SwiftJ2KCLI
+[73 / 130] SwiftJ2KCLI
+[79 / 130] SwiftJ2K3D
+[86 / 131] SwiftJ2KJPIP
+[90 / 132] SwiftJ2K3DTests-product
+error: clang dependency scanning failure: 
+error: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:3:18 unable to resolve module dependency: 'SwiftJ2KCore'
+error: SwiftDriver SwiftJ2KJPIPTests normal arm64 com.apple.xcode.tools.swift.compiler failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name SwiftJ2KJPIPTests -Onone @/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug/PackageFrameworks -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/SDKStatCaches.noindex/macosx27.0-26A425-80c5bbf1d171475443272936d42f90a37231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests-OutputFileMap.json -save-temps -color-diagnostics -explicit-module-build -module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/ModuleCache.noindex -sdk-module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name swiftj2k -emit-const-values -const-gather-protocols-list /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests_const_extract_protocols.json -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Products/Debug/include -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources-normal/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build-ordinary/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work -experimental-emit-module-separately -disable-cmo
+error: Build failed
+error: fatalError

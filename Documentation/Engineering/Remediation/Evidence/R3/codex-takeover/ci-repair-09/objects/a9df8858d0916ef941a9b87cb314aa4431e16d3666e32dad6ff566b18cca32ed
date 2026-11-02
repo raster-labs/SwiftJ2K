@@ -1,0 +1,257 @@
+Building for debugging...
+[Constructing description]
+[Planning deferred tasks]
+[42 / 180] SwiftJ2KJPIP
+[86 / 180] SwiftJ2K_SwiftJ2KTests
+[89 / 180]
+[91 / 181] CZlibShim
+[97 / 191]
+[100 / 191]
+[103 / 191] SwiftJ2K
+[113 / 238]
+[118 / 238]
+[122 / 238]
+[126 / 238]
+[129 / 238]
+[134 / 238]
+[135 / 238]
+[136 / 238]
+[137 / 238]
+[139 / 238]
+[150 / 238] SwiftJ2K
+[157 / 239] SwiftJ2K3D
+[166 / 250] SwiftJ2K3D
+[167 / 250] SwiftJ2K3D
+[177 / 251] SwiftJ2K3D
+[177 / 251] SwiftJ2KJPIP
+[181 / 266]
+[185 / 266] SwiftJ2KJPIP
+[187 / 266] SwiftJ2KJPIP
+[188 / 266] SwiftJ2KJPIP
+[189 / 266] SwiftJ2KJPIP
+[197 / 266] swiftj2k-cli-product
+[203 / 266] swiftj2k-cli-product
+[206 / 268]
+[209 / 278] SwiftJ2K3D
+[215 / 278] SwiftJ2KCLI
+[217 / 278] SwiftJ2KCLI
+[226 / 278] SwiftJ2K3D
+[232 / 279] SwiftJ2KJPIP
+[238 / 280] SwiftJ2K3DTests-product
+[242 / 321]
+[246 / 321]
+[249 / 321]
+[254 / 332]
+[258 / 332]
+[261 / 332]
+[262 / 332] SwiftJ2KCLI
+[263 / 332] SwiftJ2KCLI
+[264 / 332]
+[267 / 332]
+[268 / 332]
+[276 / 332] SwiftJ2K3DTests-product
+[278 / 332] SwiftJ2K3DTests-product
+[289 / 332] SwiftJ2KJPIPTests-product
+[290 / 332] swiftj2k-cli-product
+[292 / 332] swiftj2k-cli-product
+[296 / 332] SwiftJ2K3DTests-product
+[298 / 332] SwiftJ2K3DTests-product
+[298 / 332] swiftj2k-cli-product
+error: SwiftCompile normal arm64 /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftPerFileCompile CodexR3IndependentTests.swift
+error: SwiftCompile normal arm64 /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftPerFileCompile CodexR3SocketLifetimeTests.swift
+error: SwiftCompile normal arm64 /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftPerFileCompile CodexR3TakeoverJPIPTests.swift
+error: SwiftCompile normal arm64 /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift failed with a nonzero exit code. Command line:     cd /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work
+    builtin-SwiftPerFileCompile CodexR3TransportCloseTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1434:41: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1432 |[0;0m                 try await wsServer.handleFrame(
+[0;36m1433 |[0;0m                     encoder.encodeRequest(sepReq, requestID: 101),
+[0;36m1434 |[0;0m                     from: separatedConn.connectionID
+     [0;36m|[0;0m                                         |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                         |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                         `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1435 |[0;0m                 )
+[0;36m1436 |[0;0m             )
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1449:41: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1447 |[0;0m                         requestID: 102
+[0;36m1448 |[0;0m                     ),
+[0;36m1449 |[0;0m                     from: separatedConn.connectionID
+     [0;36m|[0;0m                                         |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                         |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                         `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1450 |[0;0m                 )
+[0;36m1451 |[0;0m             )
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1454:58: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1452 |[0;0m             #expect(String(data: sepCloseReply.payload, encoding: .utf8) == "session-closed:\(sepChannelID)")
+[0;36m1453 |[0;0m             #expect(await wsServer.getActiveBackendSessionCount() == 0)
+[0;36m1454 |[0;0m             await wsServer.closeConnection(separatedConn.connectionID)
+     [0;36m|[0;0m                                                          |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                                          |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                                          `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1455 |[0;0m             #expect(await wsServer.getActiveConnectionCount() == 0)
+[0;36m1456 |[0;0m 
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1540:81: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1538 |[0;0m 
+[0;36m1539 |[0;0m             let oldCnewTask = Task {
+[0;36m1540 |[0;0m                 try? await wsServer.handleFrame(oldCnewFrame, from: connOldCnew.connectionID)
+     [0;36m|[0;0m                                                                                 |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                                                                 |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                                                                 `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1541 |[0;0m             }
+[0;36m1542 |[0;0m             let oldWildcardTask = Task {
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1543:89: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1541 |[0;0m             }
+[0;36m1542 |[0;0m             let oldWildcardTask = Task {
+[0;36m1543 |[0;0m                 try? await wsServer.handleFrame(oldWildcardFrame, from: connOldWildcard.connectionID)
+     [0;36m|[0;0m                                                                                         |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                                                                         |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                                                                         `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1544 |[0;0m             }
+[0;36m1545 |[0;0m 
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1586:51: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1584 |[0;0m             let sharedCollisionSID = "shared-collision-session-id"
+[0;36m1585 |[0;0m             await wsServer.bindTestingSession(
+[0;36m1586 |[0;0m                 connectionID: connOldDisconnClose.connectionID,
+     [0;36m|[0;0m                                                   |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                                   |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                                   `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1587 |[0;0m                 sessionID: sharedCollisionSID
+[0;36m1588 |[0;0m             )
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1618:44: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1616 |[0;0m                         requestID: 301
+[0;36m1617 |[0;0m                     ),
+[0;36m1618 |[0;0m                     from: connOldCtrlClose.connectionID
+     [0;36m|[0;0m                                            |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                            |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                            `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1619 |[0;0m                 )
+[0;36m1620 |[0;0m             }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1622:68: [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+[0;36m1620 |[0;0m             }
+[0;36m1621 |[0;0m             let oldDisconnCloseTask = Task {
+[0;36m1622 |[0;0m                 await wsServer.closeConnection(connOldDisconnClose.connectionID)
+     [0;36m|[0;0m                                                                    |- [1;31merror: [1;39mvalue of optional type 'String?' must be unwrapped to a value of type 'String'[0;0m
+     [0;36m|[0;0m                                                                    |- [1;39mnote: [1;39mcoalesce using '??' to provide a default when the optional value contains 'nil'[0;0m
+     [0;36m|[0;0m                                                                    `- [1;39mnote: [1;39mforce-unwrap using '!' to abort execution if the optional value contains 'nil'[0;0m
+[0;36m1623 |[0;0m             }
+[0;36m1624 |[0;0m 
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1418:33: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1416 |[0;0m 
+[0;36m1417 |[0;0m             // Verify normal upgrade, cnew request, and close-session control frame succeed when counters are separated (2 != 1).
+[0;36m1418 |[0;0m             let separatedConn = try await wsServer.handleUpgradeRequest(
+     [0;36m|[0;0m                                 `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1419 |[0;0m                 headers: [
+[0;36m1420 |[0;0m                     "Upgrade": "websocket",
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1431:33: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1429 |[0;0m             sepReq.fsiz = (width: 8, height: 8)
+[0;36m1430 |[0;0m             sepReq.cnew = .http
+[0;36m1431 |[0;0m             let sepReplyFrame = try #require(
+     [0;36m|[0;0m                                 `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1432 |[0;0m                 try await wsServer.handleFrame(
+[0;36m1433 |[0;0m                     encoder.encodeRequest(sepReq, requestID: 101),
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1437:30: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1435 |[0;0m                 )
+[0;36m1436 |[0;0m             )
+[0;36m1437 |[0;0m             let sepDecoded = try #require(encoder.decodeResponse(from: sepReplyFrame))
+     [0;36m|[0;0m                              `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1438 |[0;0m             #expect(sepDecoded.statusCode == 200)
+[0;36m1439 |[0;0m             let sepChannelID = try #require(sepDecoded.channelID)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1439:32: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1437 |[0;0m             let sepDecoded = try #require(encoder.decodeResponse(from: sepReplyFrame))
+[0;36m1438 |[0;0m             #expect(sepDecoded.statusCode == 200)
+[0;36m1439 |[0;0m             let sepChannelID = try #require(sepDecoded.channelID)
+     [0;36m|[0;0m                                `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1440 |[0;0m             #expect(await wsServer.getActiveBackendSessionCount() == 1)
+[0;36m1441 |[0;0m 
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1442:33: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1440 |[0;0m             #expect(await wsServer.getActiveBackendSessionCount() == 1)
+[0;36m1441 |[0;0m 
+[0;36m1442 |[0;0m             let sepCloseReply = try #require(
+     [0;36m|[0;0m                                 `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1443 |[0;0m                 try await wsServer.handleFrame(
+[0;36m1444 |[0;0m                     JPIPWebSocketFrame(
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1497:31: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1495 |[0;0m 
+[0;36m1496 |[0;0m             // 3) Delayed wsServer.handleFrame -> jpipServer.handleRequest across restart (for both cnew and cclose=*):
+[0;36m1497 |[0;0m             let connOldCnew = try await wsServer.handleUpgradeRequest(
+     [0;36m|[0;0m                               `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1498 |[0;0m                 headers: [
+[0;36m1499 |[0;0m                     "Upgrade": "websocket",
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1505:35: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1503 |[0;0m                 ]
+[0;36m1504 |[0;0m             )
+[0;36m1505 |[0;0m             let connOldWildcard = try await wsServer.handleUpgradeRequest(
+     [0;36m|[0;0m                                   `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1506 |[0;0m                 headers: [
+[0;36m1507 |[0;0m                     "Upgrade": "websocket",
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1560:33: [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1558 |[0;0m             // Release both delayed old request hops (backendGen: 2) against the restarted backend (backendGen: 3).
+[0;36m1559 |[0;0m             await releaseBackendReqHops.open()
+[0;36m1560 |[0;0m             let oldCnewResult = await oldCnewTask.value
+     [0;36m|[0;0m                                 `- [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1561 |[0;0m             let oldWildcardResult = await oldWildcardTask.value
+[0;36m1562 |[0;0m             #expect(oldCnewResult == nil)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1561:37: [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1559 |[0;0m             await releaseBackendReqHops.open()
+[0;36m1560 |[0;0m             let oldCnewResult = await oldCnewTask.value
+[0;36m1561 |[0;0m             let oldWildcardResult = await oldWildcardTask.value
+     [0;36m|[0;0m                                     `- [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1562 |[0;0m             #expect(oldCnewResult == nil)
+[0;36m1563 |[0;0m             #expect(oldWildcardResult == nil)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1568:36: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1566 |[0;0m 
+[0;36m1567 |[0;0m             // 4) Delayed wsServer -> jpipServer.closeSession across restart (for both close-session:<sid> control frame and closeConnection):
+[0;36m1568 |[0;0m             let connOldCtrlClose = try await wsServer.handleUpgradeRequest(
+     [0;36m|[0;0m                                    `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1569 |[0;0m                 headers: [
+[0;36m1570 |[0;0m                     "Upgrade": "websocket",
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1576:39: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1574 |[0;0m                 ]
+[0;36m1575 |[0;0m             )
+[0;36m1576 |[0;0m             let connOldDisconnClose = try await wsServer.handleUpgradeRequest(
+     [0;36m|[0;0m                                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1577 |[0;0m                 headers: [
+[0;36m1578 |[0;0m                     "Upgrade": "websocket",
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1639:38: [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1637 |[0;0m             // Release both delayed closeSession hops (carrying expectedGeneration: 3) against backend generation 4.
+[0;36m1638 |[0;0m             await releaseCloseHops.open()
+[0;36m1639 |[0;0m             let oldCtrlCloseResult = await oldCtrlCloseTask.value
+     [0;36m|[0;0m                                      `- [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1640 |[0;0m             await oldDisconnCloseTask.value
+[0;36m1641 |[0;0m             #expect(oldCtrlCloseResult == nil)
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift:1640:13: [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1638 |[0;0m             await releaseCloseHops.open()
+[0;36m1639 |[0;0m             let oldCtrlCloseResult = await oldCtrlCloseTask.value
+[0;36m1640 |[0;0m             await oldDisconnCloseTask.value
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39mno 'async' operations occur within 'await' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m1641 |[0;0m             #expect(oldCtrlCloseResult == nil)
+[0;36m1642 |[0;0m             // Successor session with identical sessionID remains intact because expectedGeneration: 3 != 4.
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources/test_entry_point.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift -primary-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R2CacheRecencyTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift -supplementary-output-file-map /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/supplementaryOutputs-33 -target arm64-apple-macos26.0 -module-can-import-version Darwin 428.0.10 0 -module-can-import-version Testing 2084 0 -module-can-import-version XCTest 25228 0 -disable-cross-import-overlay-search -swift-module-cross-import Darwin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Darwin.swiftcrossimport/xlocale.swiftoverlay -swift-module-cross-import Testing /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftcrossimport/AppKit.swiftoverlay -swift-module-cross-import Testing /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftcrossimport/CoreGraphics.swiftoverlay -swift-module-cross-import Testing /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftcrossimport/CoreImage.swiftoverlay -swift-module-cross-import Testing /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftcrossimport/CoreTransferable.swiftoverlay -swift-module-cross-import Testing /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftcrossimport/Foundation.swiftoverlay -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib\#\#TestingMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Products/Debug/PackageFrameworks -F /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -swift-version 6 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work -enable-anonymous-context-mangled-names -file-compilation-dir /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/SDKStatCaches.noindex/macosx27.0-26A425-80c5bbf1d171475443272936d42f90a37231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Products/Debug/include -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources-normal/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources/arm64 -Xcc -I/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name SwiftJ2KJPIPTests -package-name swiftj2k -const-gather-protocols-file /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3IndependentTests.o -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3SocketLifetimeTests.o -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3TakeoverJPIPTests.o -o /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3TransportCloseTests.o -debug-module-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Intermediates.noindex/SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/SwiftJ2KJPIPTests.swiftmodule -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3IndependentTests.o -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3SocketLifetimeTests.o -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3TakeoverJPIPTests.o -index-unit-output-path /SwiftJ2K.build/Debug/SwiftJ2KJPIPTests-p.build/Objects-normal/arm64/CodexR3TransportCloseTests.o -index-store-path /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out -index-system-modules
+[299 / 332] SwiftJ2K3DTests-product
+error: Build failed
+error: fatalError

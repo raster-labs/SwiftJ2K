@@ -1,0 +1,18 @@
+{
+  "identity": {
+    "GITHUB_REPOSITORY": "raster-labs/SwiftJ2K",
+    "GITHUB_RUN_ID": "41201993850",
+    "GITHUB_RUN_ATTEMPT": "1",
+    "GITHUB_JOB": "macos",
+    "GITHUB_EVENT_NAME": "pull_request",
+    "GITHUB_REF": "refs/pull/30/merge",
+    "GITHUB_SHA": "7b45184f6d50a079c6c9ac92502449fd09fe4e96",
+    "EVIDENCE_PR_HEAD": "af6d52e055d726456dcb3025e3e1addf9bd55231",
+    "EVIDENCE_PR_BASE": "46be90fc3bf50429956725ee592687d8ff8e7344",
+    "EVIDENCE_ORDINARY": "failure",
+    "EVIDENCE_ASAN": "skipped",
+    "EVIDENCE_TSAN": "skipped"
+  },
+  "checkout_head": "7b45184f6d50a079c6c9ac92502449fd09fe4e96",
+  "checkout_tree": "e3058819be67cba5728f7f3c31de61a3715084ba"
+}

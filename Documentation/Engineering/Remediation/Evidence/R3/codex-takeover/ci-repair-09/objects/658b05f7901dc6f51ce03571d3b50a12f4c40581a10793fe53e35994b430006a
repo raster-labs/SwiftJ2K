@@ -1,0 +1,91 @@
+{
+  "state": "PLANNED_SERIAL_FOCUSED_JPIP_EXECUTION_REUSING_UNCHANGED_PRODUCTION_26",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-27",
+  "prior_full_campaign_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-26",
+  "prior_full_campaign_manifest_sha256": "cc0338180f97aea8aee453001a968c94e36c9741bf6666b95fe534ed88dc876c",
+  "changed_files_from_26": [
+    "Tests/SwiftJ2KJPIPTests/CodexR3SocketLifetimeTests.swift"
+  ],
+  "unchanged_production_files_from_26": 540,
+  "wrapper_sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+  "source_manifest_sha256": "aa5eadba966e025b2772d46c7c5a207227401c8fa3644b97fc98a58396af14d4",
+  "source_files": 2543,
+  "gates": [
+    {
+      "label": "candidate-jpip-ordinary-27",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-build-26",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-ordinary-27/report.xml"
+      ]
+    },
+    {
+      "label": "candidate-jpip-asan-27",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-asan-26",
+        "--sanitize",
+        "address",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-asan-27/report.xml"
+      ]
+    },
+    {
+      "label": "candidate-jpip-tsan-27",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-tsan-26",
+        "--sanitize",
+        "thread",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-tsan-27/report.xml"
+      ]
+    }
+  ]
+}

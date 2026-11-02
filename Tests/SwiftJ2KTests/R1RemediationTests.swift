@@ -22,9 +22,11 @@ import Testing
 
 // MARK: - CLI Subprocess Helpers
 
+#if os(macOS) || os(Linux)
 private func runSwiftJ2KCLI(_ args: [String]) async throws -> CLITestProcessResult {
     try await CLITestProcess.run(args)
 }
+#endif
 
 private func makeGray16Image(width: Int = 4, height: Int = 4) throws -> Image {
     let descriptor = try ImageDescriptor.greyscale16(width: width, height: height)
@@ -1352,6 +1354,7 @@ struct R1RemediationTests {
         }
     }
 
+    #if os(macOS) || os(Linux)
     @Test("M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions")
     func cliRemediationSubprocessRegressions() async throws {
         let tempDir = FileManager.default.temporaryDirectory
@@ -1503,4 +1506,5 @@ struct R1RemediationTests {
         let cmpPNG = try await runSwiftJ2KCLI(["compare", "-i", pngOut.path, "-r", pngIn.path, "--max-error", "0"])
         #expect(cmpPNG.reason == .exit && cmpPNG.status == 0, "PNG max-error 0 compare failed: \(cmpPNG.stderrText)")
     }
+    #endif
 }

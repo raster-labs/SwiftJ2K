@@ -499,8 +499,13 @@ func waveletForwardInverseIsIdentity(width: Int, height: Int) throws {
 // MARK: - Independent oracle decoding of successor output (development hosts only)
 
 enum Oracle {
+    #if os(macOS) || os(Linux)
     static let openJPEG = ["/opt/homebrew/bin/opj_decompress", "/usr/local/bin/opj_decompress"].first { FileManager.default.isExecutableFile(atPath: $0) }
     static let kakadu = ["/usr/local/bin/kdu_expand", "/opt/homebrew/bin/kdu_expand"].first { FileManager.default.isExecutableFile(atPath: $0) }
+    #else
+    static let openJPEG: String? = nil
+    static let kakadu: String? = nil
+    #endif
     static var available: Bool { openJPEG != nil || kakadu != nil }
 
     #if os(macOS) || os(Linux)

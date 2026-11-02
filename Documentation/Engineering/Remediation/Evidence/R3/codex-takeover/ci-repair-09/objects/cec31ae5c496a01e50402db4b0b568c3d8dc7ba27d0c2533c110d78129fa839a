@@ -1,0 +1,30 @@
+{
+  "finished_at": "2026-11-02T08:34:52.334977+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 235.250166167,
+  "changed_inputs": [],
+  "log_sha256": "d6a25a88a531ade87681704cf65499d6fb692efaec8bc89cc2e9a2cf7c78c2db",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-swiftj2ktests-tsan-29/native.stdout",
+      "sha256": "2078b95a132a5f052a1ee0c42e0005faaef26a4bb32a65990f1f61c686f925b8",
+      "bytes": 85029
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-swiftj2ktests-tsan-29/native.stderr",
+      "sha256": "d7d10cddd69d1fcdd9e11d6ec06bf5c3495ee7774ce21a4962e032e97ec8d767",
+      "bytes": 36956
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 0,
+  "wrapper_exit_code": 0,
+  "built_cli_products_at_completion": {
+    "debug": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-tsan-26/arm64-apple-macosx/debug/swiftj2k-cli",
+      "sha256": "87d4232e9061392ebade80affc3e2f3e8f390d49abebbdd834e4141119b98c7a"
+    }
+  }
+}
