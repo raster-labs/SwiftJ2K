@@ -184,18 +184,29 @@ struct CodexR3HTTPStreamingTests {
         let scenario = HTTPSHarnessScenario(mode: .silent)
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
-        let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
-        let start = ContinuousClock.now
-        do {
-            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
-                deadline: start.advanced(by: .milliseconds(120)))
-            Issue.record("Expected absolute HTTPS deadline; \(operation.phaseDiagnostics)")
-        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
-        #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
+        let phaseLog = JPIPHTTPSPhaseLog()
+        let operation = JPIPHTTPSRequest(
+            maximumBodyBytes: 65_536,
+            maximumStorageBytes: 262_144,
+            phaseLog: phaseLog
+        )
+        let timing = try await runActiveSilentDeadlineCancellationAttempt(
+            scenario: scenario,
+            operation: operation,
+            phaseLog: phaseLog,
+            url: fixture.url,
+            configuration: fixture.configuration,
+            readDeadline: nil
+        )
+        #expect(timing.elapsed < .seconds(2), "\(operation.phaseDiagnostics)")
         #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
         #expect(scenario.waitForStopCompleted(), "\(operation.phaseDiagnostics)")
+        #expect(scenario.stoppedWhileSilentWatchdogActive, "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)")
         let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
+        #expect(phases.contains("watchdog.armed("), "\(phases)")
         #expect(phases.contains(": watchdog"), "\(phases)")
+        #expect(phases.contains("protocol.silent.watchdogArmed(active=true)"), "\(phases)")
+        #expect(phases.contains("protocol.silent.stoppedWhileActive(true)"), "\(phases)")
         #expect(phases.contains("cancel(latched=true"), "\(phases)")
         #expect(phases.contains("cancel.returned(hasTask=true)"), "\(phases)")
         #expect(phases.contains("protocol.start.called"), "\(phases)")
@@ -204,6 +215,211 @@ struct CodexR3HTTPStreamingTests {
         #expect(phases.contains("invalidation("), "\(phases)")
         #expect(phases.contains("queue.tail"), "\(phases)")
         #expect(phases.contains(": resume"), "\(phases)")
+
+        try await verifyPrepublicationDeadlineExpiryCancelsWithoutStartingProtocol()
+    }
+
+    private func runActiveSilentDeadlineCancellationAttempt(
+        scenario: HTTPSHarnessScenario,
+        operation: JPIPHTTPSRequest,
+        phaseLog: JPIPHTTPSPhaseLog,
+        url: URL,
+        configuration: URLSessionConfiguration,
+        readDeadline: ContinuousClock.Instant?
+    ) async throws -> (start: ContinuousClock.Instant, elapsed: Duration) {
+        let request = Task {
+            defer {
+                scenario.finishSilentStartOnRequestExit()
+            }
+            return try await operation.read(
+                URLRequest(url: url),
+                configuration: configuration,
+                deadline: readDeadline
+            )
+        }
+        do {
+            let silentStarted = await scenario.waitForSilentStart(after: 2.0)
+            guard silentStarted else {
+                throw J2KError.invalidState(
+                    "HTTPS silent harness exited or did not become active before deadline arm: " +
+                    "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
+                )
+            }
+            guard scenario.markSilentWatchdogArmed(forHost: url.host) else {
+                throw J2KError.invalidState(
+                    "HTTPS silent harness stopped before watchdog arm: " +
+                    "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
+                )
+            }
+            let start = ContinuousClock.now
+            let deadline = start.advanced(by: .milliseconds(120))
+            let remaining = try JPIPTransport.remainingSeconds(until: deadline)
+            phaseLog.record(String(format: "watchdog.armed(%.3fs)", remaining))
+            let watchdog = JPIPDeadlineWatchdog(after: remaining) { [phaseLog] in
+                phaseLog.record("watchdog")
+                operation.cancel(CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed."))
+            }
+            defer { watchdog.cancel() }
+            do {
+                _ = try await request.value
+                Issue.record("Expected absolute HTTPS deadline; \(operation.phaseDiagnostics)")
+            } catch let error as CodecError {
+                #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)")
+            }
+            return (start, ContinuousClock.now - start)
+        } catch {
+            scenario.markStopCompleted()
+            scenario.finishSilentStartStream()
+            operation.cancel()
+            request.cancel()
+            _ = try? await request.value
+            throw error
+        }
+    }
+
+    private enum SilentReadinessFailureMode: Sendable {
+        case expiredDeadlineBeforeStartLoading
+        case protocolFailureBeforeSilentActive
+    }
+
+    private func verifyPrepublicationDeadlineExpiryCancelsWithoutStartingProtocol() async throws {
+        let scenario = HTTPSHarnessScenario(mode: .silent)
+        let fixture = HTTPSHarnessProtocol.register(scenario)
+        defer { HTTPSHarnessProtocol.remove(fixture.url) }
+        let phaseLog = JPIPHTTPSPhaseLog()
+        let operation = JPIPHTTPSRequest(
+            maximumBodyBytes: 65_536,
+            maximumStorageBytes: 262_144,
+            phaseLog: phaseLog
+        )
+        let start = ContinuousClock.now
+        do {
+            _ = try await operation.read(
+                URLRequest(url: fixture.url),
+                configuration: fixture.configuration,
+                deadline: start.advanced(by: .milliseconds(120)),
+                beforeTaskPublication: { [phaseLog] in
+                    phaseLog.record("watchdog")
+                    operation.cancel(
+                        CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")
+                    )
+                }
+            )
+            Issue.record("Expected prepublication HTTPS deadline expiry; \(operation.phaseDiagnostics)")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)")
+        }
+        #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        #expect(scenario.request == nil, "\(operation.phaseDiagnostics)")
+        #expect(scenario.stopDiagnostics == "protocol.stop.notCalled", "\(scenario.stopDiagnostics)")
+        let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
+        #expect(phases.contains("watchdog.armed("), "\(phases)")
+        #expect(phases.contains(": watchdog"), "\(phases)")
+        #expect(phases.contains("cancel(latched=true,hasTask=false"), "\(phases)")
+        #expect(phases.contains("cancel.returned(hasTask=false)"), "\(phases)")
+        #expect(phases.contains("cancelled.beforeTaskPublication"), "\(phases)")
+        #expect(phases.contains("invalidate.requested"), "\(phases)")
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains(": resume"), "\(phases)")
+        #expect(!phases.contains("task.published"), "\(phases)")
+        #expect(!phases.contains("protocol.start.called"), "\(phases)")
+        #expect(!phases.contains("protocol.stop.called"), "\(phases)")
+
+        try await verifyReadDeadlineTimerFiresAcrossPublicationBoundary()
+        try await verifySilentEarlyFailureBeforeActiveReadinessDoesNotHang(
+            failureMode: .expiredDeadlineBeforeStartLoading
+        )
+        try await verifySilentEarlyFailureBeforeActiveReadinessDoesNotHang(
+            failureMode: .protocolFailureBeforeSilentActive
+        )
+    }
+
+    private func verifyReadDeadlineTimerFiresAcrossPublicationBoundary() async throws {
+        let scenario = HTTPSHarnessScenario(mode: .silent)
+        let fixture = HTTPSHarnessProtocol.register(scenario)
+        defer { HTTPSHarnessProtocol.remove(fixture.url) }
+        let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
+        let start = ContinuousClock.now
+        do {
+            _ = try await operation.read(
+                URLRequest(url: fixture.url),
+                configuration: fixture.configuration,
+                deadline: start.advanced(by: .milliseconds(120))
+            )
+            Issue.record("Expected read(deadline:) watchdog expiry; \(operation.phaseDiagnostics)")
+        } catch let error as CodecError {
+            #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)")
+        }
+        #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        if operation.phaseDiagnostics.contains("protocol.start.called") {
+            #expect(scenario.waitForStopCompleted(), "\(operation.phaseDiagnostics)")
+        }
+        let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
+        #expect(phases.contains("watchdog.armed("), "\(phases)")
+        #expect(phases.contains(": watchdog"), "\(phases)")
+        #expect(phases.contains("cancel(latched=true"), "\(phases)")
+        #expect(phases.contains("invalidate.requested"), "\(phases)")
+        #expect(phases.contains("invalidation("), "\(phases)")
+        #expect(phases.contains("queue.tail"), "\(phases)")
+        #expect(phases.contains(": resume"), "\(phases)")
+        if phases.contains("cancelled.beforeTaskPublication") {
+            #expect(phases.contains("cancel.returned(hasTask=false)"), "\(phases)")
+            #expect(scenario.request == nil, "\(phases)")
+            #expect(!phases.contains("task.published"), "\(phases)")
+            #expect(!phases.contains("protocol.start.called"), "\(phases)")
+        } else {
+            #expect(phases.contains("task.published"), "\(phases)")
+            if phases.contains("protocol.start.called") {
+                #expect(phases.contains("protocol.stop.called"), "\(phases)")
+            }
+        }
+    }
+
+    private func verifySilentEarlyFailureBeforeActiveReadinessDoesNotHang(
+        failureMode: SilentReadinessFailureMode
+    ) async throws {
+        let scenario = HTTPSHarnessScenario(
+            mode: .silent,
+            failBeforeTrickleTimerPublication: failureMode == .protocolFailureBeforeSilentActive
+        )
+        let fixture = HTTPSHarnessProtocol.register(scenario)
+        defer { HTTPSHarnessProtocol.remove(fixture.url) }
+        let phaseLog = JPIPHTTPSPhaseLog()
+        let operation = JPIPHTTPSRequest(
+            maximumBodyBytes: 65_536,
+            maximumStorageBytes: 262_144,
+            phaseLog: phaseLog
+        )
+        let start = ContinuousClock.now
+        let readDeadline: ContinuousClock.Instant? =
+            failureMode == .expiredDeadlineBeforeStartLoading
+            ? .now.advanced(by: .milliseconds(-1))
+            : .now.advanced(by: .seconds(2))
+        await #expect(throws: J2KError.self) {
+            _ = try await runActiveSilentDeadlineCancellationAttempt(
+                scenario: scenario,
+                operation: operation,
+                phaseLog: phaseLog,
+                url: fixture.url,
+                configuration: fixture.configuration,
+                readDeadline: readDeadline
+            )
+        }
+        #expect(ContinuousClock.now - start < .seconds(1), "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        #expect(!scenario.stoppedWhileSilentWatchdogActive, "\(operation.phaseDiagnostics)")
+        switch failureMode {
+        case .expiredDeadlineBeforeStartLoading:
+            #expect(scenario.request == nil, "\(operation.phaseDiagnostics)")
+        case .protocolFailureBeforeSilentActive:
+            #expect(
+                operation.phaseDiagnostics.contains("protocol.start.failedBeforePublication"),
+                "\(operation.phaseDiagnostics)"
+            )
+        }
     }
 
     @Test func sharedWatchdogInterruptsAnAlreadyActiveTrickle() async throws {
@@ -704,6 +920,7 @@ private final class HTTPSHarnessScenario: Sendable {
     let failBeforeTrickleTimerPublication: Bool
     let abortBeforeTricklePublicationFinished: Bool
     let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let silentStarted = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
     let trickleTimerPublicationPaused = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
     let trickleTimerPublicationFinished = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
     private struct State {
@@ -711,6 +928,9 @@ private final class HTTPSHarnessScenario: Sendable {
         var delivered = 0
         var watchdogArmed = false
         var deliveredDuringWatchdog = 0
+        var silentActive = false
+        var silentWatchdogArmed = false
+        var stoppedWhileSilentWatchdogActive = false
         var pausedBeforePublication = false
         var publicationFinished = false
         var abortedBeforePublicationFinished = false
@@ -739,6 +959,7 @@ private final class HTTPSHarnessScenario: Sendable {
     var request: URLRequest? { state.withLock { $0.request } }
     var deliveredChunks: Int { state.withLock { $0.delivered } }
     var chunksDeliveredDuringWatchdog: Int { state.withLock { $0.deliveredDuringWatchdog } }
+    var stoppedWhileSilentWatchdogActive: Bool { state.withLock { $0.stoppedWhileSilentWatchdogActive } }
     var cancelledAtPublication: Bool { state.withLock { $0.cancelledAtPublication } }
     var abortedBeforePublicationFinished: Bool { state.withLock { $0.abortedBeforePublicationFinished } }
     var stopDiagnostics: String {
@@ -757,6 +978,53 @@ private final class HTTPSHarnessScenario: Sendable {
     func delivered() { state.withLock { $0.delivered += 1 } }
     func markWatchdogArmed() {
         state.withLock { $0.watchdogArmed = true }
+    }
+    func markSilentActive(forHost host: String?) {
+        let activated = state.withLock { state -> Bool in
+            guard !state.stopCalled && !state.stopCompleted else { return false }
+            state.silentActive = true
+            return true
+        }
+        if activated {
+            JPIPHTTPSPhaseLog.record(forHost: host, "protocol.silent.active")
+            silentStarted.continuation.yield(true)
+        }
+        silentStarted.continuation.finish()
+    }
+    func markSilentWatchdogArmed(forHost host: String?) -> Bool {
+        let active = state.withLock { state -> Bool in
+            let isActive = state.silentActive && state.request != nil && !state.stopCalled && !state.stopCompleted
+            state.silentWatchdogArmed = isActive
+            return isActive
+        }
+        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.silent.watchdogArmed(active=\(active))")
+        return active
+    }
+    func finishSilentStartOnRequestExit() {
+        let shouldSignalStop = state.withLock { state -> Bool in
+            if !state.silentActive && !state.stopCompleted {
+                state.stopCompleted = true
+                return true
+            }
+            return false
+        }
+        if shouldSignalStop {
+            stopSemaphore.signal()
+        }
+        silentStarted.continuation.finish()
+    }
+    func finishSilentStartStream() {
+        silentStarted.continuation.finish()
+    }
+    func waitForSilentStart(after seconds: TimeInterval = 2.0) async -> Bool {
+        let watchdog = JPIPDeadlineWatchdog(after: seconds) { [silentStarted] in
+            silentStarted.continuation.finish()
+        }
+        defer { watchdog.cancel() }
+        for await delivered in silentStarted.stream {
+            return delivered && state.withLock { $0.silentActive && $0.request != nil && !$0.stopCompleted }
+        }
+        return false
     }
     func recordTrickleChunk() -> (total: Int, duringWatchdog: Int) {
         state.withLock { state in
@@ -827,15 +1095,23 @@ private final class HTTPSHarnessScenario: Sendable {
         }
         return false
     }
-    func markStopCompleted(timerActive: Bool? = nil) {
-        let shouldSignal = state.withLock { state -> Bool in
+    func markStopCompleted(timerActive: Bool? = nil, forHost host: String? = nil) {
+        let (shouldSignal, silentOverlap) = state.withLock { state -> (Bool, Bool) in
+            let overlap = state.silentActive && state.silentWatchdogArmed && !state.stopCompleted
+            if overlap {
+                state.stoppedWhileSilentWatchdogActive = true
+            }
+            state.silentActive = false
             if let timerActive {
                 state.stopCalled = true
                 state.stopTimerActive = timerActive
             }
-            guard !state.stopCompleted else { return false }
+            guard !state.stopCompleted else { return (false, overlap) }
             state.stopCompleted = true
-            return true
+            return (true, overlap)
+        }
+        if silentOverlap {
+            JPIPHTTPSPhaseLog.record(forHost: host, "protocol.silent.stoppedWhileActive(true)")
         }
         if shouldSignal {
             stopSemaphore.signal()
@@ -895,6 +1171,7 @@ private final class HTTPSHarnessProtocol: URLProtocol {
             let scenario = Self.scenarios.withLock { $0[host ?? ""] }
             defer {
                 scenario?.finishTricklePublicationStreams()
+                scenario?.finishSilentStartStream()
             }
             guard !runtime.withLock({ $0.stopped }),
                   let url = request.url else {
@@ -913,7 +1190,11 @@ private final class HTTPSHarnessProtocol: URLProtocol {
                 client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
                 return
             }
-            guard scenario.mode != .silent else { return }
+            if scenario.mode == .silent {
+                guard !runtime.withLock({ $0.stopped }) else { return }
+                scenario.markSilentActive(forHost: host)
+                return
+            }
             guard let response = HTTPURLResponse(url: url, statusCode: 200,
                 httpVersion: "HTTP/1.1", headerFields: scenario.headers) else { return }
             guard !runtime.withLock({ $0.stopped }) else { return }
@@ -983,6 +1264,6 @@ private final class HTTPSHarnessProtocol: URLProtocol {
         }
         activeTimer?.cancel()
         JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.done(timerActive=\(activeTimer != nil))")
-        scenario?.markStopCompleted(timerActive: activeTimer != nil)
+        scenario?.markStopCompleted(timerActive: activeTimer != nil, forHost: host)
     }
 }
