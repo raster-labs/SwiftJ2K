@@ -180,9 +180,9 @@ struct R3ScriptedPeerFailure: Error, CustomStringConvertible {
 /// called between overlapping child tasks within a test, and never alters any deadline or assertion.
 enum JPIPTestCooperativeQuiescence {
     static func settle() async {
-        let maxWait = ContinuousClock.now.advanced(by: .seconds(35))
+        let maxWait = ContinuousClock.now.advanced(by: .seconds(50))
         var fastRounds = 0
-        while fastRounds < 6 && ContinuousClock.now < maxWait {
+        while fastRounds < 12 && ContinuousClock.now < maxWait {
             let t0 = ContinuousClock.now
             await Task { }.value
             let hop = ContinuousClock.now - t0

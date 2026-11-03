@@ -229,6 +229,7 @@ struct CodexR3HTTPStreamingTests {
             // Test the shared watchdog and cancellation lifecycle after actual
             // delegate receipt. The separate silent test covers read(deadline:)
             // timer setup; this test does not claim to cover that setup itself.
+            scenario.markWatchdogArmed()
             let start = ContinuousClock.now
             let watchdog = JPIPDeadlineWatchdog(after: 0.12) {
                 operation.cancel(CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed."))
@@ -240,13 +241,16 @@ struct CodexR3HTTPStreamingTests {
             } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
             #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
             #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+            #expect(scenario.chunksDeliveredDuringWatchdog >= 1, "\(operation.phaseDiagnostics)")
             let phases = operation.phaseDiagnostics
             #expect(phases.contains("protocol.start.called"), "\(phases)")
             #expect(phases.contains("didReceiveData(chunk=1"), "\(phases)")
             #expect(phases.contains("didReceiveData(chunk=2"), "\(phases)")
+            #expect(phases.contains("protocol.trickle.overlapChunk("), "\(phases)")
             #expect(phases.contains("cancel(latched=true"), "\(phases)")
             #expect(phases.contains("cancel.returned(hasTask=true)"), "\(phases)")
             #expect(phases.contains("protocol.stop.called"), "\(phases)")
+            #expect(phases.contains("protocol.stop.done(timerActive=true)"), "\(phases)")
             #expect(phases.contains("invalidate.requested"), "\(phases)")
             #expect(phases.contains("invalidation("), "\(phases)")
         } catch {
@@ -254,6 +258,39 @@ struct CodexR3HTTPStreamingTests {
             _ = try? await request.value
             throw error
         }
+        try await verifyTrickleStopWinningTimerPublicationActivatesBeforeCancel()
+    }
+
+    private func verifyTrickleStopWinningTimerPublicationActivatesBeforeCancel() async throws {
+        let scenario = HTTPSHarnessScenario(
+            mode: .trickle,
+            headers: ["Content-Type": "image/jpp-stream"],
+            pauseBeforeTrickleTimerPublication: true
+        )
+        let fixture = HTTPSHarnessProtocol.register(scenario)
+        defer { HTTPSHarnessProtocol.remove(fixture.url) }
+        let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
+        let request = Task {
+            defer {
+                scenario.trickleTimerPublicationPaused.continuation.finish()
+            }
+            return try await operation.read(
+                URLRequest(url: fixture.url),
+                configuration: fixture.configuration,
+                deadline: .now.advanced(by: .seconds(2))
+            )
+        }
+        for await _ in scenario.trickleTimerPublicationPaused.stream { break }
+        operation.cancel()
+        for await _ in scenario.trickleTimerPublicationFinished.stream { break }
+        await #expect(throws: CancellationError.self) { _ = try await request.value }
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        #expect(scenario.deliveredChunks == 0, "\(operation.phaseDiagnostics)")
+        #expect(scenario.cancelledAtPublication, "\(operation.phaseDiagnostics)")
+        let phases = operation.phaseDiagnostics
+        #expect(phases.contains("protocol.trickle.pausedBeforePublication"), "\(phases)")
+        #expect(phases.contains("protocol.stop.called"), "\(phases)")
+        #expect(phases.contains("protocol.stop.done(timerActive=false)"), "\(phases)")
     }
 
     @Test func taskCancellationJoinsAndAllowsFollowingRequest() async throws {
@@ -561,19 +598,67 @@ private final class HTTPSHarnessScenario: Sendable {
     let mode: Mode
     let headers: [String: String]
     let chunks: [Data]
+    let pauseBeforeTrickleTimerPublication: Bool
     let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-    private struct State { var request: URLRequest?; var delivered = 0 }
+    let trickleTimerPublicationPaused = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let trickleTimerPublicationFinished = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    private struct State {
+        var request: URLRequest?
+        var delivered = 0
+        var watchdogArmed = false
+        var deliveredDuringWatchdog = 0
+        var stopCompleted = false
+        var cancelledAtPublication = false
+    }
     private let state = Mutex(State())
-    init(mode: Mode, headers: [String: String] = [:], chunks: [Data] = []) {
-        self.mode = mode; self.headers = headers; self.chunks = chunks
+    init(
+        mode: Mode,
+        headers: [String: String] = [:],
+        chunks: [Data] = [],
+        pauseBeforeTrickleTimerPublication: Bool = false
+    ) {
+        self.mode = mode
+        self.headers = headers
+        self.chunks = chunks
+        self.pauseBeforeTrickleTimerPublication = pauseBeforeTrickleTimerPublication
     }
     var request: URLRequest? { state.withLock { $0.request } }
     var deliveredChunks: Int { state.withLock { $0.delivered } }
+    var chunksDeliveredDuringWatchdog: Int { state.withLock { $0.deliveredDuringWatchdog } }
+    var cancelledAtPublication: Bool { state.withLock { $0.cancelledAtPublication } }
     func begin(_ request: URLRequest) {
         state.withLock { $0.request = request }
         started.continuation.yield(())
     }
     func delivered() { state.withLock { $0.delivered += 1 } }
+    func markWatchdogArmed() {
+        state.withLock { $0.watchdogArmed = true }
+    }
+    func recordTrickleChunk() -> (total: Int, duringWatchdog: Int) {
+        state.withLock { state in
+            state.delivered += 1
+            if state.watchdogArmed {
+                state.deliveredDuringWatchdog += 1
+            }
+            return (state.delivered, state.deliveredDuringWatchdog)
+        }
+    }
+    func markStopCompleted() {
+        state.withLock { $0.stopCompleted = true }
+    }
+    func markCancelledAtPublication() {
+        state.withLock { $0.cancelledAtPublication = true }
+    }
+    func waitForStopCompleted(timeout: Duration = .seconds(1)) -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while ContinuousClock.now < deadline {
+            if state.withLock({ $0.stopCompleted }) {
+                return true
+            }
+            usleep(1_000)
+        }
+        return state.withLock { $0.stopCompleted }
+    }
 }
 
 private final class HTTPSHarnessProtocol: URLProtocol {
@@ -643,36 +728,43 @@ private final class HTTPSHarnessProtocol: URLProtocol {
                 tick.schedule(deadline: .now(), repeating: .milliseconds(15))
                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak weakClient = client] in
                     guard let self, !self.runtime.withLock({ $0.stopped }) else { return }
-                    scenario.delivered()
-                    let count = scenario.deliveredChunks
+                    let (count, duringWatchdog) = scenario.recordTrickleChunk()
                     if count <= 2 {
                         JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.chunk(\(count))")
+                    } else if duringWatchdog == 1 {
+                        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.overlapChunk(\(count))")
                     }
                     weakClient?.urlProtocol(self, didLoad: Data([42]))
-                    if count >= 24 {
-                        let existingTimer = self.runtime.withLock { state -> (any DispatchSourceTimer)? in
-                            let t = state.timer
-                            state.timer = nil
-                            return t
-                        }
-                        existingTimer?.cancel()
-                    }
                 })
-                let shouldResume = runtime.withLock { state -> Bool in
-                    guard !state.stopped else { return false }
-                    state.timer = tick
-                    return true
+                if scenario.pauseBeforeTrickleTimerPublication {
+                    JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.pausedBeforePublication")
+                    scenario.trickleTimerPublicationPaused.continuation.yield(())
+                    _ = scenario.waitForStopCompleted()
                 }
-                if shouldResume {
-                    tick.resume()
-                } else {
+                // Always activate the DispatchSourceTimer on every path before
+                // publishing or cancelling it; disposing an unactivated
+                // DispatchSource traps in libdispatch.
+                tick.activate()
+                let shouldCancelImmediately = runtime.withLock { state -> Bool in
+                    if state.stopped {
+                        return true
+                    }
+                    state.timer = tick
+                    return false
+                }
+                if shouldCancelImmediately {
+                    scenario.markCancelledAtPublication()
+                    JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.cancelledAtPublication")
                     tick.cancel()
                 }
+                scenario.trickleTimerPublicationFinished.continuation.yield(())
+                scenario.trickleTimerPublicationFinished.continuation.finish()
             }
         })
     }
     override func stopLoading() {
         let host = request.url?.host
+        let scenario = Self.scenarios.withLock { $0[host ?? ""] }
         JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.called")
         let activeTimer = runtime.withLock { state -> (any DispatchSourceTimer)? in
             state.stopped = true
@@ -681,6 +773,7 @@ private final class HTTPSHarnessProtocol: URLProtocol {
             return t
         }
         activeTimer?.cancel()
-        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.done")
+        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.done(timerActive=\(activeTimer != nil))")
+        scenario?.markStopCompleted()
     }
 }

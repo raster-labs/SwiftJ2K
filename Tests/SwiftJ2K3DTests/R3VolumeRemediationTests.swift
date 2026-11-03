@@ -1474,13 +1474,13 @@ enum VolumeTestCooperativeQuiescence {
     static func settle() async {
         let maxWait = ContinuousClock.now.advanced(by: .seconds(300))
         var fastRounds = 0
-        while fastRounds < 6 && ContinuousClock.now < maxWait {
+        while fastRounds < 2 && ContinuousClock.now < maxWait {
             let t0 = ContinuousClock.now
             await Task { }.value
             let hop = ContinuousClock.now - t0
             if hop < .milliseconds(8) {
                 fastRounds += 1
-                try? await Task.sleep(for: .milliseconds(15))
+                try? await Task.sleep(for: .milliseconds(10))
             } else {
                 fastRounds = 0
             }
