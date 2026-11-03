@@ -20,18 +20,13 @@ struct CodexR3SocketLifetimeTests {
         private let lock = NSLock()
         private var isSignaled = false
         private var asyncWaiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
-        private let sema = DispatchSemaphore(value: 0)
 
         func signal() {
             lock.lock()
-            let firstSignal = !isSignaled
             isSignaled = true
             let waiters = Array(asyncWaiters.values)
             asyncWaiters.removeAll()
             lock.unlock()
-            if firstSignal {
-                sema.signal()
-            }
             for waiter in waiters {
                 waiter.resume(returning: true)
             }
@@ -39,17 +34,15 @@ struct CodexR3SocketLifetimeTests {
 
         /// Synchronous wait for dedicated non-cooperative GCD worker threads / syscallSeam callbacks only.
         func wait(timeoutSeconds: TimeInterval = 5.0) -> Bool {
-            lock.lock()
-            if isSignaled {
+            let deadline = ContinuousClock.now.advanced(by: .milliseconds(Int64(max(1.0, timeoutSeconds * 1000.0))))
+            while true {
+                lock.lock()
+                let done = isSignaled
                 lock.unlock()
-                return true
+                if done { return true }
+                if ContinuousClock.now >= deadline { return false }
+                Thread.sleep(forTimeInterval: 0.002)
             }
-            lock.unlock()
-            let ok = sema.wait(timeout: .now() + timeoutSeconds) == .success
-            if ok {
-                sema.signal()
-            }
-            return ok
         }
 
         /// Non-blocking wait for async @Test functions on the Swift Concurrency cooperative pool.

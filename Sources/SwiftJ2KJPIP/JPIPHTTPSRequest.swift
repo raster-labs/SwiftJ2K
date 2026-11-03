@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
+import Synchronization
 import SwiftJ2K
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -176,30 +177,48 @@ package struct JPIPHTTPSResponseBuffer {
     }
 }
 
-package final class JPIPHTTPSPhaseLog: @unchecked Sendable {
-    // SAFETY: `entries` is guarded by `lock`. Holds only value-type strings and
-    // timestamps; never retains JPIPHTTPSRequest, URLSession, Task, or Continuation.
-    private let lock = NSLock()
+package final class JPIPHTTPSPhaseLog: Sendable {
+    // Holds only value-type strings and timestamps; never retains JPIPHTTPSRequest,
+    // URLSession, Task, or Continuation.
+    private static let hostLogs = Mutex<[String: JPIPHTTPSPhaseLog]>([:])
     private let start = ContinuousClock.now
-    private var entries: [String] = []
+    private let entries = Mutex<[String]>([])
 
     package init() {}
+
+    package static func bind(_ log: JPIPHTTPSPhaseLog, forHost host: String?) {
+        guard let host, !host.isEmpty else { return }
+        hostLogs.withLock { $0[host] = log }
+    }
+
+    package static func unbind(_ log: JPIPHTTPSPhaseLog, forHost host: String?) {
+        guard let host, !host.isEmpty else { return }
+        hostLogs.withLock {
+            if $0[host] === log {
+                _ = $0.removeValue(forKey: host)
+            }
+        }
+    }
+
+    package static func record(forHost host: String?, _ phase: String) {
+        guard let host, !host.isEmpty else { return }
+        let log = hostLogs.withLock { $0[host] }
+        log?.record(phase)
+    }
 
     package func record(_ phase: String) {
         let elapsed = ContinuousClock.now - start
         let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let entry = String(format: "%.6fs: %@", seconds, phase)
-        lock.lock()
-        if entries.count < 64 {
-            entries.append(entry)
+        entries.withLock {
+            if $0.count < 64 {
+                $0.append(entry)
+            }
         }
-        lock.unlock()
     }
 
     package var summary: String {
-        lock.lock()
-        let snapshot = entries
-        lock.unlock()
+        let snapshot = entries.withLock { $0 }
         return "httpsPhases=[\(snapshot.joined(separator: "; "))]"
     }
 }
@@ -223,6 +242,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
     private var started = false
     private var taskCompleted = false
     private var invalidated = false
+    private var receivedChunkCount = 0
     private let completion = JPIPRequestCompletion()
     private let phaseLog: JPIPHTTPSPhaseLog
     private let deinitObserver: (@Sendable () -> Void)?
@@ -260,6 +280,9 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
     ) async throws -> JPIPHTTPSResult {
         try claimStart()
+        let harnessHost = request.url?.host.flatMap { $0.hasSuffix(".invalid") ? $0 : nil }
+        JPIPHTTPSPhaseLog.bind(phaseLog, forHost: harnessHost)
+        defer { JPIPHTTPSPhaseLog.unbind(phaseLog, forHost: harnessHost) }
         phaseLog.record("read.start")
         let watchdog: JPIPDeadlineWatchdog?
         let phaseLog = self.phaseLog
@@ -337,6 +360,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             lock.unlock()
             phaseLog.record("cancelled.beforeTaskPublication")
             owner.finishTasksAndInvalidate()
+            phaseLog.record("invalidate.requested")
             return
         }
         // Cancellation can only latch under this same lock; it cannot invalidate
@@ -346,6 +370,18 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         lock.unlock()
         phaseLog.record("task.published")
         afterTaskPublication?(owner, created)
+        lock.lock()
+        let alreadyCompletedAfterHook = taskCompleted
+        let alreadyFailedAfterHook = (failure != nil)
+        lock.unlock()
+        if alreadyCompletedAfterHook {
+            phaseLog.record("task.completedInPublicationHook")
+            owner.invalidateAndCancel()
+            return
+        }
+        if alreadyFailedAfterHook {
+            created.cancel()
+        }
         created.resume()
         phaseLog.record("task.resumed")
     }
@@ -391,6 +427,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         lock.unlock()
         phaseLog.record("cancel(latched=\(latched),hasTask=\(capturedTask != nil),neverStarted=\(neverStarted),error=\(type(of: error)))")
         capturedTask?.cancel()
+        phaseLog.record("cancel.returned(hasTask=\(capturedTask != nil))")
         if neverStarted { completion.finish() }
     }
 
@@ -411,12 +448,27 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
 
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         lock.lock()
+        var shouldCancel = false
+        var chunkIndex = 0
+        var totalBytes = 0
         if !taskCompleted, failure == nil, task === dataTask {
-            do { try buffer?.receive(data) }
-            catch { failure = error }
+            do {
+                try buffer?.receive(data)
+                receivedChunkCount += 1
+                chunkIndex = receivedChunkCount
+                totalBytes = buffer?.receivedBodyBytes ?? 0
+            } catch {
+                failure = error
+                shouldCancel = true
+                receivedChunkCount += 1
+                chunkIndex = receivedChunkCount
+                totalBytes = buffer?.receivedBodyBytes ?? 0
+            }
         }
-        let shouldCancel = failure != nil && !taskCompleted
         lock.unlock()
+        if chunkIndex > 0 && (chunkIndex <= 2 || shouldCancel) {
+            phaseLog.record("didReceiveData(chunk=\(chunkIndex),bytes=\(data.count),total=\(totalBytes),cancel=\(shouldCancel))")
+        }
         if shouldCancel { dataTask.cancel() }
     }
 
@@ -442,6 +494,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         // No task callbacks remain on our serial queue before invalidation is
         // requested. Do not use invalidateAndCancel as a task-completion join.
         session.finishTasksAndInvalidate()
+        phaseLog.record("invalidate.requested")
         resume(signal, afterCallbacksOn: session)
     }
 

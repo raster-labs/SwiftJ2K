@@ -39,6 +39,7 @@ struct CodexR2VolumeGridTests {
     }
 
     private func encode(_ volume: J2KVolume, tile: Int) async throws -> Data {
+        await VolumeTestCooperativeQuiescence.settle()
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: .lossless,
             tiling: JP3DTilingConfiguration(tileSizeX: tile, tileSizeY: tile, tileSizeZ: 1),
@@ -121,6 +122,7 @@ struct CodexR2VolumeGridTests {
 
     @Test("Lossy reduced tiles select the same spatial samples as full reconstruction", arguments: [false, true])
     func lossyGridMatchesFullReconstruction(ht: Bool) async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let source = ramp(width: 9, height: 7, depth: 2)
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: ht ? .lossyHTJ2K(psnr: 38) : .lossy(psnr: 38),
@@ -225,6 +227,7 @@ struct CodexR2VolumeGridTests {
 
     @Test("Reduced lossy decoding charges nested slice buffers", arguments: [false, true])
     func reducedLossyWorkspaceIncludesNestedSlices(useROI: Bool) async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let source = ramp(width: 64, height: 64, depth: 2)
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: .lossy(psnr: 38),

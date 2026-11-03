@@ -79,6 +79,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)")
     func highBitDepthLosslessExactVoxelPreservation() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let width = 4, height = 4, depth = 4
         let voxelCount = width * height * depth
 
@@ -263,6 +264,7 @@ struct R1VolumeRemediationTests {
 
     @Test("R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap")
     func adversarialInt64MaxCoefficientsThrowWithoutTrapping() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 1. Direct inverseLosslessInt64 lifting overflow check
         #expect(throws: J2KError.self) {
             _ = try JP3DWaveletTransform.inverseLosslessInt64(
@@ -320,6 +322,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder")
     func oversizedResolutionLevelRejectedWithoutShiftTrap() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         #expect(throws: CodecError.self) {
             _ = try VolumeDecoderConfiguration(resolutionLevel: 64)
         }
@@ -376,6 +379,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap")
     func volumetricResourceLimitsConcurrencyAndPreAllocationAdmission() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 8x4x4 32-bit unsigned volume with 2x2x2 tiling -> 16 tiles of 8 voxels each (>31-bit J3DI path).
         // Alternating [0, UInt32.max] samples force 64-bit J3DI wavelet coefficients (89 B per encoded tile),
         // so runtime retained tile payloads (89 B/tile) grow faster than the 4 B/voxel minimum preflight lower bound (1394 B),
@@ -720,6 +724,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams")
     func volumetricFidelityTruthfulness() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         var raw = Data(count: 8 * 4 * 2)
         for i in 0..<raw.count { raw[i] = UInt8((i * 19 + 3) & 0xFF) }
         let vol = J2KVolume(
@@ -809,6 +814,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder")
     func postCompletedProgressCancellationAbortsVolumeOperations() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         var raw = Data(count: 4 * 4 * 2)
         for i in 0..<raw.count { raw[i] = UInt8(i * 7) }
         let vol = J2KVolume(
@@ -870,6 +876,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths")
     func childTileOutputReservationTransferAndDelayedParentConsumption() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // --- 1. 3-tile 32-bit J3DI (6x2x2 with 2x2x2 tiling -> 3 tiles of 89 B each) ---
         // Workers 0 and 1 finish their `encodeTileStatic` bodies (releasing worker scratch while keeping their 89 B
         // `OutputReservation`s alive in the returned `JP3DEncodedTileOutput` values) and open `tiles0And1Exited` while
@@ -1356,6 +1363,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs")
     func outputGrowthOverlapAndExactJ3DSHeaderBoundaries() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // --- 1. Concurrent shared-budget output growth overlap with explicit phase barriers ---
         // Two workers each hold a 20-byte initial output reservation and live 20-byte buffer (`20 + 20 = 40 B`).
         // Each worker grows its output by 20 B while its old 20-byte buffer remains live (`40 + 40` output + `20 + 20`
@@ -1717,6 +1725,7 @@ struct R1VolumeRemediationTests {
 
     @Test("F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros")
     func monotonicBudgetTelemetryOrderingAndStaleSnapshotRejection() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // --- 1. Direct out-of-order revision delivery to VolumeConcurrencyTelemetry.Recorder ---
         let directRec = VolumeConcurrencyTelemetry.Recorder()
         let r1 = directRec.allocateBudgetRevision()

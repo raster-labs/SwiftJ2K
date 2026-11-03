@@ -165,18 +165,18 @@ struct CodexR3HTTPStreamingTests {
         do {
             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
                 deadline: .now.advanced(by: .seconds(2)))
-            Issue.record("Expected delegated response admission denial")
+            Issue.record("Expected delegated response admission denial; \(operation.phaseDiagnostics)")
         } catch let error as CodecError {
-            #expect(error.category == .resourceLimitExceeded)
+            #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)")
             let expected = declared
                 ? "JPIP HTTPS Content-Length (9 bytes) exceeds limit (8 bytes)."
                 : "JPIP HTTPS response payload exceeds limit (8 bytes)."
-            #expect(error.message == expected)
+            #expect(error.message == expected, "\(operation.phaseDiagnostics)")
         }
-        #expect(!operation.hasActiveOwners)
-        #expect(scenario.request != nil)
-        if declared { #expect(scenario.deliveredChunks == 0) }
-        else { #expect(scenario.deliveredChunks == 2) }
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        #expect(scenario.request != nil, "\(operation.phaseDiagnostics)")
+        if declared { #expect(scenario.deliveredChunks == 0, "\(operation.phaseDiagnostics)") }
+        else { #expect(scenario.deliveredChunks == 2, "\(operation.phaseDiagnostics)") }
     }
 
     @Test func absoluteDeadlineCancelsSilentResponse() async throws {
@@ -196,6 +196,10 @@ struct CodexR3HTTPStreamingTests {
         let phases = operation.phaseDiagnostics
         #expect(phases.contains(": watchdog"), "\(phases)")
         #expect(phases.contains("cancel(latched=true"), "\(phases)")
+        #expect(phases.contains("cancel.returned(hasTask=true)"), "\(phases)")
+        #expect(phases.contains("protocol.start.called"), "\(phases)")
+        #expect(phases.contains("protocol.stop.called"), "\(phases)")
+        #expect(phases.contains("invalidate.requested"), "\(phases)")
         #expect(phases.contains("invalidation("), "\(phases)")
         #expect(phases.contains("queue.tail"), "\(phases)")
         #expect(phases.contains(": resume"), "\(phases)")
@@ -218,7 +222,7 @@ struct CodexR3HTTPStreamingTests {
                     throw J2KError.invalidState("HTTPS trickle harness did not become active: " +
                         "protocol submitted \(scenario.deliveredChunks) one-byte chunks; " +
                         "accumulator received \(operation.receivedBodyBytes) bytes; " +
-                        "protocol started: \(scenario.request != nil)")
+                        "protocol started: \(scenario.request != nil); \(operation.phaseDiagnostics)")
                 }
                 try await Task.sleep(for: .milliseconds(1))
             }
@@ -232,10 +236,19 @@ struct CodexR3HTTPStreamingTests {
             defer { watchdog.cancel() }
             do {
                 _ = try await request.value
-                Issue.record("Expected active-trickle deadline cancellation")
-            } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }
-            #expect(ContinuousClock.now - start < .seconds(2))
-            #expect(!operation.hasActiveOwners)
+                Issue.record("Expected active-trickle deadline cancellation; \(operation.phaseDiagnostics)")
+            } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
+            #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
+            #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+            let phases = operation.phaseDiagnostics
+            #expect(phases.contains("protocol.start.called"), "\(phases)")
+            #expect(phases.contains("didReceiveData(chunk=1"), "\(phases)")
+            #expect(phases.contains("didReceiveData(chunk=2"), "\(phases)")
+            #expect(phases.contains("cancel(latched=true"), "\(phases)")
+            #expect(phases.contains("cancel.returned(hasTask=true)"), "\(phases)")
+            #expect(phases.contains("protocol.stop.called"), "\(phases)")
+            #expect(phases.contains("invalidate.requested"), "\(phases)")
+            #expect(phases.contains("invalidation("), "\(phases)")
         } catch {
             request.cancel()
             _ = try? await request.value
@@ -257,15 +270,15 @@ struct CodexR3HTTPStreamingTests {
         for await _ in scenario.started.stream { break }
         request.cancel()
         await #expect(throws: CancellationError.self) { _ = try await request.value }
-        #expect(!operation.hasActiveOwners)
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
         let good = HTTPSHarnessScenario(mode: .complete, chunks: [Data([42])])
         let next = HTTPSHarnessProtocol.register(good)
         defer { HTTPSHarnessProtocol.remove(next.url) }
         let recovered = JPIPHTTPSRequest(maximumBodyBytes: 8, maximumStorageBytes: 65_536)
         let recoveredResult = try await recovered.read(URLRequest(url: next.url), configuration: next.configuration,
             deadline: .now.advanced(by: .seconds(2)))
-        #expect(recoveredResult.response.data == Data([42]))
-        #expect(!recovered.hasActiveOwners)
+        #expect(recoveredResult.response.data == Data([42]), "\(recovered.phaseDiagnostics)")
+        #expect(!recovered.hasActiveOwners, "\(recovered.phaseDiagnostics)")
     }
 
     @Test(arguments: [false, true])
@@ -282,8 +295,8 @@ struct CodexR3HTTPStreamingTests {
                     if inPublicationGap { operation.cancel() }
                 })
         }
-        #expect(scenario.request == nil)
-        #expect(!operation.hasActiveOwners)
+        #expect(scenario.request == nil, "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
     }
 
     @Test func expiredDeadlineReleasesUnstartedOwners() async throws {
@@ -295,12 +308,12 @@ struct CodexR3HTTPStreamingTests {
         do {
             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
                 deadline: .now.advanced(by: .milliseconds(-1)))
-            Issue.record("Expected expired-deadline preflight denial")
-        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }
-        #expect(scenario.request == nil)
-        #expect(!operation.hasActiveOwners)
+            Issue.record("Expected expired-deadline preflight denial; \(operation.phaseDiagnostics)")
+        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
+        #expect(scenario.request == nil, "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
         await operation.waitForCompletion()
-        #expect(operation.isFinished)
+        #expect(operation.isFinished, "\(operation.phaseDiagnostics)")
     }
 
     @Test func invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() async throws {
@@ -327,8 +340,8 @@ struct CodexR3HTTPStreamingTests {
                     operation.urlSession(owner, didBecomeInvalidWithError: nil)
                 })
         }
-        #expect(remainedOwned.withLock { $0 })
-        #expect(!operation.hasActiveOwners)
+        #expect(remainedOwned.withLock { $0 }, "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
     }
 
     @Test(arguments: [false, true])
@@ -565,12 +578,15 @@ private final class HTTPSHarnessScenario: Sendable {
 
 private final class HTTPSHarnessProtocol: URLProtocol {
     private static let scenarios = Mutex<[String: HTTPSHarnessScenario]>([:])
-    // Only this private serial queue accesses timer/stopped and emits callbacks.
-    // WorkItems bridge this legacy URLProtocol lifetime without claiming that
-    // URLProtocol is Sendable. Registry and observations remain Mutex-protected.
-    private let queue = DispatchQueue(label: "jpip.https.protocol-harness")
-    private var timer: (any DispatchSourceTimer)?
-    private var stopped = false
+    // Service protocol callbacks at the same QoS as JPIP's deadline/delegate queues,
+    // and guard stopped/timer state with a Mutex so stopLoading() halts emission
+    // synchronously before returning to CFNetwork.
+    private let queue = DispatchQueue(label: "jpip.https.protocol-harness", qos: .userInitiated)
+    private struct RuntimeState {
+        var stopped = false
+        var timer: (any DispatchSourceTimer)?
+    }
+    private let runtime = Mutex(RuntimeState())
 
     static func register(_ scenario: HTTPSHarnessScenario) -> (url: URL, configuration: URLSessionConfiguration) {
         let host = UUID().uuidString.lowercased() + ".invalid"
@@ -585,44 +601,86 @@ private final class HTTPSHarnessProtocol: URLProtocol {
         scenarios.withLock { $0[url.host ?? ""] = scenario }
     }
     override class func canInit(with request: URLRequest) -> Bool {
-        scenarios.withLock { $0[request.url?.host ?? ""] != nil }
+        guard let host = request.url?.host else { return false }
+        if host.hasSuffix(".invalid") { return true }
+        return scenarios.withLock { $0[host] != nil }
     }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let request = self.request
         let client = self.client
+        let host = request.url?.host
+        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.called")
         queue.async(execute: DispatchWorkItem { [self] in
-            guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
-                  let url = request.url else { return }
+            guard !runtime.withLock({ $0.stopped }),
+                  let url = request.url else {
+                JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.skipped")
+                return
+            }
+            guard let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }) else {
+                JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.missingScenario")
+                client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
+                return
+            }
+            JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.run(mode=\(scenario.mode))")
             scenario.begin(request)
             guard scenario.mode != .silent else { return }
             guard let response = HTTPURLResponse(url: url, statusCode: 200,
                 httpVersion: "HTTP/1.1", headerFields: scenario.headers) else { return }
+            guard !runtime.withLock({ $0.stopped }) else { return }
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             if scenario.mode == .complete {
                 for data in scenario.chunks {
+                    guard !runtime.withLock({ $0.stopped }) else { return }
                     scenario.delivered()
                     client?.urlProtocol(self, didLoad: data)
                 }
+                guard !runtime.withLock({ $0.stopped }) else { return }
+                JPIPHTTPSPhaseLog.record(forHost: host, "protocol.finishLoading")
                 client?.urlProtocolDidFinishLoading(self)
             } else {
                 let tick = DispatchSource.makeTimerSource(queue: queue)
-                tick.schedule(deadline: .now(), repeating: .milliseconds(10))
-                tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
-                    guard let self, !self.stopped else { return }
+                tick.schedule(deadline: .now(), repeating: .milliseconds(15))
+                tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak weakClient = client] in
+                    guard let self, !self.runtime.withLock({ $0.stopped }) else { return }
                     scenario.delivered()
-                    client?.urlProtocol(self, didLoad: Data([42]))
+                    let count = scenario.deliveredChunks
+                    if count <= 2 {
+                        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.chunk(\(count))")
+                    }
+                    weakClient?.urlProtocol(self, didLoad: Data([42]))
+                    if count >= 24 {
+                        let existingTimer = self.runtime.withLock { state -> (any DispatchSourceTimer)? in
+                            let t = state.timer
+                            state.timer = nil
+                            return t
+                        }
+                        existingTimer?.cancel()
+                    }
                 })
-                timer = tick
-                tick.resume()
+                let shouldResume = runtime.withLock { state -> Bool in
+                    guard !state.stopped else { return false }
+                    state.timer = tick
+                    return true
+                }
+                if shouldResume {
+                    tick.resume()
+                } else {
+                    tick.cancel()
+                }
             }
         })
     }
     override func stopLoading() {
-        queue.async(execute: DispatchWorkItem { [self] in
-            stopped = true
-            timer?.cancel()
-            timer = nil
-        })
+        let host = request.url?.host
+        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.called")
+        let activeTimer = runtime.withLock { state -> (any DispatchSourceTimer)? in
+            state.stopped = true
+            let t = state.timer
+            state.timer = nil
+            return t
+        }
+        activeTimer?.cancel()
+        JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.done")
     }
 }

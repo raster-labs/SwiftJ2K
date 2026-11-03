@@ -10,6 +10,7 @@ import Testing
 struct CodexR3ProgressTests {
     @Test("Required acceleration rejected after tile work never announces success")
     func ineligibleTilesDoNotComplete() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // Original RA2-08 reproducer: no eligible accelerated kernel for
         // the 1x1x2 volume. Required-backend failure must precede completion.
         let volume = J2KVolume(width: 1, height: 1, depth: 2, components: [

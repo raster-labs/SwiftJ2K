@@ -337,13 +337,16 @@ jobs:
               xctest_started = re.findall(r"Test Case '-\[([^\]]+)\]' started\.", log_text)
               xctest_passed = re.findall(r"Test Case '-\[([^\]]+)\]' passed \([0-9.]+ seconds\)\.", log_text)
               xctest_failed = re.findall(r"Test Case '-\[([^\]]+)\]' failed", log_text)
-              st_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites passed after ([0-9.]+) seconds\.", log_text)
+              st_passed_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites passed after ([0-9.]+) seconds\.", log_text)
+              st_failed_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites failed after ([0-9.]+) seconds with (\d+) issues?\.", log_text)
               st_skips = re.findall(r"Test ([^\s]+) skipped: \"([^\"]+)\"", log_text)
 
-              st_total_declarations = sum(int(r[0]) for r in st_runs)
-              st_total_suites = sum(int(r[1]) for r in st_runs)
+              st_passed_bundle_declarations = sum(int(r[0]) for r in st_passed_runs)
+              st_failed_bundle_declarations = sum(int(r[0]) for r in st_failed_runs)
+              st_total_declarations = st_passed_bundle_declarations + st_failed_bundle_declarations
+              st_total_suites = sum(int(r[1]) for r in st_passed_runs) + sum(int(r[1]) for r in st_failed_runs)
               st_skipped_names = sorted(s[0] for s in st_skips)
-              st_passed_declarations = st_total_declarations - len(st_skips)
+              st_passed_declarations = st_passed_bundle_declarations - len(st_skips)
 
               reconciliation = {
                   "xcresult_result": summary.get("result"),
@@ -360,9 +363,17 @@ jobs:
                       ],
                   },
                   "swift_testing": {
-                      "bundle_runs": [{"tests": int(r[0]), "suites": int(r[1]), "seconds": float(r[2])} for r in st_runs],
+                      "bundle_runs": [
+                          {"tests": int(r[0]), "suites": int(r[1]), "status": "passed", "seconds": float(r[2])}
+                          for r in st_passed_runs
+                      ] + [
+                          {"tests": int(r[0]), "suites": int(r[1]), "status": "failed", "seconds": float(r[2]), "issues": int(r[3])}
+                          for r in st_failed_runs
+                      ],
                       "compiled_declarations_on_ios": st_total_declarations,
                       "compiled_suites_on_ios": st_total_suites,
+                      "passed_bundle_declarations_on_ios": st_passed_bundle_declarations,
+                      "failed_bundle_declarations_on_ios": st_failed_bundle_declarations,
                       "passed_declarations_on_ios": st_passed_declarations,
                       "skipped_external_oracle_declarations_on_ios": len(st_skips),
                       "skipped_external_oracle_names": st_skipped_names,
@@ -383,8 +394,8 @@ jobs:
                   problems.append("xcresult summary did not pass with 0 failures")
               if len(set(xctest_passed)) != 1037 or len(xctest_failed) != 0:
                   problems.append(f"Expected 1037 XCTest passes and 0 failures on iOS Simulator, got {len(set(xctest_passed))} passed / {len(xctest_failed)} failed")
-              if st_total_declarations != 327 or st_passed_declarations != 322 or len(st_skips) != 5:
-                  problems.append(f"Expected 327 compiled Swift Testing declarations (322 passed, 5 skipped), got {st_total_declarations} ({st_passed_declarations} passed, {len(st_skips)} skipped)")
+              if st_total_declarations != 327 or st_passed_declarations != 322 or st_failed_bundle_declarations != 0 or len(st_skips) != 5:
+                  problems.append(f"Expected 327 compiled Swift Testing declarations (322 passed, 0 in failed bundles, 5 skipped), got {st_total_declarations} ({st_passed_declarations} passed, {st_failed_bundle_declarations} in failed bundles, {len(st_skips)} skipped)")
               if st_skipped_names != sorted(UNEXECUTED_EXTERNAL_ORACLE_TESTS):
                   problems.append(f"Unexpected skipped test list on iOS Simulator: {st_skipped_names}")
 

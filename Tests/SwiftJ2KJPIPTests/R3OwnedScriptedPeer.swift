@@ -12,6 +12,7 @@ final class R3OwnedScriptedPeer: Sendable {
         var workers = 0
         var connections: [Int: JPIPTCPConnection] = [:]
         var phases: Set<String> = []
+        var gates: Set<String> = []
         var timeline: [String] = []
         var failures: [String] = []
     }
@@ -69,6 +70,28 @@ final class R3OwnedScriptedPeer: Sendable {
         state.withLock {
             $0.phases.insert(phase)
             if $0.timeline.count < 64 { $0.timeline.append("\(elapsed): \(phase)") }
+        }
+    }
+
+    func openGate(_ name: String) {
+        let elapsed = ContinuousClock.now - origin
+        state.withLock {
+            $0.gates.insert(name)
+            if $0.timeline.count < 64 { $0.timeline.append("\(elapsed): gate.open.\(name)") }
+        }
+    }
+
+    @discardableResult
+    func waitForGate(_ name: String, timeout: Duration = .seconds(5)) -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while true {
+            let ready = state.withLock { $0.closing || $0.gates.contains(name) }
+            if ready { return true }
+            if ContinuousClock.now >= deadline {
+                mark("gate.timeout.\(name)")
+                return false
+            }
+            Thread.sleep(forTimeInterval: 0.002)
         }
     }
 

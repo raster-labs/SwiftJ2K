@@ -86,8 +86,8 @@ public actor JPIPTransport {
     /// The base server URL.
     private let baseURL: URL
 
-    /// The URL session used only for `https://` TLS requests.
-    private let session: URLSession
+    /// The URL session configuration used only for `https://` TLS requests.
+    private let httpsConfiguration: URLSessionConfiguration
 
     /// Optional directly injected in-process server (explicit test/embedded binding only).
     private let boundServer: JPIPServer?
@@ -196,12 +196,13 @@ public actor JPIPTransport {
     ///   - configuration: Optional URL session configuration (used for `https://` and socket timeout).
     public init(baseURL: URL, configuration: URLSessionConfiguration? = nil) {
         self.baseURL = baseURL
-        let config = configuration ?? URLSessionConfiguration.ephemeral
+        let baseConfig = configuration ?? URLSessionConfiguration.ephemeral
+        let config = (baseConfig.copy() as? URLSessionConfiguration) ?? baseConfig
         let reqTimeout = config.timeoutIntervalForRequest > 0 ? config.timeoutIntervalForRequest : 30.0
         config.timeoutIntervalForRequest = reqTimeout
         config.timeoutIntervalForResource = max(reqTimeout, 300.0)
         self.timeoutInterval = max(0.001, reqTimeout)
-        self.session = URLSession(configuration: config)
+        self.httpsConfiguration = config
         self.boundServer = nil
         self.tcpConnection = nil
         self.channelPathOverride = nil
@@ -213,7 +214,7 @@ public actor JPIPTransport {
     public init(server: JPIPServer) {
         self.baseURL = URL(string: "http://127.0.0.1:\(max(1, server.port))")!
         self.timeoutInterval = 30.0
-        self.session = URLSession(configuration: .ephemeral)
+        self.httpsConfiguration = .ephemeral
         self.boundServer = server
         self.tcpConnection = nil
         self.channelPathOverride = nil
@@ -702,7 +703,8 @@ public actor JPIPTransport {
         }
         do {
             await observer?(.registered, requestID)
-            let result = try await operation.read(urlRequest, configuration: session.configuration,
+            let reqConfig = (httpsConfiguration.copy() as? URLSessionConfiguration) ?? httpsConfiguration
+            let result = try await operation.read(urlRequest, configuration: reqConfig,
                                                   deadline: deadline, afterTaskPublication: taskObserver)
             await observer?(.beforePublication, requestID)
             guard generation == requestGeneration else { throw CancellationError() }
@@ -813,7 +815,6 @@ public actor JPIPTransport {
             closingWebSockets[closeID] = ws
             wsTransport = nil
         }
-        session.finishTasksAndInvalidate()
         await observer?(.closeJoining, closeID)
         await drainClosingWebSockets(for: closeID)
         await drainClosingRequests(closing)

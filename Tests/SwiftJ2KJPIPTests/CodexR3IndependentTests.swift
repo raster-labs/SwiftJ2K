@@ -277,20 +277,29 @@ struct CodexR3IndependentTests {
             final class AcceptedBox: @unchecked Sendable {
                 private let lock = NSLock()
                 private var conn: JPIPTCPConnection?
-                func store(_ c: JPIPTCPConnection?) { lock.lock(); conn = c; lock.unlock() }
-                func load() -> JPIPTCPConnection? { lock.lock(); defer { lock.unlock() }; return conn }
+                private var done = false
+                func store(_ c: JPIPTCPConnection?) { lock.lock(); conn = c; done = true; lock.unlock() }
+                func waitAndLoad() -> JPIPTCPConnection? {
+                    let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+                    while true {
+                        lock.lock()
+                        let finished = done
+                        let result = conn
+                        lock.unlock()
+                        if finished { return result }
+                        if ContinuousClock.now >= deadline { return nil }
+                        Thread.sleep(forTimeInterval: 0.002)
+                    }
+                }
             }
             let acceptedBox = AcceptedBox()
-            let acceptSema = DispatchSemaphore(value: 0)
             DispatchQueue.global(qos: .userInitiated).async {
                 acceptedBox.store(try? listener.acceptConnection(timeoutSeconds: 5))
-                acceptSema.signal()
             }
 
             let clientConn = try JPIPTCPConnection.connect(host: "127.0.0.1", port: listener.boundPort, timeoutSeconds: 5)
             defer { clientConn.close() }
-            acceptSema.wait()
-            let serverConn = try #require(acceptedBox.load())
+            let serverConn = try #require(acceptedBox.waitAndLoad())
             defer { serverConn.close() }
 
             // Server writes:

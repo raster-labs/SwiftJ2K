@@ -22,6 +22,7 @@ struct CodexR2VolumePixelAccountingTests {
 
     @Test("Full tile workspace and truthful pixel allocations are reported when the reduced result has only two voxels", arguments: [1, 2])
     func reducedVolumeCountsBridgeBuffers(workers: Int) async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let limits = try ResourceLimits(maximumWorkers: workers)
         let encoding = try encoder()
         let encodeRecorder = StorageTelemetry.Recorder()
@@ -61,6 +62,7 @@ struct CodexR2VolumePixelAccountingTests {
 
     @Test("Lossy transcode reports intermediate volume allocation and reserves the retained source")
     func lossyFallbackKeepsOuterBuffersCharged() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let limits = try ResourceLimits(maximumWorkers: 1)
         let data = try await encoder(lossy: true).encode(volume(), options: VolumeEncodeOptions(
             resourceLimits: limits, executionPolicy: .scalarCPU)).data

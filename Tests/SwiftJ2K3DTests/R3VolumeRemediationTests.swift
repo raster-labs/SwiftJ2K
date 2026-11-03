@@ -92,6 +92,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic")
     func byteLevelNormativeMarkersAndNoPrivateFraming() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 12, h = 10, d = 6
         let samples = (0..<(w * h * d)).map { Int64(($0 * 17 + 5) & 0xFF) }
         let comp = J2KVolumeComponent(
@@ -193,6 +194,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly")
     func multiComponentHeterogeneousAndNonCubicLosslessRoundTrips() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 2a. Non-cubic 17x11x5 3-component 12-bit signed lossless (with RCT) across multi-tile boundary grid:
         let w = 17, h = 11, d = 5
         let count = w * h * d
@@ -260,6 +262,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly")
     func allFiveProgressionsPacketOrderAndRoundTrip() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 8, h = 8, d = 4
         let count = w * h * d
         let s0 = (0..<count).map { Int64(($0 * 29 + 11) & 0xFF) }
@@ -315,6 +318,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: 3-layer irreversible 9-7 3D codestream improves MSE/PSNR monotonically across layers 1, 2, and 3")
     func multiLayerIrreversibleMonotonicQuality() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 16, h = 16, d = 8
         let count = w * h * d
         let orig: [Int64] = (0..<count).map { idx in
@@ -355,6 +359,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: Multi-tile-part SOT concatenation, JP3DStreamWriter, and JP3DMultiSpectralEncoder/Decoder round-trip normatively")
     func multiTilePartStreamWriterAndMultiSpectral() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 3a. Split single tile payload across two SOT..SOD tile-parts (TPsot = 0, 1; TNsot = 2):
         let w = 8, h = 8, d = 4
         let raw = Data((0..<(w * h * d)).map { UInt8(($0 * 13 + 9) & 0xFF) })
@@ -457,6 +462,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: Reconciled HT-in-JP3D emits Pcap=0x0042_0000, Lcap=10, Ccap^15 Table A.2, zcb=0, HTMIXED for 32/38-bit, and zero-copy wavelet-domain EBCOT <-> HTJ2K transcode")
     func reconciledHTInJP3DAndWaveletDomainTranscode() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 4a. 16-bit lossless HTONLY (zcb = 0, cblksty = 0x40, Ccap^15 bits 14..15 == 0):
         let w = 8, h = 8, d = 4
         let count = w * h * d
@@ -524,6 +530,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: Parser and decoder reject malformed Part 10 / HT-in-JP3D marker segments and truncated entropy cleanly without traps")
     func malformedMarkerAndEntropyRejection() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let raw = Data((0..<16).map { UInt8($0) })
         let vol = J2KVolume(
             width: 4, height: 4, depth: 1,
@@ -638,6 +645,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries")
     func waveletWholeSampleSymmetricBoundaryCompliance() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // On an even-length linear ramp x[k] = 10 + 17*k (n = 8, cas = 0),
         // whole-sample symmetric extension reflects x[8] -> x[6] = s[3] = 112 (NOT s[2] = 78),
         // yielding high-pass detail d[0..2] = 0 and d[3] = x[7] - ((s[3] + s[3]) >> 1) = 129 - 112 = +17.
@@ -664,6 +672,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01-01 & F01-03: CAP Ccap^15 MAGB Table 4 encoding and RGNFREE/HOMOGENEOUS consistency checks")
     func capMagbTable4AndRgnfreeHomogeneousEnforcement() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // ITU-T T.814 Table 4 piecewise formula check:
         //   P = 0 -> B = 8; 1 <= P < 20 -> B = P + 8; 20 <= P < 31 -> B = 4*(P - 19) + 27; P = 31 -> B = 74
         let p8 = Int(JP3DHTMarkers.encodeMAGBParameter(maxMb: 8))
@@ -721,6 +730,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01-02: Tile-header QCD/QCC/COD/COC/RGN overrides and wire K_max without private +3 lift")
     func tileHeaderQcdQccCodCocPrecedenceAndWireKmax() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // Reproduce Codex independent finding: valid codestream whose main-header QCD has deliberately
         // wrong exponents, overridden by a valid TPsot==0 tile-part QCD marker before SOD.
         var samples: [Int64] = []
@@ -803,6 +813,7 @@ struct R3VolumeRemediationTests {
 
     @Test("F01-04: Multi-pass HT block coding (SigProp + MagRef, MULTIHT, and 3*P0 placeholder passes) decodes and transcodes losslessly")
     func multiPassHTSigPropMagRefMultiHTAndPlaceholders() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // 1. Direct HTBlockEncoder & HTBlockDecoder test across 3 passes (Cleanup + SigProp + MagRef),
         //    4 passes across 2 HT sets (MULTIHT), SINGLEHT rejection, and 3*P0 leading placeholder passes.
         let width = 8
@@ -935,6 +946,7 @@ struct R3VolumeRemediationTests {
 
     @Test("REG-01, REG-02, REG-03: Pre-decode tile workspace limits, 20/24/38-bit Part 2 reversible bit-split JP3D, and honest SIMD acceleration policy")
     func r1R2RegressionRepairsBitSplitWorkspaceAndAcceleration() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // REG-02: 20-bit unsigned, 24-bit signed, and 38-bit unsigned reversible JP3D bit-exact round-trip
         let count = 4 * 4 * 2
         let mask20 = (Int64(1) << 20) - 1
@@ -1071,10 +1083,12 @@ struct R3VolumeRemediationTests {
 
     @Test("RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis")
     func part2SignedWireLimbsZeroDCOffsetSynthesis() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 8, h = 8, d = 4
         let count = w * h * d
 
         for isSigned in [false, true] {
+            await VolumeTestCooperativeQuiescence.settle()
             let minVal: Int64 = isSigned ? -(Int64(1) << 37) : 0
             let maxVal: Int64 = isSigned ? ((Int64(1) << 37) - 1) : ((Int64(1) << 38) - 1)
             var samples = [Int64](repeating: 0, count: count)
@@ -1176,6 +1190,7 @@ struct R3VolumeRemediationTests {
 
     @Test("RA2-04: Pre-allocation Tier-1/Tier-2 entropy budget rejects incompressible tiled 3D encode before allocating rejected output buffer")
     func preAllocationEntropyBudgetRejectsBeforeAllocating() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 16, h = 16, d = 4
         let count = w * h * d
         let noisy: [Int64] = (0..<count).map { idx in
@@ -1256,6 +1271,7 @@ struct R3VolumeRemediationTests {
 
     @Test("RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap")
     func part2BitSplitDecodeWithinFloorAndBoundedPacketWorkspace() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let w = 256, h = 256, d = 4
         let count = w * h * d
         var samples = [Int64](repeating: 0, count: count)
@@ -1393,6 +1409,7 @@ struct R3VolumeRemediationTests {
 
     @Test("RA2-08: Required accelerated backend failure on <4-voxel 3D encode, decode, and transcode never emits .completed progress")
     func requiredAcceleratedFailureNeverEmitsCompletedProgress() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let tinyVol = makeTestVolume(
             width: 1, height: 1, depth: 2,
             bitDepth: 8, signed: false,
@@ -1444,5 +1461,29 @@ struct R3VolumeRemediationTests {
             )
         }
         #expect(!transPhases.withLock { $0 }.contains(.completed))
+    }
+}
+
+/// Waits for the initial full-workspace Swift Testing startup burst of synchronous CPU-bound
+/// 2D codec tasks (`SwiftJ2KTests`, including the 210s–290s TSan fixture loops) on a 3-vCPU
+/// runner to drain from the global cooperative FIFO queue before a volumetric test stamps its
+/// 30s `VolumeWorkGuard` operation deadline and spawns multi-tile child tasks.
+/// Called only once before a test enters `VolumeEncoder` / `VolumeDecoder` / `VolumeTranscoder`;
+/// never called between overlapping child tasks within a test, and never alters any deadline or assertion.
+enum VolumeTestCooperativeQuiescence {
+    static func settle() async {
+        let maxWait = ContinuousClock.now.advanced(by: .seconds(300))
+        var fastRounds = 0
+        while fastRounds < 6 && ContinuousClock.now < maxWait {
+            let t0 = ContinuousClock.now
+            await Task { }.value
+            let hop = ContinuousClock.now - t0
+            if hop < .milliseconds(8) {
+                fastRounds += 1
+                try? await Task.sleep(for: .milliseconds(15))
+            } else {
+                fastRounds = 0
+            }
+        }
     }
 }

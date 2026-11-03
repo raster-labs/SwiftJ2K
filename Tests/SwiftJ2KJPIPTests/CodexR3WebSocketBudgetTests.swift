@@ -280,14 +280,13 @@ struct CodexR3WebSocketBudgetTests {
         // 1. Overlapping first sends with tracing enabled must share a single JPIPWebSocketTransport,
         //    coalesce onto one handshake/reader/socket, and join completely on close().
         do {
-            let releaseHandshake = DispatchSemaphore(value: 0)
             let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
                 guard let request = try connection.readHTTPRequest(),
                       let key = request.header("Sec-WebSocket-Key") else {
                     throw J2KError.invalidData("Missing Sec-WebSocket-Key")
                 }
                 peer.mark("part1.upgrade.read")
-                _ = releaseHandshake.wait(timeout: .now() + 5.0)
+                _ = peer.waitForGate("part1.releaseHandshake")
                 try connection.writeWebSocketServerHandshake(clientKey: key)
                 peer.mark("part1.upgrade.written")
                 for index in 1...2 {
@@ -304,7 +303,7 @@ struct CodexR3WebSocketBudgetTests {
                 }
             }
             defer {
-                releaseHandshake.signal()
+                peer.openGate("part1.releaseHandshake")
                 peer.close()
             }
             try await peer.waitForStartup()
@@ -344,7 +343,7 @@ struct CodexR3WebSocketBudgetTests {
                 #expect(midActivity.createdTransports == 1)
                 #expect(midActivity.activeHandshakes == 1)
 
-                releaseHandshake.signal()
+                peer.openGate("part1.releaseHandshake")
                 let respA = try await sendA.value
                 let respB = try await sendB.value
                 #expect(respA.statusCode == 200)
@@ -377,7 +376,7 @@ struct CodexR3WebSocketBudgetTests {
                 #expect(closedOwnership.registered == 0)
                 #expect(closedOwnership.unfinished == 0)
             } catch {
-                releaseHandshake.signal()
+                peer.openGate("part1.releaseHandshake")
                 sendA.cancel()
                 sendB.cancel()
                 _ = try? await sendA.value
@@ -516,14 +515,13 @@ struct CodexR3WebSocketBudgetTests {
         // must fail and remove themselves from handshakeWaiters without cancelling the leader;
         // when the peer completes the 101 upgrade, both the leader and the remaining 10s follower succeed.
         do {
-            let releaseHandshake = DispatchSemaphore(value: 0)
             let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
                 guard let request = try connection.readHTTPRequest(),
                       let key = request.header("Sec-WebSocket-Key") else {
                     throw J2KError.invalidData("Missing Sec-WebSocket-Key")
                 }
                 peer.mark("leader.upgrade.read")
-                _ = releaseHandshake.wait(timeout: .now() + 5.0)
+                _ = peer.waitForGate("leader.releaseHandshake")
                 try connection.writeWebSocketServerHandshake(clientKey: key)
                 peer.mark("leader.upgrade.written")
                 for index in 1...2 {
@@ -540,7 +538,7 @@ struct CodexR3WebSocketBudgetTests {
                 }
             }
             defer {
-                releaseHandshake.signal()
+                peer.openGate("leader.releaseHandshake")
                 peer.close()
             }
             try await peer.waitForStartup()
@@ -619,7 +617,7 @@ struct CodexR3WebSocketBudgetTests {
             #expect(midActivity.activeHandshakes == 1)
 
             // Release the 101 handshake; both the 10s leader and the surviving 10s follower must succeed.
-            releaseHandshake.signal()
+            peer.openGate("leader.releaseHandshake")
             let leaderResp = try await leaderTask.value
             let survivorResp = try await survivingFollowerTask.value
             #expect(leaderResp.statusCode == 200)
@@ -873,7 +871,6 @@ struct CodexR3WebSocketBudgetTests {
         // Part 2: End-to-end shared WebSocket connection regression proving A completes,
         // rejected overlapping B does not mutate limits or close the socket, and C reuses the same connection.
         do {
-            let releaseAResponse = DispatchSemaphore(value: 0)
             let peer = try R3OwnedScriptedPeer(connections: 1) { connection, _, peer in
                 guard let request = try connection.readHTTPRequest(),
                       let key = request.header("Sec-WebSocket-Key") else {
@@ -899,7 +896,7 @@ struct CodexR3WebSocketBudgetTests {
                 try connection.writeWebSocketFrame(opcode: .binary, payload: pushPayload, masked: false)
                 peer.mark("shared.a.push.written")
 
-                _ = releaseAResponse.wait(timeout: .now() + 5.0)
+                _ = peer.waitForGate("shared.releaseAResponse")
                 var replyA = Data([0x02])
                 replyA.append(incomingA.payload[1..<5])
                 replyA.append(contentsOf: [0, 0, 0, 36, 0, 200, 0, 0])
@@ -920,7 +917,7 @@ struct CodexR3WebSocketBudgetTests {
                 peer.mark("shared.c.response.written")
             }
             defer {
-                releaseAResponse.signal()
+                peer.openGate("shared.releaseAResponse")
                 peer.close()
             }
             try await peer.waitForStartup()
@@ -966,7 +963,7 @@ struct CodexR3WebSocketBudgetTests {
                 #expect(budget.configuredLimits == activeLimitsBeforeB)
 
                 // Release A's 32-byte response; A must succeed without hitting B's rejected 1-byte limit.
-                releaseAResponse.signal()
+                peer.openGate("shared.releaseAResponse")
                 let respA = try await taskA.value
                 #expect(respA.statusCode == 200)
                 #expect(respA.data == Data(repeating: 0x41, count: 32))
@@ -988,7 +985,7 @@ struct CodexR3WebSocketBudgetTests {
 
                 await transport.close()
             } catch {
-                releaseAResponse.signal()
+                peer.openGate("shared.releaseAResponse")
                 taskA.cancel()
                 _ = try? await taskA.value
                 await transport.close()

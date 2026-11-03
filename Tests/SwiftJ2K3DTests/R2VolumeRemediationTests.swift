@@ -79,6 +79,7 @@ struct R2VolumeRemediationTests {
 
     @Test("F09: VolumeEncoder, VolumeDecoder, and VolumeTranscoder enforce CopyPolicy and emit truthful OperationReport telemetry")
     func volumeCopyPolicyAndOperationReportTelemetry() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let volume = makeSyntheticVolume(
             width: 8,
             height: 8,
@@ -193,6 +194,7 @@ struct R2VolumeRemediationTests {
 
     @Test("F09: VolumeEncoder, VolumeDecoder, VolumeTranscoder, and JP3DMetalDWT honour ExecutionPolicy and simulated unavailability")
     func volumeExecutionPolicyEnforcementAndFallback() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let volume = makeSyntheticVolume(width: 8, height: 8, depth: 2)
         let encConfig = try VolumeEncoderConfiguration(
             compressionMode: .lossless,
@@ -278,6 +280,7 @@ struct R2VolumeRemediationTests {
 
     @Test("F11: Volume spacing and physical origin round-trip across encode, inspect, decode, ROI, reduced resolution, transcode, and discardAncillary")
     func volumeGeometryPreservationAndMetadataPolicy() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         // Choose an origin whose IEEE-754 big-endian representation contains 0xFF 0x90
         // (`Double(bitPattern: 0xC05E_FF90_1234_5678)` = finite negative coordinate ~ -123.993168...)
         // to prove binary `COM` segments never confuse `JP3DTranscoder` SOT marker scanning!
