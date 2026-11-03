@@ -7,6 +7,8 @@ import SwiftJ2KJPIP
 struct IndependentR2RemainingTests {
     @Test("Tiny JPIP view reports at least the full image storage and copy it actually materialises")
     func tinyViewPixelTelemetry() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let descriptor = try ImageDescriptor.rgbPlanar(width: 64, height: 64, storageBits: 8, meaningfulBits: 8)
         let destination = try ImageDestination.allocate(descriptor: descriptor)
         let source = try destination.writeSamples { c, x, y in (c * 37 + x + 3 * y) & 255 }

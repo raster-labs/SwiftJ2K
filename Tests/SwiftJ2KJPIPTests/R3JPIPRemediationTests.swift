@@ -196,6 +196,8 @@ struct R3JPIPRemediationTests {
 
     @Test("Real TCP HTTP/1.1 jpp-stream and jpt-stream over .j2k, .jph (HTJ2K), and .jp2 (phld) reconstruct bit-exact pixels")
     func realTCPHTTP11JPPAndJPTBitExact() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let sourceImage = makeTestImage(width: 32, height: 24, components: 3)
 
         let j2kData = try await J2KEncoder(
@@ -275,6 +277,8 @@ struct R3JPIPRemediationTests {
 
     @Test("Stateful cid= delta deduplication, cclose teardown, stateless model=, and len= byte-limited partial-bin resumption")
     func statefulDeltaStatelessModelAndByteLimitedResumption() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let sourceImage = makeTestImage(width: 48, height: 32, components: 3)
         let contractImg = try sourceImage.toContractImage()
         let expectedBytes = try contractImg.storage.withUnsafeBytes { Data($0) }
@@ -404,6 +408,8 @@ struct R3JPIPRemediationTests {
 
     @Test("Real TCP RFC 6455 WebSocket 101 upgrade, multiplexed requests, live server push, and ping/pong latency")
     func realTCPRFC6455WebSocketStreamingMultiplexingAndPush() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let imgA = makeTestImage(width: 24, height: 24, components: 1)
         let imgB = makeTestImage(width: 20, height: 16, components: 3)
         let dataA = try await Encoder(
@@ -510,6 +516,8 @@ struct R3JPIPRemediationTests {
 
     @Test("Real TCP 3D JP3D JPIP over http:// and ws:// delivers normative VBAS bins and bit-exact 3D voxels")
     func realTCP3DJP3DOverHTTPAndWebSocket() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let volume = makeTestVolume(width: 16, height: 12, depth: 6)
         let ebcot3D = try await JP3DEncoder(configuration: .lossless).encode(volume)
         let ht3D = try await JP3DEncoder(

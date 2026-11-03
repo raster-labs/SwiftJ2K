@@ -61,6 +61,8 @@ struct R1JPIPRemediationTests {
 
     @Test("F05: JPIPStreamingSession enforces ResourceLimits and deadlineSeconds before/during delivery")
     func streamingSessionEnforcesResourceLimitsAndDeadline() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r1-jpip-f05-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -158,6 +160,8 @@ struct R1JPIPRemediationTests {
 
     @Test("F06: JPIPStreamingSession reports .lossy for lossy codestreams, reduced resolution/layers, and component subsets")
     func streamingSessionTruthfulFidelity() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r1-jpip-f06-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -235,6 +239,8 @@ struct R1JPIPRemediationTests {
 
     @Test("F13: cancellation inside .completed progress callback aborts JPIPStreamingSession deliveries")
     func postCompletedCancellationAbortsJPIPDeliveries() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r1-jpip-f13-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

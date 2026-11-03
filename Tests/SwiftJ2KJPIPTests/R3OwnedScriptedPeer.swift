@@ -179,14 +179,29 @@ struct R3ScriptedPeerFailure: Error, CustomStringConvertible {
 /// Called only once before a test creates its client/peer or starts its deadline clock; never
 /// called between overlapping child tasks within a test, and never alters any deadline or assertion.
 enum JPIPTestCooperativeQuiescence {
+    private static let activeHeavyCodecWork = Mutex<Int>(0)
+
+    static func beginHeavyCodecWork() {
+        activeHeavyCodecWork.withLock { $0 += 1 }
+    }
+
+    static func endHeavyCodecWork() {
+        activeHeavyCodecWork.withLock { $0 = max(0, $0 - 1) }
+    }
+
     static func settle() async {
         let maxWait = ContinuousClock.now.advanced(by: .seconds(50))
         var fastRounds = 0
-        while fastRounds < 12 && ContinuousClock.now < maxWait {
+        while fastRounds < 6 && ContinuousClock.now < maxWait {
+            if activeHeavyCodecWork.withLock({ $0 > 0 }) {
+                fastRounds = 0
+                try? await Task.sleep(for: .milliseconds(15))
+                continue
+            }
             let t0 = ContinuousClock.now
             await Task { }.value
             let hop = ContinuousClock.now - t0
-            if hop < .milliseconds(8) {
+            if hop < .milliseconds(8) && activeHeavyCodecWork.withLock({ $0 == 0 }) {
                 fastRounds += 1
                 try? await Task.sleep(for: .milliseconds(15))
             } else {

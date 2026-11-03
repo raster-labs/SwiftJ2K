@@ -193,7 +193,8 @@ struct CodexR3HTTPStreamingTests {
         } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded, "\(operation.phaseDiagnostics)") }
         #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
         #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
-        let phases = operation.phaseDiagnostics
+        #expect(scenario.waitForStopCompleted(), "\(operation.phaseDiagnostics)")
+        let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
         #expect(phases.contains(": watchdog"), "\(phases)")
         #expect(phases.contains("cancel(latched=true"), "\(phases)")
         #expect(phases.contains("cancel.returned(hasTask=true)"), "\(phases)")
@@ -242,7 +243,8 @@ struct CodexR3HTTPStreamingTests {
             #expect(ContinuousClock.now - start < .seconds(2), "\(operation.phaseDiagnostics)")
             #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
             #expect(scenario.chunksDeliveredDuringWatchdog >= 1, "\(operation.phaseDiagnostics)")
-            let phases = operation.phaseDiagnostics
+            #expect(scenario.waitForStopCompleted(), "\(operation.phaseDiagnostics)")
+            let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
             #expect(phases.contains("protocol.start.called"), "\(phases)")
             #expect(phases.contains("didReceiveData(chunk=1"), "\(phases)")
             #expect(phases.contains("didReceiveData(chunk=2"), "\(phases)")
@@ -270,27 +272,127 @@ struct CodexR3HTTPStreamingTests {
         let fixture = HTTPSHarnessProtocol.register(scenario)
         defer { HTTPSHarnessProtocol.remove(fixture.url) }
         let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
-        let request = Task {
-            defer {
-                scenario.trickleTimerPublicationPaused.continuation.finish()
-            }
-            return try await operation.read(
-                URLRequest(url: fixture.url),
-                configuration: fixture.configuration,
-                deadline: .now.advanced(by: .seconds(2))
-            )
-        }
-        for await _ in scenario.trickleTimerPublicationPaused.stream { break }
-        operation.cancel()
-        for await _ in scenario.trickleTimerPublicationFinished.stream { break }
-        await #expect(throws: CancellationError.self) { _ = try await request.value }
+        try await runTrickleStopWinningTimerPublicationAttempt(
+            scenario: scenario,
+            operation: operation,
+            url: fixture.url,
+            configuration: fixture.configuration,
+            deadline: .now.advanced(by: .seconds(2))
+        )
         #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
         #expect(scenario.deliveredChunks == 0, "\(operation.phaseDiagnostics)")
         #expect(scenario.cancelledAtPublication, "\(operation.phaseDiagnostics)")
-        let phases = operation.phaseDiagnostics
+        #expect(scenario.waitForStopCompleted(), "\(operation.phaseDiagnostics)")
+        let phases = "\(operation.phaseDiagnostics); \(scenario.stopDiagnostics)"
         #expect(phases.contains("protocol.trickle.pausedBeforePublication"), "\(phases)")
         #expect(phases.contains("protocol.stop.called"), "\(phases)")
         #expect(phases.contains("protocol.stop.done(timerActive=false)"), "\(phases)")
+
+        try await verifyTrickleEarlyFailureBeforeTimerPublicationDoesNotHang(
+            failureMode: .expiredDeadlineBeforeStartLoading
+        )
+        try await verifyTrickleEarlyFailureBeforeTimerPublicationDoesNotHang(
+            failureMode: .protocolFailureBeforePause
+        )
+        try await verifyTrickleEarlyFailureBeforeTimerPublicationDoesNotHang(
+            failureMode: .protocolExitBeforePublicationFinished
+        )
+    }
+
+    private enum TricklePublicationFailureMode: Sendable {
+        case expiredDeadlineBeforeStartLoading
+        case protocolFailureBeforePause
+        case protocolExitBeforePublicationFinished
+    }
+
+    private func runTrickleStopWinningTimerPublicationAttempt(
+        scenario: HTTPSHarnessScenario,
+        operation: JPIPHTTPSRequest,
+        url: URL,
+        configuration: URLSessionConfiguration,
+        deadline: ContinuousClock.Instant
+    ) async throws {
+        let request = Task {
+            defer {
+                scenario.finishTricklePublicationOnRequestExit()
+            }
+            return try await operation.read(
+                URLRequest(url: url),
+                configuration: configuration,
+                deadline: deadline
+            )
+        }
+        do {
+            let pausedDelivered = await scenario.waitForTricklePublicationPaused(after: 2.0)
+            guard pausedDelivered else {
+                let finishedAfterEarlyExit = await scenario.waitForTricklePublicationFinished(after: 1.0)
+                #expect(!finishedAfterEarlyExit, "\(operation.phaseDiagnostics)")
+                throw J2KError.invalidState(
+                    "Trickle harness exited before timer-publication pause: \(operation.phaseDiagnostics)"
+                )
+            }
+            operation.cancel()
+            let finishedDelivered = await scenario.waitForTricklePublicationFinished(after: 2.0)
+            guard finishedDelivered else {
+                throw J2KError.invalidState(
+                    "Trickle harness did not finish timer publication after cancel: \(operation.phaseDiagnostics)"
+                )
+            }
+            await #expect(throws: CancellationError.self) { _ = try await request.value }
+        } catch {
+            scenario.markStopCompleted()
+            scenario.finishTricklePublicationStreams()
+            operation.cancel()
+            request.cancel()
+            _ = try? await request.value
+            throw error
+        }
+    }
+
+    private func verifyTrickleEarlyFailureBeforeTimerPublicationDoesNotHang(
+        failureMode: TricklePublicationFailureMode
+    ) async throws {
+        let scenario = HTTPSHarnessScenario(
+            mode: .trickle,
+            headers: ["Content-Type": "image/jpp-stream"],
+            pauseBeforeTrickleTimerPublication: true,
+            failBeforeTrickleTimerPublication: failureMode == .protocolFailureBeforePause,
+            abortBeforeTricklePublicationFinished: failureMode == .protocolExitBeforePublicationFinished
+        )
+        let fixture = HTTPSHarnessProtocol.register(scenario)
+        defer { HTTPSHarnessProtocol.remove(fixture.url) }
+        let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
+        let start = ContinuousClock.now
+        let deadline: ContinuousClock.Instant =
+            failureMode == .expiredDeadlineBeforeStartLoading
+            ? .now.advanced(by: .milliseconds(-1))
+            : .now.advanced(by: .seconds(2))
+        await #expect(throws: J2KError.self) {
+            try await runTrickleStopWinningTimerPublicationAttempt(
+                scenario: scenario,
+                operation: operation,
+                url: fixture.url,
+                configuration: fixture.configuration,
+                deadline: deadline
+            )
+        }
+        #expect(ContinuousClock.now - start < .seconds(1), "\(operation.phaseDiagnostics)")
+        #expect(!operation.hasActiveOwners, "\(operation.phaseDiagnostics)")
+        #expect(scenario.deliveredChunks == 0, "\(operation.phaseDiagnostics)")
+        switch failureMode {
+        case .expiredDeadlineBeforeStartLoading:
+            #expect(scenario.request == nil, "\(operation.phaseDiagnostics)")
+            #expect(!scenario.cancelledAtPublication, "\(operation.phaseDiagnostics)")
+        case .protocolFailureBeforePause:
+            #expect(!scenario.cancelledAtPublication, "\(operation.phaseDiagnostics)")
+            #expect(
+                operation.phaseDiagnostics.contains("protocol.start.failedBeforePublication"),
+                "\(operation.phaseDiagnostics)"
+            )
+        case .protocolExitBeforePublicationFinished:
+            #expect(scenario.cancelledAtPublication, "\(operation.phaseDiagnostics)")
+            #expect(scenario.abortedBeforePublicationFinished, "\(operation.phaseDiagnostics)")
+        }
     }
 
     @Test func taskCancellationJoinsAndAllowsFollowingRequest() async throws {
@@ -599,33 +701,55 @@ private final class HTTPSHarnessScenario: Sendable {
     let headers: [String: String]
     let chunks: [Data]
     let pauseBeforeTrickleTimerPublication: Bool
+    let failBeforeTrickleTimerPublication: Bool
+    let abortBeforeTricklePublicationFinished: Bool
     let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-    let trickleTimerPublicationPaused = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-    let trickleTimerPublicationFinished = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let trickleTimerPublicationPaused = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let trickleTimerPublicationFinished = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
     private struct State {
         var request: URLRequest?
         var delivered = 0
         var watchdogArmed = false
         var deliveredDuringWatchdog = 0
+        var pausedBeforePublication = false
+        var publicationFinished = false
+        var abortedBeforePublicationFinished = false
         var stopCompleted = false
+        var stopCalled = false
+        var stopTimerActive: Bool?
         var cancelledAtPublication = false
     }
     private let state = Mutex(State())
+    private let stopSemaphore = DispatchSemaphore(value: 0)
     init(
         mode: Mode,
         headers: [String: String] = [:],
         chunks: [Data] = [],
-        pauseBeforeTrickleTimerPublication: Bool = false
+        pauseBeforeTrickleTimerPublication: Bool = false,
+        failBeforeTrickleTimerPublication: Bool = false,
+        abortBeforeTricklePublicationFinished: Bool = false
     ) {
         self.mode = mode
         self.headers = headers
         self.chunks = chunks
         self.pauseBeforeTrickleTimerPublication = pauseBeforeTrickleTimerPublication
+        self.failBeforeTrickleTimerPublication = failBeforeTrickleTimerPublication
+        self.abortBeforeTricklePublicationFinished = abortBeforeTricklePublicationFinished
     }
     var request: URLRequest? { state.withLock { $0.request } }
     var deliveredChunks: Int { state.withLock { $0.delivered } }
     var chunksDeliveredDuringWatchdog: Int { state.withLock { $0.deliveredDuringWatchdog } }
     var cancelledAtPublication: Bool { state.withLock { $0.cancelledAtPublication } }
+    var abortedBeforePublicationFinished: Bool { state.withLock { $0.abortedBeforePublicationFinished } }
+    var stopDiagnostics: String {
+        state.withLock { state in
+            guard state.stopCalled else { return "protocol.stop.notCalled" }
+            if let timerActive = state.stopTimerActive {
+                return "protocol.stop.called; protocol.stop.done(timerActive=\(timerActive))"
+            }
+            return "protocol.stop.called"
+        }
+    }
     func begin(_ request: URLRequest) {
         state.withLock { $0.request = request }
         started.continuation.yield(())
@@ -643,19 +767,90 @@ private final class HTTPSHarnessScenario: Sendable {
             return (state.delivered, state.deliveredDuringWatchdog)
         }
     }
-    func markStopCompleted() {
-        state.withLock { $0.stopCompleted = true }
+    func markPausedBeforePublication() -> Bool {
+        let shouldPause = state.withLock { state -> Bool in
+            guard !state.stopCompleted else { return false }
+            state.pausedBeforePublication = true
+            return true
+        }
+        if shouldPause {
+            trickleTimerPublicationPaused.continuation.yield(true)
+        }
+        trickleTimerPublicationPaused.continuation.finish()
+        return shouldPause
+    }
+    func markPublicationFinished() {
+        state.withLock { $0.publicationFinished = true }
+        trickleTimerPublicationFinished.continuation.yield(true)
+        trickleTimerPublicationFinished.continuation.finish()
+    }
+    func markAbortedBeforePublicationFinished() {
+        state.withLock { $0.abortedBeforePublicationFinished = true }
+    }
+    func finishTricklePublicationOnRequestExit() {
+        let (paused, shouldSignalStop) = state.withLock { state -> (Bool, Bool) in
+            if !state.pausedBeforePublication && !state.stopCompleted {
+                state.stopCompleted = true
+                return (false, true)
+            }
+            return (state.pausedBeforePublication, false)
+        }
+        if shouldSignalStop {
+            stopSemaphore.signal()
+        }
+        trickleTimerPublicationPaused.continuation.finish()
+        if !paused {
+            trickleTimerPublicationFinished.continuation.finish()
+        }
+    }
+    func finishTricklePublicationStreams() {
+        trickleTimerPublicationPaused.continuation.finish()
+        trickleTimerPublicationFinished.continuation.finish()
+    }
+    func waitForTricklePublicationPaused(after seconds: TimeInterval = 2.0) async -> Bool {
+        let watchdog = JPIPDeadlineWatchdog(after: seconds) { [trickleTimerPublicationPaused] in
+            trickleTimerPublicationPaused.continuation.finish()
+        }
+        defer { watchdog.cancel() }
+        for await delivered in trickleTimerPublicationPaused.stream {
+            return delivered && state.withLock { $0.pausedBeforePublication }
+        }
+        return false
+    }
+    func waitForTricklePublicationFinished(after seconds: TimeInterval = 2.0) async -> Bool {
+        let watchdog = JPIPDeadlineWatchdog(after: seconds) { [trickleTimerPublicationFinished] in
+            trickleTimerPublicationFinished.continuation.finish()
+        }
+        defer { watchdog.cancel() }
+        for await delivered in trickleTimerPublicationFinished.stream {
+            return delivered && state.withLock { $0.publicationFinished }
+        }
+        return false
+    }
+    func markStopCompleted(timerActive: Bool? = nil) {
+        let shouldSignal = state.withLock { state -> Bool in
+            if let timerActive {
+                state.stopCalled = true
+                state.stopTimerActive = timerActive
+            }
+            guard !state.stopCompleted else { return false }
+            state.stopCompleted = true
+            return true
+        }
+        if shouldSignal {
+            stopSemaphore.signal()
+        }
     }
     func markCancelledAtPublication() {
         state.withLock { $0.cancelledAtPublication = true }
     }
-    func waitForStopCompleted(timeout: Duration = .seconds(1)) -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-        while ContinuousClock.now < deadline {
-            if state.withLock({ $0.stopCompleted }) {
-                return true
-            }
-            usleep(1_000)
+    func waitForStopCompleted(timeoutSeconds: TimeInterval = 1.0) -> Bool {
+        if state.withLock({ $0.stopCompleted }) {
+            return true
+        }
+        if stopSemaphore.wait(timeout: .now() + timeoutSeconds) == .success {
+            stopSemaphore.signal()
+            return true
         }
         return state.withLock { $0.stopCompleted }
     }
@@ -697,18 +892,27 @@ private final class HTTPSHarnessProtocol: URLProtocol {
         let host = request.url?.host
         JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.called")
         queue.async(execute: DispatchWorkItem { [self] in
+            let scenario = Self.scenarios.withLock { $0[host ?? ""] }
+            defer {
+                scenario?.finishTricklePublicationStreams()
+            }
             guard !runtime.withLock({ $0.stopped }),
                   let url = request.url else {
                 JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.skipped")
                 return
             }
-            guard let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }) else {
+            guard let scenario else {
                 JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.missingScenario")
                 client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
                 return
             }
             JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.run(mode=\(scenario.mode))")
             scenario.begin(request)
+            if scenario.failBeforeTrickleTimerPublication {
+                JPIPHTTPSPhaseLog.record(forHost: host, "protocol.start.failedBeforePublication")
+                client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
+                return
+            }
             guard scenario.mode != .silent else { return }
             guard let response = HTTPURLResponse(url: url, statusCode: 200,
                 httpVersion: "HTTP/1.1", headerFields: scenario.headers) else { return }
@@ -738,8 +942,9 @@ private final class HTTPSHarnessProtocol: URLProtocol {
                 })
                 if scenario.pauseBeforeTrickleTimerPublication {
                     JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.pausedBeforePublication")
-                    scenario.trickleTimerPublicationPaused.continuation.yield(())
-                    _ = scenario.waitForStopCompleted()
+                    if scenario.markPausedBeforePublication() {
+                        _ = scenario.waitForStopCompleted()
+                    }
                 }
                 // Always activate the DispatchSourceTimer on every path before
                 // publishing or cancelling it; disposing an unactivated
@@ -757,8 +962,12 @@ private final class HTTPSHarnessProtocol: URLProtocol {
                     JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.cancelledAtPublication")
                     tick.cancel()
                 }
-                scenario.trickleTimerPublicationFinished.continuation.yield(())
-                scenario.trickleTimerPublicationFinished.continuation.finish()
+                if scenario.abortBeforeTricklePublicationFinished {
+                    scenario.markAbortedBeforePublicationFinished()
+                    JPIPHTTPSPhaseLog.record(forHost: host, "protocol.trickle.abortedBeforePublicationFinished")
+                    return
+                }
+                scenario.markPublicationFinished()
             }
         })
     }
@@ -774,6 +983,6 @@ private final class HTTPSHarnessProtocol: URLProtocol {
         }
         activeTimer?.cancel()
         JPIPHTTPSPhaseLog.record(forHost: host, "protocol.stop.done(timerActive=\(activeTimer != nil))")
-        scenario?.markStopCompleted()
+        scenario?.markStopCompleted(timerActive: activeTimer != nil)
     }
 }

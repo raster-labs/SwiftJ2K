@@ -37,6 +37,8 @@ struct R2JPIPRemediationTests {
 
     @Test("F07: JPIPDataBinGenerator, JPIPServer, and JPIPStreamingSession preserve pclr/cmap, cdef, and ICC under .none and .htj2k codingPreference")
     func jpipPreservesPaletteCdefAndICCSemantics() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-jpip-f07-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -123,6 +125,8 @@ struct R2JPIPRemediationTests {
 
     @Test("F07: JPIPStreamingSession preserves premultiplied and absent alpha across delivered.image and delivered.legacyImage.toContractImage")
     func jpipPreservesPremultipliedAndAbsentAlphaThroughLegacyBridge() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-jpip-premul-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -268,6 +272,8 @@ struct R2JPIPRemediationTests {
 
     @Test("F09: JPIPStreamingSession enforces CopyPolicy and ExecutionPolicy and reports truthful CopyEvent and discarded metadata telemetry")
     func jpipPoliciesAndOperationReportTelemetry() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-jpip-f09-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -382,6 +388,8 @@ struct R2JPIPRemediationTests {
 
     @Test("F10: JPIPViewWindow composes region, resolutionLevel, maxQualityLayers, and components simultaneously and validates bounds")
     func jpipViewWindowConstraintCompositionAndBoundsValidation() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-jpip-f10-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -489,6 +497,8 @@ struct R2JPIPRemediationTests {
 
     @Test("F10: JPIPSessionConfiguration enforces maxCachedDataBins, maxCacheSizeBytes, and deliveryMode")
     func jpipSessionConfigurationCacheAndDeliveryEnforcement() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftj2k-r2-jpip-cache-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)

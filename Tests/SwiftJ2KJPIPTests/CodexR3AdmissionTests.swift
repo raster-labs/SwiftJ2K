@@ -237,6 +237,8 @@ struct CodexR3AdmissionTests {
     }
 
     @Test func volumeReportCarriesDescriptorDominatedReassemblyPeak() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let volume = J2KVolume(width: 1, height: 1, depth: 1, components: [
             J2KVolumeComponent(index: 0, bitDepth: 8, signed: false,
                 width: 1, height: 1, depth: 1, data: Data([37]))
@@ -266,6 +268,8 @@ struct CodexR3AdmissionTests {
     }
 
     @Test func volumeReportIncludesDescriptorHeavyWebSocketHandshake() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let volume = J2KVolume(width: 1, height: 1, depth: 1, components: [
             J2KVolumeComponent(index: 0, bitDepth: 8, signed: false,
                 width: 1, height: 1, depth: 1, data: Data([37]))

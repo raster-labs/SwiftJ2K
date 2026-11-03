@@ -120,6 +120,8 @@ struct CodexR3IndependentTests {
 
     @Test("F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping")
     func malformedTokensAndOverflowingQueryRangesRejected() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         // Valid Clause C.8.1.1 `[0]` followed by a bin descriptor parses cleanly;
         // trailing `[0]` without a bin descriptor or malformed brackets must reject cleanly without trapping.
         let validZeroContext = try JPIPCacheModel.parseValidatedModelItems(["[0]", "Hm"])
@@ -177,6 +179,8 @@ struct CodexR3IndependentTests {
 
     @Test("F04-04: Sparse Msg-Offset amplification and multi-round cumulative responses fail pre-allocation against ResourceLimits")
     func sparseMsgOffsetAndCumulativeLimitsEnforcedPreAllocation() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         // 1. 1-byte wire bin with 64 MiB Msg-Offset rejected before allocating 64 MiB
         let sparseBin = JPIPDataBin(
             binClass: .precinct,
@@ -239,6 +243,8 @@ struct CodexR3IndependentTests {
 
     @Test("F04-05: len=0..3 and len=64 always emit a complete decodable 3-byte EOR excluded from len")
     func lenAlwaysEmitsCompleteThreeByteEOR() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let img = makeGreyImage(width: 16, height: 16)
         let j2k = try await Encoder(
             configuration: try EncoderConfiguration(
@@ -329,6 +335,8 @@ struct CodexR3IndependentTests {
 
     @Test("F04-07/08: Normative fvsiz/rvoff/rvsiz 3D JPIP query grammar and substantiated 3D fidelity/workspace reporting")
     func normative3DQueryGrammarAndSubstantiatedFidelity() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         // 1. Query round-trip for fvsiz, rvoff, rvsiz
         var qReq = JPIPRequest(target: "vol.jp3d")
         qReq.fvsiz = [8, 6, 4]
@@ -535,6 +543,8 @@ struct CodexR3IndependentTests {
 
     @Test("RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace")
     func deliverVolumeRegionVerificationTelemetryAndCombinedBudget() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let vol = makeGreyVolume(width: 16, height: 16, depth: 4)
         let encoded = try await JP3DEncoder(
             configuration: JP3DEncoderConfiguration(
