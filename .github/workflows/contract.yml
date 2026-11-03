@@ -6,16 +6,21 @@ name: Milestone 1 contract
 # Owner CI scope directive (2 November 2026): feature-branch/PR CI is scoped to
 # macOS and iOS ONLY. Linux is OUT_OF_CURRENT_SCOPE_BY_OWNER (preserving prior
 # failed Linux receipts as historical evidence; no new Linux gates are run here).
-# Toolchain/runtime disclosure: GitHub's `macos-26` runner ships Xcode 26.6
-# (`Apple Swift version 6.3.3`); standalone Swift 6.2 and 6.4 Linux container
-# runtime execution is not performed under this Apple-only CI scope while
-# `Package.swift` preserves the `swift-tools-version: 6.2` manifest floor and
-# `.macOS(.v26), .iOS(.v26), .tvOS(.v26), .visionOS(.v26), .watchOS(.v26)` minima.
+#
+# Owner R3 scope update (3 November 2026):
+# "Lets hold the JPIP and 3D related validations now and mark the enhancement as
+# for future release. Just complete the R3 to proceed to R4."
+# Under this directive, SwiftJ2K3DTests, SwiftJ2KJPIPTests, and the 8 cross-target
+# JPIP/3D declarations in SwiftJ2KTests are recorded in
+# Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json as
+# ON_HOLD_BY_OWNER / DEFERRED_TO_FUTURE_RELEASE (never marked passed).
+# Unrelated 2D assertions in formerly mixed CLI tests are preserved and executed
+# via explicit 2D declarations in SwiftJ2KTests.
 #
 # Five direct external interoperability checks (combined Part 10+15; native 3D
 # JPIP; exact repository WebSocket extension; direct full-38-bit Part 2
-# synthesis/output; multiple transmitted nonempty HT sets) are ON_HOLD_BY_OWNER /
-# DEFERRED / UNEXECUTED per Owner Update 15 (2 November 2026); the five
+# synthesis/output; multiple transmitted nonempty HT sets) remain ON_HOLD_BY_OWNER /
+# DEFERRED / UNEXECUTED per Owner Update 15 (2 November 2026); the five separate
 # `@Test(.enabled(if: ...))` external-oracle declarations (`ojph_expand`,
 # `kdu_expand`, `opj_decompress`) remain UNEXECUTED when external CLI binaries
 # are absent on hosted runners.
@@ -51,9 +56,10 @@ jobs:
 
   macos:
     # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`).
-    # Five external-oracle declarations (`ojph_expand`, `kdu_expand`,
-    # `opj_decompress`) use @Test(.enabled(if: ...)) when tools are unavailable.
-    # Their explicit skips remain unexecuted oracle checks, not passing evidence.
+    # Executes the 160 selected non-held core/2D-CLI declarations in SwiftJ2KTests
+    # across ordinary, AddressSanitizer, and ThreadSanitizer builds, verifying
+    # strict compiled-inventory parity (1,373 total = 160 selected + 1,213 held)
+    # and exact executed declaration/parameter-case reconciliation in each mode.
     name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
     timeout-minutes: 30
@@ -63,29 +69,70 @@ jobs:
           persist-credentials: false
       - run: swift --version
       - run: xcodebuild -version
-      - run: swift build
+      - run: swift build --build-tests
       - name: Ordinary tests
         id: ordinary_tests
         run: |
           set -euo pipefail
-          mkdir -p .build/sanitizer-evidence/ordinary
-          swift test --xunit-output .build/sanitizer-evidence/ordinary/full.xml
-      # Keep the ordinary full-suite run above. Each sanitizer still executes
-      # every test; only JPIP and its exact complement run in separate processes.
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer ordinary \
+            --scratch-path .build \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/ordinary
+          swift test --skip-build \
+            --filter '^SwiftJ2KTests\.' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --xunit-output .build/sanitizer-evidence/ordinary/selected.xml \
+            2>&1 | tee .build/sanitizer-evidence/ordinary/test.stdout
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer ordinary \
+            --scratch-path .build \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/ordinary \
+            --verify-executed-xml .build/sanitizer-evidence/ordinary/selected.xml \
+            --verify-executed-log .build/sanitizer-evidence/ordinary/test.stdout
       - name: Address sanitizer
         id: address_tests
         run: |
           set -euo pipefail
-          python3 Scripts/verify-sanitizer-inventory.py --sanitizer address --scratch-path .build/asan --output .build/sanitizer-evidence/address
-          swift test --scratch-path .build/asan --sanitize address --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/jpip.xml
-          swift test --scratch-path .build/asan --sanitize address --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/address/complement.xml
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer address \
+            --scratch-path .build/asan \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/address
+          swift test --scratch-path .build/asan --sanitize address --skip-build \
+            --filter '^SwiftJ2KTests\.' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --xunit-output .build/sanitizer-evidence/address/selected.xml \
+            2>&1 | tee .build/sanitizer-evidence/address/test.stdout
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer address \
+            --scratch-path .build/asan \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/address \
+            --verify-executed-xml .build/sanitizer-evidence/address/selected.xml \
+            --verify-executed-log .build/sanitizer-evidence/address/test.stdout
       - name: Thread sanitizer
         id: thread_tests
         run: |
           set -euo pipefail
-          python3 Scripts/verify-sanitizer-inventory.py --sanitizer thread --scratch-path .build/tsan --output .build/sanitizer-evidence/thread
-          swift test --scratch-path .build/tsan --sanitize thread --skip-build --filter '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/jpip.xml
-          swift test --scratch-path .build/tsan --sanitize thread --skip-build --skip '^SwiftJ2KJPIPTests[./]' --xunit-output .build/sanitizer-evidence/thread/complement.xml
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer thread \
+            --scratch-path .build/tsan \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/thread
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build \
+            --filter '^SwiftJ2KTests\.' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --xunit-output .build/sanitizer-evidence/thread/selected.xml \
+            2>&1 | tee .build/sanitizer-evidence/thread/test.stdout
+          python3 Scripts/verify-sanitizer-inventory.py \
+            --sanitizer thread \
+            --scratch-path .build/tsan \
+            --reference-scratch-path .build \
+            --output .build/sanitizer-evidence/thread \
+            --verify-executed-xml .build/sanitizer-evidence/thread/selected.xml \
+            --verify-executed-log .build/sanitizer-evidence/thread/test.stdout
 
       - name: Retain exact test evidence in downloadable logs
         if: always()
@@ -132,23 +179,24 @@ jobs:
               emit("identity_error", error=str(error))
               problems.append("Checkout identity unavailable")
 
-          inventory_names = ["reference.stdout", "reference.stderr", "reference.command-result.json",
-                             "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",
-                             "inventory.json", "all.ids", "jpip.ids", "complement.ids"]
-          xml_groups = [["ordinary/full.xml", "ordinary/full-swift-testing.xml"]]
+          inventory_names = [
+              "reference.stdout", "reference.stderr", "reference.command-result.json",
+              "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",
+              "inventory.json", "execution-reconciliation.json",
+              "all.ids", "selected.ids", "held.ids", "inapplicable-ios.ids", "oracle-skips.ids",
+              "test.stdout",
+          ]
+          xml_groups = []
           required = []
           optional = []
-          for mode in ("address", "thread"):
+          for mode in ("ordinary", "address", "thread"):
               required += [f"{mode}/{name}" for name in inventory_names]
               optional.append(f"{mode}/inventory-mismatch.json")
-              for part in ("jpip", "complement"):
-                  xml_groups.append([f"{mode}/{part}.xml", f"{mode}/{part}-swift-testing.xml"])
+              xml_groups.append([f"{mode}/selected.xml", f"{mode}/selected-swift-testing.xml"])
           paths = sorted(set(required + optional + [path for group in xml_groups for path in group]))
           for relative in paths:
               path = ROOT / relative
               try:
-                  # The fixed allowlist cannot disclose arbitrary files under .build. Reject
-                  # symlinked ancestors and files instead of following them outside the tree.
                   if any(parent.is_symlink() for parent in [path, *path.parents]):
                       raise ValueError("Symlinked evidence path refused")
                   if not path.exists():
@@ -162,7 +210,7 @@ jobs:
                   data = path.read_bytes()
                   if len(data) > MAX_FILE or total + len(data) > MAX_TOTAL:
                       raise ValueError("Evidence grew past the size limit")
-                  content = data.decode("utf-8")  # Strict: malformed UTF-8 is not rewritten.
+                  content = data.decode("utf-8")
                   chunks = [content[i:i + CHARS_PER_CHUNK] for i in range(0, len(content), CHARS_PER_CHUNK)]
                   emit("file", path=relative, sha256=hashlib.sha256(data).hexdigest(),
                        bytes=len(data), encoding="utf-8", chunks=len(chunks))
@@ -182,16 +230,16 @@ jobs:
                   problems.append("No XML retained for invocation: " + group[0])
           emit("end", files=len(retained), bytes=total, problems=problems,
                retention_complete=not problems,
-               scope="Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately")
+               scope="Owner-revised R3 scope: retains full/selected/held/inapplicable/oracle-skip inventories, raw logs, XML, and execution-reconciliation across ordinary, ASan, and TSan")
           raise SystemExit(1 if problems else 0)
           PY_EVIDENCE
 
   ios-simulator:
-    # Actual iOS Simulator build and test execution for supported library targets
-    # (`SwiftJ2K`, `SwiftJ2K3D`, `SwiftJ2KJPIP`) and test targets (`SwiftJ2KTests`,
-    # `SwiftJ2K3DTests`, `SwiftJ2KJPIPTests`). The 10 macOS-only CLI subprocess test
-    # declarations (`Foundation.Process`) are explicitly identified as inapplicable on
-    # iOS (`#if os(macOS) || os(Linux)`), never counted as iOS passes or skips.
+    # Actual iOS Simulator build and test execution for selected non-held core
+    # declarations in `SwiftJ2KTests` (153 declarations = 160 selected macOS core
+    # minus 7 macOS-only `Foundation.Process` CLI declarations; excludes the 3 held
+    # `CodexR3JPPReassemblyResourceTests` declarations and does not execute held
+    # `SwiftJ2K3DTests` or `SwiftJ2KJPIPTests` runtime bundles).
     name: iOS Simulator 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
     timeout-minutes: 30
@@ -249,16 +297,304 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build/ios-evidence/xcodebuild-build.log
           rm -rf .swiftpm
-      - name: Execute iOS Simulator tests
+      - name: Preflight and verify iOS Simulator test selection without executing tests
+        id: ios_preflight
+        run: |
+          set -euo pipefail
+          python3 - "${{ steps.select_simulator.outputs.udid }}" <<'PY_IOS_PREFLIGHT'
+          from __future__ import annotations
+          import hashlib, json, re, shutil, subprocess, sys
+          from pathlib import Path
+
+          udid = sys.argv[1]
+          ROOT = Path(".build/ios-evidence")
+          LEDGER_PATH = Path("Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json")
+          ledger_bytes = LEDGER_PATH.read_bytes()
+          ledger_sha = hashlib.sha256(ledger_bytes).hexdigest()
+          ledger = json.loads(ledger_bytes.decode("utf-8"))
+
+          selected_ios_expected = set(ledger["selected_ios_simulator_core_ids"])
+          held_all_set = set(ledger["held_ids_all"])
+          inapplicable_ios_all = set(
+              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["all"]
+          )
+
+          base_cmd = [
+              "xcodebuild",
+              "test-without-building",
+              "-scheme", "SwiftJ2K-Package",
+              "-destination", f"platform=iOS Simulator,id={udid}",
+              "-derivedDataPath", ".build/ios-derived-data",
+              "-clonedSourcePackagesDirPath", ".build/ios-source-packages",
+              "-enumerate-tests",
+              "-test-enumeration-style", "flat",
+              "-test-enumeration-format", "json",
+              "CODE_SIGNING_ALLOWED=NO",
+          ]
+
+          candidate_filter_args = [
+              "-only-testing:SwiftJ2KTests",
+              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests",
+              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/invalidTileHeaderIdentifier()",
+              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/layerProductRejectedBeforeAllocation()",
+              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/reconstructionBoundary()",
+          ]
+
+          TEST_ID_RE = re.compile(
+              r"^(SwiftJ2KTests|SwiftJ2K3DTests|SwiftJ2KJPIPTests)[/.]"
+              r"(?:[A-Za-z_][A-Za-z0-9_]*/)*"
+              r"[A-Za-z_][A-Za-z0-9_]*(?:\([A-Za-z0-9_:,]*\))?$"
+          )
+
+          def canonicalise_flat_id(raw_id: str) -> str:
+              if not isinstance(raw_id, str):
+                  raise ValueError(f"Test identifier must be a string, got {type(raw_id).__name__}")
+              s = raw_id.strip()
+              if not s or s != raw_id or not TEST_ID_RE.match(s):
+                  raise ValueError(f"Unrecognised or malformed test identifier: {raw_id!r}")
+              for target in ("SwiftJ2KTests", "SwiftJ2K3DTests", "SwiftJ2KJPIPTests"):
+                  prefix = target + "/"
+                  if s.startswith(prefix):
+                      return target + "." + s[len(prefix):]
+              return s
+
+          def parse_enumeration_details(json_path: Path) -> dict[str, object]:
+              data = json.loads(json_path.read_text(encoding="utf-8"))
+              raw_enabled: list[str] = []
+              raw_disabled: list[str] = []
+
+              def _collect_id_list(field_val: object, field_name: str) -> list[str]:
+                  if not isinstance(field_val, list):
+                      raise ValueError(f"{field_name} must be a list, got {type(field_val).__name__}")
+                  out: list[str] = []
+                  for entry in field_val:
+                      if isinstance(entry, str):
+                          raw_id = entry
+                      elif (
+                          isinstance(entry, dict)
+                          and set(entry.keys()) == {"identifier"}
+                          and isinstance(entry.get("identifier"), str)
+                      ):
+                          raw_id = entry["identifier"]
+                      else:
+                          raise ValueError(
+                              f"{field_name} entry must be a string or single-key {{'identifier': str}} object, got {entry!r}"
+                          )
+                      canonicalise_flat_id(raw_id)
+                      out.append(raw_id)
+                  return out
+
+              if isinstance(data, dict) and "values" in data:
+                  unknown_top = set(data.keys()) - {"values", "errors"}
+                  if unknown_top:
+                      raise ValueError(f"Unrecognised top-level keys in values enumeration JSON: {sorted(unknown_top)}")
+                  if "errors" in data:
+                      if not isinstance(data["errors"], list) or len(data["errors"]) != 0:
+                          raise ValueError(f"Enumeration JSON reported errors or invalid errors field: {data['errors']!r}")
+                  values = data["values"]
+                  if not isinstance(values, list) or len(values) == 0:
+                      raise ValueError("Enumeration JSON 'values' must be a non-empty list")
+                  for idx, item in enumerate(values):
+                      if not isinstance(item, dict):
+                          raise ValueError(f"Enumeration JSON values[{idx}] must be an object, got {type(item).__name__}")
+                      item_keys = set(item.keys())
+                      unknown_item = item_keys - {"testPlan", "enabledTests", "disabledTests"}
+                      if unknown_item:
+                          raise ValueError(f"Unrecognised keys in values[{idx}]: {sorted(unknown_item)}")
+                      if not (item_keys & {"enabledTests", "disabledTests"}):
+                          raise ValueError(f"Enumeration JSON values[{idx}] must contain enabledTests and/or disabledTests")
+                      if "testPlan" in item:
+                          if not isinstance(item["testPlan"], str) or not item["testPlan"].strip():
+                              raise ValueError(f"Enumeration JSON values[{idx}].testPlan must be a non-empty string")
+                      if "enabledTests" in item:
+                          raw_enabled.extend(_collect_id_list(item["enabledTests"], f"values[{idx}].enabledTests"))
+                      if "disabledTests" in item:
+                          raw_disabled.extend(_collect_id_list(item["disabledTests"], f"values[{idx}].disabledTests"))
+              elif isinstance(data, dict):
+                  item_keys = set(data.keys())
+                  unknown_top = item_keys - {"testPlan", "enabledTests", "disabledTests", "errors"}
+                  if unknown_top or "enabledTests" not in item_keys:
+                      raise ValueError(f"Unrecognised or incomplete top-level enumeration object keys: {sorted(item_keys)}")
+                  if "errors" in data:
+                      if not isinstance(data["errors"], list) or len(data["errors"]) != 0:
+                          raise ValueError(f"Enumeration JSON reported errors or invalid errors field: {data['errors']!r}")
+                  if "testPlan" in data:
+                      if not isinstance(data["testPlan"], str) or not data["testPlan"].strip():
+                          raise ValueError("Enumeration JSON testPlan must be a non-empty string")
+                  raw_enabled.extend(_collect_id_list(data["enabledTests"], "enabledTests"))
+                  if "disabledTests" in data:
+                      raw_disabled.extend(_collect_id_list(data["disabledTests"], "disabledTests"))
+              elif isinstance(data, list):
+                  if len(data) == 0:
+                      raise ValueError("Top-level enumeration list must not be empty")
+                  raw_enabled.extend(_collect_id_list(data, "root_list"))
+              else:
+                  raise ValueError(f"Unrecognised top-level enumeration JSON type: {type(data).__name__}")
+
+              if not raw_enabled:
+                  raise ValueError("Enumeration JSON contained zero enabled tests")
+
+              canonical_list: list[str] = []
+              raw_by_canonical: dict[str, str] = {}
+              for r in raw_enabled:
+                  c = canonicalise_flat_id(r)
+                  canonical_list.append(c)
+                  raw_by_canonical[c] = r
+
+              canonical_disabled = [canonicalise_flat_id(r) for r in raw_disabled]
+              overlap = sorted(set(canonical_list) & set(canonical_disabled))
+              if overlap:
+                  raise ValueError(f"Enumeration JSON lists tests as both enabled and disabled: {overlap}")
+
+              return {
+                  "raw_enabled": raw_enabled,
+                  "canonical_enabled": canonical_list,
+                  "raw_by_canonical": raw_by_canonical,
+                  "raw_disabled": raw_disabled,
+                  "canonical_disabled": canonical_disabled,
+              }
+
+          def parse_enumeration_json(json_path: Path) -> tuple[list[str], list[str], dict[str, str]]:
+              details = parse_enumeration_details(json_path)
+              return (
+                  details["raw_enabled"],
+                  details["canonical_enabled"],
+                  details["raw_by_canonical"],
+              )
+
+          def run_enumeration(out_json: Path, log_path: Path, filter_args: list[str]) -> None:
+              if out_json.exists():
+                  out_json.unlink()
+              cmd = base_cmd + ["-test-enumeration-output-path", str(out_json)] + filter_args
+              print("+ " + " ".join(cmd), flush=True)
+              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
+              log_path.write_text(proc.stdout, encoding="utf-8")
+              sys.stdout.write(proc.stdout)
+              sys.stdout.flush()
+              if proc.returncode != 0 or not out_json.exists():
+                  raise RuntimeError(f"xcodebuild -enumerate-tests failed (exit {proc.returncode}) for {out_json}")
+
+          cand_json = ROOT / "ios-enumeration-candidate-filter.json"
+          cand_log = ROOT / "xcodebuild-enumerate-candidate.log"
+          verified_json = ROOT / "ios-enumeration-verified.json"
+          verified_log = ROOT / "xcodebuild-enumerate-verified.log"
+          resp_file = ROOT / "ios-selected-only-testing.txt"
+          filter_args_file = ROOT / "ios-verified-filter.args"
+
+          run_enumeration(cand_json, cand_log, candidate_filter_args)
+          cand_details = parse_enumeration_details(cand_json)
+          cand_raw, cand_canonical, cand_raw_map = parse_enumeration_json(cand_json)
+          cand_disabled = cand_details["canonical_disabled"]
+          cand_set = set(cand_canonical)
+          cand_held = sorted(cand_set & held_all_set)
+          cand_missing = sorted(selected_ios_expected - cand_set)
+          cand_extra = sorted(cand_set - selected_ios_expected)
+
+          if (
+              len(cand_canonical) == len(cand_set)
+              and cand_set == selected_ios_expected
+              and not cand_held
+          ):
+              filter_mode = "only_target_plus_skip_suite"
+              shutil.copy2(cand_json, verified_json)
+              shutil.copy2(cand_log, verified_log)
+              verified_filter_args = candidate_filter_args
+              verified_raw, verified_canonical = cand_raw, cand_canonical
+              verified_disabled = cand_disabled
+          else:
+              if cand_missing:
+                  raise RuntimeError(
+                      f"Candidate iOS enumeration missing expected selected declarations: {cand_missing}"
+                  )
+              selected_raw_lines = [
+                  cand_raw_map.get(cid, cid.replace("SwiftJ2KTests.", "SwiftJ2KTests/", 1))
+                  for cid in sorted(selected_ios_expected)
+              ]
+              resp_file.write_text("\n".join(selected_raw_lines) + "\n", encoding="utf-8")
+              filter_mode = "positive_response_file_only_testing"
+              verified_filter_args = [f"-only-testing:@{resp_file.as_posix()}"]
+              run_enumeration(verified_json, verified_log, verified_filter_args)
+              verified_details = parse_enumeration_details(verified_json)
+              verified_raw, verified_canonical, _ = parse_enumeration_json(verified_json)
+              verified_disabled = verified_details["canonical_disabled"]
+
+          verified_set = set(verified_canonical)
+          verified_held = sorted(verified_set & held_all_set)
+          verified_inapplicable = sorted(verified_set & inapplicable_ios_all)
+          verified_missing = sorted(selected_ios_expected - verified_set)
+          verified_extra = sorted(verified_set - selected_ios_expected)
+          verified_duplicates = len(verified_canonical) - len(verified_set)
+
+          filter_args_file.write_text("\n".join(verified_filter_args) + "\n", encoding="utf-8")
+
+          preflight = {
+              "schema": "swiftj2k-r3-ios-selection-preflight-v1",
+              "ledger_sha256": ledger_sha,
+              "filter_mode_used": filter_mode,
+              "verified_filter_args": verified_filter_args,
+              "candidate_filter_enumeration": {
+                  "path": cand_json.name,
+                  "sha256": hashlib.sha256(cand_json.read_bytes()).hexdigest(),
+                  "log_sha256": hashlib.sha256(cand_log.read_bytes()).hexdigest(),
+                  "enabled_count": len(cand_canonical),
+                  "unique_count": len(cand_set),
+                  "disabled_count": len(cand_disabled),
+                  "disabled_unique_count": len(set(cand_disabled)),
+                  "held_selected_ids": cand_held,
+                  "missing_selected_ids": cand_missing,
+                  "extra_ids": cand_extra,
+              },
+              "verified_filter_enumeration": {
+                  "path": verified_json.name,
+                  "sha256": hashlib.sha256(verified_json.read_bytes()).hexdigest(),
+                  "log_sha256": hashlib.sha256(verified_log.read_bytes()).hexdigest(),
+                  "response_file_sha256": (
+                      hashlib.sha256(resp_file.read_bytes()).hexdigest() if resp_file.exists() else None
+                  ),
+                  "expected_selected_ios_count": len(selected_ios_expected),
+                  "enabled_count": len(verified_canonical),
+                  "unique_count": len(verified_set),
+                  "disabled_count": len(verified_disabled),
+                  "disabled_unique_count": len(set(verified_disabled)),
+                  "duplicate_count": verified_duplicates,
+                  "held_selected_count": len(verified_held),
+                  "inapplicable_macos_selected_count": len(verified_inapplicable),
+                  "held_selected_ids": verified_held,
+                  "inapplicable_macos_selected_ids": verified_inapplicable,
+                  "missing_selected_ids": verified_missing,
+                  "extra_ids": verified_extra,
+              },
+              "verified_exact_153_selected": (
+                  verified_duplicates == 0
+                  and len(verified_set) == 153
+                  and verified_set == selected_ios_expected
+                  and not verified_held
+                  and not verified_inapplicable
+              ),
+          }
+          (ROOT / "ios-selection-preflight.json").write_text(json.dumps(preflight, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(preflight, indent=2), flush=True)
+          if not preflight["verified_exact_153_selected"]:
+              raise RuntimeError("iOS pre-runtime enumeration failed exact 153 selected core declaration check")
+          PY_IOS_PREFLIGHT
+          rm -rf .swiftpm
+      - name: Execute selected non-held core iOS Simulator tests
         id: ios_tests
         run: |
           set -euo pipefail
+          FILTER_ARGS=()
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              FILTER_ARGS+=("$line")
+            fi
+          done < .build/ios-evidence/ios-verified-filter.args
           xcodebuild test-without-building \
             -scheme SwiftJ2K-Package \
             -destination "platform=iOS Simulator,id=${{ steps.select_simulator.outputs.udid }}" \
             -derivedDataPath .build/ios-derived-data \
             -clonedSourcePackagesDirPath .build/ios-source-packages \
             -resultBundlePath .build/ios-evidence/ios-tests.xcresult \
+            "${FILTER_ARGS[@]}" \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build/ios-evidence/xcodebuild-test.log
           rm -rf .swiftpm
@@ -268,6 +604,7 @@ jobs:
           EVIDENCE_PR_HEAD: ${{ github.event.pull_request.head.sha }}
           EVIDENCE_PR_BASE: ${{ github.event.pull_request.base.sha }}
           EVIDENCE_IOS_BUILD: ${{ steps.ios_build.outcome }}
+          EVIDENCE_IOS_PREFLIGHT: ${{ steps.ios_preflight.outcome }}
           EVIDENCE_IOS_TESTS: ${{ steps.ios_tests.outcome }}
         run: |
           set -euo pipefail
@@ -279,6 +616,7 @@ jobs:
           ROOT = Path(".build/ios-evidence")
           XCRES = ROOT / "ios-tests.xcresult"
           LOG = ROOT / "xcodebuild-test.log"
+          LEDGER_PATH = Path("Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json")
           problems = []
 
           def emit(kind, **fields):
@@ -288,26 +626,29 @@ jobs:
           def git(*args):
               return subprocess.check_output(["git", *args], text=True).strip()
 
-          INAPPLICABLE_MACOS_ONLY_CLI_TESTS = [
-              "SwiftJ2KTests.CLITestProcessSupportTests/activeBuildResolution()",
-              "SwiftJ2KTests.CLITestProcessSupportTests/pipeCapacityDoesNotDeadlock()",
-              "SwiftJ2KTests.CodexR3CLIHostTests/onceVerificationUsesTheAcceptedBindAddress(host:)",
-              "SwiftJ2KTests.CodexR3CLIHostTests/invalidBindAddressFailsWithoutATrap()",
-              "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliMultiFormat16BitAndCompareMetrics()",
-              "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions()",
-              "SwiftJ2KTests.R1RemediationTests/cliRemediationSubprocessRegressions()",
-              "SwiftJ2KTests.R2RemediationTests/normativePNGSbitReadWriteAndValidation()",
-              "SwiftJ2KTests.R2RemediationTests/tiffPhotometricInterpretationSemanticsAndRejection()",
-              "SwiftJ2KTests.R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation()",
-          ]
+          ledger_bytes = LEDGER_PATH.read_bytes()
+          ledger_sha = hashlib.sha256(ledger_bytes).hexdigest()
+          ledger = json.loads(ledger_bytes.decode("utf-8"))
 
-          UNEXECUTED_EXTERNAL_ORACLE_TESTS = [
-              "independentDecodersReadSuccessorCodestreams(name:)",
-              "independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)",
-              "independentOraclesVerifyTranscodedOutputsInBothDirections(name:)",
-              "independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()",
-              "independentOraclesCrossDecodePart1BreadthEncodings()",
-          ]
+          selected_macos_set = set(ledger["selected_macos_core_ids"])
+          selected_ios_expected = set(ledger["selected_ios_simulator_core_ids"])
+          held_all_set = set(ledger["held_ids_all"])
+          inapplicable_ios_selected = set(
+              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["in_selected_macos_core"]
+          )
+          inapplicable_ios_held = set(
+              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["in_held_cross_target"]
+          )
+          inapplicable_ios_all = set(
+              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["all"]
+          )
+          oracle_skips_expected = set(ledger["five_ordinary_external_oracle_skips"])
+          param_expected = ledger["selected_parameterised_case_counts"]
+
+          (ROOT / "selected-ios.ids").write_text("\n".join(sorted(selected_ios_expected)) + "\n")
+          (ROOT / "held.ids").write_text("\n".join(sorted(held_all_set)) + "\n")
+          (ROOT / "inapplicable-ios.ids").write_text("\n".join(sorted(inapplicable_ios_all)) + "\n")
+          (ROOT / "oracle-skips.ids").write_text("\n".join(sorted(oracle_skips_expected)) + "\n")
 
           try:
               head, tree = git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}")
@@ -315,13 +656,24 @@ jobs:
               identity = {name: os.environ.get(name) for name in (
                   "GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB",
                   "GITHUB_EVENT_NAME", "GITHUB_REF", "GITHUB_SHA", "EVIDENCE_PR_HEAD",
-                  "EVIDENCE_PR_BASE", "EVIDENCE_IOS_BUILD", "EVIDENCE_IOS_TESTS")}
-              emit("begin", identity=identity, checkout_head=head, checkout_tree=tree, tracked_tree_clean=clean)
+                  "EVIDENCE_PR_BASE", "EVIDENCE_IOS_BUILD", "EVIDENCE_IOS_PREFLIGHT", "EVIDENCE_IOS_TESTS")}
+              emit("begin", identity=identity, checkout_head=head, checkout_tree=tree,
+                   tracked_tree_clean=clean, ledger_sha256=ledger_sha)
               if not clean or head != os.environ.get("GITHUB_SHA"):
                   problems.append("Checkout identity differs from workflow SHA or tracked files changed")
+              if os.environ.get("EVIDENCE_IOS_PREFLIGHT") != "success":
+                  problems.append(f"iOS pre-runtime selection preflight did not succeed: {os.environ.get('EVIDENCE_IOS_PREFLIGHT')}")
           except (OSError, subprocess.CalledProcessError) as error:
               emit("identity_error", error=str(error))
               problems.append("Checkout identity unavailable")
+
+          PREFLIGHT_JSON = ROOT / "ios-selection-preflight.json"
+          if not PREFLIGHT_JSON.exists():
+              problems.append("Missing ios-selection-preflight.json")
+          else:
+              preflight_data = json.loads(PREFLIGHT_JSON.read_text(encoding="utf-8"))
+              if not preflight_data.get("verified_exact_153_selected"):
+                  problems.append("ios-selection-preflight.json did not verify exact 153 selected core declarations")
 
           if not XCRES.exists() or not LOG.exists():
               problems.append("Missing ios-tests.xcresult or xcodebuild-test.log")
@@ -330,61 +682,122 @@ jobs:
                   ["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", str(XCRES)],
                   text=True
               )
+              tests_raw = subprocess.check_output(
+                  ["xcrun", "xcresulttool", "get", "test-results", "tests", "--path", str(XCRES)],
+                  text=True
+              )
               (ROOT / "xcresult-summary.json").write_text(summary_raw)
+              (ROOT / "xcresult-tests.json").write_text(tests_raw)
               summary = json.loads(summary_raw)
+              tests_data = json.loads(tests_raw)
               log_text = LOG.read_text(encoding="utf-8", errors="replace")
+
+              bundle_names = []
+              xc_declarations = []
+              xc_passed = []
+              xc_skipped = []
+              xc_failed = []
+              xc_param_counts = {}
+              xc_failed_param_children = []
+
+              for plan_node in tests_data.get("testNodes", []):
+                  for bundle_node in plan_node.get("children", []):
+                      bname = bundle_node.get("name", "")
+                      bundle_names.append(bname)
+                      def walk(node):
+                          if node.get("nodeType") == "Test Case":
+                              nid = node.get("nodeIdentifier", "")
+                              cid = f"{bname}.{nid}" if "/" in nid or not nid.startswith(f"{bname}.") else nid
+                              xc_declarations.append(cid)
+                              res = node.get("result")
+                              if res == "Passed":
+                                  xc_passed.append(cid)
+                              elif res == "Skipped":
+                                  xc_skipped.append(cid)
+                              else:
+                                  xc_failed.append(cid)
+                              arg_children = [
+                                  ch for ch in node.get("children", [])
+                                  if ch.get("nodeType") == "Arguments"
+                              ]
+                              if arg_children and res == "Passed":
+                                  xc_param_counts[cid] = len(arg_children)
+                                  for ch in arg_children:
+                                      if ch.get("result") != "Passed":
+                                          xc_failed_param_children.append(f"{cid}:{ch.get('name')}")
+                          for ch in node.get("children", []):
+                              walk(ch)
+                      walk(bundle_node)
 
               xctest_started = re.findall(r"Test Case '-\[([^\]]+)\]' started\.", log_text)
               xctest_passed = re.findall(r"Test Case '-\[([^\]]+)\]' passed \([0-9.]+ seconds\)\.", log_text)
               xctest_failed = re.findall(r"Test Case '-\[([^\]]+)\]' failed", log_text)
-              st_passed_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites passed after ([0-9.]+) seconds\.", log_text)
-              st_failed_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites failed after ([0-9.]+) seconds with (\d+) issues?\.", log_text)
-              st_skips = re.findall(r"Test ([^\s]+) skipped: \"([^\"]+)\"", log_text)
 
-              st_passed_bundle_declarations = sum(int(r[0]) for r in st_passed_runs)
-              st_failed_bundle_declarations = sum(int(r[0]) for r in st_failed_runs)
-              st_total_declarations = st_passed_bundle_declarations + st_failed_bundle_declarations
-              st_total_suites = sum(int(r[1]) for r in st_passed_runs) + sum(int(r[1]) for r in st_failed_runs)
-              st_skipped_names = sorted(s[0] for s in st_skips)
-              st_passed_declarations = st_passed_bundle_declarations - len(st_skips)
+              xc_decl_set = set(xc_declarations)
+              missing_selected_ios = sorted(selected_ios_expected - xc_decl_set)
+              extra_observed_ios = sorted(xc_decl_set - selected_ios_expected)
+              held_executed_ios = sorted(xc_decl_set & held_all_set)
+              inapplicable_executed_ios = sorted(xc_decl_set & inapplicable_ios_all)
+              unexpected_skipped_ios = sorted(set(xc_skipped) ^ oracle_skips_expected)
+              expected_passed_ios = selected_ios_expected - oracle_skips_expected
+              unexpected_passed_diff = sorted(set(xc_passed) ^ expected_passed_ios)
+
+              param_mismatches = {}
+              for cid, exp_count in sorted(param_expected.items()):
+                  obs_count = xc_param_counts.get(cid)
+                  if obs_count != exp_count:
+                      param_mismatches[cid] = {"expected_cases": exp_count, "observed_xcresult_cases": obs_count}
 
               reconciliation = {
+                  "schema": "swiftj2k-r3-ios-execution-reconciliation-v1",
+                  "ledger_sha256": ledger_sha,
                   "xcresult_result": summary.get("result"),
                   "xcresult_total_test_count": summary.get("totalTestCount"),
                   "xcresult_passed_tests": summary.get("passedTests"),
                   "xcresult_skipped_tests": summary.get("skippedTests"),
                   "xcresult_failed_tests": summary.get("failedTests"),
+                  "executed_unit_test_bundles": bundle_names,
                   "xctest": {
                       "started": len(xctest_started),
                       "passed": len(set(xctest_passed)),
                       "failed": len(xctest_failed),
-                      "ios_only_background_transfer_tests_executed": [
-                          t for t in sorted(set(xctest_passed)) if "BackgroundTransferService" in t
-                      ],
                   },
-                  "swift_testing": {
-                      "bundle_runs": [
-                          {"tests": int(r[0]), "suites": int(r[1]), "status": "passed", "seconds": float(r[2])}
-                          for r in st_passed_runs
-                      ] + [
-                          {"tests": int(r[0]), "suites": int(r[1]), "status": "failed", "seconds": float(r[2]), "issues": int(r[3])}
-                          for r in st_failed_runs
-                      ],
-                      "compiled_declarations_on_ios": st_total_declarations,
-                      "compiled_suites_on_ios": st_total_suites,
-                      "passed_bundle_declarations_on_ios": st_passed_bundle_declarations,
-                      "failed_bundle_declarations_on_ios": st_failed_bundle_declarations,
-                      "passed_declarations_on_ios": st_passed_declarations,
-                      "skipped_external_oracle_declarations_on_ios": len(st_skips),
-                      "skipped_external_oracle_names": st_skipped_names,
+                  "swift_testing_xcresult": {
+                      "expected_selected_ios_declarations": len(selected_ios_expected),
+                      "observed_declarations": len(xc_decl_set),
+                      "duplicate_declarations": len(xc_declarations) - len(xc_decl_set),
+                      "passed_declarations": len(xc_passed),
+                      "skipped_oracle_declarations": len(xc_skipped),
+                      "failed_declarations": len(xc_failed),
+                      "held_declarations_executed": len(held_executed_ios),
+                      "inapplicable_macos_declarations_executed": len(inapplicable_executed_ios),
+                      "parameterised_non_oracle_declarations_verified": len(param_expected) - len(param_mismatches),
+                      "parameterised_non_oracle_total_cases_expected": sum(param_expected.values()),
+                      "parameterised_non_oracle_total_cases_observed": sum(
+                          xc_param_counts.get(k, 0) for k in param_expected
+                      ),
+                      "skipped_oracle_ids": sorted(xc_skipped),
+                      "missing_selected_ios_ids": missing_selected_ios,
+                      "extra_observed_ios_ids": extra_observed_ios,
+                      "held_executed_ios_ids": held_executed_ios,
+                      "inapplicable_executed_ios_ids": inapplicable_executed_ios,
+                      "unexpected_skipped_ios_ids": unexpected_skipped_ios,
+                      "unexpected_passed_diff_ids": unexpected_passed_diff,
+                      "failed_ids": sorted(xc_failed),
+                      "failed_parameterised_children": xc_failed_param_children,
+                      "parameterised_case_mismatches": param_mismatches,
                   },
                   "inapplicable_macos_only_cli_process_declarations": {
-                      "count": len(INAPPLICABLE_MACOS_ONLY_CLI_TESTS),
+                      "total_count": len(inapplicable_ios_all),
+                      "in_selected_macos_core_count": len(inapplicable_ios_selected),
+                      "in_held_cross_target_count": len(inapplicable_ios_held),
                       "counted_as_ios_pass": False,
                       "counted_as_ios_skip": False,
                       "reason": "Requires macOS Foundation.Process and swiftj2k-cli child process execution; guarded by #if os(macOS) || os(Linux)",
-                      "declarations": INAPPLICABLE_MACOS_ONLY_CLI_TESTS,
+                      "in_selected_macos_core": sorted(inapplicable_ios_selected),
+                      "in_held_cross_target": sorted(inapplicable_ios_held),
                   },
+                  "held_jpip_3d_validations_state": "ON_HOLD_BY_OWNER / DEFERRED_TO_FUTURE_RELEASE",
                   "five_external_feature_gates_state": "ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED",
               }
               (ROOT / "ios-reconciliation.json").write_text(json.dumps(reconciliation, indent=2) + "\n")
@@ -392,14 +805,32 @@ jobs:
 
               if summary.get("result") != "Passed" or summary.get("failedTests") != 0:
                   problems.append("xcresult summary did not pass with 0 failures")
-              if len(set(xctest_passed)) != 1037 or len(xctest_failed) != 0:
-                  problems.append(f"Expected 1037 XCTest passes and 0 failures on iOS Simulator, got {len(set(xctest_passed))} passed / {len(xctest_failed)} failed")
-              if st_total_declarations != 327 or st_passed_declarations != 322 or st_failed_bundle_declarations != 0 or len(st_skips) != 5:
-                  problems.append(f"Expected 327 compiled Swift Testing declarations (322 passed, 0 in failed bundles, 5 skipped), got {st_total_declarations} ({st_passed_declarations} passed, {st_failed_bundle_declarations} in failed bundles, {len(st_skips)} skipped)")
-              if st_skipped_names != sorted(UNEXECUTED_EXTERNAL_ORACLE_TESTS):
-                  problems.append(f"Unexpected skipped test list on iOS Simulator: {st_skipped_names}")
+              if bundle_names != ["SwiftJ2KTests"]:
+                  problems.append(f"Expected only SwiftJ2KTests bundle to execute on iOS Simulator, got {bundle_names}")
+              if len(xctest_started) != 0 or len(xctest_passed) != 0 or len(xctest_failed) != 0:
+                  problems.append(f"Expected 0 XCTest executions in reduced core iOS scope, got started={len(xctest_started)}")
+              if len(xc_declarations) != len(xc_decl_set):
+                  problems.append("Duplicate declaration identifiers found in xcresult")
+              if missing_selected_ios or extra_observed_ios or held_executed_ios or inapplicable_executed_ios:
+                  problems.append(
+                      f"iOS declaration set mismatch: missing={missing_selected_ios}, "
+                      f"extra={extra_observed_ios}, held={held_executed_ios}, inapplicable={inapplicable_executed_ios}"
+                  )
+              if unexpected_skipped_ios or unexpected_passed_diff or xc_failed or xc_failed_param_children or param_mismatches:
+                  problems.append(
+                      f"iOS outcome/parameter mismatch: unexpected_skips={unexpected_skipped_ios}, "
+                      f"passed_diff={unexpected_passed_diff}, failed={xc_failed}, "
+                      f"failed_param_children={xc_failed_param_children}, param_mismatches={param_mismatches}"
+                  )
 
-          for fname in ("simulator.json", "xcresult-summary.json", "ios-reconciliation.json"):
+          for fname in (
+              "simulator.json", "selected-ios.ids", "held.ids",
+              "inapplicable-ios.ids", "oracle-skips.ids",
+              "ios-selection-preflight.json", "ios-enumeration-candidate-filter.json",
+              "ios-enumeration-verified.json", "ios-verified-filter.args",
+              "ios-selected-only-testing.txt",
+              "xcresult-summary.json", "xcresult-tests.json", "ios-reconciliation.json"
+          ):
               p = ROOT / fname
               if p.exists():
                   raw_bytes = p.read_bytes()
@@ -421,7 +852,10 @@ jobs:
           path: SwiftJ2K
       # POL-01/POL-02: a consumer must build against this package alone, with no
       # sibling checkout and no suite dependency, on the declared manifest floor.
-      - name: Build a fresh consumer against the checkout (macOS and iOS Simulator)
+      # Under the 3 November 2026 owner scope update holding JPIP and 3D validations
+      # for future release, the independent consumer targets the non-held core
+      # SwiftJ2K product on macOS and iOS Simulator.
+      - name: Build a fresh core consumer against the checkout (macOS and iOS Simulator)
         run: |
           set -eux
           NAME="$(grep -m1 -oE 'name: "Swift[A-Z0-9]+"' "$GITHUB_WORKSPACE/SwiftJ2K/Package.swift" \
@@ -436,12 +870,10 @@ jobs:
             echo '    platforms: [.macOS(.v26), .iOS(.v26)],'
             echo "    dependencies: [.package(path: \"$GITHUB_WORKSPACE/$NAME\")],"
             echo '    targets: [.executableTarget(name: "Consumer", dependencies: ['
-            echo "        .product(name: \"$NAME\", package: \"$NAME\"),"
-            echo "        .product(name: \"${NAME}3D\", package: \"$NAME\"),"
-            echo "        .product(name: \"${NAME}JPIP\", package: \"$NAME\")])]"
+            echo "        .product(name: \"$NAME\", package: \"$NAME\")])]"
             echo ')'
           } > Package.swift
-          printf 'import %s\nimport %s3D\nimport %sJPIP\nprint("consumer built")\n' "$NAME" "$NAME" "$NAME" > Sources/Consumer/main.swift
+          printf 'import %s\nprint("consumer built")\n' "$NAME" > Sources/Consumer/main.swift
           swift build
           swift run Consumer
           xcodebuild build \

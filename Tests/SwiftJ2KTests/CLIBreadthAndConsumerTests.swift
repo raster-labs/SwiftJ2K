@@ -141,6 +141,62 @@ struct CLIBreadthAndConsumerTests {
         }
     }
 
+    @Test("M12-AUD-002: CLI 2D batch parallel worker pool (--threads), in-process benchmark, completions, and path hygiene")
+    func cliBatchBenchmarkAndCompletions() async throws {
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("m12-aud002-2d-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // 1. Create a slice directory of 4 PGM images for 2D batch encode
+        let sliceDir = tmp.appendingPathComponent("slices", isDirectory: true)
+        try FileManager.default.createDirectory(at: sliceDir, withIntermediateDirectories: true)
+        for z in 0..<4 {
+            var pgm = Data("P5\n16 12\n255\n".utf8)
+            for i in 0..<(16 * 12) {
+                pgm.append(UInt8((i + z * 19) & 0xFF))
+            }
+            try pgm.write(to: sliceDir.appendingPathComponent(String(format: "slice_%04d.pgm", z)))
+        }
+
+        // 2. Batch encode with --threads 2 (M12-AUD-002 regression check)
+        let batchOut = tmp.appendingPathComponent("batch_jph", isDirectory: true)
+        let batchRes = try await invokeCLI([
+            "batch", "encode",
+            "-i", sliceDir.path,
+            "-o", batchOut.path,
+            "--output-format", "jph",
+            "--threads", "2",
+            "--json"
+        ])
+        #expect(batchRes.status == 0)
+        let batchJSON = try JSONSerialization.jsonObject(with: batchRes.stdout) as? [String: Any]
+        #expect(batchJSON?["succeeded"] as? Int == 4)
+        #expect(batchJSON?["failed"] as? Int == 0)
+        #expect(batchJSON?["threads"] as? Int == 2)
+
+        // 3. In-process benchmark (M12-AUD-004 regression check: zero external shell-outs)
+        let jphFile = batchOut.appendingPathComponent("slice_0000.jph")
+        let benchRes = try await invokeCLI([
+            "benchmark", "-i", jphFile.path,
+            "--runs", "1", "--warmup", "0", "--json"
+        ])
+        #expect(benchRes.status == 0)
+        let benchJSON = try JSONSerialization.jsonObject(with: benchRes.stdout) as? [String: Any]
+        #expect(benchJSON?["runs"] as? Int == 1)
+
+        // 4. Shell completions & CLI-08 path hygiene (M12-AUD-005)
+        for sh in ["bash", "zsh", "fish"] {
+            let comp = try await invokeCLI(["completions", sh])
+            #expect(comp.status == 0)
+            #expect(comp.stdoutText.contains("encode3d"))
+        }
+        let secretPath = tmp.appendingPathComponent("sensitive-patient-name.j2k")
+        let failRes = try await invokeCLI(["validate", "-i", secretPath.path, "-vvvvv"])
+        #expect(failRes.status == 6)
+        #expect(!failRes.stderrText.contains("sensitive-patient-name"))
+    }
+
     @Test("M12-AUD-002: CLI batch parallel worker pool (--threads) and 3D/JPIP/benchmark/completions")
     func cliBatch3DJPIPBenchmarkAndCompletions() async throws {
         let tmp = FileManager.default.temporaryDirectory

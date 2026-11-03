@@ -1355,6 +1355,75 @@ struct R1RemediationTests {
     }
 
     #if os(macOS) || os(Linux)
+    @Test("M12-CX-01, M12-CX-02 (2D ROI), and M12-CI: 2D CLI subprocess regressions")
+    func cli2DRemediationSubprocessRegressions() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("r1-cli-2d-remediation-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // --- M12-CX-01: 103-byte TIFF claiming 256x256 with 1-byte strip ---
+        let badTIFF = tempDir.appendingPathComponent("bad256.tiff")
+        let badOutJ2K = tempDir.appendingPathComponent("bad256.j2k")
+        let craftedTIFF = makeSyntheticLittleEndianTIFF(width: 256, height: 256, bitsPerSample: 8, stripPayload: [0x7F])
+        try craftedTIFF.write(to: badTIFF)
+
+        let badTIFFLowMem = try await runSwiftJ2KCLI([
+            "encode", "-i", badTIFF.path, "-o", badOutJ2K.path, "--max-memory", "512"
+        ])
+        #expect(badTIFFLowMem.reason == .exit)
+        #expect(badTIFFLowMem.status == 5, "Expected exit 5 under --max-memory 512, got \(badTIFFLowMem.status): \(badTIFFLowMem.stderrText)")
+
+        let badTIFFDefault = try await runSwiftJ2KCLI([
+            "encode", "-i", badTIFF.path, "-o", badOutJ2K.path
+        ])
+        #expect(badTIFFDefault.reason == .exit)
+        #expect(badTIFFDefault.status == 3, "Expected exit 3 for truncated strip under default budget, got \(badTIFFDefault.status)")
+
+        // Valid 16-bit 4x4 TIFF round-trip succeeds:
+        var validStrip16: [UInt8] = []
+        for i in 0..<16 {
+            let sample = UInt16(i * 4000)
+            validStrip16.append(UInt8(truncatingIfNeeded: sample))
+            validStrip16.append(UInt8(truncatingIfNeeded: sample >> 8))
+        }
+        let goodTIFF = tempDir.appendingPathComponent("good16.tiff")
+        let goodTIFFJ2K = tempDir.appendingPathComponent("good16.j2k")
+        let goodTIFFOut = tempDir.appendingPathComponent("good16-out.tiff")
+        try makeSyntheticLittleEndianTIFF(width: 4, height: 4, bitsPerSample: 16, stripPayload: validStrip16)
+            .write(to: goodTIFF)
+        let encGoodTIFF = try await runSwiftJ2KCLI(["encode", "-i", goodTIFF.path, "-o", goodTIFFJ2K.path, "--mode", "lossless"])
+        #expect(encGoodTIFF.reason == .exit && encGoodTIFF.status == 0, "TIFF encode failed: \(encGoodTIFF.stderrText)")
+        let decGoodTIFF = try await runSwiftJ2KCLI(["decode", "-i", goodTIFFJ2K.path, "-o", goodTIFFOut.path])
+        #expect(decGoodTIFF.reason == .exit && decGoodTIFF.status == 0, "TIFF decode failed: \(decGoodTIFF.stderrText)")
+
+        // --- M12-CX-02 (2D): encode --roi Int.max overflow rejected cleanly with exit 2 ---
+        let encROIOverflow = try await runSwiftJ2KCLI([
+            "encode", "-i", goodTIFF.path,
+            "-o", tempDir.appendingPathComponent("roi-ov.j2k").path,
+            "--roi", "9223372036854775807,0,1,1"
+        ])
+        #expect(encROIOverflow.reason == .exit && encROIOverflow.status == 2)
+
+        // --- M12-CI: PNG CZlibShim deflate + inflate lossless round-trip ---
+        let pgmIn = tempDir.appendingPathComponent("in.pgm")
+        let pngIn = tempDir.appendingPathComponent("in.png")
+        let pngJ2K = tempDir.appendingPathComponent("png.j2k")
+        let pngOut = tempDir.appendingPathComponent("out.png")
+        var pgmBytes = Data("P5\n4 4\n255\n".utf8)
+        for i in 0..<16 { pgmBytes.append(UInt8(i * 15)) }
+        try pgmBytes.write(to: pgmIn)
+
+        let toPNG = try await runSwiftJ2KCLI(["convert", "-i", pgmIn.path, "-o", pngIn.path])
+        #expect(toPNG.reason == .exit && toPNG.status == 0, "PGM->PNG convert failed: \(toPNG.stderrText)")
+        let encPNG = try await runSwiftJ2KCLI(["encode", "-i", pngIn.path, "-o", pngJ2K.path, "--mode", "lossless"])
+        #expect(encPNG.reason == .exit && encPNG.status == 0, "PNG->J2K encode failed: \(encPNG.stderrText)")
+        let decPNG = try await runSwiftJ2KCLI(["decode", "-i", pngJ2K.path, "-o", pngOut.path])
+        #expect(decPNG.reason == .exit && decPNG.status == 0, "J2K->PNG decode failed: \(decPNG.stderrText)")
+        let cmpPNG = try await runSwiftJ2KCLI(["compare", "-i", pngOut.path, "-r", pngIn.path, "--max-error", "0"])
+        #expect(cmpPNG.reason == .exit && cmpPNG.status == 0, "PNG max-error 0 compare failed: \(cmpPNG.stderrText)")
+    }
+
     @Test("M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions")
     func cliRemediationSubprocessRegressions() async throws {
         let tempDir = FileManager.default.temporaryDirectory
