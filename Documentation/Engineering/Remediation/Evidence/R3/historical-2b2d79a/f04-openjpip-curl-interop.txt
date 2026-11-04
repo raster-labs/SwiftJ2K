@@ -1,0 +1,152 @@
+========================================================================
+Phase R3 — F04 Direction B: curl --http1.1 & OpenJPEG v2.4.0 opj_jpip_transcode -> swiftj2k-cli jpip server
+========================================================================
+SwiftJ2K CLI: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli (sha256=bb0fdfda19291ae305185d199410e9cf0fcd3915fa3e415e9fe96a722d6bace8)
+kdu_server: /usr/local/bin/kdu_server (sha256=dc0cc8ad8637076258131ea83f3be3f829ff4439e36a4c23a484c07de78ec539)
+kdu_expand: /usr/local/bin/kdu_expand (sha256=a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8)
+opj_jpip_transcode: /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode (sha256=bb98366ef30de3d9c5b439928d4856a844387a3375e57ee437d59f61ffdf3445)
+opj_decompress: /opt/homebrew/bin/opj_decompress (sha256=29f46b837c299a9001d73ec07ec39f157d80c3fa482c3b91121189302ce0282a)
+curl: /usr/bin/curl
+
+Started separate-process swiftj2k-cli jpip server (pid=58694) on 127.0.0.1:56746
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?target=swift_target.j2c&cnew=http&type=jpt-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k_jpt.http
+exit_code: 0
+
+[swiftj2k-cli jpip server JPT headers for swift_target.j2c]
+HTTP/1.1 200 OK
+JPIP-cap: j2k
+JPIP-tid: swift_target.j2c
+Content-Type: image/jpt-stream
+JPIP-pref: j2k
+JPIP-cnew: cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC,path=jpip,transport=http
+Connection: close
+Cache-Control: no-cache
+Content-Length: 1629
+[JPT VBAS first 64 bytes hex]: 700800000050060047ff4fff510029000000000030000000200000000000000000000000300000002000000000000000000001070101ff52000c000000020002
+[JPT VBAS tail 8 bytes hex]:   cccccccb8b000100
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC&type=jpt-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k_dup.http
+exit_code: 0
+
+[Second request on cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC] body_len=3 hex=000100
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC&model=T* -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k_wc400.http
+exit_code: 0
+
+[Clause C.8.1.2 stateful additive wildcard model=T* response]
+HTTP/1.1 400 Bad Request
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cclose=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k_cclose.http
+exit_code: 0
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k_gone.http
+exit_code: 0
+
+[Reuse of closed cid=cid-6C0E6EDB-B087-4994-AEDB-256200FBDACC response]
+HTTP/1.1 410 Gone
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_j2k.jpt /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.j2k
+exit_code: 0
+
+$ /opt/homebrew/bin/opj_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.j2k -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_dec_j2k.pgm
+exit_code: 0
+stdout:
+[INFO] Start to read j2k main header (0).
+[INFO] Main header has been correctly decoded.
+[INFO] No decoded area parameters, set the decoded area to the whole image
+[INFO] Header of tile 1 / 1 has been read.
+[INFO] Generated Outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_dec_j2k.pgm
+decode time: 0 ms
+
+$ /usr/local/bin/kdu_expand -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.j2k -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_dec_j2k.pgm
+exit_code: 0
+stdout:
+
+Consumed 1 tile-part(s) from a total of 1 tile(s).
+Consumed 1,612 codestream bytes (excluding any file format) = 8.395833
+bits/pel.
+Processed using the multi-threaded environment, with
+    10 parallel threads of execution
+
+[openjpip_transcode_j2k] PASS BIT-EXACT via unmodified opj_jpip_transcode + opj_decompress + kdu_expand (sha256=fd090f3c4ab4089fa730eb7ffe53d1682db043b4cd07008531c3b988cef60e59)
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?target=swift_target.jp2&cnew=http&type=jpt-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2_jpt.http
+exit_code: 0
+
+[swiftj2k-cli jpip server JPT headers for swift_target.jp2]
+HTTP/1.1 200 OK
+Content-Type: image/jpt-stream
+Connection: close
+JPIP-cap: j2k
+JPIP-pref: j2k
+JPIP-cnew: cid=cid-88F7682E-6861-420D-8A5A-231B79736084,path=jpip,transport=http
+Cache-Control: no-cache
+JPIP-tid: swift_target.jp2
+Content-Length: 1737
+[JPT VBAS first 64 bytes hex]: 600800004d0000000c6a5020200d0a870a00000014667479706a703220000000006a7032200000002d6a70326800000016696864720000002000000030000107
+[JPT VBAS tail 8 bytes hex]:   cccccccb8b000100
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-88F7682E-6861-420D-8A5A-231B79736084&type=jpt-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2_dup.http
+exit_code: 0
+
+[Second request on cid=cid-88F7682E-6861-420D-8A5A-231B79736084] body_len=3 hex=000100
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-88F7682E-6861-420D-8A5A-231B79736084&model=T* -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2_wc400.http
+exit_code: 0
+
+[Clause C.8.1.2 stateful additive wildcard model=T* response]
+HTTP/1.1 400 Bad Request
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cclose=cid-88F7682E-6861-420D-8A5A-231B79736084 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2_cclose.http
+exit_code: 0
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?cid=cid-88F7682E-6861-420D-8A5A-231B79736084 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2_gone.http
+exit_code: 0
+
+[Reuse of closed cid=cid-88F7682E-6861-420D-8A5A-231B79736084 response]
+HTTP/1.1 410 Gone
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jp2.jpt /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.jp2
+exit_code: 0
+stderr:
+Error: Box jp2h not found
+jp2h box not found
+
+$ /opt/homebrew/bin/opj_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_dec_jp2.pgm
+exit_code: 0
+stdout:
+[INFO] Start to read j2k main header (85).
+[INFO] Main header has been correctly decoded.
+[INFO] No decoded area parameters, set the decoded area to the whole image
+[INFO] Header of tile 1 / 1 has been read.
+[INFO] Stream reached its end !
+[INFO] Generated Outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_dec_jp2.pgm
+decode time: 0 ms
+
+$ /usr/local/bin/kdu_expand -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/opj_transcoded.jp2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_dec_jp2.pgm
+exit_code: 0
+stdout:
+
+Consumed 1 tile-part(s) from a total of 1 tile(s).
+Consumed 1,612 codestream bytes (excluding any file format) = 8.395833
+bits/pel.
+Processed using the multi-threaded environment, with
+    10 parallel threads of execution
+
+[openjpip_transcode_jp2] PASS BIT-EXACT via unmodified opj_jpip_transcode + opj_decompress + kdu_expand (sha256=fd090f3c4ab4089fa730eb7ffe53d1682db043b4cd07008531c3b988cef60e59)
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?target=swift_target.j2c&type=jpp-stream&len=128 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_len128.http
+exit_code: 0
+
+[len=128 wire capture] byte_count=128 tail_eor_hex=000400
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:56746/jpip?target=swift_target.j2c&type=jpp-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_full.http
+exit_code: 0
+
+--- DISCLOSURE: Unmodified opj_jpip_transcode v2.4.0 on JPP (image/jpp-stream) ---
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_wire.jpp /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/kdu_jpp_fail.j2k
+exit_code: 0
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_wire.jpp /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-0fo8vq1n/swift_jpp_fail.j2k
+exit_code: -10
+
+[DISCLOSURE] Unmodified opj_jpip_transcode v2.4.0 fails identically on both kdu_server v8.4.1 .jpp and SwiftJ2K .jpp streams due to upstream libopenjpip Class 2 tile-header bugs (src/lib/openjpip/jp2k_encoder.c:295 & msgqueue_manager.c:186).
+
+ALL DIRECTION B (curl --http1.1 & unmodified opj_jpip_transcode -> swiftj2k-cli jpip server) CHECKS PASSED.

@@ -1,0 +1,36 @@
+Oracle harness async completion repair — source 08
+
+Canonical takeover claim verified before edits: invocation 1ce94f4b-ebfa-4309-98f6-5530103803d9.
+Only five authorised test files changed. No production changes, no native execution, no git metadata or repository documentation changes. Frozen snapshots and previous failed receipts remain untouched.
+
+Behaviour: CLITestProcess.runDiscardingOutput constructs/configures/runs/waits for each oracle on one dedicated Foundation Thread. stdout and stderr remain FileHandle.nullDevice. Only the completed Int32 termination status crosses the checked continuation; the Process itself stays on the worker. Launch errors still throw. There are no pipes, output buffers, new deadlines, concurrency limits, skip conditions or serialization traits.
+HTOracle.decodePGM and Oracle.decode now suspend while the worker waits; all 15 callers await them. Parent extended ownership to Part1BreadthTests.swift and ContainerTests.swift for their ten await-only changes.
+
+Preservation evidence: whole-file normalisation reverses only the two exact process-launch blocks/signatures/status variable naming, the 15 added await tokens, and the one added helper. Every normalised SHA-256 exactly matches the captured pre-edit file. Additional assertions check exact argv expression, unchanged return/expect exit semantics, null stdout/stderr, and no remaining unawaited oracle call. This preserves tool discovery, parsing, sample comparisons, optional oracle skips, arguments, test attributes and existing CLI helper implementation. This is static preservation evidence, not execution evidence.
+
+Before wait-site inventory (all Tests/**/*.swift):
+  Tests/SwiftJ2KTests/CLITestProcessSupport.swift:134 — process.waitUntilExit()
+  Tests/SwiftJ2KTests/HTJ2KCodecTests.swift:69 — process.waitUntilExit()
+  Tests/SwiftJ2KTests/LosslessCodecTests.swift:512 — try process.run(); process.waitUntilExit()
+After wait-site inventory (all Tests/**/*.swift):
+  Tests/SwiftJ2KTests/CLITestProcessSupport.swift:95 — process.waitUntilExit()
+  Tests/SwiftJ2KTests/CLITestProcessSupport.swift:157 — process.waitUntilExit()
+Both remaining waits run on dedicated threads: line 95 is lexically inside runDiscardingOutput Thread.detachNewThread; line 157 is private runBlocking, called only by run inside its existing Thread.detachNewThread. The latter helper and its pipe joins are unchanged.
+
+Changed file SHA-256 values:
+  Tests/SwiftJ2KTests/HTJ2KCodecTests.swift
+    2c9fa3ada7e3fcbc0045e723c0700d7d7084ac458157a7981b4691fd176b9ec0
+  Tests/SwiftJ2KTests/LosslessCodecTests.swift
+    c452fc3ec9f1a6ac5552f408ab81b0fec96216ce423374be127533568d2db9c0
+  Tests/SwiftJ2KTests/CLITestProcessSupport.swift
+    8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450
+  Tests/SwiftJ2KTests/Part1BreadthTests.swift
+    7eab0d13070503db8112a1052d2764719533c7821336b6c04508b24da0d865cc
+  Tests/SwiftJ2KTests/ContainerTests.swift
+    3d7a7cdd2697cb7b874c862b87e5b1bcecf35502284c9dd3bf35964627e4662e
+
+Checks performed: scoped git diff --check passed; Python whole-file preservation and 15-call inventory assertions passed. Static whitespace check includes the previously untracked CLITestProcessSupport.swift. No Swift compiler/test/tool-oracle process was run. Root should compile and execute the full unchanged-concurrency suite and required independent oracle groups, then retain the original deadline bound for acceptance.
+Limitation: the two prior cooperative-executor blocking wait paths are confirmed harness defects. This repair has not proven they were the sole cause of frozen07’s deadline failure. The full campaign remains the gate.
+
+Receipts: work/oracle-harness-before-08.json (exact before texts/hashes and inventory), work/oracle-harness-source-08.json (after hashes/normalisation/inventory), work/oracle-harness-delta-08.patch (complete five-file delta including previously untracked helper).
+Positive stop: source, tests and report writes are now complete and frozen. Existing ws_budget child remains stopped; no new child was spawned. Independent reviewer has been notified; review/native acceptance belongs to root.

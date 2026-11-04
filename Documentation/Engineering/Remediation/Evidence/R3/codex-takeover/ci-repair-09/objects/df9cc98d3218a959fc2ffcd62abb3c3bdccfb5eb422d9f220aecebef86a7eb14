@@ -1,0 +1,79 @@
+--- diagnostic11/Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift
++++ diagnostic12/Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift
+@@ -40,3 +40,26 @@
+         if once.withLock({ $0.insert(event).inserted }) { mark(event) }
+     }
+ }
++
++// Diagnostic queue canaries retain neither request nor session. The delayed
++// callback only weakly references the OperationQueue; its queued operation owns
++// only the trace buffer. The request cancels/joins this one-shot at read exit.
++package final class JPIPHTTPSQueueCanary: Sendable {
++    private let timer: JPIPDeadlineWatchdog
++    package init(queue: OperationQueue, trace: JPIPHTTPSPhaseTrace) {
++        trace.mark("canary-immediate-enqueue")
++        queue.addOperation { trace.mark("canary-immediate-execute") }
++        trace.mark("canary-delayed-timer-scheduled after=0.5")
++        timer = JPIPDeadlineWatchdog(after: 0.5) { [weak queue, trace] in
++            trace.mark("canary-delayed-timer-fired")
++            guard let queue else {
++                trace.mark("canary-delayed-queue-already-released")
++                return
++            }
++            trace.mark("canary-delayed-enqueue")
++            queue.addOperation { trace.mark("canary-delayed-execute") }
++        }
++    }
++    package func cancel() { timer.cancel() }
++    deinit { timer.cancel() }
++}
+--- diagnostic11/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
++++ diagnostic12/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+@@ -186,6 +186,7 @@
+     // happen outside it. Only creation/publication of the suspended task holds the
+     // lock. The serial delegate queue orders body callbacks before task completion.
+     package let diagnosticTrace = JPIPHTTPSPhaseTrace()
++    private var diagnosticCanary: JPIPHTTPSQueueCanary? // Guarded by lock.
+     private let lock = NSLock()
+     private var buffer: JPIPHTTPSResponseBuffer?
+     private var session: URLSession?
+@@ -229,7 +230,11 @@
+         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
+     ) async throws -> JPIPHTTPSResult {
+         diagnosticTrace.mark("read-entry host=\(request.url?.host ?? "nil") remaining=\(String(describing: deadline.map { ContinuousClock.now.duration(to: $0) }))")
+-        defer { diagnosticTrace.mark("read-exit"); JPIPHTTPSPhaseTrace.flush() }
++        defer {
++            stopDiagnosticCanary()
++            diagnosticTrace.mark("read-exit")
++            JPIPHTTPSPhaseTrace.flush()
++        }
+         try claimStart()
+         let watchdog: JPIPDeadlineWatchdog?
+         do {
+@@ -279,6 +284,10 @@
+         let queue = OperationQueue()
+         queue.maxConcurrentOperationCount = 1
+         queue.name = "com.rasterlab.swiftj2k.jpip.https"
++        let canary = JPIPHTTPSQueueCanary(queue: queue, trace: diagnosticTrace)
++        lock.lock()
++        diagnosticCanary = canary
++        lock.unlock()
+         diagnosticTrace.mark("session-create-before")
+         let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
+         diagnosticTrace.mark("session-created")
+@@ -309,6 +318,15 @@
+         diagnosticTrace.mark("task-resume-before")
+         created.resume()
+         diagnosticTrace.mark("task-resume-after")
++    }
++
++    private func stopDiagnosticCanary() {
++        lock.lock()
++        let canary = diagnosticCanary
++        diagnosticCanary = nil
++        lock.unlock()
++        canary?.cancel()
++        diagnosticTrace.mark("canary-cancelled-at-read-exit")
+     }
+ 
+     private func claimStart() throws {

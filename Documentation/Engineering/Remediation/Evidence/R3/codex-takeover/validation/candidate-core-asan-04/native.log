@@ -1,0 +1,133 @@
+[0/1] Planning build
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Codex R3 JPP reconstruction admission" started.
+◇ Suite "R3 terminal progress publication" started.
+◇ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" started.
+◇ Suite "Codex R3 packet layer budget (RA2-02)" started.
+◇ Suite "Codex R3 live entropy reservations" started.
+◇ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" started.
+◇ Suite "Codex R3 normative Part 2 synthesis markers" started.
+◇ Suite "R3 independently generated HT payloads" started.
+◇ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" started.
+◇ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" started.
+◇ Test "Reconstruction validates tile identifiers before synthesizing a probe" started.
+◇ Test "Required acceleration rejected after tile work never announces success" started.
+◇ Test "RA2-08: Required accelerated backend failure on <4-voxel 3D encode, decode, and transcode never emits .completed progress" started.
+◇ Test "RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap" started.
+◇ Test "F01: Multi-tile-part SOT concatenation, JP3DStreamWriter, and JP3DMultiSpectralEncoder/Decoder round-trip normatively" started.
+◇ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" started.
+◇ Test "F01: Parser and decoder reject malformed Part 10 / HT-in-JP3D marker segments and truncated entropy cleanly without traps" started.
+◇ Test "F01-02: Tile-header QCD/QCC/COD/COC/RGN overrides and wire K_max without private +3 lift" started.
+◇ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" started.
+◇ Test "F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly" started.
+◇ Test "RA2-04: Pre-allocation Tier-1/Tier-2 entropy budget rejects incompressible tiled 3D encode before allocating rejected output buffer" started.
+◇ Test "F01-04: Multi-pass HT block coding (SigProp + MagRef, MULTIHT, and 3*P0 placeholder passes) decodes and transcodes losslessly" started.
+◇ Test "F01: Reconciled HT-in-JP3D emits Pcap=0x0042_0000, Lcap=10, Ccap^15 Table A.2, zcb=0, HTMIXED for 32/38-bit, and zero-copy wavelet-domain EBCOT <-> HTJ2K transcode" started.
+◇ Test "F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic" started.
+◇ Test "RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis" started.
+◇ Test "REG-01, REG-02, REG-03: Pre-decode tile workspace limits, 20/24/38-bit Part 2 reversible bit-split JP3D, and honest SIMD acceleration policy" started.
+◇ Test "F01-01 & F01-03: CAP Ccap^15 MAGB Table 4 encoding and RGNFREE/HOMOGENEOUS consistency checks" started.
+◇ Test "F01: 3-layer irreversible 9-7 3D codestream improves MSE/PSNR monotonically across layers 1, 2, and 3" started.
+◇ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" started.
+◇ Test "RA2-02b: Retained JPIP 3D packet indexing and retained multi-layer codeword segments reject 65,535-layer streams pre-allocation under 128 KiB cap" started.
+◇ Test "3D indexing admits its source copy and avoids a second packet-input copy" started.
+◇ Test "3D reconstruction admits output growth while the complete tile buffer remains live" started.
+◇ Test "A many-layer encoder admits its retained per-block layer arrays before coding" started.
+◇ Test "Entropy capacity is compacted under an overlap reservation before unused bytes are released" started.
+◇ Test "Array-input packet parsing admits its Data copy before allocation" started.
+◇ Test "Continued segments admit growth before mutating a transferred payload owner" started.
+◇ Test "Packet-header denial occurs before its staging buffer is allocated" started.
+◇ Test "Optional coefficient-transcode verification reports and bounds both decoded volumes" started.
+◇ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" started.
+◇ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" started.
+◇ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" started.
+◇ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" started.
+◇ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" started.
+◇ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" started.
+◇ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" started.
+◇ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" started.
+◇ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" started.
+◇ Test "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test "Invalid signalling is rejected before synthesis" started.
+◇ Test "Oversized or inconsistent descriptions fail without integer traps" started.
+◇ Test kakaduLayeredPayloadsDecodeExactly(name:) started.
+◇ Test independentlyTruncatedRefinementPayloads(rate:) started.
+◇ Test case passing 1 argument count → 1 to "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test case passing 1 argument count → 128 to "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test case passing 1 argument count → 129 to "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test case passing 1 argument count → 256 to "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test case passing 1 argument count → 257 to "Index widths cross 8-bit boundaries without truncation" started.
+◇ Test case passing 1 argument mutation → 0 to "Invalid signalling is rejected before synthesis" started.
+◇ Test case passing 1 argument mutation → 1 to "Invalid signalling is rejected before synthesis" started.
+◇ Test case passing 1 argument mutation → 2 to "Invalid signalling is rejected before synthesis" started.
+◇ Test case passing 1 argument name → "g12_5x3_ramp_extremes" to kakaduLayeredPayloadsDecodeExactly(name:) started.
+R3 independent HT g12_5x3_ramp_extremes: passes=31, segments=31:32
+◇ Test case passing 1 argument name → "g16_17x9_alternating" to kakaduLayeredPayloadsDecodeExactly(name:) started.
+R3 independent HT g16_17x9_alternating: passes=34, segments=6:0,28:360
+◇ Test case passing 1 argument name → "g08_37x23_random" to kakaduLayeredPayloadsDecodeExactly(name:) started.
+R3 independent HT g08_37x23_random: passes=16, segments=6:0,10:961
+◇ Test case passing 1 argument rate → 4 to independentlyTruncatedRefinementPayloads(rate:) started.
+◇ Test case passing 1 argument rate → 8 to independentlyTruncatedRefinementPayloads(rate:) started.
+◇ Test case passing 1 argument rate → 12 to independentlyTruncatedRefinementPayloads(rate:) started.
+R3 independent refinement rate4: 59/64 blocks; 1:30,1:3;1:29,1:5;1:30,1:4;1:31,1:4;1:29,1:3;1:32,1:3;1:30,1:3;1:17,2:10;1:17,2:11;1:29,1:4;1:28,1:3;1:31,1:4;1:29,1:5;1:17,2:11;1:29,1:3;1:29,1:4;1:29,1:4;1:15,2:11;1:18,2:11;1:18,2:10;1:29,1:4;1:19,1:6;1:18,2:11;1:30,1:3;1:30,1:2;1:18,2:10;1:19,2:12;1:17,2:10;1:30,1:4;1:33,1:2;1:31,1:3;1:17,2:11;1:17,2:11;1:30,1:3;1:17,1:7;1:31,1:4;1:17,2:11;1:31,1:3;1:17,2:11;1:31,1:3;1:17,1:8;1:17,2:10;1:31,1:3;1:30,1:3;1:27,1:3;1:30,1:3;1:29,1:2;1:32,1:3;1:30,1:4;1:15,2:12;1:28,1:4;1:30,1:3;1:29,1:5;1:17,2:11;1:29,1:4;1:17,2:11;1:32,1:2;1:30,1:4;1:16,2:11
+R3 independent refinement rate8: 64/64 blocks; 1:58,2:8;1:48,2:9;1:64,1:1;1:58,2:8;1:58,1:1;1:58,1:1;1:59,2:9;1:58,2:9;1:58,2:8;1:58,1:1;1:57,1:1;1:59,2:8;1:56,1:1;1:58,2:9;1:57,2:9;1:57,2:9;1:66,1:1;1:57,1:1;1:58,2:8;1:57,2:8;1:46,2:9;1:59,1:1;1:45,2:10;1:55,2:9;1:65,1:1;1:65,1:1;1:56,2:9;1:57,1:1;1:59,2:9;1:58,2:9;1:57,1:1;1:57,2:9;1:48,2:9;1:58,1:1;1:57,2:9;1:58,2:8;1:55,2:10;1:59,2:8;1:58,1:1;1:59,2:8;1:47,2:9;1:48,2:9;1:58,1:1;1:58,2:9;1:57,2:8;1:58,2:8;1:66,1:1;1:57,2:8;1:48,2:9;1:65,1:1;1:66,1:1;1:58,2:9;1:66,1:1;1:59,2:8;1:56,2:9;1:57,2:8;1:58,1:1;1:66,1:1;1:57,2:9;1:56,2:9;1:58,1:1;1:67,1:1;1:66,1:1;1:56,1:1
+R3 independent refinement rate12: 64/64 blocks; 1:84,2:8;1:84,2:8;1:91,2:8;1:85,2:8;1:84,2:8;1:93,2:8;1:85,2:8;1:84,2:8;1:85,2:8;1:84,2:8;1:83,2:8;1:92,2:8;1:91,2:8;1:84,2:9;1:85,2:8;1:91,2:8;1:84,2:8;1:84,2:8;1:92,2:8;1:92,2:8;1:84,2:8;1:85,2:8;1:83,2:8;1:92,2:8;1:84,2:8;1:93,2:8;1:85,2:8;1:85,2:8;1:86,2:8;1:91,1:1;1:93,2:8;1:84,2:8;1:85,2:8;1:85,2:8;1:84,2:8;1:92,2:8;1:83,2:8;1:93,2:8;1:85,2:9;1:85,2:8;1:93,2:8;1:84,2:8;1:93,2:8;1:93,2:8;1:91,2:8;1:84,2:8;1:93,2:8;1:84,2:8;1:84,2:8;1:84,2:8;1:93,2:8;1:93,2:8;1:85,2:8;1:85,2:8;1:84,2:8;1:91,1:1;1:84,2:9;1:92,2:8;1:85,2:8;1:84,2:8;1:85,2:8;1:93,2:8;1:85,2:8;1:84,2:8
+✔ Test "Reconstruction validates tile identifiers before synthesizing a probe" passed after 2.916 seconds.
+✔ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" passed after 2.916 seconds.
+✔ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" passed after 2.917 seconds.
+✔ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" passed after 2.917 seconds.
+R3 independent refinement rate4: 1287 samples changed by refinement
+R3 independent refinement rate12: 3969 samples changed by refinement
+✔ Test "RA2-08: Required accelerated backend failure on <4-voxel 3D encode, decode, and transcode never emits .completed progress" passed after 3.470 seconds.
+R3 independent refinement rate8: 2444 samples changed by refinement
+✔ Test "F01-02: Tile-header QCD/QCC/COD/COC/RGN overrides and wire K_max without private +3 lift" passed after 3.470 seconds.
+✔ Test "F01: Multi-tile-part SOT concatenation, JP3DStreamWriter, and JP3DMultiSpectralEncoder/Decoder round-trip normatively" passed after 3.479 seconds.
+✔ Test "F01: 3-layer irreversible 9-7 3D codestream improves MSE/PSNR monotonically across layers 1, 2, and 3" passed after 3.479 seconds.
+✔ Test "RA2-02b: Retained JPIP 3D packet indexing and retained multi-layer codeword segments reject 65,535-layer streams pre-allocation under 128 KiB cap" passed after 3.479 seconds.
+✔ Test "3D indexing admits its source copy and avoids a second packet-input copy" passed after 3.479 seconds.
+✔ Test "F01: Parser and decoder reject malformed Part 10 / HT-in-JP3D marker segments and truncated entropy cleanly without traps" passed after 3.479 seconds.
+✔ Test "A many-layer encoder admits its retained per-block layer arrays before coding" passed after 3.479 seconds.
+✔ Test "Entropy capacity is compacted under an overlap reservation before unused bytes are released" passed after 3.479 seconds.
+✔ Test "Array-input packet parsing admits its Data copy before allocation" passed after 3.479 seconds.
+✔ Test "Continued segments admit growth before mutating a transferred payload owner" passed after 3.479 seconds.
+✔ Test "Packet-header denial occurs before its staging buffer is allocated" passed after 3.479 seconds.
+✔ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" passed after 3.524 seconds.
+✔ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" passed after 3.524 seconds.
+✔ Test "F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly" passed after 3.526 seconds.
+✔ Test "Index widths cross 8-bit boundaries without truncation" with 5 test cases passed after 3.664 seconds.
+✔ Test "Invalid signalling is rejected before synthesis" with 3 test cases passed after 3.665 seconds.
+✔ Test "Oversized or inconsistent descriptions fail without integer traps" passed after 3.665 seconds.
+✔ Test "REG-01, REG-02, REG-03: Pre-decode tile workspace limits, 20/24/38-bit Part 2 reversible bit-split JP3D, and honest SIMD acceleration policy" passed after 3.665 seconds.
+✔ Test "F01-01 & F01-03: CAP Ccap^15 MAGB Table 4 encoding and RGNFREE/HOMOGENEOUS consistency checks" passed after 3.712 seconds.
+✔ Test kakaduLayeredPayloadsDecodeExactly(name:) with 3 test cases passed after 3.712 seconds.
+✔ Test "Optional coefficient-transcode verification reports and bounds both decoded volumes" passed after 3.713 seconds.
+✔ Test "F01: Reconciled HT-in-JP3D emits Pcap=0x0042_0000, Lcap=10, Ccap^15 Table A.2, zcb=0, HTMIXED for 32/38-bit, and zero-copy wavelet-domain EBCOT <-> HTJ2K transcode" passed after 3.713 seconds.
+✔ Test "F01-04: Multi-pass HT block coding (SigProp + MagRef, MULTIHT, and 3*P0 placeholder passes) decodes and transcodes losslessly" passed after 3.718 seconds.
+✔ Suite "Codex R3 JPP reconstruction admission" passed after 3.739 seconds.
+✔ Test "Required acceleration rejected after tile work never announces success" passed after 3.798 seconds.
+✔ Suite "Codex R3 live entropy reservations" passed after 3.848 seconds.
+✔ Suite "Codex R3 normative Part 2 synthesis markers" passed after 3.995 seconds.
+✔ Test "F01: Normative Part 10 main header emits exact SIZ, mandatory CAP immediately after SIZ, NSI, 3D COD, Morton QCD, SOT/SOD, EOC, and zero private magic" passed after 3.995 seconds.
+✔ Suite "R3 terminal progress publication" passed after 4.044 seconds.
+✔ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" passed after 5.963 seconds.
+✔ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" passed after 5.964 seconds.
+✔ Test independentlyTruncatedRefinementPayloads(rate:) with 3 test cases passed after 7.031 seconds.
+✔ Suite "R3 independently generated HT payloads" passed after 7.203 seconds.
+✔ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" passed after 7.430 seconds.
+✔ Test "RA2-04: Pre-allocation Tier-1/Tier-2 entropy budget rejects incompressible tiled 3D encode before allocating rejected output buffer" passed after 7.431 seconds.
+✔ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" passed after 7.820 seconds.
+✔ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" passed after 8.647 seconds.
+✔ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" passed after 8.723 seconds.
+✔ Test "RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis" passed after 9.890 seconds.
+✔ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" passed after 10.412 seconds.
+✔ Test "3D reconstruction admits outputwarning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+ growth while the complete tile buffer remains live" passed after 15.030 seconds.
+✔ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" passed after 16.308 seconds.
+✔ Suite "Codex R3 packet layer budget (RA2-02)" passed after 16.309 seconds.
+✔ Test "RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap" passed after 19.244 seconds.
+✔ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" passed after 19.245 seconds.
+✔ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" passed after 24.410 seconds.
+✔ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" passed after 24.411 seconds.
+✔ Test run with 44 tests in 8 suites passed after 24.412 seconds.

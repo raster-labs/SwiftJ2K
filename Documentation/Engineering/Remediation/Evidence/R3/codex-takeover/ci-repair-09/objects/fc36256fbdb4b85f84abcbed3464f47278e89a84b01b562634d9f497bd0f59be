@@ -1,0 +1,579 @@
+--- frozen18/Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift
++++ diagnostic19/Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift
+@@ -0,0 +1,91 @@
++// DIAGNOSTIC OVERLAY ONLY. Never merge this tracer.
++import Foundation
++import Synchronization
++
++package final class JPIPHTTPSPhaseTrace: Sendable {
++    private struct Event: Sendable {
++        let stamp: UInt64
++        let owner: String
++        let host: String
++        let event: String
++    }
++    private final class Store: Sendable {
++        struct State { var events: [Event] = []; var dropped = 0 }
++        let state = Mutex(State())
++        func append(_ event: Event) {
++            state.withLock {
++                if $0.events.count < 128 { $0.events.append(event) }
++                else if $0.dropped < Int.max { $0.dropped += 1 }
++            }
++        }
++    }
++    private struct Registry { var stores: [Store] = []; var droppedOwners = 0 }
++    private static let registry = Mutex(Registry())
++    private static let correlation = Store()
++    private static let output = Mutex(())
++    private let store: Store?
++    private let host = Mutex("unbound")
++    private let once = Mutex<Set<String>>([])
++    package let id = UUID().uuidString
++
++    package init() {
++        store = Self.registry.withLock {
++            guard $0.stores.count < 128 else {
++                if $0.droppedOwners < Int.max { $0.droppedOwners += 1 }
++                return nil
++            }
++            let store = Store()
++            $0.stores.append(store)
++            return store
++        }
++    }
++
++    private static func bounded(_ value: String, count: Int = 1024) -> String {
++        String(value.prefix(count)).replacingOccurrences(of: "\n", with: "\\n")
++            .replacingOccurrences(of: "\r", with: "\\r")
++    }
++
++    package func bindHost(_ value: String?) {
++        host.withLock { $0 = Self.bounded(value ?? "nil", count: 128) }
++    }
++
++    package static func record(owner: String, host: String = "unbound", event: String) {
++        let stamp = DispatchTime.now().uptimeNanoseconds
++        correlation.append(Event(stamp: stamp, owner: bounded(owner, count: 128),
++                                 host: bounded(host, count: 128), event: bounded(event)))
++    }
++
++    package func mark(_ event: String) {
++        let stamp = DispatchTime.now().uptimeNanoseconds
++        store?.append(Event(stamp: stamp, owner: id, host: host.withLock { $0 },
++                            event: Self.bounded(event)))
++    }
++
++    package func first(_ event: String) {
++        if once.withLock({ $0.count < 8 && $0.insert(event).inserted }) { mark(event) }
++    }
++
++    /// Only selected test exits flush. Captured timestamps precede output;
++    /// synchronous formatting/printing can perturb other concurrent tests.
++    package static func flush() {
++        let snapshot = registry.withLock { ($0.stores, $0.droppedOwners) }
++        var completed: [Event] = []
++        var droppedEvents = 0
++        for capture in [correlation] + snapshot.0 {
++            let records = capture.state.withLock {
++                let result = ($0.events, $0.dropped)
++                $0.events = []
++                $0.dropped = 0
++                return result
++            }
++            completed += records.0
++            droppedEvents += records.1
++        }
++        output.withLock { _ in
++            print("HTTPS_PHASE19_FLUSH events=\(completed.count) droppedEvents=\(droppedEvents) droppedOwners=\(snapshot.1)")
++            for item in completed {
++                print("HTTPS_PHASE19 ns=\(item.stamp) owner=\(item.owner) host=\(item.host) event=\(item.event)")
++            }
++        }
++    }
++}
+--- frozen18/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
++++ diagnostic19/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+@@ -185,6 +185,7 @@
+     // Cancellation/invalidation calls, harness callbacks and continuation resumes
+     // happen outside it. Only creation/publication of the suspended task holds the
+     // lock. The serial delegate queue orders body callbacks before task completion.
++    package let diagnosticTrace = JPIPHTTPSPhaseTrace()
+     private let lock = NSLock()
+     private var buffer: JPIPHTTPSResponseBuffer?
+     private var session: URLSession?
+@@ -210,7 +211,7 @@
+         super.init()
+     }
+ 
+-    deinit { deinitObserver?() }
++    deinit { diagnosticTrace.mark("request-deinit"); deinitObserver?() }
+ 
+     package var hasActiveOwners: Bool {
+         lock.lock(); defer { lock.unlock() }
+@@ -227,30 +228,46 @@
+         deadline: ContinuousClock.Instant?, beforeTaskPublication: (@Sendable () -> Void)? = nil,
+         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
+     ) async throws -> JPIPHTTPSResult {
++        diagnosticTrace.bindHost(request.url?.host)
++        diagnosticTrace.mark("read-entry priority=\(Task.currentPriority.rawValue) host=\(request.url?.host ?? "nil") remaining=\(String(describing: deadline.map { ContinuousClock.now.duration(to: $0) }))")
++        defer { diagnosticTrace.mark("read-exit") }
++        diagnosticTrace.mark("claim-start-before")
+         try claimStart()
++        diagnosticTrace.mark("claim-start-after")
+         let watchdog: JPIPDeadlineWatchdog?
+         do {
++            diagnosticTrace.mark("deadline-preflight")
+             watchdog = try deadline.map { deadline in
+                 JPIPDeadlineWatchdog(after: try JPIPTransport.remainingSeconds(until: deadline)) { [weak self] in
++                    self?.diagnosticTrace.mark("watchdog-fired")
+                     self?.cancel(CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed."))
+                 }
+             }
+         } catch {
++            diagnosticTrace.mark("deadline-preflight-error \(error)")
+             discardBeforeSessionCreation()
+             throw error
+         }
++        diagnosticTrace.mark("watchdog-scheduled-if-deadline")
+         defer { watchdog?.cancel() }
+         await withTaskCancellationHandler {
+             await withCheckedContinuation { signal in
++                diagnosticTrace.mark("continuation-entered")
+                 start(request, configuration: configuration, signal: signal,
+                       beforeTaskPublication: beforeTaskPublication, afterTaskPublication: afterTaskPublication)
+             }
+         } onCancel: {
+             self.cancel(CancellationError())
+         }
++        diagnosticTrace.mark("caller-woke priority=\(Task.currentPriority.rawValue)")
+         let completed = try takeResult()
++        diagnosticTrace.mark("result-taken")
++        diagnosticTrace.mark("caller-cancellation-check-before")
+         try Task.checkCancellation()
++        diagnosticTrace.mark("caller-cancellation-check-after")
++        diagnosticTrace.mark("deadline-final-check")
+         if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }
++        diagnosticTrace.mark("read-return")
+         return completed
+     }
+ 
+@@ -259,6 +276,7 @@
+         signal: CheckedContinuation<Void, Never>, beforeTaskPublication: (@Sendable () -> Void)?,
+         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
+     ) {
++        diagnosticTrace.mark("start-entry")
+         lock.lock()
+         continuation = signal
+         lock.unlock()
+@@ -269,29 +287,41 @@
+         // JPIP's deadline queue; serial ordering and ownership remain unchanged.
+         queue.qualityOfService = .userInitiated
+         queue.name = "com.rasterlab.swiftj2k.jpip.https"
++        diagnosticTrace.mark("delegate-queue-config qos=\(queue.qualityOfService.rawValue) maxConcurrent=\(queue.maxConcurrentOperationCount)")
++        diagnosticTrace.mark("session-create-before")
+         let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
++        diagnosticTrace.mark("session-created")
+         lock.lock()
+         session = owner
+         lock.unlock()
+         // A synchronous, nonblocking harness barrier exercises cancellation in
+         // the session-created/task-unpublished gap. Production passes nil.
++        diagnosticTrace.mark("before-publication-hook-before")
+         beforeTaskPublication?()
++        diagnosticTrace.mark("before-publication-hook-after")
+         lock.lock()
+         if let failure {
+             taskCompleted = true // Proven no task was ever created.
+             result = .failure(failure)
+             buffer = nil
+             lock.unlock()
++            diagnosticTrace.mark("unpublished-task-finishTasksAndInvalidate-before")
+             owner.finishTasksAndInvalidate()
++            diagnosticTrace.mark("unpublished-task-finishTasksAndInvalidate-after")
+             return
+         }
+         // Cancellation can only latch under this same lock; it cannot invalidate
+         // owner between dataTask creation and publication (fatal on corelibs).
++        diagnosticTrace.mark("task-create-before")
+         let created = owner.dataTask(with: request)
+         task = created
+         lock.unlock()
++        diagnosticTrace.mark("task-published")
+         afterTaskPublication?(owner, created)
++        diagnosticTrace.mark("publication-hook-returned")
++        diagnosticTrace.mark("task-resume-before")
+         created.resume()
++        diagnosticTrace.mark("task-resume-after")
+     }
+ 
+     private func claimStart() throws {
+@@ -317,6 +347,7 @@
+     }
+ 
+     package func cancel(_ error: any Error = CancellationError()) {
++        diagnosticTrace.mark("cancel-entry \(error)")
+         lock.lock()
+         guard !taskCompleted else { lock.unlock(); return }
+         if failure == nil { failure = error }
+@@ -328,29 +359,34 @@
+             invalidated = true
+         }
+         lock.unlock()
++        diagnosticTrace.mark("captured-task-cancel-before exists=\(capturedTask != nil) neverStarted=\(neverStarted)")
+         capturedTask?.cancel()
++        diagnosticTrace.mark("captured-task-cancel-after")
+         if neverStarted { completion.finish() }
+     }
+ 
+     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                            didReceive response: URLResponse,
+                            completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
++        diagnosticTrace.mark("response-callback-entry")
+         lock.lock()
+         var allow = false
+         if !taskCompleted, failure == nil, task === dataTask {
+             do { try buffer?.receive(response); allow = true }
+-            catch { failure = error }
+-        }
+-        lock.unlock()
++            catch { diagnosticTrace.mark("delegate-admission-error \(error)"); failure = error }
++        }
++        lock.unlock()
++        diagnosticTrace.mark("response-callback-disposition allow=\(allow)")
+         completionHandler(allow ? .allow : .cancel)
+         if !allow { dataTask.cancel() }
+     }
+ 
+     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
++        diagnosticTrace.first("body-first-entry")
+         lock.lock()
+         if !taskCompleted, failure == nil, task === dataTask {
+             do { try buffer?.receive(data) }
+-            catch { failure = error }
++            catch { diagnosticTrace.mark("delegate-admission-error \(error)"); failure = error }
+         }
+         let shouldCancel = failure != nil && !taskCompleted
+         lock.unlock()
+@@ -358,6 +394,7 @@
+     }
+ 
+     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
++        diagnosticTrace.mark("task-completion-entry \(String(describing: error))")
+         lock.lock()
+         guard !taskCompleted, self.task === task else { lock.unlock(); return }
+         taskCompleted = true
+@@ -369,18 +406,21 @@
+                     throw J2KError.networkError("Invalid response type")
+                 }
+                 result = .success(completed)
+-            } catch { result = .failure(error) }
++            } catch { diagnosticTrace.mark("buffer-finish-error \(error)"); result = .failure(error) }
+         }
+         buffer = nil
+         let signal = releaseIfFinishedLocked()
+         lock.unlock()
+         // No task callbacks remain on our serial queue before invalidation is
+         // requested. Do not use invalidateAndCancel as a task-completion join.
++        diagnosticTrace.mark("finishTasksAndInvalidate-before")
+         session.finishTasksAndInvalidate()
++        diagnosticTrace.mark("finishTasksAndInvalidate-after")
+         resume(signal, afterCallbacksOn: session)
+     }
+ 
+     public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
++        diagnosticTrace.mark("session-invalidation-entry")
+         lock.lock()
+         guard self.session === session else { lock.unlock(); return }
+         invalidated = true
+@@ -396,9 +436,14 @@
+         guard let signal else { return }
+         // A serial-queue tail operation runs only after the completing delegate
+         // callback has returned. It carries the wake-up, never the owning result.
+-        session.delegateQueue.addOperation { [completion] in
++        diagnosticTrace.mark("tail-enqueued")
++        session.delegateQueue.addOperation { [completion, diagnosticTrace] in
++            diagnosticTrace.mark("tail-executing")
++            diagnosticTrace.mark("completion-finish-before")
+             completion.finish()
++            diagnosticTrace.mark("continuation-resume-before")
+             signal.resume()
++            diagnosticTrace.mark("continuation-resume-after")
+         }
+     }
+ 
+@@ -419,6 +464,12 @@
+         guard let completed else {
+             throw CodecError(.internalFailure, "HTTPS request has no completed result (request objects are single-use).")
+         }
+-        return try completed.get()
++        diagnosticTrace.mark("result-get-before")
++        do {
++            return try completed.get()
++        } catch {
++            diagnosticTrace.mark("result-get-error \(error)")
++            throw error
++        }
+     }
+ }
+--- frozen18/Sources/SwiftJ2KJPIP/JPIPTransport.swift
++++ diagnostic19/Sources/SwiftJ2KJPIP/JPIPTransport.swift
+@@ -194,6 +194,8 @@
+         maxBodyBytes: Int = 128 * 1024 * 1024,
+         deadline: ContinuousClock.Instant? = nil, maximumStorageBytes: Int? = nil
+     ) async throws -> JPIPResponse {
++        let diagnosticHTTPSHost = baseURL.scheme?.lowercased() == "https" ? baseURL.host : nil
++        if let diagnosticHTTPSHost { JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: diagnosticHTTPSHost, event: "send-entry-before-preflight") }
+         let storageLimit = maximumStorageBytes ?? Int.max
+         guard maxBodyBytes >= 0, storageLimit > 0 else {
+             throw CodecError(.invalidArgument, "Invalid JPIP response admission limits.")
+@@ -203,6 +205,8 @@
+         if let deadline {
+             _ = try Self.remainingSeconds(until: deadline)
+         }
++
++        if let diagnosticHTTPSHost { JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: diagnosticHTTPSHost, event: "send-preflight-passed") }
+ 
+         // 1. Explicit actor injection (only when constructed via `init(server:)`)
+         if let server = boundServer {
+@@ -529,6 +533,7 @@
+         deadline: ContinuousClock.Instant?,
+         maximumStorageBytes: Int
+     ) async throws -> JPIPResponse {
++        JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: baseURL.host ?? "nil", event: "https-entry-before-url-preflight")
+         let pathAndQuery = buildPathAndQuery(from: request)
+         guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: true) else {
+             throw J2KError.invalidParameter("Invalid base URL")
+@@ -556,6 +561,8 @@
+         // bounded accumulation and completion/invalidation acknowledgement.
+         let operation = JPIPHTTPSRequest(maximumBodyBytes: maxBodyBytes,
+                                         maximumStorageBytes: maximumStorageBytes)
++        operation.diagnosticTrace.bindHost(url.host)
++        operation.diagnosticTrace.mark("https-url-preflight-passed")
+         let requestID = UUID()
+         let generation = requestGeneration
+         let observer = lifecycleObserver
+@@ -563,22 +570,32 @@
+         activeRequests[requestID] = operation
+         defer { activeRequests.removeValue(forKey: requestID) }
+         do {
++            operation.diagnosticTrace.mark("registered-observer-before")
+             await observer?(.registered, requestID)
++            operation.diagnosticTrace.mark("registered-observer-after")
++            operation.diagnosticTrace.mark("transport-before-read")
+             let result = try await operation.read(urlRequest, configuration: session.configuration,
+                                                   deadline: deadline, afterTaskPublication: taskObserver)
++            operation.diagnosticTrace.mark("transport-after-read")
++            operation.diagnosticTrace.mark("publication-observer-before")
+             await observer?(.beforePublication, requestID)
++            operation.diagnosticTrace.mark("publication-observer-after")
+             guard generation == requestGeneration else { throw CancellationError() }
+             try Task.checkCancellation()
++            operation.diagnosticTrace.mark("transport-final-deadline-before")
+             if let deadline { _ = try Self.remainingSeconds(until: deadline) }
++            operation.diagnosticTrace.mark("transport-final-deadline-passed")
+             lastReceivePeakBytes = result.peak
+             if let path = JPIPResponseParser.extractChannelPath(from: result.response.headers) {
+                 setChannelPath(path)
+             }
+             return result.response
+         } catch {
++            operation.diagnosticTrace.mark("transport-original-error \(error)")
+             if generation != requestGeneration { throw CancellationError() }
+             if Task.isCancelled { throw CancellationError() }
+             if deadline.map({ ContinuousClock.now >= $0 }) == true {
++                operation.diagnosticTrace.mark("transport-error-remapped-deadline")
+                 throw CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")
+             }
+             throw error
+--- frozen18/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
++++ diagnostic19/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+@@ -114,14 +114,18 @@
+     }
+ 
+     @Test func sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() async throws {
++        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry priority=\(Task.currentPriority.rawValue)")
++        defer { JPIPHTTPSPhaseTrace.flush() }
+         let scenario = HTTPSHarnessScenario(mode: .complete,
+             headers: ["JPIP-cnew": "cid=abc,path=/negotiated", "Content-Length": "8", "X-Probe": "kept"],
+             chunks: [Data([1, 2, 3]), Data([4, 5, 6, 7, 8])])
+         let fixture = HTTPSHarnessProtocol.register(scenario)
+         defer { HTTPSHarnessProtocol.remove(fixture.url) }
+         let transport = JPIPTransport(baseURL: fixture.url, configuration: fixture.configuration)
++        JPIPHTTPSPhaseTrace.record(owner: #function, host: fixture.url.host ?? "nil", event: "success-caller-before-deadline-expression-and-send")
+         let result = try await transport.send(JPIPRequest(target: "a b.j2k"), maxBodyBytes: 8,
+             deadline: .now.advanced(by: .seconds(2)), maximumStorageBytes: 65_536)
++        JPIPHTTPSPhaseTrace.record(owner: #function, host: fixture.url.host ?? "nil", event: "success-caller-after-await")
+         #expect(result.statusCode == 200)
+         #expect(result.channelID == "abc")
+         #expect(result.data == Data([1, 2, 3, 4, 5, 6, 7, 8]))
+@@ -166,17 +170,27 @@
+     }
+ 
+     @Test func absoluteDeadlineCancelsSilentResponse() async throws {
++        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry priority=\(Task.currentPriority.rawValue)")
++        defer { JPIPHTTPSPhaseTrace.flush() }
+         let scenario = HTTPSHarnessScenario(mode: .silent)
+         let fixture = HTTPSHarnessProtocol.register(scenario)
+         defer { HTTPSHarnessProtocol.remove(fixture.url) }
+         let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
++        operation.diagnosticTrace.bindHost(fixture.url.host)
++        operation.diagnosticTrace.mark("silent-before-clock-origin")
+         let start = ContinuousClock.now
+         do {
++            operation.diagnosticTrace.mark("silent-before-deadline-expression-and-read")
+             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
+                 deadline: start.advanced(by: .milliseconds(120)))
++            operation.diagnosticTrace.mark("silent-caller-success-after-await")
+             Issue.record("Expected absolute HTTPS deadline")
+-        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }
++        } catch let error as CodecError {
++            operation.diagnosticTrace.mark("silent-caller-caught \(error)")
++            #expect(error.category == .resourceLimitExceeded)
++        }
+         #expect(ContinuousClock.now - start < .seconds(2))
++        operation.diagnosticTrace.mark("silent-after-elapsed-assertion")
+         #expect(!operation.hasActiveOwners)
+     }
+ 
+@@ -307,12 +321,16 @@
+ 
+     @Test(arguments: [false, true])
+     func completionAndCancellationHaveOneWinner(cancelFirst: Bool) async throws {
++        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry priority=\(Task.currentPriority.rawValue)")
++        defer { JPIPHTTPSPhaseTrace.flush() }
+         let scenario = HTTPSHarnessScenario(mode: .silent)
+         let fixture = HTTPSHarnessProtocol.register(scenario)
+         defer { HTTPSHarnessProtocol.remove(fixture.url) }
+         let head = try response()
+         let operation = JPIPHTTPSRequest(maximumBodyBytes: 8, maximumStorageBytes: 65_536)
++        operation.diagnosticTrace.bindHost(fixture.url.host)
+         do {
++            operation.diagnosticTrace.mark("scripted-caller-before-read cancelFirst=\(cancelFirst)")
+             let result = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
+                 deadline: .now.advanced(by: .seconds(2)), afterTaskPublication: { owner, task in
+                     // Hold only this request's delegate delivery while scripting
+@@ -327,28 +345,41 @@
+                     task.cancel()
+                     operation.urlSession(owner, task: task, didCompleteWithError: URLError(.cancelled))
+                 })
++            operation.diagnosticTrace.mark("scripted-caller-after-await")
+             #expect(!cancelFirst)
+             #expect(result.response.data == Data([42]))
+-        } catch is CancellationError { #expect(cancelFirst) }
++        } catch is CancellationError {
++            operation.diagnosticTrace.mark("scripted-caller-caught-cancellation")
++            #expect(cancelFirst)
++        }
+         #expect(!operation.hasActiveOwners)
+     }
+ 
+     @Test func completedRequestEventuallyReleasesItsDelegateOwnership() async throws {
++        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry priority=\(Task.currentPriority.rawValue)")
++        defer { JPIPHTTPSPhaseTrace.flush() }
+         let scenario = HTTPSHarnessScenario(mode: .complete, chunks: [Data([42])])
+         let fixture = HTTPSHarnessProtocol.register(scenario)
+         defer { HTTPSHarnessProtocol.remove(fixture.url) }
++        let diagnosticHost = fixture.url.host ?? "nil"
+         let released = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
+         func completeRequest() async throws {
+             let operation = JPIPHTTPSRequest(maximumBodyBytes: 8, maximumStorageBytes: 65_536,
+                 deinitObserver: {
++                    JPIPHTTPSPhaseTrace.record(owner: "deinit-observer", host: diagnosticHost, event: "observer-called")
+                     released.continuation.yield(true)
+                     released.continuation.finish()
+                 })
++            operation.diagnosticTrace.bindHost(diagnosticHost)
++            operation.diagnosticTrace.mark("deinit-helper-before-deadline-expression-and-read")
+             _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,
+                 deadline: .now.advanced(by: .seconds(2)))
++            operation.diagnosticTrace.mark("deinit-helper-after-read")
+             #expect(!operation.hasActiveOwners)
+         }
++        JPIPHTTPSPhaseTrace.record(owner: #function, host: diagnosticHost, event: "deinit-outer-before-await")
+         try await completeRequest()
++        JPIPHTTPSPhaseTrace.record(owner: #function, host: diagnosticHost, event: "deinit-outer-after-await")
+         // Foundation/autorelease and async-frame ARC may release the delegate
+         // after read returns. Observe actual deinit without retaining it or
+         // promising synchronous destruction at the return boundary.
+@@ -490,16 +521,27 @@
+     let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+     private struct State { var request: URLRequest?; var delivered = 0 }
+     private let state = Mutex(State())
++    private let diagnosticTrace = JPIPHTTPSPhaseTrace()
+     init(mode: Mode, headers: [String: String] = [:], chunks: [Data] = []) {
+         self.mode = mode; self.headers = headers; self.chunks = chunks
+     }
+     var request: URLRequest? { state.withLock { $0.request } }
+     var deliveredChunks: Int { state.withLock { $0.delivered } }
+     func begin(_ request: URLRequest) {
++        diagnosticTrace.bindHost(request.url?.host)
++        diagnosticTrace.mark("protocol-queue-start host=\(request.url?.host ?? "nil")")
+         state.withLock { $0.request = request }
+         started.continuation.yield(())
+     }
+-    func delivered() { state.withLock { $0.delivered += 1 } }
++    func delivered() {
++        let snapshot = state.withLock { value in
++            value.delivered += 1
++            return (value.delivered, value.request?.url?.host ?? "nil")
++        }
++        if snapshot.0 == 1 || snapshot.0 == 2 || snapshot.0 == 100 {
++            diagnosticTrace.mark("protocol-submitted-chunks=\(snapshot.0) host=\(snapshot.1)")
++        }
++    }
+ }
+ 
+ private final class HTTPSHarnessProtocol: URLProtocol, @unchecked Sendable {
+@@ -507,11 +549,13 @@
+     // SAFETY: per-instance mutable fields and protocol callbacks use this serial
+     // queue. The registry and observations use Mutex; no blocking executor waits.
+     private let queue = DispatchQueue(label: "jpip.https.protocol-harness")
++    private let diagnosticTrace = JPIPHTTPSPhaseTrace()
+     private var timer: (any DispatchSourceTimer)?
+     private var stopped = false
+ 
+     static func register(_ scenario: HTTPSHarnessScenario) -> (url: URL, configuration: URLSessionConfiguration) {
+         let host = UUID().uuidString.lowercased() + ".invalid"
++        JPIPHTTPSPhaseTrace.record(owner: "fixture-register", host: host, event: "mode=\(scenario.mode)")
+         scenarios.withLock { $0[host] = scenario }
+         let config = URLSessionConfiguration.ephemeral
+         config.protocolClasses = [HTTPSHarnessProtocol.self]
+@@ -527,20 +571,27 @@
+     }
+     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+     override func startLoading() {
++        diagnosticTrace.bindHost(request.url?.host)
++        diagnosticTrace.mark("protocol-startLoading-entry host=\(request.url?.host ?? "nil")")
+         queue.async { [self] in
++            diagnosticTrace.mark("protocol-startLoading-queue-entry stopped=\(stopped)")
+             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+                   let url = request.url else { return }
+             scenario.begin(request)
+             guard scenario.mode != .silent else { return }
+             guard let response = HTTPURLResponse(url: url, statusCode: 200,
+                 httpVersion: "HTTP/1.1", headerFields: scenario.headers) else { return }
++            diagnosticTrace.mark("protocol-response-submit host=\(url.host ?? "nil")")
+             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
++            diagnosticTrace.mark("protocol-response-submit-returned")
+             if scenario.mode == .complete {
+                 for data in scenario.chunks {
+                     scenario.delivered()
+                     client?.urlProtocol(self, didLoad: data)
+                 }
++                diagnosticTrace.mark("protocol-finish-submit-before")
+                 client?.urlProtocolDidFinishLoading(self)
++                diagnosticTrace.mark("protocol-finish-submit-after")
+             } else {
+                 let tick = DispatchSource.makeTimerSource(queue: queue)
+                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+@@ -555,7 +606,9 @@
+         }
+     }
+     override func stopLoading() {
++        diagnosticTrace.mark("protocol-stopLoading-entry")
+         queue.async { [self] in
++            diagnosticTrace.mark("protocol-stopLoading-queue-entry")
+             stopped = true
+             timer?.cancel()
+             timer = nil

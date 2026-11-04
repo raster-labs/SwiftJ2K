@@ -1,0 +1,28 @@
+Supplemental packager14 — receipt-path correction, preparation only
+
+The unchanged09 helper refused the first preparatory manifest before publication:
+its build-directory guard classified work/validation/candidate-release-build-09
+and equivalent build-run receipt labels as actual build trees. The failed dry-run
+receipt and stderr remain under ci-repair-evidence-14/dry-run-01.*.
+
+The separate14 helper preserves09 byte-for-byte and changes only that path guard.
+It permits the fixed result/command/source-manifest/raw-stream/XML receipt leaves
+as direct children of work/validation/<run-label>. It still rejects actual build
+directories, nested files, non-receipt leaves and excluded caches; native_run still
+validates completion, source/capture integrity, paths, hashes and all XML. The
+fixed ci-repair-09 repository destination and immutable index behaviour are unchanged.
+
+24 synthetic checks passed: the original18 cases plus six boundary cases covering
+the newly permitted completed build-labelled receipt, incomplete receipt rejection,
+and actual/nested/non-receipt/cache denial. Synthetic fixtures lived beneath this
+work directory and were removed. No native compiler/test/codec/server ran; no real
+repository path was written and the prior08 index stayed unchanged. The parent
+coordinator must independently review this bounded helper delta before publication.
+
+Broad environment-after.json and other-native-after.txt are intentionally excluded
+from revised publication selections and remain local only. Scoped R3 process
+receipts and cautious independent diagnostic conclusions remain selected. Raw
+native logs are never transformed or trimmed.
+
+All five peer gates remain UNEXECUTED/UNWAIVED; R3 remains NOT_ACCEPTED. This helper
+fix and preparatory collection do not qualify candidate14 or hosted execution.

@@ -1,0 +1,56 @@
+Building for production...
+[0/6] Write sources
+[3/6] Write swift-version--58304C5D6DBC2206.txt
+[5/7] Compiling SwiftJ2K AcceleratedCodec.swift
+[6/8] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[7/9] Compiling Profile Bench.swift
+[7/9] Write Objects.LinkFileList
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Darwin-1FXX23EKWOBA9.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Dispatch-R76HXUP80TVL.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Security-3QCVXOV25KK54.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/XPC-T0ZXCAST7PE3.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ptrcheck-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/ptrcheck-2OQWMRBVRD4OJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/Foundation-24LYWIP48SHNP.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/IOSurface-26455DPS9NDS0.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/os_object-2MV8OP7R98AN8.pcm
+warning: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-profile-candidate/-build/arm64-apple-macosx/release/ModuleCache/UBYQ6WGN3GKU/os_workgroup-2MV8OP7R98AN8.pcm
+[8/9] Linking r3-profile
+Build of product 'r3-profile' complete! (80.12s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.

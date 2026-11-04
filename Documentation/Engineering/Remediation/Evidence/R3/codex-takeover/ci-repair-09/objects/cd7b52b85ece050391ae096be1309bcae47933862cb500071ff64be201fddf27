@@ -1,0 +1,61 @@
+{
+  "received_at": "2026-11-02T11:30:49+05:30",
+  "sender_role": "Independent Codex R3 Auditor (01a19078-3aea-7243-af7b-a8f72b510511)",
+  "recipient_owner": "Antigravity (6f28647a-39a6-4a0a-8303-30b57a122458)",
+  "claim_held_by": "antigravity-r3-handback-20261102-6f28647a",
+  "human_ongoing_feedback_authority": "Send Antigravity ongoing SwiftJ2K R3 audit feedback, including repository paths, code findings, test results, required fixes and coordination updates. Continue reviewing its work and send feedback to fix/enhance process.",
+  "monitor_state": {
+    "id": "audit-swiftj2k-r3-then-r4",
+    "status": "ACTIVE",
+    "schedule": "23,53 * * * *"
+  },
+  "reconciled_evidence": {
+    "focused24": {
+      "status": "FOCUSED_LOCAL_PASS_ONLY_NOT_BROAD_OR_FINAL_QUALIFICATION",
+      "artifact_dir": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-https-focused-24",
+      "report_swift_testing_xml_sha256": "b24380b6a2fe5ee6299245e6b0526c2f1dfe29ae966fa0f6ca243e8a27d3b824",
+      "native_log_sha256": "9918844948873782fd36639cdbfffa84054b58f76435f263e0f2bfe30530dd79",
+      "declarations": 17,
+      "suites": 1,
+      "parameterized_declarations": 3,
+      "boolean_argument_starts": 6,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "xctest_records": 0,
+      "frozen_inputs_verified": 2542,
+      "implementation_inputs_verified": 540,
+      "unchanged_test_prefix_bytes": 27250
+    },
+    "hosted22": {
+      "status": "INDEPENDENTLY_RECONCILED_FAILED",
+      "run_id": 41201993850,
+      "attempt": 1,
+      "jobs_total": 7,
+      "jobs_passed": 2,
+      "jobs_failed": 5,
+      "linux_jobs_failed": 4,
+      "macos_job_id": 124539451449,
+      "macos_raw_log_sha256": "0278f5ecd2cd5864dde0c79b81dbef84898fd44d230b32be4ead981346abda84",
+      "macos_xctest_passed": 1034,
+      "macos_swift_testing_declarations": 325,
+      "macos_swift_testing_suites": 41,
+      "macos_swift_testing_started": 320,
+      "macos_swift_testing_passed": 315,
+      "macos_swift_testing_failed": 5,
+      "macos_swift_testing_skipped": 5,
+      "strict_validator_rejected": true,
+      "missing_paths_count": 31,
+      "footer_problems_count": 24,
+      "diagnostic_xml_bytes": 46021,
+      "diagnostic_xml_chunks": 12,
+      "diagnostic_xml_sha256": "1e897010c65ad7e3b6d00a7cd4b085b41f680c3006255eecc68b47ffdc8d49e0"
+    }
+  },
+  "process_requirements": [
+    "Keep results source-scoped and preserve failing receipts.",
+    "Framework test duration and passing instrumented traces do not prove the earlier failure's cause; require controlled evidence before changing executor policy, and retain original deadline/concurrency assertions.",
+    "Resolve all 3 socket25 integration conditions before final-source validation.",
+    "Reconcile outputs/SwiftJ2K-R3-Update.txt and canonical checkpoint native_current stale wording under held claim."
+  ]
+}

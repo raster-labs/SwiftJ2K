@@ -1,0 +1,65 @@
+{
+  "recorded_at": "2026-10-31T09:48:45.538407+00:00",
+  "source": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/TrickleDeliveryProbe.swift",
+    "sha256": "5d22c0c4c379709fb9bddd05023c3f837ff6cb4a9bc610ea4f6c0c9f9af03631",
+    "matches_prepared_receipt": true
+  },
+  "compiled_binary": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/trickle-delivery-probe",
+    "sha256_observed_after_execution": "3593cd040eb3e394862b5c291763ade54473836f3cee831dd8fb2fc0fb7e76e5",
+    "bytes": 196200
+  },
+  "runs": {
+    "trickle-probe-build-10": {
+      "command.json": "172d788fc2d71612f69ee1e79246e1b966e17a8a9512f0ca40a82ce3172c6a1f",
+      "result.json": "abca6bbc7c469e6eac26f8f91453df8b5878e76b0a62f9ec0d41293351934dbc",
+      "native.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source-before.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+      "source-after.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b"
+    },
+    "trickle-probe-run-10": {
+      "command.json": "a748a206f2bac9c7b7172c7ba281f688f8600e8a646c3fb15ce77034b246c765",
+      "result.json": "abd1186cfc026b4109472e73fc363fe8b90ef9525c982c8b80201e79e5c82355",
+      "native.stdout": "6a495ccac18fb5f83b6e65f0001712663c1f7bcb8fb3d7c5a908074d81170b60",
+      "native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source-before.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+      "source-after.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b"
+    }
+  },
+  "results": [
+    {
+      "completed": true,
+      "completionError": "Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://2dbb0f49-0cbf-447d-bfc2-b76fc43c9e4e.invalid/jpip, NSErrorFailingURLKey=https://2dbb0f49-0cbf-447d-bfc2-b76fc43c9e4e.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(\n    \"LocalDataTask <AEEF711A-B7E5-4199-934D-16883AC33D4D>.<1>\"\n), _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <AEEF711A-B7E5-4199-934D-16883AC33D4D>.<1>, NSLocalizedDescription=cancelled}",
+      "elapsedSeconds": 2.01668575,
+      "invalidated": true,
+      "receivedBytes": 0,
+      "receivedCallbacks": 0,
+      "responseCallbacks": 0,
+      "submittedBytes": 201,
+      "submittedCallbacks": 201
+    },
+    {
+      "completed": true,
+      "completionError": "Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://65119093-3b54-4abe-af66-655e90c097d2.invalid/jpip, NSErrorFailingURLKey=https://65119093-3b54-4abe-af66-655e90c097d2.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(\n    \"LocalDataTask <B0BBF395-6FD1-468C-A63D-A7E8B9B0FBA5>.<1>\"\n), _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <B0BBF395-6FD1-468C-A63D-A7E8B9B0FBA5>.<1>, NSLocalizedDescription=cancelled}",
+      "contentType": "image/jpp-stream",
+      "effectiveMIMEType": "image/jpp-stream",
+      "elapsedSeconds": 2.004423791,
+      "firstDataSeconds": 0.000939583,
+      "firstResponseSeconds": 0.00089075,
+      "invalidated": true,
+      "receivedBytes": 200,
+      "receivedCallbacks": 200,
+      "responseCallbacks": 1,
+      "submittedBytes": 201,
+      "submittedCallbacks": 201
+    }
+  ],
+  "interpretation": "Observed header-dependent Foundation delivery in the standalone URLProtocol probe: absent Content-Type submitted201/received0/noresponse; explicit image/jpp-stream submitted201/received200 with immediate response/data. Private buffering or MIME-sniffing mechanism not independently established. Supports realistic explicit JPIP response-header harness repair, without timeout/cadence/cap changes.",
+  "boundaries": [
+    "Standalone Foundation probe; no SwiftJ2K production code linked.",
+    "Not TLS or independent JPIP interoperability evidence.",
+    "Binary identity was observed after execution; script remained identical to the prepared source receipt."
+  ]
+}

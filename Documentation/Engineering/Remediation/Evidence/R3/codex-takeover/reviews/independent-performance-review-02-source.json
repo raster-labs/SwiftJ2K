@@ -1,0 +1,20 @@
+{
+  "review_time_utc": "2026-10-31T07:06:58.248559+00:00",
+  "profile_source": "work/diagnostic-source-05",
+  "reviewed_files": {
+    "work/r3-profile-results-01/metadata.json": "87c3486a09546e393c6d9c895a3a8c4f24695c6ae39e600fd4afc281d506d7e7",
+    "work/r3-profile-results-01/baseline.sample.txt": "9b6102dc06bcf239e54e177b480de6741b0bcbf64b340fdbeb8bb1bb5b5ba109",
+    "work/r3-profile-results-01/candidate.sample.txt": "b18e59b9928f06c3d3a9383be5c996ffcbe88fefe561d374799076cc93dd5cdf",
+    "work/r3-profile-results-01/baseline.stdout": "60aebc20f5651a45e01208a1f9fbf286e0d135aa5062e413b2fbb908bd25ebb3",
+    "work/r3-profile-results-01/candidate.stdout": "503e574049af15b891b7757653b350169b816a4c09cf9ef277e95932fe394c7b",
+    "work/validation/profile-comparison-01/command.json": "a4fd63a445d5be6b3ce21e75a2f90f33860ebd4e53010a09cf6112b7e45d9334",
+    "work/validation/profile-comparison-01/result.json": "62d68ac94856b7efeca5e4e1dfb8f0fd352d8ddd93b219d5603571963bb4f0b5",
+    "work/validation/profile-comparison-01/native.log": "9681577599be7903ef6c97d9800c6feab9adb42cc097d573264580facf8abb60",
+    "work/independent-performance-review-02-counts.json": "64eab053240e5fc3d31a6481a51f8c9bcec15afa0341d8e9e18c8278820bb244"
+  },
+  "production_52_matches_review02": true,
+  "profile_candidate_metadata_52_matches_review02": true,
+  "main_delta_not_profiled": [
+    "Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift"
+  ]
+}

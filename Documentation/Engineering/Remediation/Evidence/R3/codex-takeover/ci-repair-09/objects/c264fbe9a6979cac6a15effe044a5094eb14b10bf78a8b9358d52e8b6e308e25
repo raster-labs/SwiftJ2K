@@ -1,0 +1,12 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "file": "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift",
+  "before_sha256": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+  "sha256": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+  "bytes": 19022,
+  "delta_sha256": "321156b8b6fbef75af4ea73a753f05379f4081f01a4473f85b5e227986229f94",
+  "test_proof13_hashes": "all unchanged",
+  "normalised_preservation": "Removing the added policy comment and single qualityOfService assignment recovers previous production source byte-for-byte.",
+  "native_execution": "NONE by writer; root validates the scheduling-policy candidate under unchanged suite",
+  "status": "hypothesis to validate, not a guaranteed-latency or accepted-fix claim"
+}

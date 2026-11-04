@@ -1,0 +1,8 @@
+{
+  "state": "REVIEWED_SOURCE_REFERENCES_ONLY",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-final-proposal/.github/workflows/contract.yml": "304dfb8f2c77f2e8c834ea9c28fe0ae14ac227448d8d38d83232089184f638ee",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-partition-proposal/evidence-retention-note.txt": "b55866efe54bb0622033c7fd2d2ef20b4fd2edf7773f6c7305d0509211e05ba3"
+  },
+  "boundary": "No emitter or hosted job was executed by this agent."
+}

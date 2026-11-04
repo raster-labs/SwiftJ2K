@@ -1,0 +1,9 @@
+HTTPS-CLOSE-01 — confirmed narrow HTTPS close lifecycle gap; pre-existing in frozen08, retained by provisional09.
+
+JPIPTransport.close (JPIPTransport.swift590+) says it closes the transport and cleans up resources. JPIPStreamingSession.close (JPIPCodecAPI.swift661+) explicitly releases transport resources, via JPIPClient.close (JPIP.swift752+) and transport.close. No precondition excludes calling close while an actor send is suspended.
+
+Static reproduction: start transport.send overHTTPS against silent URLProtocol; await protocol/task readiness; call await transport.close. sendViaHTTPS has suspended on its local JPIPHTTPSRequest.read. close has no reference to that operation or its request-owned URLSession, and finishTasksAndInvalidate targets only the template session. Thus close returns while the HTTPS request remains live. If the protocol later delivers successful body plusJPIP-cnew, resumed sendViaHTTPS can setChannelPath after close cleared it and return success. This is actual source control flow; no native reproduction was run by this reviewer.
+
+Required bounded repair: register HTTPS operation owners before suspension, retire their publication generation at close entry, cancel/join the captured operations, and reject obsolete resumed publication before updating telemetry/channel path or returning response. Join must not consume the sender result. Cleanup must use captured owner IDs and never remove/cancel a later operation. Make concurrent-close/new-send semantics explicit without inventing a broader unsupported precondition. Tests: readiness-controlled silent close; delayed success/cnew afterclose; cancelled old request/oldclose cleanup versus later request; repeated close.
+
+This finding does not establish universal TCP or other client close behavior and does not broaden approval to those paths. It blocks a clean claim that HTTPS transport.close joins request owners. Root/writer notified before freeze.

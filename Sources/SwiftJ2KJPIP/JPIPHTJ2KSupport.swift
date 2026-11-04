@@ -95,6 +95,11 @@ public struct JPIPHTJ2KSupport: Sendable {
     /// - Throws: ``J2KError`` if the file cannot be read or parsed.
     public func detectFormat(at url: URL) throws -> JPIPImageInfo {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        return try detectFormat(from: data, url: url)
+    }
+
+    /// Detects the JPEG 2000 format and HTJ2K capability of in-memory image bytes.
+    public func detectFormat(from data: Data, url: URL = URL(fileURLWithPath: "/memory")) throws -> JPIPImageInfo {
         let detector = J2KFormatDetector()
         let format = try detector.detect(data: data)
 

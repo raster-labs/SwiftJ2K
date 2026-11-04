@@ -1,0 +1,1236 @@
+========================================================================
+Phase R3 — F01 Bidirectional openjp3d (OpenJPEG v2.4.0) & HT-in-JP3D Receipt
+========================================================================
+SwiftJ2K CLI: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli (sha256=bb0fdfda19291ae305185d199410e9cf0fcd3915fa3e415e9fe96a722d6bace8)
+opj_jp3d_compress (unmodified v2.4.0): /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress (sha256=61849804cbd5af928cbbf7b805657fb84681c9b1083c89945bab84148052371a)
+opj_jp3d_decompress (unmodified v2.4.0): /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_decompress (sha256=9894e8ef3642f2213eb8736c045feaf41fcd845994410d02899e32273eb6dca4)
+kdu_expand (v8.4.1): /usr/local/bin/kdu_expand (sha256=a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8)
+ojph_expand (0.30.1): /opt/homebrew/bin/ojph_expand (sha256=c6831b19f29824edfa36acb8110bdd4d3cdfecb4acc98f08842d8ea620bbdf3f)
+
+--- SECTION 1A: 100% Unmodified opj_jp3d_compress v2.4.0 -> swiftj2k-cli decode3d ---
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.img -n 2,2,2 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 598 bytes coded
+[INFO] - tile encoded in 0.006997 s
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+ Codestream: 761 B,  Ratio: 6.511 bpv,  (1.229 : 1)
+
+[unmod_u8_odd_111_lrcp] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":5,"elapsedSeconds":0.002172125,"height":11,"inputBytes":761,"outputBytes":1026,"tilesDecoded":1,"width":17}
+
+[unmod_u8_odd_111_lrcp] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=bdfe7c4e90c06c7ae2903b62512a390218c61b6852fb5af10260953efa3108d0)
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.img -n 3,3,2 -p RLCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1092 bytes coded
+[INFO] - tile encoded in 0.006434 s
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+ Codestream: 1258 B,  Ratio: 4.914 bpv,  (1.628 : 1)
+
+[unmod_u8_aniso_221_rlcp] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 1, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_aniso_221_rlcp_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0026160839999999999,"height":16,"inputBytes":1258,"outputBytes":2139,"tilesDecoded":1,"width":16}
+
+[unmod_u8_aniso_221_rlcp] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=8f5467b5e24a39491995d39381590dff09526e4015aa0e7f5066797bb8ec085c)
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.img -n 4,4,2 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 2895 bytes coded
+[INFO] - tile encoded in 0.006501 s
+[RESULT] Volume: 24 x 20 x 8 (x 12 bpv)
+ Codestream: 3064 B,  Ratio: 6.383 bpv,  (1.880 : 1)
+
+[unmod_u12_aniso_331_lrcp] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [3, 3, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 17, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_aniso_331_lrcp_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0033528329999999999,"height":20,"inputBytes":3064,"outputBytes":7788,"tilesDecoded":1,"width":24}
+
+[unmod_u12_aniso_331_lrcp] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=f5a2b4a90bf428847094f8a7b9f5b602155d73c03e345d79944f5a4f884c6612)
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.img -n 2,2,2 -p RPCL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1560 bytes coded
+[INFO] - tile encoded in 0.006702 s
+[RESULT] Volume: 16 x 16 x 8 (x 12 bpv)
+ Codestream: 1723 B,  Ratio: 6.730 bpv,  (1.783 : 1)
+
+[unmod_u12_iso_111_rpcl] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 2, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u12_iso_111_rpcl_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0025262499999999998,"height":16,"inputBytes":1723,"outputBytes":4204,"tilesDecoded":1,"width":16}
+
+[unmod_u12_iso_111_rpcl] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=f5ac5abb1b4ef90733bda306c63a11455ef4f0e08a8ef5e0c13d898e6956a4fe)
+
+$ (cd /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/pgx_unmodsisopcrl/slices && /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i slice-.pgx -n 2,2,2 -p PCRL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_iso_111_pcrl.jp3d)
+exit_code: 0
+stdout:
+[INFO] Infile: slice-.pgx 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_iso_111_pcrl.jp3d 
+[INFO] Loading pgx file(s)
+[INFO] Loading ./slice1.pgx 
+[INFO] Loading ./slice2.pgx 
+[INFO] Loading ./slice3.pgx 
+[INFO] Loading ./slice4.pgx 
+[INFO] Loading ./slice5.pgx 
+[INFO] Loading ./slice6.pgx 
+[INFO] Loading ./slice7.pgx 
+[INFO] Loading ./slice8.pgx 
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1194 bytes coded
+[INFO] - tile encoded in 0.006403 s
+[RESULT] Volume: 16 x 12 x 8 (x 16 bpv)
+ Codestream: 1357 B,  Ratio: 7.068 bpv,  (2.264 : 1)
+
+[unmod_s16_iso_111_pcrl] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 3, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_iso_111_pcrl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_iso_111_pcrl_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0031275000000000001,"height":12,"inputBytes":1357,"outputBytes":3179,"tilesDecoded":1,"width":16}
+
+[unmod_s16_iso_111_pcrl] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=0ffac40fcca666d07fe7fff8bec2741a027ab6065f0968b6ce1ed1984d84c646)
+
+$ (cd /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/pgx_unmodsmultilayercprl/slices && /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i slice-.pgx -n 2,2,2 -p CPRL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_multilayer_cprl.jp3d -r 8,4,1)
+exit_code: 0
+stdout:
+[INFO] Infile: slice-.pgx 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_multilayer_cprl.jp3d 
+[INFO] Loading pgx file(s)
+[INFO] Loading ./slice1.pgx 
+[INFO] Loading ./slice2.pgx 
+[INFO] Loading ./slice3.pgx 
+[INFO] Loading ./slice4.pgx 
+[INFO] Loading ./slice5.pgx 
+[INFO] Loading ./slice6.pgx 
+[INFO] Loading ./slice7.pgx 
+[INFO] Loading ./slice8.pgx 
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1210 bytes coded
+[INFO] - tile encoded in 0.006645 s
+[RESULT] Volume: 16 x 12 x 8 (x 16 bpv)
+ Codestream: 1373 B,  Ratio: 7.151 bpv,  (2.237 : 1)
+
+[unmod_s16_multilayer_cprl] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 4, "layers": 3, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_multilayer_cprl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_s16_multilayer_cprl_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0025143750000000001,"height":12,"inputBytes":1373,"outputBytes":3179,"tilesDecoded":1,"width":16}
+
+[unmod_s16_multilayer_cprl] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=0ffac40fcca666d07fe7fff8bec2741a027ab6065f0968b6ce1ed1984d84c646)
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.img -n 3,3,2 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.jp3d -b 8,8,4 -SOP -EPH
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1116 bytes coded
+[INFO] - tile encoded in 0.007144 s
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+ Codestream: 1282 B,  Ratio: 5.008 bpv,  (1.598 : 1)
+
+[unmod_u8_multicblk_sop_eph] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x06", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [3, 3, 2], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_multicblk_sop_eph_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.002336875,"height":16,"inputBytes":1282,"outputBytes":2139,"tilesDecoded":1,"width":16}
+
+[unmod_u8_multicblk_sop_eph] PASS BIT-EXACT FROM UNMODIFIED opj_jp3d_compress (sha256=8f5467b5e24a39491995d39381590dff09526e4015aa0e7f5066797bb8ec085c)
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.img -n 3,3,2 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.jp3d -I
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 823 bytes coded
+[INFO] - tile encoded in 0.006580 s
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+ Codestream: 1000 B,  Ratio: 3.906 bpv,  (2.048 : 1)
+
+[unmod_u8_irrev97_221] unmodified opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [0, 0, 0]}, "QCD": {"Lqcd": 25, "Sqcd": "0x42"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0022051660000000002,"height":16,"inputBytes":1000,"outputBytes":2139,"tilesDecoded":1,"width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli compare -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221_swift.nrrd -r /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_irrev97_221.nrrd --mode 3d --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"bitExact":false,"components":[{"bitExact":false,"component":0,"mae":1.40234375,"maxError":5,"mse":3.20703125,"psnr":43.06977169060319}],"depth":8,"elapsedSeconds":0.001409541,"height":16,"mae":1.40234375,"maxError":5,"mode":"3d","mse":3.20703125,"passed":true,"psnr":43.06977169060319,"signed":false,"width":16}
+
+[unmod_u8_irrev97_221] PASS IRREVERSIBLE 9-7 FROM UNMODIFIED opj_jp3d_compress (PSNR=43.07 dB, MAE=1.4023)
+
+--- SECTION 1B: Raw Unmodified Upstream openjp3d v2.4.0 Defect Receipts & Clang UBSan Proof ---
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/opj_self_unmod.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/opj_self_unmod.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/unmod_u8_odd_111_lrcp.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/opj_self_unmod.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/opj_self_unmod.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 429 bytes decoded
+[INFO] Tcd_decode_tile: 598 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 1 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.009888 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/opj_self_unmod.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[DISCLOSURE 1] Unmodified opj_jp3d_decompress v2.4.0 on unmodified opj_jp3d_compress default (-C 2EB) output: exit=0, matches_original=False (upstream `src/lib/openjp3d/jp3d.c:1828` hardcodes `cp->encoding_format = ENCOD_3EB; /* FIXME */` while `opj_jp3d_compress` defaults to normative ITU-T T.809 Annex C `-C 2EB` / `ENCOD_2EB`).
+
+$ cmake -S /tmp/r3-openjp3d-ubsan/src -B /tmp/r3-openjp3d-ubsan/build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_JP3D=ON -DBUILD_CODEC=ON -DBUILD_JPIP=OFF -DBUILD_THIRDPARTY=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS=-Wno-implicit-function-declaration -fsanitize=bounds -fno-sanitize-recover=bounds -g -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=bounds
+exit_code: 0
+stdout:
+-- The C compiler identification is AppleClang 21.0.0.21000334
+-- The CXX compiler identification is AppleClang 21.0.0.21000334
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Looking for string.h
+-- Looking for string.h - found
+-- Looking for memory.h
+-- Looking for memory.h - found
+-- Looking for stdlib.h
+-- Looking for stdlib.h - found
+-- Looking for stdio.h
+-- Looking for stdio.h - found
+-- Looking for math.h
+-- Looking for math.h - found
+-- Looking for float.h
+-- Looking for float.h - found
+-- Looking for time.h
+-- Looking for time.h - found
+-- Looking for stdarg.h
+-- Looking for stdarg.h - found
+-- Looking for ctype.h
+-- Looking for ctype.h - found
+-- Looking for assert.h
+-- Looking for assert.h - found
+-- Looking for stdint.h
+-- Looking for stdint.h - found
+-- Looking for inttypes.h
+-- Looking for inttypes.h - found
+-- Looking for strings.h
+-- Looking for strings.h - found
+-- Looking for sys/stat.h
+-- Looking for sys/stat.h - found
+-- Looking for sys/types.h
+-- Looking for sys/types.h - found
+-- Looking for unistd.h
+-- Looking for unistd.h - found
+-- Checking for 64-bit off_t
+-- Checking for 64-bit off_t - present
+-- Checking for fseeko/ftello
+-- Checking for fseeko/ftello - present
+-- Large File support - found
+-- Looking for include file malloc.h
+-- Looking for include file malloc.h - not found
+-- Looking for _aligned_malloc
+-- Looking for _aligned_malloc - not found
+-- Looking for posix_memalign
+-- Looking for posix_memalign - found
+-- Looking for memalign
+-- Looking for memalign - not found
+-- Found ZLIB: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libz.tbd (found version "1.2.12")
+-- Your system seems to have a Z lib available, we will use it to generate PNG lib
+-- Found PNG: /opt/homebrew/lib/libpng.dylib (found version "1.6.58")
+-- Your system seems to have a PNG lib available, we will use it
+-- Found TIFF: /opt/homebrew/lib/libtiff.dylib (found version "4.7.2")
+-- Your system seems to have a TIFF lib available, we will use it
+-- Found LCMS2: /opt/homebrew/lib/liblcms2.dylib
+-- Your system seems to have a LCMS2 lib available, we will use it
+-- Configuring done (2.9s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/r3-openjp3d-ubsan/build
+stderr:
+CMake Deprecation Warning at CMakeLists.txt:10 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+$ cmake --build /tmp/r3-openjp3d-ubsan/build --target opj_jp3d_compress -j 4
+exit_code: 0
+stdout:
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/cio.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/event.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/bio.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/dwt.c.o
+[ 31%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/mct.c.o
+[ 31%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/jp3d.c.o
+[ 31%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/jp3d_lib.c.o
+[ 36%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/mqc.c.o
+[ 45%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/openjp3d.c.o
+[ 45%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/pi.c.o
+[ 50%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/raw.c.o
+[ 54%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t1.c.o
+[ 59%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t1_3d.c.o
+[ 63%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t2.c.o
+[ 68%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/tcd.c.o
+[ 72%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/tgt.c.o
+[ 77%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/volume.c.o
+[ 81%] Linking C static library ../../../bin/libopenjp3d.a
+[ 81%] Built target openjp3d
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/opj_jp3d_compress.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/__/common/opj_getopt.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/convert.c.o
+[100%] Linking C executable ../../../bin/opj_jp3d_compress
+[100%] Built target opj_jp3d_compress
+stderr:
+/tmp/r3-openjp3d-ubsan/src/src/lib/openjp3d/pi.c:694:13: warning: enumeration value 'PROG_UNKNOWN' not handled in switch [-Wswitch]
+  694 |     switch (pi->poc.prg) {
+      |             ^~~~~~~~~~~
+/tmp/r3-openjp3d-ubsan/src/src/lib/openjp3d/pi.c:694:13: note: add missing switch cases
+  694 |     switch (pi->poc.prg) {
+      |             ^
+  695 |     case LRCP:
+1 warning generated.
+
+$ /tmp/r3-openjp3d-ubsan/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.img -n 2,2,2 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.jp3d
+exit_code: -6
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ubsan_full3d.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+stderr:
+/tmp/r3-openjp3d-ubsan/src/src/lib/openjp3d/t1.c:156:12: runtime error: index 1040 out of bounds for type 'int[1024]'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /tmp/r3-openjp3d-ubsan/src/src/lib/openjp3d/t1.c:156:12
+
+[DISCLOSURE 2 — LIVE CLANG UBSAN PROOF] Unmodified OpenJPEG v2.4.0 openjp3d trapped under `-fsanitize=undefined` at `src/lib/openjp3d/t1.c:156` (`index >= 1024 out of bounds for type 'int[1024]'`) because `t1.c:1128,1172` writes `orient = band->bandno; /* FIXME */` without `& 3` when `bandno` is 4..7.
+
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.img -n 3,3,3 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 994 bytes coded
+[INFO] - tile encoded in 0.006816 s
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+ Codestream: 1164 B,  Ratio: 4.547 bpv,  (1.759 : 1)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2_swift.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0021635420000000001,"height":16,"inputBytes":1164,"outputBytes":2139,"tilesDecoded":1,"width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli compare -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2_swift.nrrd -r /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/raw_defect_dwt_nlz2.nrrd --mode 3d --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"bitExact":false,"components":[{"bitExact":false,"component":0,"mae":16.57958984375,"maxError":122,"mse":679.29345703125,"psnr":19.810229293905476}],"depth":8,"elapsedSeconds":0.001200958,"height":16,"mae":16.57958984375,"maxError":122,"mode":"3d","mse":679.29345703125,"passed":true,"psnr":19.810229293905476,"signed":false,"width":16}
+
+[DISCLOSURE 3] Unmodified opj_jp3d_compress `-n 3,3,3` (NL_Z=2) raw receipt against normative 3D IDWT: {"bitDepth":8,"bitExact":false,"components":[{"bitExact":false,"component":0,"mae":16.57958984375,"maxError":122,"mse":679.29345703125,"psnr":19.810229293905476}],"depth":8,"elapsedSeconds":0.001200958,"height":16,"mae":16.57958984375,"maxError":122,"mode":"3d","mse":679.29345703125,"passed":true,"psnr":19.810229293905476,"signed":false,"width":16} (`src/lib/openjp3d/dwt.c:871,880,965,975` uses linear `aj = a + j` instead of 2D slice row stride `aj = a + (j / rw) * w + (j % rw)` when `rw < w`).
+
+$ git -C /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0 rev-parse HEAD
+exit_code: 0
+stdout:
+37ac30ceff6640bbab502388c5e0fa0bff23f505
+
+$ git -C /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0 status --porcelain -uno
+exit_code: 0
+
+Isolated diagnostic unified diff in /tmp/r3-openjp3d-diag/src (OPJ_SRC untouched):
+--- a/src/lib/openjp3d/jp3d.c
++++ b/src/lib/openjp3d/jp3d.c
+@@ -1825,7 +1825,7 @@
+ 
+         /* MM: Settings of the following two member variables would take
+           place during j3d_read_com. FIXME */
+-        cp->encoding_format = ENCOD_3EB;
++        cp->encoding_format = ENCOD_2EB;
+         cp->transform_format = TRF_2D_DWT;
+ 
+         /* keep a link to cp so that we can destroy it later in j3d_destroy_decompress */
+--- a/src/lib/openjp3d/t1.c
++++ b/src/lib/openjp3d/t1.c
+@@ -1125,7 +1125,7 @@
+                             }
+                         }
+ 
+-                        orient = band->bandno;  /* FIXME */
++                        orient = band->bandno & 3;  /* FIXME: ITU-T T.809 Annex C Table C.1 */
+                         if (orient == 2) {
+                             orient = 1;
+                         } else if (orient == 1) {
+@@ -1169,7 +1169,7 @@
+                         int x, y, k, i, j, z, orient;
+                         opj_tcd_cblk_t *cblk = &prc->cblks[cblkno];
+ 
+-                        orient = band->bandno;  /* FIXME */
++                        orient = band->bandno & 3;  /* FIXME: ITU-T T.809 Annex C Table C.1 */
+                         if (orient == 2) {
+                             orient = 1;
+                         } else if (orient == 1) {
+--- a/src/lib/openjp3d/dwt.c
++++ b/src/lib/openjp3d/dwt.c
+@@ -869,7 +869,7 @@
+             bj = (int*)opj_malloc(rd * sizeof(int));
+             if (dwtid[2] == 0) {
+                 for (j = 0; j < (rw * rh); j++) {
+-                    aj = a + j;
++                    aj = a + (j / rw) * w + (j % rw);
+                     for (k = 0; k < rd; k++) {
+                         bj[k] = aj[k * wh];
+                     }
+@@ -878,7 +878,7 @@
+                 }
+             } else if (dwtid[2] == 1) {
+                 for (j = 0; j < (rw * rh); j++) {
+-                    aj = a + j;
++                    aj = a + (j / rw) * w + (j % rw);
+                     for (k = 0; k < rd; k++) {
+                         bj[k] = aj[k * wh];
+                     }
+@@ -963,7 +963,7 @@
+             bj = (int*)opj_malloc(rd * sizeof(int));
+             if (dwtid[2] == 0) {
+                 for (j = 0; j < (rw * rh); j++) {
+-                    aj = a + j;
++                    aj = a + (j / rw) * w + (j % rw);
+                     dwt_interleave_z(aj, bj, dn, sn, wh, cas_axl);
+                     dwt_decode_97(bj, dn, sn, cas_axl);
+                     for (k = 0; k < rd; k++) {
+@@ -972,7 +972,7 @@
+                 }
+             } else if (dwtid[2] == 1) {
+                 for (j = 0; j < (rw * rh); j++) {
+-                    aj = a + j;
++                    aj = a + (j / rw) * w + (j % rw);
+                     dwt_interleave_z(aj, bj, dn, sn, wh, cas_axl);
+                     dwt_decode_53(bj, dn, sn, cas_axl);
+                     for (k = 0; k < rd; k++) {
+
+$ cmake -S /tmp/r3-openjp3d-diag/src -B /tmp/r3-openjp3d-diag/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_JP3D=ON -DBUILD_CODEC=ON -DBUILD_JPIP=OFF -DBUILD_THIRDPARTY=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS=-Wno-implicit-function-declaration
+exit_code: 0
+stdout:
+-- The C compiler identification is AppleClang 21.0.0.21000334
+-- The CXX compiler identification is AppleClang 21.0.0.21000334
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Looking for string.h
+-- Looking for string.h - found
+-- Looking for memory.h
+-- Looking for memory.h - found
+-- Looking for stdlib.h
+-- Looking for stdlib.h - found
+-- Looking for stdio.h
+-- Looking for stdio.h - found
+-- Looking for math.h
+-- Looking for math.h - found
+-- Looking for float.h
+-- Looking for float.h - found
+-- Looking for time.h
+-- Looking for time.h - found
+-- Looking for stdarg.h
+-- Looking for stdarg.h - found
+-- Looking for ctype.h
+-- Looking for ctype.h - found
+-- Looking for assert.h
+-- Looking for assert.h - found
+-- Looking for stdint.h
+-- Looking for stdint.h - found
+-- Looking for inttypes.h
+-- Looking for inttypes.h - found
+-- Looking for strings.h
+-- Looking for strings.h - found
+-- Looking for sys/stat.h
+-- Looking for sys/stat.h - found
+-- Looking for sys/types.h
+-- Looking for sys/types.h - found
+-- Looking for unistd.h
+-- Looking for unistd.h - found
+-- Checking for 64-bit off_t
+-- Checking for 64-bit off_t - present
+-- Checking for fseeko/ftello
+-- Checking for fseeko/ftello - present
+-- Large File support - found
+-- Looking for include file malloc.h
+-- Looking for include file malloc.h - not found
+-- Looking for _aligned_malloc
+-- Looking for _aligned_malloc - not found
+-- Looking for posix_memalign
+-- Looking for posix_memalign - found
+-- Looking for memalign
+-- Looking for memalign - not found
+-- Found ZLIB: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libz.tbd (found version "1.2.12")
+-- Your system seems to have a Z lib available, we will use it to generate PNG lib
+-- Found PNG: /opt/homebrew/lib/libpng.dylib (found version "1.6.58")
+-- Your system seems to have a PNG lib available, we will use it
+-- Found TIFF: /opt/homebrew/lib/libtiff.dylib (found version "4.7.2")
+-- Your system seems to have a TIFF lib available, we will use it
+-- Found LCMS2: /opt/homebrew/lib/liblcms2.dylib
+-- Your system seems to have a LCMS2 lib available, we will use it
+-- Configuring done (2.7s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/r3-openjp3d-diag/build
+stderr:
+CMake Deprecation Warning at CMakeLists.txt:10 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+$ cmake --build /tmp/r3-openjp3d-diag/build --target opj_jp3d_compress opj_jp3d_decompress -j 4
+exit_code: 0
+stdout:
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/bio.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/dwt.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/event.c.o
+[ 18%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/cio.c.o
+[ 27%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/jp3d.c.o
+[ 27%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/jp3d_lib.c.o
+[ 31%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/mct.c.o
+[ 36%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/mqc.c.o
+[ 40%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/openjp3d.c.o
+[ 45%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/pi.c.o
+[ 50%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/raw.c.o
+[ 54%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t1.c.o
+[ 59%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t1_3d.c.o
+[ 63%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/t2.c.o
+[ 68%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/tcd.c.o
+[ 72%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/tgt.c.o
+[ 77%] Building C object src/lib/openjp3d/CMakeFiles/openjp3d.dir/volume.c.o
+[ 81%] Linking C static library ../../../bin/libopenjp3d.a
+[ 81%] Built target openjp3d
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/convert.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/__/common/opj_getopt.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_compress.dir/opj_jp3d_compress.c.o
+[100%] Linking C executable ../../../bin/opj_jp3d_compress
+[100%] Built target opj_jp3d_compress
+[ 81%] Built target openjp3d
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_decompress.dir/opj_jp3d_decompress.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_decompress.dir/convert.c.o
+[ 95%] Building C object src/bin/jp3d/CMakeFiles/opj_jp3d_decompress.dir/__/common/opj_getopt.c.o
+[100%] Linking C executable ../../../bin/opj_jp3d_decompress
+[100%] Built target opj_jp3d_decompress
+stderr:
+/tmp/r3-openjp3d-diag/src/src/lib/openjp3d/pi.c:694:13: warning: enumeration value 'PROG_UNKNOWN' not handled in switch [-Wswitch]
+  694 |     switch (pi->poc.prg) {
+      |             ^~~~~~~~~~~
+/tmp/r3-openjp3d-diag/src/src/lib/openjp3d/pi.c:694:13: note: add missing switch cases
+  694 |     switch (pi->poc.prg) {
+      |             ^
+  695 |     case LRCP:
+1 warning generated.
+
+$ git -C /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0 status --porcelain -uno
+exit_code: 0
+
+Isolated diagnostic opj_jp3d_compress: /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress (sha256=f5121921a07a0d12838f9ba2cc1198e5fba26419220c07d6c6750347de8eb9b8)
+Isolated diagnostic opj_jp3d_decompress: /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress (sha256=9d379037765645a15f621814e70a3e44e9ca794908469f408d77d4ee7682bc63)
+
+--- SECTION 2A: Full Arbitrary-3D Direction A (diagnostic opj_jp3d_compress -> swiftj2k-cli decode3d) ---
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.img -n 3,3,3 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 978 bytes coded
+[INFO] - tile encoded in 0.015579 s
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+ Codestream: 1148 B,  Ratio: 9.822 bpv,  (0.814 : 1)
+
+[a_u8_odd_222_lrcp] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 18, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_odd_222_lrcp_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":5,"elapsedSeconds":0.0030747080000000002,"height":11,"inputBytes":1148,"outputBytes":1026,"tilesDecoded":1,"width":17}
+
+[a_u8_odd_222_lrcp] PASS BIT-EXACT (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.img -n 3,3,2 -p RLCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 2660 bytes coded
+[INFO] - tile encoded in 0.007857 s
+[RESULT] Volume: 16 x 16 x 8 (x 12 bpv)
+ Codestream: 2826 B,  Ratio: 11.039 bpv,  (1.087 : 1)
+
+[a_u12_aniso_221_rlcp] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 1, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u12_aniso_221_rlcp_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0038567089999999998,"height":16,"inputBytes":2826,"outputBytes":4204,"tilesDecoded":1,"width":16}
+
+[a_u12_aniso_221_rlcp] PASS BIT-EXACT (sha256=adbfa78dbcf9c9b34ce4bda2f82215faea1d9777ebf333e1d13cb2e04b85cd2c)
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.img -n 3,3,3 -p RPCL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 3277 bytes coded
+[INFO] - tile encoded in 0.007359 s
+[RESULT] Volume: 16 x 16 x 8 (x 16 bpv)
+ Codestream: 3447 B,  Ratio: 13.465 bpv,  (1.188 : 1)
+
+[a_u16_iso_222_rpcl] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x0F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 2, "layers": 1, "mct": 0, "NL": [2, 2, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 18, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_iso_222_rpcl_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0042610419999999996,"height":16,"inputBytes":3447,"outputBytes":4204,"tilesDecoded":1,"width":16}
+
+[a_u16_iso_222_rpcl] PASS BIT-EXACT (sha256=3eac67ae41a5137eec2c2e8a67d41a65fa90de801383f2459d204870c13c76b7)
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.img -n 4,4,3 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.jp3d
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 8898 bytes coded
+[INFO] - tile encoded in 0.007471 s
+[RESULT] Volume: 24 x 20 x 12 (x 16 bpv)
+ Codestream: 9071 B,  Ratio: 12.599 bpv,  (1.270 : 1)
+
+[a_u16_aniso_332_lrcp] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x0F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 12}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [3, 3, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 21, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u16_aniso_332_lrcp_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":12,"elapsedSeconds":0.0082135000000000003,"height":20,"inputBytes":9071,"outputBytes":11629,"tilesDecoded":1,"width":24}
+
+[a_u16_aniso_332_lrcp] PASS BIT-EXACT (sha256=a1af81391692b2e80f942f100677665ab362b2415199a7f9abb7e8d42d66a29b)
+
+$ (cd /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/pgx_asisopcrl/slices && /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i slice-.pgx -n 3,3,3 -p PCRL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_iso_222_pcrl.jp3d)
+exit_code: 0
+stdout:
+[INFO] Infile: slice-.pgx 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_iso_222_pcrl.jp3d 
+[INFO] Loading pgx file(s)
+[INFO] Loading ./slice1.pgx 
+[INFO] Loading ./slice2.pgx 
+[INFO] Loading ./slice3.pgx 
+[INFO] Loading ./slice4.pgx 
+[INFO] Loading ./slice5.pgx 
+[INFO] Loading ./slice6.pgx 
+[INFO] Loading ./slice7.pgx 
+[INFO] Loading ./slice8.pgx 
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 2480 bytes coded
+[INFO] - tile encoded in 0.006772 s
+[RESULT] Volume: 16 x 12 x 8 (x 16 bpv)
+ Codestream: 2650 B,  Ratio: 13.802 bpv,  (1.159 : 1)
+
+[a_s16_iso_222_pcrl] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 3, "layers": 1, "mct": 0, "NL": [2, 2, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 18, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_iso_222_pcrl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_iso_222_pcrl_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.003543666,"height":12,"inputBytes":2650,"outputBytes":3179,"tilesDecoded":1,"width":16}
+
+[a_s16_iso_222_pcrl] PASS BIT-EXACT (sha256=fdc1e9aa254ff67db502b8adb2aa93d5f1706a20732864f7e148ec1faa719230)
+
+$ (cd /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/pgx_asmultilayercprl/slices && /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i slice-.pgx -n 3,3,3 -p CPRL -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_multilayer_cprl.jp3d -r 8,4,1)
+exit_code: 0
+stdout:
+[INFO] Infile: slice-.pgx 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_multilayer_cprl.jp3d 
+[INFO] Loading pgx file(s)
+[INFO] Loading ./slice1.pgx 
+[INFO] Loading ./slice2.pgx 
+[INFO] Loading ./slice3.pgx 
+[INFO] Loading ./slice4.pgx 
+[INFO] Loading ./slice5.pgx 
+[INFO] Loading ./slice6.pgx 
+[INFO] Loading ./slice7.pgx 
+[INFO] Loading ./slice8.pgx 
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 2521 bytes coded
+[INFO] - tile encoded in 0.007213 s
+[RESULT] Volume: 16 x 12 x 8 (x 16 bpv)
+ Codestream: 2691 B,  Ratio: 14.016 bpv,  (1.142 : 1)
+
+[a_s16_multilayer_cprl] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 4, "layers": 3, "mct": 0, "NL": [2, 2, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 18, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_multilayer_cprl.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_s16_multilayer_cprl_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0036029170000000002,"height":12,"inputBytes":2691,"outputBytes":3179,"tilesDecoded":1,"width":16}
+
+[a_s16_multilayer_cprl] PASS BIT-EXACT (sha256=fdc1e9aa254ff67db502b8adb2aa93d5f1706a20732864f7e148ec1faa719230)
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_compress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.img -n 3,3,3 -p LRCP -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.jp3d -I
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.img Format: 2
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.jp3d 
+[INFO] Loading bin file
+[INFO] tile number 1 / 1
+[INFO] Tcd_encode_tile: Transform
+[INFO] Tcd_encode_tile: Entropy coding
+[INFO] Tcd_encode_tile: Rate-allocate
+[INFO] Tcd_encode_tile: Tier - 2
+[INFO] Tcd_encode_tile: 1622 bytes coded
+[INFO] - tile encoded in 0.006975 s
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+ Codestream: 1807 B,  Ratio: 7.059 bpv,  (1.133 : 1)
+
+[a_u8_irrev97_222] opj_jp3d_compress markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x8041", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 2], "cb_exp": [6, 6, 6], "cblksty": "0x00", "dwt": [0, 0, 0]}, "QCD": {"Lqcd": 33, "Sqcd": "0x42"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222_swift_decoded.nrrd --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0027665419999999999,"height":16,"inputBytes":1807,"outputBytes":2139,"tilesDecoded":1,"width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli compare -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222_swift_decoded.nrrd -r /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/a_u8_irrev97_222.nrrd --mode 3d --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"bitExact":false,"components":[{"bitExact":false,"component":0,"mae":2.19873046875,"maxError":14,"mse":8.05712890625,"psnr":39.069000488776766}],"depth":8,"elapsedSeconds":0.001528375,"height":16,"mae":2.19873046875,"maxError":14,"mode":"3d","mse":8.05712890625,"passed":true,"psnr":39.069000488776766,"signed":false,"width":16}
+
+[a_u8_irrev97_222] PASS IRREVERSIBLE 9-7 (PSNR=39.07 dB, MAE=2.1987)
+
+--- SECTION 2B: Full Arbitrary-3D Direction B (swiftj2k-cli encode3d / transcode -> diagnostic opj_jp3d_decompress) ---
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.jp3d --codec j2k-lossless --levels 1,1,1 --progression lrcps --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.0021139169999999999,"height":11,"lossless":true,"outputBytes":1056,"totalTiles":1,"width":17}
+
+[b_u8_odd_111_lrcps] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_unmod.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_unmod.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_unmod.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_unmod.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 1 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.009886 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_unmod.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[RAW UNMODIFIED RECEIPT ON SWIFT OUTPUT] Unmodified opj_jp3d_decompress v2.4.0 on SwiftJ2K normative Annex C (2EB) output (b_u8_odd_111_lrcps): exit=0, matches_original=False (`jp3d.c:1828` ENCOD_3EB & `t1.c:1172` bandno OOB).
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.020901 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_lrcps_opj.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[b_u8_odd_111_lrcps] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps.jp3d --codec j2k-lossless --levels 1,1,1 --progression rlcps --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.00367075,"height":11,"lossless":true,"outputBytes":1056,"totalTiles":1,"width":17}
+
+[b_u8_odd_111_rlcps] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 1, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.008104 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_rlcps_opj.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[b_u8_odd_111_rlcps] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp.jp3d --codec j2k-lossless --levels 1,1,1 --progression slrcp --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.0021795,"height":11,"lossless":true,"outputBytes":1056,"totalTiles":1,"width":17}
+
+[b_u8_odd_111_slrcp] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 2, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.007493 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_slrcp_opj.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[b_u8_odd_111_slrcp] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls.jp3d --codec j2k-lossless --levels 1,1,1 --progression pcrls --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.0020581250000000001,"height":11,"lossless":true,"outputBytes":1056,"totalTiles":1,"width":17}
+
+[b_u8_odd_111_pcrls] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 3, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.006799 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_pcrls_opj.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[b_u8_odd_111_pcrls] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls.jp3d --codec j2k-lossless --levels 1,1,1 --progression cprls --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.0023079580000000001,"height":11,"lossless":true,"outputBytes":1056,"totalTiles":1,"width":17}
+
+[b_u8_odd_111_cprls] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 4, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 169 bytes decoded
+[INFO]   t2_decode_packet: 762 bytes decoded
+[INFO] Tcd_decode_tile: 931 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.008397 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_odd_111_cprls_opj.bin (Little-endian) 
+[RESULT] Volume: 17 x 11 x 5 (x 8 bpv)
+
+[b_u8_odd_111_cprls] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps.jp3d --codec j2k-lossless --levels 2,2,2 --progression lrcps --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.002899792,"height":16,"lossless":true,"outputBytes":2109,"totalTiles":1,"width":16}
+
+[b_u8_iso_222_lrcps] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 2], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 18, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 32 bytes decoded
+[INFO]   t2_decode_packet: 266 bytes decoded
+[INFO]   t2_decode_packet: 1679 bytes decoded
+[INFO] Tcd_decode_tile: 1977 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.007657 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u8_iso_222_lrcps_opj.bin (Little-endian) 
+[RESULT] Volume: 16 x 16 x 8 (x 8 bpv)
+
+[b_u8_iso_222_lrcps] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=bce91be71a47cb5a66f086bc61825709d01278067c0418ad51831368430943f6)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332.jp3d --codec j2k-lossless --levels 3,3,2 --progression lrcps --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"encode3d","components":1,"depth":12,"elapsedSeconds":0.0050647499999999998,"height":20,"lossless":true,"outputBytes":7306,"totalTiles":1,"width":24}
+
+[b_u12_aniso_332] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 12}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [3, 3, 2], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 21, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 43 bytes decoded
+[INFO]   t2_decode_packet: 107 bytes decoded
+[INFO]   t2_decode_packet: 1015 bytes decoded
+[INFO]   t2_decode_packet: 6006 bytes decoded
+[INFO] Tcd_decode_tile: 7171 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.008228 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u12_aniso_332_opj.bin (Little-endian) 
+[RESULT] Volume: 24 x 20 x 12 (x 12 bpv)
+
+[b_u12_aniso_332] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=3a9b83b16891fe97026a472094a31a77278764825f29098bd787730a8b62b5d6)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221.jp3d --codec j2k-lossless --levels 2,2,1 --progression rlcps --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.0035909589999999999,"height":16,"lossless":true,"outputBytes":3399,"totalTiles":1,"width":16}
+
+[b_u16_aniso_221] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x0F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 1, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 137 bytes decoded
+[INFO]   t2_decode_packet: 420 bytes decoded
+[INFO]   t2_decode_packet: 2714 bytes decoded
+[INFO] Tcd_decode_tile: 3271 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.006926 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_u16_aniso_221_opj.bin (Little-endian) 
+[RESULT] Volume: 16 x 16 x 8 (x 16 bpv)
+
+[b_u16_aniso_221] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=3eac67ae41a5137eec2c2e8a67d41a65fa90de801383f2459d204870c13c76b7)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221.jp3d --codec j2k-lossless --levels 2,2,1 --progression lrcps --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.0030681670000000001,"height":12,"lossless":true,"outputBytes":2587,"totalTiles":1,"width":16}
+
+[b_s16_aniso_221] SwiftJ2K markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 8, "Pcap": "0x00400000", "Ccap": ["0x0000"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [5, 5, 4], "cblksty": "0x00", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 106 bytes decoded
+[INFO]   t2_decode_packet: 314 bytes decoded
+[INFO]   t2_decode_packet: 2039 bytes decoded
+[INFO] Tcd_decode_tile: 2459 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.006916 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_s16_aniso_221_opj.bin (Little-endian) 
+[RESULT] Volume: 16 x 12 x 8 (x 16 bpv)
+
+[b_s16_aniso_221] PASS BIT-EXACT via diagnostic opj_jp3d_decompress (sha256=fdc1e9aa254ff67db502b8adb2aa93d5f1706a20732864f7e148ec1faa719230)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_to_ebcot_opj.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_source.jp3d --codec htj2k-lossless --levels 2,2,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.0022157919999999998,"height":16,"lossless":true,"outputBytes":3737,"totalTiles":1,"width":16}
+
+[b_ht_source] Reconciled HT-in-JP3D markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0x0008"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [2, 2, 1], "cb_exp": [6, 6, 0], "cblksty": "0x40", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 14, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_source.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0030656669999999998,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":3737,"mode":"lossless","outputBytes":2783,"peakWorkspaceBytes":22696,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /tmp/r3-openjp3d-diag/build/bin/opj_jp3d_decompress -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_opj.bin -m /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_opj.img
+exit_code: 0
+stdout:
+[INFO] Infile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_ebcot.jp3d 
+[INFO] Outfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_opj.bin 
+[INFO] Imgfile: /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_opj.img Format: 2
+[INFO] Loading .jp3d file 
+[INFO] tile 1 / 1
+[INFO]   t2_decode_packet: 102 bytes decoded
+[INFO]   t2_decode_packet: 321 bytes decoded
+[INFO]   t2_decode_packet: 2232 bytes decoded
+[INFO] Tcd_decode_tile: 2655 bytes decoded
+[INFO] Tcd_decode_tile: Entropy decoding 0 
+[INFO] Tcd_decode_tile: Inverse DWT
+[INFO] - tile decoded in 0.006785 s
+[INFO] Writing outfile /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/b_ht_transcoded_opj.bin (Little-endian) 
+[RESULT] Volume: 16 x 16 x 8 (x 12 bpv)
+
+[b_ht_to_ebcot_opj] PASS BIT-EXACT HT->EBCOT transcode decoded by opj_jp3d_decompress (sha256=adbfa78dbcf9c9b34ce4bda2f82215faea1d9777ebf333e1d13cb2e04b85cd2c)
+
+--- SECTION 3: Reconciled HT-in-JP3D (8/12/16/32/38-bit HTMIXED) & Kakadu v8.4.1 / OpenJPH 0.30.1 T.814 HT Proof ---
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd.raw --dimensions 17x11x5 --bit-depth 8 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd.jp3d --codec htj2k-lossless --levels 1,1,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":5,"elapsedSeconds":0.0019864169999999999,"height":11,"lossless":true,"outputBytes":1442,"totalTiles":1,"width":17}
+
+[ht3d_u8_odd] markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x07"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0x0004"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 5}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 0], "cblksty": "0x40", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0026606249999999998,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":1442,"mode":"lossless","outputBytes":1124,"peakWorkspaceBytes":9770,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd_rt_ht.jp3d --output-format htj2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0024579580000000001,"fidelity":"exactSamples","format":"htj2k-codestream","inputBytes":1124,"mode":"lossless","outputBytes":1442,"peakWorkspaceBytes":9770,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"jpeg2000-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd_rt_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u8_odd_dec.raw --output-format raw --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"decode3d","components":1,"depth":5,"elapsedSeconds":0.0021614999999999998,"height":11,"inputBytes":1442,"outputBytes":935,"tilesDecoded":1,"width":17}
+
+[ht3d_u8_odd] PASS BIT-EXACT HT->EBCOT->HT->decode3d (sha256=9af111bb80208c21e72b6c7c355ad9ef368b639c5ce3ce15e118ec9b45d53b00)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12.raw --dimensions 16x16x8 --bit-depth 12 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12.jp3d --codec htj2k-lossless --levels 1,1,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.0019984159999999998,"height":16,"lossless":true,"outputBytes":3739,"totalTiles":1,"width":16}
+
+[ht3d_u12] markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x0B"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0x0008"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 0], "cblksty": "0x40", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0031306250000000002,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":3739,"mode":"lossless","outputBytes":2822,"peakWorkspaceBytes":22669,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12_rt_ht.jp3d --output-format htj2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0035777920000000002,"fidelity":"exactSamples","format":"htj2k-codestream","inputBytes":2822,"mode":"lossless","outputBytes":3739,"peakWorkspaceBytes":22669,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"jpeg2000-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12_rt_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u12_dec.raw --output-format raw --json
+exit_code: 0
+stderr:
+{"bitDepth":12,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.0021187910000000001,"height":16,"inputBytes":3739,"outputBytes":4096,"tilesDecoded":1,"width":16}
+
+[ht3d_u12] PASS BIT-EXACT HT->EBCOT->HT->decode3d (sha256=adbfa78dbcf9c9b34ce4bda2f82215faea1d9777ebf333e1d13cb2e04b85cd2c)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16.raw --dimensions 16x12x8 --bit-depth 16 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16.jp3d --codec htj2k-lossless --levels 1,1,1 --json --signed
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"encode3d","components":1,"depth":8,"elapsedSeconds":0.0021406250000000002,"height":12,"lossless":true,"outputBytes":3499,"totalTiles":1,"width":16}
+
+[ht3d_s16] markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x8F"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0x000C"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 8}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 0], "cblksty": "0x40", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0x40"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.003133083,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":3499,"mode":"lossless","outputBytes":2632,"peakWorkspaceBytes":18143,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16_rt_ht.jp3d --output-format htj2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0036330830000000001,"fidelity":"exactSamples","format":"htj2k-codestream","inputBytes":2632,"mode":"lossless","outputBytes":3499,"peakWorkspaceBytes":18143,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"jpeg2000-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16_rt_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s16_dec.raw --output-format raw --json
+exit_code: 0
+stderr:
+{"bitDepth":16,"command":"decode3d","components":1,"depth":8,"elapsedSeconds":0.001994334,"height":12,"inputBytes":3499,"outputBytes":3072,"tilesDecoded":1,"width":16}
+
+[ht3d_s16] PASS BIT-EXACT HT->EBCOT->HT->decode3d (sha256=fdc1e9aa254ff67db502b8adb2aa93d5f1706a20732864f7e148ec1faa719230)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed.raw --dimensions 8x8x4 --bit-depth 32 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed.jp3d --codec htj2k-lossless --levels 1,1,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":32,"command":"encode3d","components":1,"depth":4,"elapsedSeconds":0.0019495420000000001,"height":8,"lossless":true,"outputBytes":538,"totalTiles":1,"width":8}
+
+[ht3d_u32_htmixed] markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0x1F"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0xC01A"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 4}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 0], "cblksty": "0xC0", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0xC0"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0021592500000000001,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":538,"mode":"lossless","outputBytes":501,"peakWorkspaceBytes":2811,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed_rt_ht.jp3d --output-format htj2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0022002499999999999,"fidelity":"exactSamples","format":"htj2k-codestream","inputBytes":501,"mode":"lossless","outputBytes":538,"peakWorkspaceBytes":2811,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"jpeg2000-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed_rt_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_u32_htmixed_dec.raw --output-format raw --json
+exit_code: 0
+stderr:
+{"bitDepth":32,"command":"decode3d","components":1,"depth":4,"elapsedSeconds":0.0018543749999999999,"height":8,"inputBytes":538,"outputBytes":1024,"tilesDecoded":1,"width":8}
+
+[ht3d_u32_htmixed] PASS BIT-EXACT HT->EBCOT->HT->decode3d (sha256=2d37fc8de019eee20d5f35b93e34c965f00249863182d788c45957bdd87fcfe1)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed.raw --dimensions 8x8x4 --bit-depth 38 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed.jp3d --codec htj2k-lossless --levels 1,1,1 --json --signed
+exit_code: 0
+stderr:
+{"bitDepth":38,"command":"encode3d","components":1,"depth":4,"elapsedSeconds":0.0018775829999999999,"height":8,"lossless":true,"outputBytes":549,"totalTiles":1,"width":8}
+
+[ht3d_s38_htmixed] markers: {"order": ["SOC", "SIZ", "CAP", "NSI", "COD", "QCD", "SOT"], "SIZ": {"Lsiz": 41, "Rsiz": "0x4000", "Csiz": 1, "Ssiz": "0xA5"}, "CAP": {"Lcap": 10, "Pcap": "0x00420000", "Ccap": ["0x0000", "0xC01A"]}, "NSI": {"Lnsi": 20, "Ndim": 3, "Zsiz": 4}, "COD": {"Lcod": 17, "Scod": "0x00", "prog": 0, "layers": 1, "mct": 0, "NL": [1, 1, 1], "cb_exp": [6, 6, 0], "cblksty": "0xC0", "dwt": [1, 1, 1]}, "QCD": {"Lqcd": 11, "Sqcd": "0xE0"}}
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed_ebcot.jp3d --output-format j2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0019313329999999999,"fidelity":"exactSamples","format":"jpeg2000-codestream","inputBytes":549,"mode":"lossless","outputBytes":512,"peakWorkspaceBytes":2833,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"htj2k-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli transcode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed_rt_ht.jp3d --output-format htj2k --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"transcode","copyEvents":0,"discardedMetadataBytes":0,"discardedMetadataCount":0,"discardedMetadataKinds":[],"elapsedSeconds":0.0021909170000000001,"fidelity":"exactSamples","format":"htj2k-codestream","inputBytes":512,"mode":"lossless","outputBytes":549,"peakWorkspaceBytes":2833,"pixelAllocations":0,"processingPath":"coefficients","profile":"jp3d","sourceFormat":"jpeg2000-codestream"}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli decode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed_rt_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht3d_s38_htmixed_dec.raw --output-format raw --json
+exit_code: 0
+stderr:
+{"bitDepth":38,"command":"decode3d","components":1,"depth":4,"elapsedSeconds":0.00169125,"height":8,"inputBytes":549,"outputBytes":1280,"tilesDecoded":1,"width":8}
+
+[ht3d_s38_htmixed] PASS BIT-EXACT HT->EBCOT->HT->decode3d (sha256=9c019bb4d24b496690aeb2fe7357e9489a340754df963365c3bf76b6954a5672)
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_oracle.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_oracle.j2c --output-format htj2k --mode lossless --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.034306666999999999,"fidelity":"exactSamples","format":"htj2k-codestream","height":25,"inputBytes":887,"meaningfulBits":8,"mode":"lossless","outputBytes":1155,"peakWorkspaceBytes":81384,"width":33}
+
+$ /usr/local/bin/kdu_expand -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_oracle.j2c -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_kdu.pgm
+exit_code: 0
+stdout:
+
+Consumed 1 tile-part(s) from a total of 1 tile(s).
+Consumed 1,153 codestream bytes (excluding any file format) = 11.180606
+bits/pel.
+Processed using the multi-threaded environment, with
+    10 parallel threads of execution
+
+[ht2d_kdu_expand_oracle] PASS BIT-EXACT via Kakadu kdu_expand v8.4.1 (sha256=e7130873bd4b0fdabb27d920be062c32990979f3057fa57f826516dac1c5ff5a)
+
+$ /opt/homebrew/bin/ojph_expand -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_oracle.j2c -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f01-interop-11nti9lf/ht2d_ojph.pgm
+exit_code: 0
+stdout:
+Elapsed time = 0.000614
+
+[ht2d_ojph_expand_oracle] PASS BIT-EXACT via OpenJPH ojph_expand 0.30.1 (sha256=e7130873bd4b0fdabb27d920be062c32990979f3057fa57f826516dac1c5ff5a)
+
+ALL F01 EXTERNAL PEER & RECONCILED HT-IN-JP3D CHECKS PASSED.

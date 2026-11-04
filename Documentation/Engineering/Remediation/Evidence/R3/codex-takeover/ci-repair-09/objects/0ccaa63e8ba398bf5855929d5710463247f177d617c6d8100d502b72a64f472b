@@ -1,0 +1,14 @@
+{
+  "state": "READ_ONLY_PREPARATORY_DRY_RUN",
+  "started_at": "2026-10-31T10:30:47.518121+00:00",
+  "exit_code": 1,
+  "helper_sha256": "5d2d8e647f30c698d76de64fdd28522ed987c312bf810f38f51505587950d823",
+  "manifest_sha256": "58dd943c66e7412ca2e31add2b09ec4566bed0d21cebeb6c7b5464c725cb7b6d",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "a3f01092068ec2f394526ccac49e4de29b7611c3a73c653f811cf0a1ecbdbd72",
+  "prior08_index_before": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+  "prior08_index_after": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+  "supplement_before": null,
+  "supplement_after": null,
+  "repository_publication_performed": false
+}

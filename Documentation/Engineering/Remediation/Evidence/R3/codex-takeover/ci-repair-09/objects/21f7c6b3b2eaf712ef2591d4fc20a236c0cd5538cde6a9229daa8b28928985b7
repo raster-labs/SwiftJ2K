@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""Read-only source/evidence preparation. Never invokes native tools."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib
+import json
+import runpy
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'preparation.json'
+if out.exists():
+    raise SystemExit('Refusing to overwrite preparation receipt')
+audit = runpy.run_path(str(here / 'audit-final.py'))
+require, sha, source_map, cli_input = (audit[name] for name in
+                                     ['require', 'sha', 'source_map', 'cli_input'])
+read = lambda path: json.loads(Path(path).read_text())
+config_path = here / 'planned-14/audit-plan.json'
+config = read(config_path)
+receipt = {'state': 'PREPARATION_ONLY_NO_FINAL_RUNTIME_CLAIM',
+           'at': datetime.now(timezone.utc).isoformat(), 'inputs': {}, 'historical_failures': {}}
+
+def record(path):
+    path = Path(path).resolve()
+    value = sha(path)
+    if str(path) in receipt['inputs']:
+        require(receipt['inputs'][str(path)] == value, 'Input changed: ' + str(path))
+    receipt['inputs'][str(path)] = value
+    return value
+
+source = Path(config['source'])
+manifest = read(config['manifest'])
+require(source_map(source) == manifest, 'Candidate14 frozen bytes differ from manifest')
+record(config['manifest'])
+base = read(work / 'candidate-snapshot-10-source.json')
+record(work / 'candidate-snapshot-10-source.json')
+delta = {p: {'candidate10': base.get(p), 'candidate14': manifest.get(p)}
+         for p in sorted(set(base) | set(manifest)) if base.get(p) != manifest.get(p)}
+expected = {'Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift',
+            'Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift',
+            'Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift',
+            'Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift'}
+require(set(delta) == expected, 'Unexpected final source delta from10')
+receipt['frozen_source'] = {'files': len(manifest), 'all_file_hashes_verified': True,
+                           'manifest_sha256': record(config['manifest']), 'delta_from10': delta}
+for name in ['audit-final.py', 'prepare_plan.py']:
+    require(record(here / name) == record(work / 'runtime-coverage-09' / name),
+            'Preparation tool was changed instead of reusing reviewed helper: ' + name)
+require(record(config['reconciliation_helper']) ==
+        '18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa',
+        'Reconciliation helper differs from reviewed version')
+old = read(work / 'candidate-snapshot-09-source.json')
+record(work / 'candidate-snapshot-09-source.json')
+old_cli = {p: h for p, h in old.items() if cli_input(p)}
+final_cli = {p: h for p, h in manifest.items() if cli_input(p)}
+cli_delta = {p: {'candidate09': old_cli.get(p), 'candidate14': final_cli.get(p)}
+             for p in sorted(set(old_cli) | set(final_cli)) if old_cli.get(p) != final_cli.get(p)}
+require(set(cli_delta) == {'Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift'},
+        'Unexpected release/CLI input changes')
+require(config['cli_candidate'] == '14' and config['cli_source'] == config['source'],
+        'Fresh final14 release/CLI receipts are required')
+receipt['release_cli'] = {'final_input_count': len(final_cli), 'delta_from09': cli_delta,
+                         'reuse09': False, 'required': 'Fresh release build and246 process checks on14.'}
+for item in config['historical']:
+    d = work / 'validation' / item['directory']
+    result, command = read(d / 'result.json'), read(d / 'command.json')
+    historical = read(item['manifest'])
+    record(item['manifest'])
+    require(result['exit_code'] == item['expected_exit'] != 0 and result['changed_inputs'] == [],
+            'Historical failed exit/drift mismatch: ' + item['directory'])
+    require(read(d / 'source-before.json') == read(d / 'source-after.json') == historical,
+            'Historical frozen identity differs: ' + item['directory'])
+    require(command['wrapper_sha256'] == record(config['wrapper']), 'Historical wrapper mismatch')
+    require(result['capture_complete'] and result['capture_threads_joined'] and
+            result['capture_errors'] == [] and result['wrapper_exit_code'] == result['exit_code'],
+            'Incomplete historical capture')
+    require(record(d / 'native.log') == result['log_sha256'] == item['log_sha256'],
+            'Historical log hash mismatch')
+    require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing raw stream')
+    for kind, entry in result['native_streams'].items():
+        p = d / ('native.' + kind)
+        require(p.resolve() == Path(entry['path']).resolve() and record(p) == entry['sha256'] and
+                p.stat().st_size == entry['bytes'], 'Historical raw stream mismatch')
+    require(Counter((d / 'native.log').read_bytes().splitlines()) ==
+            Counter((d / 'native.stdout').read_bytes().splitlines()) +
+            Counter((d / 'native.stderr').read_bytes().splitlines()), 'Merged/raw line mismatch')
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    receipt['historical_failures'][item['directory']] = {
+        'exit_code': result['exit_code'], 'unchanged_source_files': len(historical),
+        'raw_capture_verified': True, 'log_sha256': result['log_sha256']}
+plan = read(config['native_plan'])
+record(config['native_plan'])
+require(plan['state'] == 'PLANNED_ONLY' and plan['source'] == config['source'] and
+        plan['wrapper_sha256'] == record(config['wrapper']), 'Native plan identity differs')
+required_runs = {config[k] for k in ['ordinary', 'release', 'cli']}
+for mode, values in config['modes'].items():
+    required_runs.update(values[k] for k in ['inventory_run', 'jpip', 'complement'])
+    spec = read(values['spec'])
+    require(spec['source'] == config['source'] and spec['inventory'] == str(Path(values['inventory']) / 'all.ids'),
+            'Reconciler spec source/inventory differs')
+    record(values['spec'])
+require({g['label'] for g in plan['gates']} == required_runs, 'Planned native gates differ')
+for gate in plan['gates']:
+    require(record(gate['template_receipt']) == gate['template_sha256'], 'Command template changed')
+receipt['planned_native_gates'] = [g['label'] for g in plan['gates']]
+receipt['focused_gate'] = config['focused']
+for path in config['supporting_inputs']:
+    record(path)
+for path in [Path(__file__), config_path]:
+    record(path)
+require(source_map(source) == manifest, 'Candidate14 changed during preparation')
+for path, digest in receipt['inputs'].items():
+    require(sha(path) == digest, 'Evidence changed during preparation: ' + path)
+receipt['boundaries'] = [
+    'Prepared specifications are not executed native coverage or final acceptance.',
+    'No Swift, native tests, codecs, fixture generators, servers or repository edits were performed.',
+    'Final14 source/ordinary/CLI/inventory/two complete sanitizer partitions must pass and reconcile.',
+    'Historical failures are preserved as failures, including the standalone interpreter crash.',
+    'All five independent direct peer gates remain unexecuted and unwaived; no whole-R3 acceptance or merge.'
+]
+with out.open('x') as output:
+    output.write(json.dumps(receipt, indent=2) + '\n')
+print(json.dumps({'state': receipt['state'], 'source_files': len(manifest),
+                  'delta_from10': list(delta), 'preserved_failures': list(receipt['historical_failures']),
+                  'release_cli09_reused': False, 'native_executed': False}, indent=2))

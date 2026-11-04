@@ -1,0 +1,24 @@
+{
+  "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+    "diagnostic11_sha256": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113",
+    "diagnostic12_sha256": "acdcc892d063f22543cdd69d53cf9f90aeb1a7291da3bb19e4a1cd4ce711b6dc",
+    "changed_from_11": true
+  },
+  "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+    "diagnostic11_sha256": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8",
+    "diagnostic12_sha256": "0a6fb4f0579e110fc525f80675048dd69d8a44e85741fa31e344e905c4c24928",
+    "changed_from_11": true
+  },
+  "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+    "diagnostic11_sha256": "af15f8f5359e249b83bbe5a1c2d59430616aa988724b391648a20fb51949024a",
+    "diagnostic12_sha256": "af15f8f5359e249b83bbe5a1c2d59430616aa988724b391648a20fb51949024a",
+    "changed_from_11": false
+  },
+  "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+    "diagnostic11_sha256": "e6ed95483a45e9fd394ecb5baecd24954db128efb2ab519e26e134106f56b319",
+    "diagnostic12_sha256": "e6ed95483a45e9fd394ecb5baecd24954db128efb2ab519e26e134106f56b319",
+    "changed_from_11": false
+  },
+  "generator_sha256": "22538a79f9edcefc65acf077643289c5067ea38191daea5cca4b27dd60d5a688",
+  "delta_sha256": "df9cc98d3218a959fc2ffcd62abb3c3bdccfb5eb422d9f220aecebef86a7eb14"
+}

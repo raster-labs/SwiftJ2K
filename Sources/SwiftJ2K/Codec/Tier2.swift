@@ -60,19 +60,19 @@ struct TileGeometry: Sendable {
 }
 
 /// Code-block style bits (Table A.19 and ISO/IEC 15444-15 Table A.4).
-struct CodeBlockStyle: Sendable, Equatable {
-    let bypass: Bool, reset: Bool, terminateAll: Bool, causal: Bool, predictable: Bool, segmentationSymbols: Bool
-    let ht: Bool, htMixed: Bool
-    init(bits: UInt8) {
+package struct CodeBlockStyle: Sendable, Equatable {
+    package let bypass: Bool, reset: Bool, terminateAll: Bool, causal: Bool, predictable: Bool, segmentationSymbols: Bool
+    package let ht: Bool, htMixed: Bool
+    package init(bits: UInt8) {
         bypass = bits & 0x01 != 0; reset = bits & 0x02 != 0; terminateAll = bits & 0x04 != 0
         causal = bits & 0x08 != 0; predictable = bits & 0x10 != 0; segmentationSymbols = bits & 0x20 != 0
         ht = bits & 0x40 != 0; htMixed = bits & 0x80 != 0
     }
-    static let `default` = CodeBlockStyle(bits: 0)
+    package static let `default` = CodeBlockStyle(bits: 0)
 
     /// Whether coding pass `index` (0 = the first cleanup pass) ends a
     /// codeword segment (Table D.9 / D.10).
-    func passTerminates(_ index: Int) -> Bool {
+    package func passTerminates(_ index: Int) -> Bool {
         if ht {
             // In Part 15, bit 0 (`bypass`) signals the presence of HT SigProp/MagRef refinement
             // passes in a second codeword segment (`Lref`) after the cleanup pass (`Lcup`).
@@ -83,26 +83,31 @@ struct CodeBlockStyle: Sendable, Equatable {
         return false
     }
     /// Whether coding pass `index` is coded raw under selective bypass.
-    func passIsRaw(_ index: Int) -> Bool { !ht && bypass && index >= 10 && (index - 10) % 3 != 2 }
+    package func passIsRaw(_ index: Int) -> Bool { !ht && bypass && index >= 10 && (index - 10) % 3 != 2 }
 }
 
 /// Bytes of one codeword segment, concatenated across layers.
-struct CodewordSegment: Sendable {
-    var data: [UInt8] = []
-    var passes = 0
+package struct CodewordSegment: Sendable {
+    package var data: [UInt8] = []
+    package var passes = 0
+    package init(data: [UInt8] = [], passes: Int = 0) {
+        self.data = data
+        self.passes = passes
+    }
 }
 
 /// What packets have contributed to one code-block so far.
-struct CodeBlockContribution: Sendable {
-    var included = false
-    var isHT = false
-    var lblock = 3
-    var zeroBitPlanes = 0
-    var passes = 0
-    var segments: [CodewordSegment] = []
+package struct CodeBlockContribution: Sendable {
+    package var included = false
+    package var isHT = false
+    package var lblock = 3
+    package var zeroBitPlanes = 0
+    package var passes = 0
+    package var segments: [CodewordSegment] = []
+    package init() {}
 }
 
-enum Tier2 {
+package enum Tier2 {
     // MARK: - Geometry (Annex B.3 – B.7)
 
     struct TileGeometryFootprint: Sendable {
@@ -414,7 +419,7 @@ enum Tier2 {
 
     // MARK: - Pass-count codeword (Table B.4)
 
-    static func readPassCount(_ reader: inout PacketBitReader) throws -> Int {
+    package static func readPassCount(_ reader: inout PacketBitReader) throws -> Int {
         if try !reader.readBit() { return 1 }
         if try !reader.readBit() { return 2 }
         let two = try reader.readBits(2)
@@ -424,7 +429,7 @@ enum Tier2 {
         return 37 + (try reader.readBits(7))
     }
 
-    static func writePassCount(_ passes: Int, _ writer: inout PacketBitWriter) throws {
+    package static func writePassCount(_ passes: Int, _ writer: inout PacketBitWriter) throws {
         switch passes {
         case 1: writer.writeBit(false)
         case 2: writer.writeBits(0b10, count: 2)
@@ -435,11 +440,11 @@ enum Tier2 {
         }
     }
 
-    private static func floorLog2(_ value: Int) -> Int { Int.bitWidth - 1 - value.leadingZeroBitCount }
+    package static func floorLog2(_ value: Int) -> Int { Int.bitWidth - 1 - value.leadingZeroBitCount }
 
     /// Splits `count` passes starting at pass index `start` into the chunks
     /// whose lengths a packet header signals (B.10.7.2).
-    static func segmentPassCounts(start: Int, count: Int, style: CodeBlockStyle) -> [Int] {
+    package static func segmentPassCounts(start: Int, count: Int, style: CodeBlockStyle) -> [Int] {
         var chunks: [Int] = []
         var index = start, remaining = count, current = 0
         while remaining > 0 {
@@ -453,7 +458,7 @@ enum Tier2 {
     // MARK: - Decoding
 
     /// Per-precinct tag trees survive across layers.
-    private struct PrecinctTrees {
+    struct PrecinctTrees {
         var inclusion: [TagTree]
         var msb: [TagTree]
     }

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "feedback_id": "codex-ongoing-audit-feedback-3",
+  "recorded_at": "2026-11-02T12:24:30+05:30",
+  "auditor_thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+  "implementer_conversation_id": "6f28647a-39a6-4a0a-8303-30b57a122458",
+  "reviewed_candidate_snapshot": "candidate-snapshot-25",
+  "reviewed_manifest_sha256": "518770cf90bf4cd4f7ed21ee1cf96fca06a0d76200a553033a9aef24837d6713",
+  "findings": {
+    "p1_cross_actor_generation_ownership": {
+      "summary": "Generation ownership was lost across actor hops between JPIPServer and JPIPWebSocketServer. JPIPServer.serveWebSocketUpgrade checked listener generation, obtained the WebSocket delegate, and invoked acceptLiveSocketUpgrade without its captured delegate generation. JPIPWebSocketServer called backend handleRequest with expectedGeneration:nil and closeSession without expectedGeneration, allowing delayed work from an old generation to enter a restarted backend and create a session or execute cclose=* against successor sessions before the post-await WebSocket check.",
+      "resolution": {
+        "jpip_server": "Added runningGeneration property and beforeWebSocketUpgradeHopHook; updated getWebSocketDelegate(forServerGeneration:) to return (isActive, delegate, delegateGeneration, hopHook); updated serveWebSocketUpgrade to pass expectedGeneration: delegateGen into wsServer.acceptLiveSocketUpgrade; made getOrCreateSession(for:) synchronous so no await occurs between generation verification and session map insertion.",
+        "jpip_websocket_server": "Added activeBackendGeneration (captured directly from jpipServer.runningGeneration during start() so numeric equality between wsServer.lifecycleGeneration and jpipServer.lifecycleGeneration is never assumed) and connectionBackendGenerations[connectionID]; updated acceptLiveSocketUpgrade and handleUpgradeRequest to validate expectedGeneration before any statistics/connection/socket mutation; updated handleFrame, handleRequestFrame, handleControlFrame, performHealthCheck, and closeConnection to pass expectedGeneration: backendGeneration into jpipServer.handleRequest and jpipServer.closeSession and re-check activeBackendGeneration == backendGeneration after every await.",
+        "deterministic_tests": "Added T8 cross-actor barrier tests covering separated numeric generation counters (wsServer.lifecycleGeneration != wsServer.activeBackendGeneration), delayed acceptLiveSocketUpgrade across wsServer restart, delayed handleRequest (both cnew and cclose=*) across wsServer restart, and delayed closeSession (both close-session:<sid> control frame and closeConnection) across wsServer restart."
+      },
+      "status": "RESOLVED_IN_CANDIDATE_26"
+    },
+    "p2_pending_native_io_cancellation_proof": {
+      "summary": "T7 signaled readiness at .afterConnectionBorrowAcquired (after borrow acquisition and before recv/send) and used a 5s socket timeout with a 5s wait, which did not deterministically prove the worker was inside a pending native kernel I/O call or exclude natural timeout.",
+      "resolution": {
+        "t7_recv_pending_kernel_io": "Configured 30s SO_RCVTIMEO, wrote 32 bytes from serverConn to clientConn, verified POLLIN==1 on clientConn fd, started readExact(count: 64) on worker queue, polled clientConn fd until POLLIN cleared to 0 (proving the first native recv() drained the 32 bytes and readExact looped immediately into the second native recv() for the remaining 32 bytes), verified worker remained blocked for 50ms, triggered recvToken.cancel(), and asserted completion in <1.0s with non-timeout cancellation error.",
+        "t7_send_pending_kernel_io": "Configured 30s SO_SNDTIMEO, started writeAll(16 MiB) on worker queue against idlePeer, polled until idlePeer POLLIN==1 (proving native send() syscalls transmitted bytes into kernel loopback) and sendClient POLLOUT==0 (proving sendClient kernel send buffer is completely full and the current send() syscall is blocked in kernel), verified worker remained blocked for 50ms, triggered sendToken.cancel(), and asserted completion in <1.0s with partial-bytes-sent error.",
+        "borrow_before_io_separation": "Retained explicit borrow-before-I/O cancellation coverage via .afterConnectionBorrowAcquired as a separate sub-check in T7."
+      },
+      "status": "RESOLVED_IN_CANDIDATE_26"
+    },
+    "reconciliation_metadata_external_peer_gates": {
+      "summary": "External peer gate list in reconciliation metadata must match the five direct scope gates rather than replacing two with internal full-suite/TSan obligations.",
+      "five_direct_external_peer_gates": [
+        "Direct independent combined Part 10+15",
+        "Independent native 3D JPIP",
+        "Independent exact repository WebSocket extension",
+        "Direct full38 Part 2 output",
+        "Multiple transmitted nonempty HT sets"
+      ],
+      "status": "RECONCILED_AND_VERIFIED"
+    }
+  }
+}

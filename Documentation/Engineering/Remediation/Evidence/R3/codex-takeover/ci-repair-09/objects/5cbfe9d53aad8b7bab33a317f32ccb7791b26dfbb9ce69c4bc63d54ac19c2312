@@ -1,0 +1,67 @@
+{
+  "state": "DIAGNOSTIC_OVERLAY_PREPARED_PENDING_INDEPENDENT_REVIEW",
+  "finished_at": "2026-10-31T11:40:54.860104+00:00",
+  "writer": "/root/jpip_fixture_repairs17",
+  "source": "candidate-snapshot-18",
+  "source_manifest_sha256": "20e72ac651207620fb5eb8e12f79217af96c255a4597160c21347ca8203b5a94",
+  "original_generator_sha256": "4496d51b6594e5097b060c1bc1fc8ef7a6708b9051435d0e0cb142624954de29",
+  "failed17_log_sha256": "aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0",
+  "files": {
+    "prepare_overlay.py": {
+      "sha256": "5885eb6dba263f8499d7d5c92dcf753c44195d204f5e645c121ff41752cfb2c2",
+      "bytes": 21130
+    },
+    "trace-helper.swift": {
+      "sha256": "5454a196f00458a85fc551cd6b8350e82351b52b031cad9788cf873444a57906",
+      "bytes": 3441
+    },
+    "static_check.py": {
+      "sha256": "40c19ced75edcff102859808237e85735f2a06e7536920f66c582f518f40eea6",
+      "bytes": 2719
+    },
+    "static-check-result.json": {
+      "sha256": "9b59dc07e5f633ed42b5d50b8c051ee0b73a5ba05cab606084101a841b3422f2",
+      "bytes": 495
+    },
+    "overlay-source.json": {
+      "sha256": "5d22fe9b7ed659ceaf03eaa85fe4725a9375cb15a86943cf8c7303ef2974ddc5",
+      "bytes": 901
+    },
+    "overlay-delta.patch": {
+      "sha256": "fc36256fbdb4b85f84abcbed3464f47278e89a84b01b562634d9f497bd0f59be",
+      "bytes": 29302
+    },
+    "diagnostic-source-manifest.json": {
+      "sha256": "70bcbf992b5e48e53736d3398fd2a702ada7fb7ddf518139e463fac3de501143",
+      "bytes": 381161
+    },
+    "report.txt": {
+      "sha256": "5dd6ecb5786e3676c3d93cc788584ad48fd091638f372cd75edf42d9fb420ce0",
+      "bytes": 6293
+    }
+  },
+  "overlay_files": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+      "base_sha256": null,
+      "instrumented_sha256": "5454a196f00458a85fc551cd6b8350e82351b52b031cad9788cf873444a57906"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "base_sha256": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+      "instrumented_sha256": "310c8bb74bf049c6366edef7fb99f88f2e4517df811ce37e2d9acfe34fe2a2f9"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "base_sha256": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+      "instrumented_sha256": "7d99cea32841c8acb8c790a6a3636839206135e5518af4a6d2fd476fd2a9b559"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "base_sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "instrumented_sha256": "3664e5dad7003435d35281514f2f7871e2f8d6610c3ef8d327603b5ce502c724"
+    }
+  },
+  "report_sha256": "5dd6ecb5786e3676c3d93cc788584ad48fd091638f372cd75edf42d9fb420ce0",
+  "writes_stopped": true,
+  "main_repository_modified": false,
+  "native_executed": false,
+  "git_or_network_used": false,
+  "whole_r3_accepted": false
+}

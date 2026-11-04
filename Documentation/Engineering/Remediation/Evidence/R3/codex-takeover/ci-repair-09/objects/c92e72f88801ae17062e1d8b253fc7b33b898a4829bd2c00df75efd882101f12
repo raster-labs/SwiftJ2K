@@ -1,0 +1,13 @@
+{
+  "claim": {
+    "invocation_id": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+    "thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+    "owner": "Codex Astra R3 takeover",
+    "scope": "isolated hydration, repair coordination, serialized native validation and acceptance preparation",
+    "acquired_at": "2026-10-31T05:42:23.862642+00:00"
+  },
+  "canonical_path": "/Users/raster/Documents/Codex/2026-10-13/che/work/swiftj2k-audit/audit.claim/owner.json",
+  "active_claim_sha256": "2bfeebdfc10f6c080905bf480844488a359a9bc59887dd006621c4030d989303",
+  "canonical_claim_sha256": "2bfeebdfc10f6c080905bf480844488a359a9bc59887dd006621c4030d989303",
+  "source_before_sha256": "3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e"
+}

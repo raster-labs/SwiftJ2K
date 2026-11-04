@@ -1,0 +1,424 @@
+// SPDX-License-Identifier: Apache-2.0
+import Foundation
+import SwiftJ2K
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+package struct JPIPHTTPSResult: Sendable {
+    package let response: JPIPResponse
+    package let peak: Int
+}
+
+/// Bounds the observable response owners, including each incoming callback's
+/// Data, the old/new accumulation buffers, and the final exact-sized body copy.
+/// URLSession allocates callback Data and protocol headers before calling us:
+/// those are checked on delivery, before we allocate/copy additional storage.
+/// Its opaque TLS, networking, cache and queued callback buffers are not under
+/// this accumulator's preallocation control and are not reported as measured RSS.
+package struct JPIPHTTPSResponseBuffer {
+    private let maximumBodyBytes: Int
+    private let maximumStorageBytes: Int
+    private var status: Int?
+    private var headers: [String: String] = [:]
+    private var headerWorkspace = 0
+    private var storage = Data()
+    private var bodyCount = 0
+    package private(set) var peak = 0
+    package private(set) var copiedBodyBytes = 0
+    package private(set) var bodyAllocations = 0
+    package var retainedBodyCapacity: Int { storage.count }
+    package var receivedBodyBytes: Int { bodyCount }
+
+    package init(maximumBodyBytes: Int, maximumStorageBytes: Int) {
+        self.maximumBodyBytes = maximumBodyBytes
+        self.maximumStorageBytes = maximumStorageBytes
+    }
+
+    private func sum(_ values: Int...) throws -> Int {
+        var result = 0
+        for value in values {
+            let (next, overflow) = result.addingReportingOverflow(value)
+            guard value >= 0, !overflow else {
+                throw CodecError(.resourceLimitExceeded, "HTTPS response storage overflow.")
+            }
+            result = next
+        }
+        return result
+    }
+
+    package mutating func receive(_ response: URLResponse) throws {
+        guard status == nil, let http = response as? HTTPURLResponse else {
+            throw J2KError.networkError("Invalid response type")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw J2KError.networkError("HTTP error: \(http.statusCode)")
+        }
+        var bytes = 0, count = 0
+        for (key, value) in http.allHeaderFields {
+            guard let key = key as? String, let value = value as? String else { continue }
+            bytes = try sum(bytes, key.utf8.count, value.utf8.count)
+            count = try sum(count, 1)
+        }
+        let (descriptors, overflow) = count.multipliedReportingOverflow(
+            by: 4 * MemoryLayout<(String, String)>.stride)
+        guard !overflow else {
+            throw CodecError(.resourceLimitExceeded, "HTTPS header descriptor storage overflow.")
+        }
+        // Exposed Foundation fields plus our dictionary, and a possible copied
+        // channel ID. Admit this before constructing the additional dictionary.
+        let workspace = try sum(bytes, bytes, bytes, descriptors, MemoryLayout<String?>.stride)
+        guard workspace <= maximumStorageBytes else {
+            throw CodecError(.resourceLimitExceeded, "HTTPS response header descriptors exceed remaining storage.")
+        }
+        var declared = max(Int64(0), http.expectedContentLength)
+        if let raw = http.value(forHTTPHeaderField: "Content-Length")?
+            .trimmingCharacters(in: .whitespacesAndNewlines), let length = Int64(raw) {
+            declared = max(declared, length)
+        }
+        guard declared <= Int64(maximumBodyBytes) else {
+            throw CodecError(.resourceLimitExceeded,
+                "JPIP HTTPS Content-Length (\(declared) bytes) exceeds limit (\(maximumBodyBytes) bytes).")
+        }
+        let minimumBodyWorkspace = try sum(workspace, Int(declared), Int(declared))
+        guard minimumBodyWorkspace <= maximumStorageBytes else {
+            throw CodecError(.resourceLimitExceeded, "JPIP HTTPS Content-Length exceeds remaining response storage.")
+        }
+        headers = JPIPResponseParser.parseHeaders(from: http)
+        status = http.statusCode
+        headerWorkspace = workspace
+        peak = max(peak, workspace)
+    }
+
+    package mutating func receive(_ data: Data) throws {
+        guard status != nil else { throw J2KError.networkError("HTTPS body arrived before response headers") }
+        let nextCount = try sum(bodyCount, data.count)
+        guard nextCount <= maximumBodyBytes else {
+            throw CodecError(.resourceLimitExceeded,
+                "JPIP HTTPS response payload exceeds limit (\(maximumBodyBytes) bytes).")
+        }
+        guard !data.isEmpty else { return }
+        let oldCapacity = storage.count
+        func requiredPeak(_ newCapacity: Int) throws -> Int {
+            let callbackPeak = try sum(headerWorkspace, oldCapacity, data.count,
+                                       newCapacity == oldCapacity ? 0 : newCapacity)
+            // Reserve the eventual exact-sized result copy too, so completion
+            // cannot need an unadmitted second body representation.
+            return max(callbackPeak, try sum(headerWorkspace, newCapacity, nextCount))
+        }
+        var capacity = oldCapacity
+        if nextCount > oldCapacity {
+            let (doubled, overflow) = oldCapacity.multipliedReportingOverflow(by: 2)
+            let remaining = maximumStorageBytes - headerWorkspace
+            let callbackOwners = try sum(oldCapacity, data.count)
+            guard callbackOwners <= remaining else {
+                throw CodecError(.resourceLimitExceeded, "HTTPS callback storage exceeds remaining limits.")
+            }
+            // Clamp geometric growth to a usable terminal capacity. Falling back
+            // to nextCount would reallocate the whole body on every trickled byte
+            // near the budget. Half the remaining storage reserves final output.
+            let ceiling = min(maximumBodyBytes, min(remaining / 2, remaining - callbackOwners))
+            capacity = min(ceiling, max(nextCount, overflow ? maximumBodyBytes : doubled))
+            guard capacity >= nextCount else {
+                throw CodecError(.resourceLimitExceeded,
+                    "HTTPS callback, accumulation and result body storage exceed remaining limits.")
+            }
+        }
+        let admittedPeak = try requiredPeak(capacity)
+        guard admittedPeak <= maximumStorageBytes else {
+            throw CodecError(.resourceLimitExceeded,
+                "HTTPS callback, accumulation and result body storage exceed remaining limits.")
+        }
+        peak = max(peak, admittedPeak)
+        if capacity != oldCapacity {
+            let copied = try sum(copiedBodyBytes, bodyCount, data.count)
+            let allocations = try sum(bodyAllocations, 1)
+            var replacement = Data(count: capacity)
+            try Self.copy(storage, count: bodyCount, into: &replacement, at: 0)
+            try Self.copy(data, count: data.count, into: &replacement, at: bodyCount)
+            storage = replacement
+            copiedBodyBytes = copied
+            bodyAllocations = allocations
+        } else {
+            let copied = try sum(copiedBodyBytes, data.count)
+            try Self.copy(data, count: data.count, into: &storage, at: bodyCount)
+            copiedBodyBytes = copied
+        }
+        bodyCount = nextCount
+    }
+
+    private static func copy(_ source: Data, count: Int, into destination: inout Data, at offset: Int) throws {
+        guard count > 0 else { return }
+        try destination.withUnsafeMutableBytes { (target: UnsafeMutableRawBufferPointer) in
+            try source.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+                guard let output = target.baseAddress, let input = bytes.baseAddress else {
+                    throw CodecError(.internalFailure, "Missing HTTPS accumulation storage.")
+                }
+                output.advanced(by: offset).copyMemory(from: input, byteCount: count)
+            }
+        }
+    }
+
+    package mutating func finish() throws -> JPIPHTTPSResult {
+        guard let status else { throw J2KError.networkError("Invalid response type") }
+        let finalPeak = try sum(headerWorkspace, storage.count, bodyCount)
+        guard finalPeak <= maximumStorageBytes else {
+            throw CodecError(.resourceLimitExceeded, "HTTPS result body storage exceeds remaining limits.")
+        }
+        peak = max(peak, finalPeak)
+        let copied = try sum(copiedBodyBytes, bodyCount)
+        var body = Data(count: bodyCount)
+        try Self.copy(storage, count: bodyCount, into: &body, at: 0)
+        copiedBodyBytes = copied
+        return JPIPHTTPSResult(response: JPIPResponse(
+            channelID: JPIPResponseParser.extractChannelID(from: headers), data: body,
+            statusCode: status, headers: headers), peak: peak)
+    }
+}
+
+/// One request, one task, and one serial delegate queue on both Darwin and
+/// FoundationNetworking. Cancellation never invalidates a session while task
+/// creation is pending. Task completion precedes finishTasksAndInvalidate;
+/// only the invalidation acknowledgement releases owners and wakes the caller.
+package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTransportRequestOwner, @unchecked Sendable {
+    // SAFETY: all mutable state, buffer access and result publication use lock.
+    // Cancellation/invalidation calls, harness callbacks and continuation resumes
+    // happen outside it. Only creation/publication of the suspended task holds the
+    // lock. The serial delegate queue orders body callbacks before task completion.
+    private let lock = NSLock()
+    private var buffer: JPIPHTTPSResponseBuffer?
+    private var session: URLSession?
+    private var task: URLSessionDataTask?
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var result: Result<JPIPHTTPSResult, any Error>?
+    private var failure: (any Error)?
+    private var started = false
+    private var taskCompleted = false
+    private var invalidated = false
+    private let completion = JPIPRequestCompletion()
+    private let deinitObserver: (@Sendable () -> Void)?
+
+    package var isFinished: Bool { completion.isFinished }
+    package func waitForCompletion() async { await completion.wait() }
+    package func cancelForTransportClose() { cancel() }
+
+    package init(maximumBodyBytes: Int, maximumStorageBytes: Int,
+                 deinitObserver: (@Sendable () -> Void)? = nil) {
+        buffer = JPIPHTTPSResponseBuffer(maximumBodyBytes: maximumBodyBytes,
+                                         maximumStorageBytes: maximumStorageBytes)
+        self.deinitObserver = deinitObserver
+        super.init()
+    }
+
+    deinit { deinitObserver?() }
+
+    package var hasActiveOwners: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return session != nil || task != nil || continuation != nil || buffer != nil
+    }
+
+    package var receivedBodyBytes: Int {
+        lock.lock(); defer { lock.unlock() }
+        return buffer?.receivedBodyBytes ?? 0
+    }
+
+    package func read(
+        _ request: URLRequest, configuration: URLSessionConfiguration,
+        deadline: ContinuousClock.Instant?, beforeTaskPublication: (@Sendable () -> Void)? = nil,
+        afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
+    ) async throws -> JPIPHTTPSResult {
+        try claimStart()
+        let watchdog: JPIPDeadlineWatchdog?
+        do {
+            watchdog = try deadline.map { deadline in
+                JPIPDeadlineWatchdog(after: try JPIPTransport.remainingSeconds(until: deadline)) { [weak self] in
+                    self?.cancel(CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed."))
+                }
+            }
+        } catch {
+            discardBeforeSessionCreation()
+            throw error
+        }
+        defer { watchdog?.cancel() }
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { signal in
+                start(request, configuration: configuration, signal: signal,
+                      beforeTaskPublication: beforeTaskPublication, afterTaskPublication: afterTaskPublication)
+            }
+        } onCancel: {
+            self.cancel(CancellationError())
+        }
+        let completed = try takeResult()
+        try Task.checkCancellation()
+        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }
+        return completed
+    }
+
+    private func start(
+        _ request: URLRequest, configuration: URLSessionConfiguration,
+        signal: CheckedContinuation<Void, Never>, beforeTaskPublication: (@Sendable () -> Void)?,
+        afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
+    ) {
+        lock.lock()
+        continuation = signal
+        lock.unlock()
+
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        // Service deadline-bound response callbacks at the same priority as
+        // JPIP's deadline queue; serial ordering and ownership remain unchanged.
+        queue.qualityOfService = .userInitiated
+        queue.name = "com.rasterlab.swiftj2k.jpip.https"
+        let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
+        lock.lock()
+        session = owner
+        lock.unlock()
+        // A synchronous, nonblocking harness barrier exercises cancellation in
+        // the session-created/task-unpublished gap. Production passes nil.
+        beforeTaskPublication?()
+        lock.lock()
+        if let failure {
+            taskCompleted = true // Proven no task was ever created.
+            result = .failure(failure)
+            buffer = nil
+            lock.unlock()
+            owner.finishTasksAndInvalidate()
+            return
+        }
+        // Cancellation can only latch under this same lock; it cannot invalidate
+        // owner between dataTask creation and publication (fatal on corelibs).
+        let created = owner.dataTask(with: request)
+        task = created
+        lock.unlock()
+        afterTaskPublication?(owner, created)
+        created.resume()
+    }
+
+    private func claimStart() throws {
+        lock.lock(); defer { lock.unlock() }
+        guard !started else {
+            throw CodecError(.internalFailure, "HTTPS request objects are single-use.")
+        }
+        started = true
+        // Transport close may have cancelled and joined this owner before the
+        // sender was scheduled. Such a late read must not create a new session.
+        if taskCompleted, let failure { throw failure }
+    }
+
+    private func discardBeforeSessionCreation() {
+        lock.lock()
+        // Only the invocation that successfully claimed this single-use object
+        // reaches deadline preflight. It has not created any session or task.
+        buffer = nil
+        taskCompleted = true
+        invalidated = true
+        lock.unlock()
+        completion.finish()
+    }
+
+    package func cancel(_ error: any Error = CancellationError()) {
+        lock.lock()
+        guard !taskCompleted else { lock.unlock(); return }
+        if failure == nil { failure = error }
+        let capturedTask = task
+        let neverStarted = !started
+        if neverStarted {
+            buffer = nil
+            taskCompleted = true
+            invalidated = true
+        }
+        lock.unlock()
+        capturedTask?.cancel()
+        if neverStarted { completion.finish() }
+    }
+
+    public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                           didReceive response: URLResponse,
+                           completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
+        lock.lock()
+        var allow = false
+        if !taskCompleted, failure == nil, task === dataTask {
+            do { try buffer?.receive(response); allow = true }
+            catch { failure = error }
+        }
+        lock.unlock()
+        completionHandler(allow ? .allow : .cancel)
+        if !allow { dataTask.cancel() }
+    }
+
+    public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        lock.lock()
+        if !taskCompleted, failure == nil, task === dataTask {
+            do { try buffer?.receive(data) }
+            catch { failure = error }
+        }
+        let shouldCancel = failure != nil && !taskCompleted
+        lock.unlock()
+        if shouldCancel { dataTask.cancel() }
+    }
+
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        lock.lock()
+        guard !taskCompleted, self.task === task else { lock.unlock(); return }
+        taskCompleted = true
+        if failure == nil { failure = error }
+        if let failure { result = .failure(failure) }
+        else {
+            do {
+                guard let completed = try buffer?.finish() else {
+                    throw J2KError.networkError("Invalid response type")
+                }
+                result = .success(completed)
+            } catch { result = .failure(error) }
+        }
+        buffer = nil
+        let signal = releaseIfFinishedLocked()
+        lock.unlock()
+        // No task callbacks remain on our serial queue before invalidation is
+        // requested. Do not use invalidateAndCancel as a task-completion join.
+        session.finishTasksAndInvalidate()
+        resume(signal, afterCallbacksOn: session)
+    }
+
+    public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
+        lock.lock()
+        guard self.session === session else { lock.unlock(); return }
+        invalidated = true
+        if let error, failure == nil, !taskCompleted { failure = error }
+        let pending = taskCompleted ? nil : task
+        let signal = releaseIfFinishedLocked()
+        lock.unlock()
+        pending?.cancel()
+        resume(signal, afterCallbacksOn: session)
+    }
+
+    private func resume(_ signal: CheckedContinuation<Void, Never>?, afterCallbacksOn session: URLSession) {
+        guard let signal else { return }
+        // A serial-queue tail operation runs only after the completing delegate
+        // callback has returned. It carries the wake-up, never the owning result.
+        session.delegateQueue.addOperation { [completion] in
+            completion.finish()
+            signal.resume()
+        }
+    }
+
+    private func releaseIfFinishedLocked() -> CheckedContinuation<Void, Never>? {
+        guard taskCompleted, invalidated else { return nil }
+        let signal = continuation
+        continuation = nil
+        session = nil
+        task = nil
+        return signal
+    }
+
+    private func takeResult() throws -> JPIPHTTPSResult {
+        lock.lock()
+        let completed = result
+        result = nil
+        lock.unlock()
+        guard let completed else {
+            throw CodecError(.internalFailure, "HTTPS request has no completed result (request objects are single-use).")
+        }
+        return try completed.get()
+    }
+}

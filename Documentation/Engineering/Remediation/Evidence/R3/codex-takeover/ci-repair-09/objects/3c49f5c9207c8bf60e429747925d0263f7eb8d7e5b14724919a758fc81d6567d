@@ -1,0 +1,31 @@
+{
+  "scope": "Local runtime queue property only; source/binary hashes observed after execution. Interpreter import crash retained, compiled probe succeeded. Not performance or timing qualification.",
+  "finding": "Fresh serial OperationQueue.qualityOfService = default(-1), underlyingQueue nil, on local macOS27.0.1/Swift6.4.",
+  "documentation_caution": "Apple OperationQueue qualityOfService documentation says new queues background; observed property is default. Do not infer effective per-operation QoS solely from property.",
+  "official_documentation": "https://developer.apple.com/documentation/foundation/operationqueue/qualityofservice",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/queue-policy-probe-13/main.swift": "43589b25b076f116837dc0441cdd0701ebff572d3e10e5ef4e99f54d1c0ebefb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/queue-policy-probe-13/queue-policy": "9b380f5003d8874c6c11c04132cfea01ceb3d290dac1d92f2b53c4ba3b928a1b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/result.json": "ace2ad951db1d03b548920d87612cdfcf71a67af442fa8acec05b00831b1f30f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.log": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/command.json": "97a94c2d2b450d98a6007376712fafdf3b98417a8d6f04a015bcd306d2e68963",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.stderr": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/result.json": "7a2af4079a6ad5f7e8dede181878fbcfaa59fe4263e3738eab48899010923999",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/native.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/command.json": "ea8466a6da7e6b7cd50097657a0cc88c9fea4b7863aae826e438a597e0267e01",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-build-13/native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/result.json": "dcb358782032e2bb29f37c940810c64c34868f064242c0002220895c53ec3c20",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/native.stdout": "f5cd1c51e22d28d6ea37a909fd7977e750f2ee95e01de596cb148db7b4e9c227",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/native.log": "f5cd1c51e22d28d6ea37a909fd7977e750f2ee95e01de596cb148db7b4e9c227",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/command.json": "5894717b74b351cd99ba29a83c5a09425842da58e09145bbeca90afadb4b162e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/queue-policy-run-13/native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

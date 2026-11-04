@@ -1,0 +1,52 @@
+SwiftJ2K R3 — independent JPIP lifecycle delta audit 04
+Reviewer: /root/independent_jpip_review. Read-only source review; no native execution.
+
+Frozen candidate: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-04
+Comparison baseline: candidate-snapshot-02 and work/independent-jpip-review-03.txt.
+Root manifest: work/candidate-snapshot-04-source.json (1,344 files).
+Reviewer receipt: work/independent-jpip-review-04-source.json (68 scoped source/test files).
+Source/test line references below are relative to candidate-snapshot-04.
+
+Disposition: no new confirmed defect found in the reviewed JPIP delta. C01 and C02 are closed at the source-review level by ownership/generation checks that address the previously reported schedules. The five deterministic lifecycle cases meaningfully target those schedules and obsolete handshake outcomes. Native compilation/execution, full concurrent/resource/security validation and external gates remain required; this report does not claim their success or issue whole-R3 acceptance.
+
+C01 closure — originating owners and stale cleanup
+
+JPIPWebSocketTransport.swift:1191–1196 captures the original budget and generation before request start, including for deferred endRequest. Timeout (1215–1224) and external cancellation (1251–1258) close the original cancellation-token socket and original budget immediately, without depending on actor scheduling. Write failure forwards the same original owners (1244–1247). All three paths use finishRequestFailure at 1299–1310; this closes only its captured budget/connection before any observer suspension. Actor state mutation at 1313–1319 requires both the original generation and identical current budget/socket owners.
+
+Therefore the previously reported late timeout/cancellation actor task may run during or after connection B's handshake, but it can only close A's original owners and then fails the current-state identity check. It cannot close B's budget or remove B's pending continuations. A late writer failure has the same protection. Request deferred cleanup cannot accidentally end a request on a replacement budget. Existing timeout error classification and external CancellationError priority remain at 1260–1271.
+
+C02 closure — early retirement and obsolete handshake outcomes
+
+connect reserves the new generation at 899–902 before installing the next budget at 904–906 or awaiting any handshake. First matching handleSocketClosed retires that generation at 1105–1108 before closing state or resuming continuations at 1117–1124. Thus duplicate reader-final notifications already fail the generation check before a caller can reconnect. The reader's original budget is still closed independently at terminal cleanup, which is safe because it is a captured owner.
+
+A pending handshake has a generation-tagged cancellation token (909–918). disconnect invalidates generation and cancels that token before changing owners (1128–1138). After suspension, handshake publication requires matching generation, budget identity and connecting state (958–964). An obsolete success closes only its own returned socket/budget and throws cancellation; it cannot publish over B. The failure path similarly changes current state only when its generation and budget still match (936–955). Its deferred token cleanup cannot erase B's pending token. Reconnect backoff captures its generation and checks both generation/state after sleep (1522–1541), so disconnect or replacement while sleeping prevents obsolete reconnection.
+
+These checks address both C02's duplicate malformed-frame close during a new handshake and the broader obsolete-handshake result race. No stronger ordering assumption about actor task FIFO execution is needed.
+
+Lifetime, API, security and hook assessment
+
+The lifetime statement at 1295–1298 is appropriately narrow: the finite writer is awaited, while timeout/cancellation actor notifications and the reader's terminal notification may finish later. Their captured owners plus generation/identity guards make delayed cleanup idempotent with respect to later connections. Watchdog cancellation still joins only its synchronous callback; no universal reader/thread join is claimed. Existing per-message actor-call joining and success publication after source-message scope remain intact. No new raw-pointer escape or unchecked concurrency annotation is introduced in production by this delta.
+
+The public method signatures and wire protocol are unchanged. disconnect now also retires a reconnecting operation and its pending handshake. The observation enum and setter are package-only (28–36,795–803), optional and nil by default. Captured observers run outside timer callbacks and socket/budget locks; suspension points are followed by the relevant ownership checks. The hooks do not accept input from the wire or expand the public consumer API. This is a test-control surface inside the package, not an externally accessible transport bypass.
+
+The existing pre-body length/storage admission, push accounting, handshake peak accounting and callback cancellation boundaries are preserved. Other production JPIP files are byte-identical to snapshot02. Therefore review03's narrow source conclusions for B01/B02 and F13 remain applicable. The core slice-stack performance edit in this full snapshot is outside this JPIP delta review.
+
+Tests assessed without execution
+
+CodexR3WebSocketLifecycleTests.swift:31–101 parameterises three cases: timeout, external cancellation and the malformed-bin reader's duplicate close. Each parks A's old actor cleanup, waits for the old request to finish, establishes that B's real HTTP handshake request is pending, releases and acknowledges A cleanup, then completes B and exchanges a bounded response. It checks error classification, one old request completion, zero pending requests and final reader notification acknowledgement. The malformed compact bin uses class 0xFF, which reaches the actor's invalid-bin-class path rather than relying on an incomplete socket frame. The timeout/cancellation cases deliberately hold actor cleanup after direct socket/budget shutdown, exercising the original C01 ordering.
+
+The two cases at 103–143 park an old successful or failed handshake before actor publication/state change, disconnect it, establish and use B, then release the obsolete result and prove B still serves a later request. This checks the post-suspension guards rather than only checking a counter value.
+
+LifecycleProbe at 156–184 is a cooperative actor barrier; suspended observations release its actor. HandshakeBarrier and LifecyclePeer at 186–276 use locked/Mutex shared state and dedicated blocking peer threads. The tests release barriers on failures, close peers, and observe peer worker completion. Their new unchecked Sendable helper annotations have local locking/ownership explanations. The tests use existing portable socket wrappers, Foundation, Synchronization and Swift Testing; no new platform-specific call was introduced. Source inspection found no new concrete Swift syntax/type issue, but compilation is still required.
+
+CodexR3WebSocketBudgetTests.swift:234–237 now unwraps readHTTPRequest before using header, addressing the optional-request compile error. The prior handshake telemetry assertions remain unchanged. The test file otherwise matches snapshot02.
+
+The five lifecycle cases use the repository's frame codec in a scripted loopback extension peer. That is adequate for the targeted scheduling regression because barriers force the old callback/new owner interleaving and the assertions require a working replacement exchange. It is not an independent RFC/JPIP extension interoperability oracle. There is no new forced writer-error or fully blocked-write lifecycle test in this file; source uses the same captured-owner cleanup for writer failure, while actual blocked-write qualification remains separately unexecuted. Native receipts must establish these tests compile and complete under the intended concurrent scheduling.
+
+Evidence and remaining boundaries
+
+The reviewer hashed scoped files before review, checked root-manifest agreement, and rehashed after review. The receipt records stable bytes and no manifest mismatch. No source edits, native builds/tests, listener/server, commit or repository mutation were performed by this reviewer. Only the external audit report/receipt were written. Implementer prose was treated as a claim and checked against the actual diff; no implementer self-approval was adopted.
+
+The report establishes source closure of C01/C02 only. DNS getaddrinfo cancellation remains an unconfirmed concern; dedicated threads alone do not qualify resolver interruption. URLSession's internal protocol-header buffers remain outside claimed pre-allocation control. Fully blocked WS-write and trickled HTTPS qualification require actual owning receipts. Native validation on candidate04 was pending when this report was written.
+
+Independent native 3D JPIP and the exact repository WebSocket extension peer gates remain UNEXECUTED and UNWAIVED. Combined Part 10+15, direct full38 Part 2 output, multiple transmitted nonempty HT sets, applicable exact-head CI and other R3 prerequisites remain with their owning gates. No self-peer or source-review result here substitutes for them. No whole-R3 acceptance or waiver is issued.

@@ -1,0 +1,43 @@
+HTTP/HTTPS close ownership repair — final implementation handoff
+
+Canonical takeover claim rechecked before this pass: 1ce94f4b-ebfa-4309-98f6-5530103803d9. Baseline 7f1b123c1c8705666b3c19838f3ed22c00dc6145. Root preserved the pre-close source and original reports under work/https-portability-before-close-09/. The two original HTTPS reports remain byte-identical to that copy; this report and https-portability-close-source.json supersede their source identities without rewriting them. Original portability, storage, opaque URLSession-buffer, and harness-only qualification limitations still apply.
+
+Confirmed repairs: HTTPS-CLOSE-01 and R3-TCP-CLOSE-01. JPIPTransport now registers every HTTP/HTTPS request owner under a unique ID and captured generation before its first worker/read suspension. close retires the generation, captures all registered owners, cancels them, and clears the retired path/telemetry/idle socket before any await. Captured WebSocket handling is retained. Registry entries stay until their own sender exits, so overlapping closes see and join the same old request. No close cleanup writes shared state after suspension; a later request is allowed to own the replacement generation.
+
+Publication: both response paths compare their captured generation before publishing receive telemetry, cached connection, channel/path, or a successful response. An obsolete TCP success closes only its captured survivor and throws CancellationError; it cannot clear or replace the fresh connection. Sender cleanup removes only its unique registry ID. The original HTTP fresh/reused/retry path, headers/body admission, elapsed deadline categorisation and token binding remain intact.
+
+Join proof:
+- JPIPRequestCompletion is a locked, idempotent completion broadcast with independent waiters. Waiting does not read or consume the sender result.
+- HTTPS requests cancelled before read startup clear their initial buffer and finish the latch immediately; a later read claims the single-use object and throws its latched failure before creating any session. Deadline preflight failure also finishes the latch. Started sessions finish the latch on the serial delegate-queue tail after task completion and invalidation acknowledgement, then wake their sender. Explicit owner cleanup stays immediate; actual delegate destruction is tested separately through a bounded non-retaining deinit event, since Foundation/autorelease/async-frame ownership need not disappear synchronously at read return.
+- HTTP owner beginWorker/cancel state prevents cancelled unstarted work from creating a connection. Cancellation calls for the same owner are serialised so they acknowledge any preceding captured socket close. JPIPBlockingWorker now has an optional completion callback, invoked after its original Result has been stored through the explicit publication lock and all finite I/O has ended. The HTTP owner uses that callback to signal join, independently of transport actor scheduling.
+- HTTP join means finite worker I/O and locked result publication complete and the captured socket cancelled. It does not mean physical Thread exit or deallocation of every retained response reference. Opaque getaddrinfo/system DNS can delay a worker; close waits for it and no universal DNS cancellation/close latency bound is claimed.
+
+Deterministic new close coverage:
+- HTTPS: a silent live URLProtocol request has its own delegate queue paused; two closes both remain pending against the same unfinished owner until that queue resumes. Registered-but-not-started close joins immediately without starting protocol I/O even when the sender later resumes. Held old success/cnew and held old close are released around a fresh request; fresh path survives both.
+- HTTP: fresh, reused, and stale-keepalive retry connections each reach a loopback held-response barrier. The dedicated finite worker is held after locked result publication, showing two closes remain pending on the same completion latch; release proves sender cancellation and peer EOF. The retry case confirms two accepted connections. Registered-before-worker close proves no later connect. Held old success and old close cannot overwrite fresh channel/path/socket; a subsequent request reuses the replacement connection.
+- Public close chain: JPIPClient.close while its initial cnew is held at the loopback peer cancels/joins the request without Task.cancel, and no active client session is installed.
+- Lifecycle probe uses cooperative continuations, with failure tracking that releases pending barriers. The HTTP completion gate blocks only its dedicated native worker; no global/cooperative worker is blocked. Tests use explicit readiness, not sleeps for ordering. Existing deadlines and concurrency are not relaxed.
+
+Scope limitation: only HTTP/HTTPS requests registered at transport close entry are covered by that join. Higher-level JPIPClient.createSession awaits before transport registration or after a transport result returns were not given a new client-generation state machine in this pass. The public-client test covers the confirmed held-cnew path, not every possible client-level interleaving. No claim is made about all possible facade/embedded-server close paths.
+
+Validation: git diff --check and static trailing-whitespace checks for all seven files pass. Original HTTPS report/source receipts were checked byte-identical against the preserved pre-close copy. No native compiler/test/server/oracle process, commit, push or local Linux execution occurred. Root owns frozen native and hosted qualification. Advisory HTTPS and TCP reviewers found no new blocking production issue at their checkpoints; their final hash-qualified independent review remains separate.
+
+Root validation needed: freeze these seven files with its separate volume-test compiler fix; compile and run CodexR3HTTPStreamingTests and CodexR3TransportCloseTests, then the required ordinary full suite and complete sanitizer partitions. Hosted Linux Swift6.4 and the existing independent peer/TLS gates remain unwaived.
+
+Final scoped SHA-256:
+Sources/SwiftJ2KJPIP/JPIPTransport.swift
+3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a
+Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d
+Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift
+a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7
+Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift
+da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64
+Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+72d8cee42d0c9bb9edcbb9980bf2edfbba51720fe8b79b47a709159b87d826eb
+Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift
+3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8
+Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift
+1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d
+
+Positive STOP: all scoped source/test/report writes complete and frozen. Existing ws_budget child remains stopped; no new child was spawned. Seven-file receipt: work/https-portability-close-source.json. No parent-owned documentation/status or other-agent source was changed by this implementer.

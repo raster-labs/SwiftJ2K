@@ -1,0 +1,194 @@
+{
+  "state": "PREPARATION_ONLY_NO_FINAL_RUNTIME_CLAIM",
+  "at": "2026-10-31T10:29:21.693056+00:00",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14-source.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-source.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/prepare_plan.py": "18cb4a2fde8388534ba11bf63633364857666de9cb1f3fff419c142d68458f46",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/prepare_plan.py": "18cb4a2fde8388534ba11bf63633364857666de9cb1f3fff419c142d68458f46",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-source.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/native.log": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/native.stdout": "622c685f199694dd5377c531344565a2267b9fc001eb5754eefb91c4b14834a3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/native.stderr": "ff069caa9d5a6729e178f0ae64c5f6dc16ceb594d3d5a77e9130d7b21f8a6014",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/report-swift-testing.xml": "1845766634bd5eb5fdc9ee52d380ef1cca245d989a76d3e6242fa0ba3189f4ed",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/result.json": "1d0f0921be595cbee8a4bd0811d3e2713aa0005010b8655fc3265c063511f350",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/source-before.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/source-after.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/command.json": "98554baca300f4b04be855295abfcc81da68891d5c9b225b554cdc8b3f970603",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/native.log": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/native.stdout": "2b90420162de22acd8eb4e1f44e39f4e464e8ff67f8e2f48f689aa407c80b941",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/report-swift-testing.xml": "e7e3feb0de900434bf4211d976fb7ccdec66ec6e843c17bdb8b2e3072c463364",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/result.json": "bd8f62abb5d926445c9a2d026f81e3bd70922060accf422626a9c589d367ce56",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/command.json": "7842d70a29ecabd6e934d2cc04b03beb16eedce8719714aba598b19e4a15f0f4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-11-source.json": "c9b05bd93f8c28e88d3782124125d211f05e1dde7ce4e7fe5e4adf4f908ec444",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/native.log": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/native.stdout": "58c70cb8767ade2c3593a07bf8ead013117b1762857420aa61a83dc930958e11",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/native.stderr": "9e88585adfb3a55389cf7bbe96badccb91b06cc531c443da7130d87bd6a9f6a3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/report-swift-testing.xml": "b94d7f40cc0f90ff41cbc0da038221c1e86accf4fc4e8db1b4c9e9d9e18628c1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/result.json": "777492490d3c10d65c20854849e38985441e58e6962d5f48c62deb5854be97e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/source-before.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/source-after.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/command.json": "5954524ff831d9b32680cda32af19fb45afd4a8839aaec3f641cbd41a11e8a89",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12-source.json": "eb5fd36fc93d8809b05cfe8dea40342fc6308d43aa70a4a6fd33efdbde43a101",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.log": "7771302c1f4eaa91b3ad6cfe3fdfca68138d1a163fba512e3ac710055ba46d91",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.stdout": "6b3fcf3080197b0d6967dee44a4b005e8f5e0c9d663df8f9ac42d481885c4af2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.stderr": "390390c98a091013aae251c6877d824cc8cbdbb5e4d437a8e9e131aad97a1e7f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/report-swift-testing.xml": "5a7a403f605bb890261108c3bacfc0df334059a0222610e1fe9a7961890411cb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/result.json": "f3bbb85699d1403a58e792833ba8e082f429e5cb7c433250910da09769d0005c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/source-before.json": "536aca6f8402aab7c89d815bf6e33d3f5a3104212fe58c6401fcd6cdc7eb4d03",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/source-after.json": "536aca6f8402aab7c89d815bf6e33d3f5a3104212fe58c6401fcd6cdc7eb4d03",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/command.json": "72cbf98d337a2448d6268a15d1fd3db6a41964af3dd65bc9ed334c094a17bcf1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.log": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stdout": "ae8c4f6c4c2ba0943653c14036c484b708d4859610f5fc1f4854e06d09004e5e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/report-swift-testing.xml": "2f2fbdf9d622bc9641c47de3b50d0f8d0e1f1be5ba59da192e7ffac8fb070fbe",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/result.json": "49b38bd64b1631ac9251ebbab0a2ee6088a3f5ab8d13acbc8a86792180a6c09a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/command.json": "dc3d2b0968d8d761f2db8634899b30a231946ac31edef14b6800aebac79fd2da",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.log": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/native.stderr": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/result.json": "ace2ad951db1d03b548920d87612cdfcf71a67af442fa8acec05b00831b1f30f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/command.json": "97a94c2d2b450d98a6007376712fafdf3b98417a8d6f04a015bcd306d2e68963",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-14.json": "4ddc5b0e432ca3b7f7febc747766bdde52fe1ce04792fdf669d8562b6b496f9d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/planned-14/thread-final-14.json": "053b0d3fd4a0a6b0e053325055899e1591e4720b7c8a0047a33e4e4ea3d7fb1c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/planned-14/address-final-14.json": "08f387ce00dda0060413f7fd6f299ba49410bf3f1400645db2a5d93eafdf081d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-08/command.json": "f3906953e2868be8096f0e38cd730506be9045cdf8670b827eaea2a3ccf49f34",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-release-build-09/command.json": "891a5bf8ca149964d1b8cb8d8fd117621a7b98a3be06f5f8c76478ae19d35e2e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-cli-09/command.json": "cb234ace1f4918645294ee6224059bbf460850662bd88ac0ffd45b28220b115d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-tsan-inventory-08/command.json": "19b0d9dd3ad9df5b7738a9f382fdab9f41312566bdb27dfd906a7e63c907a77c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-08/command.json": "0fa0b226abc93b7e1140224003f93eb10cfa08734a1d7480fdb6dfe8a911dc6d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-08/command.json": "1aea1cedd693f3bfa452e2f45a276185a1a51898549d08e55b8c2b627c4a6b12",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-08/command.json": "9e5b3bf528ed6ba3350f004f8dfadd599b451389797d04eb0fba4a8b750eb366",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-08/command.json": "758ef628502e99e9d49fa8d06cd480ad5870982bdcfde13ebfb43c5ec00e9ef4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-asan-08/command.json": "ddb489f1d79e97187a5c558eca013710c5f52fd491204065f5c05ebfa7516bb5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-09.txt": "1592738834e88180faf319b87d6ae06ad5a194254c3eb6ccfc947e87cfa7a84e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-09-source.json": "105962ddc8e7035ecb35fd6492d9142c146dfe6a54b69e7fb48d13141ded43ee",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-tcp-close-review-09.txt": "37625a6514f3fdd012b402873bdd0cd472a14d8e8b6cd34652bb4de7027c75bc",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-tcp-close-review-09-source.json": "7ac8c4ffe6acce0702488602684f2e54f975d0daba59499f0ac5311a6b6bf1f7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-provenance.json": "f1c5c156ab2ee3f2a11c75970c33217975cd4ceb498af71de2c752ccd2b1bb22",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/independent-root-review.json": "b2ec8f00e2cdd97a4e628030e7af237581636a45b4c508b36d4096001058bbd8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14-provenance.json": "a601b21d13295c188739b1c94130656a1d37d4769976e811ab7259f7e88fc387",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-test-proof-fixes-13/source.json": "ff4dd2dadeb7f90ba41ef73ede1004b802632706ef781652beed7115ff26a2a4",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-test-proof-fixes-13/delta.patch": "178f694a9f30b7a4be890ef3f1a45e87d962e02ceabaa7bfe9ee25c80461bd17",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-test-proof-fixes-13/report.txt": "daa63008fe18b783b134feaaf8b6a0f00d6ec3e9ad1b8db568d99ae820ecb83e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-delegate-policy-14/source.json": "c264fbe9a6979cac6a15effe044a5094eb14b10bf78a8b9358d52e8b6e308e25",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-delegate-policy-14/delta-from13.patch": "321156b8b6fbef75af4ea73a753f05379f4081f01a4473f85b5e227986229f94",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-delegate-policy-14/report.txt": "3f74d732c99599899e64e94f550a9037b8069b0bd0a299ca55f4288907c5939e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/tcp-peer-lifetime-14/source.json": "e55e756d8b9d094908d0869ee6e132e48cea1a1fd20d8d195a6a13ad7b9db6a7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/tcp-peer-lifetime-14/delta-from13.patch": "afcfbbb1e2c72f508e0931dc2dd94ad0cac756edd6c132a377f7e89635c4069f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/tcp-peer-lifetime-14/report.txt": "0d14295c7ccbc68d4ccc3702703a94cf52540cfb3f453c2c0fc1d214ecdf280b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/queue-policy-probe-13/execution-identity.json": "3c49f5c9207c8bf60e429747925d0263f7eb8d7e5b14724919a758fc81d6567d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13/result.json": "47eece2a4683c43c13a1749951dca0dc4583f2d0616fe43a4c95d9b6da429cba",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sample-full-diagnostic-13.py": "08baa05f184430954ad31f49ed72f6799cd5d0693ae92be5ad6ba051ca40cc65",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-12.txt": "2283d36ee76a79b098d06245402b50723562db07b7063637f6022343b895f4d2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-diagnostic-review-12-source.json": "f133917dd79a5d4a9e86c7d7740ec80ce69a720b042b4f5bf353c966169db1d1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13-independent-review/report.txt": "c34c6a2acdf58cd95d30e5b6463e6bb71ecfe04af9a467a194e91c8c7217b42e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sampled-full-diagnostic-13-independent-review/source.json": "4297d9867335e4ad4a4a7491e7da1c4e930ff7d2ca73837b086361ac4c69c2de",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/prepare-check.py": "21f7c6b3b2eaf712ef2591d4fc20a236c0cd5538cde6a9229daa8b28928985b7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/planned-14/audit-plan.json": "9b9a2d3a41c08c8a9e51aec783a4ddf8e74fc82253be19e80c37c7b87aa21a38"
+  },
+  "historical_failures": {
+    "candidate-focused-09": {
+      "exit_code": 1,
+      "unchanged_source_files": 1857,
+      "raw_capture_verified": true,
+      "log_sha256": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994"
+    },
+    "candidate-full-10": {
+      "exit_code": 1,
+      "unchanged_source_files": 1857,
+      "raw_capture_verified": true,
+      "log_sha256": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49"
+    },
+    "diagnostic-https-full-11": {
+      "exit_code": 1,
+      "unchanged_source_files": 1858,
+      "raw_capture_verified": true,
+      "log_sha256": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8"
+    },
+    "diagnostic-https-full-12": {
+      "exit_code": 1,
+      "unchanged_source_files": 1858,
+      "raw_capture_verified": true,
+      "log_sha256": "7771302c1f4eaa91b3ad6cfe3fdfca68138d1a163fba512e3ac710055ba46d91"
+    },
+    "diagnostic-sampled-full-13": {
+      "exit_code": 1,
+      "unchanged_source_files": 1857,
+      "raw_capture_verified": true,
+      "log_sha256": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c"
+    },
+    "foundation-queue-policy-13": {
+      "exit_code": -11,
+      "unchanged_source_files": 1857,
+      "raw_capture_verified": true,
+      "log_sha256": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346"
+    }
+  },
+  "frozen_source": {
+    "files": 1857,
+    "all_file_hashes_verified": true,
+    "manifest_sha256": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "delta_from10": {
+      "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+        "candidate10": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+        "candidate14": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8"
+      },
+      "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+        "candidate10": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+        "candidate14": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78"
+      },
+      "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+        "candidate10": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+        "candidate14": "af479ff104df41184d0d40998f12bc87464ba5cf1459187b642ed9473b8a7034"
+      },
+      "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+        "candidate10": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+        "candidate14": "20936f356b36f11c1249b686973dc35b2e26cd456307b12a9c9363f11badce46"
+      }
+    }
+  },
+  "release_cli": {
+    "final_input_count": 512,
+    "delta_from09": {
+      "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+        "candidate09": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+        "candidate14": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8"
+      }
+    },
+    "reuse09": false,
+    "required": "Fresh release build and246 process checks on14."
+  },
+  "planned_native_gates": [
+    "candidate-full-14",
+    "candidate-release-build-14",
+    "candidate-cli-14",
+    "candidate-tsan-inventory-14",
+    "candidate-jpip-tsan-14",
+    "candidate-complement-tsan-14",
+    "candidate-asan-inventory-14",
+    "candidate-jpip-asan-14",
+    "candidate-complement-asan-14"
+  ],
+  "focused_gate": [
+    "candidate-focused-14"
+  ],
+  "boundaries": [
+    "Prepared specifications are not executed native coverage or final acceptance.",
+    "No Swift, native tests, codecs, fixture generators, servers or repository edits were performed.",
+    "Final14 source/ordinary/CLI/inventory/two complete sanitizer partitions must pass and reconcile.",
+    "Historical failures are preserved as failures, including the standalone interpreter crash.",
+    "All five independent direct peer gates remain unexecuted and unwaived; no whole-R3 acceptance or merge."
+  ]
+}

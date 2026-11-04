@@ -1,0 +1,12 @@
+{
+  "published": false,
+  "state": "NOT_ACCEPTED",
+  "index": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/ci-repair-09/indexes/5307140d7adc9dc0111a0cb869dfd872dc3112dfbbd8634f8913b10cbcc6e283.json",
+  "index_sha256": "5307140d7adc9dc0111a0cb869dfd872dc3112dfbbd8634f8913b10cbcc6e283",
+  "artifact_roles": 468,
+  "new_payloads": 357,
+  "new_payload_bytes": 16837988,
+  "prior_08_references": 34,
+  "implementation_scope_sha256": "1d5ccfdb41f0dc80c2b045c6a320ed14d71e3d8871a7273530d18a52fe4b068a",
+  "ci_scope_sha256": "018d8ecf684b67e0a9467278ceeafbf393b7b070d0533e2cbafde82995162127"
+}

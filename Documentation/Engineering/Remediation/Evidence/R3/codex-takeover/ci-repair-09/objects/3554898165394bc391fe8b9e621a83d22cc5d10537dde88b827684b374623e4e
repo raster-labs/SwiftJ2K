@@ -1,0 +1,13 @@
+{
+  "reviewed_at": "2026-10-31T09:20:10.258282+00:00",
+  "native_executed": false,
+  "finding": "HTTPS-CLOSE-01",
+  "scope": "Provisional stopped three-file HTTPS portability candidate; not immutable final09 approval",
+  "sha256": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "dc25045fee251989ebaf9e5dbfb52290a3c5f8a3dd02e27641428efc6991e49d",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3f91b5b1e691d7433fe68c6ab2095b4eb30f2ed5a75c9bf39fb3a75e9b851d65",
+    "Sources/SwiftJ2KJPIP/JPIP.swift": "071b1d3ea2dca72d663ebaefb504ef75a22de21e2300eee8346cd8ba5d30912c",
+    "Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift": "31874b17950dd333859878cbb16d0122aa56b1388b3f383867c1966fffdb2c84",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "62d89c0b6c4c3f3889cb89614c5849f455ac16ea9de415f45243f5342e068067"
+  }
+}

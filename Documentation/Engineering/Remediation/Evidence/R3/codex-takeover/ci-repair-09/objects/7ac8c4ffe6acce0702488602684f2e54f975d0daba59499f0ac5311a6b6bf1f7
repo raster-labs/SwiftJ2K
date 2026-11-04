@@ -1,0 +1,90 @@
+{
+  "review": "independent-tcp-close-review-09",
+  "reviewed_at": "2026-10-31T09:40:58.383617+00:00",
+  "decision": "SOURCE_AND_FOCUSED_TCP_CLOSED_OVERALL_FOCUSED_FAILED",
+  "finding": "R3-TCP-CLOSE-01",
+  "blocking_findings": [],
+  "source_root": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09",
+  "manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-source.json",
+    "sha256": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+    "files": 1857
+  },
+  "provenance": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-provenance.json",
+    "sha256": "f1c5c156ab2ee3f2a11c75970c33217975cd4ceb498af71de2c752ccd2b1bb22"
+  },
+  "files_before": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "Sources/SwiftJ2KJPIP/JPIP.swift": "071b1d3ea2dca72d663ebaefb504ef75a22de21e2300eee8346cd8ba5d30912c",
+    "Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift": "31874b17950dd333859878cbb16d0122aa56b1388b3f383867c1966fffdb2c84",
+    "Sources/SwiftJ2KJPIP/JPIPSessionManager.swift": "a59ca2fe738398aa99a9119c73f620a8a23b476614e24387ea2ff32e14420909",
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+  },
+  "files_after": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "Sources/SwiftJ2KJPIP/JPIP.swift": "071b1d3ea2dca72d663ebaefb504ef75a22de21e2300eee8346cd8ba5d30912c",
+    "Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift": "31874b17950dd333859878cbb16d0122aa56b1388b3f383867c1966fffdb2c84",
+    "Sources/SwiftJ2KJPIP/JPIPSessionManager.swift": "a59ca2fe738398aa99a9119c73f620a8a23b476614e24387ea2ff32e14420909",
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+  },
+  "files_stable": true,
+  "all_reviewed_files_match_frozen_manifest": true,
+  "original_finding": "work/tcp-close-scope-review-09/review.json",
+  "source_report_sha256": "37625a6514f3fdd012b402873bdd0cd472a14d8e8b6cd34652bb4de7027c75bc",
+  "native_executed": false,
+  "runtime_evidence_reviewed": true,
+  "repository_written": false,
+  "whole_r3_accepted": false,
+  "test_scope": "Four TCP declarations/six cases passed in a failed overall 22-declaration focused run. Public client test covers held initial cnew only.",
+  "focused_evidence": {
+    "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09",
+    "overall_exit_code": 1,
+    "overall_result": "FAILED_HTTPS_TRICKLE_READINESS",
+    "tcp_declarations_passed": 4,
+    "tcp_cases_passed": 6,
+    "files": {
+      "command.json": "98554baca300f4b04be855295abfcc81da68891d5c9b225b554cdc8b3f970603",
+      "result.json": "1d0f0921be595cbee8a4bd0811d3e2713aa0005010b8655fc3265c063511f350",
+      "native.log": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994",
+      "native.stdout": "622c685f199694dd5377c531344565a2267b9fc001eb5754eefb91c4b14834a3",
+      "native.stderr": "ff069caa9d5a6729e178f0ae64c5f6dc16ceb594d3d5a77e9130d7b21f8a6014",
+      "report-swift-testing.xml": "1845766634bd5eb5fdc9ee52d380ef1cca245d989a76d3e6242fa0ba3189f4ed",
+      "source-before.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b",
+      "source-after.json": "224e14506f68845e2819f04966a62e9bec0ea584652bfb3283c400b9ffea053b"
+    },
+    "source_manifest_matches": true,
+    "tcp_xml_cases": [
+      {
+        "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+        "name": "closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining()",
+        "time": "0.009250792"
+      },
+      {
+        "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+        "name": "repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)",
+        "time": "0.010136958"
+      },
+      {
+        "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+        "name": "publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation()",
+        "time": "0.010107292"
+      },
+      {
+        "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+        "name": "staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel()",
+        "time": "0.01160725"
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+"""Root-only diagnostic: sample this run's test child; never alter other work."""
+from pathlib import Path
+import datetime
+import hashlib
+import json
+import subprocess
+import threading
+import time
+
+work = Path(__file__).resolve().parent
+output = work / 'sampled-full-diagnostic-13'
+output.mkdir(exist_ok=False)
+log = work / 'validation/diagnostic-sampled-full-13/native.stdout'
+command = ['swift', 'test', '--scratch-path', '../candidate-build-10',
+           '--disable-sandbox', '--build-system', 'native',
+           '--cache-path', '../swiftpm-cache', '--config-path', '../swiftpm-config',
+           '--security-path', '../swiftpm-security', '-j', '4', '--skip-build',
+           '--xunit-output', '../validation/diagnostic-sampled-full-13/report.xml']
+record = {'purpose': 'Sample unchanged candidate10 at the beginning of Swift Testing; diagnostic only.',
+          'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          'helper_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+          'command': command, 'samples': [], 'observer_errors': []}
+process = subprocess.Popen(command)
+record['child_pid'] = process.pid
+
+def observe():
+    try:
+        while process.poll() is None:
+            if log.exists() and b'Test run started.' in log.read_bytes():
+                break
+            time.sleep(0.02)
+        else:
+            record['observer_errors'].append('Child ended before Swift Testing marker was observed.')
+            return
+        record['marker_observed_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        raw = subprocess.check_output(['ps', '-Ao', 'pid,ppid,pcpu,rss,etime,comm'], text=True)
+        rows = [line.split(None, 5) for line in raw.splitlines()[1:]]
+        rows = [r for r in rows if len(r) == 6]
+        ids = {process.pid}
+        while True:
+            expanded = ids | {int(r[0]) for r in rows if int(r[1]) in ids}
+            if expanded == ids:
+                break
+            ids = expanded
+        targets = [r for r in rows if int(r[0]) in ids and int(r[0]) != process.pid
+                   and any(name in r[5].lower() for name in
+                           ('xctest', 'packagetests', 'swiftpm-testing-helper'))]
+        relevant = [r for r in rows if int(r[0]) in ids or any(name in r[5].lower()
+                    for name in ('swift-test', 'swift-frontend', 'xctest', 'swiftpm-testing-helper'))]
+        (output / 'processes-at-marker.txt').write_text(
+            '\n'.join(' '.join(r) for r in relevant) + '\n')
+        record['own_test_children'] = targets
+        if not targets:
+            record['observer_errors'].append('No own test descendant was present at the marker.')
+        for row in targets:
+            path = output / ('sample-' + row[0] + '.txt')
+            sample = subprocess.run(['/usr/bin/sample', row[0], '1', '5', '-file', str(path)],
+                                    capture_output=True, text=True, timeout=30)
+            record['samples'].append({'pid': int(row[0]), 'exit_code': sample.returncode,
+                'stdout': sample.stdout, 'stderr': sample.stderr, 'path': str(path),
+                'sha256': hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None})
+    except Exception as error:
+        record['observer_errors'].append(type(error).__name__ + ': ' + str(error))
+
+observer = threading.Thread(target=observe, name='root-native-sample-observer')
+observer.start()
+code = process.wait()
+observer.join()
+record['exit_code'] = code
+record['observer_joined'] = True
+record['finished_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+(output / 'result.json').write_text(json.dumps(record, indent=2) + '\n')
+raise SystemExit(code)

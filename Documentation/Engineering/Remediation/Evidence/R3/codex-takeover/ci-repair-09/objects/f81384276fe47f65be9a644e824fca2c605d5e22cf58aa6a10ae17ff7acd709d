@@ -1,0 +1,110 @@
+{
+  "state": "PLANNED_SERIAL_SWIFTJ2K3DTESTS_AND_IOS_SIMULATOR_DELTA_REUSING_UNCHANGED_PRODUCTION_26_JPIP_27_AND_SWIFTJ2KTESTS_29",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30",
+  "prior_full_campaign_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-26",
+  "prior_full_campaign_manifest_sha256": "cc0338180f97aea8aee453001a968c94e36c9741bf6666b95fe534ed88dc876c",
+  "prior_jpip_delta_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-27",
+  "prior_jpip_delta_manifest_sha256": "aa5eadba966e025b2772d46c7c5a207227401c8fa3644b97fc98a58396af14d4",
+  "prior_swiftj2ktests_delta_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-29",
+  "prior_swiftj2ktests_delta_manifest_sha256": "d7c82b94744b850ceca01c2c389247b3aa1855514ee2bfe08b53ef1618c143db",
+  "changed_files_from_29": [
+    "Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift"
+  ],
+  "unchanged_production_files_from_26": 540,
+  "wrapper_sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+  "ios_runner_sha256": "20acb01d02dfecd003b37203c6902bc3d4b291c724d7c1488e64f1b49c6676ba",
+  "source_manifest_sha256": "b0fca68a049e676596671ef8db766cdffa2c65cae21ed361fa8592ae6d3314db",
+  "provenance_sha256": "e5b175bb44df0f2f052e4ff579cd0e16418a3f496f80e6a910c52076c26f0085",
+  "source_files": 2543,
+  "gates": [
+    {
+      "label": "candidate-3dtests-ordinary-30",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-build-26",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2K3DTests[./]",
+        "--xunit-output",
+        "../validation/candidate-3dtests-ordinary-30/report.xml"
+      ]
+    },
+    {
+      "label": "candidate-3dtests-asan-30",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-asan-26",
+        "--sanitize",
+        "address",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2K3DTests[./]",
+        "--xunit-output",
+        "../validation/candidate-3dtests-asan-30/report.xml"
+      ]
+    },
+    {
+      "label": "candidate-3dtests-tsan-30",
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-tsan-26",
+        "--sanitize",
+        "thread",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--filter",
+        "^SwiftJ2K3DTests[./]",
+        "--xunit-output",
+        "../validation/candidate-3dtests-tsan-30/report.xml"
+      ]
+    },
+    {
+      "label": "candidate-ios-simulator-30",
+      "command": [
+        "python3",
+        "../run-ios-simulator-validation.py",
+        "--output",
+        "../validation/candidate-ios-simulator-30",
+        "--derived-data",
+        "../candidate-ios-29/DerivedData",
+        "--source-packages",
+        "../candidate-ios-29/SourcePackages"
+      ]
+    }
+  ]
+}

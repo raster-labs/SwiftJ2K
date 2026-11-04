@@ -1,0 +1,13 @@
+{
+  "state": "LOCAL_REVIEW_COMPLETE_STOPPED",
+  "audit_source_receipt": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/final-review-source.json",
+  "audit_sha256": "897e451f2b9348f8ac0c8eaec5a8dbde6bda84b98fb63ddcbead2d0449ad1d10",
+  "report_sha256": "bc6bc5e1a69dc3504ed7deaa62c8f37e8b335b183e2eee3b6c1fc3c3d4376da2",
+  "thread_proof_sha256": "d1b55b8423b7eb82fc9a0d7be2c508b152733f8220889752e3d4750c1bfc6d73",
+  "address_proof_sha256": "de9b8694a6ef7c9d3887e773f7593097dfa81bbd1a30f38d7f627318527f773b",
+  "source_manifest_sha256": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+  "native_execution_by_reviewer": false,
+  "repository_edits_by_reviewer": false,
+  "whole_R3_acceptance": false,
+  "merge_authority_from_receipt": false
+}

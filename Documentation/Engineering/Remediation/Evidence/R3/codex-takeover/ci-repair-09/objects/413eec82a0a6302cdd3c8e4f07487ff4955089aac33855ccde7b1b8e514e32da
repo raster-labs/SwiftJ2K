@@ -1,0 +1,14 @@
+{
+  "recorded_at": "2026-10-31T11:48:36.188462+00:00",
+  "head": "e67136ade691af045570706d401f80d612359d0c",
+  "tree": "bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86",
+  "parent": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "branch": "codex/r3-standards-takeover",
+  "staged_files": 129,
+  "status": "",
+  "implementation_inputs_identical_to18": 540,
+  "supplement_index_sha256": "32cd2286bd185114c986701b8d0726cefd68ce7f60c8a83cd50488e27d2fa18e",
+  "qualification": "Source-reviewed draft update; scopedCLI16 evidence; failed17 ordinary and prior hosted15 retained. No full18 pass.",
+  "r3_acceptance": "NOT_ACCEPTED",
+  "merge_allowed": false
+}

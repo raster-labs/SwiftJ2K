@@ -1,0 +1,91 @@
+// DIAGNOSTIC OVERLAY ONLY. Never merge this tracer.
+import Foundation
+import Synchronization
+
+package final class JPIPHTTPSPhaseTrace: Sendable {
+    private struct Event: Sendable {
+        let stamp: UInt64
+        let owner: String
+        let host: String
+        let event: String
+    }
+    private final class Store: Sendable {
+        struct State { var events: [Event] = []; var dropped = 0 }
+        let state = Mutex(State())
+        func append(_ event: Event) {
+            state.withLock {
+                if $0.events.count < 128 { $0.events.append(event) }
+                else if $0.dropped < Int.max { $0.dropped += 1 }
+            }
+        }
+    }
+    private struct Registry { var stores: [Store] = []; var droppedOwners = 0 }
+    private static let registry = Mutex(Registry())
+    private static let correlation = Store()
+    private static let output = Mutex(())
+    private let store: Store?
+    private let host = Mutex("unbound")
+    private let once = Mutex<Set<String>>([])
+    package let id = UUID().uuidString
+
+    package init() {
+        store = Self.registry.withLock {
+            guard $0.stores.count < 128 else {
+                if $0.droppedOwners < Int.max { $0.droppedOwners += 1 }
+                return nil
+            }
+            let store = Store()
+            $0.stores.append(store)
+            return store
+        }
+    }
+
+    private static func bounded(_ value: String, count: Int = 1024) -> String {
+        String(value.prefix(count)).replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+    }
+
+    package func bindHost(_ value: String?) {
+        host.withLock { $0 = Self.bounded(value ?? "nil", count: 128) }
+    }
+
+    package static func record(owner: String, host: String = "unbound", event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        correlation.append(Event(stamp: stamp, owner: bounded(owner, count: 128),
+                                 host: bounded(host, count: 128), event: bounded(event)))
+    }
+
+    package func mark(_ event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        store?.append(Event(stamp: stamp, owner: id, host: host.withLock { $0 },
+                            event: Self.bounded(event)))
+    }
+
+    package func first(_ event: String) {
+        if once.withLock({ $0.count < 8 && $0.insert(event).inserted }) { mark(event) }
+    }
+
+    /// Only selected test exits flush. Captured timestamps precede output;
+    /// synchronous formatting/printing can perturb other concurrent tests.
+    package static func flush() {
+        let snapshot = registry.withLock { ($0.stores, $0.droppedOwners) }
+        var completed: [Event] = []
+        var droppedEvents = 0
+        for capture in [correlation] + snapshot.0 {
+            let records = capture.state.withLock {
+                let result = ($0.events, $0.dropped)
+                $0.events = []
+                $0.dropped = 0
+                return result
+            }
+            completed += records.0
+            droppedEvents += records.1
+        }
+        output.withLock { _ in
+            print("HTTPS_PHASE19_FLUSH events=\(completed.count) droppedEvents=\(droppedEvents) droppedOwners=\(snapshot.1)")
+            for item in completed {
+                print("HTTPS_PHASE19 ns=\(item.stamp) owner=\(item.owner) host=\(item.host) event=\(item.event)")
+            }
+        }
+    }
+}

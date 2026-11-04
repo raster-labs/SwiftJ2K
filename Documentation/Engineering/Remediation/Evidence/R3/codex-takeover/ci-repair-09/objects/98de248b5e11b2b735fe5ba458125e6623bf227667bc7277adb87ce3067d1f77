@@ -1,0 +1,51 @@
+Independent diagnostic19 execution review — stopped
+
+Conclusion
+The completed instrumented diagnostic passed, and the retained traces discriminate the dominant observed delay in these five invocations: it is between continuation resumption and caller execution, after prompt callback/cleanup work. They do not establish why the caller was delayed, why ordinary17 failed, or whether a priority policy would fix the original failure. The passing diagnostic does not close failed17 or qualify uninstrumented source18. No production change, retry-until-pass campaign, relaxed bound, acceptance or external-gate waiver is recommended from this evidence.
+
+Verified execution and identity
+Root executed work/candidate-diagnostic-19 with the ordinary full swift test command, no test filter or sanitizer flag, Apple Swift 6.4 targeting arm64 macOS27. The wrapper exited0 in125.53621075s. Independently counted1,034 XCTest starts and passes,324 Swift Testing declaration starts and passes, and41 passed suites; the final Swift Testing duration is26.036s. The XML has324 testcase records,0 failures/errors/skips and the four selected declarations passed, including both arguments of completionAndCancellationHaveOneWinner. No XCTest XML is claimed: the retained report is the Swift Testing XML, while XCTest counts are independently read from raw runtime records.
+
+All2,283 before/after input hashes equal the reviewed derived manifest and current immutable diagnostic source bytes. Complete capture/reader join flags are true, capture errors and changed inputs empty. SHA256 and byte counts match both raw streams; the merged log's complete line multiset exactly equals stdout+stderr, with no synthetic EOF newline. No native/compiler/server/network/Git operation was performed by this reviewer; analysis is Python filesystem/log/XML processing only.
+
+Raw stdout SHA256 fe893e097cc3cd1c95e7dadf69d19709034c74d86c3d1bd29570428017a9d1cf (453,992 bytes); stderr f4e2fa6251ddd05997bc4578a8be4d9e2397680a3a979f589e5bbdf84246f041 (19,562 bytes); merged log 9a95955b202f017ab0d1193de204b997e3e1a335a3a5011ec53bf6f95c4600ab. The immutable source-only review remains work/independent-diagnostic19-review/report.txt, SHA2564c6bb6d2320ef85e45f8b6394b57fbf82ecfb11d8ac420bab03b4de5c370f027. This later execution review does not rewrite it.
+
+Parsing and exact scope
+An independent parser found561 phase records, all561 structurally valid. Five flush headers declare400+13+63+44+41 events and every segment's actual count agrees. Every reported droppedEvents and droppedOwners value is0. There are no malformed phase lines. The selected invocations were correlated by their unique hostnames, then sorted by DispatchTime uptime nanoseconds, never raw print order. The analysis artifact retains every original stdout line number, owner, hostname, timestamp and interval endpoint. The two scripted arguments are separate invocations; they remain one test declaration in XML.
+
+Observed paired intervals (milliseconds; rounded only here)
+Case                         read→exit   continuation-resume-after→caller-woke   completion→invalidation   tail-enqueue→execute
+Shared HTTPS success          329.113               328.360                          0.050                   0.014
+One winner, cancelFirst=false 376.267               375.141                          0.925                   0.023
+One winner, cancelFirst=true  374.818               373.920                          0.771                   0.017
+Delegate deallocation        329.882               329.310                          0.030                   0.014
+Silent response              334.248               205.089                          0.052                   0.010
+
+For the scripted rows, the completion timestamp is the first manually injected didComplete callback. Its interval to actual invalidation includes the subsequent real Foundation cancellation/completion; it is not a real network-success completion latency. The continuation-resume-after stamps are after signal.resume() returns, and caller-woke is the first explicit mark after the await/cancellation-handler scope returns. The gap therefore localises an await-return/caller-execution delay, not an OS-level scheduler-ready timestamp or a proof of a particular queue implementation.
+
+The substantive line pairs in native.stdout are shared success3600→3746; false3361→3648; true3397→3398; deinit3556→3676; silent3633→3792. The five callers had current Task priority rawValue21 at read entry and wake; all five test-entry records also show21. Their delegate queues report configured QoS rawValue25 and maxConcurrent1, matching the source's existing userInitiated setting. TaskPriority and QualityOfService are different APIs: raw numeric values alone are not evidence of effective scheduling priority, donation, an inversion or a causal mismatch.
+
+Preflight and callbacks
+All selected read entries had almost their entire original deadline remaining: about1.99991–1.999996s for the two-second requests and0.119992125s for the120ms request. Read entry to watchdog-scheduled was0.0085–0.0151ms; read entry to task-resume-after was0.0529–0.1367ms. URLSession construction was0.00825–0.01796ms. These observed starts were not delayed-preflight or blocking-constructor cases.
+
+For the real success/deinit paths, protocol response submission to response callback was0.121458ms and0.076625ms respectively. Their protocol serial queue entry waits were0.015709ms and0.015000ms; the silent protocol queue wait was0.014667ms. Completion/invalidation/tail work was similarly short. These paired records exclude delayed protocol submission, selected response callbacks and cleanup tails as the dominant duration of these particular passing requests; they do not exclude those phases in failed17, historical11/12, or other requests.
+
+Silent response detail
+The clock origin is bracketed by silent-before-clock-origin and silent-before-deadline-expression-and-read,2.167 microseconds apart (lines3602–3603). The watchdog mark at3621 occurs128.774125ms after the earlier marker, approximately8.772–8.774ms beyond the nominal120ms deadline. Cancellation, task completion, invalidation and tail resume then take0.357709ms from watchdog mark to continuation-resume-after. The caller wakes another205.088625ms later, catches the resource-limit deadline error and passes the unchanged total-under-two-seconds assertion. The pre-clock marker to the post-assertion marker is334.277875ms, not a substituted timeout or a delayed clock origin.
+
+The deinit case records read return, request destruction and the original deinit observer: request-deinit is0.006ms after deinit-helper-after-read, and observer-called follows0.012917ms later. This is a successful observed lifetime on this run, not a promise of universal synchronous ARC release.
+
+Reported test duration is not the operation's measured duration
+The XML reports about4.045s for success,5.026s for the parameterised declaration,4.036s for silent and4.833s for deinit, while their captured operation intervals are the subsecond values above. Framework test duration includes work/scheduling outside the original deadline's clock scope and can also include exit instrumentation. The trace has no framework scheduling or flush start/end timestamps, so the difference must not be attributed to a particular unmeasured phase, or mistaken for a violation of the operation's two-second assertion.
+
+Observer effects and censoring
+Zero declared drops proves no reported buffer-capacity loss in the five drained segments; it does not prove an exhaustive lifetime capture. Shared instrumentation records requests beyond the selected cases. At the final flush, four other read-owner traces lack read-exit in the retained records; their last observations range from task-resume-after to body-first-entry or continuation-resume-after. These absent later events are censored, not evidence of hung owners. All five selected invocations do retain their needed resume/wake/read-exit pairs and successful/cancelled/deinit outcomes.
+
+Per-owner tracing still adds allocation, timestamp/string work, locking and some request-lock critical-section work. Each exit flush drains all stores and prints synchronously; it can affect remaining concurrent work, and flush traversal/print order is nonchronological. The earliest selected return is the true-cancellation case; its373.920ms resume-to-caller gap precedes any selected exit flush by the reviewed source order and observed selected return stamps. Thus synchronous trace-exit printing cannot by itself explain that particular gap. This does not remove the effects of trace capture, other test output, runtime activity or machine load, and does not establish a sole mechanism for any other interval.
+
+Disposition
+The run demonstrates that caller-resumption delay can consume a meaningful part of the unchanged wall-clock allowance even when selected HTTPS delivery and cleanup have already completed. It supplies a concrete phase to investigate if further diagnosis is authorised. It does not reproduce an expired functional request, a joined-deadline assertion failure, or the late-callback pattern observed in some historical diagnostics. No unique scheduler/CPU/Foundation/priority cause is established, and no permanent priority policy change follows from the rawValue observations.
+
+Preserve ordinary17 as failed: its log remains SHA256aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0, and the independent failed17 diagnosis remains linked in the source receipt. Do not treat this diagnostic pass as an uninstrumented retry that repairs its qualification. Current production acceptance, native18 qualification, hosted platform qualification, real TLS/independent peers and all five unwaived R3 external gates remain unchanged. Whole R3 remains NOT ACCEPTED.
+
+All artifacts in this review are positively stopped after the final integrity check.

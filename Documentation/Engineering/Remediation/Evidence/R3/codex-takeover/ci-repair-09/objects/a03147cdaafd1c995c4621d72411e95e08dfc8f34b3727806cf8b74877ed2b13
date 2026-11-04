@@ -1,0 +1,26 @@
+{
+  "state": "PREPARATION_COMPLETE_NOT_PUBLISHED",
+  "at": "2026-10-31T10:51:37.023895+00:00",
+  "report_sha256": "a64f830ce58438d1e26b03b775d21b980ba5a01aebaa01101dd38e3a6a3c3464",
+  "current_manifest": "manifest-preparation-02.json",
+  "helper_path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py",
+  "helper_sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/current-ci-identity-note.json": "40059fb4e99baf6e27b5a0346445ab33873e6b2728b5ac2e7f39e5a8d9be1ac5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.json": "07f6e5b7eb0a1ed46896e2b3566719dcb742bc3599df2cbea3bb9041585af4a1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/dry-run-02.stdout": "b0a718b8a6387fa62df2ee25c66d0094f05c72183bc47a065e089df5832831a8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-01.json": "73db647781a82dfd9d56bcf92d820a0111afaa854d7d7802fa09973e71da8aef",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/manifest-preparation-02.json": "b399659ea19550b05f1de3a1dfe3e86dde568210729bd1af3d771044a198ac99",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/pending-inputs-01.json": "4afd5c2ca136800c659c44a9ffc946f560db8cddb41f8583eec2c9b43761c1d5",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/pending-inputs-02.json": "8c5ae87b6d5075f73f11085dfd8ffec12c8fad2d10f0f5bf5d3b1f0ed7120087",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/prepare_manifest.py": "fea1dc8e581c794898e1afefad753b65e10b07dfad32312afc291dfa242aa994",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/report.txt": "a64f830ce58438d1e26b03b775d21b980ba5a01aebaa01101dd38e3a6a3c3464",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-15/selection-01.json": "17b2e4dbf03aa7a199434e9ff7e2dfeae48d0ebf4a5c7f51f86caf3755e3b2b0"
+  },
+  "prior08_index_sha256": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+  "native_execution": false,
+  "repository_publication": false,
+  "R3": "NOT_ACCEPTED",
+  "hosted_CI2": "POST_PUBLICATION_PENDING_NOT_INITIAL_SUPPLEMENT_PREREQUISITE"
+}

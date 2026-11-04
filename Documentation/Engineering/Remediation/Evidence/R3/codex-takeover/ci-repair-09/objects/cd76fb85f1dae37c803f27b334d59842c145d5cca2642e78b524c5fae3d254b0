@@ -1,0 +1,13 @@
+Independent fixture cleanup18 re-review — FIXTURE17-01 only
+
+Disposition: FIXTURE17-01 CLOSED AT SOURCE LEVEL. No additional material finding in this exact bounded delta. No native test execution or source edits were performed by this reviewer. This does not approve the reviewer's own CLI16 implementation.
+
+Exact delta verified independently: all four initial accept.started waits now call waitForStartup (IndependentTests426/641/686 and WebSocketBudgetTests245); the helper adds one do/catch wrapper at R3OwnedScriptedPeer99-105. Reversing the four call names and removing only that wrapper reproduces all three frozen17 files byte-for-byte. Current files exactly match the stopped writer's after-copies and source receipt. All inputs recorded by the prior independent17 review remain unchanged, preserving original17 source/evidence. The full independent delta and source copies are retained here.
+
+Closure: any error thrown by initial readiness, including its timeout, observed peer failure or Task.sleep cancellation, now invokes await stopAndObserve before rethrowing. That function first closes listener and retained sockets, then observes the existing final-publication predicate. The thrown R3ScriptedPeerFailure includes the original error text, stopped Boolean and final peer diagnostics. Existing defer close remains an idempotent fallback. No failure is converted into success.
+
+Explicit limitation: this is bounded completion observation, not an unconditional join. On a cancelled task, the observer's sleep can immediately throw and return false; on a delayed worker it can reach its unchanged2s guard and return false. Both remain visible in the rethrown failure. True means acceptFinished and workers==0 were observed after final work publication; it does not prove physical OS-thread exit or owner deallocation. Worker captures retain owners if observation cannot complete. These limitations are accurately stated in helper/source report and do not reopen the original gap, which was failure to invoke observation at all.
+
+No assertion,120ms or2s operation deadline, cancellation timing window, memory ceiling/peak assertion, QoS, test identity/selection or concurrency setting changes in this delta. Successful wait behaviour is unchanged. The previous independent17 source assessment applies to the unchanged remainder, with FIXTURE17-01 now closed.
+
+Execution boundary: root reports ordinary17's three repaired fixture tests passed while four unchanged HTTPS timing checks failed. This review did not independently inspect that runtime receipt, and those17 results do not qualify18 or establish whole-suite success. Native18 validation and other open failures remain root-owned. Original failed hosted evidence is not reclassified. Positive STOP.

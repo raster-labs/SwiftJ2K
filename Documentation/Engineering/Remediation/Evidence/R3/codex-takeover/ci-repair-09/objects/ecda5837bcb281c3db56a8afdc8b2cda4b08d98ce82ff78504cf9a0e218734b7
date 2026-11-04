@@ -1,0 +1,35 @@
+{
+  "sha": "e67136ade691af045570706d401f80d612359d0c",
+  "node_id": "C_kwDOUeVE1toAKGU2NzEzNmFkZTY5MWFmMDQ1NTcwNzA2ZDQwMWY4MGQ2MTIzNTlkMGM",
+  "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/e67136ade691af045570706d401f80d612359d0c",
+  "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/e67136ade691af045570706d401f80d612359d0c",
+  "author": {
+    "name": "SureshKViswanathan",
+    "email": "suresh@raster.in",
+    "date": "2026-10-31T11:48:36Z"
+  },
+  "committer": {
+    "name": "SureshKViswanathan",
+    "email": "suresh@raster.in",
+    "date": "2026-10-31T11:48:36Z"
+  },
+  "tree": {
+    "sha": "bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86",
+    "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/trees/bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86"
+  },
+  "message": "Correct CLI portability and JPIP test-peer lifetimes",
+  "parents": [
+    {
+      "sha": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+      "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+      "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe"
+    }
+  ],
+  "verification": {
+    "verified": false,
+    "reason": "unsigned",
+    "signature": null,
+    "payload": null,
+    "verified_at": null
+  }
+}

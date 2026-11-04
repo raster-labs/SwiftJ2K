@@ -1,0 +1,29 @@
+{
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14",
+  "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/thread/all.ids",
+  "ordinary": {
+    "label": "ordinary-final",
+    "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-14",
+    "swift_testing_xml": [
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-14/report-swift-testing.xml"
+    ]
+  },
+  "partitions": [
+    {
+      "label": "thread-jpip-final",
+      "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-14",
+      "swift_testing_xml": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-tsan-14/report-swift-testing.xml"
+      ],
+      "expected_ids": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/thread/jpip.ids"
+    },
+    {
+      "label": "thread-complement-final",
+      "directory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-14",
+      "swift_testing_xml": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-complement-tsan-14/report-swift-testing.xml"
+      ],
+      "expected_ids": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/thread/complement.ids"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "tree": "934266a4d41b742f8d3f3be8fdf894b8ad033ac8",
+  "branch": "codex/r3-standards-takeover",
+  "base": "46be90fc3bf50429956725ee592687d8ff8e7344",
+  "clean": true,
+  "validated_implementation_files": 522,
+  "raw_evidence_whitespace": "Historical original tool logs retain trailing whitespace; source, test Swift, scripts, workflow and current authored documentation checked separately. Raw receipts were not reformatted."
+}

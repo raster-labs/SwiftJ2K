@@ -431,17 +431,43 @@ final class JP3DProgressiveDeliveryTests: XCTestCase {
 // MARK: - JP3DJPIPClient Tests
 
 final class JP3DJPIPClientTests: XCTestCase {
+    private func startTest3DServer(volumeNames: [String] = ["brain", "ct", "mri", "vol"]) async throws -> (server: JP3DJPIPServer, wsURL: URL) {
+        let server = JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0))
+        let comp = J2KVolumeComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: 8,
+            height: 8,
+            depth: 4,
+            data: Data((0..<(8 * 8 * 4)).map { UInt8($0 & 0xFF) })
+        )
+        let vol = J2KVolume(width: 8, height: 8, depth: 4, components: [comp])
+        let encoded = try await JP3DEncoder(configuration: .lossless).encode(vol)
+        for name in volumeNames {
+            try await server.registerVolume(name: name, data: encoded.data, volume: vol)
+        }
+        try await server.start()
+        let port = await server.listeningPort
+        let url = URL(string: "ws://127.0.0.1:\(port)/jpip")!
+        return (server, url)
+    }
+
     func makeClient() -> JP3DJPIPClient {
-        JP3DJPIPClient(serverURL: URL(string: "ws://localhost:8080")!)
+        JP3DJPIPClient(serverURL: URL(string: "ws://127.0.0.1:8080")!)
     }
 
     func testConnectChangesState() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer()
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         let state = await client.state
         if case .connected = state { } else {
             XCTFail("Expected connected state")
         }
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testCreateSessionRequiresConnection() async {
@@ -457,28 +483,38 @@ final class JP3DJPIPClientTests: XCTestCase {
     }
 
     func testCreateSessionAfterConnect() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["brain"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "brain")
         let sid = await client.sessionID
         XCTAssertNotNil(sid)
         XCTAssertTrue(sid?.contains("brain") ?? false)
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testRequestRegionReturnsDataBins() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["ct"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "ct")
-        let region = JP3DStreamingRegion(xRange: 0..<128, yRange: 0..<128, zRange: 0..<32)
+        let region = JP3DStreamingRegion(xRange: 0..<8, yRange: 0..<8, zRange: 0..<4)
         let bins = try await client.requestRegion(region)
         XCTAssertFalse(bins.isEmpty)
+        await client.disconnect()
+        try await server.stop()
     }
 
-    func testRequestRegionWithoutSession() async {
-        let client = makeClient()
+    func testRequestRegionWithoutSession() async throws {
+        let (server, url) = try await startTest3DServer()
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         do {
             try await client.connect()
-            let region = JP3DStreamingRegion(xRange: 0..<128, yRange: 0..<128, zRange: 0..<32)
+            let region = JP3DStreamingRegion(xRange: 0..<8, yRange: 0..<8, zRange: 0..<4)
             _ = try await client.requestRegion(region)
             XCTFail("Expected noSession error")
         } catch JP3DClientError.noSession {
@@ -486,53 +522,73 @@ final class JP3DJPIPClientTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testRequestSliceRange() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["mri"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "mri")
-        let bins = try await client.requestSliceRange(zRange: 10..<20, quality: 2)
+        let bins = try await client.requestSliceRange(zRange: 0..<2, quality: 1)
         XCTAssertFalse(bins.isEmpty)
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testRequestEmptySliceRangeThrows() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["mri"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "mri")
         do {
-            _ = try await client.requestSliceRange(zRange: 5..<5, quality: 0)
+            _ = try await client.requestSliceRange(zRange: 2..<2, quality: 0)
             XCTFail("Expected invalidRegion error")
         } catch JP3DClientError.invalidRegion {
             // pass
         }
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testUpdateViewportCancelsStaleRequests() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["vol"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "vol")
         let newViewport = JP3DViewport(xRange: 500..<600, yRange: 500..<600, zRange: 500..<550)
         await client.updateViewport(newViewport)
         let vp = await client.currentViewport
         XCTAssertEqual(vp?.xRange, 500..<600)
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testCancelStaleRequests() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["vol"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "vol")
         await client.cancelStaleRequests()
-        // Should not throw; requests cleared
+        await client.disconnect()
+        try await server.stop()
     }
 
     func testDisconnectClearsSession() async throws {
-        let client = makeClient()
+        let (server, url) = try await startTest3DServer(volumeNames: ["vol"])
+        defer { Task { try? await server.stop() } }
+        let client = JP3DJPIPClient(serverURL: url)
         try await client.connect()
         try await client.createSession(volumeID: "vol")
         await client.disconnect()
         let sid = await client.sessionID
         XCTAssertNil(sid)
+        try await server.stop()
     }
 }
 
@@ -540,7 +596,7 @@ final class JP3DJPIPClientTests: XCTestCase {
 
 final class JP3DJPIPServerTests: XCTestCase {
     func makeServer(maxSessions: Int = 10) -> JP3DJPIPServer {
-        JP3DJPIPServer(configuration: JP3DServerConfiguration(maxSessions: maxSessions, maxFullVolumeBytes: 1000))
+        JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0, maxSessions: maxSessions, maxFullVolumeBytes: 1000))
     }
 
     func makeVolume(w: Int = 256, h: Int = 256, d: Int = 64) -> J2KVolume {
@@ -724,7 +780,7 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
         return J2KVolume(width: width, height: height, depth: depth, components: components)
     }
 
-    /// Validates: encode with HTJ2K → build JPIP viewport → request region → verify bins.
+    /// Validates: encode with HTJ2K → start real TCP JPIP server → request region → verify real bins.
     func testHTJ2KEncodeAndJPIPRegionRequest() async throws {
         // Arrange
         let volume = makeVolume(width: 32, height: 32, depth: 8)
@@ -732,13 +788,17 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
         let encoder = JP3DEncoder(configuration: encConfig)
         let encoded = try await encoder.encode(volume)
 
-        // The encoded data should be non-empty with HTJ2K
         XCTAssertFalse(encoded.data.isEmpty, "HTJ2K encoded data must not be empty")
         XCTAssertTrue(encoded.isLossless, "HTJ2K lossless must report isLossless = true")
 
-        // Arrange JPIP client (uses simulated server, no real network)
+        let server = JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0))
+        try await server.registerVolume(name: "test-volume-htj2k", data: encoded.data, volume: volume)
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+        let port = await server.listeningPort
+
         let client = JP3DJPIPClient(
-            serverURL: URL(string: "http://localhost:8080/jp3d")!,
+            serverURL: URL(string: "http://127.0.0.1:\(port)/jp3d")!,
             preferredProgressionMode: .adaptive
         )
 
@@ -750,12 +810,19 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
             qualityLayer: 1, resolutionLevel: 0
         )
         let bins = try await client.requestRegion(region)
+        let decoded = try await client.decodeVolume(region: region)
 
         // Assert
         XCTAssertFalse(bins.isEmpty, "JPIP region request must return at least one data bin")
+        XCTAssertEqual(decoded.width, 16)
+        XCTAssertEqual(decoded.height, 16)
+        XCTAssertEqual(decoded.depth, 4)
+
+        await client.disconnect()
+        try await server.stop()
     }
 
-    /// Validates: encode with HTJ2K lossy → request slice range via JPIP → get bins.
+    /// Validates: encode with HTJ2K lossy → request slice range via real TCP JPIP → get bins.
     func testHTJ2KLossyWithJPIPSliceRange() async throws {
         // Arrange
         let volume = makeVolume(width: 32, height: 32, depth: 8)
@@ -765,7 +832,13 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
 
         XCTAssertFalse(encoded.isLossless)
 
-        let client = JP3DJPIPClient(serverURL: URL(string: "http://localhost:8080/jp3d")!)
+        let server = JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0))
+        try await server.registerVolume(name: "test-volume-htj2k-lossy", data: encoded.data, volume: volume)
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+        let port = await server.listeningPort
+
+        let client = JP3DJPIPClient(serverURL: URL(string: "http://127.0.0.1:\(port)/jp3d")!)
         try await client.connect()
         try await client.createSession(volumeID: "test-volume-htj2k-lossy")
 
@@ -774,24 +847,37 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
 
         // Assert
         XCTAssertFalse(bins.isEmpty)
+
+        await client.disconnect()
+        try await server.stop()
     }
 
     /// Validates that a JPIP viewport update does not throw.
     func testJPIPViewportUpdate() async throws {
-        // Arrange
-        let client = JP3DJPIPClient(serverURL: URL(string: "http://localhost:9090/stream")!)
+        let server = JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0))
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+        let port = await server.listeningPort
+
+        let client = JP3DJPIPClient(serverURL: URL(string: "http://127.0.0.1:\(port)/stream")!)
         try await client.connect()
 
         let viewport = JP3DViewport(xRange: 0..<128, yRange: 0..<128, zRange: 0..<32)
 
         // Act / Assert — should not throw
         await client.updateViewport(viewport)
+        await client.disconnect()
+        try await server.stop()
     }
 
     /// Validates the disconnect path.
     func testJPIPConnectDisconnect() async throws {
-        // Arrange
-        let client = JP3DJPIPClient(serverURL: URL(string: "http://localhost:8080/jp3d")!)
+        let server = JP3DJPIPServer(configuration: JP3DServerConfiguration(port: 0))
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+        let port = await server.listeningPort
+
+        let client = JP3DJPIPClient(serverURL: URL(string: "http://127.0.0.1:\(port)/jp3d")!)
 
         // Act
         try await client.connect()
@@ -804,5 +890,6 @@ final class JP3DHTj2KJPIPWorkflowTests: XCTestCase {
         } else {
             XCTFail("Expected .disconnected state, got \(state)")
         }
+        try await server.stop()
     }
 }

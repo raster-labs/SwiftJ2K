@@ -1,0 +1,32 @@
+SwiftJ2K R3 independent performance review 01 — preliminary causal assessment
+2026-10-31; /root/independent_core_review; read-only
+
+Verdict: a repeated HT-encode latency regression is established on these two controlled scalar cases. It remains an open PERF-03 investigation; neither a safety trade-off nor R3 performance acceptance is granted. Attribution to required admission bookkeeping is plausible but not yet measured. No completed baseline/candidate causal profile was available during this review. The profile directory appeared at completion with baseline files only; root may supply the completed comparison for follow-up.
+
+Evidence checked
+I recomputed independent-median and paired latency ratios from all 480 run02 and 160 run03 samples, checked every JSONL sample against its archived stdout, checked the AB/BA order, and rehashed both benchmark binaries against their metadata. Every sample reports scalarCPU, one worker, five warmups, one timed iteration, exact samples, thermal state 0 and low-power mode false. Each case/version has 20 timed samples. The same binary and input identities are used across runs. The existing source review verified timing excludes input preparation and sample verification. Build receipts specify release mode. Hashes are recorded in independent-performance-review-01-source.json; all 52 scoped production sources and candidate-snapshot-01 still match review02.
+
+Recomputed encoder medians (microseconds; independent-median percentage):
+case/mode           run02 baseline -> candidate       run03 baseline -> candidate
+odd8 HT              386.938 -> 442.126  +14.26%        372.584 -> 441.729  +18.56%
+medium16 HT         3046.542 -> 3407.979 +11.86%       3070.063 -> 3464.604 +12.85%
+odd8 EBCOT          1129.167 -> 1178.125  +4.34%       1116.521 -> 1213.812  +8.71%
+medium16 EBCOT     19963.917 -> 20317.833 +1.77%      20068.562 -> 20597.896 +2.64%
+
+HT paired medians are +18.43/+18.08% (odd8) and +11.93/+11.51% (medium16). Of 20 pairs, 19/19 odd8 and 19/15 medium16 exceed 5% in runs02/03 respectively. These support a repeated effect, not a one-shot outlier. Preserve the spread: run03 medium16 baseline p95 is 4611 us and standard deviation 1660 us, versus candidate 3933/505 us; do not imply every operation or tail latency regresses. Similar absolute EBCOT additions are consistent with shared encoder bookkeeping, but do not establish its causal fraction. Odd8 EBCOT is now above 5% in run03; run02 odd8 HT decode (+7.39%) and HT-to-EBCOT (+6.37%) were not repeated by the encode-only run03 and remain unresolved secondary signals.
+
+All output hashes are deterministic within each case/version. EBCOT encode/transcode and decoded sample hashes agree across versions. HT outputs differ and are exactly six bytes smaller, consistent with the separately reviewed CPF removal; unchanged size alone would not prove byte identity. No encoded-size increase occurs. Median RSS changes range below +2.06% across both runs. Increased reported workspace reflects admission/accounting changes and must not be described as measured heap growth. Process RSS includes startup, inputs and warmups. Exact self-decoded samples are fidelity checks, not an independent conformance oracle.
+
+The prior size-reporting gap is closed: run-r3-benchmark.py now calculates encoded_size_change_percent, flags increases above 1%, and includes that flag in the aggregate investigation count. Run02's encoded-size-audit.json binds its exact summary SHA256 and agrees with raw sizes. Run03 integrates the flag in summary.json. No separate run03 audit file is required.
+
+Safety evidence and causal limits
+The separately retained candidate-core-asan-01 receipt has exit0, unchanged inputs, and 44 passing tests across eight suites. Its native log hash matches the receipt. This strengthens the scoped admission/cancellation/sample regressions; it does not explain timing or close external qualification.
+
+I inspected the proposed changed path: HT emitters add admitted 64-byte replacement transactions before reserveCapacity; reserveTransient/releaseScratch and heldScratch traverse the stated locks while old capacity remains charged. The code supports the implementer's hypothesis. It does not prove actual reallocation/copy counts, lock contention, or that six lock acquisitions per replacement are the minimum necessary for safety. One worker implies bookkeeping overhead may be uncontended. Do not call the entire measured increase an unavoidable cost of correctness yet.
+
+What supports a deliberate safety trade-off
+PERFORMANCE.md contract0.7.0 PERF-03 requires a recorded reason, measured cost and updated baseline; unexplained confirmed regressions block stable release. A defensible narrow decision would identify the repaired preallocation/live-overlap invariant and why baseline behaviour is unsafe, measure which transactions account for the increase, distinguish essential admission from avoidable implementation overhead, quantify remaining absolute and percentage costs with the repeated case/spread evidence, and record an explicit acceptance plus the new validated baseline and its limited scope. A causal profile or bounded diagnostic comparison can support attribution; instrumented timings must remain separate from uninstrumented acceptance measurements. A smaller RSS number or passing ASan does not supply this decision.
+
+If profiling points to excess growth/locks/copies, first evaluate a narrow optimisation preserving admission before allocation, complete old/new overlap, atomic concurrent caps, denial/cleanup, cancellation, narrow-budget success behaviour, and telemetry ordering. Do not regain speed by reverting to delayed accounting, disabling budgets for one worker, or raising caps. Re-review and rerun relevant regressions plus controlled release comparisons after any change. PERF-03 allows an explicitly accepted, measured safety trade-off; it does not impose an absolute requirement to beat the unsafe baseline, nor authorise silent waiver because the work is safer.
+
+Scope remains two synthetic volumes, twelve operation cases in run02 and four repeated encodes in run03, on macOS27.0.1/Apple Swift6.4/Mac16,13. This does not fulfil the full corpus, OS26, concurrent/per-platform, direct Part10+15, full38 Part2 peer or multiple-active-HT-set gates. No native process, source edit or acceptance action was performed by this reviewer.

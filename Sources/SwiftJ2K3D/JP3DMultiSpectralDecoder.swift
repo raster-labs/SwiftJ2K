@@ -69,11 +69,21 @@ public actor JP3DMultiSpectralDecoder {
             }
         }
 
-        let samplesPerBand: [[Float]] = try bandIndices.map { idx in
-            try decodeBand(result.encodedBands[idx])
+        var samplesPerBand: [[Float]] = []
+        samplesPerBand.reserveCapacity(bandIndices.count)
+        var resolvedDims: (width: Int, height: Int, depth: Int)?
+        for idx in bandIndices {
+            let decodedBand = try await decodeBand(
+                result.encodedBands[idx],
+                resolutionLevel: options.resolutionLevel
+            )
+            if resolvedDims == nil {
+                resolvedDims = decodedBand.dimensions
+            }
+            samplesPerBand.append(decodedBand.samples)
         }
 
-        let (width, height, depth) = try parseDimensions(from: result.encodedBands[bandIndices[0]])
+        let (width, height, depth) = try resolvedDims ?? parseDimensions(from: result.encodedBands[bandIndices[0]])
 
         return JP3DMultiSpectralVolume(
             width: width,
@@ -99,6 +109,10 @@ public actor JP3DMultiSpectralDecoder {
     // MARK: - Private Helpers
 
     private func parseDimensions(from data: Data) throws -> (width: Int, height: Int, depth: Int) {
+        if data.count >= 2, data[data.startIndex] == 0xFF, data[data.startIndex + 1] == 0x4F {
+            let parsed = try JP3DCodestreamParser().parse(data, limits: nil, copyTilePayloads: false)
+            return (width: parsed.siz.width, height: parsed.siz.height, depth: parsed.siz.depth)
+        }
         guard data.count >= 12 else {
             throw J2KError.invalidParameter("Codestream too short to parse dimensions")
         }
@@ -115,10 +129,61 @@ public actor JP3DMultiSpectralDecoder {
         return (width: 1, height: 1, depth: max(1, sampleCount))
     }
 
-    private func decodeBand(_ data: Data) throws -> [Float] {
+    private func decodeBand(
+        _ data: Data,
+        resolutionLevel: Int
+    ) async throws -> (samples: [Float], dimensions: (width: Int, height: Int, depth: Int)) {
+        if data.count >= 2, data[data.startIndex] == 0xFF, data[data.startIndex + 1] == 0x4F {
+            let decoder = JP3DDecoder(
+                configuration: JP3DDecoderConfiguration(resolutionLevel: max(0, resolutionLevel))
+            )
+            let decoded = try await decoder.decode(data)
+            let vol = decoded.volume
+            guard let comp = vol.components.first else {
+                return ([], (vol.width, vol.height, vol.depth))
+            }
+            let voxelCount = vol.width * vol.height * vol.depth
+            let bytesPerSample = comp.bytesPerSample
+            var samples = [Float](repeating: 0, count: voxelCount)
+            if comp.signed && comp.bitDepth == 16 && bytesPerSample == 2 {
+                let invScale = Float(1.0 / JP3DMultiSpectralEncoder.reflectanceFixedPointScale)
+                comp.data.withUnsafeBytes { rawBuf in
+                    guard let ptr = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                    let limit = min(voxelCount, comp.data.count / 2)
+                    for i in 0..<limit {
+                        let word = UInt16(ptr[i * 2]) | (UInt16(ptr[i * 2 + 1]) << 8)
+                        let s16 = Int16(bitPattern: word)
+                        samples[i] = Float(s16) * invScale
+                    }
+                }
+            } else {
+                let denom = Float(max(1, (1 << min(24, comp.bitDepth)) - 1))
+                comp.data.withUnsafeBytes { rawBuf in
+                    guard let ptr = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+                    let limit = min(voxelCount, comp.data.count / max(1, bytesPerSample))
+                    for i in 0..<limit {
+                        var word: UInt64 = 0
+                        for b in 0..<bytesPerSample {
+                            word |= UInt64(ptr[i * bytesPerSample + b]) << UInt64(b * 8)
+                        }
+                        if comp.signed {
+                            let shift = 64 - min(63, comp.bitDepth)
+                            let sVal = (Int64(bitPattern: word) << shift) >> shift
+                            samples[i] = Float(sVal) / denom
+                        } else {
+                            samples[i] = Float(word) / denom
+                        }
+                    }
+                }
+            }
+            return (samples, (vol.width, vol.height, vol.depth))
+        }
+
+        // Isolated legacy "JP3M" decode fallback only (never emitted by JP3DMultiSpectralEncoder).
         guard data.count >= 12 else {
             throw J2KError.invalidParameter("Band codestream is too short")
         }
+        let dims = try parseDimensions(from: data)
         let base = data.startIndex
         let headerSize: Int
         if data.count >= 24,
@@ -129,7 +194,7 @@ public actor JP3DMultiSpectralDecoder {
             headerSize = 12
         }
         let payload = data[(base + headerSize)..<data.endIndex]
-        return payload.map { Float($0) / 255.0 }
+        return (payload.map { Float($0) / 255.0 }, dims)
     }
 
     private func readUInt32(_ data: Data, offset: Data.Index) -> UInt32 {

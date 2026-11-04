@@ -1,0 +1,8 @@
+{
+  "errors": 0,
+  "failures": 0,
+  "helper_sha256": "5d2d8e647f30c698d76de64fdd28522ed987c312bf810f38f51505587950d823",
+  "scope": "Synthetic fixtures only; all writes under ci-repair-evidence-09; no native/Git/network or real repository publication.",
+  "successful": true,
+  "tests_run": 18
+}

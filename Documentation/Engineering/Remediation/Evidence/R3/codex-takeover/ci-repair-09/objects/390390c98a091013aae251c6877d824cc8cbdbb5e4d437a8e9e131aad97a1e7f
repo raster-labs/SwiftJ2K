@@ -1,0 +1,284 @@
+Building for debugging...
+[0/18] Write sources
+[0/18] Write swiftj2k-cli-entitlement.plist
+[0/18] Write sources
+[3/18] /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-build-12/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[3/18] Write sources
+[10/18] Copying Fixtures
+[11/18] Write swift-version--58304C5D6DBC2206.txt
+[12/18] Compiling CZlibShim CZlibShim.c
+[14/48] Compiling SwiftJ2K HTBlockCoder.swift
+[15/48] Compiling SwiftJ2K HTTables.swift
+[16/48] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[17/48] Compiling SwiftJ2K LosslessPipeline.swift
+[18/48] Compiling SwiftJ2K MQCoder.swift
+[19/48] Compiling SwiftJ2K Part1Pipeline.swift
+[20/48] Compiling SwiftJ2K Quantization.swift
+[21/48] Compiling SwiftJ2K ROI.swift
+[22/48] Compiling SwiftJ2K TagTree.swift
+[23/48] Compiling SwiftJ2K Tier2.swift
+[24/48] Emitting module SwiftJ2K
+[25/48] Compiling SwiftJ2K Wavelet53.swift
+[26/48] Compiling SwiftJ2K Wavelet97.swift
+[27/48] Compiling SwiftJ2K CodecAPI.swift
+[28/48] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[29/48] Compiling SwiftJ2K JP2Boxes.swift
+[30/48] Compiling SwiftJ2K JP2Container.swift
+[31/48] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[32/48] Compiling SwiftJ2K Errors.swift
+[33/48] Compiling SwiftJ2K Image.swift
+[34/57] Compiling SwiftJ2K AcceleratedCodec.swift
+[35/57] Compiling SwiftJ2K AccelerationRuntime.swift
+[36/57] Compiling SwiftJ2K MetalAcceleration.swift
+[37/57] Compiling SwiftJ2K SIMDAcceleration.swift
+[38/57] Compiling SwiftJ2K BitIO.swift
+[39/57] Compiling SwiftJ2K BitPlaneCoder.swift
+[40/57] Compiling SwiftJ2K BoundedByteWriter.swift
+[41/57] Compiling SwiftJ2K Codestream.swift
+[42/57] Compiling SwiftJ2K ColourTransform.swift
+[43/57] Compiling SwiftJ2K ContextModeling.swift
+[44/57] Compiling SwiftJ2K ImageDescriptor.swift
+[45/57] Compiling SwiftJ2K ImageStorage.swift
+[46/57] Compiling SwiftJ2K LegacyImageBridge.swift
+[47/57] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[48/57] Compiling SwiftJ2K Options.swift
+[49/57] Compiling SwiftJ2K Telemetry.swift
+[50/57] Compiling SwiftJ2K Transcoding.swift
+[51/57] Compiling SwiftJ2K Volume.swift
+[52/57] Compiling SwiftJ2K VolumePixelAccounting.swift
+[53/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[54/83] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[55/83] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[56/83] Compiling SwiftJ2K3D JP3DRateControl.swift
+[57/83] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[58/83] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[59/83] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[60/83] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[61/91] Emitting module SwiftJ2K3D
+[62/91] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[63/91] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[64/91] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[65/91] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[66/91] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[67/91] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[68/91] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[69/91] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[70/91] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[71/91] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[72/91] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[73/91] Compiling SwiftJ2K3D JP3DDecoder.swift
+[74/91] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[75/91] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[76/91] Compiling SwiftJ2K3D JP3DEncoder.swift
+[77/91] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[78/91] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[79/91] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[80/91] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[81/91] Compiling SwiftJ2K3D JP3DTiling.swift
+[82/91] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[83/91] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[84/91] Compiling SwiftJ2K3D JP3DTypes.swift
+[85/91] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[86/91] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[87/136] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+[88/136] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+[89/136] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+[90/136] Compiling SwiftJ2KJPIP JPIPHTTPSPhaseTrace.swift
+[91/136] Compiling SwiftJ2KJPIP JPIPHTTPSRequest.swift
+[92/136] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+[93/136] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+[94/136] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+[95/136] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+[96/145] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[97/145] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[98/145] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[99/145] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[100/145] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[101/145] Compiling SwiftJ2KJPIP JPIP.swift
+[102/145] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[103/145] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[104/145] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+[105/145] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[106/145] Emitting module SwiftJ2KJPIP
+[107/145] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+[108/145] Compiling SwiftJ2KJPIP JPIPRequest.swift
+[109/145] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[110/145] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+[111/145] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[112/145] Compiling SwiftJ2KJPIP JPIPServer.swift
+[113/145] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+[114/145] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+[115/145] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+[116/145] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+[117/145] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+[118/145] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+[119/145] Compiling SwiftJ2KJPIP JPIPTransport.swift
+[120/145] Compiling SwiftJ2KJPIP JPIPTransportRequestLifetime.swift
+[121/145] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+[122/145] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+[123/145] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+[124/145] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+[125/178] Compiling SwiftJ2KJPIPTests IndependentR2RemainingTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[126/178] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[127/178] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[128/178] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[129/178] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[130/183] Emitting module SwiftJ2K3DTests
+[131/183] Compiling SwiftJ2KJPIPTests CodexR3TransportCloseTests.swift
+[132/183] Compiling SwiftJ2KJPIPTests CodexR3WebSocketBudgetTests.swift
+[133/183] Compiling SwiftJ2KJPIPTests CodexR3WebSocketLifecycleTests.swift
+[134/183] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+[135/183] Compiling SwiftJ2KJPIPTests CodexR3WorkerHandoffTests.swift
+[136/183] Compiling SwiftJ2KJPIPTests CodexR3AdmissionTests.swift
+[137/183] Compiling SwiftJ2KJPIPTests CodexR3HTTPDelimiterTests.swift
+[138/183] Compiling SwiftJ2KJPIPTests CodexR3HTTPStreamingTests.swift
+[139/183] Compiling SwiftJ2KJPIPTests CodexR3IndependentTests.swift
+[140/183] Compiling SwiftJ2KJPIPTests CodexR3TakeoverJPIPTests.swift
+[141/183] Compiling SwiftJ2KCLI main.swift
+[142/183] Compiling SwiftJ2KCLI CLIImageIO.swift
+[148/183] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+[149/183] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+[150/183] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+[151/183] Compiling SwiftJ2K3DTests R3VolumeRemediationTests.swift
+[152/183] Compiling SwiftJ2K3DTests VolumeContractTests.swift
+[153/183] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+[154/183] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+[155/183] Compiling SwiftJ2KJPIPTests JPIPServerComponentTests.swift
+[156/183] Compiling SwiftJ2KJPIPTests JPIPServerPushTests.swift
+[157/183] Compiling SwiftJ2KJPIPTests JPIPServerTests.swift
+[158/183] Compiling SwiftJ2KJPIPTests JPIPSessionPersistenceTests.swift
+[159/183] Compiling SwiftJ2KJPIPTests JPIPTests.swift
+[160/183] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+[161/192] Compiling SwiftJ2KCLI CLIVerbs.swift
+[162/192] Emitting module SwiftJ2KCLI
+[162/192] Write Objects.LinkFileList
+[163/192] Linking swiftj2k-cli
+[164/192] Applying swiftj2k-cli
+[166/213] Compiling SwiftJ2KTests AccelerationTests.swift
+[167/213] Compiling SwiftJ2KTests BehaviourTests.swift
+[168/213] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[169/213] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+[170/213] Compiling SwiftJ2KTests CLITestProcessSupport.swift
+[171/213] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[172/213] Compiling SwiftJ2KTests CodexR3CLIHostTests.swift
+[173/213] Compiling SwiftJ2KTests LosslessCodecTests.swift
+[174/213] Compiling SwiftJ2KTests OwnershipTests.swift
+[175/213] Compiling SwiftJ2KTests Part1BreadthTests.swift
+[176/213] Emitting module SwiftJ2KJPIPTests
+[177/213] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+[178/213] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+[179/213] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+[180/213] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+[181/213] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+[182/213] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+[183/213] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+[184/213] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+[185/213] Compiling SwiftJ2KJPIPTests TransportLifecycleProbe.swift
+[186/213] Emitting module SwiftJ2KTests
+[187/213] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+[188/213] Compiling SwiftJ2KTests ContainerTests.swift
+[189/213] Compiling SwiftJ2KTests ContractTests.swift
+[190/213] Compiling SwiftJ2KTests DescriptorTests.swift
+[191/213] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+[192/213] Compiling SwiftJ2KTests IndependentR2AuditTests.swift
+[193/213] Compiling SwiftJ2KTests LimitTests.swift
+[202/219] Compiling SwiftJ2KTests R1RemediationTests.swift
+[203/219] Compiling SwiftJ2KTests R2CLIExtraSampleOrderingTests.swift
+[204/219] Compiling SwiftJ2KTests R2ColourAlphaPreservationTests.swift
+[212/219] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+[213/219] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+[214/219] Compiling SwiftJ2KTests R2RemediationTests.swift
+[215/219] Compiling SwiftJ2KTests SampleAccessTests.swift
+[216/219] Compiling SwiftJ2KTests SharedStorageTests.swift
+[217/219] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+[218/221] Compiling SwiftJ2KPackageTests runner.swift
+[219/221] Emitting module SwiftJ2KPackageTests
+[219/221] Write Objects.LinkFileList
+[220/221] Linking SwiftJ2KPackageTests
+Build complete! (101.07s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.

@@ -249,13 +249,44 @@ final class JPIPTranscodingServiceTests: XCTestCase {
 
     // MARK: - Server Integration with Transcoding Tests
 
-    func testServerWithCodingPreferenceNone() async throws {
-        let server = JPIPServer(port: 9200)
+    private func makeEncodedJ2KCodestream(width: Int = 8, height: Int = 8) async throws -> Data {
+        var bytes = Data(count: width * height)
+        for y in 0..<height {
+            for x in 0..<width {
+                bytes[y * width + x] = UInt8((x * 17 + y * 31 + (x ^ y)) & 0xFF)
+            }
+        }
+        let component = J2KComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: width,
+            height: height,
+            data: bytes
+        )
+        let image = J2KImage(
+            width: width,
+            height: height,
+            components: [component],
+            colorSpace: .grayscale
+        )
+        return try await J2KEncoder(
+            encodingConfiguration: J2KEncodingConfiguration(
+                quality: 1.0,
+                lossless: true,
+                decompositionLevels: 1,
+                qualityLayers: 1
+            )
+        ).encode(image)
+    }
 
-        // Create a minimal J2K file
+    func testServerWithCodingPreferenceNone() async throws {
+        let server = JPIPServer(port: 0, host: "127.0.0.1")
+
+        // Create a minimal valid J2K file
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-pref-none-\(UUID().uuidString).j2k")
-        let j2kData = Data([0xFF, 0x4F, 0xFF, 0x51, 0x00, 0x04, 0x00, 0x00])
+        let j2kData = try await makeEncodedJ2KCodestream(width: 8, height: 8)
         try j2kData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
@@ -280,12 +311,12 @@ final class JPIPTranscodingServiceTests: XCTestCase {
     }
 
     func testServerWithCodingPreferenceLegacyForLegacyImage() async throws {
-        let server = JPIPServer(port: 9201)
+        let server = JPIPServer(port: 0, host: "127.0.0.1")
 
-        // Create a legacy J2K file (no CAP marker)
+        // Create a valid legacy J2K file (no CAP marker)
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-pref-legacy-\(UUID().uuidString).j2k")
-        let j2kData = Data([0xFF, 0x4F, 0xFF, 0x51, 0x00, 0x04, 0x00, 0x00])
+        let j2kData = try await makeEncodedJ2KCodestream(width: 8, height: 8)
         try j2kData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
@@ -310,22 +341,12 @@ final class JPIPTranscodingServiceTests: XCTestCase {
     }
 
     func testServerDataBinStreamingWithJ2KCodestream() async throws {
-        let server = JPIPServer(port: 9202)
+        let server = JPIPServer(port: 0, host: "127.0.0.1")
 
-        // Create a minimal J2K codestream with tile
+        // Create a minimal valid J2K codestream with tile
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-databin-\(UUID().uuidString).j2k")
-        let j2kData = Data([
-            0xFF, 0x4F,                         // SOC
-            0xFF, 0x51, 0x00, 0x04, 0x00, 0x00, // SIZ
-            0xFF, 0x90, 0x00, 0x0A,             // SOT
-            0x00, 0x00,                          // Tile 0
-            0x00, 0x00, 0x00, 0x18,             // Length
-            0x00, 0x01,
-            0xFF, 0x93,                          // SOD
-            0x01, 0x02, 0x03, 0x04,             // Data
-            0xFF, 0xD9                           // EOC
-        ])
+        let j2kData = try await makeEncodedJ2KCodestream(width: 8, height: 8)
         try j2kData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
@@ -349,13 +370,13 @@ final class JPIPTranscodingServiceTests: XCTestCase {
     }
 
     func testServerResponseLengthLimit() async throws {
-        let server = JPIPServer(port: 9203)
+        let server = JPIPServer(port: 0, host: "127.0.0.1")
 
-        // Create a larger J2K codestream
+        // Create a larger valid J2K codestream (> 100 bytes)
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-len-\(UUID().uuidString).j2k")
-        var j2kData = Data([0xFF, 0x4F, 0xFF, 0x51, 0x00, 0x04, 0x00, 0x00])
-        j2kData.append(Data(repeating: 0xAA, count: 1000))
+        let j2kData = try await makeEncodedJ2KCodestream(width: 32, height: 32)
+        XCTAssertGreaterThan(j2kData.count, 100)
         try j2kData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
@@ -367,14 +388,16 @@ final class JPIPTranscodingServiceTests: XCTestCase {
         sessionRequest.cnew = .http
         let sessionResponse = try await server.handleRequest(sessionRequest)
 
-        // Request with length limit
+        // Request with length limit (ITU-T T.808 Clause C.6.1 excludes 3-byte EOR from len)
         var dataRequest = JPIPRequest(target: "large.j2k")
         dataRequest.cid = sessionResponse.channelID
         dataRequest.len = 100
 
         let response = try await server.handleRequest(dataRequest)
         XCTAssertEqual(response.statusCode, 200)
-        XCTAssertLessThanOrEqual(response.data.count, 100)
+        XCTAssertGreaterThanOrEqual(response.data.count, 3)
+        XCTAssertLessThanOrEqual(response.data.count - 3, 100)
+        XCTAssertEqual(Array(response.data.suffix(3)), [0x00, 0x04, 0x00])
 
         try await server.stop()
     }

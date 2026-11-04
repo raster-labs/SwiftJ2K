@@ -1,0 +1,16 @@
+from pathlib import Path
+import hashlib, json, os, subprocess, sys
+w = Path(__file__).resolve().parent
+plan = json.loads((w / "planned-native-sequence-14.json").read_text())
+assert hashlib.sha256((w / "run-validation.py").read_bytes()).hexdigest() == plan["wrapper_sha256"]
+focused = json.loads((w / "validation/candidate-focused-14/result.json").read_text())
+assert focused["exit_code"] == 0 and focused["capture_complete"] and not focused["changed_inputs"]
+env = os.environ.copy()
+env["SWIFTJ2K_VALIDATION_SOURCE"] = plan["source"]
+for gate in plan["gates"]:
+    print("Starting serial gate " + gate["label"], flush=True)
+    code = subprocess.run([sys.executable, str(w / "run-validation.py"), gate["label"], *gate["command"]], cwd=w.parent, env=env).returncode
+    if code:
+        print("Stopped after failed gate " + gate["label"], flush=True)
+        sys.exit(code)
+print("All planned native gates completed; independent reconciliation still required.", flush=True)

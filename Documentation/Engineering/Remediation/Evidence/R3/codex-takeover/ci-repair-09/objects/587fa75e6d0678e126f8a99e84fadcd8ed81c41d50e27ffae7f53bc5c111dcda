@@ -1,0 +1,9 @@
+{
+  "baseline_files": 2281,
+  "candidate_files": 2282,
+  "changed": [
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift",
+    "Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift"
+  ]
+}

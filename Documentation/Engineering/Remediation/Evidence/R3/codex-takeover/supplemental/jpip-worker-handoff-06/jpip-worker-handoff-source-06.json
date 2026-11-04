@@ -1,0 +1,30 @@
+{
+  "created_at_utc": "2026-10-31T07:51:43.005392+00:00",
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "files": [
+    {
+      "path": "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift",
+      "sha256": "273167d783512c239483c9ef2426d825d63e3320c4abf478add4979593d9c752",
+      "bytes": 1706,
+      "candidate05_sha256": null
+    },
+    {
+      "path": "Sources/SwiftJ2KJPIP/JPIPTransport.swift",
+      "sha256": "fae584536249be159b28728c7e056d2cc3d5e4a2f59ca2be11dc1130f97a740e",
+      "bytes": 30021,
+      "candidate05_sha256": "7c57067174343585d6fb6efac3eb9c6eca66572d45cc25e560cd13c2b9700fdb"
+    },
+    {
+      "path": "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift",
+      "sha256": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088",
+      "bytes": 62518,
+      "candidate05_sha256": "009cc2fe7780be5aef226d01d5f72e29078afff9a3acc616f7acd39b838c76b4"
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift",
+      "sha256": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663",
+      "bytes": 8845,
+      "candidate05_sha256": null
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+swift-driver version: 1.168.6 Measured odd8 encode-ebcot 20 interleaved samples per version
+Measured odd8 encode-ht 20 interleaved samples per version
+Measured odd8 decode-ebcot 20 interleaved samples per version
+Measured odd8 decode-ht 20 interleaved samples per version
+Measured odd8 transcode-to-ht 20 interleaved samples per version
+Measured odd8 transcode-to-ebcot 20 interleaved samples per version
+Measured medium16 encode-ebcot 20 interleaved samples per version
+Measured medium16 encode-ht 20 interleaved samples per version
+Measured medium16 decode-ebcot 20 interleaved samples per version
+Measured medium16 decode-ht 20 interleaved samples per version
+Measured medium16 transcode-to-ht 20 interleaved samples per version
+Measured medium16 transcode-to-ebcot 20 interleaved samples per version
+{"cases": 12, "samples": 480, "all_samples_exact": true, "investigation_triggers": 3}

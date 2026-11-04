@@ -1,0 +1,24 @@
+{
+  "finished_at": "2026-10-31T09:47:33.209470+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 1.475912083,
+  "changed_inputs": [],
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/trickle-probe-build-10/native.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/trickle-probe-build-10/native.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 0,
+  "wrapper_exit_code": 0
+}

@@ -1,0 +1,17 @@
+{
+  "state": "INDEPENDENT_STATIC_REVIEW_COMPLETE",
+  "reviewer": "root, separate from auditor maintainer",
+  "recorded_at": "2026-10-31T10:50:31.786495+00:00",
+  "conclusion": "The exact pinned14-to15 fixture normalisation replaces only the obsolete historical equality assertion. Other historical-file checks and every final-source/raw/XML/inventory/runtime equality check are unchanged. New source hash, prior source hash and exact diff are all mandatory; future edits cannot silently inherit this exception.",
+  "verification": "Root independently regenerated full helper diff and checked pinned helper/reconciler identities and five-negative-case receipt. Independent source15 review separately verifies authorised fixture bytes. No native execution or repeat synthetic campaign.",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/audit-final.py": "d9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/auditor-delta-from14.patch": "0b4683935a24af22dcec0ba2bdc2f6e5b742d852f54827af7d8873f3bca75e33",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/auditor-delta-check.json": "a439530bc3819399aed7db746a72a41b60bc2b6c9466c38be6842ef35fc7080a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-15/verify-auditor-delta.py": "7a379add3722a74f2c5723b3356448005ab3d85ff72bfb76e7d9c85322871219",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-15.txt": "823c8c71040346ed78fdf8471f59deda711f67ee5161e4f51892b3302772f404",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-15-source.json": "d53ecacced01ba4661478c6f7044fa28c3d7bb7083c502f9878b708c358bbdfb"
+  },
+  "boundary": "Does not qualify pending native campaigns or hosted CI; strict sanitizer reconciliation is unchanged."
+}

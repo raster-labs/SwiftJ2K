@@ -1,0 +1,1 @@
+PASS: text and JSON startup visible through pipes while server alive; SIGINT exits130 and both children joined.

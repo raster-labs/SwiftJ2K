@@ -1,0 +1,186 @@
+{
+  "state": "ASAN_JPIP_FAILED_COMPLEMENT_UNEXECUTED_NO_FINAL_PROOF",
+  "at": "2026-10-31T10:42:18.426193+00:00",
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/native.log": "fe43e7d6520c73c11246b02a749755ef102f75ec2dd5deedeb8345290c35bbe3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/native.stdout": "fe43e7d6520c73c11246b02a749755ef102f75ec2dd5deedeb8345290c35bbe3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/native.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-asan-14/arm64-apple-macosx/debug/swiftj2k-cli": "764d1a4efc63d16c7aae3a0be20579c43064076e73252506e51afc270a6db046",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/result.json": "23a4669b1ba5b11c487e8711ed11f578d7a79df35c4efb07f10424c8463faaca",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/source-before.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/source-after.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-asan-inventory-14/command.json": "8cb0feef3f1d79d7eb6a999004659fec62c5c39df89130ec0c24e80f2f0c2856",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.log": "ab8584acea5871cb0215bb41bab9ab0e112ab740de5231fc745c554c75fa3d07",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout": "60975edaed0c4a3eee7ddd4faaf8f26f067578fc074f1acca82ea030fbe13fd1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/report-swift-testing.xml": "d859fec8b3665dd3d15feed4c68e1fc3d511d9d9361aff8d3153a11c7ae56b9a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/result.json": "e0246cd7f022b383b3aed6f2162385f6ec60d754c3d470b515d3ba75be3f58a6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/source-before.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/source-after.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/command.json": "cf65a2af14b035cd8acab1bd01072c5920ad87f8aefa04016c12958772a641e3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/reference.stdout": "0eed3c79dcc3cc6bce0be481244709aece3130cf179ddc6e69be1efe8bdb45ad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/reference.stderr": "8d13865527b64b7506e0c65bc7df4ac68841c6d2c6329546be9de001355584bb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/sanitized.stdout": "0eed3c79dcc3cc6bce0be481244709aece3130cf179ddc6e69be1efe8bdb45ad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/sanitized.stderr": "edb2b4aad21db7986cfe99dd05ce169022d4135e06d37e710e0ccf68b94e99cd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/jpip.ids": "51d3cf7e2c42911411cc1f7acf757b1d30e9244e9b27da5997ae83e25591d01e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/complement.ids": "aa2ae01d1cdb2947be2bea7aec00f30030880d0e2d4eec0b8775d2d33bddee93",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/sanitized.command-result.json": "677494fd9e96f669de028e43c483e41f116f11d127b874d9abe6d3a6d007c43c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/all.ids": "487f4e76fbaa75e586996051a52fb7db0eed59e3cc1fa29baf30c13e39e7e2b7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/inventory.json": "0bf14aae5a08de5f8afc880c252d496f213664bc3d5de532928b32f1c16f839f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-14/address/reference.command-result.json": "5430ec36fdc75ae30bff2a07df67d049a0f4241d85d43783d1434f1cc4125a95",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-thread-14.json": "8ef0ba4a8bb9c68af25cdf066a5a6a2710a7c972e9f2d94dc12ddf91cfec1f7c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/ordinary-cli-partial.json": "be9f722a3e5e82f0f6c15e61ac513b6944eda3f2ea5ee1af5d9dc8373d3a998f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/check-asan-failure.py": "400d513212a272d842a8acc56ae2706b0c0932db830d511e20752ecad92dd144",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-14/audit-final.py": "809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py": "18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14-source.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-14.json": "4ddc5b0e432ca3b7f7febc747766bdde52fe1ce04792fdf669d8562b6b496f9d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR2VolumeGridTests.swift": "0c2d58db81cb26b69711ac3e5313fd7349deadea6a8b9e355ea043586211827a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR2VolumePixelAccountingTests.swift": "bc8f7f3802f148137585932560440e03bd40078c3632efdb83577dbeed610d7f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3LayerBudgetTests.swift": "b26d47e6c62a4268e9f4c17a188040c477747326aa0b191328479a4b7c0f3f03",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3Part2MarkerTests.swift": "c8a9de037b96a53b9c5e7b2aacc34c6e5db3ddb7f8769ddbab266a09b42e3a90",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3ProgressTests.swift": "1db195a9cadc2088aa765a4720c381c2ac91a6497c0283a65982d61a1bdc4d4e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/CodexR3ResourceTests.swift": "97e2ea6b3159965d6528c99b028ff3832f35e5be0f707cdeb40b6cb7b519b9d1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift": "18a2ded7459b48405f7bba099a9a7d7948ed1fb6dbb801aacfe534a536955479",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R2VolumeRemediationTests.swift": "78a1510aa0115371ab9ecf383998b9427aa0a758559187361e99a4b49eecdf43",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift": "2dd6de0ce92fbbff261833289c9fd53a88fe48a5c7aeb9ea500e310e46de5b71",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift": "cd26ff026365ce3e3dd912236bdd587f38ea8ba20e9edf2c7885b88f186c912c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift": "1c3852957deb5233ad2f87696d0b6bcef5c7fb3832a40fa1f461da20295332a2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift": "5c9176c73f78ebfcc5d767b068e91cfe924864f367fd120501b790c5ee0ef538",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift": "3eea1370857a4a3caefe24c3da38d480460f60ab1f4899f2bb19d3aaf28dd77e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift": "6393e609054cec2835cc44cd6123829a2c614dea99125a8b608e665149a011e2",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift": "4d8130bc414abf98d02dbb1ad65c889c510e8bb569d6477429dde14b6ba9f6d6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CLIBreadthAndConsumerTests.swift": "11d07069ea2ef4dcadffa94a7182da08161c157c3bee97908e5e0ad011521486",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/CodexR3JPPReassemblyResourceTests.swift": "92b3e8f347f61260a19ec4c04b3964c4057ac5f0deb9ea9f8ab1b37f1c29a9a8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/IndependentR2AuditTests.swift": "c1eec9044e3af903db0d3ad3bef30841c488db6c4ee6d7582300551a77eddb4a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R1RemediationTests.swift": "f12fca3308e302901673ed4266e7b8e75c1d2330b455f9ac12a9f5189cf3dd9a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2CLIExtraSampleOrderingTests.swift": "be9f933e3135e4af9f442fe87d272a65f3345f70cb43cbeaa0777764152a5419",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2ColourAlphaPreservationTests.swift": "f2bfe40b3678fd30d1a1761028f0ffbb9682fae8c1135cdfc461966ccdd2094a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2ICCModelPreservationTests.swift": "8592f2c7913b40057a621a6f4c4811751e3acc56e2f28e221efb8c91a494853f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2LegacyBudgetProbes.swift": "5b667d979bd7712a8775450fd1571f9b5f39452c14b22080cd009af79a74151b",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KTests/R2RemediationTests.swift": "0674a1351166b601a1a651980fa56def857eb40e956e36537f7691bd1e2db75b"
+  },
+  "runs": {
+    "candidate-asan-inventory-14": {
+      "exit_code": 0,
+      "elapsed_seconds": 47.766329208,
+      "raw_capture_verified": true,
+      "source_files": 1857,
+      "sanitizer_diagnostic_matches": [],
+      "command": [
+        "python3",
+        "../sanitizer-partition-proposal/verify-sanitizer-inventory.py",
+        "--sanitizer",
+        "address",
+        "--scratch-path",
+        "../candidate-asan-14",
+        "--reference-scratch-path",
+        "../candidate-build-14",
+        "--output",
+        "../sanitizer-inventory-14/address",
+        "--swift-option=--disable-sandbox",
+        "--swift-option=--build-system",
+        "--swift-option=native",
+        "--swift-option=--cache-path",
+        "--swift-option=../swiftpm-cache",
+        "--swift-option=--config-path",
+        "--swift-option=../swiftpm-config",
+        "--swift-option=--security-path",
+        "--swift-option=../swiftpm-security",
+        "--swift-option=-j",
+        "--swift-option=4"
+      ],
+      "log_sha256": "fe43e7d6520c73c11246b02a749755ef102f75ec2dd5deedeb8345290c35bbe3"
+    },
+    "candidate-jpip-asan-14": {
+      "exit_code": 1,
+      "elapsed_seconds": 62.880366709,
+      "raw_capture_verified": true,
+      "source_files": 1857,
+      "sanitizer_diagnostic_matches": [],
+      "command": [
+        "swift",
+        "test",
+        "--scratch-path",
+        "../candidate-asan-14",
+        "--sanitize",
+        "address",
+        "--disable-sandbox",
+        "--build-system",
+        "native",
+        "--cache-path",
+        "../swiftpm-cache",
+        "--config-path",
+        "../swiftpm-config",
+        "--security-path",
+        "../swiftpm-security",
+        "-j",
+        "4",
+        "--skip-build",
+        "--filter",
+        "^SwiftJ2KJPIPTests[./]",
+        "--xunit-output",
+        "../validation/candidate-jpip-asan-14/report.xml"
+      ],
+      "log_sha256": "ab8584acea5871cb0215bb41bab9ab0e112ab740de5231fc745c554c75fa3d07"
+    }
+  },
+  "failed_run": {
+    "observed_declarations": 647,
+    "xctest": 544,
+    "swift_testing": 103,
+    "success_parser_completion_count": 102,
+    "failed_declarations": {
+      "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests/staleCleanupCannotCloseReplacementHandshake(_:)": {
+        "status": "failed",
+        "parameter_count": 3,
+        "issues": 3,
+        "binding": "Explicit failed-aggregate parser plus XML, not a success proof."
+      }
+    },
+    "issue_lines": [
+      "✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut",
+      "✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut",
+      "✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    ],
+    "xml_failure_count": 3,
+    "diagnostic_parser_gaps": [
+      "Failed Swift Testing events in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout: [{'line': 1507, 'text': '✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut'}, {'line': 1508, 'text': '✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut'}, {'line': 1509, 'text': '✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut'}]",
+      "Unresolved/interleaved runtime events in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout: [{'line': 1510, 'text': '✘ Test staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases failed after 3.693 seconds with 3 issues.', 'unresolved_display': 'staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases'}]",
+      "Swift Testing started without completion in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout",
+      "Parameter case has no declaration completion in /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout"
+    ],
+    "known_or_skipped_lines": [
+      {
+        "line": 122,
+        "text": "Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthDeliverySkipsUpdates]' started."
+      },
+      {
+        "line": 123,
+        "text": "Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthDeliverySkipsUpdates]' passed (0.000 seconds)."
+      },
+      {
+        "line": 346,
+        "text": "Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateSkipsDuplicates]' started."
+      },
+      {
+        "line": 347,
+        "text": "Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateSkipsDuplicates]' passed (0.001 seconds)."
+      }
+    ]
+  },
+  "complement_status_at_audit": "UNEXECUTED_NO_COMPLETED_RECEIPT",
+  "address_proof": "NOT_CREATED",
+  "boundaries": [
+    "The JPIP ASan14 gate FAILED; no AddressSanitizer completion or final local runtime qualification is established.",
+    "No sanitizer diagnostic was found in the inspected raw streams; this does not turn failed assertions into a pass.",
+    "Failure is attributed to observed barrier timeout assertions; its underlying cause is not established by this receipt.",
+    "Ordinary/release/CLI partial and complete thread14 partition proof remain immutable and source-scoped.",
+    "All five direct independent peer gates remain unexecuted/unwaived; no whole-R3 acceptance or merge.",
+    "Reviewer performed no native execution, source changes or deadline relaxation."
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "state": "FAILED_HOSTED_RUN_RETAINED_NO_QUALIFICATION",
+  "recorded_at": "2026-10-31T11:19:07.074252+00:00",
+  "run_id": 41195752705,
+  "attempt": 1,
+  "head": "f3c63e3df67ddf69cfaccd559e3581ea8eacdfbe",
+  "base": "46be90fc3bf50429956725ee592687d8ff8e7344",
+  "checkout_head": "2dbe225d2c2bdf9272797c99d4a512e090a10c08",
+  "checkout_tree": "4e818309cf03798d3e156517ad936ab380fbe647",
+  "macos_job": 124521448589,
+  "linux": "All4debugbuilds fail CLIVerbs.swift1922 shared mutable stdout reference; no Linux tests/release stages executed.",
+  "macos": "Production build passed. Ordinary XCTest passed1034; SwiftTesting324declarations/41suites failed3issues and skipped5 external-oracle declarations. No sanitizer stage executed.",
+  "ordinary_issues": [
+    "HTTP elapsed2.62893125seconds exceeds2seconds testlimit",
+    "descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest requestdeadline",
+    "httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel handshake deadline"
+  ],
+  "passing_jobs": [
+    "Independent consumer tools6.2",
+    "Sharedcontractbyteidentity"
+  ],
+  "strict_reconstruction": "REJECTED: emitter retained incompleteevidence; no successful reconstruction created.",
+  "partial_emitter_files_byte_hash_verified_for_diagnosis_only": [
+    {
+      "path": "ordinary/full-swift-testing.xml",
+      "bytes": 45512,
+      "sha256": "5ce53ac1bdbc92689499ea6b0f081a64c2e8b7a604223f1516b9ab369810f85c",
+      "cases": 324,
+      "failure_cases": 3,
+      "skipped_cases": 5
+    }
+  ],
+  "emitter_end": {
+    "format": "swiftj2k-ci-evidence-v1",
+    "kind": "end",
+    "files": 1,
+    "bytes": 45512,
+    "problems": [
+      "Missing inventory evidence: address/reference.stdout",
+      "Missing inventory evidence: address/reference.stderr",
+      "Missing inventory evidence: address/reference.command-result.json",
+      "Missing inventory evidence: address/sanitized.stdout",
+      "Missing inventory evidence: address/sanitized.stderr",
+      "Missing inventory evidence: address/sanitized.command-result.json",
+      "Missing inventory evidence: address/inventory.json",
+      "Missing inventory evidence: address/all.ids",
+      "Missing inventory evidence: address/jpip.ids",
+      "Missing inventory evidence: address/complement.ids",
+      "Missing inventory evidence: thread/reference.stdout",
+      "Missing inventory evidence: thread/reference.stderr",
+      "Missing inventory evidence: thread/reference.command-result.json",
+      "Missing inventory evidence: thread/sanitized.stdout",
+      "Missing inventory evidence: thread/sanitized.stderr",
+      "Missing inventory evidence: thread/sanitized.command-result.json",
+      "Missing inventory evidence: thread/inventory.json",
+      "Missing inventory evidence: thread/all.ids",
+      "Missing inventory evidence: thread/jpip.ids",
+      "Missing inventory evidence: thread/complement.ids",
+      "No XML retained for invocation: address/jpip.xml",
+      "No XML retained for invocation: address/complement.xml",
+      "No XML retained for invocation: thread/jpip.xml",
+      "No XML retained for invocation: thread/complement.xml"
+    ],
+    "retention_complete": false,
+    "scope": "Retention only; missing framework reports are not zero tests; reconcile runtime declarations and parameter cases separately"
+  },
+  "raw_logs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448589.log": {
+      "bytes": 564160,
+      "sha256": "5cd18d60d8004353493481c699daa038a30f251adb46f6c38afbe96fc8d7726f"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448690.log": {
+      "bytes": 29220,
+      "sha256": "010681e45898d556c29e175ceea6e4744fe7047072a2f37717b64825286959b0"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448725.log": {
+      "bytes": 24072,
+      "sha256": "acceaa0ddd28f57b8392cd3aa3f099b83fcf03dada29ce286ef498949e19316c"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448753.log": {
+      "bytes": 29177,
+      "sha256": "bea0ae860dc6de7386b0f5e4613c7aad5f7a7526b0ad4e9b639544e17f720885"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448768.log": {
+      "bytes": 12573,
+      "sha256": "3dbb4a3c5d38d1f59974b31dedccc928deb0c2efd140fb8da021175efdf24306"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448786.log": {
+      "bytes": 24750,
+      "sha256": "ddce333d6ea22d528199234457348e511e0ca72515f11582d552fdb273514a00"
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448817.log": {
+      "bytes": 24509,
+      "sha256": "9567293a3bd72c38a5357db50fbdb007af08ac8e30dbb18900626d50f30be554"
+    }
+  },
+  "r3_acceptance": "NOT_ACCEPTED",
+  "merge_allowed": false,
+  "sanitizers": "UNEXECUTED",
+  "source_provider_review": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-source-provider-review-15.json"
+}

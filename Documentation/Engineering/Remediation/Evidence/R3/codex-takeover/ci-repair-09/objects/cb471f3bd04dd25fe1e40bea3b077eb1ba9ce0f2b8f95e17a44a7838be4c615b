@@ -1,0 +1,273 @@
+"""Independent read-only receipt/parser audit. Never invokes Swift or subprocesses."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib, json, re, sys, difflib, xml.etree.ElementTree as ET
+
+W = Path(__file__).resolve().parent
+S = W / 'candidate-snapshot-15'
+INITIAL = '--initial' in sys.argv
+def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def read(p): return json.loads(Path(p).read_text())
+manifest_path = W / 'candidate-snapshot-15-source.json'
+manifest = read(manifest_path)
+def source_hashes():
+    return {str(p.relative_to(S)):sha(p) for p in S.rglob('*')
+            if p.is_file() and '.build' not in p.relative_to(S).parts}
+before = source_hashes()
+assert before == manifest and len(before) == 1857
+receipt = {'started_at':datetime.now(timezone.utc).isoformat(),
+    'state':'INITIAL_PARTIAL' if INITIAL else 'FINAL_VERIFIED', 'source':str(S),
+    'source_files':len(before), 'manifest_sha256':sha(manifest_path),
+    'files':{}, 'runs':{}, 'inventories':{}, 'proofs':{}, 'pending':[], 'historical':{}}
+def record(p): receipt['files'][str(p)] = sha(p)
+diagnostic = re.compile(r'WARNING: ThreadSanitizer|ERROR: (?:AddressSanitizer|LeakSanitizer)|'
+    r'SUMMARY: (?:ThreadSanitizer|AddressSanitizer|LeakSanitizer)|runtime error:|'
+    r'Sanitizer CHECK failed|ThreadSanitizer: (?:data race|deadlock)|AddressSanitizer:DEADLYSIGNAL')
+def run(name, expected_exit=0, source=manifest):
+    d=W/'validation'/name
+    if not (d/'result.json').exists():
+        assert INITIAL, ('missing required run', name)
+        receipt['pending'].append(name)
+        return
+    c=read(d/'command.json'); r=read(d/'result.json')
+    assert r['exit_code']==r['wrapper_exit_code']==expected_exit and not r['changed_inputs']
+    assert read(d/'source-before.json')==read(d/'source-after.json')==source
+    assert sha(d/'native.log')==r['log_sha256']
+    assert r['capture_complete'] and r['capture_threads_joined'] and not r['capture_errors']
+    assert r['merged_synthetic_eof_newlines']==0
+    assert c['wrapper_sha256']==sha(W/'run-validation.py')
+    for key,item in r['native_streams'].items():
+        p=d/('native.'+key)
+        assert p.resolve()==Path(item['path']).resolve()
+        assert sha(p)==item['sha256'] and p.stat().st_size==item['bytes']
+    assert Counter((d/'native.log').read_bytes().splitlines()) == (
+        Counter((d/'native.stdout').read_bytes().splitlines()) +
+        Counter((d/'native.stderr').read_bytes().splitlines()))
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    if expected_exit==0:
+        assert all(not diagnostic.search((d/n).read_text()) for n in ['native.log','native.stdout','native.stderr'])
+        assert c['cwd']==str(S if source is manifest else W/'candidate-snapshot-14')
+        assert c['test_environment']=={'SWIFTJ2K_TEST_CLI_PATH':None,'ASAN_OPTIONS':None,'TSAN_OPTIONS':None}
+    for item in r.get('built_cli_products_at_completion',{}).values():
+        assert sha(item['path'])==item['sha256']; record(item['path'])
+    result={'exit_code':expected_exit,'elapsed_seconds':r['elapsed_seconds'],
+        'command':c['command'],'compiler':c['compiler'],'environment':c['test_environment'],
+        'log_sha256':r['log_sha256'],'source_files':len(source),'raw_capture_verified':True}
+    xmlpath=d/'report-swift-testing.xml'
+    if expected_exit==0 and xmlpath.exists():
+        nodes=list(ET.parse(xmlpath).iter('testcase'))
+        assert all(not list(n) for n in nodes)
+        result['xml_swift_testing_declarations']=len(nodes)
+    receipt['runs'][name]=result
+    return result
+
+required=['candidate-full-15',
+    'candidate-tsan-inventory-15','candidate-jpip-tsan-15','candidate-complement-tsan-15',
+    'candidate-asan-inventory-15','candidate-jpip-asan-15','candidate-complement-asan-15']
+for name in required: run(name)
+cli_manifest=read(W/'candidate-snapshot-14-source.json')
+for name in ['candidate-release-build-14','candidate-cli-14']: run(name,source=cli_manifest)
+native_plan_path=W/'planned-native-sequence-15.json'
+native_plan=read(native_plan_path); record(native_plan_path)
+for gate in native_plan['gates']:
+    if gate['label'] in receipt['runs']:
+        assert receipt['runs'][gate['label']]['command']==gate['command']
+assert '--filter' not in receipt['runs']['candidate-full-15']['command']
+assert '--skip' not in receipt['runs']['candidate-full-15']['command']
+assert '--no-parallel' not in receipt['runs']['candidate-full-15']['command']
+preserved=read(W/'candidate-snapshot-08-source.json')
+receipt['unchanged_deadline_barrier_tests']={}
+for filename in ['CodexR3IndependentTests.swift','CodexR3WebSocketBudgetTests.swift']:
+    path='Tests/SwiftJ2KJPIPTests/'+filename
+    assert preserved[path]==manifest[path]
+    receipt['unchanged_deadline_barrier_tests'][path]=manifest[path]
+
+def inventory(mode):
+    d=W/'sanitizer-inventory-15'/mode
+    if not (d/'inventory.json').exists():
+        assert INITIAL; return None
+    inv=read(d/'inventory.json')
+    ids={n:(d/(n+'.ids')).read_text().splitlines() for n in ['all','jpip','complement']}
+    assert [len(ids[n]) for n in ['all','jpip','complement']]==[1358,647,711]
+    for values in ids.values(): assert len(values)==len(set(values)) and all(values)
+    allids,jpip,other=(set(ids[n]) for n in ['all','jpip','complement'])
+    assert not jpip&other and jpip|other==allids
+    assert jpip=={n for n in allids if re.match(r'^SwiftJ2KJPIPTests[./]',n)}
+    assert inv['selection_regex']=='^SwiftJ2KJPIPTests[./]'
+    assert inv['jpip_arguments']==['--filter','^SwiftJ2KJPIPTests[./]']
+    assert inv['complement_arguments']==['--skip','^SwiftJ2KJPIPTests[./]']
+    for kind in ['reference','sanitized']:
+        assert inv[kind]['exit_code']==0
+        for stream in ['stdout','stderr']:
+            assert sha(d/(kind+'.'+stream))==inv[kind][stream+'_sha256']
+            assert not diagnostic.search((d/(kind+'.'+stream)).read_text())
+        assert set((d/(kind+'.stdout')).read_text().splitlines())==allids
+    assert '--sanitize' in inv['sanitized']['command']
+    assert inv['sanitized']['command'][inv['sanitized']['command'].index('--sanitize')+1]==mode
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    receipt['inventories'][mode]={'all':1358,'jpip':647,'complement':711,
+        'all_ids_sha256':sha(d/'all.ids'),'equal_ordinary_sanitized':True,'exact_disjoint_union':True}
+    return allids,jpip,other
+
+def independently_parse(d,bindings):
+    """Independent parser, not runtime-coverage/reconcile.py."""
+    raw=(d/'native.stdout').read_text()
+    reverse={v:k for k,v in bindings.items()}; assert len(reverse)==len(bindings)
+    xcstart=Counter(a+'/'+b for a,b in re.findall(r"^Test Case '-\[([^ ]+) ([^\]]+)\]' started\.$",raw,re.M))
+    xcpass=Counter(a+'/'+b for a,b in re.findall(r"^Test Case '-\[([^ ]+) ([^\]]+)\]' passed \([^\n]+\)\.$",raw,re.M))
+    assert xcstart==xcpass and all(n==1 for n in xcpass.values())
+    swstart=Counter(reverse[n] for n in re.findall(r'^◇ Test (?!case )(.+) started\.$',raw,re.M) if n!='run')
+    swpass={}; parameters={}
+    for display,count in re.findall(r'^✔ Test (.+?)(?: with (\d+) test cases?)? passed after [0-9.]+ seconds\.$',raw,re.M):
+        if display.startswith('run with '): continue
+        key=reverse[display]; assert key not in swpass
+        swpass[key]={'status':'passed','parameter_count':int(count) if count else None}
+    assert set(swstart)==set(swpass) and all(n==1 for n in swstart.values())
+    for text in re.findall(r'^◇ Test case passing (.*?) started\.$',raw,re.M|re.S):
+        arg,display=text.rsplit(' to ',1)
+        arg=re.sub(r'^(\d+) argument ',r'\1 arguments ',arg)
+        assert not any(mark in arg for mark in ['◇ Test ','✔ Test ','✘ Test ','WARNING:','ERROR:'])
+        parameters.setdefault(reverse[display],Counter())[arg]+=1
+    assert len(parameters)==sum(v['parameter_count'] is not None for v in swpass.values())
+    for key,args in parameters.items(): assert sum(args.values())==swpass[key]['parameter_count']
+    xmlids=set()
+    for node in ET.parse(d/'report-swift-testing.xml').iter('testcase'):
+        assert not list(node)
+        a,b=node.attrib['classname'],node.attrib['name']
+        matches={a+'/'+b,a+'.'+b}&set(swpass); assert len(matches)==1
+        key=matches.pop(); assert key not in xmlids; xmlids.add(key)
+    assert xmlids==set(swpass)
+    assert not re.search(r'^✘|^↷|\bskipped\b|known issue',raw,re.M|re.I)
+    return dict(xcpass),swpass,{k:dict(v) for k,v in parameters.items()}
+
+for mode in ['thread','address']:
+    sets=inventory(mode)
+    proofpath=W/('r3-sanitizer-execution-proof-'+mode+'-15.json')
+    if not proofpath.exists():
+        assert INITIAL, ('missing required proof',mode)
+        receipt['pending'].append(str(proofpath)); continue
+    proof=read(proofpath); record(proofpath)
+    assert proof['state']=='COMPLETE_PARTITIONED_RUNTIME_COVERAGE'
+    assert proof['declared_tests']==1358 and proof['parameter_declarations']==38
+    assert proof['parameter_argument_starts']==406 and not proof['unexecuted_declarations']
+    spec=W/'runtime-coverage-15'/'planned-15'/(mode+'-final-15.json')
+    assert sha(spec)==proof['spec_sha256']; record(spec)
+    assert sha(W/'runtime-coverage'/'reconcile.py')==proof['helper_sha256']; record(W/'runtime-coverage'/'reconcile.py')
+    assert receipt['manifest_sha256']==proof['source_manifest_sha256']
+    assert sha(W/'sanitizer-inventory-15'/mode/'all.ids')==proof['inventory_sha256']
+    for title in proof['title_source_receipts']:
+        p=Path(title['source']); assert sha(p)==title['source_sha256']==manifest[str(p.relative_to(S))]
+        assert title['literal'] in p.read_text().splitlines()[title['line']-1]
+        assert json.loads(title['literal'])==json.loads(title['display'])
+    parsed=[]; results=[]
+    for obj,expected in zip([proof['ordinary'],*proof['partitions']],sets):
+        for path,digest in obj['files'].items(): assert sha(path)==digest; record(path)
+        d=Path(obj['directory']); xc,sw,params=independently_parse(d,proof['display_bindings'])
+        assert set(xc)|set(sw)==expected and not set(xc)&set(sw)
+        assert set(obj['expected_ids'])==set(obj['statuses'])==expected
+        assert set(obj['statuses'].values())=={'passed'}
+        assert {k:'passed' for k in xc}==obj['runtime']['xctest']
+        assert sw==obj['runtime']['swift_testing'] and params==obj['runtime']['parameter_cases']
+        assert not obj['runtime']['diagnostic_gaps']
+        parsed.append((xc,sw,params))
+        results.append({'directory':str(d),'declarations':len(xc)+len(sw),
+            'xctest':len(xc),'swift_testing':len(sw),'parameter_declarations':len(params),
+            'parameter_starts':sum(sum(v.values()) for v in params.values())})
+    assert {**parsed[1][0],**parsed[2][0]}==parsed[0][0]
+    assert {**parsed[1][1],**parsed[2][1]}==parsed[0][1]
+    assert {**parsed[1][2],**parsed[2][2]}==parsed[0][2]
+    receipt['proofs'][mode]={'proof_sha256':sha(proofpath),'independent_parser_matches':True,'runs':results}
+
+cli_path=W/'cli-integration-14'/'report.json'; cli=read(cli_path); record(cli_path)
+assert cli['checks']==len(cli['commands'])==246 and cli['status']=='passed'
+assert all(c['exit_code']==c['expected_exit_code'] for c in cli['commands'])
+assert sha(cli['binary'])==cli['binary_sha256']; record(cli['binary'])
+assert cli['test_runner_sha256']==manifest['Scripts/test-cli.py']
+assert cli['installer_sha256']==manifest['Scripts/install-cli.sh']
+release=read(W/'validation/candidate-release-build-14/result.json')
+assert release['built_cli_products_at_completion']['release']['sha256']==cli['binary_sha256']
+receipt['cli']={'checks':246,'binary_sha256':cli['binary_sha256'],'command_statuses_match':True}
+
+historical=[('candidate-full-tsan-05','candidate-snapshot-05',1,'4a0abcf25798065f203d2469776b5021931659d43e71f766035eeeb76b9d8fd7'),
+    ('candidate-full-07','candidate-snapshot-07',1,'d826c3c0afa13a283fdb0e68579e8031a111a1ebceabbcde9c4a95a7717fac6a')]
+plan=read(W/'runtime-coverage-15/planned-15/audit-plan.json')
+historical += [(h['directory'],Path(h['manifest']).name.removesuffix('-source.json'),h['expected_exit'],h['log_sha256']) for h in plan['historical']]
+for name,snapshot,code,digest in historical:
+    d=W/'validation'/name; r=read(d/'result.json')
+    assert sha(d/'native.log')==digest and r['exit_code']==code and not r['changed_inputs']
+    assert read(d/'source-before.json')==read(d/'source-after.json')==read(W/(snapshot+'-source.json'))
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    receipt['historical'][name]={'exit_code':code,'log_sha256':digest,'source_unchanged':True}
+for p in [W/'independent-https-review-14.txt',W/'independent-https-review-14-source.json',
+          W/'independent-jpip-review-15.txt',W/'independent-jpip-review-15-source.json',
+          W/'run-validation.py',Path(__file__),manifest_path]: record(p)
+assert sha(W/'independent-https-review-14.txt')=='937df492fbc0d392a87b175d92e4e8cd383ac4de8e640addee9bea8bce28e2b5'
+assert sha(W/'independent-https-review-14-source.json')=='edeb261f50c1efbac8bfccf1385428d9caaaf527f62b3355c1b07ca41c0a403e'
+# Independent review of the narrow secondary-auditor change; no execution/import of it.
+old_auditor=W/'runtime-coverage-14/audit-final.py'
+new_auditor=W/'runtime-coverage-15/audit-final.py'
+old,new=old_auditor.read_text(),new_auditor.read_text()
+assert sha(old_auditor)=='809d77f9d1cf12cb1ef3566c310a97473a515d4a8858aa27cf7cb691a2c88252'
+assert sha(new_auditor)=='d9db9b61e5c91e1cb26deb4ca8f6a5919f1a4ec8a09cfaf5f84331a3a5310eda'
+patch=W/'runtime-coverage-15/auditor-delta-from14.patch'
+assert ''.join(difflib.unified_diff(old.splitlines(True),new.splitlines(True),
+    fromfile='runtime-coverage-14/audit-final.py',tofile='runtime-coverage-15/audit-final.py'))==patch.read_text()
+a=new.index('def verify_authorised_websocket_fixture('); b=new.index('def main():',a)
+normalised=(new[:a]+new[b:]).replace('import difflib\n','')
+normalised=normalised.replace("['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]",
+    "['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift', 'CodexR3WebSocketLifecycleTests.swift']]")
+normalised=normalised.replace("    receipt['authorised_websocket_fixture_delta_15'] = verify_authorised_websocket_fixture(\n"
+    "        source, manifest, m04, work, record)\n",'')
+assert normalised==old
+assert sha(W/'runtime-coverage/reconcile.py')=='18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa'
+relative='Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift'
+oldfixture=W/'candidate-snapshot-14'/relative; newfixture=S/relative
+fixturepatch=W/'websocket-peer-lifetime-15/delta-from14.patch'
+assert sha(oldfixture)==cli_manifest[relative]==preserved[relative]=='28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd'
+assert sha(newfixture)==manifest[relative]=='674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386'
+assert sha(fixturepatch)=='b3218f7d2c1a1c6db5a7f9d0a29424c06f9d8aa740877e39d7428fc301f04434'
+assert ''.join(difflib.unified_diff(oldfixture.read_text().splitlines(True),newfixture.read_text().splitlines(True),
+    fromfile='frozen14/'+relative,tofile='fixture15/'+relative))==fixturepatch.read_text()
+norm,labels=re.subn(r'eventually\("(?:[^"\\]|\\.)*"\)', 'eventually',newfixture.read_text())
+assert labels==10
+for x,y in [
+ ('private func eventually(_ phase: String, _ condition:','private func eventually(_ condition:'),
+ ('throw LifecycleTestError.barrierTimedOut(phase: phase)','throw LifecycleTestError.barrierTimedOut'),
+ ('case barrierTimedOut(phase: String)','case barrierTimedOut'),
+ ('                // This timeout belongs to accepted sockets, not listener polling.\n'
+  '                // Explicit shutdown and worker completion govern the held peer lifetime.\n',''),
+ ('peer.listener.acceptConnection(timeoutSeconds: 0)','peer.listener.acceptConnection(timeoutSeconds: 1)')]:
+    assert norm.count(x)==1; norm=norm.replace(x,y)
+assert norm.encode()==oldfixture.read_bytes()
+receipt['auditor_delta']={'new_sha256':sha(new_auditor),'old_recovered_exactly':True,
+    'strict_reconciler_unchanged':True,'fixture_exact_normalisation':True,'phase_labels':labels}
+for p in [old_auditor,new_auditor,patch,oldfixture,newfixture,fixturepatch,
+ W/'runtime-coverage-15/auditor-delta-check.json',W/'runtime-coverage-15/verify-auditor-delta.py',
+ W/'runtime-coverage-15/root-auditor-review-15.json']:record(p)
+# Independent conservative input equivalence for scoped release/CLI14 reuse.
+def cli_input(path):
+    parts=Path(path).parts
+    return (path in {'Package.swift','Package.resolved','VERSION','CLI.md'} or
+        parts[0] in {'Sources','Scripts','Integration','Examples','ManPages'} or
+        any(part.lower() in {'fixtures','resources'} for part in parts) or
+        (parts[0]=='Tests' and not path.endswith('.swift')))
+inputs={p:h for p,h in manifest.items() if cli_input(p)}
+assert inputs=={p:h for p,h in cli_manifest.items() if cli_input(p)} and len(inputs)==512
+assert {p:sha(W/'candidate-snapshot-14'/p) for p in inputs}==inputs
+receipt['cli']['reused_from_candidate']='14'
+receipt['cli']['matched_applicable_inputs']=len(inputs)
+receipt['cli']['inputs']=inputs
+assert sha(W/'independent-jpip-review-15.txt')=='823c8c71040346ed78fdf8471f59deda711f67ee5161e4f51892b3302772f404'
+assert sha(W/'independent-jpip-review-15-source.json')=='d53ecacced01ba4661478c6f7044fa28c3d7bb7083c502f9878b708c358bbdfb'
+for path,digest in receipt['files'].items(): assert sha(path)==digest
+assert source_hashes()==before
+receipt['source_stable']=True
+receipt['finished_at']=datetime.now(timezone.utc).isoformat()
+target=W/('independent-final-native-review-15-initial.json' if INITIAL else 'independent-final-native-review-15-source.json')
+assert not target.exists(), 'Refusing to overwrite independent receipt'
+target.write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps({'state':receipt['state'],'runs':len(receipt['runs']),'proofs':receipt['proofs'],'cli_checks':receipt['cli']['checks'],'matched_cli_inputs':len(inputs),'source_stable':True,'pending':receipt['pending']},indent=2))

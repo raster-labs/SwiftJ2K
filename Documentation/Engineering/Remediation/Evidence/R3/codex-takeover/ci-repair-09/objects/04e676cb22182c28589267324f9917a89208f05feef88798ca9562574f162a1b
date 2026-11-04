@@ -1,0 +1,7 @@
+{
+  "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "e8484c2ca59ff66029fd4354c2af7da12975a58b9b118640c170f14102bed658",
+  "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+  "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+  "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": "6eb37eb96f6fdc10303d4c83420ad49ff577e80d501cc6b22ce95d40f7061aee",
+  "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d"
+}

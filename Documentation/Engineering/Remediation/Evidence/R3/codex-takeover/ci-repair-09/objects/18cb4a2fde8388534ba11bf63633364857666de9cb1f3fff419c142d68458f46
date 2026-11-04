@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Create versioned, PLANNED evidence specs. Never runs native tools or validation."""
+from pathlib import Path
+import argparse
+import json
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--candidate', required=True, help='Final frozen candidate suffix, e.g. 10')
+    p.add_argument('--cli-candidate', help='Defaults to final candidate; 09 requires input identity proof')
+    args = p.parse_args()
+    n, c = args.candidate, args.cli_candidate or args.candidate
+    if not n.isdigit() or not c.isdigit():
+        p.error('Candidate suffixes must contain only digits')
+    here = Path(__file__).resolve().parent
+    w = here.parent
+    out = here / ('planned-' + n)
+    out.mkdir(exist_ok=False)
+    source = w / ('candidate-snapshot-' + n)
+    config = {
+        'state': 'PLANNED_NOT_EXECUTED', 'candidate': n, 'cli_candidate': c,
+        'source': str(source), 'manifest': str(w / ('candidate-snapshot-' + n + '-source.json')),
+        'wrapper': str(w / 'run-validation.py'),
+        'reconciliation_helper': str(w / 'runtime-coverage' / 'reconcile.py'),
+        'ordinary': 'candidate-full-' + n,
+        'focused': ['candidate-focused-' + n],
+        'release': 'candidate-release-build-' + c, 'cli': 'candidate-cli-' + c,
+        'cli_report': str(w / ('cli-integration-' + c) / 'report.json'),
+        'cli_manifest': str(w / ('candidate-snapshot-' + c + '-source.json')),
+        'cli_source': str(w / ('candidate-snapshot-' + c)),
+        'expected_cli_checks': 246,
+        'historical': [
+            {'directory': 'candidate-focused-09', 'manifest': str(w / 'candidate-snapshot-09-source.json'),
+             'expected_exit': 1, 'log_sha256': '638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994'}
+        ],
+        'modes': {},
+        'supporting_inputs': [str(w / name) for name in [
+            'independent-https-review-09.txt', 'independent-https-review-09-source.json',
+            'independent-tcp-close-review-09.txt', 'independent-tcp-close-review-09-source.json',
+            'candidate-snapshot-09-provenance.json', 'compiler-portability-09/independent-root-review.json'
+        ]],
+        'boundaries': [
+            'This is a plan, not a receipt or claim of executed coverage.',
+            'All required final ordinary and sanitizer runs must exist and pass; no missing run is optional.',
+            'Reused release/CLI receipts require exact identity of every production, package, script, fixture and resource input.',
+            'The focused09 failed readiness run remains failed historical evidence.',
+            'No external decoder, peer, Linux, OS26, whole-R3, or full-cross-target sanitizer acceptance follows.'
+        ]
+    }
+    for mode, short in [('thread', 'tsan'), ('address', 'asan')]:
+        inventory = w / ('sanitizer-inventory-' + n) / mode
+        ordinary = w / 'validation' / config['ordinary']
+        def run_spec(label, name, expected=None):
+            d = w / 'validation' / name
+            value = {'label': label, 'directory': str(d),
+                     'swift_testing_xml': [str(d / 'report-swift-testing.xml')]}
+            if expected:
+                value['expected_ids'] = str(inventory / (expected + '.ids'))
+            return value
+        jpip, complement = 'candidate-jpip-' + short + '-' + n, 'candidate-complement-' + short + '-' + n
+        spec = {'source': str(source), 'inventory': str(inventory / 'all.ids'),
+                'ordinary': run_spec('ordinary-final', config['ordinary']),
+                'partitions': [run_spec(mode + '-jpip-final', jpip, 'jpip'),
+                               run_spec(mode + '-complement-final', complement, 'complement')]}
+        spec_path = out / (mode + '-final-' + n + '.json')
+        spec_path.write_text(json.dumps(spec, indent=2) + '\n')
+        config['modes'][mode] = {
+            'inventory': str(inventory), 'inventory_run': 'candidate-' + short + '-inventory-' + n,
+            'jpip': jpip, 'complement': complement,
+            'spec': str(spec_path),
+            'proof': str(w / ('r3-sanitizer-execution-proof-' + mode + '-' + n + '.json'))}
+    (out / 'audit-plan.json').write_text(json.dumps(config, indent=2) + '\n')
+    print(json.dumps({'state': 'PLANNED_NOT_EXECUTED', 'directory': str(out)}, indent=2))
+
+
+if __name__ == '__main__':
+    main()

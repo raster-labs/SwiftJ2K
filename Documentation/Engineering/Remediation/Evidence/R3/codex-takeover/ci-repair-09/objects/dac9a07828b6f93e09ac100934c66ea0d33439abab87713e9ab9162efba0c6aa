@@ -1,0 +1,11 @@
+Trickle delivery diagnostic 10 — PREPARED, NOT EXECUTED
+
+Canonical claim verified before this pass. Main checkout source/tests remain byte-identical to focused09; no timeout, cadence, body or storage cap changes. The observed focused09 failure only establishes failure to receive two body bytes within two seconds; the original receipt contains no submitted-versus-received counts, so MIME buffering remains an unconfirmed explanation.
+
+Run proposal for root exclusive native wrapper:
+swiftc -parse-as-library -swift-version 6 work/trickle-probe-10/TrickleDeliveryProbe.swift -o work/trickle-probe-10/trickle-delivery-probe
+work/trickle-probe-10/trickle-delivery-probe
+
+The two runs are sequential and differ only in HTTP Content-Type. Each cancels after two seconds and waits for task completion then session invalidation before returning counts. An outer process timeout remains appropriate for any cleanup defect. Results measure URLSession delegate delivery, not the SwiftJ2K accumulator itself, opaque URLSession storage, or TLS/peer interoperability. If absent Content-Type produces submitted bytes but no delegate data while explicit type receives promptly, that supports a targeted realistic header fix; no such conclusion is claimed before execution.
+
+Static whitespace check passed. No Swift/compiler/test/server/native execution by this writer. All writes stopped after receipt preparation.

@@ -1,0 +1,146 @@
+{
+  "kind": "planar",
+  "input_license": "Apache-2.0 synthetic fixtures",
+  "tools": {
+    "kdu_compress": {
+      "path": "/Library/Kakadu/8.4.1/bin/kdu_compress",
+      "sha256": "6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06"
+    },
+    "kdu_expand": {
+      "path": "/Library/Kakadu/8.4.1/bin/kdu_expand",
+      "sha256": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"
+    }
+  },
+  "records": [
+    {
+      "name": "g12_5x3_ramp_extremes",
+      "source_sha256": "ab4bf95cfcefa76e0233f2613be1009baaf4898941aa607d8ea7c9b55a0798d2",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.pgm",
+            "-o",
+            "../portable-planar-fixtures-01/g12_5x3_ramp_extremes.kdu_ht_n0_layers_lrcp.j2k",
+            "Creversible=yes",
+            "Cmodes=HT",
+            "Clevels=0",
+            "Clayers=3",
+            "Corder=LRCP",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-planar-fixtures-01/g12_5x3_ramp_extremes.kdu_ht_n0_layers_lrcp.j2k",
+            "-o",
+            "../portable-planar-fixtures-01/g12_5x3_ramp_extremes.decoded.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "codestream_sha256": "e0ab43dd11b000fb9b4a28e986e77b1b42608cd63b45fb62abc61bcceb25e0b9",
+      "decoded_sha256": "ab4bf95cfcefa76e0233f2613be1009baaf4898941aa607d8ea7c9b55a0798d2",
+      "exact_samples": true
+    },
+    {
+      "name": "g16_17x9_alternating",
+      "source_sha256": "483754f4e221d8b65ddd387bdf13a6830604f3cd95f386e81c8872cd0302ec9e",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.pgm",
+            "-o",
+            "../portable-planar-fixtures-01/g16_17x9_alternating.kdu_ht_n0_layers_lrcp.j2k",
+            "Creversible=yes",
+            "Cmodes=HT",
+            "Clevels=0",
+            "Clayers=3",
+            "Corder=LRCP",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-planar-fixtures-01/g16_17x9_alternating.kdu_ht_n0_layers_lrcp.j2k",
+            "-o",
+            "../portable-planar-fixtures-01/g16_17x9_alternating.decoded.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "codestream_sha256": "517844ead4e120ed6a9d84133a255124e5cee02dfdc9dce9a518bf060075170c",
+      "decoded_sha256": "483754f4e221d8b65ddd387bdf13a6830604f3cd95f386e81c8872cd0302ec9e",
+      "exact_samples": true
+    },
+    {
+      "name": "g08_37x23_random",
+      "source_sha256": "884b65208c052d3d8ca92c45f01b1ccb95ba179365b05f4981314544eedf3e32",
+      "steps": [
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_compress",
+            "-i",
+            "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.pgm",
+            "-o",
+            "../portable-planar-fixtures-01/g08_37x23_random.kdu_ht_n0_layers_lrcp.j2k",
+            "Creversible=yes",
+            "Cmodes=HT",
+            "Clevels=0",
+            "Clayers=3",
+            "Corder=LRCP",
+            "-num_threads",
+            "0",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "command": [
+            "/Library/Kakadu/8.4.1/bin/kdu_expand",
+            "-i",
+            "../portable-planar-fixtures-01/g08_37x23_random.kdu_ht_n0_layers_lrcp.j2k",
+            "-o",
+            "../portable-planar-fixtures-01/g08_37x23_random.decoded.pgm",
+            "-num_threads",
+            "0",
+            "-precise",
+            "-quiet"
+          ],
+          "exit_code": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "codestream_sha256": "1d5ce3a2d74a544296f0ea12413795cab44ed81f3fd9c7e4533970ab344b6a3a",
+      "decoded_sha256": "884b65208c052d3d8ca92c45f01b1ccb95ba179365b05f4981314544eedf3e32",
+      "exact_samples": true
+    }
+  ],
+  "scope": "Independent 2D HT evidence only; inspect actual segments before claiming refinement. No direct Part10+15 peer or MULTIHT qualification."
+}

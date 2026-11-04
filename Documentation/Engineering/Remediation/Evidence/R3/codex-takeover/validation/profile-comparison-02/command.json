@@ -1,0 +1,21 @@
+{
+  "started_at": "2026-10-31T07:22:36.102980+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-03",
+  "command": [
+    "python3",
+    "../run-r3-profile2.py",
+    "--baseline-bin",
+    "../r3-profile2-baseline-build/release/r3-profile2",
+    "--candidate-bin",
+    "../r3-profile2-candidate-build/release/r3-profile2",
+    "--inputs",
+    "../r3-benchmark-inputs",
+    "--output",
+    "../r3-profile-results-02"
+  ],
+  "wrapper_sha256": "09f4fed6ac18bed458e6fcbac8b0c578ce0859dd1ffe016e033809534524726e",
+  "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1342,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+}

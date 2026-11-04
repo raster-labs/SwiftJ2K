@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Prepare strict15 coverage plus byte-identical14 release/CLI reuse. No native execution."""
+from pathlib import Path
+from datetime import datetime, timezone
+import json
+import runpy
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'preparation.json'
+if out.exists(): raise SystemExit('Refusing preparation overwrite')
+audit = runpy.run_path(str(here / 'audit-final.py'))
+require, sha, source_map, cli_input = (audit[k] for k in ['require', 'sha', 'source_map', 'cli_input'])
+read = lambda p: json.loads(Path(p).read_text())
+receipt = {'state': 'PREPARATION_ONLY_STRICT15_WITH_CLI14_INPUT_EQUIVALENCE',
+           'at': datetime.now(timezone.utc).isoformat(), 'inputs': {}}
+
+def record(p):
+    p = Path(p).resolve()
+    digest = sha(p)
+    require(str(p) not in receipt['inputs'] or receipt['inputs'][str(p)] == digest, 'Input changed')
+    receipt['inputs'][str(p)] = digest
+    return digest
+
+manifests = {}
+for n in ['14', '15']:
+    source = work / ('candidate-snapshot-' + n)
+    p = work / ('candidate-snapshot-' + n + '-source.json')
+    manifest = read(p)
+    require(source_map(source) == manifest, 'Frozen source mismatch: ' + n)
+    manifests[n] = manifest
+    receipt['source' + n] = {'path': str(source), 'files': len(manifest),
+                            'manifest_sha256': record(p), 'all_bytes_verified': True}
+before, after = manifests['14'], manifests['15']
+delta = {p: {'candidate14': before.get(p), 'candidate15': after.get(p)}
+         for p in sorted(set(before) | set(after)) if before.get(p) != after.get(p)}
+require(set(delta) == {'Documentation/Engineering/Remediation/STATUS.md',
+    'Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md',
+    'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift'}, 'Unexpected14-to15 source delta')
+receipt['source_delta'] = delta
+cli14 = {p:h for p,h in before.items() if cli_input(p)}
+cli15 = {p:h for p,h in after.items() if cli_input(p)}
+require(cli14 == cli15, 'Release/CLI production/package/scripts/resources/fixtures changed')
+partial_path = work / 'runtime-coverage-14/ordinary-cli-partial.json'
+require(record(partial_path) == 'be9f722a3e5e82f0f6c15e61ac513b6944eda3f2ea5ee1af5d9dc8373d3a998f',
+        'Existing independent CLI14 audit changed')
+partial = read(partial_path)
+for p,digest in partial['files'].items(): require(record(p) == digest, 'CLI14 audited evidence changed: ' + p)
+cli = read(work / 'cli-integration-14/report.json')
+require(cli['status'] == 'passed' and cli['checks'] == len(cli['commands']) == 246 and
+        all(c['exit_code'] == c['expected_exit_code'] for c in cli['commands']), 'CLI14 statuses/count differ')
+require(record(cli['binary']) == cli['binary_sha256'] == partial['cli']['binary_sha256'], 'CLI14 binary changed')
+receipt['cli_reuse'] = {'matched_input_count': len(cli14), 'matched_inputs': cli14,
+    'binary_sha256': cli['binary_sha256'], 'checks': 246,
+    'scope': 'Only release/CLI14 applies to identical15 inputs. Ordinary and both sanitizer partitions must execute freshly on15.'}
+config_path = here / 'planned-15/audit-plan.json'
+config = read(config_path)
+require(config['cli_candidate'] == '14' and config['candidate'] == '15' and
+        config['focused'] == ['candidate-jpip-asan-15'], 'Wrong candidate/focused/CLI plan')
+plan = read(config['native_plan'])
+require(plan['source'] == config['source'] and plan['wrapper_sha256'] == record(config['wrapper']),
+        'Wrong root native plan identity')
+required = {config['ordinary']}
+for mode, values in config['modes'].items():
+    required.update(values[k] for k in ['inventory_run', 'jpip', 'complement'])
+    spec = read(values['spec'])
+    require(spec['source'] == config['source'] and spec['inventory'] == str(Path(values['inventory']) / 'all.ids'),
+            'Coverage spec uses other source/inventory')
+    require(all(Path(v['directory']).name.endswith('-15') for v in [spec['ordinary'], *spec['partitions']]),
+            'Mixed-source runtime reuse was introduced')
+    record(values['spec'])
+require({g['label'] for g in plan['gates']} == required, 'Native plan differs from seven required fresh15 gates')
+for gate in plan['gates']:
+    require(record(gate['template_receipt']) == gate['template_sha256'], 'Planned command template changed')
+receipt['planned_fresh_gates'] = [g['label'] for g in plan['gates']]
+record(config['native_plan'])
+record(config_path)
+for p in config['supporting_inputs']: record(p)
+delta_check = read(here / 'auditor-delta-check.json')
+require(record(here / 'audit-final.py') == delta_check['new_auditor_sha256'] and
+        record(here / 'auditor-delta-from14.patch') == delta_check['helper_diff_sha256'], 'Auditor delta changed')
+require(record(config['reconciliation_helper']) == delta_check['unchanged_strict_reconciler_sha256'],
+        'Strict reconciler changed')
+require(len(delta_check['tamper_cases_rejected']) == 5 and delta_check['normalised_old_auditor_recovered'],
+        'Missing auditor tamper/preservation proof')
+receipt['auditor_maintenance'] = {'new_sha256': delta_check['new_auditor_sha256'],
+    'diff_sha256': delta_check['helper_diff_sha256'], 'reason': 'Recognise only the pinned reviewed15 WebSocket fixture delta; keep strict final-source runtime checks.',
+    'independent_review': 'Required separately before final audit acceptance.'}
+for p in [Path(__file__), here / 'auditor-delta-check.json', here / 'verify-auditor-delta.py']:
+    record(p)
+for n, manifest in manifests.items():
+    require(source_map(work / ('candidate-snapshot-' + n)) == manifest, 'Frozen source changed during preparation')
+for p,digest in receipt['inputs'].items(): require(sha(p) == digest, 'Evidence changed during preparation')
+receipt['boundaries'] = [
+    'This is preparation and scoped CLI14 input-equivalence proof, not final15 runtime qualification.',
+    'Every ordinary/sanitizer runtime receipt in the15 specs must have the identical frozen15 source manifest.',
+    'No mixed-source sanitizer carry-forward and no changed/failed/skipped receipt is promoted to success.',
+    'All five direct independent peer gates remain unexecuted/unwaived; no wholeR3 acceptance or merge.',
+    'No Swift, native tests, codecs, fixture generation, servers or repository edits by this reviewer.'
+]
+with out.open('x') as output: output.write(json.dumps(receipt, indent=2) + '\n')
+print(json.dumps({'state': receipt['state'], 'source_files': len(after), 'delta': list(delta),
+    'matched_cli_inputs': len(cli14), 'cli14_checks': cli['checks'], 'fresh_runtime_gates': receipt['planned_fresh_gates']}, indent=2))

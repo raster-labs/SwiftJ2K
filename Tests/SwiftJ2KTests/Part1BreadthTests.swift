@@ -524,9 +524,9 @@ func independentOraclesCrossDecodePart1BreadthEncodings() async throws {
 
     for tool in [Oracle.openJPEG, Oracle.kakadu].compactMap({ $0 }) {
         let ppmLossless = directory.appendingPathComponent("lossless_\(tool.contains("kdu") ? "kdu" : "opj").ppm")
-        #expect(try Oracle.decode(tool, rgbLosslessURL, ppmLossless), "\(tool) failed on RGB lossless")
+        #expect(try await Oracle.decode(tool, rgbLosslessURL, ppmLossless), "\(tool) failed on RGB lossless")
         let ppmLossy = directory.appendingPathComponent("lossy_\(tool.contains("kdu") ? "kdu" : "opj").ppm")
-        #expect(try Oracle.decode(tool, rgbLossyURL, ppmLossy), "\(tool) failed on RGB lossy")
+        #expect(try await Oracle.decode(tool, rgbLossyURL, ppmLossy), "\(tool) failed on RGB lossy")
     }
 
     // 2. Signed 16-bit lossless & Signed 12-bit + ROI -> Kakadu & OpenJPEG decode to PGX
@@ -560,13 +560,13 @@ func independentOraclesCrossDecodePart1BreadthEncodings() async throws {
     try signed16RoiEnc.write(to: signed16RoiURL)
 
     if let kdu = Oracle.kakadu {
-        #expect(try Oracle.decode(kdu, signed16URL, directory.appendingPathComponent("s16_kdu.pgx")), "Kakadu failed on signed 16-bit")
-        #expect(try Oracle.decode(kdu, signed12RoiURL, directory.appendingPathComponent("s12_roi_kdu.pgx")), "Kakadu failed on signed 12-bit + ROI")
-        #expect(try Oracle.decode(kdu, signed16RoiURL, directory.appendingPathComponent("s16_roi_kdu.pgx")), "Kakadu failed on signed 16-bit + ROI (34 bit-planes)")
+        #expect(try await Oracle.decode(kdu, signed16URL, directory.appendingPathComponent("s16_kdu.pgx")), "Kakadu failed on signed 16-bit")
+        #expect(try await Oracle.decode(kdu, signed12RoiURL, directory.appendingPathComponent("s12_roi_kdu.pgx")), "Kakadu failed on signed 12-bit + ROI")
+        #expect(try await Oracle.decode(kdu, signed16RoiURL, directory.appendingPathComponent("s16_roi_kdu.pgx")), "Kakadu failed on signed 16-bit + ROI (34 bit-planes)")
     }
     if let opj = Oracle.openJPEG {
-        #expect(try Oracle.decode(opj, signed16URL, directory.appendingPathComponent("s16_opj.pgx")), "OpenJPEG failed on signed 16-bit")
-        #expect(try Oracle.decode(opj, signed12RoiURL, directory.appendingPathComponent("s12_roi_opj.pgx")), "OpenJPEG failed on signed 12-bit + ROI")
+        #expect(try await Oracle.decode(opj, signed16URL, directory.appendingPathComponent("s16_opj.pgx")), "OpenJPEG failed on signed 16-bit")
+        #expect(try await Oracle.decode(opj, signed12RoiURL, directory.appendingPathComponent("s12_roi_opj.pgx")), "OpenJPEG failed on signed 12-bit + ROI")
     }
     #endif
 }

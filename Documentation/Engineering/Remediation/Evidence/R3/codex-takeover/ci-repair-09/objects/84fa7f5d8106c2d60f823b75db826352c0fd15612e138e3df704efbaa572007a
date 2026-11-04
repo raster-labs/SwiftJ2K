@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "feedback_id": "codex-ongoing-audit-feedback-4",
+  "recorded_at": "2026-11-02T12:47:45+05:30",
+  "auditor_thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+  "implementer_conversation_id": "6f28647a-39a6-4a0a-8303-30b57a122458",
+  "reviewed_candidate_snapshot": "candidate-snapshot-26",
+  "reviewed_manifest_sha256": "cc0338180f97aea8aee453001a968c94e36c9741bf6666b95fe534ed88dc876c",
+  "findings": {
+    "p1_production_repair_status": "PASSED_BOUNDED_SOURCE_REVIEW",
+    "p2_t7_native_io_cancellation_status": "PASSED_SOURCE_AND_TEST_LEVEL_REVIEW",
+    "t8_assertion_strengthening": {
+      "item_1_server_upgrade_hop_join_and_counters": "In 8D(2), await the resumed server-side upgrade hop completion (not only the client handshake task that stop() may already close) and assert the receiving decision and admission counters (statistics.upgradeRequests == 0, statistics.failedUpgrades == 0, getActiveConnectionCount() == 0) so transient wrong-generation admission followed by handshake-failure cleanup cannot be hidden.",
+      "item_2_independent_cnew_and_cclose_and_exact_session_identity": "In 8D(3), test delayed stale cnew and delayed stale cclose=* independently (or assert both the exact surviving successor session identity and zero phantom sessions) so a broken wildcard-close followed by phantom-create cannot preserve session count 1 while losing the successor session."
+    },
+    "t7_comment_qualification": {
+      "summary": "Qualify T7 comments around lines 1010-1011, 1024, and 1100: readiness/progress/noncompletion and prompt cancellation (<1s vs 30s timeout) are directly observed; current kernel syscall thread location is inferred from those observations."
+    },
+    "campaign_and_reuse_guidance": {
+      "summary": "Finish/checkpoint the active serial campaign on frozen candidate-snapshot-26 safely, preserve all candidate-*-26 source-scoped receipts, batch the test-only T7/T8 follow-up (production sources unchanged), run focused validation on the updated test file, refresh the canonical progress checkpoint, and submit stable exact source with positive writer/native stop."
+    }
+  }
+}

@@ -1,0 +1,46 @@
+CI-repair-09 supplemental packager preparation
+
+Stopped. Helper, usage, explicit initial-input manifest and synthetic tests are
+prepared entirely under work/ci-repair-evidence-09. No repository/native/Git/
+network actions and no actual collection/publication of the new supplement ran.
+The older work/package-r3-evidence.py and published08 corpus were not modified.
+
+Helper: package.py
+SHA-256: 5d2d8e647f30c698d76de64fdd28522ed987c312bf810f38f51505587950d823
+Verification: 18 synthetic tests passed, zero failures/errors. Covered read-only
+determinism, idempotent exclusive creation, unchanged prior08 index, reuse of
+prior payloads, failed native/hosted preservation, source-map contradictions,
+source/capture diagnostic restrictions, log/raw identity, XML omission, unknown
+manifest fields, source/receipt mutation, existing receipt corruption, path/
+symlink rejection and paired review integrity. An initial Python bytes-literal
+syntax error was corrected before these tests passed. No native check was run.
+
+The helper creates only content-addressed receipt objects and immutable indexes
+under codex-takeover/ci-repair-09. There is no mutable latest index. It verifies
+completed run receipt identities and source stability, separate raw streams,
+paired reviews and explicit complete hosted job/log associations. Native source
+change/capture failures require an explicit diagnostic-only input; ordinary
+failed exits remain evidence. The prior08 index is pinned by SHA and identical
+old objects are referenced rather than copied. Actual source identity is taken
+only when the coordinator runs the helper; no premature current-source/native
+pass is recorded by preparation. .github identity is separate from implementation
+identity and documentation self-reference is excluded.
+
+Prior08 index SHA-256:
+6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54
+Published base label supplied by coordinator: 7f1b123 (no Git query performed).
+
+manifest-initial.json pins completed hosted failure run41186617163 attempt1:
+all seven job logs and jobs/review metadata. Two jobs report success; four Linux
+production builds failed and macOS test compilation failed after its production
+build passed. No ordinary/sanitizer runtime or retention reconstruction success
+is inferred. It also pins the stopped compiler repair before/diff/report/current
+after-source bytes and independent-root-review.json. That review still says
+local/hosted compiler/runtime qualification pending. Native/review-pair arrays
+are empty until final candidate09+ receipts exist. Root must extend an explicit
+final manifest with every applicable final run/review/proof before packaging.
+
+All five direct peer gates remain UNEXECUTED/UNWAIVED and every index remains
+NOT_ACCEPTED. Hosted head/tree and runtime qualification require separate review;
+this helper preserves exact records, not an acceptance conclusion. Final packing
+requires root's existing claim and stopped writers. See USAGE.txt. Positive stop.

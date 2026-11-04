@@ -1,0 +1,76 @@
+{
+  "scope": "Compiler portability only; no production changes",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift",
+  "before_sha256": "4dd36e895781a7e898a2acdbd5dcd47d330a94deb262bc33088a4fdbcba4f684",
+  "after_sha256": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663",
+  "log": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41186617163-attempt1-job-124494726067.log",
+  "log_sha256": "679268228c01bbb6e462658e04a07a673afbcb6f743c44da6fcd09790dd0a155",
+  "distinct_error_origins": [
+    [
+      "650",
+      "61"
+    ],
+    [
+      "658",
+      "67"
+    ]
+  ],
+  "compiler_error_diagnostics": [
+    {
+      "line": 423,
+      "text": "2026-10-31T09:02:30.8467760Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 436,
+      "text": "2026-10-31T09:02:30.8497340Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 448,
+      "text": "2026-10-31T09:02:30.8520360Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 461,
+      "text": "2026-10-31T09:02:30.8546590Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 473,
+      "text": "2026-10-31T09:02:30.8566200Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 486,
+      "text": "2026-10-31T09:02:30.8574200Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 498,
+      "text": "2026-10-31T09:02:30.8584520Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 511,
+      "text": "2026-10-31T09:02:30.8592570Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 523,
+      "text": "2026-10-31T09:02:30.8601080Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 536,
+      "text": "2026-10-31T09:02:30.8609660Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 548,
+      "text": "2026-10-31T09:02:30.8617220Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 561,
+      "text": "2026-10-31T09:02:30.8625550Z macro expansion #expect:1:1: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
+    },
+    {
+      "line": 573,
+      "text": "2026-10-31T09:02:30.9016240Z error: fatalError"
+    }
+  ],
+  "native_executed": false,
+  "tests_executed": false,
+  "verification": "Exact whole-file transformation equality: only two typed expected-array intermediates and their #expect operands changed. Both expected generators retain the original formulas and ranges. Test ID, assertions, test traits, data and production behavior remain unchanged.",
+  "stop": "Positive stop; no further writes"
+}

@@ -1,0 +1,74 @@
+{
+  "state": "PLANNED_NOT_EXECUTED",
+  "candidate": "10",
+  "cli_candidate": "09",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10",
+  "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-source.json",
+  "wrapper": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py",
+  "reconciliation_helper": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py",
+  "ordinary": "candidate-full-10",
+  "focused": [
+    "candidate-focused-10"
+  ],
+  "release": "candidate-release-build-09",
+  "cli": "candidate-cli-09",
+  "cli_report": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-integration-09/report.json",
+  "cli_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-source.json",
+  "cli_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09",
+  "expected_cli_checks": 246,
+  "historical": [
+    {
+      "directory": "candidate-focused-09",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-source.json",
+      "expected_exit": 1,
+      "log_sha256": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994"
+    }
+  ],
+  "modes": {
+    "thread": {
+      "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-10/thread",
+      "inventory_run": "candidate-tsan-inventory-10",
+      "jpip": "candidate-jpip-tsan-10",
+      "complement": "candidate-complement-tsan-10",
+      "spec": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/planned-10/thread-final-10.json",
+      "proof": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-thread-10.json"
+    },
+    "address": {
+      "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-10/address",
+      "inventory_run": "candidate-asan-inventory-10",
+      "jpip": "candidate-jpip-asan-10",
+      "complement": "candidate-complement-asan-10",
+      "spec": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/planned-10/address-final-10.json",
+      "proof": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-address-10.json"
+    }
+  },
+  "supporting_inputs": [
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-09.txt",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-09-source.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-tcp-close-review-09.txt",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-tcp-close-review-09-source.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-provenance.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/compiler-portability-09/independent-root-review.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-10.txt",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-https-review-10-source.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-trickle-source-10.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-trickle-report-10.txt",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-trickle-delta-10.patch",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-provenance.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/preparation-10.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-09/prepare-check-10.py",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/execution-identity.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/source.json",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/report.txt",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/trickle-probe-10/TrickleDeliveryProbe.swift",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-native-sequence-10.py"
+  ],
+  "boundaries": [
+    "This is a plan, not a receipt or claim of executed coverage.",
+    "All required final ordinary and sanitizer runs must exist and pass; no missing run is optional.",
+    "Reused release/CLI receipts require exact identity of every production, package, script, fixture and resource input.",
+    "The focused09 failed readiness run remains failed historical evidence.",
+    "No external decoder, peer, Linux, OS26, whole-R3, or full-cross-target sanitizer acceptance follows."
+  ],
+  "native_plan": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-10.json"
+}

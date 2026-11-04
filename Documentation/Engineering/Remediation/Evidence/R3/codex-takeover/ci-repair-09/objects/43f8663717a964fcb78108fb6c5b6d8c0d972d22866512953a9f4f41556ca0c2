@@ -1,0 +1,18 @@
+{
+  "state": "COMMENT_ONLY_CURRENT_CI_BOUND_SEPARATELY",
+  "root_receipt": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-comment-correction-15.json",
+    "sha256": "94a55f5337b01cb4e1f53b87eb187e1768befb0893c965f565012af037e24f19"
+  },
+  "frozen15": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-15/.github/workflows/contract.yml",
+    "sha256": "4e79bfd26401e342233ebf8e6c903d0c0472bcb5e6f50e32c7431556ec59f18f"
+  },
+  "current_stopped_CI": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/.github/workflows/contract.yml",
+    "sha256": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2"
+  },
+  "noncomment_sha256": "d87e2aefcd4007336a3add8c5c2cea33e46ad15524cb3ef5b9b182d316ef1202",
+  "noncomment_bytes_identical": true,
+  "boundary": "No native or hosted qualification inferred. Existing frozen source manifests remain unchanged."
+}

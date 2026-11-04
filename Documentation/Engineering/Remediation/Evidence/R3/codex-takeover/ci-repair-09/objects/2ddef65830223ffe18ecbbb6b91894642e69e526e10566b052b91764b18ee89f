@@ -1,0 +1,11 @@
+Building for production...
+[0/8] Write sources
+[4/8] Write swift-version--58304C5D6DBC2206.txt
+[5/8] Compiling CZlibShim CZlibShim.c
+[7/9] Compiling SwiftJ2K AcceleratedCodec.swift
+[8/10] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[9/11] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[10/12] Compiling SwiftJ2KCLI CLIImageIO.swift
+[10/12] Write Objects.LinkFileList
+[11/12] Linking swiftj2k-cli
+Build of product 'swiftj2k-cli' complete! (101.40s)

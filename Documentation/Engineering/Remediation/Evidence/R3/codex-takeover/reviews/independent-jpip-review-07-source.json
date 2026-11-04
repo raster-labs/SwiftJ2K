@@ -1,0 +1,46 @@
+{
+  "candidate": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-07",
+  "root_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-07-source.json",
+  "started_at": "2026-10-31T08:05:25.974097+00:00",
+  "before": {
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49"
+  },
+  "candidate06_to_07_changed_paths": [
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift"
+  ],
+  "root_manifest_differences": [],
+  "focused_native_receipt": {
+    "exit_code": 0,
+    "log_sha256": "feba20091ac3673f9c934cf8eceea5ed1cd4e3b47d55aac2229709685b6a2b09",
+    "log_hash_matches": true,
+    "source_before_matches": true,
+    "source_after_matches": true,
+    "source_count": 1348,
+    "evidence_hashes": {
+      "result.json": "481d301aee1023bb599acc0dfd96c09b8ce39149e9a5369039041853bf31a32e",
+      "source-before.json": "254cd38a4892870f4067f75a451049bdd6a459b106c41a800535d17d133ed484",
+      "source-after.json": "254cd38a4892870f4067f75a451049bdd6a459b106c41a800535d17d133ed484",
+      "native.log": "feba20091ac3673f9c934cf8eceea5ed1cd4e3b47d55aac2229709685b6a2b09",
+      "command.json": "9d93cf79628f0e5d92660e12a8eb4acd0cb8ae0142db7bf26209778948f6e1e9"
+    }
+  },
+  "after": {
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49"
+  },
+  "differences": [],
+  "complete_candidate_file_count": 1348,
+  "complete_candidate_manifest_differences": [],
+  "root_manifest_sha256": "254cd38a4892870f4067f75a451049bdd6a459b106c41a800535d17d133ed484",
+  "additional_evidence_sha256": {
+    "work/jpip-http-scan-source-07.json": "d1a34df6582f9958cac0eed7307ed25045f6e33ff707c4117cb76617cf697107",
+    "work/jpip-http-scan-report.txt": "14870f1fccf0da2bbee28958c439696cd806716138f437827c9c0a289510badd",
+    "work/independent-jpip-review-07-model.json": "a0f4bc2ba82a3e08b56205cf5f7a7bc766aee13f9b9a6230c3226a3f4637b37b"
+  },
+  "finished_at": "2026-10-31T08:07:55.042922+00:00",
+  "report": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-jpip-review-07.txt",
+  "report_sha256": "537e6ae5e815c4acb3c98181ab2ae7c52c142882b364293ba12601352ba71ae3",
+  "native_commands_executed_by_reviewer": false
+}

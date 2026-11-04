@@ -89,3 +89,122 @@ enum SharedPathMutation: Sendable, Equatable {
 
     @TaskLocal static var active: SharedPathMutation = .none
 }
+
+/// Allocation-site telemetry for Tier-1/Tier-2 entropy and packet buffers so tests can prove
+/// atomic pre-allocation budget admission/rejection precedes actual buffer allocation.
+package struct EntropyAllocationTelemetry: Sendable {
+    package enum EventKind: String, Sendable, Equatable {
+        case reserveRequested
+        case reserveAdmitted
+        case reserveRejected
+        case bufferAllocated
+        case unusedReleased
+    }
+
+    package struct Event: Sendable, Equatable {
+        package let sequence: Int
+        package let kind: EventKind
+        package let site: String
+        package let bytes: Int
+    }
+
+    package final class Recorder: Sendable {
+        private struct State: Sendable {
+            var nextSeq = 0
+            var events: [Event] = []
+        }
+        private let state = Mutex(State())
+        package init() {}
+        package var events: [Event] { state.withLock { $0.events } }
+        package func record(_ kind: EventKind, site: String, bytes: Int) {
+            state.withLock { st in
+                let seq = st.nextSeq
+                st.nextSeq += 1
+                st.events.append(Event(sequence: seq, kind: kind, site: site, bytes: bytes))
+            }
+        }
+    }
+
+    @TaskLocal package static var recorder: Recorder?
+}
+
+/// Atomic pre-allocation byte budget hook shared across concurrent Tier-1/Tier-2 workers.
+package struct EntropyOutputBudget: Sendable {
+    private let reserveImpl: @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool, _ site: String) throws -> Void
+    private let releaseImpl: @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool, _ site: String) -> Void
+
+    package init(
+        reserve: @escaping @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool, _ site: String) throws -> Void,
+        release: @escaping @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool, _ site: String) -> Void
+    ) {
+        self.reserveImpl = reserve
+        self.releaseImpl = release
+    }
+
+    package init(
+        reserveBytes: @escaping @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool) -> Bool,
+        releaseBytes: @escaping @Sendable (_ bytes: Int, _ countsTowardCompressedOutput: Bool) -> Void
+    ) {
+        self.reserveImpl = { bytes, countsTowardCompressed, site in
+            guard reserveBytes(bytes, countsTowardCompressed) else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Entropy output allocation (\(bytes) bytes at \(site)) exceeds resource budget."
+                )
+            }
+        }
+        self.releaseImpl = { bytes, countsTowardCompressed, _ in
+            releaseBytes(bytes, countsTowardCompressed)
+        }
+    }
+
+    package func reserve(_ bytes: Int, countsTowardCompressedOutput: Bool = true, site: String = "jp3d-reserve") throws {
+        guard bytes > 0 else { return }
+        EntropyAllocationTelemetry.recorder?.record(.reserveRequested, site: site, bytes: bytes)
+        do {
+            try reserveImpl(bytes, countsTowardCompressedOutput, site)
+            EntropyAllocationTelemetry.recorder?.record(.reserveAdmitted, site: site, bytes: bytes)
+        } catch {
+            EntropyAllocationTelemetry.recorder?.record(.reserveRejected, site: site, bytes: bytes)
+            throw error
+        }
+    }
+
+    package func recordActualAllocation(_ bytes: Int, site: String) {
+        guard bytes > 0 else { return }
+        EntropyAllocationTelemetry.recorder?.record(.bufferAllocated, site: site, bytes: bytes)
+    }
+
+    /// Replaces a growing entropy buffer with an exact-length retained array before
+    /// releasing its unused reservation. `removeLast` alone retains the old capacity.
+    package func compactOutput(_ bytes: inout [UInt8], reservedBytes: inout Int, site: String) throws {
+        let count = bytes.count
+        guard reservedBytes > count else { return }
+        if count == 0 {
+            bytes = []
+        } else {
+            try reserve(count, countsTowardCompressedOutput: false, site: site)
+            defer { release(count, countsTowardCompressedOutput: false, site: site) }
+            recordActualAllocation(count, site: site)
+            let compact = [UInt8](unsafeUninitializedCapacity: count) { destination, initialised in
+                // Both pointers remain within synchronous scoped borrows. The new
+                // buffer is distinct and every element is initialised before return.
+                bytes.withUnsafeBufferPointer { source in
+                    if let src = source.baseAddress, let dst = destination.baseAddress {
+                        dst.initialize(from: src, count: count)
+                    }
+                }
+                initialised = count
+            }
+            bytes = compact
+        }
+        release(reservedBytes - count, countsTowardCompressedOutput: true, site: site)
+        reservedBytes = count
+    }
+
+    package func release(_ bytes: Int, countsTowardCompressedOutput: Bool = true, site: String = "jp3d-release") {
+        guard bytes > 0 else { return }
+        releaseImpl(bytes, countsTowardCompressedOutput, site)
+        EntropyAllocationTelemetry.recorder?.record(.unusedReleased, site: site, bytes: bytes)
+    }
+}

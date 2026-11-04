@@ -1,0 +1,93 @@
+{
+  "scope": "Read-only independent full10 HTTPS failure diagnosis; no native executed",
+  "snapshot": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10",
+  "manifest_sha256": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+  "verified_inputs": 1857,
+  "changed_inputs": [],
+  "reviewed_source": {
+    "Package.swift": "b1dbf8e6cd77e002d8a2aa182e187833ae8d70b72d4ccbb02bbd39c0e92c531c",
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "Sources/SwiftJ2K/CodecAPI.swift": "747823cc2a829b64928133c63c44c8b598b209896a7c0a2f035292d1550705bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+    "Tests/SwiftJ2KTests/OwnershipTests.swift": "a6e49c9357eecf823a58685df79a7f047bb820ec343a9af1da49b6e2e2c8c234",
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450"
+  },
+  "evidence": {
+    "work/validation/candidate-full-10/command.json": "7842d70a29ecabd6e934d2cc04b03beb16eedce8719714aba598b19e4a15f0f4",
+    "work/validation/candidate-full-10/native.log": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49",
+    "work/validation/candidate-full-10/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "work/validation/candidate-full-10/native.stdout": "2b90420162de22acd8eb4e1f44e39f4e464e8ff67f8e2f48f689aa407c80b941",
+    "work/validation/candidate-full-10/report-swift-testing.xml": "e7e3feb0de900434bf4211d976fb7ccdec66ec6e843c17bdb8b2e3072c463364",
+    "work/validation/candidate-full-10/result.json": "bd8f62abb5d926445c9a2d026f81e3bd70922060accf422626a9c589d367ce56",
+    "work/validation/candidate-full-10/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "work/validation/candidate-full-10/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2"
+  },
+  "xml_declarations": 323,
+  "xml_failed_declarations": [
+    {
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "failures": [
+        null
+      ]
+    },
+    {
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "failures": [
+        null
+      ]
+    },
+    {
+      "name": "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "failures": [
+        null
+      ]
+    },
+    {
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "failures": [
+        null
+      ]
+    }
+  ],
+  "native_result": {
+    "finished_at": "2026-10-31T09:52:49.113712+00:00",
+    "exit_code": 1,
+    "elapsed_seconds": 86.982176167,
+    "changed_inputs": [],
+    "log_sha256": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/native.stdout",
+        "sha256": "2b90420162de22acd8eb4e1f44e39f4e464e8ff67f8e2f48f689aa407c80b941",
+        "bytes": 360895
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/native.stderr",
+        "sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+        "bytes": 252
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 1,
+    "built_cli_products_at_completion": {
+      "debug": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-10/arm64-apple-macosx/debug/swiftj2k-cli",
+        "sha256": "e781ac98f2d74af4ed6b04225e53007a22f56aac0b1bbb96af16ab7886cc587c"
+      }
+    }
+  },
+  "source_after_verified_inputs": 1857,
+  "source_after_changed_inputs": [],
+  "report_sha256": "2ab764ea8b5e4757c655129465e5664f25a929ce31bbeb8ae969c43edc37ac61"
+}

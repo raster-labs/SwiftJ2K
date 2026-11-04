@@ -1,0 +1,12 @@
+s38-depth1 0 {
+  "status": "passed-narrow-composite-diagnostic",
+  "receipt": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/s38-depth1/receipt.json",
+  "error": null
+}
+
+u38-depth1 0 {
+  "status": "passed-narrow-composite-diagnostic",
+  "receipt": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/u38-depth1/receipt.json",
+  "error": null
+}
+

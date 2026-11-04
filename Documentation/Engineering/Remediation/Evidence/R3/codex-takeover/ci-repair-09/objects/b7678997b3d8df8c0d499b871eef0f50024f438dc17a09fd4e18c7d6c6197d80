@@ -1,0 +1,11 @@
+{
+  "work/candidate-snapshot-15/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+  "work/candidate-snapshot-15/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5",
+  "work/candidate-snapshot-15/Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+  "work/candidate-snapshot-15/Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088",
+  "work/candidate-snapshot-15/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+  "work/candidate-snapshot-15/Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+  "work/candidate-snapshot-15/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+  "work/candidate-snapshot-15-source.json": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+  "work/ci-downloads/run-41195752705-attempt1-job124521448589.log": "5cd18d60d8004353493481c699daa038a30f251adb46f6c38afbe96fc8d7726f"
+}

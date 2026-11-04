@@ -1,0 +1,8 @@
+Exit: -5
+
+SwiftJ2KCLI/CLIVerbs.swift:1871: Fatal error: Unexpectedly found nil while unwrapping an Optional value
+
+Traceback (most recent call last):
+  File "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-07/../cli-host-probe.py", line 10, in <module>
+    assert r.returncode==0, 'Valid normalized loopback host must not trap'
+AssertionError: Valid normalized loopback host must not trap

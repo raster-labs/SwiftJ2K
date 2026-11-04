@@ -1,0 +1,18 @@
+{
+  "created_at_utc": "2026-10-31T08:04:47.138473+00:00",
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "files": [
+    {
+      "path": "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift",
+      "sha256": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+      "bytes": 60026,
+      "candidate06_sha256": "d673d0c85f90e95d56720259f2e1a49c6f614dbe6aaf428612961ce1bafe9082"
+    },
+    {
+      "path": "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift",
+      "sha256": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49",
+      "bytes": 10220,
+      "candidate06_sha256": null
+    }
+  ]
+}

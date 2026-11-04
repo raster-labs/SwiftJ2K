@@ -1,0 +1,31 @@
+Independent source review: R3-TCP-CLOSE-01
+
+Decision: confirmed in the captured source, required lifecycle repair before claiming final transport cleanup. This is a source/interleaving proof, not an executed race reproduction. No repository changes or native execution were performed.
+
+Scope and identity
+The five exact source files copied beside this report are the reviewed inputs. source-before.json and source-after.json bind their SHA-256 identities. A concurrent HTTPS implementation owns JPIPTransport.swift. The report is authoritative only for those captured bytes; any later transport delta needs re-review.
+
+Concrete transport failure path
+1. JPIPTransport.sendViaHTTP11TCP takes an existing open socket and removes it from self.tcpConnection (captured lines 294–297). A fresh connection follows the same lifetime pattern even without a prior socket.
+2. The request creates a JPIPSocketCancellationToken at line309, known only to its local execution; the actor stores no in-flight token/worker record. withTaskCancellationHandler then awaits executeHTTP11OffPool (326–339). Worker publication is safely handed off through JPIPBlockingWorker, but that is not a close barrier.
+3. Actor reentrancy permits JPIPTransport.close to run while this await is suspended. close (590–600) can close only the currently pooled tcpConnection, which is nil for this in-flight socket. It has no token to cancel and no worker completion to await. Its URLSession invalidation affects a different transport. close can therefore return while TCP read/connect/write work still owns a live socket.
+4. A valid delayed keep-alive response lets the worker return its socket. The request's Task was not cancelled by close, so Task.checkCancellation at357 passes. There is no captured-generation or closing-state check. The old request republishes survivingConnection into self.tcpConnection at375, and can restore JPIP-cnew channelPathOverride at390 after close cleared it. It also returns successful data after close.
+5. Independently of eventual publication, a silent/trickling peer leaves off-pool work active after close returned. Existing request cancellation/deadline watchdogs are useful, but close invokes neither token and does not join this work. Eventual timeout or deinit is not evidence that the documented close already released transport resources.
+
+Public API reachability
+JPIPStreamingSession.close (JPIPCodecAPI.swift:660–668) promises to close underlying sessions and release transport resources; its 2D route awaits JPIPClient.close. JPIPClient.close (JPIP.swift:751–758) closes an already published JPIPSession then invokes transport.close. It does not cancel the active delivery Task. boundedDeliveryInProgress only rejects concurrent bounded deliveries (JPIP.swift:483–487); close does not consult it.
+A concrete reachable sequence starts an initial createSession/cnew request while self.session is nil, waits at transport.send, calls client.close or streamingSession.close, then lets the peer send a valid response. Current close observes no client session and no pooled socket. The resumed createSession can install its newSession at JPIP.swift:195 in addition to the stale transport publication. Thus the defect is within the advertised close chain, not an unrelated raw-socket API. A repair should ensure this pending old transport request cannot report success after close; this report does not claim that a transport-only guard resolves every upper-layer reentrancy point after an already returned response.
+
+Minimal acceptance criteria
+- Register each in-flight TCP operation before its first suspension, including fresh connection, detached reuse, and retry ownership. close must retire the relevant operation generation and signal the captured request cancellation tokens.
+- Await/acknowledge completion of the retired workers before close returns its cleanup guarantee. Do not hold a lock or block the actor while completion needs that same lock/actor. An operation that has not yet published a new socket must see cancellation before or during token binding.
+- Before publishing response, pooled socket, negotiated path, or receive accounting, reject operations retired by close and close their captured sockets. Stale cleanup must never clear/close a newer operation's owner. Preserve the established reuse policy explicitly; concurrent duplicate close calls and new requests during close need deterministic semantics.
+- Deterministic tests should hold a first connection and a detached reused keep-alive request at a peer/worker barrier, invoke close without separately cancelling the caller Task, and establish request failure plus joined worker/socket teardown before close completes. Release late success/error callbacks to prove no socket/path resurrection and no harm to a subsequent allowed generation. Include close during connect/retry publication and duplicate close. A public client or streaming-session test should demonstrate the documented close chain, not only direct token cancellation.
+- Preserve ordinary success/reuse, stale keep-alive retry, task cancellation, absolute deadline, and storage-admission behavior. Run focused concurrency/lifetime tests under the coordinator's existing native/sanitizer campaign; hosted portability remains separate.
+
+Existing coverage limit
+CodexR3WorkerHandoffTests verifies ordinary worker-created ownership/reuse, retry, and explicitly cancelling the request Task. Its closes occur after awaited requests or in cleanup. It does not exercise close racing a live request without Task.cancel(), so those existing passes do not close this finding.
+
+DNS/OS boundary: this review does not claim a hard bound for cancellation of synchronous hostname resolution or any opaque OS operation. The required close acknowledgement must remain honest about work that has not yet returned.
+
+Positive stop. No implementation, source mutation, compiler/test/native invocation, commit or push.

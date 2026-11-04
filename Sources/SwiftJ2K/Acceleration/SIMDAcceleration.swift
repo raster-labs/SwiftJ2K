@@ -1006,21 +1006,21 @@ internal enum SIMDQuantizationAndROI {
 
 // MARK: - 5. SIMD HTJ2K FBCOT Cleanup Pass Coder (ISO/IEC 15444-15 Clause 7.3)
 
-internal enum SIMDHTBlockCoder {
+package enum SIMDHTBlockCoder {
     /// Pre-classified 2×2 quad information produced by vectorised `SIMD4<Int32>` / Metal GPU quad
     /// classification (adapting predecessor `j2knhe_encode_block_ht.c`, `J2KNeonEntropyCoding.swift`,
     /// and `J2KMetalHTForwardClassifier.swift` with `M9-AUD-001` fixed).
-    internal struct PreclassifiedQuad: Sendable, Equatable {
-        internal let rho: Int
-        internal let eQMax: Int
-        internal let eQ0: Int
-        internal let eQ1: Int
-        internal let eQ2: Int
-        internal let eQ3: Int
-        internal let s0: UInt32
-        internal let s1: UInt32
-        internal let s2: UInt32
-        internal let s3: UInt32
+    package struct PreclassifiedQuad: Sendable, Equatable {
+        package let rho: Int
+        package let eQMax: Int
+        package let eQ0: Int
+        package let eQ1: Int
+        package let eQ2: Int
+        package let eQ3: Int
+        package let s0: UInt32
+        package let s1: UInt32
+        package let s2: UInt32
+        package let s3: UInt32
     }
 
     /// Vectorised 2×2 quad classification across an entire code-block using `SIMD4<Int32>` and
@@ -1125,13 +1125,14 @@ internal enum SIMDHTBlockCoder {
     /// from `MetalAccelerationEngine`).
     ///
     /// Bit-for-bit identical to `HTBlockEncoder.encodeCleanup`.
-    internal static func encodeCleanup(
+    package static func encodeCleanup(
         coefficients: [Int32],
         width: Int,
         height: Int,
         bandShift: Int = 0,
         maximumOutputBytes: Int = Int.max,
-        preclassifiedQuads: [PreclassifiedQuad]? = nil
+        preclassifiedQuads: [PreclassifiedQuad]? = nil,
+        budget: EntropyOutputBudget? = nil
     ) throws -> [UInt8] {
         guard width >= 1, height >= 1, coefficients.count == width * height else {
             throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
@@ -1189,9 +1190,14 @@ internal enum SIMDHTBlockCoder {
             )
         }
 
-        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes)
-        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes))
-        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes))
+        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes, budget: budget)
+        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
+        defer {
+            magsgnEnc.releaseScratch()
+            melEnc.releaseScratch()
+            vlcEnc.releaseScratch()
+        }
 
         encodeClassifiedQuads(
             quads: quads,
@@ -1210,7 +1216,8 @@ internal enum SIMDHTBlockCoder {
             magsgn: magsgnBytes,
             mel: &melEnc,
             vlc: vlcEnc,
-            maximumOutputBytes: maximumOutputBytes
+            maximumOutputBytes: maximumOutputBytes,
+            budget: budget
         )
     }
 

@@ -1,0 +1,17 @@
+[
+  {
+    "file": "g08_37x23_random.kdu_ht_n0_layers_lrcp.j2k",
+    "sha256": "1d5ce3a2d74a544296f0ea12413795cab44ed81f3fd9c7e4533970ab344b6a3a",
+    "matches_retained": true
+  },
+  {
+    "file": "g12_5x3_ramp_extremes.kdu_ht_n0_layers_lrcp.j2k",
+    "sha256": "e0ab43dd11b000fb9b4a28e986e77b1b42608cd63b45fb62abc61bcceb25e0b9",
+    "matches_retained": true
+  },
+  {
+    "file": "g16_17x9_alternating.kdu_ht_n0_layers_lrcp.j2k",
+    "sha256": "517844ead4e120ed6a9d84133a255124e5cee02dfdc9dce9a518bf060075170c",
+    "matches_retained": true
+  }
+]

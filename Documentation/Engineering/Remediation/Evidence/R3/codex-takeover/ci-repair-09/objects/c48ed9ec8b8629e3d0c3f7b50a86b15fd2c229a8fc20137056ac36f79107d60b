@@ -1,0 +1,22 @@
+[
+  {
+    "line": 215,
+    "text": "2026-10-31T11:11:30.7233206Z error: SwiftCompile normal aarch64 /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KCLI/CLIVerbs.swift failed with a nonzero exit code. Command line:     cd /__w/SwiftJ2K"
+  },
+  {
+    "line": 217,
+    "text": "2026-10-31T11:11:30.7240301Z /__w/SwiftJ2K/SwiftJ2K/Sources/SwiftJ2KCLI/CLIVerbs.swift:1922:12: error: reference to var 'stdout' is not concurrency-safe because it involves shared mutable state"
+  },
+  {
+    "line": 221,
+    "text": "2026-10-31T11:11:30.7244389Z      |            `- error: reference to var 'stdout' is not concurrency-safe because it involves shared mutable state"
+  },
+  {
+    "line": 234,
+    "text": "2026-10-31T11:11:30.7946525Z error: Build failed"
+  },
+  {
+    "line": 235,
+    "text": "2026-10-31T11:11:30.8281722Z ##[error]Process completed with exit code 1."
+  }
+]

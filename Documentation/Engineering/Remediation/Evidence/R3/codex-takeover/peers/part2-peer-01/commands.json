@@ -1,0 +1,63 @@
+{
+  "binary_sha256": "214a4bdd25158259c2b2513c48f6c07b2511dc937b565bfdf517cb31dc7df2eb",
+  "diagnostic_source": "diagnostic-source-02",
+  "cases": [
+    {
+      "case": "s38-depth1",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-build-02/debug/swiftj2k-cli",
+        "encode3d",
+        "-i",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/peer-fixtures/s38-depth1.raw",
+        "-o",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/s38-depth1.jp3d",
+        "--dimensions",
+        "8x8x1",
+        "--bit-depth",
+        "38",
+        "--codec",
+        "htj2k-lossless",
+        "--tile-size",
+        "8x8x1",
+        "--levels",
+        "0,0,0",
+        "--layers",
+        "1",
+        "--backend",
+        "scalar",
+        "--json",
+        "--signed"
+      ],
+      "encode_exit": 0,
+      "peer_exit": 1
+    },
+    {
+      "case": "u38-depth1",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-build-02/debug/swiftj2k-cli",
+        "encode3d",
+        "-i",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/peer-fixtures/u38-depth1.raw",
+        "-o",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1.jp3d",
+        "--dimensions",
+        "8x8x1",
+        "--bit-depth",
+        "38",
+        "--codec",
+        "htj2k-lossless",
+        "--tile-size",
+        "8x8x1",
+        "--levels",
+        "0,0,0",
+        "--layers",
+        "1",
+        "--backend",
+        "scalar",
+        "--json"
+      ],
+      "encode_exit": 0,
+      "peer_exit": 1
+    }
+  ]
+}

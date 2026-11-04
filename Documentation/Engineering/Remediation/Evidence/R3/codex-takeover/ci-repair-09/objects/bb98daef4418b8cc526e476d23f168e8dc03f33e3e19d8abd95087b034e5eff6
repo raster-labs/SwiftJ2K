@@ -1,0 +1,15 @@
+{
+  "state": "REVIEWED_BOUNDED_HELPER_CHANGE",
+  "recorded_at": "2026-10-31T10:37:22.397569+00:00",
+  "reviewer": "root independent of package helper implementer",
+  "findings": "Only a direct named receipt leaf in work/validation/<label> can bypass the build-label regex at the label component. Excluded cache names, nested/real build paths, suffix whitelist, stable-read/symlink/hash validation and native_run completion checks remain in force. No repository publication occurred during this review.",
+  "verification": "Root independently regenerated the entire diff and verified unchanged original helper plus24-test synthetic receipt; static review of the guard and downstream checks. Synthetic tests were not rerun because no further helper change was made.",
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-09/package.py": "5d2d8e647f30c698d76de64fdd28522ed987c312bf810f38f51505587950d823",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package.py": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/package-receipt-path-fix.patch": "7300fd8ddcbe7f9c6e794148ae94072899a7339f76b1059a1d9adca844c02af8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/selftest.py": "a626112e3382d810fbb80fda39dbc757721f1cc374e0bd961fe794f9cb949f5c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-14/selftest-result.json": "8dea855e6acf7b11fb722da88599c8c2cb52aab20f7055decd241419f442eba1"
+  },
+  "boundary": "Packaging integrity only. Final explicit manifest inspection and postpublication object verification remain required; no native or whole-R3 acceptance follows."
+}

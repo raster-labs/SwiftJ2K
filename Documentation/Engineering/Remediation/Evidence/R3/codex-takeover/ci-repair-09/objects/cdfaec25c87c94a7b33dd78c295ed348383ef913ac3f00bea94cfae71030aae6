@@ -1,0 +1,32 @@
+{
+  "state": "INDEPENDENT_SOURCE_REVIEW_CHANGES_REQUIRED",
+  "reviewer": "/root/compiler_portability",
+  "findings": [
+    "FIXTURE17-01"
+  ],
+  "inputs": {
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1",
+    "work/candidate-snapshot-16/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd",
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d",
+    "work/candidate-snapshot-16/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5",
+    "work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/R3OwnedScriptedPeer.swift": "c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7",
+    "work/candidate-snapshot-16-source.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "work/candidate-snapshot-17-source.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "work/jpip-fixture-repairs-17/source.json": "85aa8e9c5b0ccfe9b4c3c77ed5f3d8b5cb4b93513c0bbd8a62ad3b2bfeb7b56d",
+    "work/jpip-fixture-repairs-17/report.txt": "f0d718beb98a6d80eb808103c248737045db2302ec9ed4072be633efe1de6f9d",
+    "work/jpip-fixture-repairs-17/delta.patch": "ac3ae18dfff89615bc9e5c78e6d509b55e7744ff54f35c5a6700ab3e3d92db21"
+  },
+  "inputs_unchanged": true,
+  "native_execution": false,
+  "source_edits": false,
+  "artifacts": {
+    "R3OwnedScriptedPeer.swift": "c0a4a5b8c4fc593ed5fe8cfecd66c7c87c8070824d82713f7a5c6e4065cf70e7",
+    "independent-delta.patch": "8b6258dc2da3a8f4ceb10aac6497b754e959585e4e079c26c78353295422d852",
+    "input-before.json": "4261538a5c8f215203238ae9fbafd6b524e5ad9873e371f6de1aef39cd53a334",
+    "CodexR3WebSocketBudgetTests.swift": "39ccb9f27f0f58c5538d006e3a21b4c6a93656f2903ff771c4fef17929e08b9d",
+    "report.txt": "c7ad53ae6a2259023ea58ac4129d70a5d4eae3f7df80dfa84a60f0c4489cd21b",
+    "manifest-delta.json": "587fa75e6d0678e126f8a99e84fadcd8ed81c41d50e27ffae7f53bc5c111dcda",
+    "CodexR3IndependentTests.swift": "15724b2e99cce85379c1a8d20101aa41f71df3acbe02d0f8745088e6d6bdd3b1"
+  },
+  "stop": true
+}

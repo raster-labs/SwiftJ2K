@@ -1,0 +1,26 @@
+{
+  "state": "PLANNED_DIAGNOSTIC_ONLY",
+  "base_source": "candidate-snapshot-18",
+  "planned_source": "candidate-diagnostic-19",
+  "label": "diagnostic-https-full-19",
+  "command": [
+    "swift",
+    "test",
+    "--scratch-path",
+    "../diagnostic-build-19",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--xunit-output",
+    "../validation/diagnostic-https-full-19/report.xml"
+  ],
+  "boundary": "All original selection, test concurrency, build jobs, deadline values and assertions retained. Instrumentation has observer effects; no release qualification follows. Root waits for stopped overlay and independent review."
+}

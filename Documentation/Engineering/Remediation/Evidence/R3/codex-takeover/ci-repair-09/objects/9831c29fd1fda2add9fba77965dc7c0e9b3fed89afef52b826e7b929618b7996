@@ -1,0 +1,46 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "baseline_head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "before_close_snapshot": "work/https-portability-before-close-09",
+  "files": {
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "sha256": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+      "bytes": 29286
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "sha256": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+      "bytes": 18815
+    },
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": {
+      "sha256": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+      "bytes": 1791
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": {
+      "sha256": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+      "bytes": 2981
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "sha256": "72d8cee42d0c9bb9edcbb9980bf2edfbba51720fe8b79b47a709159b87d826eb",
+      "bytes": 28885
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+      "sha256": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+      "bytes": 12794
+    },
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+      "sha256": "1e77990df2979923578d535b7a449f9bea6d56ddc22573c7e2efe5a282684a4d",
+      "bytes": 2183
+    }
+  },
+  "executed_checks": [
+    "git diff --check: pass",
+    "all seven source/test files static trailing whitespace check: pass"
+  ],
+  "native_execution": "NOT RUN; root owns frozen native and hosted validation",
+  "preserved_reports": [
+    "work/https-portability-report.txt",
+    "work/https-portability-source.json",
+    "work/https-accumulation-model.txt"
+  ],
+  "join_definition": "Captured HTTP finite I/O and locked result publication complete, socket cancelled; HTTPS completion/invalidation delegate-tail acknowledged; no claim of physical thread exit, response-object deallocation, or universally bounded DNS cancellation latency."
+}

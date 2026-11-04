@@ -1,0 +1,132 @@
+from pathlib import Path
+import hashlib,json,re
+base=Path(__file__).resolve().parent
+source=base.parent/'candidate-snapshot-18'
+overlay=base/'overlay'
+manifest={}
+def save(path,before,after):
+    p=overlay/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(after)
+    manifest[path]={'base_sha256':hashlib.sha256(before.encode()).hexdigest() if before else None,'instrumented_sha256':hashlib.sha256(after.encode()).hexdigest()}
+def replace(text,old,new,count=1):
+    assert text.count(old)==count,(old,text.count(old),count)
+    return text.replace(old,new)
+helper=(base/'trace-helper.swift').read_text()
+save('Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift','',helper)
+p='Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift';old=(source/p).read_text();s=old
+s=replace(s,'    private let lock = NSLock()','    package let diagnosticTrace = JPIPHTTPSPhaseTrace()\n    private let lock = NSLock()')
+s=replace(s,'        try claimStart()','        diagnosticTrace.mark("read-entry host=\\(request.url?.host ?? "nil") remaining=\\(String(describing: deadline.map { ContinuousClock.now.duration(to: $0) }))")\n        defer { diagnosticTrace.mark("read-exit") }\n        try claimStart()')
+s=replace(s,'        do {\n            watchdog =','        do {\n            diagnosticTrace.mark("deadline-preflight")\n            watchdog =')
+s=replace(s,'                    self?.cancel(CodecError','                    self?.diagnosticTrace.mark("watchdog-fired")\n                    self?.cancel(CodecError')
+s=replace(s,'        } catch {\n            discardBeforeSessionCreation()','        } catch {\n            diagnosticTrace.mark("deadline-preflight-error \\(error)")\n            discardBeforeSessionCreation()')
+s=replace(s,'            await withCheckedContinuation { signal in','            await withCheckedContinuation { signal in\n                diagnosticTrace.mark("continuation-entered")')
+s=replace(s,'        defer { watchdog?.cancel() }','        diagnosticTrace.mark("watchdog-scheduled-if-deadline")\n        defer { watchdog?.cancel() }')
+s=replace(s,'        let completed = try takeResult()','        diagnosticTrace.mark("caller-woke")\n        let completed = try takeResult()\n        diagnosticTrace.mark("result-taken")')
+s=replace(s,'        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }','        diagnosticTrace.mark("deadline-final-check")\n        if let deadline { _ = try JPIPTransport.remainingSeconds(until: deadline) }\n        diagnosticTrace.mark("read-return")')
+s=replace(s,'        lock.lock()\n        continuation = signal','        diagnosticTrace.mark("start-entry")\n        lock.lock()\n        continuation = signal')
+s=replace(s,'        let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)','        diagnosticTrace.mark("session-create-before")\n        let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)\n        diagnosticTrace.mark("session-created")')
+s=replace(s,'        let created = owner.dataTask(with: request)','        diagnosticTrace.mark("task-create-before")\n        let created = owner.dataTask(with: request)')
+s=replace(s,'        afterTaskPublication?(owner, created)','        diagnosticTrace.mark("task-published")\n        afterTaskPublication?(owner, created)\n        diagnosticTrace.mark("publication-hook-returned")')
+s=replace(s,'        created.resume()','        diagnosticTrace.mark("task-resume-before")\n        created.resume()\n        diagnosticTrace.mark("task-resume-after")')
+s=replace(s,'    package func cancel(_ error: any Error = CancellationError()) {','    package func cancel(_ error: any Error = CancellationError()) {\n        diagnosticTrace.mark("cancel-entry \\(error)")')
+s=replace(s,'completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {','completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {\n        diagnosticTrace.mark("response-callback-entry")')
+s=replace(s,'        completionHandler(allow ? .allow : .cancel)','        diagnosticTrace.mark("response-callback-disposition allow=\\(allow)")\n        completionHandler(allow ? .allow : .cancel)')
+s=replace(s,'public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {','public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {\n        diagnosticTrace.first("body-first-entry")')
+s=replace(s,'public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {','public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {\n        diagnosticTrace.mark("task-completion-entry \\(String(describing: error))")')
+s=replace(s,'public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {','public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {\n        diagnosticTrace.mark("session-invalidation-entry")')
+s=replace(s,'        session.delegateQueue.addOperation { [completion] in','        diagnosticTrace.mark("tail-enqueued")\n        session.delegateQueue.addOperation { [completion, diagnosticTrace] in\n            diagnosticTrace.mark("tail-executing")')
+s=replace(s,'            catch { failure = error }','            catch { diagnosticTrace.mark("delegate-admission-error \(error)"); failure = error }',count=2)
+s=replace(s,'        diagnosticTrace.mark("read-entry host=', '        diagnosticTrace.bindHost(request.url?.host)\n        diagnosticTrace.mark("read-entry host=')
+s=replace(s,'diagnosticTrace.mark("read-entry host=', 'diagnosticTrace.mark("read-entry priority=\\(Task.currentPriority.rawValue) host=')
+s=replace(s,'diagnosticTrace.mark("caller-woke")', 'diagnosticTrace.mark("caller-woke priority=\\(Task.currentPriority.rawValue)")')
+s=replace(s,'        try claimStart()', '        diagnosticTrace.mark("claim-start-before")\n        try claimStart()\n        diagnosticTrace.mark("claim-start-after")')
+s=replace(s,'        try Task.checkCancellation()', '        diagnosticTrace.mark("caller-cancellation-check-before")\n        try Task.checkCancellation()\n        diagnosticTrace.mark("caller-cancellation-check-after")')
+s=replace(s,'        diagnosticTrace.mark("session-create-before")', '        diagnosticTrace.mark("delegate-queue-config qos=\\(queue.qualityOfService.rawValue) maxConcurrent=\\(queue.maxConcurrentOperationCount)")\n        diagnosticTrace.mark("session-create-before")')
+s=replace(s,'        beforeTaskPublication?()', '        diagnosticTrace.mark("before-publication-hook-before")\n        beforeTaskPublication?()\n        diagnosticTrace.mark("before-publication-hook-after")')
+s=replace(s,'        capturedTask?.cancel()', '        diagnosticTrace.mark("captured-task-cancel-before exists=\\(capturedTask != nil) neverStarted=\\(neverStarted)")\n        capturedTask?.cancel()\n        diagnosticTrace.mark("captured-task-cancel-after")')
+s=replace(s,'        session.finishTasksAndInvalidate()', '        diagnosticTrace.mark("finishTasksAndInvalidate-before")\n        session.finishTasksAndInvalidate()\n        diagnosticTrace.mark("finishTasksAndInvalidate-after")')
+s=replace(s,'            owner.finishTasksAndInvalidate()', '            diagnosticTrace.mark("unpublished-task-finishTasksAndInvalidate-before")\n            owner.finishTasksAndInvalidate()\n            diagnosticTrace.mark("unpublished-task-finishTasksAndInvalidate-after")')
+s=replace(s,'            completion.finish()\n            signal.resume()', '            diagnosticTrace.mark("completion-finish-before")\n            completion.finish()\n            diagnosticTrace.mark("continuation-resume-before")\n            signal.resume()\n            diagnosticTrace.mark("continuation-resume-after")')
+s=replace(s,'        return try completed.get()', '        diagnosticTrace.mark("result-get-before")\n        do {\n            return try completed.get()\n        } catch {\n            diagnosticTrace.mark("result-get-error \\(error)")\n            throw error\n        }')
+s=replace(s,'            } catch { result = .failure(error) }', '            } catch { diagnosticTrace.mark("buffer-finish-error \\(error)"); result = .failure(error) }')
+s=replace(s,'    deinit { deinitObserver?() }', '    deinit { diagnosticTrace.mark("request-deinit"); deinitObserver?() }')
+save(p,old,s)
+p='Sources/SwiftJ2KJPIP/JPIPTransport.swift';old=(source/p).read_text();s=old
+s=replace(s,'            let result = try await operation.read(urlRequest, configuration: session.configuration,','            operation.diagnosticTrace.mark("transport-before-read")\n            let result = try await operation.read(urlRequest, configuration: session.configuration,')
+s=replace(s,'                                                  deadline: deadline, afterTaskPublication: taskObserver)','                                                  deadline: deadline, afterTaskPublication: taskObserver)\n            operation.diagnosticTrace.mark("transport-after-read")')
+s=replace(s,'            return result.response\n        } catch {','            return result.response\n        } catch {\n            operation.diagnosticTrace.mark("transport-original-error \(error)")')
+# HTTPS-only entry marks distinguish dispatch/preflight from the owner read.
+send_start=s.index('    public func send(')
+send_end=s.index('\n    package func receiveAdmissionSnapshot()',send_start)
+send=s[send_start:send_end]
+send=replace(send,'        let storageLimit = maximumStorageBytes ?? Int.max', '        let diagnosticHTTPSHost = baseURL.scheme?.lowercased() == "https" ? baseURL.host : nil\n        if let diagnosticHTTPSHost { JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: diagnosticHTTPSHost, event: "send-entry-before-preflight") }\n        let storageLimit = maximumStorageBytes ?? Int.max')
+send=replace(send,'        // 1. Explicit actor injection', '        if let diagnosticHTTPSHost { JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: diagnosticHTTPSHost, event: "send-preflight-passed") }\n\n        // 1. Explicit actor injection')
+s=s[:send_start]+send+s[send_end:]
+https_start=s.index('    private func sendViaHTTPS(')
+https_end=s.index('\n    // MARK: - Normative JPIP Path',https_start)
+https=s[https_start:https_end]
+https=replace(https,'        let pathAndQuery = buildPathAndQuery(from: request)', '        JPIPHTTPSPhaseTrace.record(owner: "transport-send", host: baseURL.host ?? "nil", event: "https-entry-before-url-preflight")\n        let pathAndQuery = buildPathAndQuery(from: request)')
+https=replace(https,'        let requestID = UUID()', '        operation.diagnosticTrace.bindHost(url.host)\n        operation.diagnosticTrace.mark("https-url-preflight-passed")\n        let requestID = UUID()')
+https=replace(https,'            await observer?(.registered, requestID)', '            operation.diagnosticTrace.mark("registered-observer-before")\n            await observer?(.registered, requestID)\n            operation.diagnosticTrace.mark("registered-observer-after")')
+https=replace(https,'            await observer?(.beforePublication, requestID)', '            operation.diagnosticTrace.mark("publication-observer-before")\n            await observer?(.beforePublication, requestID)\n            operation.diagnosticTrace.mark("publication-observer-after")')
+https=replace(https,'            if let deadline { _ = try Self.remainingSeconds(until: deadline) }', '            operation.diagnosticTrace.mark("transport-final-deadline-before")\n            if let deadline { _ = try Self.remainingSeconds(until: deadline) }\n            operation.diagnosticTrace.mark("transport-final-deadline-passed")')
+https=replace(https,'                throw CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")', '                operation.diagnosticTrace.mark("transport-error-remapped-deadline")\n                throw CodecError(.resourceLimitExceeded, "JPIP HTTPS operation deadline elapsed.")')
+s=s[:https_start]+https+s[https_end:]
+save(p,old,s)
+p='Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift';old=(source/p).read_text();s=old
+for name in ['sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()','absoluteDeadlineCancelsSilentResponse()','completionAndCancellationHaveOneWinner(cancelFirst: Bool)','completedRequestEventuallyReleasesItsDelegateOwnership()']:
+    start='func '+name+' async throws {'
+    s=replace(s,start,start+'\n        JPIPHTTPSPhaseTrace.record(owner: #function, event: "test-entry priority=\\(Task.currentPriority.rawValue)")\n        defer { JPIPHTTPSPhaseTrace.flush() }')
+s=replace(s,'        let result = try await transport.send(JPIPRequest(target: "a b.j2k"),','        JPIPHTTPSPhaseTrace.record(owner: fixture.url.host!, event: "success-caller-before-send")\n        let result = try await transport.send(JPIPRequest(target: "a b.j2k"),')
+s=replace(s,'            let result = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,','            operation.diagnosticTrace.mark("scripted-caller-before-read cancelFirst=\\(cancelFirst)")\n            let result = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,')
+s=replace(s,'            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,\n                deadline: .now.advanced(by: .seconds(2)))\n            #expect(!operation.hasActiveOwners)','            operation.diagnosticTrace.mark("deinit-helper-before-read")\n            _ = try await operation.read(URLRequest(url: fixture.url), configuration: fixture.configuration,\n                deadline: .now.advanced(by: .seconds(2)))\n            operation.diagnosticTrace.mark("deinit-helper-after-read")\n            #expect(!operation.hasActiveOwners)')
+s=replace(s,'    private let state = Mutex(State())','    private let state = Mutex(State())\n    private let diagnosticTrace = JPIPHTTPSPhaseTrace()')
+s=replace(s,'    private let queue = DispatchQueue(label: "jpip.https.protocol-harness")','    private let queue = DispatchQueue(label: "jpip.https.protocol-harness")\n    private let diagnosticTrace = JPIPHTTPSPhaseTrace()')
+s=replace(s,'        state.withLock { $0.request = request }','        diagnosticTrace.mark("protocol-queue-start host=\(request.url?.host ?? "nil")")\n        state.withLock { $0.request = request }')
+s=replace(s,'    func delivered() { state.withLock { $0.delivered += 1 } }','''    func delivered() {
+        let snapshot = state.withLock { value in
+            value.delivered += 1
+            return (value.delivered, value.request?.url?.host ?? "nil")
+        }
+        if snapshot.0 == 1 || snapshot.0 == 2 || snapshot.0 == 100 {
+            diagnosticTrace.mark("protocol-submitted-chunks=\\(snapshot.0) host=\\(snapshot.1)")
+        }
+    }''')
+s=replace(s,'    override func startLoading() {','    override func startLoading() {\n        diagnosticTrace.mark("protocol-startLoading-entry host=\(request.url?.host ?? "nil")")')
+s=replace(s,'            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)','            diagnosticTrace.mark("protocol-response-submit host=\(url.host ?? "nil")")\n            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)')
+s=replace(s,'        diagnosticTrace.mark("protocol-queue-start host=', '        diagnosticTrace.bindHost(request.url?.host)\n        diagnosticTrace.mark("protocol-queue-start host=')
+s=replace(s,'        diagnosticTrace.mark("protocol-startLoading-entry host=', '        diagnosticTrace.bindHost(request.url?.host)\n        diagnosticTrace.mark("protocol-startLoading-entry host=')
+s=replace(s,'        queue.async { [self] in\n            guard !stopped', '        queue.async { [self] in\n            diagnosticTrace.mark("protocol-startLoading-queue-entry stopped=\\(stopped)")\n            guard !stopped')
+s=replace(s,'            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)', '            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)\n            diagnosticTrace.mark("protocol-response-submit-returned")')
+s=replace(s,'                client?.urlProtocolDidFinishLoading(self)', '                diagnosticTrace.mark("protocol-finish-submit-before")\n                client?.urlProtocolDidFinishLoading(self)\n                diagnosticTrace.mark("protocol-finish-submit-after")')
+s=replace(s,'    override func stopLoading() {\n        queue.async { [self] in', '    override func stopLoading() {\n        diagnosticTrace.mark("protocol-stopLoading-entry")\n        queue.async { [self] in\n            diagnosticTrace.mark("protocol-stopLoading-queue-entry")')
+s=replace(s,'        scenarios.withLock { $0[host] = scenario }', '        JPIPHTTPSPhaseTrace.record(owner: "fixture-register", host: host, event: "mode=\\(scenario.mode)")\n        scenarios.withLock { $0[host] = scenario }')
+
+def instrument_test(text, name, edits):
+    start=text.index('    '+name)
+    end=text.find('\n    @Test',start+1)
+    if end < 0: end=text.index('\n}\n\nprivate final class HTTPSHarnessScenario',start)
+    section=text[start:end]
+    for old_text,new_text in edits: section=replace(section,old_text,new_text)
+    return text[:start]+section+text[end:]
+
+s=instrument_test(s,'@Test func sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()',[
+    ('JPIPHTTPSPhaseTrace.record(owner: fixture.url.host!, event: "success-caller-before-send")','JPIPHTTPSPhaseTrace.record(owner: #function, host: fixture.url.host ?? "nil", event: "success-caller-before-deadline-expression-and-send")'),
+    ('        #expect(result.statusCode == 200)', '        JPIPHTTPSPhaseTrace.record(owner: #function, host: fixture.url.host ?? "nil", event: "success-caller-after-await")\n        #expect(result.statusCode == 200)')])
+s=instrument_test(s,'@Test func absoluteDeadlineCancelsSilentResponse()',[
+    ('        let start = ContinuousClock.now', '        operation.diagnosticTrace.bindHost(fixture.url.host)\n        operation.diagnosticTrace.mark("silent-before-clock-origin")\n        let start = ContinuousClock.now'),
+    ('        do {\n            _ = try await operation.read', '        do {\n            operation.diagnosticTrace.mark("silent-before-deadline-expression-and-read")\n            _ = try await operation.read'),
+    ('            Issue.record("Expected absolute HTTPS deadline")', '            operation.diagnosticTrace.mark("silent-caller-success-after-await")\n            Issue.record("Expected absolute HTTPS deadline")'),
+    ('        } catch let error as CodecError { #expect(error.category == .resourceLimitExceeded) }', '        } catch let error as CodecError {\n            operation.diagnosticTrace.mark("silent-caller-caught \\(error)")\n            #expect(error.category == .resourceLimitExceeded)\n        }'),
+    ('        #expect(!operation.hasActiveOwners)', '        operation.diagnosticTrace.mark("silent-after-elapsed-assertion")\n        #expect(!operation.hasActiveOwners)')])
+s=instrument_test(s,'func completionAndCancellationHaveOneWinner(cancelFirst: Bool)',[
+    ('        do {\n            operation.diagnosticTrace.mark', '        operation.diagnosticTrace.bindHost(fixture.url.host)\n        do {\n            operation.diagnosticTrace.mark'),
+    ('            #expect(!cancelFirst)', '            operation.diagnosticTrace.mark("scripted-caller-after-await")\n            #expect(!cancelFirst)'),
+    ('        } catch is CancellationError { #expect(cancelFirst) }', '        } catch is CancellationError {\n            operation.diagnosticTrace.mark("scripted-caller-caught-cancellation")\n            #expect(cancelFirst)\n        }')])
+s=instrument_test(s,'@Test func completedRequestEventuallyReleasesItsDelegateOwnership()',[
+    ('        let released = AsyncStream<Bool>', '        let diagnosticHost = fixture.url.host ?? "nil"\n        let released = AsyncStream<Bool>'),
+    ('                    released.continuation.yield(true)', '                    JPIPHTTPSPhaseTrace.record(owner: "deinit-observer", host: diagnosticHost, event: "observer-called")\n                    released.continuation.yield(true)'),
+    ('            operation.diagnosticTrace.mark("deinit-helper-before-read")', '            operation.diagnosticTrace.bindHost(diagnosticHost)\n            operation.diagnosticTrace.mark("deinit-helper-before-deadline-expression-and-read")'),
+    ('        try await completeRequest()', '        JPIPHTTPSPhaseTrace.record(owner: #function, host: diagnosticHost, event: "deinit-outer-before-await")\n        try await completeRequest()\n        JPIPHTTPSPhaseTrace.record(owner: #function, host: diagnosticHost, event: "deinit-outer-after-await")')])
+save(p,old,s)
+(base/'overlay-source.json').write_text(json.dumps(manifest,indent=2)+'\n')
+print(json.dumps(manifest,indent=2))

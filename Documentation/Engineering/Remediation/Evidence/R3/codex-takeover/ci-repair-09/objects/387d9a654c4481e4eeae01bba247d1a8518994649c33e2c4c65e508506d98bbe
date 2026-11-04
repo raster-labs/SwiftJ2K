@@ -1,0 +1,7 @@
+Socket25 independent design review — stopped incomplete at user hold
+
+The reviewer read the stopped proposal/source receipt and relevant listener, connection-lock inventory, JPIPServer.start/stop and JPIPWebSocketServer.start/stop source sections. The design review was interrupted by the parent’s explicit USER HOLD / HANDOFF instruction before completing findings, source identity reconciliation or a design disposition. No implementation approval or closure is issued.
+
+Previously reported conditions remain unresolved: final descriptor close/completion under nested operation locks; terminal listener errors and caller retry spinning; propagation of listener-close errors through the WebSocket server stop lifecycle. These are retained review inputs, not newly completed findings in this incomplete review.
+
+No native/compiler/server/sample/Git/network action or repository edit occurred. Only this stopped receipt directory was written. Source/architecture changes and acceptance remain unperformed. Review work is positively stopped.

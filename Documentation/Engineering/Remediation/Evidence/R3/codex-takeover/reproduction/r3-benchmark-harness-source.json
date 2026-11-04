@@ -1,0 +1,8 @@
+{
+  "work/r3-benchmark-harness/Bench.swift": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a",
+  "work/run-r3-benchmark.py": "98d6dd515c1b5652f0435ba4b3658e966ea6fc1e8091b4272e962445d7934d3e",
+  "work/r3-benchmark-baseline/Package.swift": "956edcbacf19132055e586eb4da91a74b7b098edfef6809b83eb18171e5db42d",
+  "work/r3-benchmark-candidate/Package.swift": "5ac273a647e3542f68d86c3ec1b7957c70b384926eb53c065e75ae4d250976ea",
+  "work/r3-benchmark-baseline/Sources/Benchmark/Bench.swift": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a",
+  "work/r3-benchmark-candidate/Sources/Benchmark/Bench.swift": "188e10c0c9aa928135cca979be8648e62c6d23fdcd939c84b8060d46d1af743a"
+}

@@ -1,0 +1,321 @@
+Building for debugging...
+[0/18] /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-build-03/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[1/18] Write swiftj2k-cli-entitlement.plist
+[1/18] Write sources
+[10/18] Copying Fixtures
+[11/18] Write swift-version--58304C5D6DBC2206.txt
+[12/18] Compiling CZlibShim CZlibShim.c
+[14/48] Compiling SwiftJ2K AcceleratedCodec.swift
+[15/48] Compiling SwiftJ2K AccelerationRuntime.swift
+[16/48] Compiling SwiftJ2K MetalAcceleration.swift
+[17/48] Compiling SwiftJ2K SIMDAcceleration.swift
+[18/48] Compiling SwiftJ2K BitIO.swift
+[19/48] Compiling SwiftJ2K BitPlaneCoder.swift
+[20/48] Compiling SwiftJ2K BoundedByteWriter.swift
+[21/48] Compiling SwiftJ2K Codestream.swift
+[22/48] Compiling SwiftJ2K ColourTransform.swift
+[23/48] Compiling SwiftJ2K ContextModeling.swift
+[24/48] Compiling SwiftJ2K Wavelet53.swift
+[25/48] Compiling SwiftJ2K Wavelet97.swift
+[26/48] Compiling SwiftJ2K CodecAPI.swift
+[27/48] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[28/48] Compiling SwiftJ2K JP2Boxes.swift
+[29/48] Compiling SwiftJ2K JP2Container.swift
+[30/48] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[31/48] Compiling SwiftJ2K Errors.swift
+[32/48] Compiling SwiftJ2K Image.swift
+[33/57] Compiling SwiftJ2K ImageDescriptor.swift
+[34/57] Compiling SwiftJ2K ImageStorage.swift
+[35/57] Compiling SwiftJ2K LegacyImageBridge.swift
+[36/57] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[37/57] Compiling SwiftJ2K Options.swift
+[38/57] Compiling SwiftJ2K Telemetry.swift
+[39/57] Compiling SwiftJ2K Transcoding.swift
+[40/57] Compiling SwiftJ2K Volume.swift
+[41/57] Compiling SwiftJ2K VolumePixelAccounting.swift
+[42/57] Compiling SwiftJ2K HTBlockCoder.swift
+[43/57] Compiling SwiftJ2K HTTables.swift
+[44/57] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[45/57] Compiling SwiftJ2K LosslessPipeline.swift
+[46/57] Compiling SwiftJ2K MQCoder.swift
+[47/57] Compiling SwiftJ2K Part1Pipeline.swift
+[48/57] Compiling SwiftJ2K Quantization.swift
+[49/57] Compiling SwiftJ2K ROI.swift
+[50/57] Compiling SwiftJ2K TagTree.swift
+[51/57] Compiling SwiftJ2K Tier2.swift
+[52/57] Emitting module SwiftJ2K
+[53/83] Emitting module SwiftJ2K3D
+[54/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[55/83] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[56/83] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[57/83] Compiling SwiftJ2K3D JP3DRateControl.swift
+[58/83] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[59/83] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[60/83] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[61/83] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[62/83] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[63/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[64/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[65/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[66/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[67/83] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[68/83] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[69/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[70/83] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[71/83] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[72/83] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[73/83] Compiling SwiftJ2K3D JP3DDecoder.swift
+[74/83] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[75/83] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[76/83] Compiling SwiftJ2K3D JP3DEncoder.swift
+[77/83] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[78/83] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[79/91] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[80/91] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[81/91] Compiling SwiftJ2K3D JP3DTiling.swift
+[82/91] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[83/91] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[84/91] Compiling SwiftJ2K3D JP3DTypes.swift
+[85/91] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[86/91] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[87/132] Emitting module SwiftJ2KJPIP
+[88/140] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+[89/140] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[90/140] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+[91/140] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+[92/140] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+[93/140] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+[94/140] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+[95/140] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+[96/140] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[97/140] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[98/140] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[99/140] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[100/140] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[101/140] Compiling SwiftJ2KJPIP JPIP.swift
+[102/140] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[103/140] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[104/140] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+[105/140] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+[106/140] Compiling SwiftJ2KJPIP JPIPRequest.swift
+[107/140] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[108/140] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[109/140] Compiling SwiftJ2KJPIP JPIPServer.swift
+[110/140] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+[111/140] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+[112/140] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+[113/140] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+[114/140] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+[115/140] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+[116/140] Compiling SwiftJ2KJPIP JPIPTransport.swift
+[117/140] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+[118/140] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+[119/140] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+[120/167] Compiling SwiftJ2KCLI CLIImageIO.swift
+[121/167] Emitting module SwiftJ2KCLI
+[122/167] Compiling SwiftJ2KCLI main.swift
+[123/167] Compiling SwiftJ2KCLI CLIVerbs.swift
+[123/167] Write Objects.LinkFileList
+[125/167] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[126/167] Compiling SwiftJ2KJPIPTests JPIPContractTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[127/167] Compiling SwiftJ2KJPIPTests JPIPDataBinGeneratorTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[128/167] Compiling SwiftJ2KJPIPTests JPIPEndToEndTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[129/167] Compiling SwiftJ2KJPIPTests JPIPHTJ2KSupportTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[130/172] Emitting module SwiftJ2KJPIPTests
+[131/179] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+[132/179] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+[133/179] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+[134/179] Compiling SwiftJ2K3DTests R3VolumeRemediationTests.swift
+[135/179] Compiling SwiftJ2K3DTests VolumeContractTests.swift
+[136/179] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+[137/179] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+[138/179] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+[139/179] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+[140/179] Compiling SwiftJ2KJPIPTests CodexR3IndependentTests.swift
+[141/179] Compiling SwiftJ2KJPIPTests CodexR3TakeoverJPIPTests.swift
+[142/179] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+[143/179] Compiling SwiftJ2KJPIPTests IndependentR2RemainingTests.swift
+[144/179] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+[145/179] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+[146/179] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+[147/179] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+[148/179] Emitting module SwiftJ2K3DTests
+[148/179] Linking swiftj2k-cli
+[149/179] Applying swiftj2k-cli
+[151/198] Emitting module SwiftJ2KTests
+[152/204] Compiling SwiftJ2KTests AccelerationTests.swift
+[153/204] Compiling SwiftJ2KTests BehaviourTests.swift
+[154/204] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[155/204] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+[156/204] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[157/204] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+[158/204] Compiling SwiftJ2KTests ContainerTests.swift
+[159/204] Compiling SwiftJ2KTests ContractTests.swift
+[160/204] Compiling SwiftJ2KTests DescriptorTests.swift
+[161/204] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+[162/204] Compiling SwiftJ2KTests IndependentR2AuditTests.swift
+[163/204] Compiling SwiftJ2KTests LimitTests.swift
+[164/204] Compiling SwiftJ2KTests LosslessCodecTests.swift
+[165/204] Compiling SwiftJ2KTests OwnershipTests.swift
+[166/204] Compiling SwiftJ2KTests Part1BreadthTests.swift
+[173/204] Compiling SwiftJ2KTests SharedStorageTests.swift
+[174/204] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+[175/204] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+[176/204] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+[177/204] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+[178/204] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+[179/204] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+[180/204] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+[181/204] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+[182/204] Compiling SwiftJ2KTests R2RemediationTests.swift
+[183/204] Compiling SwiftJ2KTests SampleAccessTests.swift
+[189/204] Compiling SwiftJ2KTests R1RemediationTests.swift
+[190/204] Compiling SwiftJ2KTests R2CLIExtraSampleOrderingTests.swift
+[191/204] Compiling SwiftJ2KTests R2ColourAlphaPreservationTests.swift
+[203/206] Emitting module SwiftJ2KPackageTests
+[204/206] Compiling SwiftJ2KPackageTests runner.swift
+[204/206] Write Objects.LinkFileList
+[205/206] Linking SwiftJ2KPackageTests
+Build complete! (38.13s)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Codex R3 JPP reconstruction admission" started.
+◇ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" started.
+◇ Suite "Codex R3 live entropy reservations" started.
+◇ Suite "Codex R3 packet layer budget (RA2-02)" started.
+◇ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" started.
+◇ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" started.
+◇ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" started.
+◇ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" started.
+◇ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" started.
+◇ Test "Reconstruction validates tile identifiers before synthesizing a probe" started.
+◇ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" started.
+◇ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" started.
+◇ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" started.
+◇ Test "Optional coefficient-transcode verification reports and bounds both decoded volumes" started.
+◇ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" started.
+◇ Test "Continued segments admit growth before mutating a transferred payload owner" started.
+◇ Test "Entropy capacity is compacted under an overlap reservation before unused bytes are released" started.
+◇ Test "A many-layer encoder admits its retained per-block layer arrays before coding" started.
+◇ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" started.
+◇ Test "Packet-header denial occurs before its staging buffer is allocated" started.
+◇ Test "Array-input packet parsing admits its Data copy before allocation" started.
+◇ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" started.
+◇ Test "RA2-02b: Retained JPIP 3D packet indexing and retained multi-layer codeword segments reject 65,535-layer streams pre-allocation under 128 KiB cap" started.
+◇ Test "3D reconstruction admits output growth while the complete tile buffer remains live" started.
+◇ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" started.
+◇ Test "3D indexing admits its source copy and avoids a second packet-input copy" started.
+✔ Test "Reconstruction validates tile identifiers before synthesizing a probe" passed after 0.001 seconds.
+✔ Test "A tiny header cannot allocate an unadmitted 65,535-layer packet table" passed after 0.002 seconds.
+✔ Test "A many-layer encoder admits its retained per-block layer arrays before coding" passed after 0.011 seconds.
+✔ Test "Entropy capacity is compacted under an overlap reservation before unused bytes are released" passed after 0.011 seconds.
+✔ Test "Packet-header denial occurs before its staging buffer is allocated" passed after 0.011 seconds.
+✔ Test "Array-input packet parsing admits its Data copy before allocation" passed after 0.011 seconds.
+✔ Test "Reconstruction workspace and memory boundaries reject before geometry or output allocation" passed after 0.011 seconds.
+✔ Test "R1-CODE-01: adversarial Int64.max lifting coefficients throw malformedInput cleanly without arithmetic trap" passed after 0.011 warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+seconds.
+✔ Test "Continued segments admit growth before mutating a transferred payload owner" passed after 0.011 seconds.
+✔ Test "3D indexing admits its source copy and avoids a second packet-input copy" passed after 0.011 seconds.
+✔ Test "F03: resolutionLevel > 32 throws cleanly across VolumeDecoderConfiguration, JP3DDecoder, and JP3DROIDecoder" passed after 0.013 seconds.
+✔ Suite "Codex R3 JPP reconstruction admission" passed after 0.013 seconds.
+✔ Test "F05 qualification: monotonic budget revision gating prevents out-of-order stale telemetry snapshots from overwriting newer live counters or final zeros" passed after 0.024 seconds.
+✔ Test "RA2-02b: Retained JPIP 3D packet indexing and retained multi-layer codeword segments reject 65,535-layer streams pre-allocation under 128 KiB cap" passed after 0.029 seconds.
+✔ Test "F13: cancellation inside .completed progress callback aborts VolumeEncoder, VolumeDecoder, and VolumeTranscoder" passed after 0.031 seconds.
+✔ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" passed after 0.033 seconds.
+✔ Test "F05 re-audit: scoped growth copy-overlap reservation with explicit barriers and exact 22-byte J3DS header admission across single and multi-tile retained outputs" passed after 0.038 seconds.
+✔ Test "Optional coefficient-transcode verification reports and bounds both decoded volumes" passed after 0.116 seconds.
+✔ Suite "Codex R3 live entropy reservations" passed after 0.116 seconds.
+✔ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" passed after 0.155 seconds.
+✔ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" passed after 0.171 seconds.
+✔ Test "3D reconstruction admits output growth while the complete tile buffer remains live" passed after 0.543 seconds.
+✔ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" passed after 0.648 seconds.
+✔ Suite "Codex R3 packet layer budget (RA2-02)" passed after 0.649 seconds.
+✔ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" passed after 2.004 seconds.
+✔ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" passed after 2.004 seconds.
+✔ Test run with 22 tests in 4 suites passed after 2.004 seconds.

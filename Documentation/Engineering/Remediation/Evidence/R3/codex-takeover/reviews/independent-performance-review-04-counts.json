@@ -1,0 +1,152 @@
+{
+  "baseline": {
+    "active_transcode_samples": 3152,
+    "all_thread_samples": 9517,
+    "category_union_counts": {
+      "ebcot_3d_encode": 2184,
+      "mq_encoder": 464,
+      "mq_termination_estimate": 165,
+      "mq_finish": 10,
+      "entropy_budget": 0,
+      "budget_compaction": 0,
+      "normative_closures": 24,
+      "ht_decode": 183,
+      "packet_decode": 314,
+      "packet_encode": 158,
+      "geometry_preflight": 29,
+      "tasklocal": 2,
+      "reserve_capacity": 32,
+      "lock": 34,
+      "string": 0
+    },
+    "budget_leaf_top20": [],
+    "budget_nested_categories": {},
+    "local_closure_union": {
+      "partial apply for closure #10 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 19,
+      "partial apply for closure #9 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 4,
+      "closure #10 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 1
+    },
+    "profile_sha256": "107f8b3d4aaa3fb5c3ceaa49da18c75a7244286710e09aac8b0b4385a1ed1486"
+  },
+  "candidate": {
+    "active_transcode_samples": 3194,
+    "all_thread_samples": 9714,
+    "category_union_counts": {
+      "ebcot_3d_encode": 2239,
+      "mq_encoder": 522,
+      "mq_termination_estimate": 157,
+      "mq_finish": 42,
+      "entropy_budget": 64,
+      "budget_compaction": 34,
+      "normative_closures": 23,
+      "ht_decode": 181,
+      "packet_decode": 320,
+      "packet_encode": 176,
+      "geometry_preflight": 36,
+      "tasklocal": 19,
+      "reserve_capacity": 34,
+      "lock": 41,
+      "string": 0
+    },
+    "budget_leaf_top20": [
+      [
+        "_platform_memmove",
+        7
+      ],
+      [
+        "swift_task_localValueGetImpl(swift::HeapObject const*)",
+        6
+      ],
+      [
+        "initializeWithCopy for ClosedRange<>.Index",
+        5
+      ],
+      [
+        "swift_release",
+        4
+      ],
+      [
+        "getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)",
+        3
+      ],
+      [
+        "specialized EntropyOutputBudget.reserve(_:countsTowardCompressedOutput:site:)",
+        3
+      ],
+      [
+        "swift_task_localValueGet",
+        3
+      ],
+      [
+        "???",
+        2
+      ],
+      [
+        "specialized EntropyOutputBudget.release(_:countsTowardCompressedOutput:site:)",
+        2
+      ],
+      [
+        "_xzm_free_main",
+        2
+      ],
+      [
+        "DYLD-STUB$$TaskLocal.get()",
+        2
+      ],
+      [
+        "DYLD-STUB$$swift_retain",
+        2
+      ],
+      [
+        "outlined consume of EntropyOutputBudget?",
+        2
+      ],
+      [
+        "swift_task_getCurrent",
+        2
+      ],
+      [
+        "swift::TargetContextDescriptor<swift::InProcess>::getGenericContext() const",
+        1
+      ],
+      [
+        "_platform_memcmp",
+        1
+      ],
+      [
+        "swift::ConcurrentReadableHashMap<swift::HashMapElementWrapper<swift::GenericCacheEntry>, swift::Mutex>::find<swift::MetadataCacheKey>(swift::MetadataCacheKey const&, swift::ConcurrentReadableHashMap<swift::HashMapElementWrapper<swift::GenericCacheEntry>, swift::Mutex>::IndexStorage, unsigned long, swift::HashMapElementWrapper<swift::GenericCacheEntry>*)",
+        1
+      ],
+      [
+        "swift::MetadataCacheEntryBase<swift::GenericCacheEntry, void const*>::awaitSatisfyingState(swift::ConcurrencyControl&, swift::MetadataRequest)",
+        1
+      ],
+      [
+        "__isPlatformOrVariantPlatformVersionAtLeast",
+        1
+      ],
+      [
+        "getContiguousArrayStorageType<A>(for:)",
+        1
+      ]
+    ],
+    "budget_nested_categories": {
+      "ebcot_3d_encode": 52,
+      "mq_encoder": 41,
+      "mq_finish": 34,
+      "entropy_budget": 64,
+      "budget_compaction": 34,
+      "lock": 4,
+      "normative_closures": 3,
+      "tasklocal": 14,
+      "packet_encode": 12
+    },
+    "local_closure_union": {
+      "closure #9 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 2,
+      "partial apply for closure #12 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 19,
+      "partial apply for closure #10 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 1,
+      "closure #8 in JP3DTranscoder.transcodeNormative(sourceData:source:configuration:limits:executionPolicy:copyPolicy:metadataPolicy:estimatedWorkspace:work:)": 1
+    },
+    "profile_sha256": "fdb5d27e16d39faa27cbd3d59ca6e7ad7f71b10f5c548783aa04eb36bddb27e9"
+  }
+}

@@ -1,0 +1,65 @@
+SwiftJ2K R3 — independent local native-receipt review 05
+Reviewer: /root/independent_jpip_review. Read-only receipt/source verification; native runs belong to the root.
+
+Source: immutable work/candidate-snapshot-05, 1,345-file manifest. Source reviews: independent-jpip-review-04.txt and independent-cli-harness-review-05.txt. Prior failed-run diagnosis: independent-jpip-deadline-diagnosis-05.txt. Receipt for this verification: independent-jpip-native-review-05-source.json.
+
+Local disposition
+
+The reviewed JPIP repairs now have both independent source closure and successful current-candidate full concurrent regression evidence. C01/C02's captured-owner/generation repair, B01/B02 push/handshake accounting, F13 callback cancellation and the existing resource/deadline checks are supported by the verified local receipts below. No remaining confirmed defect was identified in the reviewed JPIP delta. This closes the local full04 regression-failure item for candidate05's tested source and workload; full04 remains preserved as a failed historical receipt, not rewritten as a pass.
+
+This is a local, source-scoped conclusion. TSan05 was still running when this report was prepared and no TSan success is claimed. Missing independent native 3D JPIP/exact-extension peers and other R3 prerequisites prevent whole-R3 acceptance.
+
+Full concurrent candidate05
+
+Verified work/validation/candidate-full-05/result.json reports exit 0 and no changed inputs. Independently recomputed native.log SHA256:
+b1ad510cb5f1baf1b96557d95e8287638bc350638ea1b22eab0b1baaedbd62bd
+It matches the receipt. source-before.json equals source-after.json and both equal the complete candidate-snapshot-05-source.json manifest.
+
+The command is swift test with the native build system, -j 4, fresh ../candidate-build-05 scratch path and no test filter or global serialization flag. The log records:
+- 1,034 XCTest tests, zero failures, 63.000 seconds (63.107 seconds wall time in the all-tests line).
+- 292 Swift Testing tests in 36 suites passed after 36.014 seconds.
+- Overall wrapper duration, including fresh compilation, 181.757412 seconds.
+
+The only build-complete marker is the initial build before test execution. There are no nested build-start/build-complete markers after test start and no SwiftPM lock-contention warnings anywhere in this log. This directly verifies removal of the previously observed hidden-build behavior for this run.
+
+Original failing paths are present and pass
+
+native.log:3559 records F04-09 cancellation/timeout passing after 1.408 seconds. The unchanged source retains its Task cancellation checks and less-than-two-second elapsed assertions.
+
+native.log:3604 records RA2-07 passing after 2.540 seconds. This is the duration of the whole test, which has successive HTTP facade, WS facade and direct WS request phases; it is not a measured 2.540-second individual timeout. CodexR3IndependentTests.swift remains byte-identical to snapshot04 and still uses 0.12-second operation/request deadlines, each original less-than-two-second phase assertion, CodecError.resourceLimitExceeded checks, and the zero-pending-request check. Passing the whole declaration with no issues establishes those existing assertions passed. The log does not print exact per-phase latencies or internal shutdown timestamps, so none is invented.
+
+native.log:3443–3447 lists all five lifecycle arguments. The two obsolete-handshake success/failure cases pass at 3571 (1.450 seconds); the three old timeout/cancellation/duplicate-reader-close cases pass at 3581 (1.569 seconds). Their source still forces the old-callback/new-handshake order, acknowledges cleanup, checks old completion and empty pending state, then verifies a working replacement connection. No timeout bound or assertion was removed.
+
+Descriptor-heavy connecting-request handshake telemetry passes at 3560 (1.202 seconds); the repeated-push cumulative allowance test passes at 3567; successful descriptor-heavy volume handshake reporting passes at 3615. F13 JPIP final-callback cancellation passes at 3534. The new active-build resolver and dual-pipe/input helper tests both run and pass (3455,3515), and all six migrated CLI test declarations pass.
+
+Independent source-preservation verification
+
+Only the four already-reviewed CLI test files differ from snapshot04. Actual hashes of all 66 Sources/SwiftJ2KJPIP and Tests/SwiftJ2KJPIPTests files match snapshot04; the two interacting indexers in the 68-file JPIP review scope also match. The independent CLI preservation check established that six async signatures and 63 await insertions are the only existing test-body changes after helper replacement. Existing command arguments, error/sample assertions and timings remain unchanged. No production repair or JPIP test weakening was added between the failed broad run and this successful broad run.
+
+These observations strongly support the identified CLI harness load/blocking as material to the broad-run failures. One successful comparison does not separately measure the relative contributions of nested compiler CPU load, blocking helpers and scheduler timing, and does not establish a universal real-time scheduling guarantee under arbitrary workloads.
+
+Focused AddressSanitizer receipts
+
+Both ASan runs use snapshot04, whose production and JPIP test bytes are unchanged in snapshot05:
+- candidate-jpip-asan-04: --sanitize address, exit 0, 45 tests in six suites pass after 25.264 seconds. Log SHA256 cba46c684cf1b28aa515ecbbeaef4e6cb1687fc4829af3b2561c3a513f3dde75.
+- candidate-core-asan-04: exit 0, 44 tests in eight suites pass after 24.412 seconds. Log SHA256 c4ac6a2638cd1238cd00ba39ef3caff2936bca0663f5ba331b9f83589d44a380.
+
+Independently recomputed log hashes match both receipts, and both source-before/source-after pairs equal the complete snapshot04 manifest. The JPIP ASan log explicitly includes the five barrier cases, original deadline/cancellation declarations, push accounting, handshake reporting and F13. These are focused sanitizer passes, not a full-sanitizer or TSan claim.
+
+CLI executable binding
+
+The full05 build log records linking swiftj2k-cli and the test executable under the candidate-build-05 invocation. The current regular executable at
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-05/arm64-apple-macosx/debug/swiftj2k-cli
+has independently verified SHA256
+8e35e9628e3ee2705f543483683c4c317f012bbac4e8638f6c4907fc454e1c06.
+The reviewed default resolver selects the sibling product of the active test build and has no source .build/PATH/hidden-build fallback.
+
+Provenance limit: the root attests in work/candidate05-cli-binding.json that full05 supplied no SWIFTJ2K_TEST_CLI_PATH override; a later tool-shell observation found the variable unset. The wrapper's command.json does not serialise inherited environment, and the helper does not print its final child executable path. Thus that absence is coordinator-attested rather than independently recoverable from the log. The fresh build path, binary hash, source manifest, resolver behavior, and successful real CLI assertions are independently verified. This distinction is retained without asserting a binary source hash check the helper does not perform.
+
+Remaining gates
+
+TSan05 remains pending at this report's cutoff. DNS resolver cancellation remains an unconfirmed concern; no delayed-getaddrinfo qualification is added. Fully blocked-write and trickled-HTTPS cases require their own evidence and are not inferred from silent-peer tests. URLSession internal protocol-header storage remains outside the claimed pre-allocation boundary.
+
+Direct independent native 3D JPIP and the exact repository WebSocket extension remain UNEXECUTED / UNWAIVED. Scripted loopback peers and separate-process same-implementation exchanges are regression evidence. Combined Part 10+15, direct full38 Part 2 output, multiple transmitted nonempty HT sets, final-head CI and other R3 gates remain separately owned. No whole-R3 acceptance or waiver is issued.
+
+No native work, listener/server, repository edit or commit was performed by this reviewer. Only this work report and its hash receipt were written.

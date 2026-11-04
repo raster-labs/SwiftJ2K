@@ -1,0 +1,32 @@
+Independent completed native22 review — positively stopped
+
+Disposition
+Ordinary22 passed. JPIP AddressSanitizer22 failed four HTTPS test assertions/deadlines; no recognised sanitizer diagnostic was present in either complete raw stream. The remaining five planned native gates did not execute. This is a failed validation sequence, not complete sanitizer qualification, hosted acceptance, or whole-R3 acceptance.
+
+Identity and capture
+Both runs used the same frozen candidate-snapshot-22 and all2,405 source hashes match the manifest and both before/after receipts. Their actual commands equal the corresponding first two planned gates: full unfiltered ordinary, then AddressSanitizer with the exact JPIP module filter. No ASAN_OPTIONS, TSAN_OPTIONS or CLI override was supplied. Wrapper SHA, source-manifest SHA, raw stdout/stderr SHA and byte lengths, merged-log SHA and exact raw-line multisets, built CLI artifact hashes, complete-capture flags, joined reader flags and empty capture errors all reconcile. No synthetic EOF newline was added. All pinned source/evidence hashes were checked again after analysis.
+
+Ordinary22
+Exit0 in126.143965917s. Exactly1,034 XCTest starts/passes,325 Swift Testing declaration starts/passes,41 complete suites, no failed or skipped declaration. Source-bound display names and canonical XML IDs match every Swift Testing runtime declaration. The observed parameter coverage is38 declarations and406 argument-start records; exact argument text is retained. Swift Testing reports27.179s. The merged-log SHA256 is9d5d132a05016ab733cda35a6f2a9af36581142d952a82a9fef22d2eee329c8f.
+
+JPIP AddressSanitizer22
+Exit1 in107.255453583s. Exactly544 XCTest starts/passes and104 Swift Testing declaration starts/completions across18 suites:100 passed, four failed, no skips. The six parameterised declarations have14 argument-start records matching their aggregate reported case counts. The complete observed JPIP runtime identity set and argument-start multisets exactly match the JPIP subset of ordinary22. Swift Testing reports3.426s. The merged-log SHA256 iscd70232a9967360ade0740ff707b5d2bf114c88805981eac23710be66a04e53a.
+
+Four failed declarations
+- completedRequestEventuallyReleasesItsDelegateOwnership: generic JPIP operation deadline elapsed.
+- sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel: JPIP HTTPS operation deadline elapsed.
+- completionAndCancellationHaveOneWinner(cancelFirst:): aggregate two-case declaration failed; the issue explicitly identifies cancelFirst=false and generic operation deadline elapsed.
+- absoluteDeadlineCancelsSilentResponse: unchanged ContinuousClock.now-start <2seconds expectation failed.
+
+Every XML failure message equals its matching raw issue message, allowing only the XML reporter's literal ' (error)' suffix. All four terminal failed events, issue records, suite results and run summary reconcile. The silent-response issue does not print a numerical operation elapsed time; its roughly2.238s framework test duration is not substituted for that missing operation measurement. Generic deadline wording does not establish whether the original deadline expired before execution, in network work/cleanup, or before the final caller-side check.
+
+The new deterministic admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion regression passed in both runs. Earlier source reviews20/21/22 remain source-scoped; this result adds observed native execution but does not prove that the known fixture defects caused the earlier hosted failures. The HTTPS request, transport, worker handoff, lifetime and HTTPS test inputs remain byte-identical across15,17,18 and22. No diagnostic19 tracing helper is present in22. These facts do not establish a unique mechanism for the recurring HTTPS failures.
+
+Unexecuted and unavailable evidence
+After the failed JPIP ASan stage, the AddressSanitizer declaration inventory, AddressSanitizer complement, ThreadSanitizer declaration inventory, ThreadSanitizer JPIP and ThreadSanitizer complement stages are all UNEXECUTED; no completed result receipts exist for them. Consequently no fresh22 native declaration-discovery inventory or complete two-part sanitizer proof is claimed. Observed runtime/XML identities are reconciled, not silently promoted to a complete inventory qualification. Successful aggregate parameter results do not supply missing per-argument completion identifiers.
+
+Validator preparation
+The proposed auditor22 derivative/specs remain unapproved and were not used for a final native proof. Its preparation script verified that all non-guard auditor bytes normalise exactly to15. The first synthetic-check invocation then stopped at a mistyped expected primary-reconciler SHA literal before importing the derivative or executing any guard/negative probe. The actual unchanged primary SHA is18d31b148778f412f92254ae298ba95da798f4a45ccf12e57c7d99dfdc5343aa. The attempt's typo, exit1 and exact scope are retained in preparation-stop.json. Root then directed stopping preparation after the native failure; no negative-probe pass or independent validator approval is claimed. This separate read-only failed-sequence checker does not import or execute the unfinished final auditor.
+
+Boundaries
+No native/compiler/codec/server/Git/network or repository-source action was performed by this reviewer. Only artifacts beneath work/runtime-coverage-22 were written. All five direct external gates remain unexecuted/unwaived, and no merge, R4 handoff, hosted Linux/macOS26 result or R3 acceptance follows. The detailed independent source/capture/runtime/XML reconciliation is completed22-failed-sequence-check.json. All writes are positively stopped after the final receipt check.

@@ -1,0 +1,83 @@
+Building for debugging...
+[Using on-disk description]
+[2 / 4] SwiftJ2KJPIPTests-product
+[4 / 6] SwiftJ2KJPIPTests-product
+[10 / 11] SwiftJ2KJPIPTests-product
+[12 / 16] SwiftJ2KCLI
+Build complete! (6.80 sec)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "R3 portable HTTPS streaming transport harness" started.
+◇ Suite "Codex R3 Socket Lifetime & Server Generation Tests" started.
+◇ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() started.
+◇ Test completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test completedRequestEventuallyReleasesItsDelegateOwnership() started.
+◇ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() started.
+◇ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() started.
+◇ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() started.
+◇ Test absoluteDeadlineCancelsSilentResponse() started.
+◇ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() started.
+◇ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() started.
+◇ Test expiredDeadlineReleasesUnstartedOwners() started.
+◇ Test "T1: Listener closed twice before accept returns nil with zero poll/accept syscalls" started.
+◇ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() started.
+◇ Test taskCancellationJoinsAndAllowsFollowingRequest() started.
+◇ Test "T3: Real loopback accept paused before publication closes accepted fd once on listener close and client sees EOF" started.
+◇ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" started.
+◇ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() started.
+◇ Test "T2: Close while listener borrower held retires immediately and defers physical close until release" started.
+◇ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() started.
+◇ Test case passing 1 argument inPublicationGap → false to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument cancelFirst → false to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test case passing 1 argument inPublicationGap → true to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() started.
+◇ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" started.
+◇ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test "T4: Stale readiness EAGAIN, EINTR, POLLNVAL/POLLERR, and fcntl setup failures retire cleanly without spin or leak" started.
+◇ Test "T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers" started.
+◇ Test "T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot" started.
+◇ Test case passing 1 argument cancelFirst → true to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test case passing 1 argument declared → true to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test case passing 1 argument declared → false to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+✔ Test expiredDeadlineReleasesUnstartedOwners() passed after 0.007 seconds.
+✔ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() passed after 0.007 seconds.
+✔ Test "T1: Listener closed twice before accept returns nil with zero poll/accept syscalls" passed after 0.007 seconds.
+✔ Test "T3: Real loopback accept paused before publication closes accepted fd once on listener close and client sees EOF" passed after 0.007 seconds.
+✔ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() passed after 0.007 seconds.
+✔ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() passed after 0.007 seconds.
+✔ Test "T4: Stale readiness EAGAIN, EINTR, POLLNVAL/POLLERR, and fcntl setup failures retire cleanly without spin or leak" passed after 0.007 seconds.
+✔ Test "T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot" passed after 0.007 seconds.
+✔ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() passed after 0.007 seconds.
+✔ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) with 2 test cases passed after 0.007 seconds.
+✔ Test "T2: Close while listener borrower held retires immediately and defers physical close until release" passed after 0.007 seconds.
+✔ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() passed after 0.007 seconds.
+✔ Test completionAndCancellationHaveOneWinner(cancelFirst:) with 2 test cases passed after 0.008 seconds.
+✔ Test "T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers" passed after 0.008 seconds.
+✔ Test completedRequestEventuallyReleasesItsDelegateOwnership() passed after 0.009 seconds.
+✔ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) with 2 test cases passed after 0.009 seconds.
+✔ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() passed after 0.009 seconds.
+✔ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() passed after 0.009 seconds.
+✔ Test taskCancellationJoinsAndAllowsFollowingRequest() passed after 0.009 seconds.
+✔ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() passed after 0.009 seconds.
+✔ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() passed after 0.010 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 0.126 seconds.
+✔ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" passed after 0.126 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 0.143 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 0.143 seconds.
+✘ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" recorded an issue at CodexR3SocketLifetimeTests.swift:1684:13: Expectation failed: verifySuccDecoded.channelID == succSessionID
+↳ verifySuccDecoded.channelID == succSessionID → false
+↳   verifySuccDecoded.channelID → nil
+↳   succSessionID → "succ-active-session"
+✘ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" recorded an issue at CodexR3SocketLifetimeTests.swift:1786:13: Expectation failed: verifyCollisionDecoded.channelID == sharedCollisionSID
+↳ verifyCollisionDecoded.channelID == sharedCollisionSID → false
+↳   verifyCollisionDecoded.channelID → nil
+↳   sharedCollisionSID → "shared-collision-session-id"
+✘ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" failed after 0.659 seconds with 2 issues.
+✘ Suite "Codex R3 Socket Lifetime & Server Generation Tests" failed after 0.660 seconds with 2 issues.
+↳ /// Deterministic socket descriptor lifetime, non-blocking listener poll/accept,
+↳ /// descriptor-reuse model, and generation-bound server lifecycle tests (`proposal25` T1–T8).
+✘ Test run with 25 tests in 2 suites failed after 0.660 seconds with 2 issues.
+Note: Some test targets reported failures:
+  - SwiftJ2KJPIPTests (Swift Testing)

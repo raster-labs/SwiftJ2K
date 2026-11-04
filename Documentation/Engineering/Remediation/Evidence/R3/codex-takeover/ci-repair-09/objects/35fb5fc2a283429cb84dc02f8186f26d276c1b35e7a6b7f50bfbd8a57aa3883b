@@ -1,0 +1,20 @@
+{
+  "claim": {
+    "invocation_id": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+    "thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+    "owner": "Codex Astra R3 takeover",
+    "scope": "isolated hydration, repair coordination, serialized native validation and acceptance preparation",
+    "acquired_at": "2026-10-31T05:42:23.862642+00:00"
+  },
+  "claim_paths": [
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/active-claim.json",
+    "/Users/raster/Documents/Codex/2026-10-13/che/work/swiftj2k-audit/audit.claim/owner.json"
+  ],
+  "inputs": {
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "981a54ac94388417006da101c60a424c73a896e420cd835ee6c49acb81b844bd",
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2",
+    "work/hosted-timing18-diagnosis/report.txt": "4f1313f56902ce358fd8e1b4a1ecc1b79eeda3739aa40cde81784f52ed2a379c",
+    "work/hosted-timing18-diagnosis/source.json": "0532325955484af51a7a7d0fc73009c351f3c207e5d676665d06986545568e34"
+  }
+}

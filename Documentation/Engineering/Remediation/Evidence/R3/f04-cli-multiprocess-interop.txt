@@ -1,0 +1,118 @@
+========================================================================
+Phase R3 — F04 Separate-Process CLI Loopback TCP Campaign (2D/3D x HTTP/1.1 & RFC 6455 WebSocket)
+========================================================================
+SwiftJ2K CLI: /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli (sha256=cd82d10ab239c632784764628fc6b9bddae1231812b1e6244eac18d6b7bbe249)
+kdu_server: /usr/local/bin/kdu_server (sha256=dc0cc8ad8637076258131ea83f3be3f829ff4439e36a4c23a484c07de78ec539)
+kdu_compress: /usr/local/bin/kdu_compress (sha256=6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06)
+kdu_expand: /usr/local/bin/kdu_expand (sha256=a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8)
+opj_jpip_transcode: /Users/raster/.gemini/antigravity/brain/6f28647a-39a6-4a0a-8303-30b57a122458/scratch/openjpeg-v2.4.0/build/bin/opj_jpip_transcode (sha256=bb98366ef30de3d9c5b439928d4856a844387a3375e57ee437d59f61ffdf3445)
+opj_decompress: /opt/homebrew/bin/opj_decompress (sha256=29f46b837c299a9001d73ec07ec39f157d80c3fa482c3b91121189302ce0282a)
+curl: /usr/bin/curl
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/source_48x32.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/swift_ht.jph --output-format jph --mode lossless --levels 2 --json
+exit_code: 0
+stderr:
+{"backend":"accelerated","command":"encode","components":1,"copyEvents":0,"elapsedSeconds":0.033138708000000003,"fidelity":"exactSamples","format":"jph","height":32,"inputBytes":1598,"meaningfulBits":8,"mode":"lossless","outputBytes":1954,"peakWorkspaceBytes":84228,"width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/vol_16x12x6.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/vol_ebcot.jp3d --codec j2k-lossless --levels 2,2,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":6,"elapsedSeconds":0.0023605000000000002,"height":12,"lossless":true,"outputBytes":1070,"totalTiles":1,"width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli encode3d -i /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/vol_16x12x6.nrrd -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/kdu_targets/vol_ht.jp3d --codec htj2k-lossless --levels 2,2,1 --json
+exit_code: 0
+stderr:
+{"bitDepth":8,"command":"encode3d","components":1,"depth":6,"elapsedSeconds":0.0022955409999999999,"height":12,"lossless":true,"outputBytes":1522,"totalTiles":1,"width":16}
+
+Started separate-process swiftj2k-cli jpip server (pid=79231) on 127.0.0.1:59313
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target swift_target.j2c --stream jpp -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_http_swift_target.j2c_jpp_.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1598,"cachedDataBins":6,"channelID":"cid-0CD721B4-D018-484F-8315-5466A225A739","command":"jpip","components":1,"elapsedSeconds":0.032171208,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"http","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target swift_target.jp2 --stream jpt -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_http_swift_target.jp2_jpt_.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1717,"cachedDataBins":3,"channelID":"cid-5E2B5804-8D01-4702-BFAE-017E6A9062DA","command":"jpip","components":1,"elapsedSeconds":0.028190375,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpt-stream","target":"swift_target.jp2","transport":"http","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target swift_ht.jph --stream jpp --len 180 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_http_swift_ht.jph_jpp_len_180.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1958,"cachedDataBins":6,"channelID":"cid-FDBFC6A4-DBE3-4C64-A05D-CC06BA7CF955","command":"jpip","components":1,"elapsedSeconds":0.039127374999999999,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":12,"streamType":"jpp-stream","target":"swift_ht.jph","transport":"http","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target swift_target.j2c --stream jpp --stateless -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_http_swift_target.j2c_jpp_stateless.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1598,"cachedDataBins":6,"channelID":"stateless","command":"jpip","components":1,"elapsedSeconds":0.034295208000000001,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"http","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target swift_target.j2c --stream jpp -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_ws_swift_target.j2c_jpp_.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1598,"cachedDataBins":6,"channelID":"cid-DA442BE3-4D35-408A-BD45-6D4F39F6920B","command":"jpip","components":1,"elapsedSeconds":0.046757958000000002,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"websocket","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target swift_target.jp2 --stream jpt -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_ws_swift_target.jp2_jpt_.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1717,"cachedDataBins":3,"channelID":"cid-7580C022-0CCD-4E64-A3AC-1FA36576D222","command":"jpip","components":1,"elapsedSeconds":0.057266708,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpt-stream","target":"swift_target.jp2","transport":"websocket","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target swift_ht.jph --stream jpp --len 180 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_ws_swift_ht.jph_jpp_len_180.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1958,"cachedDataBins":6,"channelID":"cid-38C4E443-D68A-42AD-A6B1-B386033718DD","command":"jpip","components":1,"elapsedSeconds":0.032242082999999998,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":12,"streamType":"jpp-stream","target":"swift_ht.jph","transport":"websocket","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target swift_target.j2c --stream jpp --stateless -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp2d_ws_swift_target.j2c_jpp_stateless.pgm --json
+exit_code: 0
+stdout:
+{"cachedBytes":1598,"cachedDataBins":6,"channelID":"stateless","command":"jpip","components":1,"elapsedSeconds":0.030256249999999998,"height":32,"meaningfulBits":8,"outputBytes":1549,"role":"client","rounds":1,"streamType":"jpp-stream","target":"swift_target.j2c","transport":"websocket","width":48}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target vol_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_http_vol_ebcot.jp3d_full.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1054,"cachedDataBins":6,"channelID":"cid-D07435EA-AB51-40A4-8898-AA9154AFD14D","command":"jpip","components":1,"deliveredBins":1,"depth":6,"elapsedSeconds":0.0051131670000000001,"height":12,"outputBytes":1243,"role":"client","target":"vol_ebcot.jp3d","transport":"http","width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target vol_ebcot.jp3d --box 4,2,1,8,6,3 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_http_vol_ebcot.jp3d_box.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1054,"cachedDataBins":6,"channelID":"cid-898A8FE7-CA73-467A-85CC-F3B209AF4F5A","command":"jpip","components":1,"deliveredBins":1,"depth":3,"elapsedSeconds":0.0049262500000000001,"height":6,"outputBytes":233,"role":"client","target":"vol_ebcot.jp3d","transport":"http","width":8}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target vol_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_http_vol_ht.jp3d_full.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1506,"cachedDataBins":6,"channelID":"cid-3C0749F4-7AFB-40C4-B40A-FE57D28863B9","command":"jpip","components":1,"deliveredBins":1,"depth":6,"elapsedSeconds":0.0046694170000000004,"height":12,"outputBytes":1243,"role":"client","target":"vol_ht.jp3d","transport":"http","width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server http://127.0.0.1:59313 --target vol_ht.jp3d --box 4,2,1,8,6,3 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_http_vol_ht.jp3d_box.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1506,"cachedDataBins":6,"channelID":"cid-C1F0FAE3-F156-44F2-B10E-9475E26A2A17","command":"jpip","components":1,"deliveredBins":1,"depth":3,"elapsedSeconds":0.0047173329999999998,"height":6,"outputBytes":233,"role":"client","target":"vol_ht.jp3d","transport":"http","width":8}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target vol_ebcot.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_ws_vol_ebcot.jp3d_full.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1054,"cachedDataBins":6,"channelID":"cid-06CC373A-6E55-4BAA-A63A-BCD8FADD9236","command":"jpip","components":1,"deliveredBins":1,"depth":6,"elapsedSeconds":0.0027250830000000001,"height":12,"outputBytes":1243,"role":"client","target":"vol_ebcot.jp3d","transport":"websocket","width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target vol_ebcot.jp3d --box 4,2,1,8,6,3 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_ws_vol_ebcot.jp3d_box.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1054,"cachedDataBins":6,"channelID":"cid-1D891549-AB5A-4340-A33E-682ABA28934B","command":"jpip","components":1,"deliveredBins":1,"depth":3,"elapsedSeconds":0.002469209,"height":6,"outputBytes":233,"role":"client","target":"vol_ebcot.jp3d","transport":"websocket","width":8}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target vol_ht.jp3d -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_ws_vol_ht.jp3d_full.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1506,"cachedDataBins":6,"channelID":"cid-11247FA5-20B5-4AAF-8E7E-B1781773E552","command":"jpip","components":1,"deliveredBins":1,"depth":6,"elapsedSeconds":0.0026062910000000002,"height":12,"outputBytes":1243,"role":"client","target":"vol_ht.jp3d","transport":"websocket","width":16}
+
+$ /Users/raster/Documents/SwiftJ2K/.build/out/Products/Release/swiftj2k-cli jpip client --server ws://127.0.0.1:59313/jpip --target vol_ht.jp3d --box 4,2,1,8,6,3 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/mp3d_ws_vol_ht.jp3d_box.nrrd --json
+exit_code: 0
+stdout:
+{"bitDepth":8,"cachedBytes":1506,"cachedDataBins":6,"channelID":"cid-5C7878A9-F75F-47E4-ADA3-C36BC2D5D400","command":"jpip","components":1,"deliveredBins":1,"depth":3,"elapsedSeconds":0.0023301670000000002,"height":6,"outputBytes":233,"role":"client","target":"vol_ht.jp3d","transport":"websocket","width":8}
+
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:59313/jpip?target=vol_ebcot.jp3d&fvsiz=16,12,6&rvoff=4,2,1&rvsiz=8,6,3&type=jpp-stream -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/curl_3d_fvsiz_ok.http
+exit_code: 0
+
+[curl 3D fvsiz/rvoff/rvsiz wire response] status=HTTP/1.1 200 OK body_len=1081 tail=000200
+$ /usr/bin/curl -sS -i --http1.1 -H Connection: close http://127.0.0.1:59313/jpip?target=vol_ebcot.jp3d&fvsiz=16,12,0 -o /var/folders/wb/56rwg15547vg_3vt61x9v6hr0000gp/T/r3-f04-interop-c5r5d989/curl_3d_fvsiz_bad.http
+exit_code: 0
+
+[curl malformed fvsiz=16,12,0 response] status=HTTP/1.1 400 Bad Request
+
+ALL SEPARATE-PROCESS 2D/3D HTTP/1.1 & RFC 6455 WEBSOCKET CHECKS PASSED.

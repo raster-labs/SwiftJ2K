@@ -1,0 +1,1516 @@
+[0/1] Planning build
+Test Suite 'Selected tests' started at 2026-10-31 16:08:07.485.
+Test Suite 'SwiftJ2KPackageTests.xctest' started at 2026-10-31 16:08:07.494.
+Test Suite 'JP3DCacheManagerTests' started at 2026-10-31 16:08:07.494.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testCacheMiss]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testCacheMiss]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testCacheStatisticsInitial]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testCacheStatisticsInitial]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testConcurrentAccess]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testConcurrentAccess]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testFrustumEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testFrustumEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testHitRateAfterHit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testHitRateAfterHit]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testInvalidateRegion]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testInvalidateRegion]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testLRUEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testLRUEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testMemoryOverflowEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testMemoryOverflowEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testResolutionLevelEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testResolutionLevelEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testSpatialEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testSpatialEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testStoreAndRetrieve]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DCacheManagerTests testStoreAndRetrieve]' passed (0.000 seconds).
+Test Suite 'JP3DCacheManagerTests' passed at 2026-10-31 16:08:07.500.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.004 (0.006) seconds
+Test Suite 'JP3DDataBinTests' started at 2026-10-31 16:08:07.500.
+Test Case '-[SwiftJ2KJPIPTests.JP3DDataBinTests testDataBinByteCount]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DDataBinTests testDataBinByteCount]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DDataBinTests testDataBinCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DDataBinTests testDataBinCreation]' passed (0.000 seconds).
+Test Suite 'JP3DDataBinTests' passed at 2026-10-31 16:08:07.500.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'JP3DHTj2KJPIPWorkflowTests' started at 2026-10-31 16:08:07.500.
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testHTJ2KEncodeAndJPIPRegionRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testHTJ2KEncodeAndJPIPRegionRequest]' passed (0.372 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testHTJ2KLossyWithJPIPSliceRange]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testHTJ2KLossyWithJPIPSliceRange]' passed (0.026 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testJPIPConnectDisconnect]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testJPIPConnectDisconnect]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testJPIPViewportUpdate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DHTj2KJPIPWorkflowTests testJPIPViewportUpdate]' passed (0.001 seconds).
+Test Suite 'JP3DHTj2KJPIPWorkflowTests' passed at 2026-10-31 16:08:07.900.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.399 (0.400) seconds
+Test Suite 'JP3DJPIPClientTests' started at 2026-10-31 16:08:07.900.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCancelStaleRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCancelStaleRequests]' passed (0.006 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testConnectChangesState]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testConnectChangesState]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCreateSessionAfterConnect]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCreateSessionAfterConnect]' passed (0.004 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCreateSessionRequiresConnection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testCreateSessionRequiresConnection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testDisconnectClearsSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testDisconnectClearsSession]' passed (0.004 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestEmptySliceRangeThrows]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestEmptySliceRangeThrows]' passed (0.004 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestRegionReturnsDataBins]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestRegionReturnsDataBins]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestRegionWithoutSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestRegionWithoutSession]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestSliceRange]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testRequestSliceRange]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testUpdateViewportCancelsStaleRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPClientTests testUpdateViewportCancelsStaleRequests]' passed (0.004 seconds).
+Test Suite 'JP3DJPIPClientTests' passed at 2026-10-31 16:08:07.942.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.040 (0.041) seconds
+Test Suite 'JP3DJPIPServerTests' started at 2026-10-31 16:08:07.942.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testCreateAndRemoveSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testCreateAndRemoveSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testDoubleStartThrows]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testDoubleStartThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testEmptyFrustumThrows]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testEmptyFrustumThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testHandleRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testHandleRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testLargeVolumeFullRequestRejected]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testLargeVolumeFullRequestRejected]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testRegisterVolume]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testRegisterVolume]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testSessionLimitExceeded]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testSessionLimitExceeded]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testSharedPrecinctCacheAcrossSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testSharedPrecinctCacheAcrossSessions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testStartStop]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testStartStop]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testStopWhenNotRunningThrows]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testStopWhenNotRunningThrows]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testUnknownVolumeThrows]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DJPIPServerTests testUnknownVolumeThrows]' passed (0.000 seconds).
+Test Suite 'JP3DJPIPServerTests' passed at 2026-10-31 16:08:07.945.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'JP3DProgressionModeTests' started at 2026-10-31 16:08:07.945.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressionModeTests testAllCasesPresent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressionModeTests testAllCasesPresent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressionModeTests testRawValues]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressionModeTests testRawValues]' passed (0.000 seconds).
+Test Suite 'JP3DProgressionModeTests' passed at 2026-10-31 16:08:07.946.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'JP3DProgressiveDeliveryTests' started at 2026-10-31 16:08:07.946.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testBandwidthEstimationFinite]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testBandwidthEstimationFinite]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testCancelStopsDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testCancelStopsDelivery]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testEmptyRegionReturnsNoUpdates]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testEmptyRegionReturnsNoUpdates]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testLastUpdateIsComplete]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testLastUpdateIsComplete]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testNetworkChangeUpdatesCondition]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testNetworkChangeUpdatesCondition]' passed (0.109 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testQualityAdjustmentFiltersHigherLayers]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testQualityAdjustmentFiltersHigherLayers]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testSliceBidirectionalProgression]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testSliceBidirectionalProgression]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testSliceForwardProgression]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testSliceForwardProgression]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testStartDeliveryReturnsUpdates]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testStartDeliveryReturnsUpdates]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testUpdateBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testUpdateBandwidth]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthDeliverySkipsUpdates]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthDeliverySkipsUpdates]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthEstimationIsInfinite]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DProgressiveDeliveryTests testZeroBandwidthEstimationIsInfinite]' passed (0.000 seconds).
+Test Suite 'JP3DProgressiveDeliveryTests' passed at 2026-10-31 16:08:08.061.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.114 (0.115) seconds
+Test Suite 'JP3DStreamingRegionTests' started at 2026-10-31 16:08:08.061.
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testEmptyRegionIsInvalid]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testEmptyRegionIsInvalid]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testQualityLayerClampedToZero]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testQualityLayerClampedToZero]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testRegionValidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testRegionValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testResolutionLevelClampedToZero]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DStreamingRegionTests testResolutionLevelClampedToZero]' passed (0.000 seconds).
+Test Suite 'JP3DStreamingRegionTests' passed at 2026-10-31 16:08:08.063.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'JP3DViewFrustumTests' started at 2026-10-31 16:08:08.063.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumDoesNotIntersectBoxBehind]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumDoesNotIntersectBoxBehind]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumIntersectsBoxInFront]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumIntersectsBoxInFront]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumWithZeroDirectionIsInvalid]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testFrustumWithZeroDirectionIsInvalid]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testValidFrustumIsValid]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewFrustumTests testValidFrustumIsValid]' passed (0.000 seconds).
+Test Suite 'JP3DViewFrustumTests' passed at 2026-10-31 16:08:08.064.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JP3DViewportTests' started at 2026-10-31 16:08:08.064.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testEmptyViewport]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testEmptyViewport]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportIntersection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportIntersection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportNoIntersection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JP3DViewportTests testViewportNoIntersection]' passed (0.000 seconds).
+Test Suite 'JP3DViewportTests' passed at 2026-10-31 16:08:08.066.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'JPIPBackwardCompatibilityTests' started at 2026-10-31 16:08:08.066.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testDataBinClassAllCases]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testDataBinClassAllCases]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testListAndRemovePersistedSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testListAndRemovePersistedSessions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testNonPersistentServerSessionUnaffected]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testNonPersistentServerSessionUnaffected]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testNonPersistentSessionUnaffected]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testNonPersistentSessionUnaffected]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testPersistenceManagerMetrics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testPersistenceManagerMetrics]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testPersistenceMetricsDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testPersistenceMetricsDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testRecoveryConfigurationDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testRecoveryConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testRecoveryStatusProperties]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBackwardCompatibilityTests testRecoveryStatusProperties]' passed (0.000 seconds).
+Test Suite 'JPIPBackwardCompatibilityTests' passed at 2026-10-31 16:08:08.071.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.004 (0.005) seconds
+Test Suite 'JPIPBandwidthAwareDeliveryTests' started at 2026-10-31 16:08:08.071.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testAdaptationToFluctuatingBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testAdaptationToFluctuatingBandwidth]' passed (5.670 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming100Mbps]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming100Mbps]' passed (1.173 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming10Mbps]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming10Mbps]' passed (1.141 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming1Mbps]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthConstrainedStreaming1Mbps]' passed (1.175 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthEstimationAccuracy]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthEstimationAccuracy]' passed (11.377 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthEstimatorInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthEstimatorInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthMeasurement]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthMeasurement]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthPrediction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthPrediction]' passed (5.640 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthTrend]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testBandwidthTrend]' passed (5.648 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testCongestionDetection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testCongestionDetection]' passed (3.445 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testDeliverySchedulerInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testDeliverySchedulerInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testEstimateConfidence]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testEstimateConfidence]' passed (11.336 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testIntegratedBandwidthAwareDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testIntegratedBandwidthAwareDelivery]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testInterruptibleDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testInterruptibleDelivery]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testMinimumViableQualityTracking]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testMinimumViableQualityTracking]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testMovingAverageBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testMovingAverageBandwidth]' passed (5.635 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testPriorityBasedDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testPriorityBasedDelivery]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testProgressiveRenderingQuality]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testProgressiveRenderingQuality]' passed (0.011 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testQualityLayerTruncation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testQualityLayerTruncation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testRateControlledDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testRateControlledDelivery]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testTimeToInteractiveMeasurement]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPBandwidthAwareDeliveryTests testTimeToInteractiveMeasurement]' passed (0.003 seconds).
+Test Suite 'JPIPBandwidthAwareDeliveryTests' passed at 2026-10-31 16:09:00.341.
+	 Executed 21 tests, with 0 failures (0 unexpected) in 52.264 (52.271) seconds
+Test Suite 'JPIPCacheTests' started at 2026-10-31 16:09:00.341.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddDataBinToCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddDataBinToCache]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddPartialPrecinct]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddPartialPrecinct]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddPrecinctToCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testAddPrecinctToCache]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheEntryLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheEntryLimit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheHitRate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheHitRate]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheMiss]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheMiss]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheModelInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheModelInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheSizeLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testCacheSizeLimit]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testClearCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testClearCache]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetDataBinFromCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetDataBinFromCache]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctFromCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctFromCache]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctsByResolution]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctsByResolution]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctsByTile]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testGetPrecinctsByTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidateByAge]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidateByAge]' passed (0.214 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidateByBinClass]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidateByBinClass]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidatePrecinctsByResolution]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidatePrecinctsByResolution]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidatePrecinctsByTile]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testInvalidatePrecinctsByTile]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testIsPrecinctComplete]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testIsPrecinctComplete]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testLRUEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testLRUEviction]' passed (0.028 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testMergePrecinct]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testMergePrecinct]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheClear]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheClear]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheMiss]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheMiss]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheSizeLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCacheSizeLimit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCompletionRate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testPrecinctCompletionRate]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionCacheIntegration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionCacheIntegration]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionCacheInvalidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionCacheInvalidation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionClose]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionClose]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionPrecinctCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testSessionPrecinctCache]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testUpdateExistingDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPCacheTests testUpdateExistingDataBin]' passed (0.000 seconds).
+Test Suite 'JPIPCacheTests' passed at 2026-10-31 16:09:00.608.
+	 Executed 30 tests, with 0 failures (0 unexpected) in 0.260 (0.267) seconds
+Test Suite 'JPIPChannelTypeWebSocketTests' started at 2026-10-31 16:09:00.608.
+Test Case '-[SwiftJ2KJPIPTests.JPIPChannelTypeWebSocketTests testChannelTypeFromRawValue]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPChannelTypeWebSocketTests testChannelTypeFromRawValue]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPChannelTypeWebSocketTests testWebSocketChannelType]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPChannelTypeWebSocketTests testWebSocketChannelType]' passed (0.000 seconds).
+Test Suite 'JPIPChannelTypeWebSocketTests' passed at 2026-10-31 16:09:00.610.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JPIPClientCacheManagerTests' started at 2026-10-31 16:09:00.610.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testAddAndRetrieveDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testAddAndRetrieveDataBin]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheHitRateBenchmark]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheHitRateBenchmark]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheManagerInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheManagerInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheMiss]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCacheMiss]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePartitionByImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePartitionByImage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePartitionByResolution]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePartitionByResolution]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePersistenceAcrossRestarts]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCachePersistenceAcrossRestarts]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testClearCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testClearCache]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCompressInactiveEntries]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCompressInactiveEntries]' passed (0.012 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCompressionDisabled]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCompressionDisabled]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCustomResolutionWeights]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testCustomResolutionWeights]' passed (0.028 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testDataBinDeduplication]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testDataBinDeduplication]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEntryLimitEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEntryLimitEviction]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictImage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictionUnderMemoryPressure]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictionUnderMemoryPressure]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictOlderThan]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictOlderThan]' passed (0.209 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictResolutionLevel]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testEvictResolutionLevel]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testHasDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testHasDataBin]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testHitRateMonitoring]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testHitRateMonitoring]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testInMemoryCacheStore]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testInMemoryCacheStore]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testMultiImageConcurrentCaching]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testMultiImageConcurrentCaching]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPerImagePolicyMemoryLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPerImagePolicyMemoryLimit]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPerImagePolicyPinnedResolutions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPerImagePolicyPinnedResolutions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateCache]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateCache]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateRespectsMemoryLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateRespectsMemoryLimit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateSkipsDuplicates]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testPrePopulateSkipsDuplicates]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testResolutionAwareLRUEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testResolutionAwareLRUEviction]' passed (0.028 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testSaveToPersistentStorage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testSaveToPersistentStorage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testSetAndGetImagePolicy]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testSetAndGetImagePolicy]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUpdateExistingEntry]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUpdateExistingEntry]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUsageReport]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUsageReport]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUsageReportResolutionLevelCount]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testUsageReportResolutionLevelCount]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testWarmUpFromPersistentStorage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheManagerTests testWarmUpFromPersistentStorage]' passed (0.001 seconds).
+Test Suite 'JPIPClientCacheManagerTests' passed at 2026-10-31 16:09:00.922.
+	 Executed 33 tests, with 0 failures (0 unexpected) in 0.304 (0.312) seconds
+Test Suite 'JPIPClientCacheTrackerTests' started at 2026-10-31 16:09:00.922.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testClientDoesNotHaveUnsentBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testClientDoesNotHaveUnsentBin]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testFilterMissingDeltaDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testFilterMissingDeltaDelivery]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testGetCacheState]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testGetCacheState]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateAllSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateAllSessions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateSpecificBins]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testInvalidateSpecificBins]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRecordPendingCountsAsHaving]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRecordPendingCountsAsHaving]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRecordSent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRecordSent]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRegisterAndRemoveSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testRegisterAndRemoveSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testUnknownSessionReturnsNil]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientCacheTrackerTests testUnknownSessionReturnsNil]' passed (0.111 seconds).
+Test Suite 'JPIPClientCacheTrackerTests' passed at 2026-10-31 16:09:01.040.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.116 (0.118) seconds
+Test Suite 'JPIPClientServerIntegrationTests' started at 2026-10-31 16:09:01.040.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testBandwidthThrottling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testBandwidthThrottling]' passed (0.007 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerImageDataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerImageDataRequest]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerMetadataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerMetadataRequest]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerSessionCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testClientServerSessionCreation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testMultipleClientsConcurrent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testMultipleClientsConcurrent]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testMultipleImagesOnServer]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testMultipleImagesOnServer]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testRequestPrioritization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testRequestPrioritization]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testServerStatisticsAfterRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testServerStatisticsAfterRequests]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testSessionTimeout]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPClientServerIntegrationTests testSessionTimeout]' passed (0.636 seconds).
+Test Suite 'JPIPClientServerIntegrationTests' passed at 2026-10-31 16:09:01.701.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.658 (0.660) seconds
+Test Suite 'JPIPConcurrentPersistenceTests' started at 2026-10-31 16:09:01.701.
+Test Case '-[SwiftJ2KJPIPTests.JPIPConcurrentPersistenceTests testConcurrentSaveAndRemove]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPConcurrentPersistenceTests testConcurrentSaveAndRemove]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPConcurrentPersistenceTests testConcurrentSessionPersistence]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPConcurrentPersistenceTests testConcurrentSessionPersistence]' passed (0.003 seconds).
+Test Suite 'JPIPConcurrentPersistenceTests' passed at 2026-10-31 16:09:01.708.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.006 (0.007) seconds
+Test Suite 'JPIPContractTests' started at 2026-10-31 16:09:01.708.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testCacheManagerCompressInactiveEntriesReclaimsMemoryAndDecompressesOnRead]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testCacheManagerCompressInactiveEntriesReclaimsMemoryAndDecompressesOnRead]' passed (0.004 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testContractAPI13JPIPStreamingSession2DAnd3D]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testContractAPI13JPIPStreamingSession2DAnd3D]' passed (0.207 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testDataBinGeneratorCheckedArithmeticAndReassembly]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testDataBinGeneratorCheckedArithmeticAndReassembly]' passed (0.007 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testDICOMKitJPIPConsumerSurfaceCompatibility]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testDICOMKitJPIPConsumerSurfaceCompatibility]' passed (0.016 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testJPIPClientEndToEndImageRegionQualityResolutionAndComponents]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testJPIPClientEndToEndImageRegionQualityResolutionAndComponents]' passed (0.226 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testJPIPHTJ2KTranscodingPreferenceEndToEnd]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPContractTests testJPIPHTJ2KTranscodingPreferenceEndToEnd]' passed (0.026 seconds).
+Test Suite 'JPIPContractTests' passed at 2026-10-31 16:09:02.196.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.486 (0.488) seconds
+Test Suite 'JPIPDataBinGeneratorTests' started at 2026-10-31 16:09:02.196.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testAllGeneratedBinsAreComplete]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testAllGeneratedBinsAreComplete]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testDataBinGeneratorInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testDataBinGeneratorInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromCodestreamWithMultipleTiles]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromCodestreamWithMultipleTiles]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromCodestreamWithTile]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromCodestreamWithTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromEmptyData]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromEmptyData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromInvalidData]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromInvalidData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromMinimalCodestream]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsFromMinimalCodestream]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsHandlesNonCodestreamData]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testGenerateDataBinsHandlesNonCodestreamData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testIsHTJ2KCodestreamWithCAPMarker]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testIsHTJ2KCodestreamWithCAPMarker]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testIsHTJ2KCodestreamWithLegacyData]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPDataBinGeneratorTests testIsHTJ2KCodestreamWithLegacyData]' passed (0.000 seconds).
+Test Suite 'JPIPDataBinGeneratorTests' passed at 2026-10-31 16:09:02.199.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+Test Suite 'JPIPEndToEndTests' started at 2026-10-31 16:09:02.199.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCacheConsistencyAcrossSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCacheConsistencyAcrossSessions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCacheStateAfterMultipleRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCacheStateAfterMultipleRequests]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCompleteRequestResponseCycle]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testCompleteRequestResponseCycle]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testConcurrentSessionRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testConcurrentSessionRequests]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testDataIntegrityAcrossRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testDataIntegrityAcrossRequests]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testIntermittentConnectionFailures]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testIntermittentConnectionFailures]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testInvalidTargetHandling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testInvalidTargetHandling]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testLargePayloadHandling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testLargePayloadHandling]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testMalformedRequestRecovery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testMalformedRequestRecovery]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testNetworkErrorHandling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testNetworkErrorHandling]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testProgressiveQualityRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testProgressiveQualityRequests]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testResolutionLevelRequests]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testResolutionLevelRequests]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testServerRestartHandling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testServerRestartHandling]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testSessionIsolation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPEndToEndTests testSessionIsolation]' passed (0.001 seconds).
+Test Suite 'JPIPEndToEndTests' passed at 2026-10-31 16:09:02.212.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'JPIPFilePersistenceStoreTests' started at 2026-10-31 16:09:02.212.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testListSessionsFromFiles]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testListSessionsFromFiles]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testLoadNonexistentFile]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testLoadNonexistentFile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testRemoveSessionFiles]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testRemoveSessionFiles]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testSaveAndLoadClientSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testSaveAndLoadClientSession]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testSaveAndLoadServerSessionFiles]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPFilePersistenceStoreTests testSaveAndLoadServerSessionFiles]' passed (0.001 seconds).
+Test Suite 'JPIPFilePersistenceStoreTests' passed at 2026-10-31 16:09:02.216.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.004 (0.005) seconds
+Test Suite 'JPIPHTJ2KSupportTests' started at 2026-10-31 16:09:02.216.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCapabilityHeadersForHTJ2K]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCapabilityHeadersForHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCapabilityHeadersForLegacy]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCapabilityHeadersForLegacy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCodingPreferenceRawValues]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testCodingPreferenceRawValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testDetectFormatWithCAPMarker]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testDetectFormatWithCAPMarker]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testDetectFormatWithJ2KCodestream]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testDetectFormatWithJ2KCodestream]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testGenerateFormatMetadataHTJ2K]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testGenerateFormatMetadataHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testGenerateFormatMetadataLegacy]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testGenerateFormatMetadataLegacy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoJ2KFormat]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoJ2KFormat]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoLegacyFormat]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoLegacyFormat]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoReturnedNilForUnregistered]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testImageInfoReturnedNilForUnregistered]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityHTJ2K]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityHTJ2K]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityLegacy]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityLegacy]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityNone]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testPreferenceCompatibilityNone]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestCodingPreferenceDefaultNil]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestCodingPreferenceDefaultNil]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithCodingPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithCodingPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithLegacyPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithLegacyPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithNoCodingPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithNoCodingPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithoutCodingPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testRequestWithoutCodingPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerMetadataIncludesFormatInfo]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerMetadataIncludesFormatInfo]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerRegisterHTJ2KImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerRegisterHTJ2KImage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerRegisterLegacyImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerRegisterLegacyImage]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerSessionCreationIncludesHTJ2KHeaders]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerSessionCreationIncludesHTJ2KHeaders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerSessionCreationLegacyHeaders]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerSessionCreationLegacyHeaders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerUnregisterClearsImageInfo]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testServerUnregisterClearsImageInfo]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testSupportInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPHTJ2KSupportTests testSupportInitialization]' passed (0.000 seconds).
+Test Suite 'JPIPHTJ2KSupportTests' passed at 2026-10-31 16:09:02.225.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 0.007 (0.009) seconds
+Test Suite 'JPIPInMemoryPersistenceStoreTests' started at 2026-10-31 16:09:02.225.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testListSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testListSessions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testLoadNonexistentSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testLoadNonexistentSession]' passed (0.108 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testOverwriteExistingSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testOverwriteExistingSession]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testRemoveSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testRemoveSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testSaveAndLoadClientSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testSaveAndLoadClientSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testSaveAndLoadServerSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPInMemoryPersistenceStoreTests testSaveAndLoadServerSession]' passed (0.000 seconds).
+Test Suite 'JPIPInMemoryPersistenceStoreTests' passed at 2026-10-31 16:09:02.336.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.110 (0.111) seconds
+Test Suite 'JPIPNetworkFrameworkTests' started at 2026-10-31 16:09:02.336.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testConfigurationCreationPerformance]' started.
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift:271: Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testConfigurationCreationPerformance]' measured [Time, seconds] average: 0.001, relative standard deviation: 19.796%, values: [0.000739, 0.001257, 0.001015, 0.000787, 0.000835, 0.000783, 0.000732, 0.000727, 0.000723, 0.000724], performanceMetricID:com.apple.XCTPerformanceMetric_WallClockTime, baselineName: "", baselineAverage: , polarity: prefers smaller, maxPercentRegression: 10.000%, maxPercentRelativeStandardDeviation: 10.000%, maxRegression: 0.100, maxStandardDeviation: 0.100
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testConfigurationCreationPerformance]' passed (0.744 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationCustom]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationCustom]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationValidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testHTTP3ConfigurationValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfigurationDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfigurationVariations]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportConfigurationVariations]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportHTTP3Disabled]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportHTTP3Disabled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportInitializationPerformance]' started.
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14/Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift:262: Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportInitializationPerformance]' measured [Time, seconds] average: 0.000, relative standard deviation: 21.779%, values: [0.000407, 0.000265, 0.000255, 0.000281, 0.000254, 0.000280, 0.000356, 0.000361, 0.000214, 0.000206], performanceMetricID:com.apple.XCTPerformanceMetric_WallClockTime, baselineName: "", baselineAverage: , polarity: prefers smaller, maxPercentRegression: 10.000%, maxPercentRelativeStandardDeviation: 10.000%, maxRegression: 0.100, maxStandardDeviation: 0.100
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportInitializationPerformance]' passed (0.262 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportMultipleInstances]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportMultipleInstances]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportTLSDisabled]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testNetworkTransportTLSDisabled]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationCustom]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationCustom]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationDefaults]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationValidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testQUICConfigurationValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationCustom]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationCustom]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationDefaults]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationDefaults]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationV12]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationV12]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationV13]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests testTLSConfigurationV13]' passed (0.000 seconds).
+Test Suite 'JPIPNetworkFrameworkTests' passed at 2026-10-31 16:09:03.354.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 1.014 (1.017) seconds
+Test Suite 'JPIPPredictionConfidenceTests' started at 2026-10-31 16:09:03.354.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictionConfidenceTests testPredictionConfidenceClamping]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictionConfidenceTests testPredictionConfidenceClamping]' passed (0.001 seconds).
+Test Suite 'JPIPPredictionConfidenceTests' passed at 2026-10-31 16:09:03.355.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JPIPPredictivePrefetchEngineTests' started at 2026-10-31 16:09:03.355.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testHistoryTrimming]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testHistoryTrimming]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testImageInfoSingleTile]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testImageInfoSingleTile]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testImageInfoTileCalculation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testImageInfoTileCalculation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testNoPredictionsForUnknownSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testNoPredictionsForUnknownSession]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testNoPredictionsWithoutHistory]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testNoPredictionsWithoutHistory]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionConfidenceThreshold]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionConfidenceThreshold]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionDepthLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionDepthLimit]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionSortedByPriority]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testPredictionSortedByPriority]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testRecordViewport]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testRecordViewport]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testRegisterAndRemoveSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testRegisterAndRemoveSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testResetStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testResetStatistics]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testResolutionPredictionZoomIn]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testResolutionPredictionZoomIn]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testSpatialLocalityPrediction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testSpatialLocalityPrediction]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testTilesForViewport]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testTilesForViewport]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testValidatePrediction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testValidatePrediction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testViewportPredictionWithMovement]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPredictivePrefetchEngineTests testViewportPredictionWithMovement]' passed (0.000 seconds).
+Test Suite 'JPIPPredictivePrefetchEngineTests' passed at 2026-10-31 16:09:03.369.
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.011 (0.014) seconds
+Test Suite 'JPIPPrefetchConfigurationTests' started at 2026-10-31 16:09:03.369.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testAggressivenessComparable]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testAggressivenessComparable]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testConfigurationClampsValues]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testConfigurationClampsValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testCustomConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testCustomConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testDefaultConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPrefetchConfigurationTests testDefaultConfiguration]' passed (0.000 seconds).
+Test Suite 'JPIPPrefetchConfigurationTests' passed at 2026-10-31 16:09:03.371.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'JPIPProgressiveStreamingTests' started at 2026-10-31 16:09:03.371.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testBandwidthAdaptation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testBandwidthAdaptation]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testCongestionDetection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testCongestionDetection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testEndToEndProgressiveStreaming]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testEndToEndProgressiveStreaming]' passed (0.009 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testGranularityAdjustment]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testGranularityAdjustment]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testHybridProgressiveStreaming]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testHybridProgressiveStreaming]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testMultipleResolutionLevels]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testMultipleResolutionLevels]' passed (0.006 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testPipelineInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testPipelineInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityDecisionHighBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityDecisionHighBandwidth]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityDecisionLowBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityDecisionLowBandwidth]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityEngineInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityEngineInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityLayerSelection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityLayerSelection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityProgressiveStreaming]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualityProgressiveStreaming]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualitySmoothing]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testQualitySmoothing]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testResolutionProgressiveStreaming]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testResolutionProgressiveStreaming]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testRoundTripTimeTracking]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testRoundTripTimeTracking]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testStreamingStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testStreamingStatistics]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTileGeneration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTileGeneration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTileManagerInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTileManagerInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTilePrioritization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testTilePrioritization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testViewportUpdate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testViewportUpdate]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testViewportVisibilityCalculation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPProgressiveStreamingTests testViewportVisibilityCalculation]' passed (0.000 seconds).
+Test Suite 'JPIPProgressiveStreamingTests' passed at 2026-10-31 16:09:03.398.
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.023 (0.026) seconds
+Test Suite 'JPIPPushPerformanceMetricsTests' started at 2026-10-31 16:09:03.398.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testAverageProcessingTime]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testAverageProcessingTime]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testBandwidthOverhead]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testBandwidthOverhead]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testDeliveryRatio]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testDeliveryRatio]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testInitialMetrics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testInitialMetrics]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordClientRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordClientRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordPredictionCycle]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordPredictionCycle]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordPushDelivery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPerformanceMetricsTests testRecordPushDelivery]' passed (0.000 seconds).
+Test Suite 'JPIPPushPerformanceMetricsTests' passed at 2026-10-31 16:09:03.400.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'JPIPPushPriorityTests' started at 2026-10-31 16:09:03.400.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPriorityOrdering]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPriorityOrdering]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPushAcceptanceValues]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPushAcceptanceValues]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPushItemCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushPriorityTests testPushItemCreation]' passed (0.000 seconds).
+Test Suite 'JPIPPushPriorityTests' passed at 2026-10-31 16:09:03.401.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JPIPPushSchedulerTests' started at 2026-10-31 16:09:03.401.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testClear]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testClear]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testDequeueBatch]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testDequeueBatch]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testDequeueBatchExceedsSize]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testDequeueBatchExceedsSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testEnqueueDequeue]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testEnqueueDequeue]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testMaxQueueSize]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testMaxQueueSize]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testPriorityOrdering]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testPriorityOrdering]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testRecordThrottle]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testRecordThrottle]' passed (0.111 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testRemoveItemsForSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testRemoveItemsForSession]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPPushSchedulerTests testStatistics]' passed (0.001 seconds).
+Test Suite 'JPIPPushSchedulerTests' passed at 2026-10-31 16:09:03.516.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.114 (0.115) seconds
+Test Suite 'JPIPRecoveryEventTests' started at 2026-10-31 16:09:03.516.
+Test Case '-[SwiftJ2KJPIPTests.JPIPRecoveryEventTests testRecoveryEventCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPRecoveryEventTests testRecoveryEventCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPRecoveryEventTests testRecoveryEventFailedStatus]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPRecoveryEventTests testRecoveryEventFailedStatus]' passed (0.000 seconds).
+Test Suite 'JPIPRecoveryEventTests' passed at 2026-10-31 16:09:03.517.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JPIPServerComponentTests' started at 2026-10-31 16:09:03.518.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleCanSend]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleCanSend]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleClearClients]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleClearClients]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleGetAvailableBandwidth]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleGetAvailableBandwidth]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottlePerClientLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottlePerClientLimit]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleRecordSent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleRecordSent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleRemoveClient]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleRemoveClient]' passed (0.109 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleResetStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testBandwidthThrottleResetStatistics]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueClear]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueClear]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueDequeue]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueDequeue]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueEnqueue]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueEnqueue]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueFull]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueFull]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueGetRequestsForTarget]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueGetRequestsForTarget]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueuePeekPriority]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueuePeekPriority]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueuePriority]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueuePriority]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueRemoveRequestsForTarget]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueRemoveRequestsForTarget]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testRequestQueueStatistics]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionActivity]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionActivity]' passed (0.103 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionClose]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionClose]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionDataBinTracking]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionDataBinTracking]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionInfo]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionInfo]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionMetadata]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionMetadata]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionRecordRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionRecordRequest]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionTimeout]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerComponentTests testServerSessionTimeout]' passed (0.001 seconds).
+Test Suite 'JPIPServerComponentTests' passed at 2026-10-31 16:09:03.756.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 0.231 (0.238) seconds
+Test Suite 'JPIPServerPushIntegrationTests' started at 2026-10-31 16:09:03.756.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testCacheInvalidationOnImageUpdate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testCacheInvalidationOnImageUpdate]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testFullPushWorkflow]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testFullPushWorkflow]' passed (0.004 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testMultiSessionPush]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testMultiSessionPush]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testPushThrottleAcceptance]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushIntegrationTests testPushThrottleAcceptance]' passed (0.001 seconds).
+Test Suite 'JPIPServerPushIntegrationTests' passed at 2026-10-31 16:09:03.763.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.006 (0.007) seconds
+Test Suite 'JPIPServerPushManagerTests' started at 2026-10-31 16:09:03.763.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testAggregatedStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testAggregatedStatistics]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testBandwidthThrottling]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testBandwidthThrottling]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testBinInvalidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testBinInvalidation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testCacheInvalidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testCacheInvalidation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testDequeuePushItems]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testDequeuePushItems]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPerformanceMetrics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPerformanceMetrics]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testProcessViewportUpdate]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testProcessViewportUpdate]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushAcceptanceReject]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushAcceptanceReject]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushAcceptanceStop]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushAcceptanceStop]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushDisabled]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testPushDisabled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testRegisterAndRemoveSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerPushManagerTests testRegisterAndRemoveSession]' passed (0.000 seconds).
+Test Suite 'JPIPServerPushManagerTests' passed at 2026-10-31 16:09:03.774.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.009 (0.011) seconds
+Test Suite 'JPIPServerTests' started at 2026-10-31 16:09:03.774.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testCloseSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testCloseSession]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleImageDataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleImageDataRequest]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleMetadataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleMetadataRequest]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleRequestForUnregisteredImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleRequestForUnregisteredImage]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleRequestWhenNotRunning]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleRequestWhenNotRunning]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleSessionCreationRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testHandleSessionCreationRequest]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testListRegisteredImages]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testListRegisteredImages]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testMultipleClientSessions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testMultipleClientSessions]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testRegisterImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testRegisterImage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testRegisterNonExistentImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testRegisterNonExistentImage]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerStatistics]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerStatistics]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerWithCustomConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testServerWithCustomConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStartAlreadyRunningServer]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStartAlreadyRunningServer]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStartServer]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStartServer]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStopNotRunningServer]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStopNotRunningServer]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStopServer]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testStopServer]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testUnregisterImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPServerTests testUnregisterImage]' passed (0.001 seconds).
+Test Suite 'JPIPServerTests' passed at 2026-10-31 16:09:03.789.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.013 (0.015) seconds
+Test Suite 'JPIPSessionRecoveryManagerTests' started at 2026-10-31 16:09:03.789.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testClearHistory]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testClearHistory]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryHistory]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryHistory]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryResetsOnSuccess]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryResetsOnSuccess]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryWithRetryLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testRecoveryWithRetryLimit]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testResetRecoveryAttempts]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryManagerTests testResetRecoveryAttempts]' passed (0.000 seconds).
+Test Suite 'JPIPSessionRecoveryManagerTests' passed at 2026-10-31 16:09:03.792.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'JPIPSessionRecoveryTests' started at 2026-10-31 16:09:03.792.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testFullRecoveryWithDataBins]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testFullRecoveryWithDataBins]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testPartialRecoveryWithLimits]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testPartialRecoveryWithLimits]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryExpiredSnapshot]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryExpiredSnapshot]' passed (1.514 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryNonexistentSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryNonexistentSession]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryWithoutPrecinctRestore]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryWithoutPrecinctRestore]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryWithPrecincts]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testRecoveryWithPrecincts]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testServerSessionRecovery]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testServerSessionRecovery]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testServerSessionRecoveryNonexistent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionRecoveryTests testServerSessionRecoveryNonexistent]' passed (0.001 seconds).
+Test Suite 'JPIPSessionRecoveryTests' passed at 2026-10-31 16:09:05.314.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 1.521 (1.523) seconds
+Test Suite 'JPIPSessionStateSerializationTests' started at 2026-10-31 16:09:05.314.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinAllClasses]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinAllClasses]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinDirectInit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinDirectInit]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinInvalidClass]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinInvalidClass]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinRoundTrip]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializableDataBinRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializablePrecinctRoundTrip]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSerializablePrecinctRoundTrip]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testServerSessionStateSnapshotCodable]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testServerSessionStateSnapshotCodable]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSessionStateSnapshotCodable]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSessionStateSnapshotCodable]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSessionStateVersioning]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSessionStateVersioning]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSnapshotWithNilOptionals]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPSessionStateSerializationTests testSnapshotWithNilOptionals]' passed (0.001 seconds).
+Test Suite 'JPIPSessionStateSerializationTests' passed at 2026-10-31 16:09:05.323.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.007 (0.009) seconds
+Test Suite 'JPIPTests' started at 2026-10-31 16:09:05.323.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testBasicRequestCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testBasicRequestCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testChannelTypes]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testChannelTypes]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testClientClose]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testClientClose]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testClientInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testClientInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteComponentRequestWithResolutionAndRegion]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteComponentRequestWithResolutionAndRegion]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteProgressiveQualityRequestWithAllOptions]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteProgressiveQualityRequestWithAllOptions]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteResolutionLevelRequestWithRegion]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testCompleteResolutionLevelRequestWithRegion]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequestWithMultipleComponents]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequestWithMultipleComponents]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequestWithSingleComponent]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testComponentRequestWithSingleComponent]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testDataBinClasses]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testDataBinClasses]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testDataBinCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testDataBinCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testEmptyComponentsNotIncludedInQueryItems]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testEmptyComponentsNotIncludedInQueryItems]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testExtractChannelID]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testExtractChannelID]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testExtractChannelIDCaseInsensitive]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testExtractChannelIDCaseInsensitive]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testMetadataFalseNotIncludedInQueryItems]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testMetadataFalseNotIncludedInQueryItems]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testMetadataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testMetadataRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testModuleCompilationAndLinkage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testModuleCompilationAndLinkage]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testParseChannelID]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testParseChannelID]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testParseChannelIDNotFound]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testParseChannelIDNotFound]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testProgressiveQualityRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testProgressiveQualityRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRegionRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRegionRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestQueryItems]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestQueryItems]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithAllParameters]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithAllParameters]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithChannelID]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithChannelID]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithChannelNew]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testRequestWithChannelNew]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelRequestWithoutLayers]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelRequestWithoutLayers]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelZero]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionLevelZero]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResolutionRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResponseCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testResponseCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testServerInstantiation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testServerInstantiation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionActivation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionActivation]' passed (0.111 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionCacheTracking]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionCacheTracking]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionChannelID]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionChannelID]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionClose]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionClose]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionCreation]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionTarget]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testSessionTarget]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testTransportInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTests testTransportInitialization]' passed (0.001 seconds).
+Test Suite 'JPIPTests' passed at 2026-10-31 16:09:05.460.
+	 Executed 41 tests, with 0 failures (0 unexpected) in 0.129 (0.137) seconds
+Test Suite 'JPIPTranscodingServiceTests' started at 2026-10-31 16:09:05.460.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionHTJ2KPreferenceWithHTJ2KSource]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionHTJ2KPreferenceWithHTJ2KSource]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionHTJ2KPreferenceWithLegacySource]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionHTJ2KPreferenceWithLegacySource]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionLegacyPreferenceWithHTJ2KSource]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionLegacyPreferenceWithHTJ2KSource]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionLegacyPreferenceWithLegacySource]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionLegacyPreferenceWithLegacySource]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionNoPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testDetermineDirectionNoPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingMatchingFormat]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingMatchingFormat]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingMismatchedFormat]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingMismatchedFormat]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingNoPreference]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testNeedsTranscodingNoPreference]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerDataBinStreamingWithJ2KCodestream]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerDataBinStreamingWithJ2KCodestream]' passed (0.008 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerResponseLengthLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerResponseLengthLimit]' passed (0.023 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerWithCodingPreferenceLegacyForLegacyImage]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerWithCodingPreferenceLegacyForLegacyImage]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerWithCodingPreferenceNone]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testServerWithCodingPreferenceNone]' passed (0.003 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodeMatchingFormatReturnsOriginal]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodeMatchingFormatReturnsOriginal]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodeNoPreferenceReturnsOriginal]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodeNoPreferenceReturnsOriginal]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheClear]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheClear]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheDifferentDirections]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheDifferentDirections]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheEviction]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheEviction]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheHitMissCounters]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheHitMissCounters]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheInitialization]' passed (0.108 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheMiss]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCacheMiss]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCachePutAndGet]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingCachePutAndGet]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingResultCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingResultCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingResultNotTranscoded]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingResultNotTranscoded]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingServiceInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingServiceInitialization]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingServiceWithCustomConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPTranscodingServiceTests testTranscodingServiceWithCustomConfiguration]' passed (0.001 seconds).
+Test Suite 'JPIPTranscodingServiceTests' passed at 2026-10-31 16:09:05.620.
+	 Executed 25 tests, with 0 failures (0 unexpected) in 0.155 (0.160) seconds
+Test Suite 'JPIPViewportTests' started at 2026-10-31 16:09:05.620.
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportCenter]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportCenter]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportCreation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportCreation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportEquality]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPViewportTests testViewportEquality]' passed (0.000 seconds).
+Test Suite 'JPIPViewportTests' passed at 2026-10-31 16:09:05.622.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'JPIPWebSocketClientTests' started at 2026-10-31 16:09:05.622.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientConnects]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientConnects]' passed (0.010 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientDrainPushedDataBins]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientDrainPushedDataBins]' passed (0.008 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientGetSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientGetSession]' passed (0.007 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientHTTPFallbackConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientHTTPFallbackConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientSendPing]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientSendPing]' passed (0.006 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientSendRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketClientTests testClientSendRequest]' passed (0.006 seconds).
+Test Suite 'JPIPWebSocketClientTests' passed at 2026-10-31 16:09:05.660.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.037 (0.038) seconds
+Test Suite 'JPIPWebSocketConnectionStateTests' started at 2026-10-31 16:09:05.660.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionStateTests testAllStates]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionStateTests testAllStates]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketConnectionStateTests' passed at 2026-10-31 16:09:05.660.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'JPIPWebSocketConnectionTests' started at 2026-10-31 16:09:05.660.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testBindSession]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testBindSession]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testClose]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testClose]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testConnectionInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testConnectionInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testGetInfo]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testGetInfo]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testHealthCheck]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testHealthCheck]' passed (0.002 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testLatencyMeasurement]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testLatencyMeasurement]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testRecordFrameStats]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketConnectionTests testRecordFrameStats]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketConnectionTests' passed at 2026-10-31 16:09:05.664.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.004 (0.005) seconds
+Test Suite 'JPIPWebSocketFrameTests' started at 2026-10-31 16:09:05.664.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testAllFrameTypes]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testAllFrameTypes]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameDeserializationInvalidData]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameDeserializationInvalidData]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameDeserializationInvalidType]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameDeserializationInvalidType]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationEmptyPayload]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationEmptyPayload]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationRoundTrip]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationRoundTrip]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationWithoutRequestID]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testFrameSerializationWithoutRequestID]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testLargePayloadSerialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketFrameTests testLargePayloadSerialization]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketFrameTests' passed at 2026-10-31 16:09:05.667.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+Test Suite 'JPIPWebSocketMessageEncoderTests' started at 2026-10-31 16:09:05.667.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testAllDataBinClasses]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testAllDataBinClasses]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeDataBinFromWrongFrameType]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeDataBinFromWrongFrameType]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeRequestFromWrongFrameType]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeRequestFromWrongFrameType]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeResponseFromWrongFrameType]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testDecodeResponseFromWrongFrameType]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeDataBin]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeIncompleteDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeIncompleteDataBin]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeMetadataRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeMetadataRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeRegionRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeRegionRequest]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeRequest]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeRequest]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeResponse]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketMessageEncoderTests testEncodeDecodeResponse]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketMessageEncoderTests' passed at 2026-10-31 16:09:05.671.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'JPIPWebSocketReconnectionTests' started at 2026-10-31 16:09:05.671.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testDefaultConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testDefaultConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testDisabledConfiguration]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testDisabledConfiguration]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testExponentialBackoffDelay]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testExponentialBackoffDelay]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testJitterFactorClamping]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testJitterFactorClamping]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testJitterKeepsDelayReasonable]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketReconnectionTests testJitterKeepsDelayReasonable]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketReconnectionTests' passed at 2026-10-31 16:09:05.672.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'JPIPWebSocketServerTests' started at 2026-10-31 16:09:05.672.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testCloseConnection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testCloseConnection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testConnectionInfos]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testConnectionInfos]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHandlePingFrame]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHandlePingFrame]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHandleRequestFrame]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHandleRequestFrame]' passed (0.001 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHealthCheckClosesTimedOutConnections]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testHealthCheckClosesTimedOutConnections]' passed (0.015 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testMaxConnectionsLimit]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testMaxConnectionsLimit]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testPushDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testPushDataBin]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testPushDataBinDisabled]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testPushDataBinDisabled]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testSendKeepalivePings]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testSendKeepalivePings]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerDoubleStartFails]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerDoubleStartFails]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerDoubleStopFails]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerDoubleStopFails]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerInitialization]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerStartStop]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testServerStartStop]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestInvalidConnection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestInvalidConnection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestMissingHeaders]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestMissingHeaders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestValidation]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeRequestValidation]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeResponseHeaders]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeResponseHeaders]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeWhenNotRunning]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketServerTests testUpgradeWhenNotRunning]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketServerTests' passed at 2026-10-31 16:09:05.695.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.021 (0.023) seconds
+Test Suite 'JPIPWebSocketTransportTests' started at 2026-10-31 16:09:05.695.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testConnectAndDisconnect]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testConnectAndDisconnect]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testDoubleConnectFails]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testDoubleConnectFails]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testDrainClearsDataBins]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testDrainClearsDataBins]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testHandlePongMeasuresLatency]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testHandlePongMeasuresLatency]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testHandleReceivedDataBin]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testHandleReceivedDataBin]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testReconnectionAttemptTracking]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testReconnectionAttemptTracking]' passed (0.020 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testReconnectionDisabledFails]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testReconnectionDisabledFails]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendPing]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendPing]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendRequestRequiresConnection]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendRequestRequiresConnection]' passed (0.000 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendRequestWhenConnected]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testSendRequestWhenConnected]' passed (0.005 seconds).
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testTransportInitialization]' started.
+Test Case '-[SwiftJ2KJPIPTests.JPIPWebSocketTransportTests testTransportInitialization]' passed (0.000 seconds).
+Test Suite 'JPIPWebSocketTransportTests' passed at 2026-10-31 16:09:05.743.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.046 (0.047) seconds
+Test Suite 'SwiftJ2KPackageTests.xctest' passed at 2026-10-31 16:09:05.743.
+	 Executed 544 tests, with 0 failures (0 unexpected) in 58.153 (58.249) seconds
+Test Suite 'Selected tests' passed at 2026-10-31 16:09:05.743.
+	 Executed 544 tests, with 0 failures (0 unexpected) in 58.153 (58.258) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "R3 WebSocket connection-generation barriers" started.
+◇ Suite "Phase R3 — F04 Normative JPIP HTTP/1.1, Data-Bin, 3D, and RFC 6455 WebSocket" started.
+◇ Suite R2JPIPColourAlphaPreservationTests started.
+◇ Suite "Independent R2 remaining-gate probes" started.
+◇ Suite "Phase R2 — SwiftJ2KJPIP Semantics Remediation Regressions" started.
+◇ Suite R2CacheRecencyTests started.
+◇ Suite "Phase R1 — SwiftJ2KJPIP Audit Remediation Regressions" started.
+◇ Suite "R3 takeover JPIP cache and deadline regressions" started.
+◇ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" started.
+◇ Suite R2PixelAccountingTests started.
+◇ Suite "R2 JPIP data-bin generation admission" started.
+◇ Suite "R3 incremental HTTP delimiter scans" started.
+◇ Suite "Codex R3 normative wire model grammar" started.
+◇ Suite "R3 captured HTTP request close lifecycle" started.
+◇ Suite "R3 independent-review allocation admission regressions" started.
+◇ Suite "R3 portable HTTPS streaming transport harness" started.
+◇ Suite "R3 transport pre-allocation budgets" started.
+◇ Test "Malformed VBAS, bb == 0, <3-byte EOR, trailing bytes after EOR, and truncated payloads fail deterministically" started.
+◇ Test "T.808 V3 HTTP/3 transport throws CodecError(.unsupportedFeature) and offline TCP ports fail without synthetic fallback" started.
+◇ Test "Clause C.8.1 model= grammar and out-of-order / overlapping / partial Msg-Offset merging" started.
+◇ Suite "R3 blocking-worker result publication" started.
+◇ Test staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+◇ Test "Real TCP HTTP/1.1 jpp-stream and jpt-stream over .j2k, .jph (HTJ2K), and .jp2 (phld) reconstruct bit-exact pixels" started.
+◇ Test "ITU-T T.808 Table A.2 wire class IDs, multi-byte VBAS, and Clause D.3 EOR round-trip cleanly" started.
+◇ Test "F07: JPIP preserves permuted premultiplied roles and native sYCC through both coding preferences" started.
+◇ Test "Tiny JPIP view reports at least the full image storage and copy it actually materialises" started.
+◇ Test "Stateful cid= delta deduplication, cclose teardown, stateless model=, and len= byte-limited partial-bin resumption" started.
+◇ Test "F07: JPIPDataBinGenerator, JPIPServer, and JPIPStreamingSession preserve pclr/cmap, cdef, and ICC under .none and .htj2k codingPreference" started.
+◇ Test "F06: JPIPStreamingSession reports .lossy for lossy codestreams, reduced resolution/layers, and component subsets" started.
+◇ Test readingAnOlderBinPreservesItUnderEitherCacheLimit() started.
+◇ Test "Real TCP RFC 6455 WebSocket 101 upgrade, multiplexed requests, live server push, and ping/pong latency" started.
+◇ Test "F13: cancellation inside .completed progress callback aborts JPIPStreamingSession deliveries" started.
+◇ Test "F09: JPIPStreamingSession enforces CopyPolicy and ExecutionPolicy and reports truthful CopyEvent and discarded metadata telemetry" started.
+◇ Test "Real TCP 3D JP3D JPIP over http:// and ws:// delivers normative VBAS bins and bit-exact 3D voxels" started.
+◇ Test normativeQualifierSeparatorAndBoundedRanges() started.
+◇ Test "F07: JPIPStreamingSession preserves premultiplied and absent alpha across delivered.image and delivered.legacyImage.toContractImage" started.
+◇ Test "F10: JPIPViewWindow composes region, resolutionLevel, maxQualityLayers, and components simultaneously and validates bounds" started.
+◇ Test "F05: JPIPStreamingSession enforces ResourceLimits and deadlineSeconds before/during delivery" started.
+◇ Test layerHintsCannotSuppressUndeliveredPackets() started.
+◇ Test "F10: JPIPSessionConfiguration enforces maxCachedDataBins, maxCacheSizeBytes, and deliveryMode" started.
+◇ Test inventedFormsAreRejectedWithoutPartialMutation() started.
+◇ Test "F03 & M12-CX-02: JPIPViewWindow rejects Int.max region overflow and resolutionLevel > 32 cleanly" started.
+◇ Test normalAndExtendedMessagesMergeIntoOnePrecinct() started.
+◇ Test sessionRestrictionsApplyToSubtractiveAndImplicitSelectors() started.
+◇ Test codestreamsDoNotReplaceEachOther() started.
+◇ Test reassemblyAccountsForLargeBinBeforeSmallerReplacement() started.
+◇ Test combinedViewCountsFullDecodeAndEveryMaterialisedView() started.
+◇ Test "F04-04: Sparse Msg-Offset amplification and multi-round cumulative responses fail pre-allocation against ResourceLimits" started.
+◇ Test additiveRectangleDoesNotMarkOutsidePrecinctsCached() started.
+◇ Test subtractiveLengthIsRemainingPrefix() started.
+◇ Test finalLegacyConversionAdmitsBothSourceAndDestination() started.
+◇ Test "F04-06: RFC 6455 fragmented binary message survives interleaved FIN=1 ping control frame" started.
+◇ Test "F04-07/08: Normative fvsiz/rvoff/rvsiz 3D JPIP query grammar and substantiated 3D fidelity/workspace reporting" started.
+◇ Test "F04-05: len=0..3 and len=64 always emit a complete decodable 3-byte EOR excluded from len" started.
+◇ Test reassemblyRejectsBudgetThatFitsEachBufferButNotTheirOverlap() started.
+◇ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" started.
+◇ Test "F04-01/02 & RA2-01: Extended tile merges with tile, sticky [<csn>] model qualifiers round-trip, -c1 subtracts component 1 precincts only, and [1],-P* clears codestream 1 precincts" started.
+◇ Test "F04-10: Corrupt or truncated JPEG 2000 target propagates error / HTTP 422 instead of raw octet-stream" started.
+◇ Test "RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace" started.
+◇ Test "F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping" started.
+◇ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" started.
+◇ Test "Many empty tile payloads still require admitted bin descriptor storage" started.
+◇ Test immediateAndTruncatedHeaderEOFRemainDistinct() started.
+◇ Test headerDelimitersSurviveEveryTrailingFragmentBoundary() started.
+◇ Test "A cache-aware request denies response admission before mutating its existing cache" started.
+◇ Test "Malformed Psot cannot move backwards, overlap headers or extend past input" started.
+◇ Test "Input, existing cache, final bin bytes and descriptor reservations share one budget" started.
+◇ Test "A zero Psot final tile and bounded JP2 framing retain every emitted byte" started.
+◇ Test headerScanWorkRemainsLinearAsInputQuadruples() started.
+◇ Test chunkLineScanVisitsEachByteOnceAndPreservesLineEndings() started.
+◇ Test emitsBracketedCodestreamQualifier() started.
+◇ Test twoThousandHeaderHandshakeHasLinearDelimiterWork() started.
+◇ Test standardCodestreamQualifierParses() started.
+◇ Test headerAndChunkCapsStillRejectBeforeAnAbsentBodyRead() started.
+◇ Test lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() started.
+◇ Test "RA2-01: Multi-codestream ranges [0-1], HTTP query [1;3],Hm top-level splitting, and Clause C.8.1.3 implicit precinct selectors" started.
+◇ Test cacheProjectionAndMergeDenyBeforeMutation() started.
+◇ Test publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() started.
+◇ Test staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() started.
+◇ Test volumeResumptionDeductsEarlierWireBytesBeforeRead() started.
+◇ Test closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() started.
+◇ Test volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead() started.
+◇ Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test volumeReportIncludesDescriptorHeavyWebSocketHandshake() started.
+◇ Test reassemblyReportIncludesDescriptorDominatedPhase() started.
+◇ Test descriptorDenialPrecedesWireMaterialisation() started.
+◇ Test volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead() started.
+◇ Test imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt() started.
+◇ Test acceptedPushCounterSurvivesQueueDrainAndChargesEachFrameOnce() started.
+◇ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() started.
+◇ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() started.
+◇ Test volumeReportCarriesDescriptorDominatedReassemblyPeak() started.
+◇ Test remainingWireAllowanceIsAppliedBeforeTheNextRead() started.
+◇ Test deadlineWatchdogWakesDedicatedReaderAndCancellationDisarmsIt() started.
+◇ Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() started.
+◇ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() started.
+◇ Test zeroPayloadPushesAreBoundedByDescriptorsBeforeAppend() started.
+◇ Test declaredBodyLimitIsCheckedBeforeOwningMessageAllocation() started.
+◇ Test case passing 1 argument scenario → .timeout to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test expiredDeadlineReleasesUnstartedOwners() started.
+◇ Test oversizedFrameIsDeniedFromLengthWithoutReadingItsPayload() started.
+◇ Test readerWaitsAfterResponseAndWakesForNextRequestOrClose() started.
+◇ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument scenario → .cancellation to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test descriptorHeavyHTTPHeaderIsRejectedBeforeTextParsingOrBodyRead() started.
+◇ Test case passing 1 argument rejected → false to obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+◇ Test completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test case passing 1 argument scenario → .duplicateReaderClose to staleCleanupCannotCloseReplacementHandshake(_:) started.
+◇ Test absoluteDeadlineCancelsSilentResponse() started.
+◇ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() started.
+◇ Test case passing 1 argument rejected → true to obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) started.
+◇ Test fragmentedMessageIncludesOldAndNewBuffersBeforeNextPayload() started.
+◇ Test taskCancellationJoinsAndAllowsFollowingRequest() started.
+◇ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() started.
+◇ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() started.
+◇ Test queuedPushesReduceTheNextResponseBodyAllowance() started.
+◇ Test priorQueuedPushesRetainStorageWithoutChargingNextBodyAgain() started.
+◇ Test completedRequestEventuallyReleasesItsDelegateOwnership() started.
+◇ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() started.
+◇ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() started.
+◇ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() started.
+◇ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() started.
+◇ Test workerErrorAndCancellationDoNotPublishAReusableConnection() started.
+◇ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() started.
+◇ Test case passing 1 argument mode → "fresh" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test case passing 1 argument mode → "reused" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test case passing 1 argument mode → "retry" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test case passing 1 argument inPublicationGap → false to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument inPublicationGap → true to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+✔ Test "Malformed VBAS, bb == 0, <3-byte EOR, trailing bytes after EOR, and truncated payloads fail deterministically" passed after 1.661 seconds.
+✔ Test readingAnOlderBinPreservesItUnderEitherCacheLimit() passed after 1.680 seconds.
+✔ Test "ITU-T T.808 Table A.2 wire class IDs, multi-byte VBAS, and Clause D.3 EOR round-trip cleanly" passed after 1.681 seconds.
+◇ Test case passing 1 argument cancelFirst → false to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test case passing 1 argument cancelFirst → true to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+✔ Test "Clause C.8.1 model= grammar and out-of-order / overlapping / partial Msg-Offset merging" passed after 1.686 seconds.
+✔ Test normativeQualifierSeparatorAndBoundedRanges() passed after 1.685 seconds.
+✔ Test "F07: JPIP preserves permuted premultiplied roles and native sYCC through both coding preferences" passed after 1.689 seconds.
+✔ Test "F05: JPIPStreamingSession enforces ResourceLimits and deadlineSeconds before/during delivery" passed after 1.688 seconds.
+✔ Test "F09: JPIPStreamingSession enforces CopyPolicy and ExecutionPolicy and reports truthful CopyEvent and discarded metadata telemetry" passed after 1.690 seconds.
+✔ Test layerHintsCannotSuppressUndeliveredPackets() passed after 1.691 seconds.
+✔ Test normalAndExtendedMessagesMergeIntoOnePrecinct() passed after 1.692 seconds.
+✔ Test inventedFormsAreRejectedWithoutPartialMutation() passed after 1.692 seconds.
+✔ Test "F03 & M12-CX-02: JPIPViewWindow rejects Int.max region overflow and resolutionLevel > 32 cleanly" passed after 1.693 seconds.
+✔ Test sessionRestrictionsApplyToSubtractiveAndImplicitSelectors() passed after 1.694 seconds.
+◇ Test case passing 1 argument declared → true to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test case passing 1 argument declared → false to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+✔ Test reassemblyAccountsForLargeBinBeforeSmallerReplacement() passed after 1.696 seconds.
+✔ Test codestreamsDoNotReplaceEachOther() passed after 1.696 seconds.
+✔ Test "F10: JPIPViewWindow composes region, resolutionLevel, maxQualityLayers, and components simultaneously and validates bounds" passed after 1.699 seconds.
+✔ Test additiveRectangleDoesNotMarkOutsidePrecinctsCached() passed after 1.699 seconds.
+✔ Test "F10: JPIPSessionConfiguration enforces maxCachedDataBins, maxCacheSizeBytes, and deliveryMode" passed after 1.700 seconds.
+✔ Test subtractiveLengthIsRemainingPrefix() passed after 1.699 seconds.
+✔ Test "F04-06: RFC 6455 fragmented binary message survives interleaved FIN=1 ping control frame" passed after 1.699 seconds.
+✔ Test finalLegacyConversionAdmitsBothSourceAndDestination() passed after 1.699 seconds.
+✔ Test "F04-07/08: Normative fvsiz/rvoff/rvsiz 3D JPIP query grammar and substantiated 3D fidelity/workspace reporting" passed after 1.699 seconds.
+✔ Test reassemblyRejectsBudgetThatFitsEachBufferButNotTheirOverlap() passed after 1.699 seconds.
+✔ Test "F04-01/02 & RA2-01: Extended tile merges with tile, sticky [<csn>] model qualifiers round-trip, -c1 subtracts component 1 precincts only, and [1],-P* clears codestream 1 precincts" passed after 1.699 seconds.
+✔ Test "F04-10: Corrupt or truncated JPEG 2000 target propagates error / HTTP 422 instead of raw octet-stream" passed after 1.699 seconds.
+✔ Test "F04-05: len=0..3 and len=64 always emit a complete decodable 3-byte EOR excluded from len" passed after 1.699 seconds.
+✔ Test "Many empty tile payloads still require admitted bin descriptor storage" passed after 1.699 seconds.
+✔ Test "A cache-aware request denies response admission before mutating its existing cache" passed after 1.699 seconds.
+✔ Test "Malformed Psot cannot move backwards, overlap headers or extend past input" passed after 1.699 seconds.
+✔ Test "F04-03: Malformed model tokens and overflowing JPIP query dimensions/offsets fail cleanly without trapping" passed after 1.700 seconds.
+✔ Test "Input, existing cache, final bin bytes and descriptor reservations share one budget" passed after 1.700 seconds.
+✔ Test "A zero Psot final tile and bounded JP2 framing retain every emitted byte" passed after 1.700 seconds.
+✔ Test standardCodestreamQualifierParses() passed after 1.700 seconds.
+✔ Test emitsBracketedCodestreamQualifier() passed after 1.700 seconds.
+✔ Test "RA2-01: Multi-codestream ranges [0-1], HTTP query [1;3],Hm top-level splitting, and Clause C.8.1.3 implicit precinct selectors" passed after 1.700 seconds.
+✔ Test cacheProjectionAndMergeDenyBeforeMutation() passed after 1.700 seconds.
+✔ Test descriptorDenialPrecedesWireMaterialisation() passed after 1.702 seconds.
+✔ Test reassemblyReportIncludesDescriptorDominatedPhase() passed after 1.702 seconds.
+✔ Test acceptedPushCounterSurvivesQueueDrainAndChargesEachFrameOnce() passed after 1.702 seconds.
+✔ Test remainingWireAllowanceIsAppliedBeforeTheNextRead() passed after 1.702 seconds.
+✔ Test zeroPayloadPushesAreBoundedByDescriptorsBeforeAppend() passed after 1.701 seconds.
+✔ Test declaredBodyLimitIsCheckedBeforeOwningMessageAllocation() passed after 1.701 seconds.
+✔ Test expiredDeadlineReleasesUnstartedOwners() passed after 1.701 seconds.
+✔ Test oversizedFrameIsDeniedFromLengthWithoutReadingItsPayload() passed after 1.701 seconds.
+✔ Test descriptorHeavyHTTPHeaderIsRejectedBeforeTextParsingOrBodyRead() passed after 1.700 seconds.
+✔ Test "F04-04: Sparse Msg-Offset amplification and multi-round cumulative responses fail pre-allocation against ResourceLimits" passed after 1.705 seconds.
+✔ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() passed after 1.699 seconds.
+✔ Test fragmentedMessageIncludesOldAndNewBuffersBeforeNextPayload() passed after 1.693 seconds.
+✔ Test queuedPushesReduceTheNextResponseBodyAllowance() passed after 1.261 seconds.
+✔ Test priorQueuedPushesRetainStorageWithoutChargingNextBodyAgain() passed after 1.014 seconds.
+✔ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() passed after 0.405 seconds.
+✔ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() passed after 1.703 seconds.
+✔ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() passed after 0.399 seconds.
+✔ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) with 2 test cases passed after 1.703 seconds.
+✔ Suite R2CacheRecencyTests passed after 1.710 seconds.
+✔ Suite "R3 takeover JPIP cache and deadline regressions" passed after 1.710 seconds.
+✔ Test completionAndCancellationHaveOneWinner(cancelFirst:) with 2 test cases passed after 1.701 seconds.
+✔ Suite R2JPIPColourAlphaPreservationTests passed after 1.710 seconds.
+✔ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() passed after 0.421 seconds.
+✔ Test completedRequestEventuallyReleasesItsDelegateOwnership() passed after 0.423 seconds.
+✔ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() passed after 1.354 seconds.
+✔ Test twoThousandHeaderHandshakeHasLinearDelimiterWork() passed after 1.707 seconds.
+✔ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) with 2 test cases passed after 0.403 seconds.
+✔ Test imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt() passed after 1.706 seconds.
+✔ Suite "R2 JPIP data-bin generation admission" passed after 1.711 seconds.
+✔ Suite "Codex R3 normative wire model grammar" passed after 1.711 seconds.
+✔ Test immediateAndTruncatedHeaderEOFRemainDistinct() passed after 1.707 seconds.
+✔ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() passed after 0.426 seconds.
+✔ Test closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() passed after 1.710 seconds.
+✔ Test publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() passed after 1.712 seconds.
+✔ Test lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() passed after 1.712 seconds.
+✔ Test "T.808 V3 HTTP/3 transport throws CodecError(.unsupportedFeature) and offline TCP ports fail without synthetic fallback" passed after 1.716 seconds.
+✔ Test volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead() passed after 1.714 seconds.
+✔ Test "F13: cancellation inside .completed progress callback aborts JPIPStreamingSession deliveries" passed after 1.716 seconds.
+✔ Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) with 3 test cases passed after 1.721 seconds.
+✔ Test volumeResumptionDeductsEarlierWireBytesBeforeRead() passed after 1.724 seconds.
+✔ Test headerDelimitersSurviveEveryTrailingFragmentBoundary() passed after 1.725 seconds.
+✔ Test headerAndChunkCapsStillRejectBeforeAnAbsentBodyRead() passed after 1.725 seconds.
+✔ Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() passed after 1.723 seconds.
+✔ Test staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() passed after 1.728 seconds.
+✔ Suite "R3 captured HTTP request close lifecycle" passed after 1.733 seconds.
+✔ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() passed after 1.728 seconds.
+✔ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() passed after 1.728 seconds.
+✔ Test volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead() passed after 1.733 seconds.
+✔ Test workerErrorAndCancellationDoNotPublishAReusableConnection() passed after 0.099 seconds.
+✔ Test chunkLineScanVisitsEachByteOnceAndPreservesLineEndings() passed after 1.737 seconds.
+✔ Test taskCancellationJoinsAndAllowsFollowingRequest() passed after 1.385 seconds.
+✔ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) with 2 test cases passed after 1.740 seconds.
+✔ Test volumeReportCarriesDescriptorDominatedReassemblyPeak() passed after 1.737 seconds.
+✔ Test volumeReportIncludesDescriptorHeavyWebSocketHandshake() passed after 1.738 seconds.
+✔ Suite "R3 independent-review allocation admission regressions" passed after 1.743 seconds.
+✔ Test headerScanWorkRemainsLinearAsInputQuadruples() passed after 1.750 seconds.
+✔ Suite "R3 incremental HTTP delimiter scans" passed after 1.755 seconds.
+✔ Test "RA2-06: deliverVolumeRegion propagates verification pixel/copy telemetry and enforces combined retained cache + codestream + decode workspace" passed after 1.763 seconds.
+✔ Test "Real TCP RFC 6455 WebSocket 101 upgrade, multiplexed requests, live server push, and ping/pong latency" passed after 1.767 seconds.
+✔ Test readerWaitsAfterResponseAndWakesForNextRequestOrClose() passed after 1.767 seconds.
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+✔ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" passed after 1.777 seconds.
+✔ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() passed after 0.160 seconds.
+✔ Suite "R3 blocking-worker result publication" passed after 1.798 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 1.797 seconds.
+✔ Test deadlineWatchdogWakesDedicatedReaderAndCancellationDisarmsIt() passed after 1.805 seconds.
+✔ Suite "R3 transport pre-allocation budgets" passed after 1.810 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 1.409 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 1.856 seconds.
+✔ Test "F06: JPIPStreamingSession reports .lossy for lossy codestreams, reduced resolution/layers, and component subsets" passed after 1.869 seconds.
+✔ Suite "Phase R1 — SwiftJ2KJPIP Audit Remediation Regressions" passed after 1.871 seconds.
+✔ Test "Stateful cid= delta deduplication, cclose teardown, stateless model=, and len= byte-limited partial-bin resumption" passed after 1.913 seconds.
+✔ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" passed after 2.002 seconds.
+✔ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" passed after 2.006 seconds.
+✔ Test combinedViewCountsFullDecodeAndEveryMaterialisedView() passed after 2.165 seconds.
+✔ Suite R2PixelAccountingTests passed after 2.168 seconds.
+✔ Test "F07: JPIPStreamingSession preserves premultiplied and absent alpha across delivered.image and delivered.legacyImage.toContractImage" passed after 2.335 seconds.
+✔ Test "Real TCP 3D JP3D JPIP over http:// and ws:// delivers normative VBAS bins and bit-exact 3D voxels" passed after 2.361 seconds.
+✔ Test "Real TCP HTTP/1.1 jpp-stream and jpt-stream over .j2k, .jph (HTJ2K), and .jp2 (phld) reconstruct bit-exact pixels" passed after 2.379 seconds.
+✔ Suite "Phase R3 — F04 Normative JPIP HTTP/1.1, Data-Bin, 3D, and RFC 6455 WebSocket" passed after 2.380 seconds.
+✔ Test "F07: JPIPDataBinGenerator, JPIPServer, and JPIPStreamingSession preserve pclr/cmap, cdef, and ICC under .none and .htj2k codingPreference" passed after 2.453 seconds.
+✔ Suite "Phase R2 — SwiftJ2KJPIP Semantics Remediation Regressions" passed after 2.455 seconds.
+✔ Test "Tiny JPIP view reports at least the full image storage and copy it actually materialises" passed after 2.463 seconds.
+✔ Suite "Independent R2 remaining-gate probes" passed after 2.465 seconds.
+✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut
+✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut
+✘ Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario → .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut
+✘ Test staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases failed after 3.693 seconds with 3 issues.
+✘ Suite "R3 WebSocket connection-generation barriers" failed after 3.694 seconds with 3 issues.
+✘ Test run with 103 tests in 18 suites failed after 3.697 seconds with 3 issues.
+Note: Some test targets reported failures:
+  - SwiftJ2KPackageTests (Swift Testing)

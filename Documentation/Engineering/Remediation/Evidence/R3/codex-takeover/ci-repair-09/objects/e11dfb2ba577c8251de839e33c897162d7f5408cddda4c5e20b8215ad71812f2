@@ -1,0 +1,821 @@
+{
+  "schema": "swiftj2k-r3-ci-repair-inputs-v1",
+  "workspace": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover",
+  "repository": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K",
+  "candidate_label": "Frozen candidate22 DOCUMENT REVIEW PENDING: ordinary1359 PASS; JPIP ASan4 HTTPS issues FAIL; remaining5 UNEXECUTED; diagnostic19 only; R3 NOT_ACCEPTED",
+  "published_base_label": "Immutable published08/15/18 retained; frozen22 source extends published18 e67136ade691af045570706d401f80d612359d0c. No Git verification or22 hosted pass asserted.",
+  "prior_index": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/generated-index.json",
+    "sha256": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54"
+  },
+  "native_runs": [
+    {
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-19/result.json",
+        "sha256": "30916b68b1050f249186b2b0495b7c80772a9e9b2baa2b37765080fca67bb8b3"
+      },
+      "command": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-19/command.json",
+        "sha256": "85fd5a37bea257e9d6b856fc72aadce2cb66c8a0f02d1726eeee35c0ea48e30c"
+      },
+      "before": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-19/source-before.json",
+        "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2"
+      },
+      "after": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-19/source-after.json",
+        "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2"
+      },
+      "reports": [
+        {
+          "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-19/report-swift-testing.xml",
+          "sha256": "48e1f686291e2101e7e3b4e98428f9b2926113c231cbb780e11bfb4ea2a026fa"
+        }
+      ],
+      "diagnostic_only": true
+    },
+    {
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-22/result.json",
+        "sha256": "f6b61e70e79139c83f34f4217a8fae196639e97151048097b212a7a86b715385"
+      },
+      "command": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-22/command.json",
+        "sha256": "6edce6efba04c251e5b7fbbbbcee4f6e977cd108d49c6226b1ad7130b07f19c6"
+      },
+      "before": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-22/source-before.json",
+        "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96"
+      },
+      "after": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-22/source-after.json",
+        "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96"
+      },
+      "reports": [
+        {
+          "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-22/report-swift-testing.xml",
+          "sha256": "5ff627196bf1d1f66709f4f4ebee4d72cabb93838c89e936d4b1fd764afe8040"
+        }
+      ],
+      "diagnostic_only": false
+    },
+    {
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-22/result.json",
+        "sha256": "7a0dae1d926a4e9f984f3342cf9e3a203abb33195a49971c7ec569daa5c34c1d"
+      },
+      "command": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-22/command.json",
+        "sha256": "0875118294b55a195d103f27829b9813059a962f4e722f109283e6d6b059fe2c"
+      },
+      "before": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-22/source-before.json",
+        "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96"
+      },
+      "after": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-22/source-after.json",
+        "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96"
+      },
+      "reports": [
+        {
+          "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-22/report-swift-testing.xml",
+          "sha256": "420c5aa8517afe4451727ec77d8e0a1aea836eb1ce131b9757e05d736c950c11"
+        }
+      ],
+      "diagnostic_only": false
+    }
+  ],
+  "reviews": [
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/report.txt",
+        "sha256": "85c278e515d051d8d9bb6e222e81f40ebae0dd926df1565f76b0b2f46097693f"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/source.json",
+        "sha256": "e501840b68fef506741a4bfa81d6d594ea56e0ced9bd91db3ef705cfcba49c34"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/report.txt",
+        "sha256": "5dd6ecb5786e3676c3d93cc788584ad48fd091638f372cd75edf42d9fb420ce0"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/source.json",
+        "sha256": "5cbfe9d53aad8b7bab33a317f32ccb7791b26dfbb9ce69c4bc63d54ac19c2312"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-review/report.txt",
+        "sha256": "4c6bb6d2320ef85e45f8b6394b57fbf82ecfb11d8ac420bab03b4de5c370f027"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-review/source.json",
+        "sha256": "ba76742fa4b52439ed96e36bf072e6bdf5e9365baa0047c8bf50532cf6d095c5"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-execution-review/report.txt",
+        "sha256": "98de248b5e11b2b735fe5ba458125e6623bf227667bc7277adb87ce3067d1f77"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-execution-review/source.json",
+        "sha256": "9478ff1736e201bee8c3eb35bbe71a62cf3fc0529417585c14ba816fc5fd49c3"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/report.txt",
+        "sha256": "41856593467cf06b8edc457a938ed7f15d2b7a3d383773f282d972630deceb19"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/source.json",
+        "sha256": "1d4046aa3ea977c32dc7fcad839a169c123553d50efe070abcd48c958ed5fd0e"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-test-portability-20/report.txt",
+        "sha256": "c731ecb3fd7ed993a2601f83a0c1f164eec459b6d1fad9b0f848e389576961c7"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-test-portability-20/source.json",
+        "sha256": "8454b2a1faba66c4aa689768af47e8e134a7cbfaa7a2b34df6c360503bd89403"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/report.txt",
+        "sha256": "66ccfa2ccc5be199b07a04d1de93b577d1d2562787afb80b75db9aaee17f3f77"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/source.json",
+        "sha256": "ace81447054b2cea73ef0990122ff83e444ff0448298137fc50a26c2d6afb599"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-worker-fixture-review-21/report.txt",
+        "sha256": "6cd7fdfe9e77c827902e02e7f827d107f758be1d94cb3c89d6d34888aae313f5"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-worker-fixture-review-21/source.json",
+        "sha256": "981f6c5c7b9fac9ba5094e01c1fc6623019f8d9bb6dfdd5058f67bc8383aa2e1"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/report.txt",
+        "sha256": "36917b85d21dafe40b6ac5bfff6bb0a04190aa1551cac8850e5ab94ce3f6aee4"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/source.json",
+        "sha256": "94fcdfbae6481bee3f4d4c2d846fbe0c4b3c7294907eb5cd4eb77a1ed79fe6a2"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-admission-fixture-review-22/report.txt",
+        "sha256": "2dc9970e1e3dfdcaa5ea7edd2cbdecc44e5b277461e498db0213aa1359e78938"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-admission-fixture-review-22/source.json",
+        "sha256": "4371dcfa8a53c3d693d878123031e235116acbf68510ea791accf9766c5b2ec5"
+      },
+      "completed": true,
+      "supporting": []
+    },
+    {
+      "report": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-22/failed-review.txt",
+        "sha256": "2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a"
+      },
+      "source": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-22/failed-review-source.json",
+        "sha256": "6fa9b6eb00a9dde4ab8abe8522f84e2db491926e431cad2780e779973ed96398"
+      },
+      "completed": true,
+      "supporting": []
+    }
+  ],
+  "hosted_runs": [
+    {
+      "run_id": 41198397609,
+      "attempt": 1,
+      "metadata": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-jobs.json",
+        "sha256": "f41a18c5cd4d4f002ae06ce34abee96880559702d8a940d8ffbd5eb6b206295d"
+      },
+      "logs": [
+        {
+          "job_id": 124529119499,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119499.log",
+            "sha256": "cfcebbbd00ad88f93480f31ca9071af730858c8bacc20a221c7a51076382b2e0"
+          }
+        },
+        {
+          "job_id": 124529119597,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119597.log",
+            "sha256": "4629d695d1771b5c1f2e324a7b7ea6d6482fc66237aab59b5ca886f3abe524c4"
+          }
+        },
+        {
+          "job_id": 124529119601,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119601.log",
+            "sha256": "2f9acb5fc210a28aace5a636ceb571b15f28907ad77522202a984f38339434e7"
+          }
+        },
+        {
+          "job_id": 124529119608,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119608.log",
+            "sha256": "b256a67246e0dd529b8414865fe080c77b9f7e533f4d9497c2e0e23ef9e00cf8"
+          }
+        },
+        {
+          "job_id": 124529119630,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119630.log",
+            "sha256": "68b363f99161e3f0189c7bc03be3247e5e68b10032189abddda15fcaa44164f3"
+          }
+        },
+        {
+          "job_id": 124529119641,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119641.log",
+            "sha256": "ad2fc5775d265afc1523814a5eabbca6617a4e3000ecd5d7f58b523dd44a726a"
+          }
+        },
+        {
+          "job_id": 124529119665,
+          "file": {
+            "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-job124529119665.log",
+            "sha256": "1d7d9df0dc8fd9550faced745b28de64cfbd023fe21c76c5920e774bccf6d06f"
+          }
+        }
+      ],
+      "review": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/source.json",
+        "sha256": "e501840b68fef506741a4bfa81d6d594ea56e0ced9bd91db3ef705cfcba49c34"
+      }
+    }
+  ],
+  "supplemental": [
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-diagnostic-19-provenance.json",
+        "sha256": "00cdbe4890eae3f15b5904b67ad0358df9f820683f6d4c7c8ad3fc13f27533b9"
+      },
+      "role": "incremental22-preparation-candidate-diagnostic-19-provenance.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-diagnostic-19-source.json",
+        "sha256": "eb3a2eab91594024e60474f41cb2ef8dc13431d1a8c5039b46760363c8eb03d2"
+      },
+      "role": "incremental22-preparation-candidate-diagnostic-19-source.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-final.json",
+        "sha256": "d8b9d910fd35e29f06d3f55d39c72b99ded8a140804cc64c244be2f585757727"
+      },
+      "role": "incremental22-preparation-ci-downloads--run-41198397609-attempt1-final.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-attempt1-initial.json",
+        "sha256": "87d364965743079ee34a7b849d099385c10785bd36296c3948c1a761ca8ad3ec"
+      },
+      "role": "incremental22-preparation-ci-downloads--run-41198397609-attempt1-initial.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-tested-merge.json",
+        "sha256": "7527b6febc1aeb1b41575597109cc27db599ea8e634ea1dec1f02383c6e0f342"
+      },
+      "role": "incremental22-preparation-ci-downloads--run-41198397609-tested-merge.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41198397609-workflow.yml",
+        "sha256": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2"
+      },
+      "role": "incremental22-preparation-ci-downloads--run-41198397609-workflow.yml"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/pending-inputs-01.json",
+        "sha256": "2400295eb890f9897dd56922d424fc0b8b1212305984253e06d3adbfac275907"
+      },
+      "role": "incremental22-preparation-ci-repair-evidence-22--pending-inputs-01.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/prepare_manifest.py",
+        "sha256": "3bd58c8b938722457730e8bd7352b88adf291492951c16ba1769cf9f187426d9"
+      },
+      "role": "incremental22-preparation-ci-repair-evidence-22--prepare_manifest.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic19-launch.json",
+        "sha256": "ca7724d93644ad333d1a945c0506dd20059d2e08c3cead4970a5945993c30230"
+      },
+      "role": "incremental22-preparation-diagnostic19-launch.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-evidence/reconstruct.py",
+        "sha256": "9c93b12ba20c62ae2560adc2878d426c0c7b1f54e0d92c9a2c64d436a5e6a614"
+      },
+      "role": "incremental22-preparation-hosted-evidence--reconstruct.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/expected-from-supplied-metadata.json",
+        "sha256": "9538730739b26fabf6dbccc0420e208447c9c1d72e8c32706f3bce9129e97768"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--expected-from-supplied-metadata.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/input-before.json",
+        "sha256": "632a21fc243e2200a1da117a9c60ced5907aedb9d5de265bbd0bc04a559a8916"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--input-before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/ordinary-diagnostic-swift-testing.xml",
+        "sha256": "8a338e93fbd97a6b27f4e7887c8016b9fc0220eaacfbf32233b8a2df2f1ae185"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--ordinary-diagnostic-swift-testing.xml"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/reconciliation.json",
+        "sha256": "eea9944f68b7eb84fde8b5b2703ebfa773c81f7e1507ca089eb85deeba09f8e0"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--reconciliation.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/strict-reconstruction.stderr",
+        "sha256": "6ed180d9331d14a21a942acc1bddd9e4a2cc8ad12e9fa7033e2bd67bf07bf8cd"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--strict-reconstruction.stderr"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/checked/strict-reconstruction.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--checked--strict-reconstruction.stdout"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/expected-from-supplied-metadata.json",
+        "sha256": "9538730739b26fabf6dbccc0420e208447c9c1d72e8c32706f3bce9129e97768"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--expected-from-supplied-metadata.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/input-before.json",
+        "sha256": "aac2ef483c4352f9772787d0014ceca6e31d13aa0cc07a59e4551639dffb7d94"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--input-before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/ordinary-diagnostic-swift-testing.xml",
+        "sha256": "8a338e93fbd97a6b27f4e7887c8016b9fc0220eaacfbf32233b8a2df2f1ae185"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--ordinary-diagnostic-swift-testing.xml"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/reconcile-v2.py",
+        "sha256": "547c35502d98e185486bebff83eae3fbcabd964ffc8e03d6e57ce4a870d50a61"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--reconcile-v2.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/reconcile.py",
+        "sha256": "a196ae757e2dbaede5a10e21c6f83556dcc7ca82fec47e6ab89463d15110ac2b"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--reconcile.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/strict-reconstruction.stderr",
+        "sha256": "6ed180d9331d14a21a942acc1bddd9e4a2cc8ad12e9fa7033e2bd67bf07bf8cd"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--strict-reconstruction.stderr"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/strict-reconstruction.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--strict-reconstruction.stdout"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-failure-review-18/xml-failure-details.json",
+        "sha256": "8e4cd1c27f9793fea9855707fac53a8ebbf65b160f62ed7d90552493ba7e24dd"
+      },
+      "role": "incremental22-preparation-hosted-failure-review-18--xml-failure-details.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/hosted-source-provider-review-18.json",
+        "sha256": "b74a969f8c4a3bd8ec4c57aa22c2288692b31a9518f5c22b6632a0bacf3cbd87"
+      },
+      "role": "incremental22-preparation-hosted-source-provider-review-18.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/diagnostic-source-manifest.json",
+        "sha256": "70bcbf992b5e48e53736d3398fd2a702ada7fb7ddf518139e463fac3de501143"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--diagnostic-source-manifest.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay/Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift",
+        "sha256": "5454a196f00458a85fc551cd6b8350e82351b52b031cad9788cf873444a57906"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay--Sources--SwiftJ2KJPIP--JPIPHTTPSPhaseTrace.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift",
+        "sha256": "310c8bb74bf049c6366edef7fb99f88f2e4517df811ce37e2d9acfe34fe2a2f9"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay--Sources--SwiftJ2KJPIP--JPIPHTTPSRequest.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay/Sources/SwiftJ2KJPIP/JPIPTransport.swift",
+        "sha256": "7d99cea32841c8acb8c790a6a3636839206135e5518af4a6d2fd476fd2a9b559"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay--Sources--SwiftJ2KJPIP--JPIPTransport.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+        "sha256": "3664e5dad7003435d35281514f2f7871e2f8d6610c3ef8d327603b5ce502c724"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay--Tests--SwiftJ2KJPIPTests--CodexR3HTTPStreamingTests.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay-delta.patch",
+        "sha256": "fc36256fbdb4b85f84abcbed3464f47278e89a84b01b562634d9f497bd0f59be"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay-delta.patch"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/overlay-source.json",
+        "sha256": "5d22fe9b7ed659ceaf03eaa85fe4725a9375cb15a86943cf8c7303ef2974ddc5"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--overlay-source.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/prepare_overlay.py",
+        "sha256": "5885eb6dba263f8499d7d5c92dcf753c44195d204f5e645c121ff41752cfb2c2"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--prepare_overlay.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/static-check-result.json",
+        "sha256": "9b59dc07e5f633ed42b5d50b8c051ee0b73a5ba05cab606084101a841b3422f2"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--static-check-result.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/static_check.py",
+        "sha256": "40c19ced75edcff102859808237e85735f2a06e7536920f66c582f518f40eea6"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--static_check.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19/trace-helper.swift",
+        "sha256": "5454a196f00458a85fc551cd6b8350e82351b52b031cad9788cf873444a57906"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19--trace-helper.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-diagnostic-19-extracted-events.json",
+        "sha256": "065c1f2ecfd1ddaf2b2c89dd7b2b9a05b7171ff6c2cfed79a82360f461de85b6"
+      },
+      "role": "incremental22-preparation-https-diagnostic-19-extracted-events.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-execution-review/analyse.py",
+        "sha256": "4f7e8c03013769a116b5784d6dcd13138b8a65b6ea03bec4b8e24a76b1fc7b67"
+      },
+      "role": "incremental22-preparation-independent-diagnostic19-execution-review--analyse.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-execution-review/analysis.json",
+        "sha256": "8741efcd6466a803bee0b4ffdb8ff108c35dc55904c45ae0407181579f51b57d"
+      },
+      "role": "incremental22-preparation-independent-diagnostic19-execution-review--analysis.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-review/input-verification.json",
+        "sha256": "853078c05bf48a844e5c9dbc49b44222ce538c89b1f774fa4d9476130333104d"
+      },
+      "role": "incremental22-preparation-independent-diagnostic19-review--input-verification.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-test-portability-20/independent-delta.patch",
+        "sha256": "252cfb46a7731d1eb024c60ff781cea0dfb55edd309e326b36834707b06a036d"
+      },
+      "role": "incremental22-preparation-independent-test-portability-20--independent-delta.patch"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-worker-fixture-review-21/independent-delta.patch",
+        "sha256": "821350dbe544ee5640d95006ff6593963d1a7d6180e7ad36551a535c49d866ad"
+      },
+      "role": "incremental22-preparation-independent-worker-fixture-review-21--independent-delta.patch"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-https-diagnostic-19.json",
+        "sha256": "23eff37c6dd95696e151b90270aec1d5e051e48d709e1d5c5eeed56df0ae9467"
+      },
+      "role": "incremental22-preparation-planned-https-diagnostic-19.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-commit-18.json",
+        "sha256": "413eec82a0a6302cdd3c8e4f07487ff4955089aac33855ccde7b1b8e514e32da"
+      },
+      "role": "incremental22-preparation-publication-commit-18.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-remote-commit-18.json",
+        "sha256": "ecda5837bcb281c3db56a8afdc8b2cda4b08d98ce82ff78504cf9a0e218734b7"
+      },
+      "role": "incremental22-preparation-publication-remote-commit-18.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py",
+        "sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6"
+      },
+      "role": "incremental22-preparation-run-validation.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/CodexR3IndependentTests.after.swift",
+        "sha256": "981a54ac94388417006da101c60a424c73a896e420cd835ee6c49acb81b844bd"
+      },
+      "role": "incremental22-preparation-test-portability-20--CodexR3IndependentTests.after.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/CodexR3IndependentTests.before.swift",
+        "sha256": "3a0bf64ccb3c769db15c0f3b9374d1cfb7afdea8db88a4c9efb370b78438b31e"
+      },
+      "role": "incremental22-preparation-test-portability-20--CodexR3IndependentTests.before.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/claim-before.json",
+        "sha256": "c92e72f88801ae17062e1d8b253fc7b33b898a4829bd2c00df75efd882101f12"
+      },
+      "role": "incremental22-preparation-test-portability-20--claim-before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/hosted-log-summary.json",
+        "sha256": "3a64a8eb39cb2d3092226271ecc813dacb888ccda29e418c745104027553f7c3"
+      },
+      "role": "incremental22-preparation-test-portability-20--hosted-log-summary.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/imports.json",
+        "sha256": "1dc1431d01d6c10e9ff3e779a1b17c76c9f8bfbb57239dea6773e3b33c7d99ac"
+      },
+      "role": "incremental22-preparation-test-portability-20--imports.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/input-before.json",
+        "sha256": "5ff5f2d811e8cb993bc128cad99cf348e4479a998d5d1aa3980b3a0cd18fe7c6"
+      },
+      "role": "incremental22-preparation-test-portability-20--input-before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/proposal.patch",
+        "sha256": "252cfb46a7731d1eb024c60ff781cea0dfb55edd309e326b36834707b06a036d"
+      },
+      "role": "incremental22-preparation-test-portability-20--proposal.patch"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/test-portability-20/source.diff",
+        "sha256": "252cfb46a7731d1eb024c60ff781cea0dfb55edd309e326b36834707b06a036d"
+      },
+      "role": "incremental22-preparation-test-portability-20--source.diff"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/CodexR3WorkerHandoffTests.after.swift",
+        "sha256": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2"
+      },
+      "role": "incremental22-preparation-worker-fixture-lifetime-21--CodexR3WorkerHandoffTests.after.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/CodexR3WorkerHandoffTests.before.swift",
+        "sha256": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+      },
+      "role": "incremental22-preparation-worker-fixture-lifetime-21--CodexR3WorkerHandoffTests.before.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/before.json",
+        "sha256": "3c0506c23a41e3ce141b00e8dc05b8c0b0ffe73c1194ce696b4c3b7406d8dba8"
+      },
+      "role": "incremental22-preparation-worker-fixture-lifetime-21--before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/worker-fixture-lifetime-21/source.diff",
+        "sha256": "821350dbe544ee5640d95006ff6593963d1a7d6180e7ad36551a535c49d866ad"
+      },
+      "role": "incremental22-preparation-worker-fixture-lifetime-21--source.diff"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/CodexR3AdmissionTests.after.swift",
+        "sha256": "5bd55bb8f77ac3f4dddbe96cf09502965deb556310536c72f8e61ae9e316e4a9"
+      },
+      "role": "incremental22-completed-admission-fixture-cleanup-22--CodexR3AdmissionTests.after.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/CodexR3AdmissionTests.before.swift",
+        "sha256": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91"
+      },
+      "role": "incremental22-completed-admission-fixture-cleanup-22--CodexR3AdmissionTests.before.swift"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/before.json",
+        "sha256": "35fb5fc2a283429cb84dc02f8186f26d276c1b35e7a6b7f50bfbd8a57aa3883b"
+      },
+      "role": "incremental22-completed-admission-fixture-cleanup-22--before.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/preservation.json",
+        "sha256": "ad11733bbdf5f0222031985a18f9429ed520383ed96d35f692faa3a344396701"
+      },
+      "role": "incremental22-completed-admission-fixture-cleanup-22--preservation.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/admission-fixture-cleanup-22/source.diff",
+        "sha256": "f42ecd38ae066434ca5f8b778164604f3b770266ffce3ca844fac1ed2b340d60"
+      },
+      "role": "incremental22-completed-admission-fixture-cleanup-22--source.diff"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-22-provenance.json",
+        "sha256": "bfbb5ea10d00792c643058821a0b2fb6d581de95ecef9f8c6295983020beb853"
+      },
+      "role": "incremental22-completed-candidate-snapshot-22-provenance.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-22-source.json",
+        "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96"
+      },
+      "role": "incremental22-completed-candidate-snapshot-22-source.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/pending-inputs-02.json",
+        "sha256": "90846625f8a5e668dc2c27dda4fe949b241e4562e981504f06aa862d065013dd"
+      },
+      "role": "incremental22-completed-ci-repair-evidence-22--pending-inputs-02.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/prepare_candidate_02.py",
+        "sha256": "10f4bac35cd1fa318bf149654f4bc4c81be5971f31cfda1f39d7c95487192577"
+      },
+      "role": "incremental22-completed-ci-repair-evidence-22--prepare_candidate_02.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-22/source-binding-02.json",
+        "sha256": "8aa3f6a1a3b310dd5cd09b9bb5708e46538bfbbe55a5c5f3fb160d3e31fdb9a7"
+      },
+      "role": "incremental22-completed-ci-repair-evidence-22--source-binding-02.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli16-input-equivalence22.json",
+        "sha256": "700e46f734d92b36474ce72184aec1da4e7e84e0feb08d040142ac3ebbae53b5"
+      },
+      "role": "incremental22-completed-cli16-input-equivalence22.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-admission-fixture-review-22/check.py",
+        "sha256": "2901b3c2fa12e11024ac5e5415261c97491abfb4c6832e950d704205d0405260"
+      },
+      "role": "incremental22-completed-independent-admission-fixture-review-22--check.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-admission-fixture-review-22/checks.json",
+        "sha256": "d5e938236708ab845f960a79981aa1cb8855a276342dcc184dd46bf1db70bc8a"
+      },
+      "role": "incremental22-completed-independent-admission-fixture-review-22--checks.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/native22-launch-preflight.json",
+        "sha256": "e0921734fc9a10e74723cb35a6451a42f5b894147be035a7451cf89c2b1501e1"
+      },
+      "role": "incremental22-completed-native22-launch-preflight.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-22.json",
+        "sha256": "c4e2684fffa52377479d9fa32e61e50622db918a964c641544fee09032ea6a21"
+      },
+      "role": "incremental22-completed-planned-native-sequence-22.json"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-native-sequence-22.py",
+        "sha256": "84ae9351f7d9f010d47a5cde2d176fb3f2f116d5333d3e84f08872aa67e0ae42"
+      },
+      "role": "incremental22-completed-run-native-sequence-22.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-22/check-completed22.py",
+        "sha256": "12d5cd3089c25309e76d8e35bdf29173a02a0a73317f8087bc74d0acee9a11d2"
+      },
+      "role": "incremental22-completed-runtime-coverage-22--check-completed22.py"
+    },
+    {
+      "file": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-22/completed22-failed-sequence-check.json",
+        "sha256": "98eb0cdb11fbb34163271f5e54ac0a19f8ec83b84e5fcf98cd3e4ae24235eaef"
+      },
+      "role": "incremental22-completed-runtime-coverage-22--completed22-failed-sequence-check.json"
+    }
+  ]
+}

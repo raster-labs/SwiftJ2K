@@ -1,0 +1,41 @@
+SwiftJ2K R3 independent performance review 04 — targeted HT-to-EBCOT profile
+2026-10-31; reviewer /root/independent_core_review; read-only
+
+Recommendation
+The targeted profile supplies the missing path-specific evidence. I now recommend extending the explicitly recorded, bounded PERF-03 safety/correctness trade-off to odd8 HT-to-EBCOT's measured median cost. Together with review03's encoder recommendation, no additional production optimisation is required by the evidence before root makes that scoped decision. This is a recommendation to accept a known measured cost for repaired preallocation/live-overlap accounting, not a claim that the candidate has no regression or that every nanosecond is unavoidable. Root retains the final decision and must record the reason, measured cost and updated validated baseline. R3 overall remains unaccepted by this review.
+
+Identity and validation
+Reviewed r3-profile-results-02 and validation/profile-comparison-02. Both release profile binaries, sampled-stack files and wrapper log match their recorded hashes. Separate profile2 packages preserve the first profile. Both own-child processes completed10,000 serial operations, five warmups, scalarCPU/one worker, thermal0 and low-power false, with exact final decoded samples and identical final EBCOT output SHA256/2332-byte size. The receipt is exit0 with unchanged_inputs=[]. These are diagnostic runs: loop durations are not substituted for the interleaved acceptance measurements, and only the final profiled output was sample-verified.
+
+The profile candidate metadata matches all52 reviewed core files in candidate-snapshot-03. Candidate-snapshot-04 and main also match that core scope. Hash receipt: independent-performance-review-04-source.json. Computed counts: independent-performance-review-04-counts.json. No native command or production edit was performed by this reviewer.
+
+Normalized call-stack evidence
+As in review02, I reconstructed the call tree and computed exclusive counts from each node minus its direct children, then counted exclusive samples once under VolumeTranscoder.transcode ancestry. All exclusive counts are nonnegative. Active denominators are3152 baseline and3194 candidate, excluding the idle-thread totals9517/9714. Categories are overlapping ancestry unions and must not be added.
+
+Category                            baseline               candidate
+3D EBCOT encoding                   2184 /69.29%            2239 /70.10%
+MQ encoder                          464 /14.72%              522 /16.34%
+MQ termination-length estimate      165 / 5.23%              157 / 4.92%
+MQ finish                            10 / 0.32%               42 / 1.31%
+Entropy budget                        0 / 0.00%               64 / 2.00%
+Exact-output compaction               0 / 0.00%               34 / 1.06%
+HT decode                           183 / 5.81%              181 / 5.67%
+Packet decode                       314 / 9.96%              320 /10.02%
+Packet encode                       158 / 5.01%              176 / 5.51%
+
+Of the64 candidate budget samples,52 are within 3D EBCOT encoding,41 under MQ,34 under MQ finish/compaction and12 under packet encoding. Fourteen include TaskLocal access and four include lock ancestry. The local ledger's explicit reserve/release/source-admission closure frames account for only four active samples; most other transcode closure samples are cancellation checks. Do not mistake all closure samples for ledger overhead or call these small lock counts contention. No repeated String-construction subtree was observed.
+
+This directly corroborates the source mechanism identified in review03: MQ now admits growth and old-buffer overlap before allocation, then compacts output under an overlap reservation before releasing unused capacity; the transcode ledger admits retained source contributions together with entropy storage. The candidate's MQ-finish increase lies in the intended compact-output path (candidate.sample.txt:145–203). The profile shows no distinct unexpected full-volume copy, new transform, or separate avoidable hotspot requiring a new repair. The termination-length estimator remains a pre-existing cost. Sampling and compiler inlining prevent apportioning the entire benchmark delta exactly; absence of a sampled frame is not proof of zero cost.
+
+Cost and tail limits
+Retain the actual uninstrumented run04/05 measurements in the decision:
+- odd8 HT-to-EBCOT median1220.562->1285.458 us, +64.896 us/+5.32%; paired median+4.49%.
+- Repeat median1326.042->1453.229 us, +127.187 us/+9.59%; paired median+5.77%.
+- Run05 candidate p95=3504.17 us versus baseline1721.04 us; candidate standard deviation699.00 us versus159.35 us. Do not replace these with the smaller paired ratio or profiled-loop average.
+
+The call-stack evidence explains a material steady-state source of additional work. It does not establish why run05 had its two approximately2-ms excess samples, prove those samples are scheduler noise, or make a tail-latency guarantee. Retain the outliers and spread as an explicit limitation in the new baseline. The larger tail was not reproduced as a stable separate pattern across both interleaved runs; the available evidence supports the bounded median-cost trade-off, not a claim of complete tail characterization. No fixed tail-latency threshold was supplied for this task. Further event tracing would be needed for any stronger tail claim.
+
+PERF-03 disposition to record
+A narrow acceptance is defensible because the regression was measured repeatedly, the distinct transcode path was investigated, the added costs are now linked to required admission/compaction work, exact samples/bytes and resource invariants are preserved, and no new distinct accidental hotspot was found. Record candidate03 identities and the full observed cost range/spread rather than silently resetting thresholds. Keep the rejected67c8f7e predecessor labelled comparator only. Future work may reduce bookkeeping cost while preserving admission and overlap, but a globally optimal implementation or recovery of unsafe predecessor speed is not a prerequisite.
+
+Scope remains two synthetic volumes/twelve operation cases on the recorded scalar hardware/toolchain. This recommendation does not establish full-corpus/R4/platform/concurrent performance, direct Part10+15, direct full38 Part2, multiple active HT sets, or overall R3 acceptance. The separate native and interoperability gates remain independent.

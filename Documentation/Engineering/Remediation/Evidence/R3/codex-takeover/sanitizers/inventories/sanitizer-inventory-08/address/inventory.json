@@ -1,0 +1,70 @@
+{
+  "sanitizer": "address",
+  "reference": {
+    "command": [
+      "swift",
+      "test",
+      "list",
+      "--skip-build",
+      "--scratch-path",
+      "../candidate-build-08",
+      "--disable-sandbox",
+      "--build-system",
+      "native",
+      "--cache-path",
+      "../swiftpm-cache",
+      "--config-path",
+      "../swiftpm-config",
+      "--security-path",
+      "../swiftpm-security",
+      "-j",
+      "4"
+    ],
+    "exit_code": 0,
+    "stdout_sha256": "f840f2e7480fb78a5a9e9706c70d44ce9d993d19017538e69a5e94f457d1253e",
+    "stderr_sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922"
+  },
+  "sanitized": {
+    "command": [
+      "swift",
+      "test",
+      "list",
+      "--scratch-path",
+      "../candidate-asan-08",
+      "--sanitize",
+      "address",
+      "--disable-sandbox",
+      "--build-system",
+      "native",
+      "--cache-path",
+      "../swiftpm-cache",
+      "--config-path",
+      "../swiftpm-config",
+      "--security-path",
+      "../swiftpm-security",
+      "-j",
+      "4"
+    ],
+    "exit_code": 0,
+    "stdout_sha256": "f840f2e7480fb78a5a9e9706c70d44ce9d993d19017538e69a5e94f457d1253e",
+    "stderr_sha256": "a370d0ceb259d8c553e22ba4e594a84e798a2eae7aa62038c5162b355cbe2f51"
+  },
+  "selection_regex": "^SwiftJ2KJPIPTests[./]",
+  "jpip_arguments": [
+    "--filter",
+    "^SwiftJ2KJPIPTests[./]"
+  ],
+  "complement_arguments": [
+    "--skip",
+    "^SwiftJ2KJPIPTests[./]"
+  ],
+  "counts": {
+    "all_declarations": 1336,
+    "jpip_declarations": 625,
+    "complement_declarations": 711
+  },
+  "equal_to_ordinary": true,
+  "disjoint": true,
+  "union_equals_full": true,
+  "scope": "Discovered declarations; parameterised cases must also finish in the actual test runs."
+}

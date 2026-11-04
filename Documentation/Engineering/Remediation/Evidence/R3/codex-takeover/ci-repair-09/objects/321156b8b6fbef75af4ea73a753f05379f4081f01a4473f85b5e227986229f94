@@ -1,0 +1,12 @@
+--- candidate13/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
++++ candidate14/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift
+@@ -265,6 +265,9 @@
+ 
+         let queue = OperationQueue()
+         queue.maxConcurrentOperationCount = 1
++        // Service deadline-bound response callbacks at the same priority as
++        // JPIP's deadline queue; serial ordering and ownership remain unchanged.
++        queue.qualityOfService = .userInitiated
+         queue.name = "com.rasterlab.swiftj2k.jpip.https"
+         let owner = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
+         lock.lock()

@@ -1,0 +1,46 @@
+{
+  "state": "CANDIDATE22_DOCS_PENDING_PREPARATION_POSITIVELY_STOPPED",
+  "at": "2026-10-31T12:31:15.221832+00:00",
+  "report_sha256": "6c813fc7123cfc0e90d6df1727fa312af20136a0bd8cafc8ef0555897d3000e6",
+  "manifest_sha256": "e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2",
+  "proposed_index_sha256": "0f5c12a1547ea63422eddb90c5f9075eae433078a45c8b5d44efab90ceccaf86",
+  "files": {
+    "prepare_candidate_02.py": {
+      "sha256": "10f4bac35cd1fa318bf149654f4bc4c81be5971f31cfda1f39d7c95487192577",
+      "bytes": 13038
+    },
+    "source-binding-02.json": {
+      "sha256": "8aa3f6a1a3b310dd5cd09b9bb5708e46538bfbbe55a5c5f3fb160d3e31fdb9a7",
+      "bytes": 116161
+    },
+    "pending-inputs-02.json": {
+      "sha256": "90846625f8a5e668dc2c27dda4fe949b241e4562e981504f06aa862d065013dd",
+      "bytes": 4367
+    },
+    "manifest-candidate-22-02.json": {
+      "sha256": "e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2",
+      "bytes": 40697
+    },
+    "dry-run-candidate-22-02.json": {
+      "sha256": "64beccabf7b4ce440597c511e1751f53d4691168b34f90fc25e6cf8af47618a0",
+      "bytes": 2164
+    },
+    "report-candidate-22-02.txt": {
+      "sha256": "6c813fc7123cfc0e90d6df1727fa312af20136a0bd8cafc8ef0555897d3000e6",
+      "bytes": 3997
+    }
+  },
+  "reviewed_helper_sha256": "588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83",
+  "artifact_roles": 135,
+  "proposed_payloads": 119,
+  "proposed_payload_bytes": 6101003,
+  "implementation_scope_sha256": "d5698c7ca7d24cc85ff7b86ee1b782496b86dc5bb12c01214212f35ce686277e",
+  "ci_scope_sha256": "018d8ecf684b67e0a9467278ceeafbf393b7b070d0533e2cbafde82995162127",
+  "published_corpus_unchanged": true,
+  "writes_stopped": true,
+  "native_executed": false,
+  "repository_writes": false,
+  "published": false,
+  "final_document_review_pending": true,
+  "R3": "NOT_ACCEPTED"
+}

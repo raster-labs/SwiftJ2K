@@ -1,0 +1,13 @@
+{
+  "runner_stamped_swift_testing_start": "2026-10-31T11:14:56.236158",
+  "runner_stamped_swift_testing_end": "2026-10-31T11:15:59.568363",
+  "runner_stamped_span_seconds": 63.332205,
+  "reported_swift_testing_seconds": 63.29,
+  "late_burst": {
+    "first_line": 3750,
+    "last_line": 3844,
+    "lines": 95,
+    "runner_stamp_span_seconds": 0.00936
+  },
+  "warning": "Runner timestamps and framework duration are distinct clocks/receipt scopes; receipt bursts do not identify actual I/O or actor timing."
+}

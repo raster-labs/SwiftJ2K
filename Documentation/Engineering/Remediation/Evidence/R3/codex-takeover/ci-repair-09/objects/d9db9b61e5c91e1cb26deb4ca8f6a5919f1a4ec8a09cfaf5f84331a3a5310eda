@@ -1,0 +1,420 @@
+#!/usr/bin/env python3
+"""Independently audit completed native receipts. No subprocesses or native execution."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import argparse
+import hashlib
+import json
+import re
+import xml.etree.ElementTree as ET
+import difflib
+
+
+def require(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def read(path):
+    return json.loads(Path(path).read_text())
+
+
+def source_map(source):
+    return {str(p.relative_to(source)): sha(p) for p in source.rglob('*')
+            if p.is_file() and '.build' not in p.relative_to(source).parts}
+
+
+DIAGNOSTIC = re.compile(r'WARNING: ThreadSanitizer|ERROR: (?:AddressSanitizer|LeakSanitizer)|'
+                        r'SUMMARY: (?:ThreadSanitizer|AddressSanitizer|LeakSanitizer)|runtime error:')
+
+
+def independently_parse(directory, bindings):
+    """A second parser, with no import of or dependence on reconcile.py code."""
+    raw = (directory / 'native.stdout').read_bytes().decode('utf-8')
+    reverse = {v: k for k, v in bindings.items()}
+    require(len(reverse) == len(bindings), 'Ambiguous display bindings')
+    xcstart = Counter(a + '/' + b for a, b in re.findall(
+        r"^Test Case '-\[([^ ]+) ([^\]]+)\]' started\.$", raw, re.M))
+    xcpass = Counter(a + '/' + b for a, b in re.findall(
+        r"^Test Case '-\[([^ ]+) ([^\]]+)\]' passed \([^\n]+\)\.$", raw, re.M))
+    require(xcstart == xcpass and all(n == 1 for n in xcpass.values()),
+            'XCTest start/pass identity mismatch or duplicate')
+    swstart = Counter(reverse[s] for s in re.findall(r'^◇ Test (?!case )(.+) started\.$', raw, re.M)
+                      if s != 'run')
+    swpass, parameters = {}, {}
+    for display, count in re.findall(
+            r'^✔ Test (.+?)(?: with (\d+) test cases?)? passed after [0-9.]+ seconds\.$', raw, re.M):
+        if display.startswith('run with '):
+            continue
+        key = reverse[display]
+        require(key not in swpass, 'Duplicate Swift completion: ' + key)
+        swpass[key] = {'status': 'passed', 'parameter_count': int(count) if count else None}
+    require(set(swstart) == set(swpass) and all(n == 1 for n in swstart.values()),
+            'Swift start/pass identity mismatch or duplicate')
+    # The installed reporter includes literal newlines/tabs in some CLI arguments.
+    # Retain those bytes after UTF-8 decoding; never whitespace-normalize arguments.
+    for recordtext in re.findall(r'^◇ Test case passing (.*?) started\.$', raw, re.M | re.S):
+        arg, display = recordtext.rsplit(' to ', 1)
+        arg = re.sub(r'^(\d+) argument ', r'\1 arguments ', arg)
+        require(not any(marker in arg for marker in
+                        ['◇ Test ', '✔ Test ', '✘ Test ', '↷ Test ', 'WARNING:', 'ERROR:']),
+                'Interrupted parameter argument event')
+        key = reverse[display]
+        parameters.setdefault(key, Counter())[arg] += 1
+    require(len(parameters) == sum(v['parameter_count'] is not None for v in swpass.values()),
+            'Parameterized declaration count mismatch')
+    for key, values in parameters.items():
+        require(sum(values.values()) == swpass[key]['parameter_count'],
+                'Parameter argument count differs from aggregate completion: ' + key)
+    xmlids = set()
+    xml = ET.parse(directory / 'report-swift-testing.xml')
+    for node in xml.iter('testcase'):
+        require(not list(node), 'Unexpected failure/skip/XML child on test declaration')
+        a, b = node.attrib['classname'], node.attrib['name']
+        matches = {a + '/' + b, a + '.' + b} & set(swpass)
+        require(len(matches) == 1, 'XML declaration missing or ambiguous')
+        key = matches.pop()
+        require(key not in xmlids, 'Duplicate XML declaration: ' + key)
+        xmlids.add(key)
+    require(xmlids == set(swpass), 'XML and Swift log declaration IDs differ')
+    require(not re.search(r'^✘|^↷|\bskipped\b|known issue', raw, re.M | re.I),
+            'Failed, skipped or known-issue event in successful-run evidence')
+    return dict(xcpass), swpass, {k: dict(v) for k, v in parameters.items()}
+
+
+def cli_input(path):
+    """Conservative build/CLI inputs, including resources and fixture bytes."""
+    parts = Path(path).parts
+    if path in {'Package.swift', 'Package.resolved', 'VERSION', 'CLI.md'}:
+        return True
+    if parts[0] in {'Sources', 'Scripts', 'Integration', 'Examples', 'ManPages'}:
+        return True
+    if any(part.lower() in {'fixtures', 'resources'} for part in parts):
+        return True
+    # Non-Swift test files are conservatively treated as fixtures/resources.
+    return parts[0] == 'Tests' and not path.endswith('.swift')
+
+
+def verify_authorised_websocket_fixture(source, manifest, historical_manifest, work, record):
+    """Recognise only the independently reviewed14-to15 fixture repair.
+
+    This replaces an obsolete historical byte-preservation assertion. It does
+    not relax final-source equality across ordinary and sanitizer executions.
+    Both source hashes, the exact diff and normalised recovery are mandatory;
+    any future or tampered fixture requires a new independently reviewed rule.
+    """
+    relative = 'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift'
+    before_hash = '28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd'
+    after_hash = '674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386'
+    diff_hash = 'b3218f7d2c1a1c6db5a7f9d0a29424c06f9d8aa740877e39d7428fc301f04434'
+    old_path = work / 'candidate-snapshot-14' / relative
+    new_path = source / relative
+    patch_path = work / 'websocket-peer-lifetime-15/delta-from14.patch'
+    require(historical_manifest[relative] == before_hash and manifest[relative] == after_hash,
+            'Unreviewed WebSocket fixture source identity')
+    require(record(old_path) == before_hash and record(new_path) == after_hash and
+            record(patch_path) == diff_hash, 'Pinned WebSocket fixture bytes/diff changed')
+    old_text, new_text = old_path.read_text(), new_path.read_text()
+    actual_diff = ''.join(difflib.unified_diff(old_text.splitlines(keepends=True),
+        new_text.splitlines(keepends=True), fromfile='frozen14/' + relative, tofile='fixture15/' + relative))
+    require(actual_diff == patch_path.read_text(), 'WebSocket fixture diff does not describe inspected bytes')
+    normalised, labels = re.subn(r'eventually\("(?:[^"\\]|\\.)*"\)', 'eventually', new_text)
+    require(labels == 10, 'Unexpected WebSocket phase-label count')
+    replacements = {
+        'private func eventually(_ phase: String, _ condition:': 'private func eventually(_ condition:',
+        'throw LifecycleTestError.barrierTimedOut(phase: phase)': 'throw LifecycleTestError.barrierTimedOut',
+        'case barrierTimedOut(phase: String)': 'case barrierTimedOut',
+        '                // This timeout belongs to accepted sockets, not listener polling.\n'
+        '                // Explicit shutdown and worker completion govern the held peer lifetime.\n': '',
+        'peer.listener.acceptConnection(timeoutSeconds: 0)': 'peer.listener.acceptConnection(timeoutSeconds: 1)'
+    }
+    for old, new in replacements.items():
+        require(normalised.count(old) == 1, 'Unexpected authorised fixture edit shape')
+        normalised = normalised.replace(old, new)
+    require(normalised == old_text, 'Changes exceed the authorised fixture lifetime/phase-label repair')
+    return {'path': relative, 'candidate14_sha256': before_hash, 'candidate15_sha256': after_hash,
+            'exact_diff_sha256': diff_hash, 'phase_labels': labels, 'normalised_recovery_verified': True,
+            'scope': 'Accepted-socket idle expiry1-to0 and diagnostic phase labels only; request/barrier limits unchanged.'}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config', required=True, type=Path)
+    parser.add_argument('--output', required=True, type=Path)
+    args = parser.parse_args()
+    require(not args.output.exists(), 'Refusing to overwrite an audit receipt')
+    config = read(args.config)
+    work = Path(__file__).resolve().parent.parent
+    source = Path(config['source']).resolve()
+    manifest_path = Path(config['manifest'])
+    manifest = read(manifest_path)
+    before = source_map(source)
+    require(before == manifest, 'Final frozen source does not match its manifest')
+    receipt = {'state': 'AUDIT_IN_PROGRESS', 'review_started_at': datetime.now(timezone.utc).isoformat(),
+               'source': str(source), 'manifest_sha256': sha(manifest_path), 'source_files': len(before),
+               'before': before, 'files': {}, 'runs': {}, 'proofs': {}, 'historical': {}}
+
+    def record(path):
+        path = Path(path).resolve()
+        digest = sha(path)
+        require(str(path) not in receipt['files'] or receipt['files'][str(path)] == digest,
+                'Input changed during audit: ' + str(path))
+        receipt['files'][str(path)] = digest
+        return digest
+
+    def run(name, expected_exit=0, expected_source=manifest, historical=False):
+        directory = work / 'validation' / name
+        command, result = read(directory / 'command.json'), read(directory / 'result.json')
+        require(result['exit_code'] == expected_exit and result['changed_inputs'] == [],
+                'Wrong exit or changing source: ' + name)
+        require(read(directory / 'source-before.json') == read(directory / 'source-after.json') == expected_source,
+                'Receipt source is not the required frozen source: ' + name)
+        require(command['source_files'] == len(expected_source), 'Wrong command source count: ' + name)
+        require(sha(directory / 'native.log') == result['log_sha256'], 'Native log hash mismatch: ' + name)
+        require(result.get('capture_complete') is True and result.get('capture_threads_joined') is True
+                and result.get('capture_errors') == [] and result.get('wrapper_exit_code') == expected_exit,
+                'Missing/incomplete raw capture: ' + name)
+        require(command['wrapper_sha256'] == record(config['wrapper']), 'Wrapper differs: ' + name)
+        require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing captured stream: ' + name)
+        for kind, value in result['native_streams'].items():
+            path = directory / ('native.' + kind)
+            require(path.resolve() == Path(value['path']).resolve(), 'Stream path differs: ' + name)
+            require(sha(path) == value['sha256'] and path.stat().st_size == value['bytes'],
+                    'Stream hash/length differs: ' + name)
+        require(Counter((directory / 'native.log').read_bytes().splitlines()) ==
+                Counter((directory / 'native.stdout').read_bytes().splitlines()) +
+                Counter((directory / 'native.stderr').read_bytes().splitlines()),
+                'Merged log line multiset differs from raw capture: ' + name)
+        if not historical:
+            for path in [directory / 'native.log', directory / 'native.stdout', directory / 'native.stderr']:
+                require(not DIAGNOSTIC.search(path.read_text()), 'Sanitizer diagnostic: ' + str(path))
+            require(command.get('test_environment') == {
+                'SWIFTJ2K_TEST_CLI_PATH': None, 'ASAN_OPTIONS': None, 'TSAN_OPTIONS': None},
+                'Unexpected suppression/override environment: ' + name)
+            for item in result.get('built_cli_products_at_completion', {}).values():
+                require(record(item['path']) == item['sha256'], 'Recorded built CLI artifact changed: ' + name)
+        for path in directory.iterdir():
+            if path.is_file():
+                record(path)
+        summary = {'exit_code': result['exit_code'], 'elapsed_seconds': result['elapsed_seconds'],
+                   'command': command['command'], 'log_sha256': result['log_sha256'],
+                   'raw_capture_verified': True, 'source_files': len(expected_source),
+                   'environment': command.get('test_environment'), 'compiler': command['compiler']}
+        receipt['historical' if historical else 'runs'][name] = summary
+        return command, result
+
+    record(args.config)
+    record(__file__)
+    record(manifest_path)
+    record(config['reconciliation_helper'])
+    ordinary_command, _ = run(config['ordinary'])
+    require(ordinary_command['command'][:2] == ['swift', 'test'] and
+            not any(arg in ordinary_command['command'] for arg in ['--sanitize', '--filter', '--skip']),
+            'Ordinary run must be full ordinary tests without selection or sanitization')
+    for name in config['focused']:
+        run(name)
+
+    # CLI and release reuse is restricted to byte-identical actual build/CLI inputs.
+    cli_manifest = read(config['cli_manifest'])
+    cli_source = Path(config['cli_source']).resolve()
+    cli_before = source_map(cli_source)
+    require(cli_before == cli_manifest, 'CLI frozen source does not match its own manifest')
+    final_inputs = {p: h for p, h in manifest.items() if cli_input(p)}
+    old_inputs = {p: h for p, h in cli_manifest.items() if cli_input(p)}
+    require(final_inputs == old_inputs, 'Reused CLI/build inputs differ from final frozen source')
+    deltas = {p: {'cli_snapshot': cli_manifest.get(p), 'final_snapshot': manifest.get(p)}
+              for p in sorted(set(manifest) | set(cli_manifest)) if manifest.get(p) != cli_manifest.get(p)}
+    receipt['cli_input_identity'] = {'manifest_sha256': record(config['cli_manifest']),
+        'source': str(cli_source), 'compared_input_count': len(final_inputs), 'compared_inputs': final_inputs,
+        'all_non_input_snapshot_differences': deltas,
+        'scope': 'Sources, Package, Scripts, VERSION, CLI guide, manual, examples/integration, all fixture/resource paths and non-Swift test files.'}
+    release_command, release_result = run(config['release'], expected_source=cli_manifest)
+    cli_command, cli_result = run(config['cli'], expected_source=cli_manifest)
+    require(release_command['command'][:2] == ['swift', 'build'] and
+            'release' in release_command['command'] and 'swiftj2k-cli' in release_command['command'],
+            'Release receipt is not the release CLI product build')
+    cli = read(config['cli_report'])
+    record(config['cli_report'])
+    require(cli['checks'] == len(cli['commands']) == config['expected_cli_checks'] and cli['status'] == 'passed',
+            'CLI integration report count/status mismatch')
+    require(all(c['exit_code'] == c['expected_exit_code'] for c in cli['commands']),
+            'CLI integration command status mismatch')
+    require(record(cli['binary']) == cli['binary_sha256'], 'CLI artifact hash mismatch')
+    for key, relative in [('test_runner_sha256', 'Scripts/test-cli.py'),
+                          ('installer_sha256', 'Scripts/install-cli.sh'),
+                          ('manual_sha256', 'ManPages/swiftj2k-cli.1')]:
+        require(cli[key] == manifest[relative], 'CLI runner/installer/manual mismatch: ' + key)
+    product = release_result['built_cli_products_at_completion']['release']
+    require(Path(product['path']).resolve() == Path(cli['binary']).resolve() and
+            product['sha256'] == cli['binary_sha256'], 'CLI release artifact differs across receipts')
+    require('--binary' in cli_command['command'] and 'Scripts/test-cli.py' in cli_command['command'],
+            'CLI receipt did not run the expected integration script')
+    cli_arg = cli_command['command'][cli_command['command'].index('--binary') + 1]
+    require((Path(cli_command['cwd']) / cli_arg).resolve() == Path(cli['binary']).resolve(),
+            'Integration invocation did not use the reported CLI binary')
+    receipt['cli'] = {'checks': cli['checks'], 'binary_sha256': cli['binary_sha256'],
+                      'command_statuses_match': True, 'input_identity_verified': True}
+
+    reference_sets = []
+    for mode in ['thread', 'address']:
+        mode_config = config['modes'][mode]
+        inventory_dir = Path(mode_config['inventory'])
+        inv = read(inventory_dir / 'inventory.json')
+        require(inv['sanitizer'] == mode, 'Wrong sanitizer inventory mode')
+        sets = {}
+        for kind in ['all', 'jpip', 'complement']:
+            values = (inventory_dir / (kind + '.ids')).read_text().splitlines()
+            require(values and all(values) and len(values) == len(set(values)), 'Invalid/duplicate inventory IDs')
+            sets[kind] = set(values)
+        allids, jpip, complement = (sets[k] for k in ['all', 'jpip', 'complement'])
+        require(not jpip & complement and jpip | complement == allids, 'Invalid inventory partition')
+        require(jpip == {s for s in allids if re.match(r'^SwiftJ2KJPIPTests[./]', s)}, 'Incorrect JPIP selection')
+        require(inv['counts'] == {k + '_declarations': len(sets[k]) for k in sets}, 'Inventory count mismatch')
+        require(inv['equal_to_ordinary'] and inv['disjoint'] and inv['union_equals_full'], 'Inventory rejected its proof')
+        for kind in ['reference', 'sanitized']:
+            require(inv[kind]['exit_code'] == 0, 'Discovery command failed')
+            raw = (inventory_dir / (kind + '.stdout')).read_text().splitlines()
+            require(len(raw) == len(set(raw)) and set(raw) == allids, 'Discovery output differs from inventory')
+            for stream in ['stdout', 'stderr']:
+                require(sha(inventory_dir / (kind + '.' + stream)) == inv[kind][stream + '_sha256'],
+                        'Discovery stream hash mismatch')
+            command = inv[kind]['command']
+            require(command[:3] == ['swift', 'test', 'list'], 'Discovery receipt is not swift test list')
+            require(('--sanitize' in command) == (kind == 'sanitized'), 'Discovery sanitizer selection differs')
+            if kind == 'sanitized':
+                require(command[command.index('--sanitize') + 1] == mode, 'Wrong discovery sanitizer')
+        for path in inventory_dir.iterdir():
+            if path.is_file():
+                record(path)
+        inventory_command, _ = run(mode_config['inventory_run'])
+        inventory_argv = inventory_command['command']
+        inventory_helper = (Path(inventory_command['cwd']) / inventory_argv[1]).resolve()
+        require(record(inventory_helper) == manifest['Scripts/verify-sanitizer-inventory.py'],
+                'Executed discovery helper differs from frozen reviewed script')
+        require(inventory_argv[inventory_argv.index('--sanitizer') + 1] == mode and
+                (Path(inventory_command['cwd']) / inventory_argv[inventory_argv.index('--output') + 1]).resolve() ==
+                inventory_dir.resolve(), 'Inventory wrapper uses another mode/output directory')
+        for name, selection in [(mode_config['jpip'], '--filter'), (mode_config['complement'], '--skip')]:
+            command, _ = run(name)
+            argv = command['command']
+            require(argv[:2] == ['swift', 'test'] and argv[argv.index('--sanitize') + 1] == mode,
+                    'Wrong sanitizer runtime command')
+            require(argv[argv.index(selection) + 1] == '^SwiftJ2KJPIPTests[./]', 'Wrong runtime partition selector')
+            require(('--skip' if selection == '--filter' else '--filter') not in argv, 'Extra runtime selector')
+        proof = read(mode_config['proof'])
+        proof_digest = record(mode_config['proof'])
+        spec = read(mode_config['spec'])
+        require(proof['spec_sha256'] == record(mode_config['spec']), 'Proof spec hash mismatch')
+        require(proof['helper_sha256'] == record(config['reconciliation_helper']), 'Reconciler hash mismatch')
+        require(proof['source_manifest_sha256'] == receipt['manifest_sha256'], 'Proof frozen-source hash mismatch')
+        require(proof['inventory_sha256'] == record(inventory_dir / 'all.ids'), 'Proof inventory hash mismatch')
+        require(proof['state'] == 'COMPLETE_PARTITIONED_RUNTIME_COVERAGE' and
+                proof['declared_tests'] == len(allids) and not proof['unexecuted_declarations'],
+                'Coverage is incomplete or contains unexecuted declarations')
+        require(Path(spec['source']).resolve() == source and Path(spec['inventory']).resolve() ==
+                (inventory_dir / 'all.ids').resolve(), 'Proof spec uses other source/inventory')
+        for title in proof['title_source_receipts']:
+            path = Path(title['source'])
+            require(record(path) == title['source_sha256'] == manifest[str(path.relative_to(source))],
+                    'Title binding source differs')
+            require(title['literal'] in path.read_text().splitlines()[title['line'] - 1] and
+                    json.loads(title['literal']) == json.loads(title['display']), 'Title binding differs')
+        parsed, summaries = [], []
+        expected_names = [config['ordinary'], mode_config['jpip'], mode_config['complement']]
+        objects = [proof['ordinary'], *proof['partitions']]
+        require(len(objects) == 3 and len(spec['partitions']) == 2, 'Exactly two sanitizer partitions required')
+        for obj, expected, name, run_spec in zip(objects, [allids, jpip, complement], expected_names,
+                                                [spec['ordinary'], *spec['partitions']]):
+            directory = work / 'validation' / name
+            require(Path(obj['directory']).resolve() == directory.resolve() ==
+                    Path(run_spec['directory']).resolve(), 'Proof substituted a different run')
+            for path, digest in obj['files'].items():
+                require(record(path) == digest, 'Proof referenced input hash mismatch')
+            xc, sw, params = independently_parse(directory, proof['display_bindings'])
+            require(set(xc) | set(sw) == expected and not set(xc) & set(sw), 'Runtime inventory identity differs')
+            require(set(obj['expected_ids']) == set(obj['statuses']) == expected and
+                    set(obj['statuses'].values()) == {'passed'}, 'Proof status/ID mismatch or skipped declaration')
+            require({k: 'passed' for k in xc} == obj['runtime']['xctest'] and sw == obj['runtime']['swift_testing']
+                    and params == obj['runtime']['parameter_cases'] and not obj['runtime']['diagnostic_gaps'],
+                    'Independent raw parser disagrees with reconciliation proof')
+            parsed.append((xc, sw, params))
+            summaries.append({'directory': str(directory), 'declarations': len(xc) + len(sw),
+                'xctest': len(xc), 'swift_testing': len(sw), 'parameter_declarations': len(params),
+                'parameter_starts': sum(sum(v.values()) for v in params.values())})
+        require({**parsed[1][1], **parsed[2][1]} == parsed[0][1] and
+                {**parsed[1][2], **parsed[2][2]} == parsed[0][2],
+                'Ordinary/sanitized exact parameter argument multisets or completion counts differ')
+        require(proof['parameter_declarations'] == len(parsed[0][2]) and proof['parameter_argument_starts'] ==
+                sum(sum(v.values()) for v in parsed[0][2].values()), 'Proof parameter count mismatch')
+        receipt['proofs'][mode] = {'proof_sha256': proof_digest, 'independent_parser_matches': True,
+                                  'runs': summaries}
+        reference_sets.append(allids)
+    require(reference_sets[0] == reference_sets[1], 'Address/thread ordinary declaration inventories differ')
+
+    for item in config['historical']:
+        historical_manifest = read(item['manifest'])
+        record(item['manifest'])
+        _, result = run(item['directory'], item['expected_exit'], historical_manifest, historical=True)
+        require(result['log_sha256'] == item['log_sha256'], 'Historical failed log changed')
+    for path in config['supporting_inputs']:
+        record(path)
+    if config.get('native_plan'):
+        plan = read(config['native_plan'])
+        record(config['native_plan'])
+        require(Path(plan['source']).resolve() == source and
+                plan['wrapper_sha256'] == record(config['wrapper']), 'Native plan identity differs')
+        for gate in plan['gates']:
+            require(gate['label'] in receipt['runs'] and
+                    receipt['runs'][gate['label']]['command'] == gate['command'],
+                    'Actual native command differs from explicitly planned command')
+            require(record(gate['template_receipt']) == gate['template_sha256'], 'Native command template changed')
+    # A full snapshot delta is recorded, not interpreted as review approval.
+    m09_path = work / 'candidate-snapshot-09-source.json'
+    m09 = read(m09_path)
+    record(m09_path)
+    receipt['source_delta_from_09'] = {p: {'candidate09': m09.get(p), 'final': manifest.get(p)}
+        for p in sorted(set(manifest) | set(m09)) if manifest.get(p) != m09.get(p)}
+    # Original assertions from the earlier repaired failure remain byte-preserved.
+    m04_path = work / 'candidate-snapshot-04-source.json'
+    m04 = read(m04_path)
+    record(m04_path)
+    preserved = ['Tests/SwiftJ2KJPIPTests/' + name for name in
+                 ['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]
+    require(all(m04[p] == manifest[p] for p in preserved), 'Previously repaired assertions were changed')
+    receipt['unchanged_tests_from_failed_04'] = {p: manifest[p] for p in preserved}
+    receipt['authorised_websocket_fixture_delta_15'] = verify_authorised_websocket_fixture(
+        source, manifest, m04, work, record)
+    after = source_map(source)
+    require(before == after and cli_before == source_map(cli_source), 'Frozen source changed during audit')
+    for path, digest in receipt['files'].items():
+        require(sha(path) == digest, 'Evidence changed during audit: ' + path)
+    receipt['after'] = after
+    receipt['source_stable'] = True
+    receipt['state'] = 'LOCAL_RUNTIME_RECEIPTS_INDEPENDENTLY_RECONCILED'
+    receipt['boundaries'] = [
+        'This audit establishes the inspected local evidence only, not whole-R3 acceptance or a waiver.',
+        'Sanitizer coverage is sequential JPIP plus complement partitions; no cross-target concurrent pass is claimed.',
+        'Exact argument-start multisets and successful aggregate case counts are proven; per-argument completion IDs are unavailable.',
+        'No skipped/known-issue declaration is promoted to success or external-oracle qualification.',
+        'Source-review reports retain their stated ownership, memory, TLS, DNS and close-latency limits.',
+        'Independent combined JP3D+HTJ2K, native3DJPIP, exact WebSocket extension, full Part2 and multiple nonempty HT-set gates remain separate.',
+        'No Linux, macOS26 or additional hardware/runtime qualification is implied by local receipts.'
+    ]
+    receipt['review_finished_at'] = datetime.now(timezone.utc).isoformat()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open('x') as output:
+        output.write(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
+    print(json.dumps({k: v for k, v in receipt.items()
+                      if k not in {'files', 'before', 'after', 'cli_input_identity'}}, indent=2))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, KeyError, IndexError, ET.ParseError) as error:
+        raise SystemExit('Independent native audit NOT ESTABLISHED: ' + str(error))

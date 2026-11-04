@@ -1,0 +1,35 @@
+Runtime evidence preparation, candidate09 and successors
+
+This directory is owned by the independent runtime/evidence reviewer. The tools
+here only read existing frozen source and completed receipts and write new audit
+artifacts. They never execute Swift, tests, codecs, servers, Git, or publication.
+Native execution belongs exclusively to root.
+
+Current preparation does not qualify candidate09. Its focused run exited1 with
+one active-trickle readiness failure. That failure must remain visible even if a
+later frozen test-harness repair passes. No source10 or final coverage is assumed.
+
+prepare_plan.py --candidate NN [--cli-candidate 09] creates a fresh planned-NN
+folder containing two specs for the unchanged runtime-coverage/reconcile.py and
+an explicit audit-plan.json. These are only planned paths; absent required
+receipts cannot be skipped. The generator refuses existing plan directories.
+
+Before execution, root/reviewer must align the plan's focused runs and supporting
+inputs with actual named final receipts and source reviews. Create a new plan
+filename rather than altering any spec that has already generated a proof.
+All ordinary, inventory and sanitizer paths must refer to the final snapshot.
+Only release/CLI may reuse an earlier snapshot, and only after the checker proves
+all production, package, script, fixture and resource bytes are identical. A passing09 production
+build cannot replace final ordinary/sanitizer evidence.
+
+audit-final.py --config planned-NN/audit-plan.json --output review-NN-source.json
+requires completed exact-source runs, both reconciliation proofs, raw captures,
+XML, exact parameter argument-start multisets and aggregate completions. It uses
+its own second parser, independently of reconcile.py. It refuses output overwrite.
+No skipped declarations or known-issue completions are treated as passed.
+The original audit.py remains byte-preserved because preparation-10.json records
+it; audit-final.py additionally verifies discovery-helper and planned-command identity.
+
+These tools cannot certify external conformance or peers, Linux execution, OS26
+runtime, full-cross-target concurrent sanitizer execution, or whole-R3 acceptance.
+The CLI/process report verifies local assertions and expected exit codes only.

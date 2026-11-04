@@ -1,0 +1,29 @@
+--- ci-repair-evidence-09/package.py
++++ ci-repair-evidence-14/package.py
+@@ -17,6 +17,9 @@
+ EXCLUDED = {'.git', '.build', '__pycache__', 'node_modules', '.cache'}
+ SUFFIXES = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+             '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
++VALIDATION_RECEIPT_NAMES = {'result.json', 'command.json', 'source-before.json', 'source-after.json',
++                            'native.log', 'native.stdout', 'native.stderr', 'report.xml',
++                            'report-swift-testing.xml'}
+ README = '''# CI-repair-09 supplemental evidence — NOT_ACCEPTED
+ 
+ Immutable append-only receipts and content-addressed indexes extend the prior 08
+@@ -110,7 +113,15 @@
+         path = safe_path(self.workspace, ref['path'])
+         if text_only:
+             require(path.suffix.lower() in SUFFIXES, 'Non-receipt/binary input refused: ' + str(path))
+-            require(not any(p in EXCLUDED or re.fullmatch(r'.*-build(?:-\d+)?', p) for p in path.relative_to(self.workspace).parts[:-1]), 'Build/cache input refused')
++            parts = path.relative_to(self.workspace).parts
++            # A completed native wrapper's run label may itself end in -build-N.
++            # Permit only direct, named receipt leaves under work/validation;
++            # real build trees, nested files and excluded cache names stay denied.
++            validation_receipt = (len(parts) == 4 and parts[:2] == ('work', 'validation')
++                                  and parts[-1] in VALIDATION_RECEIPT_NAMES)
++            require(not any(p in EXCLUDED or
++                    (re.fullmatch(r'.*-build(?:-\d+)?', p) and not (validation_receipt and i == 2))
++                    for i, p in enumerate(parts[:-1])), 'Build/cache input refused')
+         data, mode = stable_read(path)
+         require(sha(data) == ref['sha256'], 'Input hash mismatch: ' + str(path))
+         require(path not in self.inputs or self.inputs[path] == (sha(data), mode), 'Input changed between roles')

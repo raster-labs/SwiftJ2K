@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Read-only completed ordinary/inventory/release/CLI audit; sanitizer runs remain separate."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import json
+import runpy
+import re
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'ordinary-cli-partial.json'
+if out.exists(): raise SystemExit('Refusing partial receipt overwrite')
+audit = runpy.run_path(str(here / 'audit-final.py'))
+require, sha, source_map, parse = (audit[k] for k in
+    ['require', 'sha', 'source_map', 'independently_parse'])
+helper = runpy.run_path(str(work / 'runtime-coverage/reconcile.py'))
+read = lambda p: json.loads(Path(p).read_text())
+source = work / 'candidate-snapshot-14'
+manifest_path = work / 'candidate-snapshot-14-source.json'
+manifest = read(manifest_path)
+require(source_map(source) == manifest, 'Frozen14 bytes differ from manifest')
+receipt = {'state': 'ORDINARY_INVENTORY_RELEASE_CLI_RECONCILED_SANITIZERS_PENDING',
+    'at': datetime.now(timezone.utc).isoformat(), 'files': {}, 'runs': {}}
+
+def record(p):
+    p = Path(p).resolve()
+    digest = sha(p)
+    require(str(p) not in receipt['files'] or receipt['files'][str(p)] == digest,
+            'Input changed during audit: ' + str(p))
+    receipt['files'][str(p)] = digest
+    return digest
+
+plan_path = work / 'planned-native-sequence-14.json'
+plan = read(plan_path)
+planned = {g['label']: g for g in plan['gates']}
+require(plan['source'] == str(source), 'Native plan uses another source')
+
+def run(name):
+    d = work / 'validation' / name
+    command, result = read(d / 'command.json'), read(d / 'result.json')
+    require(result['exit_code'] == result['wrapper_exit_code'] == 0 and result['changed_inputs'] == [],
+            'Failed or changed run: ' + name)
+    require(read(d / 'source-before.json') == read(d / 'source-after.json') == manifest and
+            command['source_files'] == len(manifest), 'Wrong source identity: ' + name)
+    require(Path(command['cwd']).resolve() == source and command['command'] == planned[name]['command'],
+            'Command/cwd differs from plan: ' + name)
+    require(record(planned[name]['template_receipt']) == planned[name]['template_sha256'],
+            'Planned command template changed')
+    require(command['wrapper_sha256'] == record(work / 'run-validation.py') == plan['wrapper_sha256'],
+            'Wrapper identity differs')
+    require(command['test_environment'] == {'SWIFTJ2K_TEST_CLI_PATH': None,
+            'ASAN_OPTIONS': None, 'TSAN_OPTIONS': None}, 'Suppression/override environment differs')
+    require(result['capture_complete'] and result['capture_threads_joined'] and result['capture_errors'] == [],
+            'Incomplete capture: ' + name)
+    require(record(d / 'native.log') == result['log_sha256'], 'Merged log changed: ' + name)
+    require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing raw stream')
+    for kind, value in result['native_streams'].items():
+        p = d / ('native.' + kind)
+        require(p.resolve() == Path(value['path']).resolve() and record(p) == value['sha256'] and
+                p.stat().st_size == value['bytes'], 'Raw capture changed: ' + name)
+        require(not audit['DIAGNOSTIC'].search(p.read_text()), 'Sanitizer finding: ' + name)
+    require(Counter((d / 'native.log').read_bytes().splitlines()) ==
+            Counter((d / 'native.stdout').read_bytes().splitlines()) +
+            Counter((d / 'native.stderr').read_bytes().splitlines()), 'Merged/raw line multiset differs')
+    for value in result.get('built_cli_products_at_completion', {}).values():
+        require(record(value['path']) == value['sha256'], 'Recorded CLI binary changed: ' + name)
+    for p in d.iterdir():
+        if p.is_file(): record(p)
+    receipt['runs'][name] = {'exit_code': 0, 'elapsed_seconds': result['elapsed_seconds'],
+        'command': command['command'], 'compiler': command['compiler'],
+        'raw_capture_verified': True, 'source_files': len(manifest), 'log_sha256': result['log_sha256']}
+    return command, result
+
+ordinary_command, _ = run('candidate-full-14')
+require(ordinary_command['command'][:2] == ['swift', 'test'] and
+        not any(x in ordinary_command['command'] for x in ['--filter', '--skip', '--sanitize']),
+        'Ordinary run is not unrestricted full ordinary execution')
+inventory_command, _ = run('candidate-tsan-inventory-14')
+idir = work / 'sanitizer-inventory-14/thread'
+inv = read(idir / 'inventory.json')
+require(inv['sanitizer'] == 'thread' and inv['equal_to_ordinary'] and inv['disjoint'] and inv['union_equals_full'],
+        'Invalid thread discovery proof')
+sets = {kind: helper['ids'](idir / (kind + '.ids')) for kind in ['all', 'jpip', 'complement']}
+require(not sets['jpip'] & sets['complement'] and sets['jpip'] | sets['complement'] == sets['all'],
+        'Invalid discovered partition')
+require(sets['jpip'] == {x for x in sets['all'] if re.match(r'^SwiftJ2KJPIPTests[./]', x)},
+        'JPIP selection differs from inventory')
+require(inv['counts'] == {k + '_declarations': len(v) for k, v in sets.items()}, 'Inventory counts differ')
+for kind in ['reference', 'sanitized']:
+    entry = inv[kind]
+    require(entry['exit_code'] == 0 and entry['command'][:3] == ['swift', 'test', 'list'], 'Failed discovery')
+    require(('--sanitize' in entry['command']) == (kind == 'sanitized'), 'Wrong discovery sanitizer')
+    if kind == 'sanitized':
+        require(entry['command'][entry['command'].index('--sanitize') + 1] == 'thread', 'Wrong sanitizer mode')
+    raw_ids = (idir / (kind + '.stdout')).read_text().splitlines()
+    require(len(raw_ids) == len(set(raw_ids)) and set(raw_ids) == sets['all'], 'Discovery ID mismatch')
+    for stream in ['stdout', 'stderr']:
+        require(record(idir / (kind + '.' + stream)) == entry[stream + '_sha256'], 'Discovery stream changed')
+for p in idir.iterdir():
+    if p.is_file(): record(p)
+argv = inventory_command['command']
+inventory_helper = (Path(inventory_command['cwd']) / argv[1]).resolve()
+require(record(inventory_helper) == manifest['Scripts/verify-sanitizer-inventory.py'], 'Discovery helper differs')
+require(argv[argv.index('--sanitizer') + 1] == 'thread' and
+        (source / argv[argv.index('--output') + 1]).resolve() == idir, 'Discovery invocation target differs')
+bindings, titles = helper['display_map'](source, sets['all'])
+run_spec = {'label': 'ordinary14', 'directory': str(work / 'validation/candidate-full-14'),
+            'swift_testing_xml': [str(work / 'validation/candidate-full-14/report-swift-testing.xml')]}
+first = helper['parse_run'](run_spec, sets['all'], bindings)
+xc, sw, params = parse(work / 'validation/candidate-full-14', bindings)
+require(set(xc) | set(sw) == sets['all'] and not set(xc) & set(sw), 'Ordinary execution/inventory mismatch')
+require(first['source'] == manifest and first['runtime']['xctest'] == {k: 'passed' for k in xc} and
+        first['runtime']['swift_testing'] == sw and first['runtime']['parameter_cases'] == params and
+        not first['runtime']['diagnostic_gaps'], 'Independent parsers disagree')
+for title in titles: record(title['source'])
+receipt['ordinary'] = {'declarations': len(xc) + len(sw), 'xctest': len(xc), 'swift_testing': len(sw),
+    'parameter_declarations': len(params), 'parameter_argument_starts': sum(sum(v.values()) for v in params.values()),
+    'declared_and_executed_ids': sorted(sets['all']), 'parameter_cases': params,
+    'independent_parsers_agree': True, 'skips_or_failures': []}
+receipt['inventory'] = {'mode': 'thread', 'counts': inv['counts'], 'ordinary_and_sanitized_discovery_equal': True,
+    'boundary': 'Discovery is not execution of sanitizer tests.'}
+release_command, release = run('candidate-release-build-14')
+cli_command, _ = run('candidate-cli-14')
+require(release_command['command'][:2] == ['swift', 'build'] and
+        release_command['command'][release_command['command'].index('-c') + 1] == 'release' and
+        release_command['command'][release_command['command'].index('--product') + 1] == 'swiftj2k-cli',
+        'Release command differs')
+cli_path = work / 'cli-integration-14/report.json'
+cli = read(cli_path)
+record(cli_path)
+require(cli['status'] == 'passed' and cli['checks'] == len(cli['commands']) == 246 and
+        all(c['exit_code'] == c['expected_exit_code'] for c in cli['commands']), 'CLI report failed/count mismatch')
+product = release['built_cli_products_at_completion']['release']
+require(record(cli['binary']) == cli['binary_sha256'] == product['sha256'] and
+        Path(cli['binary']).resolve() == Path(product['path']).resolve(), 'Release/CLI binary identity differs')
+require((source / cli_command['command'][cli_command['command'].index('--binary') + 1]).resolve() ==
+        Path(cli['binary']).resolve(), 'CLI invocation used another binary')
+for key, relative in [('test_runner_sha256', 'Scripts/test-cli.py'), ('installer_sha256', 'Scripts/install-cli.sh'),
+                      ('manual_sha256', 'ManPages/swiftj2k-cli.1')]:
+    require(cli[key] == manifest[relative], 'CLI script/manual source mismatch: ' + relative)
+receipt['cli'] = {'checks': 246, 'all_expected_exit_codes_match': True,
+    'binary_sha256': cli['binary_sha256'], 'fresh_final14_release_source': True}
+for p in [Path(__file__), here / 'audit-final.py', work / 'runtime-coverage/reconcile.py',
+          manifest_path, plan_path, here / 'preparation.json', here / 'focused14-check.json']:
+    record(p)
+require(source_map(source) == manifest, 'Frozen source changed during partial audit')
+for p, digest in receipt['files'].items(): require(sha(p) == digest, 'Input changed during partial audit: ' + p)
+receipt['source_files'] = len(manifest)
+receipt['source_manifest_sha256'] = sha(manifest_path)
+receipt['boundaries'] = [
+    'Only completed ordinary, thread discovery, release build and246 CLI checks are reconciled here.',
+    'Both runtime partitions for both sanitizers remain separate required gates; discovery is not execution.',
+    'No local native execution, source modification, full-R3 acceptance, external-peer waiver or merge.',
+    'All five direct independent peer gates remain UNEXECUTED/UNWAIVED.'
+]
+with out.open('x') as output: output.write(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
+print(json.dumps({'state': receipt['state'], 'ordinary': {k:v for k,v in receipt['ordinary'].items()
+    if k not in ['declared_and_executed_ids','parameter_cases']}, 'inventory': receipt['inventory'],
+    'cli': receipt['cli'], 'source_files': len(manifest)}, indent=2))

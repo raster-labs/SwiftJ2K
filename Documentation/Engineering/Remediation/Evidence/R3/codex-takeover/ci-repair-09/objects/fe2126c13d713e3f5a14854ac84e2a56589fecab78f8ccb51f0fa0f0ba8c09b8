@@ -1,0 +1,2 @@
+Pure arithmetic model checked 65532 chunk/budget schedules through N=14. All admitted overlaps fit. Successful total copied bytes <=6N; largest observed ratio (4.357142857142857, (14, [1, 2, 3, 4, 3, 1], 28, 61)). This is static model evidence, not Swift execution.
+Earlier attempted universal4N assertion failed for N10/chunks[1,1,2,1,4,1]/budget21/copied41; the deterministic Swift regression claims4N only for one-byte arrivals, not arbitrary chunking. Failure preserved here.

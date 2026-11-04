@@ -1,0 +1,120 @@
+{
+  "original_declarations": [
+    "descriptorDenialPrecedesWireMaterialisation",
+    "cacheProjectionAndMergeDenyBeforeMutation",
+    "remainingWireAllowanceIsAppliedBeforeTheNextRead",
+    "imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt",
+    "volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead",
+    "volumeResumptionDeductsEarlierWireBytesBeforeRead",
+    "volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead",
+    "reassemblyReportIncludesDescriptorDominatedPhase",
+    "volumeReportCarriesDescriptorDominatedReassemblyPeak",
+    "volumeReportIncludesDescriptorHeavyWebSocketHandshake"
+  ],
+  "added_declarations": [
+    "admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion"
+  ],
+  "original_declaration_count": 10,
+  "current_declaration_count": 11,
+  "six_cleanup_wrappers": [
+    "imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt",
+    "volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead",
+    "volumeResumptionDeductsEarlierWireBytesBeforeRead",
+    "volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead",
+    "volumeReportCarriesDescriptorDominatedReassemblyPeak",
+    "volumeReportIncludesDescriptorHeavyWebSocketHandshake"
+  ],
+  "original_test_bodies_preserved_except_exact_cleanup_wrapper": true,
+  "original_expect_count": 40,
+  "original_issue_record_count": 5,
+  "added_expect_count": 8,
+  "original_assertion_lines": {
+    "descriptorDenialPrecedesWireMaterialisation": [
+      "Issue.record(\"Expected descriptor admission failure\")",
+      "#expect(error.category == .resourceLimitExceeded)",
+      "#expect(error.message.contains(\"before allocation\"))",
+      "#expect(observed.peak == 0)",
+      "#expect(admitted.bins.count == 32)"
+    ],
+    "cacheProjectionAndMergeDenyBeforeMutation": [
+      "#expect(throws: CodecError.self) {",
+      "#expect(throws: CodecError.self) {",
+      "#expect(cache.statistics.entryCount == 0)",
+      "#expect(cache.statistics.totalSize == 0)"
+    ],
+    "remainingWireAllowanceIsAppliedBeforeTheNextRead": [
+      "#expect(try budget.bodyLimit(retaining: 0) == 64)",
+      "#expect(try budget.bodyLimit(retaining: 1024) == 3)",
+      "#expect(throws: CodecError.self) { _ = try budget.bodyLimit(retaining: 0) }"
+    ],
+    "imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt": [
+      "Issue.record(\"Expected cnew body admission failure\")",
+      "#expect(error.category == .resourceLimitExceeded)",
+      "#expect(error.message.contains(\"TCP payload\"))",
+      "#expect(peer.requests.withLock { $0 } > 0)"
+    ],
+    "volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead": [
+      "Issue.record(\"Expected 3D cnew memory admission failure\")",
+      "#expect(error.category == .resourceLimitExceeded)",
+      "#expect(error.message.contains(\"TCP payload\"))",
+      "#expect(await client.lastWireNewlyDeliveredBins == 0)"
+    ],
+    "volumeResumptionDeductsEarlierWireBytesBeforeRead": [
+      "Issue.record(\"Expected remaining cumulative allowance failure\")",
+      "#expect(error.category == .resourceLimitExceeded)",
+      "#expect(error.message.contains(\"TCP payload\"))",
+      "#expect(await client.cumulativeSessionWireBytes == initialEOR.count)"
+    ],
+    "volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead": [
+      "#expect(first.count == 1)",
+      "#expect(first.first?.data == Data(repeating: 7, count: 64))",
+      "#expect(await client.cumulativeSessionWireBytes == 70)",
+      "#expect(await client.lastWireResponseByteCount == 67)",
+      "Issue.record(\"Expected repeated push to exceed the remaining 30-byte transfer allowance\")",
+      "#expect(error.category == .resourceLimitExceeded)",
+      "#expect(error.message.contains(\"declared body\"))",
+      "#expect(await client.cumulativeSessionWireBytes == 70)",
+      "#expect(cached.count == 1)",
+      "#expect(cached.first?.data == Data(repeating: 7, count: 64))",
+      "#expect(peer.requests.withLock { $0 } == 3)"
+    ],
+    "reassemblyReportIncludesDescriptorDominatedPhase": [
+      "#expect(reconstructed.data == header + tileHeader + Data([0xFF, 0xD9]))",
+      "#expect(reconstructed.peakWorkspaceBytes >= bins.count * MemoryLayout<JPIPDataBin>.stride)",
+      "#expect(reconstructed.peakWorkspaceBytes > reconstructed.data.count * 100)"
+    ],
+    "volumeReportCarriesDescriptorDominatedReassemblyPeak": [
+      "#expect(reassembled.peakWorkspaceBytes > (standalone.report.peakWorkspaceBytes ?? 0))",
+      "#expect(delivered.bins.count >= 512)",
+      "#expect((delivered.report.peakWorkspaceBytes ?? 0) >= reassembled.peakWorkspaceBytes)"
+    ],
+    "volumeReportIncludesDescriptorHeavyWebSocketHandshake": [
+      "#expect(reassembly.peakWorkspaceBytes < handshakeDescriptorFloor)",
+      "#expect((standalone.report.peakWorkspaceBytes ?? 0) < handshakeDescriptorFloor)",
+      "#expect(delivered.report.fidelity == .exactSamples)",
+      "#expect((delivered.report.peakWorkspaceBytes ?? 0) >= handshakeDescriptorFloor)"
+    ]
+  },
+  "peer_scripts": {
+    "HandshakeReportPeer": {
+      "script_preserved_except_owner_admission_and_worker_completion": true,
+      "sha256_normalised_script": "a6d3a8c83abb0b7a01f3418cd512c1ef365067736dd843f2733cfb82f0f6b56b",
+      "accepted_socket_timeout": "30"
+    },
+    "RepeatedPushAdmissionPeer": {
+      "script_preserved_except_owner_admission_and_worker_completion": true,
+      "sha256_normalised_script": "c8593edd48dfe7e379388eea52f51606c14a906c1f4069b41d537ac45041d0cf",
+      "accepted_socket_timeout": "30"
+    },
+    "HeaderOnlyAdmissionPeer": {
+      "script_preserved_except_owner_admission_and_worker_completion": true,
+      "sha256_normalised_script": "876feb83eabc69b648838ea30f8b4224002bf5fc78c2501ea7d741750efd4097",
+      "accepted_socket_timeout": "1"
+    }
+  },
+  "previous_repairs_20_21_unchanged": {
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": "981a54ac94388417006da101c60a424c73a896e420cd835ee6c49acb81b844bd",
+    "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": "2d238e48f8b3770b9a1b61213703fc4ed1da0e922c93ce34b1e573aa9bee92e2"
+  },
+  "no_native_or_compiler_executed": true
+}

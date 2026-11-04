@@ -1,0 +1,150 @@
+{
+  "source_summary_sha256": "0c3190b9f664e08fe8334d5eb481759208def1027850dc70dfe3725bc2953e4b",
+  "rows": [
+    {
+      "case": "odd8",
+      "operation": "encode-ebcot",
+      "baseline_bytes": [
+        2332
+      ],
+      "candidate_bytes": [
+        2332
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "encode-ht",
+      "baseline_bytes": [
+        2829
+      ],
+      "candidate_bytes": [
+        2823
+      ],
+      "maximum_size_change_percent": -0.21208907741251393,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "decode-ebcot",
+      "baseline_bytes": [
+        2332
+      ],
+      "candidate_bytes": [
+        2332
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "decode-ht",
+      "baseline_bytes": [
+        2829
+      ],
+      "candidate_bytes": [
+        2829
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "transcode-to-ht",
+      "baseline_bytes": [
+        2829
+      ],
+      "candidate_bytes": [
+        2823
+      ],
+      "maximum_size_change_percent": -0.21208907741251393,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "odd8",
+      "operation": "transcode-to-ebcot",
+      "baseline_bytes": [
+        2332
+      ],
+      "candidate_bytes": [
+        2332
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "encode-ebcot",
+      "baseline_bytes": [
+        41093
+      ],
+      "candidate_bytes": [
+        41093
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "encode-ht",
+      "baseline_bytes": [
+        48468
+      ],
+      "candidate_bytes": [
+        48462
+      ],
+      "maximum_size_change_percent": -0.012379301807374787,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "decode-ebcot",
+      "baseline_bytes": [
+        41093
+      ],
+      "candidate_bytes": [
+        41093
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "decode-ht",
+      "baseline_bytes": [
+        48468
+      ],
+      "candidate_bytes": [
+        48468
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "transcode-to-ht",
+      "baseline_bytes": [
+        48468
+      ],
+      "candidate_bytes": [
+        48462
+      ],
+      "maximum_size_change_percent": -0.012379301807374787,
+      "investigate_over_1_percent": false
+    },
+    {
+      "case": "medium16",
+      "operation": "transcode-to-ebcot",
+      "baseline_bytes": [
+        41093
+      ],
+      "candidate_bytes": [
+        41093
+      ],
+      "maximum_size_change_percent": 0.0,
+      "investigate_over_1_percent": false
+    }
+  ],
+  "any_size_regression": false
+}

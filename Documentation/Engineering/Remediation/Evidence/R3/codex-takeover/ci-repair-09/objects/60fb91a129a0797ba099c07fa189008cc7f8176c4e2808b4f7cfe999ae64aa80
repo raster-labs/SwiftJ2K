@@ -1,0 +1,37 @@
+Candidate17 bounded failed-runtime review — stopped
+
+Ordinary17 is FAILED, exit1. The completed wrapper and raw streams are intact,
+with identical before/after hashes for all 2,282 frozen17 files. Independent
+regex/XML reconciliation found 1,034 XCTest starts and passes, and 324 Swift
+Testing declarations with complete observed starts/completions: 320 passed and
+four failed, with no skips. The final reporter records 41 suites and four issues.
+No fresh 17 discovery inventory ran, so this is observed runtime/XML accounting,
+not a sanitizer-inventory or successful full-coverage proof.
+
+The four failed declarations are completedRequestEventuallyReleasesItsDelegateOwnership,
+sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel,
+completionAndCancellationHaveOneWinner (the false argument), and
+absoluteDeadlineCancelsSilentResponse. Exact issue lines and XML messages remain
+in ordinary-failed17-check.json and the unchanged raw logs. The relevant HTTPS
+production/test file hashes equal15; identity does not establish why this run
+failed or assign causation to scheduling, fixtures or production code.
+
+The serial sequence stopped after ordinary17. All six later inventory/runtime
+stages are UNEXECUTED. No 17 sanitizer proof or final successful audit exists.
+Earlier15 success remains15-scoped; no failure is overwritten or promoted.
+
+Preparation had independently verified exact equality of all 512 actual CLI
+production/package/script/resource/fixture inputs from 16 to 17. That supports
+only input-equivalent applicability of the separately reviewed CLI16 receipts;
+it does not close the ordinary17 failure or execute any17 sanitizer stage.
+
+The version17 secondary auditor is preserved as unapproved maintenance. Its
+only change recognises the exact three-file17 fixture delta instead of the
+obsolete04 byte-preservation assertion. It normalises exactly to the15 auditor,
+and eight synthetic tamper cases reject. It has not been independently approved
+or used for final17 qualification. The original strict reconciler is unchanged.
+
+No native/network/Git/repository/source edits were performed by this reviewer.
+Whole R3 remains NOT ACCEPTED; merge, R4 and five independent direct gates remain
+gated/unwaived. Root has moved source work to 18; this17 preparation and failed
+record are frozen. Positive stop.

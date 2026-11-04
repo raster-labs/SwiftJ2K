@@ -1,0 +1,58 @@
+Candidate22 evidence preparation — documentation pending, positively stopped
+
+New manifest-candidate-22-02.json extends preparation01 without editing any earlier
+manifest or published object. The unchanged reviewed helper14 completed a read-only
+full dry run. Nothing was published and the proposed index exists only in memory.
+
+The manifest pins the frozen22 source/provenance, scoped CLI16 equivalence22,
+admission22 writer and independent source-review pairs, two completed native22
+records with exact stdout/stderr/merged logs/XML/source maps, and the independent
+failed-sequence review with its separate completed-record checker and reconciliation.
+All 2,405 frozen files were independently rehashed; current implementation/CI scopes
+match frozen22. All 512 CLI reuse inputs were rehashed in frozen16, frozen22 and the
+current repository. This establishes input equality for the existing scoped CLI16
+results, not fresh22 CLI or sanitizer qualification.
+
+Ordinary22 passed 1,034 XCTest plus 325 Swift Testing declarations, total 1,359.
+JPIP ASan22 failed: 544 XCTest passed, 100 Swift Testing declarations passed and four
+HTTPS declarations failed. The independent complete-stream review found no recognised
+sanitizer diagnostic. Five later native stages remain UNEXECUTED. The completed review
+is a bounded failed-sequence reconciliation, not a complete sanitizer inventory proof.
+Unapproved auditor22 derivative/specs/probes are excluded; their references inside the
+unaltered review source receipt do not include or approve those separate preparations.
+
+The earlier preparation01 selection remains: all seven exact hosted18 job logs and
+completed metadata/provider review; independent failed-hosted reconciliation, exact
+partial diagnostic XML and strict incomplete-retention rejection; instrumented
+passing diagnostic19 preparation/execution and reviews; stopped source20/21 writer
+and independent reviews. Diagnostic19 never qualifies unmodified18/22, closes failed17
+or18,  or establishes sole causation. Failed17 remains in published18. All historical
+failure meanings and exact logs are preserved. No diagnostic23 input is selected.
+
+Read-only packaging result:
+- 135 artifact roles; 119 proposed payload entries, 6,101,003 bytes.
+- Four verified prior08 references; five already-identical supplemental payload entries.
+- Manifest SHA256: e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2.
+- Proposed documentation-pending index SHA256: 0f5c12a1547ea63422eddb90c5f9075eae433078a45c8b5d44efab90ceccaf86.
+These describe the proposed payload set, not newly written files. The fixed append-only
+ci-repair-09 destination and immutable index naming are unchanged.
+
+Published08/15/18 corpus is byte-identical before/after: 1,050 files, 50,648,899 bytes;
+relative-path/hash/byte-map SHA256:
+df9c7da0d27501820dbeb94b5bbccb6e4d28540fece8c409359348b1ccfab4c0.
+The existing08 index and15/18 supplemental indexes remain unchanged. Earlier local
+preparations/reviews/helpers are retained unchanged. No binaries, build/cache/full
+snapshot trees, broad private process inventories or secret-shaped content are selected.
+
+Final publication remains pending only root-supplied exact stopped publication-doc22b
+pins and its completed independent review pair, then a new document-inclusive final
+manifest/dry run and root's claim/stopped-writer/publication decision. Those missing
+inputs are not waived. Subsequent exact-head hosted feedback remains a separate
+postpublication step. This documentation-pending manifest must not be published.
+All five direct external gates remain UNEXECUTED/UNWAIVED; R3 NOT_ACCEPTED, merge not
+authorised, R4 gated.
+
+POSITIVE STOP. No native/compiler/test/codec/server/Git/network or repository action
+was executed. Only local filesystem/hash/receipt processing and the reviewed helper's
+read-only assemble were performed. No process or future polling remains active.
+The report and source binding are local handoff receipts outside the pinned manifest.

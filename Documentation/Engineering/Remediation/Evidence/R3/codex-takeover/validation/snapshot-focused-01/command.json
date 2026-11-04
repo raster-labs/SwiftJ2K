@@ -1,0 +1,26 @@
+{
+  "started_at": "2026-10-31T06:10:03.650023+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-01",
+  "command": [
+    "swift",
+    "test",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--scratch-path",
+    "../diagnostic-build-01",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--filter",
+    "CodexR3|R3VolumeRemediationTests|R3JPIPRemediationTests|R1VolumeRemediationTests"
+  ],
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1298,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n"
+}

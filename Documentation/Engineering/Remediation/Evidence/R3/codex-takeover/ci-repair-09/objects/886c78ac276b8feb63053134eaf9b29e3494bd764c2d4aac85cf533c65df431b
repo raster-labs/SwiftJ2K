@@ -1,0 +1,64 @@
+{
+  "state": "CORRECTED_DOCS_ACCEPTABLE_FOR_AUTHORISED_DRAFT_PUBLICATION_ONLY",
+  "reviewer": "/root/compiler_portability",
+  "original_prepared_hashes": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "b6a4998d368e0954bf00a2b862bb9bdb9f5d3ff7adb3ef43d50abf560a5cddc3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e"
+  },
+  "reviewed_publication_hashes": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e"
+  },
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16-source.json": "49bce7099f2cc31d5016ef3667ae4e4c4bd300e3c15886afc436ee2edad64ecd",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-18-source.json": "20e72ac651207620fb5eb8e12f79217af96c255a4597160c21347ca8203b5a94",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/source-cli-equivalence-17.json": "677c9e8a5a005a3f4d5c5d30c10e4482b118c757653bb60349f1beaf10d48a83",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/native-source.json": "ee4f010d617d41925bc6d70bcc49ca03f75d41ee5539952a4fc90ccc995300da",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448589.log": "5cd18d60d8004353493481c699daa038a30f251adb46f6c38afbe96fc8d7726f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448690.log": "010681e45898d556c29e175ceea6e4744fe7047072a2f37717b64825286959b0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448725.log": "acceaa0ddd28f57b8392cd3aa3f099b83fcf03dada29ce286ef498949e19316c",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448753.log": "bea0ae860dc6de7386b0f5e4613c7aad5f7a7526b0ad4e9b639544e17f720885",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448768.log": "3dbb4a3c5d38d1f59974b31dedccc928deb0c2efd140fb8da021175efdf24306",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448786.log": "ddce333d6ea22d528199234457348e511e0ca72515f11582d552fdb273514a00",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-job124521448817.log": "9567293a3bd72c38a5357db50fbdb007af08ac8e30dbb18900626d50f30be554",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/publication-docs-18/prepared-source.json": "6cbe22c0576b4bc1db5ec1391726bf125edf0ec0d2da5f3ec1bc9f2ee61585e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-18/cli16-input-equivalence18.json": "56f31b97a017cbd3c230e9b187c7f5def212dfe28adabae826663d61d95e49ee",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41195752705-attempt1-review.json": "f9e65aa63b5fe1962f8af6b150e07c395f4c4b9409fe5a1c5f69bc082b12e0e0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/native-report.txt": "1e74770a590947d205bab69c2c35f3abaec7da7919d34ecd331c216e63e77ed9",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-native-verification-16.json": "3e3af1d1eb29c3843b554bce1f564e02738f3dc6bd944bf4e0d270b8d6ef7f1f",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/ordinary-failed17-check.json": "39dac52e81e1a0c1d2e06e45fcb2dae430cb3009f36642a6d1ad9ee72c1100d3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-fixture-review-18/report.txt": "cd76fb85f1dae37c803f27b334d59842c145d5cca2642e78b524c5fae3d254b0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-fixture-review-18/source.json": "280a5d5cac5515b9a34b715bba9348af554a676fe185a519be39085ba5758efc"
+  },
+  "verified_cli_inputs_16_to18": 512,
+  "verified_linux_stdout_failure_logs": [
+    "run-41195752705-attempt1-job124521448690.log",
+    "run-41195752705-attempt1-job124521448753.log",
+    "run-41195752705-attempt1-job124521448786.log",
+    "run-41195752705-attempt1-job124521448817.log"
+  ],
+  "findings_resolved": [
+    "unqualified bounded-shutdown wording",
+    "hosted-CI gate row omitted second retained failure"
+  ],
+  "remaining_material_wording_findings": [],
+  "native_execution": false,
+  "repository_edits": false,
+  "network_git_actions": false,
+  "r3_acceptance": false,
+  "merge_accepted": false,
+  "artifacts": {
+    "R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+    "STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "report.txt": "133837ac0b03611dc8ed03177566aa48b4dc84e4959a4a02d58a3e7502138ee5",
+    "r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e",
+    "matrix-correction.diff": "a17ff569d8375e6db79c3f89fc911525590df306ad878d338c6ceae0ee3175f5",
+    "reviewed-current-inputs.json": "8c8b40b614e23a3174e22b89975b19fe900aa8f0006e993a54af26a1dcca35c2"
+  },
+  "stop": true
+}

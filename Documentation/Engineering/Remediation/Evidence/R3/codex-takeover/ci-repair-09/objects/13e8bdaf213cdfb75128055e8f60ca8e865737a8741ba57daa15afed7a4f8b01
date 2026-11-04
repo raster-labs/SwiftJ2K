@@ -1,0 +1,61 @@
+"""Read-only receipt analysis; no native/network/subprocess execution."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime,timezone
+import hashlib,json,re
+D=Path(__file__).resolve().parent;W=D.parent;S=W/'candidate-snapshot-16'
+sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read=lambda p:json.loads(Path(p).read_text())
+manifest=read(W/'candidate-snapshot-16-source.json')
+source=lambda:{str(p.relative_to(S)):sha(p) for p in S.rglob('*') if p.is_file() and '.build' not in p.parts}
+assert source()==manifest and len(manifest)==2281
+files={};record=lambda p:files.update({str(Path(p).resolve()):sha(p)})
+plan=read(W/'planned-native-sequence-16.json');assert plan['source_manifest_sha256']==sha(W/'candidate-snapshot-16-source.json')
+assert plan['wrapper_sha256']==sha(W/'run-validation.py')
+assert plan['startup_probe_sha256']==sha(W/'cli-startup-probe-16.py')
+runs={}
+for gate in plan['gates']:
+ d=W/'validation'/gate['label'];c=read(d/'command.json');r=read(d/'result.json')
+ assert c['command']==gate['command'] and c['cwd']==str(S)
+ assert c['wrapper_sha256']==plan['wrapper_sha256'] and c['source_files']==2281
+ assert c['test_environment']=={'SWIFTJ2K_TEST_CLI_PATH':None,'ASAN_OPTIONS':None,'TSAN_OPTIONS':None}
+ assert r['exit_code']==r['wrapper_exit_code']==0 and not r['changed_inputs']
+ assert r['capture_complete'] and r['capture_threads_joined'] and not r['capture_errors'] and r['merged_synthetic_eof_newlines']==0
+ assert read(d/'source-before.json')==read(d/'source-after.json')==manifest
+ assert sha(d/'native.log')==r['log_sha256']
+ for stream,item in r['native_streams'].items():
+  p=d/('native.'+stream);assert str(p.resolve())==item['path'] and sha(p)==item['sha256'] and p.stat().st_size==item['bytes']
+ assert Counter((d/'native.log').read_bytes().splitlines())==Counter((d/'native.stdout').read_bytes().splitlines())+Counter((d/'native.stderr').read_bytes().splitlines())
+ assert not re.search(r'WARNING: ThreadSanitizer|ERROR: (?:AddressSanitizer|LeakSanitizer)|runtime error:',(d/'native.log').read_text())
+ for p in d.iterdir():
+  if p.is_file():record(p)
+ runs[gate['label']]={'exit_code':0,'elapsed_seconds':r['elapsed_seconds'],'log_sha256':r['log_sha256'],'raw_capture_verified':True}
+cli=read(W/'cli-integration-16/report.json');assert cli['status']=='passed' and cli['checks']==len(cli['commands'])==246
+assert all(x['exit_code']==x['expected_exit_code'] for x in cli['commands'])
+binary=Path(cli['binary']);assert sha(binary)==cli['binary_sha256']=='27d601f7fedb0fdeebf45ff605521ac4be4322d673add2ba0bb095c54e0a7266'
+release=read(W/'validation/candidate-release-build-16/result.json')['built_cli_products_at_completion']['release']
+assert release['path']==str(binary) and release['sha256']==sha(binary)
+assert cli['installer_sha256']==manifest['Scripts/install-cli.sh'] and cli['test_runner_sha256']==manifest['Scripts/test-cli.py']
+startup=read(W/'cli-startup-results-16/results.json');assert startup['binary_sha256']==sha(binary) and len(startup['cases'])==2
+fixture=S/'Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2';assert sha(fixture)==startup['fixture_sha256']==manifest[str(fixture.relative_to(S))]
+for case,mode in zip(startup['cases'],['text','json']):
+ assert case['mode']==mode and case['startup_observed_while_alive'] and case['process_joined'] and not case['forced_kill'] and case['returncode']==130 and case['failure'] is None
+ expected=[str(binary),'jpip','server','--single-file',str(fixture),'--host','127.0.0.1','--port','0']+(['--json'] if mode=='json' else [])
+ assert case['command']==expected and 0<=case['ready_seconds']<5
+ out=(W/'cli-startup-results-16'/(mode+'.stdout')).read_text();err=(W/'cli-startup-results-16'/(mode+'.stderr')).read_text()
+ assert len(out.splitlines())==1 and out.endswith('\n') and err=='swiftj2k-cli: interrupted; no output was published.\n'
+ if mode=='text':
+  match=re.fullmatch(r'jpip server listening on 127\.0\.0\.1:([1-9][0-9]*) \(1 targets\)\n',out);assert match and 0<int(match[1])<=65535
+ else:
+  value=json.loads(out);assert value=={'command':'jpip','host':'127.0.0.1','maxSessions':32,'port':value['port'],'registeredTargets':1,'role':'server','status':'running'} and 0<value['port']<=65535
+root=read(W/'cli-native-verification-16.json');assert root['binary_sha256']==sha(binary) and root['startup_cases']==startup['cases']
+for row in root['runs']:assert sha(W/'validation'/row['label']/'result.json')==row['result_sha256']
+for p in [W/'candidate-snapshot-16-source.json',W/'planned-native-sequence-16.json',W/'run-validation.py',W/'cli-startup-probe-16.py',W/'cli-native-verification-16.json',W/'cli-integration-16/report.json',binary,fixture,D/'report.txt',D/'source.json',Path(__file__)]:record(p)
+for p in (W/'cli-startup-results-16').iterdir():
+ if p.is_file():record(p)
+assert sha(D/'report.txt')=='6c2849f8f16b299130a04cfa77d6d3b29f76865a1ddb433b3f6862e3c089e9b4'
+assert sha(D/'source.json')=='9fd9e3d7105f8f609d0f01258acb2267a34c36b142e00975b2d6339be1b9c1ce'
+assert source()==manifest and all(sha(p)==h for p,h in files.items())
+result={'state':'CLI16_NATIVE_RECEIPTS_VERIFIED','finished_at':datetime.now(timezone.utc).isoformat(),'files':files,'source_files':2281,'source_stable':True,'runs':runs,'cli_checks':246,'binary_sha256':sha(binary),'startup_cases':startup['cases'],'native_executed_by_reviewer':False,'boundary':'CLI16 only; no exact-source15 ordinary/sanitizer relabelling, Linux/macOS26 hosted acceptance or whole-R3 approval.'}
+out=D/'native-source.json';assert not out.exists();out.write_text(json.dumps(result,indent=2)+'\n')
+print(json.dumps({k:v for k,v in result.items() if k!='files'},indent=2))

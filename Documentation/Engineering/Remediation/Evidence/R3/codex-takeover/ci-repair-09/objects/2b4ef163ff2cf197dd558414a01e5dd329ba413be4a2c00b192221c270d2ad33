@@ -1,0 +1,17 @@
+{
+  "state": "VERIFIED_UNCHANGED",
+  "source": "candidate-snapshot-15",
+  "matches_prior": "common-contract-identity-10.json",
+  "common_contracts": {
+    "CLI_CONTRACT.md": "8d13c6e32b9c0378d58b547a12333f0930488bedd2f7ceb2157d5fad56eea1db",
+    "COMMON_API.md": "6866eeaefff9b707350d974af4d22c13d45cbe8f8797295c2b2e4595db24b8b0",
+    "MEMORY_CONTRACT.md": "77cfb4d14d523cfcca340c6cf5a994f07776a4cfe4577ad20181ba43cc8b7fe2",
+    "PERFORMANCE.md": "139e83f4c670b514940bcbae2d69560e0b28f866b266019ff8c112c0f388343b",
+    "PLATFORMS.md": "2542feedf31bba35099e64c946b45c4a90a2c753e8ef49c2918853de8939e54e",
+    "SUITE_POLICY.md": "e463188165bba3bc9f74da077691019f6659200a6cc75b9220a0cbfd55d4c9cd",
+    "TESTING.md": "3d01911ff78d52e593ffdbd0962d19607878abc51fad5862f8cc10a927fca765"
+  },
+  "count": 7,
+  "boundary": "Identity only; no new platform/runtime qualification",
+  "prior_identity": "common-contract-identity-14.json"
+}

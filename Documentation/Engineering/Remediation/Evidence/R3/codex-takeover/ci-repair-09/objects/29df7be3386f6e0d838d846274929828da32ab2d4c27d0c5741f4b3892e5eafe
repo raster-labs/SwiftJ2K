@@ -1,0 +1,65 @@
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "R3 portable HTTPS streaming transport harness" started.
+◇ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" started.
+◇ Suite "R3 captured HTTP request close lifecycle" started.
+◇ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test expiredDeadlineReleasesUnstartedOwners() started.
+◇ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() started.
+◇ Test absoluteDeadlineCancelsSilentResponse() started.
+◇ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() started.
+◇ Test completedRequestEventuallyReleasesItsDelegateOwnership() started.
+◇ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() started.
+◇ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() started.
+◇ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() started.
+◇ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" started.
+◇ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() started.
+◇ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() started.
+◇ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() started.
+◇ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() started.
+◇ Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() started.
+◇ Test staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() started.
+◇ Test case passing 1 argument declared → true to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() started.
+◇ Test case passing 1 argument declared → false to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test case passing 1 argument cancelFirst → false to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() started.
+◇ Test taskCancellationJoinsAndAllowsFollowingRequest() started.
+◇ Test case passing 1 argument cancelFirst → true to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() started.
+◇ Test case passing 1 argument inPublicationGap → false to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument inPublicationGap → true to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument mode → "reused" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test case passing 1 argument mode → "fresh" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+◇ Test case passing 1 argument mode → "retry" to repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) started.
+✔ Test expiredDeadlineReleasesUnstartedOwners() passed after 0.006 seconds.
+✔ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() passed after 0.006 seconds.
+✔ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() passed after 0.006 seconds.
+✔ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() passed after 0.006 seconds.
+✔ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) with 2 test cases passed after 0.006 seconds.
+✔ Test "F01: 3D DWT 5-3 and 9-7 enforce ISO/IEC 15444-1 Annex F whole-sample symmetric extension (PWS) at even and odd boundaries" passed after 0.006 seconds.
+✔ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" passed after 0.007 seconds.
+✔ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() passed after 0.006 seconds.
+✔ Test closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() passed after 0.007 seconds.
+✔ Test lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers() passed after 0.007 seconds.
+✔ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() passed after 0.007 seconds.
+✔ Test completionAndCancellationHaveOneWinner(cancelFirst:) with 2 test cases passed after 0.007 seconds.
+✔ Test publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() passed after 0.007 seconds.
+✔ Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) with 3 test cases passed after 0.008 seconds.
+✔ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() passed after 0.008 seconds.
+✔ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() passed after 0.009 seconds.
+✔ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) with 2 test cases passed after 0.009 seconds.
+✔ Test completedRequestEventuallyReleasesItsDelegateOwnership() passed after 0.009 seconds.
+✔ Test taskCancellationJoinsAndAllowsFollowingRequest() passed after 0.009 seconds.
+✔ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() passed after 0.009 seconds.
+✔ Test staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() passed after 0.009 seconds.
+✔ Suite "R3 captured HTTP request close lifecycle" passed after 0.009 seconds.
+✔ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() passed after 0.015 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 0.125 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 0.143 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 0.144 seconds.
+✔ Test run with 23 tests in 3 suites passed after 0.144 seconds.

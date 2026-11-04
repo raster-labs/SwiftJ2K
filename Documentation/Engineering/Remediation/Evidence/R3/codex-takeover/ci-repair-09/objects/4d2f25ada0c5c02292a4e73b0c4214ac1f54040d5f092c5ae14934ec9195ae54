@@ -1,0 +1,186 @@
+{
+  "state": "FINAL_LOCAL_SELECTION_READY_FOR_ROOT_REVIEW_NOT_PUBLISHED",
+  "prepared_at": "2026-10-31T11:08:05.232149+00:00",
+  "candidate": "candidate-snapshot-15",
+  "source_manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-15-source.json",
+    "sha256": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07"
+  },
+  "local_gate_decision": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-decision-15.json",
+    "sha256": "21c65fffb87be48485d2569d40f7f115ae55ea1afda5141b046e33e6b18e8bc5"
+  },
+  "completed15": [
+    "candidate-jpip-asan-15",
+    "candidate-full-15",
+    "candidate-asan-inventory-15",
+    "candidate-complement-asan-15",
+    "candidate-tsan-inventory-15",
+    "candidate-jpip-tsan-15",
+    "candidate-complement-tsan-15"
+  ],
+  "ordinary": {
+    "xctest": 1034,
+    "swift_testing_declarations": 324,
+    "suites": 41,
+    "total_declarations": 1358,
+    "parameter_declarations": 38,
+    "argument_starts": 406
+  },
+  "sanitizers": {
+    "thread": {
+      "jpip_declarations": 647,
+      "complement_declarations": 711,
+      "complete_exact_union": 1358
+    },
+    "address": {
+      "jpip_declarations": 647,
+      "complement_declarations": 711,
+      "complete_exact_union": 1358
+    }
+  },
+  "release_cli": {
+    "receipt_candidate": "14",
+    "applicable_inputs_identical_to15": 512,
+    "process_checks": 246,
+    "binary_sha256": "f91f721d59103b8e7278916198a29431c1e2f7a179d90fd82c72ad6ef1b1b585",
+    "scope": "Explicit audited input-equivalent reuse, not fresh15 execution."
+  },
+  "retained_failed_supplement_runs": [
+    {
+      "label": "candidate-focused-09",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-focused-09/result.json",
+        "sha256": "1d0f0921be595cbee8a4bd0811d3e2713aa0005010b8655fc3265c063511f350"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "candidate-full-10",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-10/result.json",
+        "sha256": "bd8f62abb5d926445c9a2d026f81e3bd70922060accf422626a9c589d367ce56"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "diagnostic-https-full-11",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/result.json",
+        "sha256": "777492490d3c10d65c20854849e38985441e58e6962d5f48c62deb5854be97e2"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "diagnostic-https-full-12",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/result.json",
+        "sha256": "f3bbb85699d1403a58e792833ba8e082f429e5cb7c433250910da09769d0005c"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "diagnostic-sampled-full-13",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/result.json",
+        "sha256": "49b38bd64b1631ac9251ebbab0a2ee6088a3f5ab8d13acbc8a86792180a6c09a"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "foundation-queue-policy-13",
+      "exit_code": -11,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/foundation-queue-policy-13/result.json",
+        "sha256": "ace2ad951db1d03b548920d87612cdfcf71a67af442fa8acec05b00831b1f30f"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    },
+    {
+      "label": "candidate-jpip-asan-14",
+      "exit_code": 1,
+      "result": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/result.json",
+        "sha256": "e0246cd7f022b383b3aed6f2162385f6ec60d754c3d470b515d3ba75be3f58a6"
+      },
+      "scope": "Historical failed receipt retained without reclassification."
+    }
+  ],
+  "older_failure_history": {
+    "source": "Immutable published08 corpus and separately retained final15 independent reviews.",
+    "prior_index_sha256": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54",
+    "scope": "No old failure is converted into a pass or attributed solely to later queue/fixture repairs."
+  },
+  "candidate14_address": {
+    "jpip": "FAILED; three WebSocket barrier arguments remain failed.",
+    "complement": "UNEXECUTED; no completed receipt or address14 proof exists."
+  },
+  "first_hosted_run": {
+    "run_id": 41186617163,
+    "attempt": 1,
+    "completed_job_logs": 7,
+    "scope": "Failed first hosted attempt retained; no exact new-head hosted pass inferred."
+  },
+  "stopped_documentation": {
+    "review": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-15-source.json",
+      "sha256": "f40390912ada41738aef12ce202282d515a3a37298dee8f1b4d2644bec677047"
+    },
+    "corrected_inputs": {
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "80e7a11f412f266a7341e81d5c8d222862bb8f5a531d2f5eba8a9e24840b58c8",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "6bb6af1f745af01ae5cd12130ab15621e4f9d92d1768e9dbb3be154a3e210559",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-15.txt": "7486cbbf00152de3f31845620e2672952c09979673ae13302545e62f0fc98109",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/.github/workflows/contract.yml": "e7da66f70776aecf5f3abe9ac503bfa66520145c5f7fc5e36c8d4bac086c98a2",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-decision-15.json": "21c65fffb87be48485d2569d40f7f115ae55ea1afda5141b046e33e6b18e8bc5"
+    },
+    "pr_body": "Only r3-pr-body-reviewed-local-15.txt is selected; future link-substituted PR body stays separate."
+  },
+  "prepublication": {
+    "pending_evidence_inputs": [],
+    "remaining_actions": [
+      "Root independently reviews this final explicit manifest and read-only dry run.",
+      "Root verifies its existing exclusive coordinator claim and stopped writers before publication."
+    ],
+    "writer_state_basis": "Root coordination message reports native/source/CI/docs/local-body writers stopped; independent final reviews record positive stops."
+  },
+  "postpublication_pending": {
+    "order": "Reviewed local supplement publication precedes feature commit/push and subsequent exact-head hosted CI.",
+    "receipts": [
+      "Feature head/tree/base/tested-merge identities and independently verified PR/index links.",
+      "New exact-head hosted macOS26/Linux metadata, every raw job log, retention/runtime/argument review.",
+      "PR body link-only substitution using verified publication and hosted-run links."
+    ],
+    "storage": "Retain separately in work/outputs and PR links; not prerequisites to initial local supplement publication."
+  },
+  "external_gates": {
+    "state": "UNEXECUTED_UNWAIVED",
+    "gates": [
+      "Direct combinedPart10+15",
+      "Independent native3DJPIP",
+      "ExactrepositoryWebSocketextensionpeer",
+      "Directfull38Part2synthesis/output",
+      "MultipletransmittednonemptyHTsets"
+    ]
+  },
+  "R3": "NOT_ACCEPTED",
+  "merge_allowed": false,
+  "R4": "GATED",
+  "scope_limits": [
+    "Complete partitioned coverage, not fully concurrent cross-target sanitizer success.",
+    "Local27.0.1 evidence is separate from newexact-head hostedmacOS26/Linux execution.",
+    "URLProtocol/scripted tests do not establish realTLS or independentpeer compatibility.",
+    "The52 profiledcodecfiles remain unchanged; newtransportpolicy is outside the two-volume performance comparison.",
+    "No hardDNS deadline, physicalHTTPworkerthreadexit or universal copy-work bound is claimed."
+  ],
+  "excluded": [
+    "Binaries, build/cache directories and complete source snapshot trees.",
+    "Broad unrelated application/project inventory: environment-after.json and other-native-after.txt.",
+    "Future publication-link PR bodies and postpublication hosted receipts not yet produced."
+  ],
+  "preparation_agent_actions": "Read-only receipt verification and new work preparation files only; no native/repository/Git/network/publication execution."
+}

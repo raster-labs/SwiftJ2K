@@ -1,0 +1,321 @@
+Building for debugging...
+[0/18] /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-02/arm64-apple-macosx/debug/SwiftJ2KPackageTests.derived/runner.swift
+[0/18] Write sources
+[0/18] Write swiftj2k-cli-entitlement.plist
+[4/18] Write sources
+[10/18] Copying Fixtures
+[11/18] Write swift-version--58304C5D6DBC2206.txt
+[12/48] Compiling CZlibShim CZlibShim.c
+[14/48] Compiling SwiftJ2K Wavelet53.swift
+[15/48] Compiling SwiftJ2K Wavelet97.swift
+[16/48] Compiling SwiftJ2K CodecAPI.swift
+[17/48] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[18/48] Compiling SwiftJ2K JP2Boxes.swift
+[19/48] Compiling SwiftJ2K JP2Container.swift
+[20/48] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[21/48] Compiling SwiftJ2K Errors.swift
+[22/48] Compiling SwiftJ2K Image.swift
+[23/57] Compiling SwiftJ2K ImageDescriptor.swift
+[24/57] Compiling SwiftJ2K ImageStorage.swift
+[25/57] Compiling SwiftJ2K LegacyImageBridge.swift
+[26/57] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[27/57] Compiling SwiftJ2K Options.swift
+[28/57] Compiling SwiftJ2K Telemetry.swift
+[29/57] Compiling SwiftJ2K Transcoding.swift
+[30/57] Compiling SwiftJ2K Volume.swift
+[31/57] Compiling SwiftJ2K VolumePixelAccounting.swift
+[32/57] Emitting module SwiftJ2K
+[33/57] Compiling SwiftJ2K HTBlockCoder.swift
+[34/57] Compiling SwiftJ2K HTTables.swift
+[35/57] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[36/57] Compiling SwiftJ2K LosslessPipeline.swift
+[37/57] Compiling SwiftJ2K MQCoder.swift
+[38/57] Compiling SwiftJ2K Part1Pipeline.swift
+[39/57] Compiling SwiftJ2K Quantization.swift
+[40/57] Compiling SwiftJ2K ROI.swift
+[41/57] Compiling SwiftJ2K TagTree.swift
+[42/57] Compiling SwiftJ2K Tier2.swift
+[43/57] Compiling SwiftJ2K AcceleratedCodec.swift
+[44/57] Compiling SwiftJ2K AccelerationRuntime.swift
+[45/57] Compiling SwiftJ2K MetalAcceleration.swift
+[46/57] Compiling SwiftJ2K SIMDAcceleration.swift
+[47/57] Compiling SwiftJ2K BitIO.swift
+[48/57] Compiling SwiftJ2K BitPlaneCoder.swift
+[49/57] Compiling SwiftJ2K BoundedByteWriter.swift
+[50/57] Compiling SwiftJ2K Codestream.swift
+[51/57] Compiling SwiftJ2K ColourTransform.swift
+[52/57] Compiling SwiftJ2K ContextModeling.swift
+[53/83] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[54/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[55/83] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[56/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[57/83] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[58/83] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[59/83] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[60/83] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[61/91] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[62/91] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[63/91] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[64/91] Compiling SwiftJ2K3D JP3DRateControl.swift
+[65/91] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[66/91] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[67/91] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[68/91] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[69/91] Emitting module SwiftJ2K3D
+[70/91] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[71/91] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[72/91] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[73/91] Compiling SwiftJ2K3D JP3DDecoder.swift
+[74/91] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[75/91] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[76/91] Compiling SwiftJ2K3D JP3DEncoder.swift
+[77/91] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[78/91] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[79/91] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[80/91] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[81/91] Compiling SwiftJ2K3D JP3DTiling.swift
+[82/91] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[83/91] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[84/91] Compiling SwiftJ2K3D JP3DTypes.swift
+[85/91] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[86/91] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[87/133] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[88/133] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[89/133] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[90/133] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[91/133] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[92/133] Compiling SwiftJ2KJPIP JPIP.swift
+[93/133] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[94/133] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[95/133] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+[96/133] Emitting module SwiftJ2KJPIP
+[97/133] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[98/133] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+[99/133] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+[100/133] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+[101/133] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+[102/133] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+[103/133] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+[104/133] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+[105/133] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+[106/133] Compiling SwiftJ2KJPIP JPIPRequest.swift
+[107/133] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[108/133] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+[109/133] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[110/133] Compiling SwiftJ2KJPIP JPIPServer.swift
+[111/133] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+[112/133] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+[113/141] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+[114/141] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+[115/141] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+[116/141] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+[117/141] Compiling SwiftJ2KJPIP JPIPTransport.swift
+[118/141] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+[119/141] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+[120/141] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+[121/170] Compiling SwiftJ2KJPIPTests CodexR3AdmissionTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[122/170] Compiling SwiftJ2KJPIPTests CodexR3IndependentTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[123/170] Compiling SwiftJ2KJPIPTests CodexR3TakeoverJPIPTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[124/170] Compiling SwiftJ2KJPIPTests CodexR3WebSocketBudgetTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[125/170] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[126/170] Compiling SwiftJ2KJPIPTests IndependentR2RemainingTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[127/170] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[128/170] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift:235:33: error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+233 |                 defer { connection.close() }
+234 |                 let request = try connection.readHTTPRequest()
+235 |                 guard let key = request.header("Sec-WebSocket-Key") else {
+    |                                 |- error: value of optional type 'JPIPHTTPWireRequest?' must be unwrapped to refer to member 'header' of wrapped base type 'JPIPHTTPWireRequest'
+    |                                 |- note: chain the optional using '?' to access member 'header' only for non-'nil' base values
+    |                                 `- note: force-unwrap using '!' to abort execution if the optional value contains 'nil'
+236 |                     throw J2KError.invalidData("Test handshake has no key")
+237 |                 }
+[129/177] Emitting module SwiftJ2KJPIPTests
+[130/177] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+[131/177] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+[132/177] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+[133/177] Compiling SwiftJ2KJPIPTests JPIPContractTests.swift
+[134/177] Compiling SwiftJ2KJPIPTests JPIPDataBinGeneratorTests.swift
+[135/177] Compiling SwiftJ2KJPIPTests JPIPEndToEndTests.swift
+[136/177] Compiling SwiftJ2KJPIPTests JPIPHTJ2KSupportTests.swift
+[137/177] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+[138/177] Compiling SwiftJ2KCLI main.swift
+[139/177] Emitting module SwiftJ2KCLI
+[140/177] Compiling SwiftJ2KCLI CLIVerbs.swift
+[141/177] Compiling SwiftJ2KCLI CLIImageIO.swift
+[141/177] Write Objects.LinkFileList
+[143/177] Emitting module SwiftJ2K3DTests
+[144/177] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+[145/177] Compiling SwiftJ2KJPIPTests JPIPServerComponentTests.swift
+[146/177] Compiling SwiftJ2KJPIPTests JPIPServerPushTests.swift
+[147/177] Compiling SwiftJ2KJPIPTests JPIPServerTests.swift
+[148/177] Compiling SwiftJ2KJPIPTests JPIPSessionPersistenceTests.swift
+[154/177] Compiling SwiftJ2KJPIPTests JPIPTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[155/177] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[156/177] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[166/182] Linking swiftj2k-cli
+[167/182] Applying swiftj2k-cli
+[169/201] Emitting module SwiftJ2KTests
+[170/207] Compiling SwiftJ2KTests AccelerationTests.swift
+[171/207] Compiling SwiftJ2KTests BehaviourTests.swift
+[172/207] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[173/207] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+[174/207] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[175/207] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+[176/207] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+[177/207] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+[178/207] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+[179/207] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+[180/207] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+[181/207] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+[182/207] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+error: fatalError

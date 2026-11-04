@@ -1,0 +1,65 @@
+// DIAGNOSTIC OVERLAY ONLY. Do not merge this phase tracer.
+import Foundation
+import Synchronization
+
+package final class JPIPHTTPSPhaseTrace: Sendable {
+    private struct Event: Sendable { let stamp: UInt64; let owner: String; let event: String }
+    private final class Store: Sendable { let events = Mutex<[Event]>([]) }
+    private static let stores = Mutex<[Store]>([])
+    private static let correlation = Store()
+    private static let output = Mutex(())
+    private let store = Store()
+    private let once = Mutex<Set<String>>([])
+    package let id = UUID().uuidString
+    package init() { Self.stores.withLock { $0.append(store) } }
+    package static func record(owner: String, event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        correlation.events.withLock { $0.append(Event(stamp: stamp, owner: owner, event: event)) }
+    }
+    package static func flush() {
+        let captures = [correlation] + stores.withLock { $0 }
+        var completed: [Event] = []
+        for capture in captures {
+            completed += capture.events.withLock { stored in
+                let result = stored
+                stored = []
+                return result
+            }
+        }
+        output.withLock { _ in
+            for item in completed {
+                print("HTTPS_PHASE ns=\(item.stamp) owner=\(item.owner) event=\(item.event)")
+            }
+        }
+    }
+    package func mark(_ event: String) {
+        let stamp = DispatchTime.now().uptimeNanoseconds
+        store.events.withLock { $0.append(Event(stamp: stamp, owner: id, event: event)) }
+    }
+    package func first(_ event: String) {
+        if once.withLock({ $0.insert(event).inserted }) { mark(event) }
+    }
+}
+
+// Diagnostic queue canaries retain neither request nor session. The delayed
+// callback only weakly references the OperationQueue; its queued operation owns
+// only the trace buffer. The request cancels/joins this one-shot at read exit.
+package final class JPIPHTTPSQueueCanary: Sendable {
+    private let timer: JPIPDeadlineWatchdog
+    package init(queue: OperationQueue, trace: JPIPHTTPSPhaseTrace) {
+        trace.mark("canary-immediate-enqueue")
+        queue.addOperation { trace.mark("canary-immediate-execute") }
+        trace.mark("canary-delayed-timer-scheduled after=0.5")
+        timer = JPIPDeadlineWatchdog(after: 0.5) { [weak queue, trace] in
+            trace.mark("canary-delayed-timer-fired")
+            guard let queue else {
+                trace.mark("canary-delayed-queue-already-released")
+                return
+            }
+            trace.mark("canary-delayed-enqueue")
+            queue.addOperation { trace.mark("canary-delayed-execute") }
+        }
+    }
+    package func cancel() { timer.cancel() }
+    deinit { timer.cancel() }
+}

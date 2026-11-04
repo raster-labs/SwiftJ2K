@@ -1,0 +1,24 @@
+--- candidate-snapshot-09/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
++++ SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift
+@@ -173,7 +173,8 @@
+     }
+ 
+     @Test func sharedWatchdogInterruptsAnAlreadyActiveTrickle() async throws {
+-        let scenario = HTTPSHarnessScenario(mode: .trickle)
++        let scenario = HTTPSHarnessScenario(mode: .trickle,
++            headers: ["Content-Type": "image/jpp-stream"])
+         let fixture = HTTPSHarnessProtocol.register(scenario)
+         defer { HTTPSHarnessProtocol.remove(fixture.url) }
+         let operation = JPIPHTTPSRequest(maximumBodyBytes: 65_536, maximumStorageBytes: 262_144)
+@@ -184,7 +185,10 @@
+             let setupDeadline = ContinuousClock.now.advanced(by: .seconds(2))
+             while operation.receivedBodyBytes < 2 {
+                 guard ContinuousClock.now < setupDeadline else {
+-                    throw J2KError.invalidState("HTTPS trickle harness did not become active")
++                    throw J2KError.invalidState("HTTPS trickle harness did not become active: " +
++                        "protocol submitted \(scenario.deliveredChunks) one-byte chunks; " +
++                        "accumulator received \(operation.receivedBodyBytes) bytes; " +
++                        "protocol started: \(scenario.request != nil)")
+                 }
+                 try await Task.sleep(for: .milliseconds(1))
+             }

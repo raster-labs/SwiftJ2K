@@ -1,0 +1,30 @@
+Independent failed hosted18 review — run41198397609, attempt1
+
+Disposition: FAILED and NOT_ACCEPTED. The seven completed job records and all seven exact raw logs reconcile. Five jobs failed; the independent consumer and shared-contract jobs passed. This reviewer performed only saved-file/source/metadata reconciliation, with no native/compiler/network/Git/repository action.
+
+Source identity
+Supplied run metadata identifies PR30 head e67136ade691af045570706d401f80d612359d0c and base46be90fc3bf50429956725ee592687d8ff8e7344. The saved merge-provider record and actual macOS evidence emitter agree on tested merge86be136665a3027f59863fb3844b014fd7bad8df, treebf644ec0e4f00f83d18ef979f5c6158f9cdf2b86, clean tracked checkout, run/attempt/ref/PR identities and failure/skipped step outcomes. Saved source-provider/publication receipts bind that head/tree to frozen18. This is independent reconciliation of supplied records, not fresh provider retrieval or an independent Git-blob audit.
+
+Mac ordinary execution
+Exactly 1,034 distinct XCTest starts have matching passes and zero failed completions; aggregate reports agree. Swift Testing reports 324 declarations in 41 suites: 319 started, 313 passed, 6 failed and 5 explicitly skipped external-oracle declarations. That yields 1,358 reported declarations including skips, 1,353 actually started declarations and 1,347 passing declarations across frameworks. There are 35 parameterised completed declarations and 382 argument-start prefixes; no per-argument completion/whole-inventory acceptance is inferred.
+
+The raw pass/fail/skip identity multisets match the exact retained XML. For 130 custom display titles, a separate source lookup uniquely binds each XML function signature to its @Test title in 53 immutable frozen18 source files; those files were hashed before/after. All six XML failure messages also match the corresponding raw issue lines. The Swift Testing aggregate records 56.717s and six issues.
+
+Failures remain six distinct declarations:
+- completedRequestEventuallyReleasesItsDelegateOwnership: operation deadline elapsed.
+- completionAndCancellationHaveOneWinner(false): operation deadline elapsed.
+- sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel: HTTPS deadline elapsed.
+- absoluteDeadlineCancelsSilentResponse: measured 20.367459916s against the unchanged 2s limit.
+- descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest: WebSocket deadline; the fixture reported stopped=true and explicit phase/worker diagnostics.
+- workerErrorAndCancellationDoNotPublishAReusableConnection: acceptedCount 4 versus expected 3.
+These observations do not establish a sole scheduling, idle-timeout, fixture or production cause.
+
+Mac sanitizer/retention boundary
+Provider step metadata and emitter outcomes both mark ASan and TSan skipped; no sanitizer runtime is claimed. Only ordinary/full-swift-testing.xml was retained: 46,626 exact UTF8 bytes, 12 ordered chunks, SHA256 8a338e93fbd97a6b27f4e7887c8016b9fc0220eaacfbf32233b8a2df2f1ae185. Independent framing/order/chunk-length/byte/hash checks validate all 46 evidence records and the sole extracted XML. The footer has retention_complete=false, 31 explicit missing paths and 24 retention problems. The unchanged strict reconstructor was actually invoked on metadata-derived expected identity and rejected incomplete evidence, exit 1; its intended full-reconstruction directory does not exist. The XML is explicitly diagnostic-only, never a successful complete reconstruction.
+
+Four Linux jobs
+Swift6.2 and6.4 on both Ubuntu24.04 architectures each have a successful production swift build, then a failed swift test compilation. Exact raw log ordering confirms a build-complete line before the test step and the same CodexR3IndependentTests.swift:10 no-such-module CryptoKit diagnostic after it. Repeated emissions are duplicated diagnostics, not runtime test failures. No XCTest or Swift Testing runtime starts are observed. Both release-build and release-test steps are skipped in all four jobs. The earlier CLI stdout compiler error is absent from these four logs, but successful production compilation does not qualify test compilation or runtime.
+
+All input logs/metadata and title-source hashes remained unchanged during processing. Reconciliation helpers, expected identity, exact diagnostic XML, raw strict rejection and detailed issue bindings are retained under this directory. The initial direct-name matcher stopped on custom display titles; the retained source-bound v2 reconciliation succeeds without modifying raw evidence or weakening retention requirements.
+
+The separate stopped import20 and worker21 source reviews do not reclassify this run. All five required direct external gates remain unexecuted/unwaived; R3 NOT_ACCEPTED, no merge or R4 activation. Positive STOP: all hosted review writes complete, no native work or further polling owned by this reviewer.

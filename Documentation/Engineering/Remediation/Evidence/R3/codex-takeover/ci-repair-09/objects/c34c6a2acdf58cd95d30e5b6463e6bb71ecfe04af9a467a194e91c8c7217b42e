@@ -1,0 +1,31 @@
+Independent sampled-process review — diagnostic sampled full13
+
+Conclusion
+The observed early window shows real codec CPU work occupying ten default-QoS cooperative workers. It does not show a pile-up of process/group/semaphore waits, nor a URLSession callback deadlock. It supports cooperative-worker occupancy as a plausible scheduling pressure source but cannot uniquely attribute the later HTTPS/queue delays. No production executor/QoS/timeouts or broad harness clocks should be changed on this sample alone.
+
+Provenance
+The parent-owned sample targets swiftpm-testing-helper PID48911, child of the authorised swift-test PID48809. processes-at-marker.txt shows these two R3 native processes at the marker. The sample header identifies its acquisition starting about0.219s after that helper launched; it is an early window, not a sample explicitly triggered at a delayed HTTPS callback. Diagnostic full13 uses unchanged frozen candidate10. Native receipt hashes and before/after manifests were verified. The run failed five Swift Testing issues: the same four HTTPS failures plus a reused-connection count assertion. Sampling itself can perturb execution; no acceptance claim follows.
+
+Actual stacks
+- Sample lines42,376,697,1279,1740,2085,2629,3139,3758,4213 identify ten com.apple.root.default-qos.cooperative workers. Each has109 top-level stack observations.
+- Thread12446601: nativeTranscodeRoundTrips... atHTJ2KCodecTests.swift:285 directly calls ScalarLosslessCodec.extractTileCoefficients;83 inclusive observations enter coefficient extraction and82 its decoder. BitPlaneCoder/MQ work dominates its descendant branches (sample67–73 onward).
+- Thread12446602:56 observations enter Decoder.decode through encoderOutputDecodesExactly..., then ScalarLosslessCodec.decode (sample401–405).
+- Thread12446604:67 observations enter Encoder.encode/Part1Pipeline.encode from multiTileMultiLayerPrecinctsProgressionsAndPOCRoundTrip (1300–1302).
+- Thread12446605:84 observations run ScalarLosslessCodec.encode from encoderOutputDecodesExactly... (1765–1768).
+- Other workers execute ordinary HT/Part1 decoding, native transcoding, parity and bit-corruption test work. Threads12446607/09 include the fixture-wide acceleration tests;12446608 includes the bit-corruption transcode test. These are executing codec frames, not evidence that the corresponding storage locks are blocked merely because a locked helper appears on the stack.
+- A single sampled Metal inverse-DWT waitUntilCompleted branch appears at3589–3592; one state-lock wait appears at4148–4151. Those observations do not support attributing the whole delay to a Metal lock convoy.
+- The main thread is waiting in CFRunLoop. Two non-cooperative workqueue threads are idle in __workq_kernreturn at4747–4754. No JPIP/URLSession/CFNetwork frame appears in this call graph. No dispatch_group_wait, dispatch_semaphore_wait or Process.waitUntilExit appears in the captured call graph.
+
+Meaning and limits
+The synchronous codec work under @concurrent/generic executor calls confirms the source-level concern from the earlier review: an async API may perform substantial synchronous CPU work without yielding. The sample does not measure how long each operation monopolises a worker, show a pending Foundation operation, prove all CPU cores were saturated, or identify GCD's work-admission decision. It cannot establish a hard deadline guarantee, a single root cause, or the value of a proposed QoS change. Parent-reported diagnostic12 late queue canaries invalidate the premise of the earlier conditional broad-deadline-removal suggestion; that suggestion remains unaccepted and is not the current repair recommendation.
+
+Concrete narrow fixture issue revealed alongside this run
+CodexR3TransportCloseTests.swift:194 calls listener.acceptConnection(timeoutSeconds:1). JPIPTCPSocket.swift:313–331 does not implement a one-second listener polling interval: it passes that value to the accepted JPIPTCPConnection, installing one-second receive/send idle timeouts. The peer writes the warm keep-alive reply, immediately loops to readHTTPRequest, and exits/closes on any error (test210 onward). If caller scheduling postpones the next request beyond that idle interval, the supposedly reused socket legitimately becomes stale and the transport retries on a second connection. This is a concrete source route to the reused acceptedCount assertion failure; there is no captured errno/timing proof that this exact route occurred in13, so the cause remains probable rather than asserted as observed.
+
+Smallest bounded options
+1. For the proven fixture design mismatch, make deliberately held keep-alive peer lifetime depend on explicit test cancellation/close and worker join, with a distinct finite test-failure guard. Preserve the intentional stale-retry mode and all real request deadline checks. This fixes the fixture's idle-expiry assumption without changing production transport policy. Root/writer must approve and validate the exact implementation; this reviewer made no edit.
+2. For HTTPS timing, retain current required timeout/interruption assertions while locating the actual queue-delay interval. A sample triggered when a delegate-queue canary is overdue would distinguish active CPU, blocking dependency and idle work-admission behavior more directly than this startup window. Avoid another undirected broad diagnostic.
+3. If a narrowly scoped fairness experiment is chosen, test-only yields between completed operations in the sampled fixture loops could discriminate scheduling effects while keeping every case/assertion and full concurrency. Such an experiment is not a production repair or acceptance evidence and Task.yield is not a progress guarantee. Moving entire codec pipelines, disabling concurrency, removing owner joins or changing production QoS is not justified here.
+
+Positive stop
+Read-only inspection and review artifacts only. No native command, repository change, timeout/cap increase, commit or push. Exact extracts, source and evidence SHA-256 values accompany this report.

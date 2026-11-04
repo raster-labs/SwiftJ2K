@@ -1,0 +1,68 @@
+SwiftJ2K R3 — independent JPIP delta audit 03
+Reviewer: /root/independent_jpip_review. Read-only source review; no native execution.
+
+Frozen candidate: /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-02
+Comparison: candidate-snapshot-01. Root manifest: work/candidate-snapshot-02-source.json (1,342 files).
+Reviewer receipt: work/independent-jpip-review-03-source.json (67 scoped source/test files).
+All source references below are relative to candidate-snapshot-02. No audit-copy source was edited.
+
+Disposition: B01 and B02 have substantive source repairs and meaningful new regression tests. F13 callback cancellation is restored. Two confirmed connection-lifetime race paths remain; request bounded repair and independent re-review. These are source-confirmed permitted execution schedules, not runtime reproductions. No new compiler blocker was identified; current native evidence remains parent-owned and pending at report time. No whole-R3 acceptance.
+
+JPIP-C01, P1 — delayed timeout cleanup can close a replacement connection's read budget.
+
+Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift:1160–1164 starts the new independent watchdog. Its synchronous timer action closes the captured old socket, then launches an unstructured Task calling failPendingRequestOnTimeout. That actor method at 1244–1246 unconditionally closes the actor's current readBudget; it does not validate the originating connection generation or budget identity, or even require that the old continuation still exists. JPIPDeadlineWatchdog.cancel at JPIPTransport.swift:74–78 joins the synchronous timer callback through its lock, but does not join the actor Task launched by that callback. sendRequest joins only its writer at 1192/1199.
+
+Permitted execution schedule:
+1. Timeout fires, closes socket A, and schedules timeout actor cleanup T. T has not entered the actor yet.
+2. Reader A observes shutdown and enters handleSocketClosed at 1059–1074 first. It closes A's budget, marks the transport disconnected and resumes the pending request.
+3. The failed send finishes after its writer. A retry enters connect, replaces readBudget at 859–863, and suspends in openAndHandshakeOffPool at 895–904 for socket B.
+4. T now enters the actor and closes B's budget. The old request's continuation is already absent; that absence does not prevent the close.
+5. B can finish a valid handshake, but its reader immediately exits because waitUntilReadAllowed returns false for the closed budget (496–505), and handleSocketClosed tears B down.
+
+Task scheduling does not guarantee T executes before the reader callback or the retry. This causes a legitimate reconnect to fail based on stale cleanup from a previous request. The existing cancellation handler at 1188–1190 has the same unjoined-task shape and cancelPendingRequest at 1235–1236 also closes the current budget; apply the ownership fix there too. The new watchdog introduced this timeout variant.
+
+Required repair: associate all timeout/cancellation/write cleanup with the originating generation and budget/connection owner, and make stale callbacks unable to mutate a replacement connection. Do not claim watchdog.cancel joins actor cleanup: either explicitly await/acknowledge that cleanup before request failure returns, or prove its captured-owner, idempotent cleanup cannot affect any later generation. Preserve direct off-actor socket shutdown so a blocked write remains interruptible.
+
+Proposed deterministic regression (not executed here): gate timeout actor cleanup after socket A shutdown; let reader A resume the failed request; start B and hold its handshake after the new budget is installed; release the old timeout cleanup; finish B and successfully exchange a bounded request. Also cover external cancellation through the same gate. Assert old continuations resume once and no old callback closes B or leaves a pending request.
+
+JPIP-C02, P1 — connection generation changes too late to reject an old reader's duplicate close during the next handshake.
+
+The reader callbacks do have generation guards: handleSocketClosed at 1059–1060, handleNetworkPong at 1285–1286, handleNetworkFrame at 1290–1291, and publishResponses at 1353–1354. However, connect installs the replacement readBudget at 859–863 and awaits the handshake at 895–904 before incrementing connectionGeneration at 939. Old-generation callbacks still match during that suspension.
+
+A concrete duplicate-close path exists without relying on the new timeout Task. An otherwise well-framed compact pushed-bin message with an invalid bin class is admitted by the length/prefix checks, then throws in handleDataBinFrame at 1367–1369. handleNetworkFrame catches this and immediately calls handleSocketClosed at 1293. The first close marks disconnected and resumes pending continuations. The reader then finishes its actor call, exits its loop and invokes handleSocketClosed again at 1044–1049. A caller can start reconnect between these two actor callbacks; the second callback can enter while the replacement handshake is suspended, still pass the old-generation check, and close the replacement budget. When the handshake completes, its new reader exits immediately as above.
+
+This generation timing is inherited from candidate 01 rather than introduced by the dedicated-thread edit, but it is a confirmed gap in the lifetime surface requested for this pass. Merely adding a generation check to timeout cleanup after the existing publication point will not close this case.
+
+Required repair: invalidate/reserve the next connection generation before installing new connection state or any reconnect suspension, and bind each reader/cleanup callback to its original connection/budget. Make old and duplicate close notifications idempotent. Recheck generation after a suspended handshake so a concurrent disconnect/reconnect cannot publish an obsolete connection. A single bounded lifecycle repair can cover C01 and C02.
+
+Proposed deterministic regression: gate the old reader's final close callback after its malformed-frame handler has already failed the request; reconnect and pause the new handshake; release the old final callback, then complete the handshake and a valid request. Assert the replacement reader remains open and all old worker/continuation cleanup is acknowledged. The new helper-level reader/watchdog tests do not exercise this ordering.
+
+Closure observations for prior findings
+
+B01: accepted push payload is now counted separately from retained queue ownership (JPIPWebSocketTransport.swift:1375–1382,1428–1433). Queue draining does not erase the take-once transfer count. beginRequest no longer recharges old queued payload; new same-request pushes still consume its body allowance. JPIPTransferBudget.received now atomically admits and adds response plus pushed payload. Both 2D cnew/cclose/probe/region calls and 3D sendJPIPRequest consume the counter before parsing/cache updates. 3D telemetry derives bytes from the shared ledger. No additional concrete compressed-byte omission was found in these reviewed bounded paths.
+
+B02: performWebSocketClientHandshake returns its HTTP101 peak; connect preserves it separately from per-request read-budget reset. JPIPTransport consumes it on the connecting send only. JP3DJPIPClient deducts retained client state before handshake admission and consumes the handshake peak into the next session ledger once. Reused connections do not attribute old temporary handshake storage to later operations. The facade's existing maximum now includes this earlier phase.
+
+F13: JPIPCodecAPI.swift:406–412 and 647–651 place Task.checkCancellation immediately after the completed callback, after all backend/report qualification. The accepted R1 final-callback test remains unchanged. No post-completed backend/budget qualification was reintroduced.
+
+Thread/watchdog assessment
+
+Finite HTTP connect/read/write, WS handshake/write and 3D reachability work now uses dedicated OS threads. Their continuations resume after their synchronous I/O work returns; WS send additionally awaits its writer task on success and failure. The connection and Data values are retained owners, not escaping borrowed pointers. The watchdog's mutable flags and synchronous action execution are protected by its lock, and cancellation disarms/joins that synchronous action. Its dedicated serial timer queue does not itself wait for an actor or perform a socket read.
+
+The parked WS reader intentionally owns a dedicated thread and retains its connection/transport/budget. Each per-message actor handler is joined by performActorCallAndWait; success publication follows the end of source-message scope. This does not prove the entire reader thread is joined at disconnect/request failure. The two callbacks above demonstrate why a full failure-cleanup handoff proof is still needed. Do not describe all thread and actor work as joined based only on the finite-worker continuations or watchdog.cancel. No race detector or blocked-write experiment was performed by this reviewer.
+
+Tests and independent second read
+
+A delegated read-only subreview /root/independent_jpip_review/jpip_delta_tests independently inspected the five changed test/API files and verified them against the root manifest. It found no concrete test/API defect. This reviewer inspected the production delta and concurrency schedules independently.
+
+CodexR3AdmissionTests.swift:109–136 now exercises an actual scripted WS cnew, a 64-byte accepted push, then a second prefix-only replacement. It asserts cumulative 70 bytes, first-region 67-byte telemetry, declared-body refusal before the absent payload, and preservation of the first cached payload. The prior omission would attempt to read the absent payload and yield EOF/network failure, so this is a meaningful regression.
+
+CodexR3AdmissionTests.swift:175–199 supplies 2,000 legal HTTP101 headers followed by a valid tiny volume and requires the successful report to cover their descriptor lower bound. CodexR3WebSocketBudgetTests.swift:218–272 checks that the handshake peak belongs to the first connecting request, not reuse. Additional tests cover take-once push accounting after drain, retained old queue ownership without double charging, and direct watchdog disarm/reader wakeup.
+
+The reader/watchdog tests exercise helpers and do not cover C01/C02 or full blocked-write/actor cleanup. There is no new actual cnew-push or 2D push-ledger integration test; this is a coverage boundary, not a separate confirmed source defect. The image cnew test still requires the specific early pre-body resource error after removing its unrelated two-second operation deadline. The R2 test still checks category/cache atomicity while accepting the earlier response-admission message. Existing standalone generator boundaries remain.
+
+Unresolved qualification boundaries
+
+DNS getaddrinfo cancellation remains an unconfirmed concern; moving the worker onto a dedicated thread does not itself interrupt name resolution. No delayed-resolver experiment was executed. URLSession's pre-existing internal protocol-header buffers remain outside the claimed pre-allocation control. Trickled HTTPS and fully blocked WS-write qualification require actual parent-owned receipts; this source review supplies none.
+
+Direct independent 3D JPIP and WebSocket extension peer gates remain UNEXECUTED and UNWAIVED. Combined Part 10+15, applicable exact-head CI and all other R3 prerequisites remain open unless independently satisfied by their owning receipts. Native campaign results do not override C01/C02. No whole-R3 acceptance or waiver is issued. This reviewer ran no native build/test, listener/server, commit or source edit.

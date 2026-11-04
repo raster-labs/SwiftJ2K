@@ -1,0 +1,72 @@
+{
+  "state": "FAILED_ADDRESS_PARTITION_AND_UNEXECUTED_COMPLEMENT",
+  "source_stable": true,
+  "source_files": 1857,
+  "capture": {
+    "finished_at": "2026-10-31T10:39:09.685917+00:00",
+    "exit_code": 1,
+    "elapsed_seconds": 62.880366709,
+    "changed_inputs": [],
+    "log_sha256": "ab8584acea5871cb0215bb41bab9ab0e112ab740de5231fc745c554c75fa3d07",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout",
+        "sha256": "60975edaed0c4a3eee7ddd4faaf8f26f067578fc074f1acca82ea030fbe13fd1",
+        "bytes": 151048
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stderr",
+        "sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+        "bytes": 252
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 1,
+    "built_cli_products_at_completion": {
+      "debug": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-asan-14/arm64-apple-macosx/debug/swiftj2k-cli",
+        "sha256": "764d1a4efc63d16c7aae3a0be20579c43064076e73252506e51afc270a6db046"
+      }
+    }
+  },
+  "xctest_passed": 544,
+  "swift_testing_declarations": 103,
+  "failed_declarations": [
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests",
+      "name": "staleCleanupCannotCloseReplacementHandshake(_:)",
+      "time": "3.693055625"
+    }
+  ],
+  "issues": [
+    {
+      "line": 1507,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    },
+    {
+      "line": 1508,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    },
+    {
+      "line": 1509,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    }
+  ],
+  "parameter_argument_starts": 14,
+  "sanitizer_diagnostics_found": false,
+  "complement_executed": false,
+  "address_proof_exists": false,
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/report-swift-testing.xml": "d859fec8b3665dd3d15feed4c68e1fc3d511d9d9361aff8d3153a11c7ae56b9a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/result.json": "e0246cd7f022b383b3aed6f2162385f6ec60d754c3d470b515d3ba75be3f58a6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/source-before.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/source-after.json": "cbab906baf635386e7bfbd730a894b6d2c241fb72a8266c44fddce310e6f7760",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stdout": "60975edaed0c4a3eee7ddd4faaf8f26f067578fc074f1acca82ea030fbe13fd1",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.log": "ab8584acea5871cb0215bb41bab9ab0e112ab740de5231fc745c554c75fa3d07",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/command.json": "cf65a2af14b035cd8acab1bd01072c5920ad87f8aefa04016c12958772a641e3",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-jpip-asan-14/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922"
+  }
+}

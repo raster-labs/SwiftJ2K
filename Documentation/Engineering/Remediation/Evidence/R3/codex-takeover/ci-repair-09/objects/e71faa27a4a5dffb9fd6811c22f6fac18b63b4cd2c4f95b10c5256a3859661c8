@@ -1,0 +1,2597 @@
+{
+  "snapshot": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-11",
+  "source_count": 1858,
+  "manifest_sha256": "c9b05bd93f8c28e88d3782124125d211f05e1dde7ce4e7fe5e4adf4f908ec444",
+  "changed_inputs": [],
+  "delta_from10": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift": {
+      "base": null,
+      "diagnostic": "92a0bc7fc50db39689bf7e5b57a97330076af2438888dc7ed48a32fcf357a113"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "base": "6b7ddbd05a86e788e4897b6685277b24a054c31b2b1b2dbd44035fdfa542599d",
+      "diagnostic": "9eeb23f301a7409d8ae9ba4aff1a95882f229da786e67dcb4fe24c74d796b6e8"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "base": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+      "diagnostic": "af15f8f5359e249b83bbe5a1c2d59430616aa988724b391648a20fb51949024a"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "base": "f3e95a064035f701421842a59a477462b4301062fc4b63b79b82b62ab201e5a3",
+      "diagnostic": "e6ed95483a45e9fd394ecb5baecd24954db128efb2ab519e26e134106f56b319"
+    }
+  },
+  "capture": {
+    "finished_at": "2026-10-31T10:04:16.009302+00:00",
+    "exit_code": 1,
+    "elapsed_seconds": 122.832535458,
+    "changed_inputs": [],
+    "log_sha256": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8",
+    "native_streams": {
+      "stdout": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/native.stdout",
+        "sha256": "58c70cb8767ade2c3593a07bf8ead013117b1762857420aa61a83dc930958e11",
+        "bytes": 413524
+      },
+      "stderr": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-11/native.stderr",
+        "sha256": "9e88585adfb3a55389cf7bbe96badccb91b06cc531c443da7130d87bd6a9f6a3",
+        "bytes": 19048
+      }
+    },
+    "capture_complete": true,
+    "capture_errors": [],
+    "capture_threads_joined": true,
+    "merged_synthetic_eof_newlines": 0,
+    "wrapper_exit_code": 1,
+    "built_cli_products_at_completion": {
+      "debug": {
+        "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-build-11/arm64-apple-macosx/debug/swiftj2k-cli",
+        "sha256": "528f47eef64532d895a23b3fdb6127683ca1c8976a0af6790019bdade8d835af"
+      }
+    }
+  },
+  "evidence_sha256": {
+    "work/validation/diagnostic-https-full-11/command.json": "5954524ff831d9b32680cda32af19fb45afd4a8839aaec3f641cbd41a11e8a89",
+    "work/validation/diagnostic-https-full-11/native.log": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8",
+    "work/validation/diagnostic-https-full-11/native.stderr": "9e88585adfb3a55389cf7bbe96badccb91b06cc531c443da7130d87bd6a9f6a3",
+    "work/validation/diagnostic-https-full-11/native.stdout": "58c70cb8767ade2c3593a07bf8ead013117b1762857420aa61a83dc930958e11",
+    "work/validation/diagnostic-https-full-11/report-swift-testing.xml": "b94d7f40cc0f90ff41cbc0da038221c1e86accf4fc4e8db1b4c9e9d9e18628c1",
+    "work/validation/diagnostic-https-full-11/result.json": "777492490d3c10d65c20854849e38985441e58e6962d5f48c62deb5854be97e2",
+    "work/validation/diagnostic-https-full-11/source-after.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea",
+    "work/validation/diagnostic-https-full-11/source-before.json": "892ce80a4baf80d5d7a3efa7a062e1ab81b04329c3b67097061a6c05aef94fea"
+  },
+  "trace_prefix_count": 410,
+  "parsed_records": 410,
+  "multirecord_lines": 0,
+  "mixed_testmarker_lines": 0,
+  "xml_declarations": 323,
+  "xml_failed_declarations": [
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests",
+      "name": "staleCleanupCannotCloseReplacementHandshake(_:)",
+      "time": "10.248386292"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3TransportCloseTests",
+      "name": "repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)",
+      "time": "8.856023834"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+      "time": "9.655053916"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "time": "9.356370709"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "time": "9.654391125"
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "time": "9.654354625"
+    }
+  ],
+  "issues": [
+    {
+      "stdout_line": 3539,
+      "text": "\u2718 Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) recorded an issue with 1 argument mode \u2192 \"reused\" at CodexR3TransportCloseTests.swift:55:13: Expectation failed: peer.acceptedCount == (mode == \"retry\" ? 2 : 1)"
+    },
+    {
+      "stdout_line": 3716,
+      "text": "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:310:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "stdout_line": 3788,
+      "text": "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:341:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "stdout_line": 3789,
+      "text": "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "stdout_line": 3809,
+      "text": "\u2718 Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() recorded an issue at CodexR3HTTPStreamingTests.swift:178:6: Caught error: Internal error: Invalid state: HTTPS trickle harness did not become active: protocol submitted 60 one-byte chunks; accumulator received 0 bytes; protocol started: true"
+    },
+    {
+      "stdout_line": 3868,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .duplicateReaderClose at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    },
+    {
+      "stdout_line": 3869,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .cancellation at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    },
+    {
+      "stdout_line": 3870,
+      "text": "\u2718 Test staleCleanupCannotCloseReplacementHandshake(_:) recorded an issue with 1 argument scenario \u2192 .timeout at CodexR3WebSocketLifecycleTests.swift:31:6: Caught error: .barrierTimedOut"
+    }
+  ],
+  "events_sorted": [
+    {
+      "ns": 882625765162125,
+      "owner": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "event": "test-entry",
+      "stdout_line": 2997
+    },
+    {
+      "ns": 882625765400708,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "scripted-caller-before-read cancelFirst=false",
+      "stdout_line": 2999
+    },
+    {
+      "ns": 882625765862875,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "read-entry host=83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid remaining=Optional(1.999982375 seconds)",
+      "stdout_line": 3000
+    },
+    {
+      "ns": 882625765864291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "deadline-preflight",
+      "stdout_line": 3001
+    },
+    {
+      "ns": 882625765874208,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3002
+    },
+    {
+      "ns": 882625765875875,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "continuation-entered",
+      "stdout_line": 3003
+    },
+    {
+      "ns": 882625765882000,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "start-entry",
+      "stdout_line": 3004
+    },
+    {
+      "ns": 882625765891416,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "session-create-before",
+      "stdout_line": 3005
+    },
+    {
+      "ns": 882625765935208,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "session-created",
+      "stdout_line": 3006
+    },
+    {
+      "ns": 882625765935708,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-create-before",
+      "stdout_line": 3007
+    },
+    {
+      "ns": 882625765978666,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-published",
+      "stdout_line": 3008
+    },
+    {
+      "ns": 882625765984458,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "response-callback-entry",
+      "stdout_line": 3009
+    },
+    {
+      "ns": 882625766016291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "response-callback-disposition allow=true",
+      "stdout_line": 3010
+    },
+    {
+      "ns": 882625766017583,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "body-first-entry",
+      "stdout_line": 3011
+    },
+    {
+      "ns": 882625766025833,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3012
+    },
+    {
+      "ns": 882625766038000,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3013
+    },
+    {
+      "ns": 882625766114000,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")",
+      "stdout_line": 3014
+    },
+    {
+      "ns": 882625766115791,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "publication-hook-returned",
+      "stdout_line": 3015
+    },
+    {
+      "ns": 882625766115875,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-resume-before",
+      "stdout_line": 3016
+    },
+    {
+      "ns": 882625766116291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-resume-after",
+      "stdout_line": 3017
+    },
+    {
+      "ns": 882625766145708,
+      "owner": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "event": "test-entry",
+      "stdout_line": 2998
+    },
+    {
+      "ns": 882625766178500,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "scripted-caller-before-read cancelFirst=true",
+      "stdout_line": 3018
+    },
+    {
+      "ns": 882625766186375,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "read-entry host=909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid remaining=Optional(1.999996333 seconds)",
+      "stdout_line": 3019
+    },
+    {
+      "ns": 882625766186791,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "deadline-preflight",
+      "stdout_line": 3020
+    },
+    {
+      "ns": 882625766191333,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3021
+    },
+    {
+      "ns": 882625766191833,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "continuation-entered",
+      "stdout_line": 3022
+    },
+    {
+      "ns": 882625766192166,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "start-entry",
+      "stdout_line": 3023
+    },
+    {
+      "ns": 882625766194958,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "session-create-before",
+      "stdout_line": 3024
+    },
+    {
+      "ns": 882625766220416,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "session-created",
+      "stdout_line": 3025
+    },
+    {
+      "ns": 882625766220666,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-create-before",
+      "stdout_line": 3026
+    },
+    {
+      "ns": 882625766236375,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-published",
+      "stdout_line": 3027
+    },
+    {
+      "ns": 882625766239583,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3028
+    },
+    {
+      "ns": 882625766243166,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "response-callback-entry",
+      "stdout_line": 3029
+    },
+    {
+      "ns": 882625766243500,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3030
+    },
+    {
+      "ns": 882625766244541,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "body-first-entry",
+      "stdout_line": 3031
+    },
+    {
+      "ns": 882625766245500,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3032
+    },
+    {
+      "ns": 882625766247750,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3033
+    },
+    {
+      "ns": 882625766260083,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")",
+      "stdout_line": 3034
+    },
+    {
+      "ns": 882625766260833,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "publication-hook-returned",
+      "stdout_line": 3035
+    },
+    {
+      "ns": 882625766260875,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-resume-before",
+      "stdout_line": 3036
+    },
+    {
+      "ns": 882625766261541,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-resume-after",
+      "stdout_line": 3037
+    },
+    {
+      "ns": 882625766289291,
+      "owner": "824C25D7-1CD4-46C3-8B52-04232733534D",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3038
+    },
+    {
+      "ns": 882625766304708,
+      "owner": "824C25D7-1CD4-46C3-8B52-04232733534D",
+      "event": "read-entry host=db1fb245-14f2-473c-958c-9d6f86f41f9a.invalid remaining=Optional(1.999997666 seconds)",
+      "stdout_line": 3039
+    },
+    {
+      "ns": 882625766307250,
+      "owner": "824C25D7-1CD4-46C3-8B52-04232733534D",
+      "event": "read-exit",
+      "stdout_line": 3040
+    },
+    {
+      "ns": 882625766486958,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "read-entry host=0d383588-377e-4356-a35e-5f8ac8afa18d.invalid remaining=Optional(1.999996417 seconds)",
+      "stdout_line": 3042
+    },
+    {
+      "ns": 882625766487666,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "deadline-preflight",
+      "stdout_line": 3043
+    },
+    {
+      "ns": 882625766493875,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3044
+    },
+    {
+      "ns": 882625766494833,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "continuation-entered",
+      "stdout_line": 3045
+    },
+    {
+      "ns": 882625766494916,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "start-entry",
+      "stdout_line": 3046
+    },
+    {
+      "ns": 882625766498875,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "session-create-before",
+      "stdout_line": 3047
+    },
+    {
+      "ns": 882625766515500,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "session-created",
+      "stdout_line": 3048
+    },
+    {
+      "ns": 882625766518791,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3049
+    },
+    {
+      "ns": 882625766674791,
+      "owner": "85E37D4C-1899-4859-B211-F9CC7EECA09E",
+      "event": "read-entry host=e386f5b9-55f0-41f6-9468-4efb92afbd6b.invalid remaining=Optional(-0.001002833 seconds)",
+      "stdout_line": 3050
+    },
+    {
+      "ns": 882625766675291,
+      "owner": "85E37D4C-1899-4859-B211-F9CC7EECA09E",
+      "event": "deadline-preflight",
+      "stdout_line": 3051
+    },
+    {
+      "ns": 882625766685625,
+      "owner": "85E37D4C-1899-4859-B211-F9CC7EECA09E",
+      "event": "deadline-preflight-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")",
+      "stdout_line": 3052
+    },
+    {
+      "ns": 882625766687375,
+      "owner": "85E37D4C-1899-4859-B211-F9CC7EECA09E",
+      "event": "read-exit",
+      "stdout_line": 3053
+    },
+    {
+      "ns": 882625772453208,
+      "owner": "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+      "event": "test-entry",
+      "stdout_line": 3240
+    },
+    {
+      "ns": 882625772474000,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "trickle-caller-task-creation host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid",
+      "stdout_line": 3259
+    },
+    {
+      "ns": 882625772477083,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "trickle-readiness-clock-start",
+      "stdout_line": 3260
+    },
+    {
+      "ns": 882625773349666,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "read-entry host=d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid remaining=Optional(1.999991958 seconds)",
+      "stdout_line": 3275
+    },
+    {
+      "ns": 882625773350791,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "deadline-preflight",
+      "stdout_line": 3276
+    },
+    {
+      "ns": 882625773364500,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3277
+    },
+    {
+      "ns": 882625773366375,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "continuation-entered",
+      "stdout_line": 3278
+    },
+    {
+      "ns": 882625773366625,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "start-entry",
+      "stdout_line": 3279
+    },
+    {
+      "ns": 882625773380208,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "session-create-before",
+      "stdout_line": 3280
+    },
+    {
+      "ns": 882625773397875,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "session-created",
+      "stdout_line": 3281
+    },
+    {
+      "ns": 882625773398416,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-create-before",
+      "stdout_line": 3282
+    },
+    {
+      "ns": 882625773429958,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-published",
+      "stdout_line": 3283
+    },
+    {
+      "ns": 882625773439041,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3284
+    },
+    {
+      "ns": 882625773446166,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3285
+    },
+    {
+      "ns": 882625773474708,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")",
+      "stdout_line": 3286
+    },
+    {
+      "ns": 882625773476541,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "tail-enqueued",
+      "stdout_line": 3287
+    },
+    {
+      "ns": 882625773485500,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3288
+    },
+    {
+      "ns": 882625773487375,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "body-first-entry",
+      "stdout_line": 3289
+    },
+    {
+      "ns": 882625773488750,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3290
+    },
+    {
+      "ns": 882625773488958,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3291
+    },
+    {
+      "ns": 882625773491375,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "publication-hook-returned",
+      "stdout_line": 3292
+    },
+    {
+      "ns": 882625773491458,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-resume-before",
+      "stdout_line": 3293
+    },
+    {
+      "ns": 882625773492708,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-resume-after",
+      "stdout_line": 3294
+    },
+    {
+      "ns": 882625774492333,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "read-entry host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid remaining=Optional(1.999993583 seconds)",
+      "stdout_line": 3296
+    },
+    {
+      "ns": 882625774493333,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "deadline-preflight",
+      "stdout_line": 3297
+    },
+    {
+      "ns": 882625774502166,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3298
+    },
+    {
+      "ns": 882625774503875,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "continuation-entered",
+      "stdout_line": 3299
+    },
+    {
+      "ns": 882625774504041,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "start-entry",
+      "stdout_line": 3300
+    },
+    {
+      "ns": 882625774509416,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "session-create-before",
+      "stdout_line": 3301
+    },
+    {
+      "ns": 882625774524875,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "session-created",
+      "stdout_line": 3302
+    },
+    {
+      "ns": 882625774525375,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "task-create-before",
+      "stdout_line": 3303
+    },
+    {
+      "ns": 882625774546000,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "task-published",
+      "stdout_line": 3304
+    },
+    {
+      "ns": 882625774546916,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "publication-hook-returned",
+      "stdout_line": 3305
+    },
+    {
+      "ns": 882625774547000,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "task-resume-before",
+      "stdout_line": 3306
+    },
+    {
+      "ns": 882625774596625,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "task-resume-after",
+      "stdout_line": 3307
+    },
+    {
+      "ns": 882625774653791,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "read-entry host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid remaining=Optional(1.999994209 seconds)",
+      "stdout_line": 3310
+    },
+    {
+      "ns": 882625774654625,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "deadline-preflight",
+      "stdout_line": 3311
+    },
+    {
+      "ns": 882625774661875,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3312
+    },
+    {
+      "ns": 882625774663166,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "continuation-entered",
+      "stdout_line": 3313
+    },
+    {
+      "ns": 882625774663291,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "start-entry",
+      "stdout_line": 3314
+    },
+    {
+      "ns": 882625774667541,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "session-create-before",
+      "stdout_line": 3315
+    },
+    {
+      "ns": 882625774681250,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "session-created",
+      "stdout_line": 3316
+    },
+    {
+      "ns": 882625774681625,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "task-create-before",
+      "stdout_line": 3317
+    },
+    {
+      "ns": 882625774698625,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "task-published",
+      "stdout_line": 3318
+    },
+    {
+      "ns": 882625774699541,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "publication-hook-returned",
+      "stdout_line": 3319
+    },
+    {
+      "ns": 882625774699625,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "task-resume-before",
+      "stdout_line": 3320
+    },
+    {
+      "ns": 882625774709666,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "task-resume-after",
+      "stdout_line": 3321
+    },
+    {
+      "ns": 882625776484750,
+      "owner": "7C653D46-9339-4371-B0BA-8CE6F4C98856",
+      "event": "protocol-startLoading-entry host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid",
+      "stdout_line": 3322
+    },
+    {
+      "ns": 882625776501750,
+      "owner": "95575543-34B8-4B00-B153-4D3EDFC0EB9F",
+      "event": "protocol-startLoading-entry host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid",
+      "stdout_line": 3324
+    },
+    {
+      "ns": 882625776540791,
+      "owner": "4BDCF83B-EB7E-41F2-BCB7-A5907FEFACF8",
+      "event": "protocol-queue-start host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid",
+      "stdout_line": 3308
+    },
+    {
+      "ns": 882625776546125,
+      "owner": "3E9E2610-CE14-4C85-9B4E-7A4A206C8B10",
+      "event": "protocol-queue-start host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid",
+      "stdout_line": 3295
+    },
+    {
+      "ns": 882625776557291,
+      "owner": "7C653D46-9339-4371-B0BA-8CE6F4C98856",
+      "event": "protocol-response-submit host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid",
+      "stdout_line": 3323
+    },
+    {
+      "ns": 882625776564875,
+      "owner": "95575543-34B8-4B00-B153-4D3EDFC0EB9F",
+      "event": "protocol-response-submit host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid",
+      "stdout_line": 3325
+    },
+    {
+      "ns": 882625776592166,
+      "owner": "4BDCF83B-EB7E-41F2-BCB7-A5907FEFACF8",
+      "event": "protocol-submitted-chunks=1 host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid",
+      "stdout_line": 3309
+    },
+    {
+      "ns": 882625806490458,
+      "owner": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "event": "test-entry",
+      "stdout_line": 3241
+    },
+    {
+      "ns": 882625806528291,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "deinit-helper-before-read",
+      "stdout_line": 3328
+    },
+    {
+      "ns": 882625806552000,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "read-entry host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid remaining=Optional(1.999990417 seconds)",
+      "stdout_line": 3329
+    },
+    {
+      "ns": 882625806553000,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "deadline-preflight",
+      "stdout_line": 3330
+    },
+    {
+      "ns": 882625806572750,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3331
+    },
+    {
+      "ns": 882625806574125,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "continuation-entered",
+      "stdout_line": 3332
+    },
+    {
+      "ns": 882625806574791,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "start-entry",
+      "stdout_line": 3333
+    },
+    {
+      "ns": 882625806583541,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "session-create-before",
+      "stdout_line": 3334
+    },
+    {
+      "ns": 882625806607375,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "session-created",
+      "stdout_line": 3335
+    },
+    {
+      "ns": 882625806608166,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "task-create-before",
+      "stdout_line": 3336
+    },
+    {
+      "ns": 882625807326583,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "task-published",
+      "stdout_line": 3337
+    },
+    {
+      "ns": 882625807327083,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "publication-hook-returned",
+      "stdout_line": 3338
+    },
+    {
+      "ns": 882625807327166,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "task-resume-before",
+      "stdout_line": 3339
+    },
+    {
+      "ns": 882625807359666,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "task-resume-after",
+      "stdout_line": 3340
+    },
+    {
+      "ns": 882625807579083,
+      "owner": "629D48A0-310B-460D-9318-5D2B2E8ACD1B",
+      "event": "protocol-startLoading-entry host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid",
+      "stdout_line": 3341
+    },
+    {
+      "ns": 882625807607708,
+      "owner": "8E48AE87-E8CF-4BE3-B799-C17B0173F49C",
+      "event": "protocol-queue-start host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid",
+      "stdout_line": 3326
+    },
+    {
+      "ns": 882625807623166,
+      "owner": "629D48A0-310B-460D-9318-5D2B2E8ACD1B",
+      "event": "protocol-response-submit host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid",
+      "stdout_line": 3342
+    },
+    {
+      "ns": 882625807634208,
+      "owner": "8E48AE87-E8CF-4BE3-B799-C17B0173F49C",
+      "event": "protocol-submitted-chunks=1 host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid",
+      "stdout_line": 3327
+    },
+    {
+      "ns": 882625817323166,
+      "owner": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "event": "test-entry",
+      "stdout_line": 3242
+    },
+    {
+      "ns": 882625817346833,
+      "owner": "64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid",
+      "event": "success-caller-before-send",
+      "stdout_line": 3243
+    },
+    {
+      "ns": 882625817399416,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "transport-before-read",
+      "stdout_line": 3345
+    },
+    {
+      "ns": 882625817415500,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "read-entry host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid remaining=Optional(1.999937208 seconds)",
+      "stdout_line": 3346
+    },
+    {
+      "ns": 882625817416250,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "deadline-preflight",
+      "stdout_line": 3347
+    },
+    {
+      "ns": 882625817420916,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3348
+    },
+    {
+      "ns": 882625817422041,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "continuation-entered",
+      "stdout_line": 3349
+    },
+    {
+      "ns": 882625817422416,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "start-entry",
+      "stdout_line": 3350
+    },
+    {
+      "ns": 882625817426083,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "session-create-before",
+      "stdout_line": 3351
+    },
+    {
+      "ns": 882625817433791,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "session-created",
+      "stdout_line": 3352
+    },
+    {
+      "ns": 882625817434166,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "task-create-before",
+      "stdout_line": 3353
+    },
+    {
+      "ns": 882625817458958,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "task-published",
+      "stdout_line": 3354
+    },
+    {
+      "ns": 882625817459000,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "publication-hook-returned",
+      "stdout_line": 3355
+    },
+    {
+      "ns": 882625817459041,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "task-resume-before",
+      "stdout_line": 3356
+    },
+    {
+      "ns": 882625817475333,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "task-resume-after",
+      "stdout_line": 3357
+    },
+    {
+      "ns": 882625817695958,
+      "owner": "BE66522C-ADA3-452B-A80C-A717E51E4C1C",
+      "event": "protocol-startLoading-entry host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid",
+      "stdout_line": 3358
+    },
+    {
+      "ns": 882625817723750,
+      "owner": "9E1D6DF6-DF75-46B9-86FF-DAFD7BF6867C",
+      "event": "protocol-queue-start host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid",
+      "stdout_line": 3343
+    },
+    {
+      "ns": 882625817757666,
+      "owner": "BE66522C-ADA3-452B-A80C-A717E51E4C1C",
+      "event": "protocol-response-submit host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid",
+      "stdout_line": 3359
+    },
+    {
+      "ns": 882625817786750,
+      "owner": "9E1D6DF6-DF75-46B9-86FF-DAFD7BF6867C",
+      "event": "protocol-submitted-chunks=1 host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid",
+      "stdout_line": 3344
+    },
+    {
+      "ns": 882625827438708,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "read-entry host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid remaining=Optional(0.119994375 seconds)",
+      "stdout_line": 3363
+    },
+    {
+      "ns": 882625827439458,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "deadline-preflight",
+      "stdout_line": 3364
+    },
+    {
+      "ns": 882625827447833,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3365
+    },
+    {
+      "ns": 882625827448791,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "continuation-entered",
+      "stdout_line": 3366
+    },
+    {
+      "ns": 882625827449000,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "start-entry",
+      "stdout_line": 3367
+    },
+    {
+      "ns": 882625827452291,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "session-create-before",
+      "stdout_line": 3368
+    },
+    {
+      "ns": 882625827458833,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "session-created",
+      "stdout_line": 3369
+    },
+    {
+      "ns": 882625827459250,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "task-create-before",
+      "stdout_line": 3370
+    },
+    {
+      "ns": 882625827473166,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "task-published",
+      "stdout_line": 3371
+    },
+    {
+      "ns": 882625827473708,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "publication-hook-returned",
+      "stdout_line": 3372
+    },
+    {
+      "ns": 882625827473791,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "task-resume-before",
+      "stdout_line": 3373
+    },
+    {
+      "ns": 882625827486791,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "task-resume-after",
+      "stdout_line": 3374
+    },
+    {
+      "ns": 882625827683583,
+      "owner": "7EC3E43D-E62F-4FE0-BEE6-3438ED976700",
+      "event": "protocol-startLoading-entry host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid",
+      "stdout_line": 3385
+    },
+    {
+      "ns": 882625827711458,
+      "owner": "169E83BF-3BFD-4DE7-8339-CBB22E1754C5",
+      "event": "protocol-queue-start host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid",
+      "stdout_line": 3362
+    },
+    {
+      "ns": 882625952158000,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "watchdog-fired",
+      "stdout_line": 3375
+    },
+    {
+      "ns": 882625952191708,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3376
+    },
+    {
+      "ns": 882625952684666,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://e903a71e-bb27-4968-88d2-f089db4578d0.invalid/jpip, NSErrorFailingURLKey=https://e903a71e-bb27-4968-88d2-f089db4578d0.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3377
+    },
+    {
+      "ns": 882625952722875,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3380
+    },
+    {
+      "ns": 882625952745291,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "tail-enqueued",
+      "stdout_line": 3381
+    },
+    {
+      "ns": 882625952754416,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "tail-executing",
+      "stdout_line": 3382
+    },
+    {
+      "ns": 882627195578041,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "read-entry host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid remaining=Optional(1.999992417 seconds)",
+      "stdout_line": 3245
+    },
+    {
+      "ns": 882627195579250,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "deadline-preflight",
+      "stdout_line": 3246
+    },
+    {
+      "ns": 882627195588750,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3247
+    },
+    {
+      "ns": 882627195590166,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "continuation-entered",
+      "stdout_line": 3248
+    },
+    {
+      "ns": 882627195590333,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "start-entry",
+      "stdout_line": 3249
+    },
+    {
+      "ns": 882627195598125,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "session-create-before",
+      "stdout_line": 3250
+    },
+    {
+      "ns": 882627195631291,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "session-created",
+      "stdout_line": 3251
+    },
+    {
+      "ns": 882627195631708,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "task-create-before",
+      "stdout_line": 3252
+    },
+    {
+      "ns": 882627195646083,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "task-published",
+      "stdout_line": 3253
+    },
+    {
+      "ns": 882627195646583,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "publication-hook-returned",
+      "stdout_line": 3254
+    },
+    {
+      "ns": 882627195646625,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "task-resume-before",
+      "stdout_line": 3255
+    },
+    {
+      "ns": 882627195660791,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "task-resume-after",
+      "stdout_line": 3256
+    },
+    {
+      "ns": 882627196068166,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "trickle-request-task-entered",
+      "stdout_line": 3261
+    },
+    {
+      "ns": 882627196089041,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "read-entry host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid remaining=nil",
+      "stdout_line": 3262
+    },
+    {
+      "ns": 882627196089791,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "deadline-preflight",
+      "stdout_line": 3263
+    },
+    {
+      "ns": 882627196090625,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3264
+    },
+    {
+      "ns": 882627196092583,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "continuation-entered",
+      "stdout_line": 3265
+    },
+    {
+      "ns": 882627196092750,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "start-entry",
+      "stdout_line": 3266
+    },
+    {
+      "ns": 882627196102125,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "session-create-before",
+      "stdout_line": 3267
+    },
+    {
+      "ns": 882627196154041,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "session-created",
+      "stdout_line": 3268
+    },
+    {
+      "ns": 882627196154666,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "task-create-before",
+      "stdout_line": 3269
+    },
+    {
+      "ns": 882627196174833,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "task-published",
+      "stdout_line": 3270
+    },
+    {
+      "ns": 882627196175291,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "publication-hook-returned",
+      "stdout_line": 3271
+    },
+    {
+      "ns": 882627196175375,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "task-resume-before",
+      "stdout_line": 3272
+    },
+    {
+      "ns": 882627196193166,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "task-resume-after",
+      "stdout_line": 3273
+    },
+    {
+      "ns": 882627200076125,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "transport-before-read",
+      "stdout_line": 3386
+    },
+    {
+      "ns": 882627200089875,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "read-entry host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid remaining=Optional(1.999908959 seconds)",
+      "stdout_line": 3387
+    },
+    {
+      "ns": 882627200090500,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "deadline-preflight",
+      "stdout_line": 3388
+    },
+    {
+      "ns": 882627200093916,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3389
+    },
+    {
+      "ns": 882627200094500,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "continuation-entered",
+      "stdout_line": 3390
+    },
+    {
+      "ns": 882627200094875,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "start-entry",
+      "stdout_line": 3391
+    },
+    {
+      "ns": 882627200098958,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "session-create-before",
+      "stdout_line": 3392
+    },
+    {
+      "ns": 882627200111666,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "session-created",
+      "stdout_line": 3393
+    },
+    {
+      "ns": 882627200112041,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "task-create-before",
+      "stdout_line": 3394
+    },
+    {
+      "ns": 882627200127166,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "task-published",
+      "stdout_line": 3395
+    },
+    {
+      "ns": 882627200127416,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "publication-hook-returned",
+      "stdout_line": 3396
+    },
+    {
+      "ns": 882627200127458,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "task-resume-before",
+      "stdout_line": 3397
+    },
+    {
+      "ns": 882627200138166,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "task-resume-after",
+      "stdout_line": 3398
+    },
+    {
+      "ns": 882627213785000,
+      "owner": "E48ED290-3BE7-43FE-A120-EA2060CDFDA3",
+      "event": "protocol-startLoading-entry host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid",
+      "stdout_line": 3399
+    },
+    {
+      "ns": 882627213804916,
+      "owner": "182771C2-2220-40C1-B1DD-5462D5899C59",
+      "event": "protocol-startLoading-entry host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid",
+      "stdout_line": 3400
+    },
+    {
+      "ns": 882627218146500,
+      "owner": "FD56C37E-87F8-4DAD-A05C-B7F5C94A2FA0",
+      "event": "protocol-queue-start host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid",
+      "stdout_line": 3244
+    },
+    {
+      "ns": 882627218182583,
+      "owner": "C324C19A-C095-49FB-96C2-031B6B734E79",
+      "event": "protocol-queue-start host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid",
+      "stdout_line": 3257
+    },
+    {
+      "ns": 882627218210166,
+      "owner": "182771C2-2220-40C1-B1DD-5462D5899C59",
+      "event": "protocol-response-submit host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid",
+      "stdout_line": 3401
+    },
+    {
+      "ns": 882627218254625,
+      "owner": "C324C19A-C095-49FB-96C2-031B6B734E79",
+      "event": "protocol-submitted-chunks=1 host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid",
+      "stdout_line": 3258
+    },
+    {
+      "ns": 882627221235208,
+      "owner": "52CB75A5-4A6E-4137-9C28-75C64B54069B",
+      "event": "protocol-startLoading-entry host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid",
+      "stdout_line": 3402
+    },
+    {
+      "ns": 882627225938916,
+      "owner": "7782099F-BD88-4D3D-988E-A12AE103FD38",
+      "event": "protocol-queue-start host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid",
+      "stdout_line": 3274
+    },
+    {
+      "ns": 882627246226750,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "transport-before-read",
+      "stdout_line": 3403
+    },
+    {
+      "ns": 882627246247666,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "read-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid remaining=Optional(1.999946708 seconds)",
+      "stdout_line": 3404
+    },
+    {
+      "ns": 882627246248291,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "deadline-preflight",
+      "stdout_line": 3405
+    },
+    {
+      "ns": 882627246250458,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3406
+    },
+    {
+      "ns": 882627246251250,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "continuation-entered",
+      "stdout_line": 3407
+    },
+    {
+      "ns": 882627246251500,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "start-entry",
+      "stdout_line": 3408
+    },
+    {
+      "ns": 882627246256250,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "session-create-before",
+      "stdout_line": 3409
+    },
+    {
+      "ns": 882627246272250,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "session-created",
+      "stdout_line": 3410
+    },
+    {
+      "ns": 882627246272625,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "task-create-before",
+      "stdout_line": 3411
+    },
+    {
+      "ns": 882627246287291,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "task-published",
+      "stdout_line": 3412
+    },
+    {
+      "ns": 882627246287416,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "publication-hook-returned",
+      "stdout_line": 3413
+    },
+    {
+      "ns": 882627246287500,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "task-resume-before",
+      "stdout_line": 3414
+    },
+    {
+      "ns": 882627246300916,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "task-resume-after",
+      "stdout_line": 3415
+    },
+    {
+      "ns": 882627250632541,
+      "owner": "38C982B4-F7C8-4EC1-B462-4F6A513D1911",
+      "event": "protocol-startLoading-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3416
+    },
+    {
+      "ns": 882627256522875,
+      "owner": "A5900A63-2DEC-400A-9A1D-921C8C41B4C0",
+      "event": "protocol-queue-start host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3360
+    },
+    {
+      "ns": 882627256558583,
+      "owner": "38C982B4-F7C8-4EC1-B462-4F6A513D1911",
+      "event": "protocol-response-submit host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3417
+    },
+    {
+      "ns": 882627256585375,
+      "owner": "A5900A63-2DEC-400A-9A1D-921C8C41B4C0",
+      "event": "protocol-submitted-chunks=1 host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3361
+    },
+    {
+      "ns": 882627258919375,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "caller-woke",
+      "stdout_line": 3383
+    },
+    {
+      "ns": 882627258932250,
+      "owner": "05FAFCA4-6DFA-4266-8D0B-AFA4948010B1",
+      "event": "read-exit",
+      "stdout_line": 3384
+    },
+    {
+      "ns": 882627375055583,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3530
+    },
+    {
+      "ns": 882627375067416,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3531
+    },
+    {
+      "ns": 882627375899791,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3529
+    },
+    {
+      "ns": 882627417385208,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "transport-before-read",
+      "stdout_line": 3532
+    },
+    {
+      "ns": 882627417409125,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "read-entry host=8ced81b6-c74b-498f-be43-525e11640ec6.invalid remaining=Optional(1.784062875 seconds)",
+      "stdout_line": 3533
+    },
+    {
+      "ns": 882627417410625,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "read-exit",
+      "stdout_line": 3534
+    },
+    {
+      "ns": 882627417449625,
+      "owner": "A931AB16-8BD8-4328-8E79-FB65C38DCCC2",
+      "event": "transport-original-error CancellationError()",
+      "stdout_line": 3535
+    },
+    {
+      "ns": 882627431814708,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3701
+    },
+    {
+      "ns": 882627431853041,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3702
+    },
+    {
+      "ns": 882627766431708,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "watchdog-fired",
+      "stdout_line": 3648
+    },
+    {
+      "ns": 882627766455166,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3649
+    },
+    {
+      "ns": 882627766457208,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "watchdog-fired",
+      "stdout_line": 3656
+    },
+    {
+      "ns": 882627766462583,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3657
+    },
+    {
+      "ns": 882627766510416,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "watchdog-fired",
+      "stdout_line": 3664
+    },
+    {
+      "ns": 882627766516416,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3665
+    },
+    {
+      "ns": 882627774521833,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "watchdog-fired",
+      "stdout_line": 3676
+    },
+    {
+      "ns": 882627774542250,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3677
+    },
+    {
+      "ns": 882627774543875,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "watchdog-fired",
+      "stdout_line": 3685
+    },
+    {
+      "ns": 882627774549125,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3686
+    },
+    {
+      "ns": 882627774695708,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "watchdog-fired",
+      "stdout_line": 3689
+    },
+    {
+      "ns": 882627774705250,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3690
+    },
+    {
+      "ns": 882627807476250,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "watchdog-fired",
+      "stdout_line": 3693
+    },
+    {
+      "ns": 882627807514375,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3694
+    },
+    {
+      "ns": 882627813968791,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "trickle-readiness-expired submitted=60 received=0",
+      "stdout_line": 3672
+    },
+    {
+      "ns": 882627813996916,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3673
+    },
+    {
+      "ns": 882627817646041,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "watchdog-fired",
+      "stdout_line": 3697
+    },
+    {
+      "ns": 882627817681083,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3698
+    },
+    {
+      "ns": 882628320319833,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3666
+    },
+    {
+      "ns": 882628320324125,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "tail-enqueued",
+      "stdout_line": 3667
+    },
+    {
+      "ns": 882628320393208,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid/jpip, NSErrorFailingURLKey=https://909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3658
+    },
+    {
+      "ns": 882628320408458,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "tail-executing",
+      "stdout_line": 3678
+    },
+    {
+      "ns": 882628320414291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid/jpip, NSErrorFailingURLKey=https://83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3650
+    },
+    {
+      "ns": 882628320420083,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "response-callback-entry",
+      "stdout_line": 3687
+    },
+    {
+      "ns": 882628320421791,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3688
+    },
+    {
+      "ns": 882628320424750,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "response-callback-entry",
+      "stdout_line": 3691
+    },
+    {
+      "ns": 882628320426375,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3692
+    },
+    {
+      "ns": 882628320429250,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "response-callback-entry",
+      "stdout_line": 3695
+    },
+    {
+      "ns": 882628320430541,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3696
+    },
+    {
+      "ns": 882628320431791,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "response-callback-entry",
+      "stdout_line": 3699
+    },
+    {
+      "ns": 882628320433208,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3700
+    },
+    {
+      "ns": 882628320435000,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "response-callback-entry",
+      "stdout_line": 3674
+    },
+    {
+      "ns": 882628320436000,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "response-callback-disposition allow=false",
+      "stdout_line": 3675
+    },
+    {
+      "ns": 882628320437833,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "response-callback-entry",
+      "stdout_line": 3706
+    },
+    {
+      "ns": 882628320456708,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://49d382ee-1ba2-4f51-9685-aba9580e452b.invalid/jpip, NSErrorFailingURLKey=https://49d382ee-1ba2-4f51-9685-aba9580e452b.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3669
+    },
+    {
+      "ns": 882628320478458,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://9a41d069-2299-4fbd-b2db-61f65c362420.invalid/jpip?target=silent, NSErrorFailingURLKey=https://9a41d069-2299-4fbd-b2db-61f65c362420.invalid/jpip?target=silent, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3703
+    },
+    {
+      "ns": 882628320484416,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "response-callback-disposition allow=true",
+      "stdout_line": 3707
+    },
+    {
+      "ns": 882628320490083,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3661
+    },
+    {
+      "ns": 882628320491333,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "tail-enqueued",
+      "stdout_line": 3662
+    },
+    {
+      "ns": 882628320513708,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid/jpip, NSErrorFailingURLKey=https://d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3679
+    },
+    {
+      "ns": 882628320515333,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3653
+    },
+    {
+      "ns": 882628320516291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "tail-enqueued",
+      "stdout_line": 3654
+    },
+    {
+      "ns": 882628320518625,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "tail-executing",
+      "stdout_line": 3668
+    },
+    {
+      "ns": 882628320521291,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3682
+    },
+    {
+      "ns": 882628320524208,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "tail-executing",
+      "stdout_line": 3663
+    },
+    {
+      "ns": 882628320527083,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "tail-executing",
+      "stdout_line": 3655
+    },
+    {
+      "ns": 882628320532833,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "caller-woke",
+      "stdout_line": 3683
+    },
+    {
+      "ns": 882628320545291,
+      "owner": "C2C6BD7B-56CC-46D7-B325-CA66312647CE",
+      "event": "read-exit",
+      "stdout_line": 3684
+    },
+    {
+      "ns": 882628320575541,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "caller-woke",
+      "stdout_line": 3708
+    },
+    {
+      "ns": 882628320755916,
+      "owner": "0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8",
+      "event": "read-exit",
+      "stdout_line": 3709
+    },
+    {
+      "ns": 882628320819875,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "caller-woke",
+      "stdout_line": 3710
+    },
+    {
+      "ns": 882628320842000,
+      "owner": "1F22DE38-5D1E-410B-9487-302660190F05",
+      "event": "read-exit",
+      "stdout_line": 3711
+    },
+    {
+      "ns": 882628321149291,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "caller-woke",
+      "stdout_line": 3712
+    },
+    {
+      "ns": 882628321150750,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "result-taken",
+      "stdout_line": 3713
+    },
+    {
+      "ns": 882628321151166,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "deadline-final-check",
+      "stdout_line": 3714
+    },
+    {
+      "ns": 882628321168583,
+      "owner": "58EF1A95-ABB1-458C-917A-98F66E5D037C",
+      "event": "read-exit",
+      "stdout_line": 3715
+    },
+    {
+      "ns": 882628620721708,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "body-first-entry",
+      "stdout_line": 3803
+    },
+    {
+      "ns": 882628620746000,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3746
+    },
+    {
+      "ns": 882628620772750,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "tail-enqueued",
+      "stdout_line": 3747
+    },
+    {
+      "ns": 882628620825458,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid/jpip, NSErrorFailingURLKey=https://9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3734
+    },
+    {
+      "ns": 882628620851458,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid/jpip, NSErrorFailingURLKey=https://c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3785
+    },
+    {
+      "ns": 882628620858208,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3780
+    },
+    {
+      "ns": 882628620868416,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "tail-enqueued",
+      "stdout_line": 3781
+    },
+    {
+      "ns": 882628620889583,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid/jpip?target=a%20b.j2k, NSErrorFailingURLKey=https://64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid/jpip?target=a%20b.j2k, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3740
+    },
+    {
+      "ns": 882628620909458,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid/jpip, NSErrorFailingURLKey=https://c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3797
+    },
+    {
+      "ns": 882628620928833,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid/jpip, NSErrorFailingURLKey=https://0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(",
+      "stdout_line": 3728
+    },
+    {
+      "ns": 882628620936458,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3804
+    },
+    {
+      "ns": 882628620998083,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3737
+    },
+    {
+      "ns": 882628621001250,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3794
+    },
+    {
+      "ns": 882628621008500,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3743
+    },
+    {
+      "ns": 882628621014333,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "tail-enqueued",
+      "stdout_line": 3795
+    },
+    {
+      "ns": 882628621015291,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "tail-enqueued",
+      "stdout_line": 3738
+    },
+    {
+      "ns": 882628621018416,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "tail-executing",
+      "stdout_line": 3748
+    },
+    {
+      "ns": 882628621020916,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "tail-enqueued",
+      "stdout_line": 3744
+    },
+    {
+      "ns": 882628621022500,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3805
+    },
+    {
+      "ns": 882628621032958,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "tail-enqueued",
+      "stdout_line": 3806
+    },
+    {
+      "ns": 882628621059375,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3731
+    },
+    {
+      "ns": 882628621065291,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3800
+    },
+    {
+      "ns": 882628621069291,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "tail-enqueued",
+      "stdout_line": 3732
+    },
+    {
+      "ns": 882628621073333,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "tail-executing",
+      "stdout_line": 3782
+    },
+    {
+      "ns": 882628621074291,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "tail-enqueued",
+      "stdout_line": 3801
+    },
+    {
+      "ns": 882628621082458,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "tail-executing",
+      "stdout_line": 3739
+    },
+    {
+      "ns": 882628621083000,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "tail-executing",
+      "stdout_line": 3796
+    },
+    {
+      "ns": 882628621084916,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "tail-executing",
+      "stdout_line": 3745
+    },
+    {
+      "ns": 882628621086416,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "tail-executing",
+      "stdout_line": 3807
+    },
+    {
+      "ns": 882628621087291,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "tail-executing",
+      "stdout_line": 3733
+    },
+    {
+      "ns": 882628621089416,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "tail-executing",
+      "stdout_line": 3802
+    },
+    {
+      "ns": 882628621099375,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "caller-woke",
+      "stdout_line": 3749
+    },
+    {
+      "ns": 882628621108791,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "caller-woke",
+      "stdout_line": 3783
+    },
+    {
+      "ns": 882628621109250,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "read-exit",
+      "stdout_line": 3750
+    },
+    {
+      "ns": 882628621112958,
+      "owner": "1E53B2C6-0C17-4EF0-843C-5769A0611AD4",
+      "event": "read-exit",
+      "stdout_line": 3784
+    },
+    {
+      "ns": 882628621159166,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "caller-woke",
+      "stdout_line": 3751
+    },
+    {
+      "ns": 882628621165791,
+      "owner": "DD02A114-E145-47B1-8412-A50F3D0C4EC5",
+      "event": "read-exit",
+      "stdout_line": 3752
+    },
+    {
+      "ns": 882628621191708,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "caller-woke",
+      "stdout_line": 3753
+    },
+    {
+      "ns": 882628621196250,
+      "owner": "836223B5-8783-4C94-9265-DCB09CA9F799",
+      "event": "read-exit",
+      "stdout_line": 3754
+    },
+    {
+      "ns": 882628621257833,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "caller-woke",
+      "stdout_line": 3757
+    },
+    {
+      "ns": 882628621258458,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "caller-woke",
+      "stdout_line": 3755
+    },
+    {
+      "ns": 882628621260166,
+      "owner": "20E3FDA1-5F10-4C2D-9FDC-B90247C823B4",
+      "event": "read-exit",
+      "stdout_line": 3756
+    },
+    {
+      "ns": 882628621262291,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "read-exit",
+      "stdout_line": 3758
+    },
+    {
+      "ns": 882628621297625,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "caller-woke",
+      "stdout_line": 3759
+    },
+    {
+      "ns": 882628621298666,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "result-taken",
+      "stdout_line": 3760
+    },
+    {
+      "ns": 882628621298916,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "deadline-final-check",
+      "stdout_line": 3761
+    },
+    {
+      "ns": 882628621300083,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "read-return",
+      "stdout_line": 3762
+    },
+    {
+      "ns": 882628621303541,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "read-exit",
+      "stdout_line": 3763
+    },
+    {
+      "ns": 882628621317583,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "caller-woke",
+      "stdout_line": 3764
+    },
+    {
+      "ns": 882628621325291,
+      "owner": "1C4A1B72-ED79-49CF-9FB0-8173277A5F57",
+      "event": "read-exit",
+      "stdout_line": 3765
+    },
+    {
+      "ns": 882628621330458,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "transport-after-read",
+      "stdout_line": 3766
+    },
+    {
+      "ns": 882628621406333,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "read-entry host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid remaining=Optional(1.999995208 seconds)",
+      "stdout_line": 3767
+    },
+    {
+      "ns": 882628621406916,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "deadline-preflight",
+      "stdout_line": 3768
+    },
+    {
+      "ns": 882628621414166,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3769
+    },
+    {
+      "ns": 882628621415000,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "continuation-entered",
+      "stdout_line": 3770
+    },
+    {
+      "ns": 882628621415250,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "start-entry",
+      "stdout_line": 3771
+    },
+    {
+      "ns": 882628621421250,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "session-create-before",
+      "stdout_line": 3772
+    },
+    {
+      "ns": 882628621444000,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "session-created",
+      "stdout_line": 3774
+    },
+    {
+      "ns": 882628621444666,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "task-create-before",
+      "stdout_line": 3775
+    },
+    {
+      "ns": 882628621454333,
+      "owner": "2443B5A6-7E8B-46FC-90F6-0F807D12D14E",
+      "event": "transport-original-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")",
+      "stdout_line": 3773
+    },
+    {
+      "ns": 882628621460541,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "task-published",
+      "stdout_line": 3776
+    },
+    {
+      "ns": 882628621461125,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "publication-hook-returned",
+      "stdout_line": 3777
+    },
+    {
+      "ns": 882628621461166,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "task-resume-before",
+      "stdout_line": 3778
+    },
+    {
+      "ns": 882628621473083,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "task-resume-after",
+      "stdout_line": 3779
+    },
+    {
+      "ns": 882628621631541,
+      "owner": "14AE38D3-D8E8-4FDD-8844-7039469FEF9A",
+      "event": "transport-original-error CancellationError()",
+      "stdout_line": 3808
+    },
+    {
+      "ns": 882628621681041,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "cancel-entry CancellationError()",
+      "stdout_line": 3811
+    },
+    {
+      "ns": 882628621804541,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "transport-before-read",
+      "stdout_line": 3828
+    },
+    {
+      "ns": 882628621828791,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "read-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid remaining=Optional(1.999896083 seconds)",
+      "stdout_line": 3829
+    },
+    {
+      "ns": 882628621829916,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "deadline-preflight",
+      "stdout_line": 3830
+    },
+    {
+      "ns": 882628621840125,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "watchdog-scheduled-if-deadline",
+      "stdout_line": 3831
+    },
+    {
+      "ns": 882628621841500,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "continuation-entered",
+      "stdout_line": 3832
+    },
+    {
+      "ns": 882628621842083,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "start-entry",
+      "stdout_line": 3833
+    },
+    {
+      "ns": 882628621849041,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "session-create-before",
+      "stdout_line": 3834
+    },
+    {
+      "ns": 882628621872958,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "session-created",
+      "stdout_line": 3835
+    },
+    {
+      "ns": 882628621873500,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "task-create-before",
+      "stdout_line": 3836
+    },
+    {
+      "ns": 882628621893041,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "task-published",
+      "stdout_line": 3837
+    },
+    {
+      "ns": 882628621893291,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "publication-hook-returned",
+      "stdout_line": 3838
+    },
+    {
+      "ns": 882628621893416,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "task-resume-before",
+      "stdout_line": 3839
+    },
+    {
+      "ns": 882628621908416,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "task-resume-after",
+      "stdout_line": 3840
+    },
+    {
+      "ns": 882628622116333,
+      "owner": "D684032C-7F96-4B24-AF49-8DF6EE64BD63",
+      "event": "protocol-startLoading-entry host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid",
+      "stdout_line": 3845
+    },
+    {
+      "ns": 882628622136875,
+      "owner": "928A4B49-2A9A-4728-99D5-E64F95B63182",
+      "event": "protocol-queue-start host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid",
+      "stdout_line": 3812
+    },
+    {
+      "ns": 882628622146583,
+      "owner": "D684032C-7F96-4B24-AF49-8DF6EE64BD63",
+      "event": "protocol-response-submit host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid",
+      "stdout_line": 3846
+    },
+    {
+      "ns": 882628622160791,
+      "owner": "928A4B49-2A9A-4728-99D5-E64F95B63182",
+      "event": "protocol-submitted-chunks=1 host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid",
+      "stdout_line": 3813
+    },
+    {
+      "ns": 882628622211375,
+      "owner": "4ECBD918-03A9-4083-8D14-0CFCCE2F3FA0",
+      "event": "protocol-startLoading-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3847
+    },
+    {
+      "ns": 882628622231666,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "response-callback-entry",
+      "stdout_line": 3814
+    },
+    {
+      "ns": 882628622232250,
+      "owner": "AC08EFF3-B2F6-4D4E-8EC6-2B92E8427D5F",
+      "event": "protocol-queue-start host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3826
+    },
+    {
+      "ns": 882628622242250,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "response-callback-disposition allow=true",
+      "stdout_line": 3815
+    },
+    {
+      "ns": 882628622255875,
+      "owner": "4ECBD918-03A9-4083-8D14-0CFCCE2F3FA0",
+      "event": "protocol-response-submit host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3848
+    },
+    {
+      "ns": 882628622259125,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "body-first-entry",
+      "stdout_line": 3816
+    },
+    {
+      "ns": 882628622276458,
+      "owner": "AC08EFF3-B2F6-4D4E-8EC6-2B92E8427D5F",
+      "event": "protocol-submitted-chunks=1 host=d88d148c-6e95-4322-93c2-edd106051111.invalid",
+      "stdout_line": 3827
+    },
+    {
+      "ns": 882628622302833,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3817
+    },
+    {
+      "ns": 882628622311166,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "response-callback-entry",
+      "stdout_line": 3841
+    },
+    {
+      "ns": 882628622331208,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "response-callback-disposition allow=true",
+      "stdout_line": 3842
+    },
+    {
+      "ns": 882628622334000,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3818
+    },
+    {
+      "ns": 882628622345708,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "body-first-entry",
+      "stdout_line": 3843
+    },
+    {
+      "ns": 882628622347375,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "tail-enqueued",
+      "stdout_line": 3819
+    },
+    {
+      "ns": 882628622355000,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "tail-executing",
+      "stdout_line": 3820
+    },
+    {
+      "ns": 882628622363875,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "caller-woke",
+      "stdout_line": 3821
+    },
+    {
+      "ns": 882628622364958,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "result-taken",
+      "stdout_line": 3822
+    },
+    {
+      "ns": 882628622365916,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "deadline-final-check",
+      "stdout_line": 3823
+    },
+    {
+      "ns": 882628622366958,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "read-return",
+      "stdout_line": 3824
+    },
+    {
+      "ns": 882628622371000,
+      "owner": "718DC876-72BB-4600-8DFF-A7D704D9B8BD",
+      "event": "read-exit",
+      "stdout_line": 3825
+    },
+    {
+      "ns": 882628622378541,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "task-completion-entry nil",
+      "stdout_line": 3844
+    },
+    {
+      "ns": 882628622408500,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "session-invalidation-entry",
+      "stdout_line": 3850
+    },
+    {
+      "ns": 882628622418500,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "tail-enqueued",
+      "stdout_line": 3851
+    },
+    {
+      "ns": 882628622425833,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "tail-executing",
+      "stdout_line": 3852
+    },
+    {
+      "ns": 882628622431666,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "caller-woke",
+      "stdout_line": 3853
+    },
+    {
+      "ns": 882628622432333,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "result-taken",
+      "stdout_line": 3854
+    },
+    {
+      "ns": 882628622432958,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "deadline-final-check",
+      "stdout_line": 3855
+    },
+    {
+      "ns": 882628622433750,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "read-return",
+      "stdout_line": 3856
+    },
+    {
+      "ns": 882628622437750,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "read-exit",
+      "stdout_line": 3857
+    },
+    {
+      "ns": 882628622508291,
+      "owner": "BD9416A9-0902-40BA-8734-F79456120906",
+      "event": "transport-after-read",
+      "stdout_line": 3859
+    },
+    {
+      "ns": 882628622558666,
+      "owner": "307EEC21-AFEF-483B-A71E-9818B88C6E0B",
+      "event": "transport-original-error CancellationError()",
+      "stdout_line": 3858
+    }
+  ]
+}

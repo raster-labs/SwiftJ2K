@@ -1,0 +1,500 @@
+OWNER completionAndCancellationHaveOneWinner(cancelFirst:)
+0.000000000 test-entry
+0.000983583 test-entry
+
+OWNER 58EF1A95-ABB1-458C-917A-98F66E5D037C
+0.000000000 scripted-caller-before-read cancelFirst=false
+0.000462167 read-entry host=83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid remaining=Optional(1.999982375 seconds)
+0.000463583 deadline-preflight
+0.000473500 watchdog-scheduled-if-deadline
+0.000475167 continuation-entered
+0.000481292 start-entry
+0.000490708 session-create-before
+0.000534500 session-created
+0.000535000 task-create-before
+0.000577958 task-published
+0.000583750 response-callback-entry
+0.000615583 response-callback-disposition allow=true
+0.000616875 body-first-entry
+0.000625125 task-completion-entry nil
+0.000637292 cancel-entry CancellationError()
+0.000713292 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "(null)")
+0.000715083 publication-hook-returned
+0.000715167 task-resume-before
+0.000715583 task-resume-after
+2.001031000 watchdog-fired
+2.001054458 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.555013583 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid/jpip, NSErrorFailingURLKey=https://83ab554e-b7d3-4d62-8b1f-7c25bef7a125.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.555114625 session-invalidation-entry
+2.555115583 tail-enqueued
+2.555126375 tail-executing
+2.555748583 caller-woke
+2.555750042 result-taken
+2.555750458 deadline-final-check
+2.555767875 read-exit
+
+OWNER 1F22DE38-5D1E-410B-9487-302660190F05
+0.000000000 scripted-caller-before-read cancelFirst=true
+0.000007875 read-entry host=909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid remaining=Optional(1.999996333 seconds)
+0.000008291 deadline-preflight
+0.000012833 watchdog-scheduled-if-deadline
+0.000013333 continuation-entered
+0.000013666 start-entry
+0.000016458 session-create-before
+0.000041916 session-created
+0.000042166 task-create-before
+0.000057875 task-published
+0.000061083 cancel-entry CancellationError()
+0.000064666 response-callback-entry
+0.000065000 response-callback-disposition allow=false
+0.000066041 body-first-entry
+0.000067000 task-completion-entry nil
+0.000069250 cancel-entry CancellationError()
+0.000081583 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "(null)")
+0.000082333 publication-hook-returned
+0.000082375 task-resume-before
+0.000083041 task-resume-after
+2.000278708 watchdog-fired
+2.000284083 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.554214708 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid/jpip, NSErrorFailingURLKey=https://909d1a6a-cd7c-4802-bb24-3457e0b7dc46.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.554311583 session-invalidation-entry
+2.554312833 tail-enqueued
+2.554345708 tail-executing
+2.554641375 caller-woke
+2.554663500 read-exit
+
+OWNER 824C25D7-1CD4-46C3-8B52-04232733534D
+0.000000000 cancel-entry CancellationError()
+0.000015417 read-entry host=db1fb245-14f2-473c-958c-9d6f86f41f9a.invalid remaining=Optional(1.999997666 seconds)
+0.000017959 read-exit
+
+OWNER 0D83EE28-F9DC-45F0-A1AC-C963DBF20AB8
+0.000000000 read-entry host=0d383588-377e-4356-a35e-5f8ac8afa18d.invalid remaining=Optional(1.999996417 seconds)
+0.000000708 deadline-preflight
+0.000006917 watchdog-scheduled-if-deadline
+0.000007875 continuation-entered
+0.000007958 start-entry
+0.000011917 session-create-before
+0.000028542 session-created
+0.000031833 cancel-entry CancellationError()
+2.000023458 watchdog-fired
+2.000029458 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.553832875 session-invalidation-entry
+2.553837167 tail-enqueued
+2.554031667 tail-executing
+2.554088583 caller-woke
+2.554268958 read-exit
+
+OWNER 85E37D4C-1899-4859-B211-F9CC7EECA09E
+0.000000000 read-entry host=e386f5b9-55f0-41f6-9468-4efb92afbd6b.invalid remaining=Optional(-0.001002833 seconds)
+0.000000500 deadline-preflight
+0.000010834 deadline-preflight-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP operation deadline elapsed.")
+0.000012584 read-exit
+
+OWNER sharedWatchdogInterruptsAnAlreadyActiveTrickle()
+0.000000000 test-entry
+
+OWNER 20E3FDA1-5F10-4C2D-9FDC-B90247C823B4
+0.000000000 trickle-caller-task-creation host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid
+0.000003083 trickle-readiness-clock-start
+1.423594166 trickle-request-task-entered
+1.423615041 read-entry host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid remaining=nil
+1.423615791 deadline-preflight
+1.423616625 watchdog-scheduled-if-deadline
+1.423618583 continuation-entered
+1.423618750 start-entry
+1.423628125 session-create-before
+1.423680041 session-created
+1.423680666 task-create-before
+1.423700833 task-published
+1.423701291 publication-hook-returned
+1.423701375 task-resume-before
+1.423719166 task-resume-after
+2.041494791 trickle-readiness-expired submitted=60 received=0
+2.041522916 cancel-entry CancellationError()
+2.547961000 response-callback-entry
+2.547962000 response-callback-disposition allow=false
+2.848454833 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid/jpip, NSErrorFailingURLKey=https://0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.848585375 session-invalidation-entry
+2.848595291 tail-enqueued
+2.848613291 tail-executing
+2.848784458 caller-woke
+2.848786166 read-exit
+
+OWNER C2C6BD7B-56CC-46D7-B325-CA66312647CE
+0.000000000 read-entry host=d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid remaining=Optional(1.999991958 seconds)
+0.000001125 deadline-preflight
+0.000014834 watchdog-scheduled-if-deadline
+0.000016709 continuation-entered
+0.000016959 start-entry
+0.000030542 session-create-before
+0.000048209 session-created
+0.000048750 task-create-before
+0.000080292 task-published
+0.000089375 cancel-entry CancellationError()
+0.000096500 session-invalidation-entry
+0.000125042 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "(null)")
+0.000126875 tail-enqueued
+0.000135834 cancel-entry CancellationError()
+0.000137709 body-first-entry
+0.000139084 task-completion-entry nil
+0.000139292 session-invalidation-entry
+0.000141709 publication-hook-returned
+0.000141792 task-resume-before
+0.000143042 task-resume-after
+2.001172167 watchdog-fired
+2.001192584 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.547058792 tail-executing
+2.547164042 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid/jpip, NSErrorFailingURLKey=https://d054e3f5-22a1-45c5-b9f5-525cef1464a8.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.547171625 session-invalidation-entry
+2.547183167 caller-woke
+2.547195625 read-exit
+
+OWNER 836223B5-8783-4C94-9265-DCB09CA9F799
+0.000000000 read-entry host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid remaining=Optional(1.999993583 seconds)
+0.000001000 deadline-preflight
+0.000009833 watchdog-scheduled-if-deadline
+0.000011542 continuation-entered
+0.000011708 start-entry
+0.000017083 session-create-before
+0.000032542 session-created
+0.000033042 task-create-before
+0.000053667 task-published
+0.000054583 publication-hook-returned
+0.000054667 task-resume-before
+0.000104292 task-resume-after
+2.000051542 watchdog-fired
+2.000056792 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.545927750 response-callback-entry
+2.545929458 response-callback-disposition allow=false
+2.846359125 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid/jpip, NSErrorFailingURLKey=https://c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.846508917 session-invalidation-entry
+2.846522000 tail-enqueued
+2.846590667 tail-executing
+2.846699375 caller-woke
+2.846703917 read-exit
+
+OWNER DD02A114-E145-47B1-8412-A50F3D0C4EC5
+0.000000000 read-entry host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid remaining=Optional(1.999994209 seconds)
+0.000000834 deadline-preflight
+0.000008084 watchdog-scheduled-if-deadline
+0.000009375 continuation-entered
+0.000009500 start-entry
+0.000013750 session-create-before
+0.000027459 session-created
+0.000027834 task-create-before
+0.000044834 task-published
+0.000045750 publication-hook-returned
+0.000045834 task-resume-before
+0.000055875 task-resume-after
+2.000041917 watchdog-fired
+2.000051459 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.545770959 response-callback-entry
+2.545772584 response-callback-disposition allow=false
+2.846171667 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid/jpip, NSErrorFailingURLKey=https://9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.846344292 session-invalidation-entry
+2.846361500 tail-enqueued
+2.846428667 tail-executing
+2.846505375 caller-woke
+2.846512000 read-exit
+
+OWNER 7C653D46-9339-4371-B0BA-8CE6F4C98856
+0.000000000 protocol-startLoading-entry host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid
+0.000072541 protocol-response-submit host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid
+
+OWNER 95575543-34B8-4B00-B153-4D3EDFC0EB9F
+0.000000000 protocol-startLoading-entry host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid
+0.000063125 protocol-response-submit host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid
+
+OWNER 4BDCF83B-EB7E-41F2-BCB7-A5907FEFACF8
+0.000000000 protocol-queue-start host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid
+0.000051375 protocol-submitted-chunks=1 host=9eb97fd9-f591-4d84-9e45-8420b7b34463.invalid
+
+OWNER 3E9E2610-CE14-4C85-9B4E-7A4A206C8B10
+0.000000000 protocol-queue-start host=c95d04f2-4ddf-4c49-87f5-bdf6daba5a02.invalid
+
+OWNER completedRequestEventuallyReleasesItsDelegateOwnership()
+0.000000000 test-entry
+
+OWNER 1C4A1B72-ED79-49CF-9FB0-8173277A5F57
+0.000000000 deinit-helper-before-read
+0.000023709 read-entry host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid remaining=Optional(1.999990417 seconds)
+0.000024709 deadline-preflight
+0.000044459 watchdog-scheduled-if-deadline
+0.000045834 continuation-entered
+0.000046500 start-entry
+0.000055250 session-create-before
+0.000079084 session-created
+0.000079875 task-create-before
+0.000798292 task-published
+0.000798792 publication-hook-returned
+0.000798875 task-resume-before
+0.000831375 task-resume-after
+2.000947959 watchdog-fired
+2.000986084 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.513900959 response-callback-entry
+2.513902250 response-callback-disposition allow=false
+2.814381167 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid/jpip, NSErrorFailingURLKey=https://c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.814537000 session-invalidation-entry
+2.814546000 tail-enqueued
+2.814561125 tail-executing
+2.814789292 caller-woke
+2.814797000 read-exit
+
+OWNER 629D48A0-310B-460D-9318-5D2B2E8ACD1B
+0.000000000 protocol-startLoading-entry host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid
+0.000044083 protocol-response-submit host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid
+
+OWNER 8E48AE87-E8CF-4BE3-B799-C17B0173F49C
+0.000000000 protocol-queue-start host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid
+0.000026500 protocol-submitted-chunks=1 host=c2eda8fe-c489-4529-9fbd-875a7158ad79.invalid
+
+OWNER sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()
+0.000000000 test-entry
+
+OWNER 64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid
+0.000000000 success-caller-before-send
+
+OWNER 2443B5A6-7E8B-46FC-90F6-0F807D12D14E
+0.000000000 transport-before-read
+0.000016084 read-entry host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid remaining=Optional(1.999937208 seconds)
+0.000016834 deadline-preflight
+0.000021500 watchdog-scheduled-if-deadline
+0.000022625 continuation-entered
+0.000023000 start-entry
+0.000026667 session-create-before
+0.000034375 session-created
+0.000034750 task-create-before
+0.000059542 task-published
+0.000059584 publication-hook-returned
+0.000059625 task-resume-before
+0.000075917 task-resume-after
+2.000246625 watchdog-fired
+2.000281667 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+2.503032375 response-callback-entry
+2.503033792 response-callback-disposition allow=false
+2.803490167 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid/jpip?target=a%20b.j2k, NSErrorFailingURLKey=https://64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid/jpip?target=a%20b.j2k, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+2.803609084 session-invalidation-entry
+2.803621500 tail-enqueued
+2.803685500 tail-executing
+2.803858417 caller-woke
+2.803862875 read-exit
+2.804054917 transport-original-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+
+OWNER BE66522C-ADA3-452B-A80C-A717E51E4C1C
+0.000000000 protocol-startLoading-entry host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid
+0.000061708 protocol-response-submit host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid
+
+OWNER 9E1D6DF6-DF75-46B9-86FF-DAFD7BF6867C
+0.000000000 protocol-queue-start host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid
+0.000063000 protocol-submitted-chunks=1 host=64d06c56-b482-4cc2-8c04-86ab3e85f003.invalid
+
+OWNER 05FAFCA4-6DFA-4266-8D0B-AFA4948010B1
+0.000000000 read-entry host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid remaining=Optional(0.119994375 seconds)
+0.000000750 deadline-preflight
+0.000009125 watchdog-scheduled-if-deadline
+0.000010083 continuation-entered
+0.000010292 start-entry
+0.000013583 session-create-before
+0.000020125 session-created
+0.000020542 task-create-before
+0.000034458 task-published
+0.000035000 publication-hook-returned
+0.000035083 task-resume-before
+0.000048083 task-resume-after
+0.124719292 watchdog-fired
+0.124753000 cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: "JPIP HTTPS operation deadline elapsed.")
+0.125245958 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://e903a71e-bb27-4968-88d2-f089db4578d0.invalid/jpip, NSErrorFailingURLKey=https://e903a71e-bb27-4968-88d2-f089db4578d0.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+0.125284167 session-invalidation-entry
+0.125306583 tail-enqueued
+0.125315708 tail-executing
+1.431480667 caller-woke
+1.431493542 read-exit
+
+OWNER 7EC3E43D-E62F-4FE0-BEE6-3438ED976700
+0.000000000 protocol-startLoading-entry host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid
+
+OWNER 169E83BF-3BFD-4DE7-8339-CBB22E1754C5
+0.000000000 protocol-queue-start host=e903a71e-bb27-4968-88d2-f089db4578d0.invalid
+
+OWNER 1E53B2C6-0C17-4EF0-843C-5769A0611AD4
+0.000000000 read-entry host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid remaining=Optional(1.999992417 seconds)
+0.000001209 deadline-preflight
+0.000010709 watchdog-scheduled-if-deadline
+0.000012125 continuation-entered
+0.000012292 start-entry
+0.000020084 session-create-before
+0.000053250 session-created
+0.000053667 task-create-before
+0.000068042 task-published
+0.000068542 publication-hook-returned
+0.000068584 task-resume-before
+0.000082750 task-resume-after
+0.180321750 cancel-entry CancellationError()
+1.124878667 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://49d382ee-1ba2-4f51-9685-aba9580e452b.invalid/jpip, NSErrorFailingURLKey=https://49d382ee-1ba2-4f51-9685-aba9580e452b.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+1.425280167 session-invalidation-entry
+1.425290375 tail-enqueued
+1.425495292 tail-executing
+1.425530750 caller-woke
+1.425534917 read-exit
+
+OWNER 14AE38D3-D8E8-4FDD-8844-7039469FEF9A
+0.000000000 transport-before-read
+0.000013750 read-entry host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid remaining=Optional(1.999908959 seconds)
+0.000014375 deadline-preflight
+0.000017791 watchdog-scheduled-if-deadline
+0.000018375 continuation-entered
+0.000018750 start-entry
+0.000022833 session-create-before
+0.000035541 session-created
+0.000035916 task-create-before
+0.000051041 task-published
+0.000051291 publication-hook-returned
+0.000051333 task-resume-before
+0.000062041 task-resume-after
+0.231738583 cancel-entry CancellationError()
+0.231776916 cancel-entry CancellationError()
+1.120402333 task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 "cancelled" UserInfo={NSErrorFailingURLStringKey=https://9a41d069-2299-4fbd-b2db-61f65c362420.invalid/jpip?target=silent, NSErrorFailingURLKey=https://9a41d069-2299-4fbd-b2db-61f65c362420.invalid/jpip?target=silent, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+1.420669875 session-invalidation-entry
+1.420696625 tail-enqueued
+1.420942291 tail-executing
+1.421023250 caller-woke
+1.421033125 read-exit
+1.421555416 transport-original-error CancellationError()
+
+OWNER E48ED290-3BE7-43FE-A120-EA2060CDFDA3
+0.000000000 protocol-startLoading-entry host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid
+
+OWNER 182771C2-2220-40C1-B1DD-5462D5899C59
+0.000000000 protocol-startLoading-entry host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid
+0.004405250 protocol-response-submit host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid
+
+OWNER FD56C37E-87F8-4DAD-A05C-B7F5C94A2FA0
+0.000000000 protocol-queue-start host=49d382ee-1ba2-4f51-9685-aba9580e452b.invalid
+
+OWNER C324C19A-C095-49FB-96C2-031B6B734E79
+0.000000000 protocol-queue-start host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid
+0.000072042 protocol-submitted-chunks=1 host=0cc346c3-91d5-4dc7-a6e6-79e480f5a11d.invalid
+
+OWNER 52CB75A5-4A6E-4137-9C28-75C64B54069B
+0.000000000 protocol-startLoading-entry host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid
+
+OWNER 7782099F-BD88-4D3D-988E-A12AE103FD38
+0.000000000 protocol-queue-start host=9a41d069-2299-4fbd-b2db-61f65c362420.invalid
+
+OWNER 307EEC21-AFEF-483B-A71E-9818B88C6E0B
+0.000000000 transport-before-read
+0.000020916 read-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid remaining=Optional(1.999946708 seconds)
+0.000021541 deadline-preflight
+0.000023708 watchdog-scheduled-if-deadline
+0.000024500 continuation-entered
+0.000024750 start-entry
+0.000029500 session-create-before
+0.000045500 session-created
+0.000045875 task-create-before
+0.000060541 task-published
+0.000060666 publication-hook-returned
+0.000060750 task-resume-before
+0.000074166 task-resume-after
+1.074211083 response-callback-entry
+1.074257666 response-callback-disposition allow=true
+1.374494958 body-first-entry
+1.374709708 task-completion-entry nil
+1.374795750 session-invalidation-entry
+1.374806208 tail-enqueued
+1.374859666 tail-executing
+1.375070875 caller-woke
+1.375071916 result-taken
+1.375072166 deadline-final-check
+1.375073333 read-return
+1.375076791 read-exit
+1.375103708 transport-after-read
+1.375454291 cancel-entry CancellationError()
+1.376331916 transport-original-error CancellationError()
+
+OWNER 38C982B4-F7C8-4EC1-B462-4F6A513D1911
+0.000000000 protocol-startLoading-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+0.005926042 protocol-response-submit host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+
+OWNER A5900A63-2DEC-400A-9A1D-921C8C41B4C0
+0.000000000 protocol-queue-start host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+0.000062500 protocol-submitted-chunks=1 host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+
+OWNER A931AB16-8BD8-4328-8E79-FB65C38DCCC2
+0.000000000 cancel-entry CancellationError()
+0.000011833 cancel-entry CancellationError()
+0.042329625 transport-before-read
+0.042353542 read-entry host=8ced81b6-c74b-498f-be43-525e11640ec6.invalid remaining=Optional(1.784062875 seconds)
+0.042355042 read-exit
+0.042394042 transport-original-error CancellationError()
+
+OWNER 718DC876-72BB-4600-8DFF-A7D704D9B8BD
+0.000000000 read-entry host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid remaining=Optional(1.999995208 seconds)
+0.000000583 deadline-preflight
+0.000007833 watchdog-scheduled-if-deadline
+0.000008667 continuation-entered
+0.000008917 start-entry
+0.000014917 session-create-before
+0.000037667 session-created
+0.000038333 task-create-before
+0.000054208 task-published
+0.000054792 publication-hook-returned
+0.000054833 task-resume-before
+0.000066750 task-resume-after
+0.000825333 response-callback-entry
+0.000835917 response-callback-disposition allow=true
+0.000852792 body-first-entry
+0.000896500 task-completion-entry nil
+0.000927667 session-invalidation-entry
+0.000941042 tail-enqueued
+0.000948667 tail-executing
+0.000957542 caller-woke
+0.000958625 result-taken
+0.000959583 deadline-final-check
+0.000960625 read-return
+0.000964667 read-exit
+
+OWNER BD9416A9-0902-40BA-8734-F79456120906
+0.000000000 transport-before-read
+0.000024250 read-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid remaining=Optional(1.999896083 seconds)
+0.000025375 deadline-preflight
+0.000035584 watchdog-scheduled-if-deadline
+0.000036959 continuation-entered
+0.000037542 start-entry
+0.000044500 session-create-before
+0.000068417 session-created
+0.000068959 task-create-before
+0.000088500 task-published
+0.000088750 publication-hook-returned
+0.000088875 task-resume-before
+0.000103875 task-resume-after
+0.000506625 response-callback-entry
+0.000526667 response-callback-disposition allow=true
+0.000541167 body-first-entry
+0.000574000 task-completion-entry nil
+0.000603959 session-invalidation-entry
+0.000613959 tail-enqueued
+0.000621292 tail-executing
+0.000627125 caller-woke
+0.000627792 result-taken
+0.000628417 deadline-final-check
+0.000629209 read-return
+0.000633209 read-exit
+0.000703750 transport-after-read
+
+OWNER D684032C-7F96-4B24-AF49-8DF6EE64BD63
+0.000000000 protocol-startLoading-entry host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid
+0.000030250 protocol-response-submit host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid
+
+OWNER 928A4B49-2A9A-4728-99D5-E64F95B63182
+0.000000000 protocol-queue-start host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid
+0.000023916 protocol-submitted-chunks=1 host=cdf14bd5-25fe-401a-8e60-dc33fe66bc85.invalid
+
+OWNER 4ECBD918-03A9-4083-8D14-0CFCCE2F3FA0
+0.000000000 protocol-startLoading-entry host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+0.000044500 protocol-response-submit host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+
+OWNER AC08EFF3-B2F6-4D4E-8EC6-2B92E8427D5F
+0.000000000 protocol-queue-start host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+0.000044208 protocol-submitted-chunks=1 host=d88d148c-6e95-4322-93c2-edd106051111.invalid
+

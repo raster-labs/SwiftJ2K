@@ -1,0 +1,90 @@
+{
+  "status": "failed",
+  "nativeStatus": "exited",
+  "scope": "independent Kakadu signed-limb decode + separate exact AnnexJ synthesis of header-adapted2D fixture",
+  "directPart10Peer": "UNEXECUTED",
+  "directPart10Plus15Peer": "UNEXECUTED",
+  "directLogical38KakaduDecode": "UNEXECUTED",
+  "gatesWaived": false,
+  "scriptSHA256": "b0af0337acd9eeaa6defc7ef0f7dda759b9ce872956c210eb0532399ae6167f6",
+  "originalRsiz": 49408,
+  "originalPcap": 1078067200,
+  "wireComponents": [
+    {
+      "bitDepth": 20,
+      "signed": true
+    },
+    {
+      "bitDepth": 20,
+      "signed": true
+    }
+  ],
+  "logicalComponents": [
+    {
+      "bitDepth": 38,
+      "signed": false
+    }
+  ],
+  "levelsXY": 0,
+  "layers": 1,
+  "codeBlockStyle": 64,
+  "matrix": [
+    1,
+    524288
+  ],
+  "collections": [
+    {
+      "inputs": [
+        0,
+        1
+      ],
+      "output": 0,
+      "tmcc": 1
+    }
+  ],
+  "entropySHA256": "140a8ba7e31b9d691f57d2a9342de4ef3daf25d64a4dff7aea9913fe39ab11d6",
+  "entropyBytes": 218,
+  "originalCPFnum": null,
+  "originalCorrespondingProfileClaimValidated": false,
+  "preservedQCDSHA256": "69c1d1d0fcdce4570bc2f3d3317691d565286493b696d709a3508c6f879df2a3",
+  "preservedQCC": [],
+  "tilePartSHA256": "37f234cfe2f4631ea156a64c9923c4319d5579dd47f24e0156be7804690d4b0c",
+  "preservedPart2MarkerSHA256": {
+    "ff74": "2731270ed7677f3180419a02a7c3f8503b13ae3120a87714d05d62e3c36e20c8",
+    "ff75": "a2aedc69393f576d22004e96d9a231dd1a6a5475a1077b20e348774e8a517c86",
+    "ff77": "168a29359e4bd4e3804f8139ffb73ffbc2503b3734cd13300a35d8da0fcd68da",
+    "ff78": "14b0c258d8643295db3b9b6e23063fdf339361d46cc55990c5638db05aea4069"
+  },
+  "headerChanges": [
+    "SIZ Rsiz signals Part2 MCT and any remaining CAP",
+    "removed Part10 CAP; preserved optional Part2/15 CAP words",
+    "removed NSI dimensional marker",
+    "3D COD replaced by equivalent bounded2D COD"
+  ],
+  "input": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1.jp3d",
+  "inputSHA256": "588ea762eb0fb052eb9159068a883447522ca4012f566c782c67aec28d6f0523",
+  "expectation": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/peer-fixtures/u38-depth1.json",
+  "expectationSHA256": "9f638d87eef7f45a44c63cfad532ce5dd03a9d848c9038fdd08ec2766beb5c58",
+  "peer": {
+    "path": "/Library/Kakadu/8.4.1/bin/kdu_expand",
+    "sha256": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"
+  },
+  "adaptedSHA256": "9a90ba045973d4290ee8dd01915ecc89ffdb40a4319341fc76bd25e8537373d8",
+  "command": [
+    "/Library/Kakadu/8.4.1/bin/kdu_expand",
+    "-i",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1/derived-2d-part2.j2c",
+    "-o",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1/wire-000.pgx,/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1/wire-001.pgx",
+    "-codestream_components",
+    "-precise",
+    "-fussy",
+    "-num_threads",
+    "0",
+    "-record",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/u38-depth1/kakadu-parameters.txt"
+  ],
+  "nativeSeconds": 0.018580624999999996,
+  "nativeExitCode": -11,
+  "error": "Kakadu failed; retained stdout/stderr explain failure"
+}

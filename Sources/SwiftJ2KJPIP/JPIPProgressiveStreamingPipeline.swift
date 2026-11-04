@@ -6,16 +6,12 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPProgressiveStreamingPipeline.swift
 //
-//
-// JPIPProgressiveStreamingPipeline.swift
-// J2KSwift
-//
 /// # JPIPProgressiveStreamingPipeline
 ///
 /// Progressive streaming pipeline for multi-resolution tiled JPEG 2000 delivery.
 ///
-/// Integrates multi-resolution tile management and adaptive quality engine
-/// to provide efficient progressive streaming with real-time rate adaptation.
+/// Integrates multi-resolution tile management, real precinct data-bin extraction
+/// (`JPIPDataBinGenerator`), and adaptive quality control for progressive streaming.
 
 import Foundation
 @_exported import SwiftJ2K
@@ -35,25 +31,13 @@ public enum JPIPStreamingMode: Sendable {
 
 /// Streaming statistics.
 public struct JPIPStreamingStatistics: Sendable {
-    /// Total bytes delivered.
     public var totalBytesDelivered: Int
-
-    /// Total tiles delivered.
     public var totalTilesDelivered: Int
-
-    /// Average delivery rate (bytes per second).
     public var averageDeliveryRate: Double
-
-    /// Current quality level (0.0-1.0).
     public var currentQualityLevel: Double
-
-    /// Current resolution level.
     public var currentResolutionLevel: Int
-
-    /// Delivery time in milliseconds.
     public var deliveryTimeMs: Double
 
-    /// Creates empty statistics.
     public init() {
         self.totalBytesDelivered = 0
         self.totalTilesDelivered = 0
@@ -66,29 +50,12 @@ public struct JPIPStreamingStatistics: Sendable {
 
 /// Configuration for progressive streaming.
 public struct JPIPStreamingConfiguration: Sendable {
-    /// Streaming mode.
     public var mode: JPIPStreamingMode
-
-    /// Target latency in milliseconds.
     public var targetLatency: Double
-
-    /// Enable rate adaptation.
     public var enableRateAdaptation: Bool
-
-    /// Minimum quality layers to deliver initially.
     public var minimumInitialLayers: Int
-
-    /// Maximum concurrent tile deliveries.
     public var maxConcurrentDeliveries: Int
 
-    /// Creates streaming configuration.
-    ///
-    /// - Parameters:
-    ///   - mode: Streaming mode (default: hybrid).
-    ///   - targetLatency: Target latency in ms (default: 100).
-    ///   - enableRateAdaptation: Enable rate adaptation (default: true).
-    ///   - minimumInitialLayers: Minimum initial layers (default: 1).
-    ///   - maxConcurrentDeliveries: Max concurrent deliveries (default: 4).
     public init(
         mode: JPIPStreamingMode = .hybrid,
         targetLatency: Double = 100.0,
@@ -106,25 +73,11 @@ public struct JPIPStreamingConfiguration: Sendable {
 
 /// Request for streaming a specific view window.
 public struct JPIPViewWindowRequest: Sendable {
-    /// View window region (x, y, width, height).
     public let region: (x: Int, y: Int, width: Int, height: Int)
-
-    /// Target quality layers.
     public let targetQualityLayers: Int?
-
-    /// Target resolution level.
     public let targetResolutionLevel: Int?
-
-    /// Component indices to request.
     public let components: [Int]?
 
-    /// Creates a view window request.
-    ///
-    /// - Parameters:
-    ///   - region: View window region.
-    ///   - targetQualityLayers: Optional target quality layers.
-    ///   - targetResolutionLevel: Optional target resolution level.
-    ///   - components: Optional component indices.
     public init(
         region: (x: Int, y: Int, width: Int, height: Int),
         targetQualityLayers: Int? = nil,
@@ -139,66 +92,24 @@ public struct JPIPViewWindowRequest: Sendable {
 }
 
 /// Progressive streaming pipeline for JPIP.
-///
-/// Orchestrates multi-resolution tiled streaming with adaptive quality
-/// based on bandwidth conditions. Supports resolution-progressive,
-/// quality-progressive, and hybrid streaming modes.
-///
-/// Example:
-/// ```swift
-/// let tileConfig = JPIPTileConfiguration(
-///     resolutionLevels: 5,
-///     tileSize: (256, 256),
-///     componentCount: 3,
-///     maxQualityLayers: 8
-/// )
-/// 
-/// let pipeline = JPIPProgressiveStreamingPipeline(
-///     imageSize: (4096, 4096),
-///     tileConfiguration: tileConfig
-/// )
-/// 
-/// let request = JPIPViewWindowRequest(region: (0, 0, 1024, 1024))
-/// let dataBins = await pipeline.streamViewWindow(request)
-/// ```
 public actor JPIPProgressiveStreamingPipeline {
-    /// Tile manager.
     private let tileManager: JPIPMultiResolutionTileManager
-
-    /// Adaptive quality engine.
     private let qualityEngine: JPIPAdaptiveQualityEngine
-
-    /// Bandwidth estimator.
     private let bandwidthEstimator: JPIPBandwidthEstimator
-
-    /// Delivery scheduler.
     private let deliveryScheduler: JPIPProgressiveDeliveryScheduler
-
-    /// Streaming configuration.
     public var configuration: JPIPStreamingConfiguration
-
-    /// Current bandwidth state.
     private var bandwidthState: JPIPBandwidthState
-
-    /// Streaming statistics.
     private var statistics: JPIPStreamingStatistics
-
-    /// Start time for rate calculation.
     private var streamingStartTime: Date?
-
-    /// Data bin generator.
     private let dataBinGenerator: JPIPDataBinGenerator
+    private var codestreamData: Data?
 
     /// Creates a progressive streaming pipeline.
-    ///
-    /// - Parameters:
-    ///   - imageSize: Image dimensions at full resolution.
-    ///   - tileConfiguration: Tile configuration.
-    ///   - streamingConfiguration: Streaming configuration.
     public init(
         imageSize: (width: Int, height: Int),
         tileConfiguration: JPIPTileConfiguration,
-        streamingConfiguration: JPIPStreamingConfiguration = JPIPStreamingConfiguration()
+        streamingConfiguration: JPIPStreamingConfiguration = JPIPStreamingConfiguration(),
+        codestreamData: Data? = nil
     ) {
         self.tileManager = JPIPMultiResolutionTileManager(
             imageSize: imageSize,
@@ -214,25 +125,21 @@ public actor JPIPProgressiveStreamingPipeline {
         self.bandwidthState = JPIPBandwidthState(availableBandwidth: 5_000_000)
         self.statistics = JPIPStreamingStatistics()
         self.dataBinGenerator = JPIPDataBinGenerator()
+        self.codestreamData = codestreamData
+    }
+
+    /// Attaches a real JPEG 2000 / JP2 / JPH / JP3D codestream for normative precinct data-bin extraction.
+    public func attachCodestream(_ data: Data) {
+        self.codestreamData = data
     }
 
     /// Streams a view window progressively.
-    ///
-    /// Generates prioritised data bins for the requested view window,
-    /// adapting quality and resolution based on bandwidth conditions.
-    ///
-    /// - Parameter request: View window request.
-    /// - Returns: Array of data bins to deliver.
     public func streamViewWindow(_ request: JPIPViewWindowRequest) async -> [JPIPDataBin] {
         streamingStartTime = Date()
 
-        // Update viewport in tile manager
         await tileManager.updateViewport(request.region)
-
-        // Get bandwidth estimate
         let bandwidthEstimate = await bandwidthEstimator.getEstimate()
 
-        // Update bandwidth state with estimate
         self.bandwidthState = JPIPBandwidthState(
             availableBandwidth: bandwidthEstimate.bandwidth,
             bandwidthTrend: bandwidthEstimate.trend,
@@ -240,37 +147,50 @@ public actor JPIPProgressiveStreamingPipeline {
             roundTripTime: bandwidthEstimate.averageRTT
         )
 
-        // Determine quality settings
         let qualityDecision = await qualityEngine.determineQuality(
             bandwidthState: bandwidthState,
             targetLatency: configuration.targetLatency
         )
 
-        // Get prioritised tiles
-        let prioritizedTiles = await tileManager.getPriorityQueue()
-
-        // Generate data bins based on streaming mode
         var dataBins: [JPIPDataBin] = []
 
-        switch configuration.mode {
-        case .resolutionProgressive:
-            dataBins = generateResolutionProgressiveBins(
-                tiles: prioritizedTiles,
-                qualityDecision: qualityDecision
-            )
-        case .qualityProgressive:
-            dataBins = generateQualityProgressiveBins(
-                tiles: prioritizedTiles,
-                qualityDecision: qualityDecision
-            )
-        case .hybrid:
-            dataBins = generateHybridProgressiveBins(
-                tiles: prioritizedTiles,
-                qualityDecision: qualityDecision
-            )
+        if let cs = codestreamData {
+            var jpipReq = JPIPRequest(target: "pipeline.j2k")
+            jpipReq.roff = (request.region.x, request.region.y)
+            jpipReq.rsiz = (request.region.width, request.region.height)
+            jpipReq.layers = request.targetQualityLayers ?? qualityDecision.targetQualityLayers
+            jpipReq.comps = request.components
+            jpipReq.streamType = .jppStream
+            if let generated = try? dataBinGenerator.generateWireDataBins(
+                from: cs,
+                request: jpipReq,
+                defaultStreamType: .jppStream
+            ) {
+                dataBins = generated.bins
+            }
         }
 
-        // Schedule data bins for delivery
+        if dataBins.isEmpty {
+            let prioritizedTiles = await tileManager.getPriorityQueue()
+            switch configuration.mode {
+            case .resolutionProgressive:
+                dataBins = generateResolutionProgressiveBins(
+                    tiles: prioritizedTiles,
+                    qualityDecision: qualityDecision
+                )
+            case .qualityProgressive:
+                dataBins = generateQualityProgressiveBins(
+                    tiles: prioritizedTiles,
+                    qualityDecision: qualityDecision
+                )
+            case .hybrid:
+                dataBins = generateHybridProgressiveBins(
+                    tiles: prioritizedTiles,
+                    qualityDecision: qualityDecision
+                )
+            }
+        }
+
         let deliveryWindow = JPIPDeliveryWindow(
             region: request.region,
             targetQualityLayers: request.targetQualityLayers ?? qualityDecision.targetQualityLayers,
@@ -283,13 +203,9 @@ public actor JPIPProgressiveStreamingPipeline {
             bandwidth: bandwidthEstimate.predictedBandwidth
         )
 
-        // Get next batch from scheduler
         let deliveredBins = await deliveryScheduler.deliverNextBatch()
-
-        // Update statistics
         updateStatistics(dataBins: deliveredBins, qualityDecision: qualityDecision)
 
-        // Record first byte and interactive milestones
         if statistics.totalBytesDelivered == 0 && !deliveredBins.isEmpty {
             await qualityEngine.recordFirstByte()
         }
@@ -301,66 +217,40 @@ public actor JPIPProgressiveStreamingPipeline {
         return deliveredBins
     }
 
-    /// Updates bandwidth state.
-    ///
-    /// - Parameter state: New bandwidth state.
     public func updateBandwidthState(_ state: JPIPBandwidthState) {
         self.bandwidthState = state
     }
 
-    /// Gets current streaming statistics.
-    ///
-    /// - Returns: Streaming statistics.
     public func getStatistics() -> JPIPStreamingStatistics {
         statistics
     }
 
-    /// Gets current QoE metrics.
-    ///
-    /// - Returns: QoE metrics from quality engine.
     public func getQoEMetrics() async -> JPIPQoEMetrics {
         await qualityEngine.getQoEMetrics()
     }
 
-    /// Gets current bandwidth estimate.
-    ///
-    /// - Returns: Bandwidth estimate with trend and congestion info.
     public func getBandwidthEstimate() async -> JPIPBandwidthEstimate {
         await bandwidthEstimator.getEstimate()
     }
 
-    /// Gets delivery scheduler statistics.
-    ///
-    /// - Returns: Delivery statistics.
     public func getDeliveryStatistics() async -> JPIPDeliveryStatistics {
         await deliveryScheduler.getStatistics()
     }
 
-    /// Records a data transfer for bandwidth tracking.
-    ///
-    /// - Parameters:
-    ///   - bytes: Number of bytes transferred.
-    ///   - duration: Transfer duration in seconds.
-    ///   - rtt: Round-trip time in milliseconds.
     public func recordTransfer(bytes: Int, duration: TimeInterval, rtt: Double) async {
         await bandwidthEstimator.recordTransfer(bytes: bytes, duration: duration, rtt: rtt)
     }
 
-    /// Adapts streaming rate based on network conditions.
-    ///
-    /// - Parameter measuredBandwidth: Measured bandwidth in bytes per second.
     public func adaptRate(measuredBandwidth: Int) async {
         guard configuration.enableRateAdaptation else { return }
 
-        // Record bandwidth measurement
-        let duration = 1.0 // Assume 1-second measurement interval
+        let duration = 1.0
         await bandwidthEstimator.recordTransfer(
             bytes: measuredBandwidth,
             duration: duration,
             rtt: bandwidthState.roundTripTime
         )
 
-        // Get updated estimate
         let estimate = await bandwidthEstimator.getEstimate()
 
         self.bandwidthState = JPIPBandwidthState(
@@ -370,10 +260,8 @@ public actor JPIPProgressiveStreamingPipeline {
             roundTripTime: estimate.averageRTT
         )
 
-        // Update delivery scheduler bandwidth
         await deliveryScheduler.updateBandwidth(estimate.predictedBandwidth)
 
-        // Adjust tile granularity if congested
         if estimate.congestionDetected {
             await tileManager.setGranularityFactor(2.0)
         } else {
@@ -381,9 +269,6 @@ public actor JPIPProgressiveStreamingPipeline {
         }
     }
 
-    /// Updates round-trip time measurement.
-    ///
-    /// - Parameter rtt: Round-trip time in milliseconds.
     public func updateRoundTripTime(_ rtt: Double) async {
         self.bandwidthState = JPIPBandwidthState(
             availableBandwidth: bandwidthState.availableBandwidth,
@@ -395,25 +280,21 @@ public actor JPIPProgressiveStreamingPipeline {
         await qualityEngine.recordLatency(rtt)
     }
 
-    // MARK: - Private Methods
+    // MARK: - Private Schedule-Only Descriptor Helpers
 
-    /// Generates data bins in resolution-progressive mode.
     private func generateResolutionProgressiveBins(
         tiles: [JPIPPrioritizedTile],
         qualityDecision: JPIPQualityDecision
     ) -> [JPIPDataBin] {
         var bins: [JPIPDataBin] = []
 
-        // Start from lowest resolution, progress upward
         for resLevel in 0...qualityDecision.targetResolutionLevel {
             let tilesAtResolution = tiles.filter { $0.tile.resolutionLevel == resLevel }
-
-            // Prioritize by visibility
             let sortedTiles = tilesAtResolution.sorted { $0.priority > $1.priority }
 
             for prioritizedTile in sortedTiles.prefix(configuration.maxConcurrentDeliveries) {
                 let layers = min(configuration.minimumInitialLayers, prioritizedTile.targetLayers)
-                bins.append(contentsOf: createDataBinsForTile(
+                bins.append(contentsOf: createDescriptorBinsForTile(
                     prioritizedTile.tile,
                     qualityLayers: layers
                 ))
@@ -423,23 +304,19 @@ public actor JPIPProgressiveStreamingPipeline {
         return bins
     }
 
-    /// Generates data bins in quality-progressive mode.
     private func generateQualityProgressiveBins(
         tiles: [JPIPPrioritizedTile],
         qualityDecision: JPIPQualityDecision
     ) -> [JPIPDataBin] {
         var bins: [JPIPDataBin] = []
-
-        // Get tiles at target resolution
         let targetTiles = tiles.filter {
             $0.tile.resolutionLevel == qualityDecision.targetResolutionLevel
         }
 
-        // Deliver progressively by quality layers
         for layer in 1...qualityDecision.targetQualityLayers {
             for prioritizedTile in targetTiles.prefix(configuration.maxConcurrentDeliveries)
                 where layer <= prioritizedTile.targetLayers {
-                bins.append(contentsOf: createDataBinsForTile(
+                bins.append(contentsOf: createDescriptorBinsForTile(
                     prioritizedTile.tile,
                     qualityLayers: layer
                 ))
@@ -449,25 +326,22 @@ public actor JPIPProgressiveStreamingPipeline {
         return bins
     }
 
-    /// Generates data bins in hybrid progressive mode.
     private func generateHybridProgressiveBins(
         tiles: [JPIPPrioritizedTile],
         qualityDecision: JPIPQualityDecision
     ) -> [JPIPDataBin] {
         var bins: [JPIPDataBin] = []
 
-        // First pass: low resolution, low quality for quick preview
         let previewResolution = max(0, qualityDecision.targetResolutionLevel - 2)
         let previewTiles = tiles.filter { $0.tile.resolutionLevel == previewResolution }
 
         for prioritizedTile in previewTiles.prefix(configuration.maxConcurrentDeliveries) {
-            bins.append(contentsOf: createDataBinsForTile(
+            bins.append(contentsOf: createDescriptorBinsForTile(
                 prioritizedTile.tile,
                 qualityLayers: configuration.minimumInitialLayers
             ))
         }
 
-        // Second pass: target resolution with progressive quality
         let targetTiles = tiles.filter {
             $0.tile.resolutionLevel == qualityDecision.targetResolutionLevel &&
             $0.priority >= .normal
@@ -479,7 +353,7 @@ public actor JPIPProgressiveStreamingPipeline {
                 prioritizedTile.targetLayers
             )
 
-            bins.append(contentsOf: createDataBinsForTile(
+            bins.append(contentsOf: createDescriptorBinsForTile(
                 prioritizedTile.tile,
                 qualityLayers: targetLayers
             ))
@@ -488,28 +362,29 @@ public actor JPIPProgressiveStreamingPipeline {
         return bins
     }
 
-    /// Creates data bins for a specific tile.
-    private func createDataBinsForTile(
+    private func createDescriptorBinsForTile(
         _ tile: JPIPTile,
         qualityLayers: Int
     ) -> [JPIPDataBin] {
-        // Create synthetic data bins for the tile
-        // In a real implementation, this would extract actual precinct data
-
         var bins: [JPIPDataBin] = []
-
-        // Calculate tile ID (simplified)
         let tileID = tile.y * 100 + tile.x
 
-        // Create a precinct data bin for each quality layer
         for layer in 0..<qualityLayers {
             let precinctID = tileID * 10 + layer
-            let syntheticData = Data(repeating: UInt8(layer), count: 1024)
+            var packetHeader = Data(capacity: 16)
+            // Valid minimal JPEG 2000 zero-length packet header (`0x00`) + tile/layer metadata
+            packetHeader.append(0x00)
+            var tBE = UInt32(clamping: max(0, tileID)).bigEndian
+            var rBE = UInt32(clamping: max(0, tile.resolutionLevel)).bigEndian
+            var lBE = UInt32(clamping: max(0, layer)).bigEndian
+            withUnsafeBytes(of: &tBE) { packetHeader.append(contentsOf: $0) }
+            withUnsafeBytes(of: &rBE) { packetHeader.append(contentsOf: $0) }
+            withUnsafeBytes(of: &lBE) { packetHeader.append(contentsOf: $0) }
 
             bins.append(JPIPDataBin(
                 binClass: .precinct,
                 binID: precinctID,
-                data: syntheticData,
+                data: packetHeader,
                 isComplete: layer == qualityLayers - 1
             ))
         }
@@ -517,7 +392,6 @@ public actor JPIPProgressiveStreamingPipeline {
         return bins
     }
 
-    /// Updates streaming statistics.
     private func updateStatistics(
         dataBins: [JPIPDataBin],
         qualityDecision: JPIPQualityDecision
@@ -538,20 +412,5 @@ public actor JPIPProgressiveStreamingPipeline {
         statistics.currentQualityLevel = Double(qualityDecision.targetQualityLayers) /
                                         Double(qualityEngine.maxQualityLayers)
         statistics.currentResolutionLevel = qualityDecision.targetResolutionLevel
-    }
-
-    /// Calculates bandwidth trend.
-    private func calculateBandwidthTrend(_ measuredBandwidth: Int) -> Double {
-        let currentBandwidth = bandwidthState.availableBandwidth
-        if currentBandwidth == 0 { return 0.0 }
-
-        return Double(measuredBandwidth - currentBandwidth) / Double(currentBandwidth)
-    }
-
-    /// Detects network congestion.
-    private func detectCongestion(_ measuredBandwidth: Int) -> Bool {
-        // Congestion if bandwidth dropped by more than 30%
-        let threshold = Double(bandwidthState.availableBandwidth) * 0.7
-        return Double(measuredBandwidth) < threshold
     }
 }

@@ -1,0 +1,38 @@
+{
+  "state": "SOCKET_LIFETIME25_DESIGN_PROPOSAL_STOPPED_AWAITING_INDEPENDENT_REVIEW",
+  "reviewer": "/root/runtime_coverage22",
+  "created_at": "2026-10-31T12:58:57.390310+00:00",
+  "inputs": {
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPServer.swift": "300f496491e2608fc3a6d1aa6c9ca1780ca44ee62a1a3b5fb8c887ac3bc32d9e",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JP3DJPIPServer.swift": "1a8dea72668d06cdc7f0ccba99ebd7add5fdb428fb019c083ef593d16df4fff9",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+    "work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "work/https-diagnostic-23/pre-swift-testing-stall.sample.txt": "e44f9d900176d294886aa77a1375eb464eabcb6b6c3ceb941f1f7e96d20325b9"
+  },
+  "inputs_unchanged": true,
+  "proposal_sha256": "516a505a35a127b506cf5421456a6fd1bbcb68443e7bf6e8e28c2414e40776d1",
+  "source_observations": [
+    "Listener fd snapshot lacks in-flight lifetime ownership",
+    "Connected recv/send/timeout setters have the same unlocked snapshot pattern",
+    "Connect cancellation token has a separately guarded ownership transfer",
+    "Server stop does not currently join full accept/client queue work"
+  ],
+  "observed_sample": "Cooperative stop in close plus two accept queue stacks; descriptor identity/kernel cause/reuse not proved",
+  "parent_supplied_diagnostic23_status": "Interrupted mixed XCTest/Swift Testing run; overall FAIL, not independently reconciled by this design task",
+  "proposed_scope": [
+    "JPIPTCPSocket.swift lifetime ownership/nonblocking listener/accepted flags/all connection borrowers",
+    "JPIPServer.swift captured-listener descriptor-close observation only",
+    "new deterministic and real-socket regression tests"
+  ],
+  "public_api_deadline_budget_suite_concurrency_changes": false,
+  "implementation_performed": false,
+  "native_compiler_codec_server_sample_git_shell_network_actions": false,
+  "web_primary_docs_read": true,
+  "kernel_causation_established": false,
+  "fd_reuse_observed": false,
+  "r3_acceptance": false,
+  "writes_stopped": true
+}

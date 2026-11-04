@@ -1,0 +1,12 @@
+{
+  "claim_invocation": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "file": "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift",
+  "before_sha256": "62d657e80faa4a7fc276c68cb45c8d6da1b2b3813ec2abcab3c5bfd8702c5390",
+  "sha256": "af479ff104df41184d0d40998f12bc87464ba5cf1459187b642ed9473b8a7034",
+  "bytes": 15244,
+  "delta_sha256": "afcfbbb1e2c72f508e0931dc2dd94ad0cac756edd6c132a377f7e89635c4069f",
+  "normalised_preservation": "Removing the new peer-lifetime comment and restoring only its accepted-socket timeout argument to1 recovers proof13 byte-for-byte.",
+  "policy14_receipt": "unchanged",
+  "scope": "Post08 held-loopback test peer only; no production deadline or client request changes",
+  "native_execution": "NONE; root owns native validation"
+}

@@ -1,0 +1,10 @@
+--- a/Sources/SwiftJ2KCLI/CLIVerbs.swift
++++ b/Sources/SwiftJ2KCLI/CLIVerbs.swift
+@@ -1919,7 +1919,6 @@
+     } else {
+         try write("jpip server listening on \(host):\(actualPort) (\(registered.count) targets)\n", to: .standardOutput)
+     }
+-    fflush(stdout)
+ 
+     if let targetReqCount = maxRequests {
+         while !Task.isCancelled {

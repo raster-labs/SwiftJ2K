@@ -1,0 +1,41 @@
+{
+  "started_at": "2026-10-31T10:12:11.449772+00:00",
+  "cwd": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12",
+  "command": [
+    "swift",
+    "test",
+    "--scratch-path",
+    "../diagnostic-build-12",
+    "--disable-sandbox",
+    "--build-system",
+    "native",
+    "--cache-path",
+    "../swiftpm-cache",
+    "--config-path",
+    "../swiftpm-config",
+    "--security-path",
+    "../swiftpm-security",
+    "-j",
+    "4",
+    "--xunit-output",
+    "../validation/diagnostic-https-full-12/report.xml"
+  ],
+  "wrapper_sha256": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+  "test_environment": {
+    "SWIFTJ2K_TEST_CLI_PATH": null,
+    "ASAN_OPTIONS": null,
+    "TSAN_OPTIONS": null
+  },
+  "identity_scope": "Repository tracked/unignored files or snapshot files excluding generated .build",
+  "base_head": "immutable diagnostic snapshot; see provenance",
+  "source_files": 1858,
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0\n",
+  "output_capture": {
+    "version": 1,
+    "stdout": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.stdout",
+    "stderr": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.stderr",
+    "merged": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-https-full-12/native.log",
+    "merge_policy": "Whole LF-terminated lines under one lock; EOF fragments receive one synthetic LF. Cross-stream chronological ordering is not guaranteed."
+  },
+  "spawned_pid": 45483
+}

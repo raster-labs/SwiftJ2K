@@ -1,0 +1,13 @@
+{
+  "finished_at": "2026-10-31T07:53:27.143103+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 60.628301875,
+  "changed_inputs": [],
+  "log_sha256": "6ee614748e82436765a718fc140544e24050e91ae591c313612b967fe4329ed7",
+  "built_cli_products_at_completion": {
+    "debug": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-06/arm64-apple-macosx/debug/swiftj2k-cli",
+      "sha256": "45a026feb494f673121df5ca16487beb210e3673cf657e2a115ef77ac0fd4469"
+    }
+  }
+}

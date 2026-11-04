@@ -1,0 +1,134 @@
+{
+  "state": "ORDINARY17_FAILED_SANITIZERS_UNEXECUTED_NO_FINAL_PROOF",
+  "at": "2026-10-31T11:30:16.707570+00:00",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17",
+  "source_files": 2282,
+  "exit_code": 1,
+  "elapsed_seconds": 125.60815575000001,
+  "raw_capture_verified": true,
+  "source_stable": true,
+  "xctest": {
+    "started_and_passed": 1034,
+    "failed": 0,
+    "skipped": 0
+  },
+  "swift_testing": {
+    "declarations_with_start_and_completion": 324,
+    "passed": 320,
+    "failed": 4,
+    "skipped": 0,
+    "suites_reported": 41,
+    "issues_reported": 4,
+    "reported_seconds": 25.982
+  },
+  "failed_declarations_xml": [
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "messages": [
+        "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "absoluteDeadlineCancelsSilentResponse()",
+      "messages": [
+        "Expectation failed: ContinuousClock.now - start < .seconds(2) (error)"
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "messages": [
+        "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+      ]
+    },
+    {
+      "classname": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "messages": [
+        "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\") (error)"
+      ]
+    }
+  ],
+  "raw_issue_records": [
+    {
+      "line": 3147,
+      "text": "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:336:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "line": 3154,
+      "text": "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "line": 3159,
+      "text": "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:308:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "line": 3167,
+      "text": "\u2718 Test absoluteDeadlineCancelsSilentResponse() recorded an issue at CodexR3HTTPStreamingTests.swift:179:9: Expectation failed: ContinuousClock.now - start < .seconds(2)"
+    }
+  ],
+  "unchanged_https_inputs_from15": {
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78"
+  },
+  "unexecuted_native_gates": [
+    {
+      "label": "candidate-jpip-asan-17",
+      "state": "UNEXECUTED"
+    },
+    {
+      "label": "candidate-asan-inventory-17",
+      "state": "UNEXECUTED"
+    },
+    {
+      "label": "candidate-complement-asan-17",
+      "state": "UNEXECUTED"
+    },
+    {
+      "label": "candidate-tsan-inventory-17",
+      "state": "UNEXECUTED"
+    },
+    {
+      "label": "candidate-jpip-tsan-17",
+      "state": "UNEXECUTED"
+    },
+    {
+      "label": "candidate-complement-tsan-17",
+      "state": "UNEXECUTED"
+    }
+  ],
+  "files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17-source.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.log": "aa365b9fb78ab06518b8e8bc54f7e9a61891d09442c65e429c641278e8ba1ee0",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py": "4f762dfb8bfe99feee1fc49322d212dd4f446c1a42d78c3bbe32bf99318ff2e6",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stdout": "1e5c3e75a763dbb0cc65b450425e047c10d1e491abb615b9b9707be7d288abac",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/native.stderr": "11a112279472e09aa741c2b70d2c829d492a47da1652a01502f2577a403a8642",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/report-swift-testing.xml": "0811ed15148618d461fd16cd8d738cc7896ebd0987b99ab993d718c221ea3527",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/result.json": "159e0d995b493f78edc2ff33ef728f206b03bda7fa26041a89653487627f085d",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/source-before.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/source-after.json": "6e9dd6531b10d3782424f6c13cfbaf43d8d03d044ed4bf6a08d78e1b12d89fcb",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-full-17/command.json": "da9a2138b61f81d5985f1d53b4faafb417337fbb788e3e3ef8088e274fe6ba71",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-17.json": "4b0be0fbf3342e9d2dee33ec68fa366c0abe7c64c5ebc275929078b2d1b52c51",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-15-source.json": "382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPTransport.swift": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/check-failed-ordinary.py": "3e0357f415a456782cb9d0f7d224d6e681f26d442a4824d782b458ede37da9be"
+  },
+  "boundaries": [
+    "This is failed evidence, not a successful ordinary or sanitizer qualification.",
+    "No fresh17 declaration-discovery inventory was executed; counts here reconcile observed runtime/XML, not a new sanitizer inventory proof.",
+    "Exact failed parameter argument identity is retained in raw issue text; aggregate failure is not a passing argument-completion proof.",
+    "Unchanged HTTPS source identity does not explain the scheduling/deadline failures or attribute their cause.",
+    "Auditor17 maintenance remains immutable and not independently approved or used for final qualification.",
+    "No native, network, repository, Git or source changes were performed by this reviewer.",
+    "Whole R3, merge, R4 and all five direct independent gates remain unaccepted/unwaived."
+  ]
+}

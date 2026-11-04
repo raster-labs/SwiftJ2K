@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Bind stopped, approved22b documents and perform a read-only final dry run."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+import re
+import runpy
+
+OUT = Path(__file__).resolve().parent
+WORK = OUT.parent
+WORKSPACE = WORK.parent
+REPO = WORK / 'SwiftJ2K'
+CORPUS = REPO / 'Documentation/Engineering/Remediation/Evidence/R3/codex-takeover'
+HELPER = WORK / 'ci-repair-evidence-14/package.py'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': sha(path)}
+
+def read(path):
+    return json.loads(path.read_text())
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+assert sha(HELPER) == '588df7bb3fb8f100703d8cf6fc471d68ee692365974be9c18874ab72114dca83'
+h = runpy.run_path(str(HELPER), run_name='reviewed_evidence_helper22_final_readonly')
+
+def corpus_fingerprint():
+    files = {p.relative_to(CORPUS).as_posix(): {'sha256': sha(p), 'bytes': p.stat().st_size}
+             for p in sorted(CORPUS.rglob('*')) if p.is_file()}
+    return {'files': len(files), 'bytes': sum(v['bytes'] for v in files.values()),
+            'map_sha256': hashlib.sha256(h['canonical'](files)).hexdigest()}
+
+before = corpus_fingerprint()
+assert before == {'files': 1050, 'bytes': 50648899,
+                  'map_sha256': 'df9c7da0d27501820dbeb94b5bbccb6e4d28540fece8c409359348b1ccfab4c0'}
+prior = OUT / 'manifest-candidate-22-02.json'
+assert sha(prior) == 'e11dfb2ba577c8251de839e33c897162d7f5408cddda4c5e20b8215ad71812f2'
+manifest = read(prior)
+binding = read(OUT / 'source-binding-02.json')
+assert h['identity'](REPO) == binding['implementation']
+assert h['identity'](REPO, ci=True) == binding['ci']
+
+draft_dir = WORK / 'publication-doc-draft-22b'
+review_dir = WORK / 'independent-publication-doc-review-22'
+draft_pins = {
+    'STATUS.md': 'a1026efb56f80187f00e4a88e67026e1e88d465646017cdf556e14045a379481',
+    'R3_CAPABILITY_MATRIX.md': 'c052e77d4ff75bc04d772a5692ad48f9ce99545979e853ceb74ba4543c6617e0',
+    'PR-body.txt': 'c36c075a834d03b0b66d5a621a0c1502eb9112b35475277ccb9e26a6f7a7a3c0',
+}
+for name, digest in draft_pins.items():
+    assert sha(draft_dir / name) == digest
+assert sha(review_dir / 'report.txt') == '56a6113c96d77325d6afb00147fe3dd9d8173e762c927cf4e98453ccb2cea331'
+assert sha(review_dir / 'source.json') == 'd29a485ffe8b5a7dc7d94290951a8decafaabf4aab7fb70a6f61281fbe538700'
+review = read(review_dir / 'source.json')
+writer = read(draft_dir / 'source.json')
+assert review['writes_stopped'] is True and not review['findings']
+assert review['drafts'] == writer['drafts'] == draft_pins
+assert writer['state'].startswith('POSITIVELY_STOPPED_')
+assert sha(draft_dir / 'report.txt') == writer['report_sha256']
+assert sha(draft_dir / 'source.json') == review['inputs']['work/publication-doc-draft-22b/source.json']
+current_docs = []
+for name in ['STATUS.md', 'R3_CAPABILITY_MATRIX.md']:
+    path = REPO / 'Documentation/Engineering/Remediation' / name
+    assert sha(path) == draft_pins[name]
+    current_docs.append(path)
+for directory in [draft_dir, review_dir]:
+    manifest['reviews'].append({'report': ref(directory / 'report.txt'),
+                                'source': ref(directory / 'source.json'),
+                                'completed': True, 'supporting': []})
+
+scope = {
+    'state': 'FINAL_CANDIDATE22_EXPLICIT_INPUTS_READY_FOR_ROOT_PUBLICATION_REVIEW',
+    'at': datetime.now(timezone.utc).isoformat(),
+    'prior_documentation_pending_checkpoint': ref(prior),
+    'prior_checkpoint_meaning': 'Historical preparation01/02 pending states are preserved. The exact22b documents and stopped independent review resolve the prior document-input pending items in this new final manifest.',
+    'final_documents': [ref(draft_dir / name) for name in draft_pins],
+    'current_repository_docs_match_approved_drafts': [ref(path) for path in current_docs],
+    'document_writer_pair': [ref(draft_dir / name) for name in ['report.txt', 'source.json']],
+    'independent_document_review_pair': [ref(review_dir / name) for name in ['report.txt', 'source.json']],
+    'current_source_ci_binding': ref(OUT / 'source-binding-02.json'),
+    'candidate22_native': 'Ordinary1359 PASS; JPIP ASan four HTTPS tests FAIL with no recognised sanitizer diagnostic in complete streams; remaining five stages UNEXECUTED. Failed/unqualified sequence.',
+    'historical_failures': 'Failed ordinary17 and hosted15/18 remain failed. No sole cause or retrospective closure asserted.',
+    'diagnostic19': 'Instrumented diagnostic only, even though its run passed; never qualifies unmodified18/22 or closes earlier failures.',
+    'diagnostic23': 'No23 preparation/execution/source/result input selected. Exact approved documents only retain the historical prepared/unexecuted boundary; no23 qualification inferred.',
+    'cli16': 'Reuse limited to verified512 input equality and independently reviewed existing CLI16 results; no fresh22 CLI execution asserted.',
+    'auditor22': 'Unapproved derivative/specs/probes remain excluded. Only the completed failed-sequence review/checker/reconciliation is selected.',
+    'local_input_pending': [],
+    'root_remaining_actions': ['Final manifest/index review under the existing claim and stopped-writer acknowledgement.',
+                               'Actual append-only package and authorised draft source publication.',
+                               'Verify successor source/index/run links separately; do not mutate these pinned draft bytes.'],
+    'postpublication_pending': 'Subsequent exact-head hosted feedback is separate after publication; no future pass assumed and not a missing local input prerequisite.',
+    'R3': 'NOT_ACCEPTED', 'merge_allowed': False, 'R4': 'GATED',
+    'five_direct_external_gates': 'UNEXECUTED_UNWAIVED',
+}
+save('incremental-scope-final-22.json', scope)
+
+paired = {'report.txt', 'source.json'}
+extras = [p for p in sorted(draft_dir.iterdir()) if p.is_file() and p.name not in paired]
+extras += current_docs
+extras += [OUT / name for name in ['manifest-candidate-22-02.json', 'dry-run-candidate-22-02.json',
+                                  'report-candidate-22-02.txt', 'source-candidate-22-02.json',
+                                  'incremental-scope-final-22.json']]
+extras += [Path(__file__)]
+existing = {entry['file']['path'] for entry in manifest['supplemental']}
+for path in extras:
+    assert str(path) not in existing
+    manifest['supplemental'].append({'file': ref(path),
+                                    'role': 'incremental22-final-' + path.relative_to(WORK).as_posix().replace('/', '--')})
+manifest['candidate_label'] = 'Frozen candidate22 FAILED/UNQUALIFIED: ordinary1359 PASS; JPIP ASan4 HTTPS issues FAIL; remaining5 UNEXECUTED; approved draft22b docs; diagnostic19 only; R3 NOT_ACCEPTED'
+patterns = [rb'gh[pousr]_[A-Za-z0-9]{30,}', rb'github_pat_[A-Za-z0-9_]{40,}',
+            rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----']
+for item in manifest['supplemental']:
+    path = Path(item['file']['path'])
+    assert path.name not in ['environment-after.json', 'other-native-after.txt']
+    assert not any('diagnostic23' in part or 'diagnostic-23' in part for part in path.parts)
+    data = path.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == item['file']['sha256']
+    assert not any(re.search(pattern, data) for pattern in patterns), 'Secret-shaped content: ' + str(path)
+
+manifest_path = OUT / 'manifest-final-22.json'
+save(manifest_path.name, manifest)
+package, index_path, implementation, ci = h['assemble'](manifest_path)
+assert implementation == binding['implementation'] and ci == binding['ci']
+identical = 0
+for relative, data in package.payloads.items():
+    target = package.destination / relative
+    if target.exists():
+        assert target.read_bytes() == data
+        identical += 1
+after = corpus_fingerprint()
+assert before == after
+receipt = {
+    'state': 'FINAL_CANDIDATE22_READ_ONLY_DRY_RUN_PASS_NOT_PUBLISHED',
+    'at': datetime.now(timezone.utc).isoformat(), 'manifest': ref(manifest_path),
+    'reviewed_helper': ref(HELPER), 'published': False,
+    'index': str(package.destination / index_path), 'index_sha256': index_path.stem,
+    'artifact_roles': len(package.artifacts), 'proposed_payloads': len(package.payloads),
+    'proposed_payload_bytes': sum(len(data) for data in package.payloads.values()),
+    'existing_identical_payloads': identical, 'currently_absent_payloads': len(package.payloads) - identical,
+    'prior_08_references': sum(a['storage'] == 'prior-08-reference' for a in package.artifacts),
+    'native_runs': len(manifest['native_runs']), 'candidate22_completed_native_runs': 2,
+    'diagnostic19_native_runs': 1, 'review_pairs': len(manifest['reviews']),
+    'hosted_runs': len(manifest['hosted_runs']), 'hosted_job_logs': 7,
+    'supplemental_receipts': len(manifest['supplemental']),
+    'implementation_scope_sha256': implementation['scope_sha256'],
+    'ci_scope_sha256': ci['scope_sha256'],
+    'published_corpus_before': before, 'published_corpus_after': after,
+    'published_corpus_unchanged': True, 'repository_writes': False, 'native_execution': False,
+    'R3': 'NOT_ACCEPTED', 'local_input_pending': [],
+}
+save('dry-run-final-22.json', receipt)
+print(json.dumps(receipt, indent=2))

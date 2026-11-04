@@ -1,0 +1,112 @@
+{
+  "state": "POSITIVELY_STOPPED",
+  "disposition": "NO_CONFIRMED_SOURCE_BLOCKER; compiler/runtime pending",
+  "source_sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+  "inputs_before_after_equal": true,
+  "inputs": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+      "bytes": 30399
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/before.json": {
+      "sha256": "158eded2cce02530899104da59becddfe514952990705a9c3bad81e08de2664e",
+      "bytes": 751
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/CodexR3HTTPStreamingTests.before.swift": {
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "bytes": 30185
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/CodexR3HTTPStreamingTests.after.swift": {
+      "sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+      "bytes": 30399
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/source.json": {
+      "sha256": "535811b3634473f25979ca4fc839216f11f317478323a12440a426fe0c1dcb0f",
+      "bytes": 1636
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/report.txt": {
+      "sha256": "e0ba51b96b9ede85ea0779ccf3d08de0b940f1db9a33fbfcb192a4d38bc039dd",
+      "bytes": 4112
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/source.diff": {
+      "sha256": "5cdaede9bf79c39ae6ea3e17b64c04d34e58587d52b62d2c1bd58686a777085a",
+      "bytes": 2507
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-repair-24/proof.json": {
+      "sha256": "04895b0eadb732dabe9d5f9520858d75b0abc012d534bc4acf0b6fab6132141e",
+      "bytes": 974
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/CodexR3HTTPStreamingTests.before.swift": {
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "bytes": 30185
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/primary-sources.json": {
+      "sha256": "a4746ffc291c0908679f52ccf6b94ad59e95868da6e2164a49f95a00298c2f46",
+      "bytes": 2673
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/observed-diagnostics.json": {
+      "sha256": "459f255847a3b459243605daefb77f020e95b003a7ffaf93b384927f580d8966",
+      "bytes": 17019
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/CodexR3HTTPStreamingTests.PROPOSAL-ONLY.swift": {
+      "sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+      "bytes": 30399
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/proposal-source.json": {
+      "sha256": "1b79d2ebc2a20d6619ecd76191716607dc2ee36941f8cf4172e5e90b4aa944f1",
+      "bytes": 3211
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/proposal-only.diff": {
+      "sha256": "b5fd518cd9f8c8cd7a987d317b7ee12d4285d28800d000fd3f8fa0543f2866e8",
+      "bytes": 2516
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/https-harness-portability-24/proposal.txt": {
+      "sha256": "2b3df366c5ad8872a462b0f40462a3584c18d1196c4a2e827ee0bcaa543bb896",
+      "bytes": 11002
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41201993850-attempt1-job124539451408.log": {
+      "sha256": "d8c10e898c485b288423e13c245044e9f2209d6742b531a96caf34de26a94497",
+      "bytes": 38519
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41201993850-attempt1-job124539451411.log": {
+      "sha256": "1d856891e0b59d8b87c8da59c1465e16c6e0f79805f301e0d8ecb3b9e9eb387d",
+      "bytes": 99153
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-downloads/run-41201993850-attempt1-job124539451424.log": {
+      "sha256": "db9664aa69ffe7402539f27a49f0470411db41d2ac17698f21ad77254191a857",
+      "bytes": 38145
+    },
+    "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSURLProtocol.h": {
+      "sha256": "5ab841674ce1a7fc1c8f4d19d1f574878484bb4d9574543f56ad8ff1e4e09ef7",
+      "bytes": 14905
+    },
+    "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/swift/Dispatch.swiftmodule/arm64e-apple-macos.swiftinterface": {
+      "sha256": "6062213ea313971be14e2f11252bdffe339c98df9babe71476b216310bbc8686",
+      "bytes": 57504
+    },
+    "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Foundation.framework/Modules/Foundation.swiftmodule/arm64e-apple-macos.swiftinterface": {
+      "sha256": "1720e60d96b4532245d41eabb9adcb484385ac8e7aafd5c830c604592bdd9c63",
+      "bytes": 1155103
+    },
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-22/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "bytes": 30185
+    }
+  },
+  "outputs": {
+    "check.py": {
+      "sha256": "7c1fe6cb3b7624c830376a03f1fde8736ca2e81ef62feb030642ad0a32d9127a",
+      "bytes": 3627
+    },
+    "checks.json": {
+      "sha256": "a19841849134bb4648ea40f8707f45d06a073fd2cdf5e2ff989352fbe9ad437d",
+      "bytes": 5860
+    },
+    "report.txt": {
+      "sha256": "c1f2ae7c7f1970582ce398c3de5544efcfea72e5e344d80558f7c6a9b6c0c628",
+      "bytes": 5967
+    }
+  },
+  "at": "2026-10-31T13:06:14.325952+00:00",
+  "no_native_network_or_repository_writes": true
+}

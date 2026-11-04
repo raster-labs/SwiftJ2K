@@ -1,0 +1,44 @@
+{
+  "state": "POSITIVELY_STOPPED_DRAFT22B_NATIVE22_FAILED_UNQUALIFIED_INDEPENDENT_DOC_REVIEW_REQUIRED",
+  "base_draft22_source_receipt_sha256": "a89ed3f61b1e0433d41e91bc21aa0c729eb83f664f7654f13f3132dc9aa8ad9c",
+  "inputs": {
+    "work/runtime-coverage-22/failed-review.txt": "2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a",
+    "work/runtime-coverage-22/failed-review-source.json": "6fa9b6eb00a9dde4ab8abe8522f84e2db491926e431cad2780e779973ed96398",
+    "work/runtime-coverage-22/completed22-failed-sequence-check.json": "98eb0cdb11fbb34163271f5e54ac0a19f8ec83b84e5fcf98cd3e4ae24235eaef",
+    "work/publication-doc-draft-22/source.json": "a89ed3f61b1e0433d41e91bc21aa0c729eb83f664f7654f13f3132dc9aa8ad9c",
+    "work/publication-doc-draft-22/STATUS.md": "e0992a4104343f83fbea7f12d92309c7022607b00321cb3ee5e8187fed6d3685",
+    "work/publication-doc-draft-22/R3_CAPABILITY_MATRIX.md": "f03d600ab1c8d729fa56759d15e61f2f822d2f2bd8c5cf77eaef4c74a7997423",
+    "work/publication-doc-draft-22/PR-body.txt": "51791770452580ac196bd3b9bfbf2dc7028b7eb460c1e0e3ee439d8c3cd825fc"
+  },
+  "current_repository_and_published_pr_inputs": {
+    "work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+    "work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+    "work/r3-pr-body-published-18.txt": "74fecc785b90282eb987024fa3529ec395fd75bf162d885834bf10e057dfa28f"
+  },
+  "drafts": {
+    "STATUS.md": "a1026efb56f80187f00e4a88e67026e1e88d465646017cdf556e14045a379481",
+    "R3_CAPABILITY_MATRIX.md": "c052e77d4ff75bc04d772a5692ad48f9ce99545979e853ceb74ba4543c6617e0",
+    "PR-body.txt": "c36c075a834d03b0b66d5a621a0c1502eb9112b35475277ccb9e26a6f7a7a3c0"
+  },
+  "diffs": {
+    "STATUS.md.diff": "7e710c929d59247ed3d137c2a2464bc01c798b3048b7426b27832a20fdc8eb8c",
+    "STATUS.md.from-draft22.diff": "64f4cad6b7e73b3d299fbc01928c81882138171dd49075a76e13b219d8ab8b56",
+    "R3_CAPABILITY_MATRIX.md.diff": "7cd099ce5e62a8c93dcdfd342997787b2e813f6c61621b7293127c893e3a24f3",
+    "R3_CAPABILITY_MATRIX.md.from-draft22.diff": "ecbbb1543f865e5cff03ab20c21e8899ab130d2daef4b1ffc8362eea9bd08997",
+    "PR-body.txt.diff": "d72462eeb1bf771600ff1354c23278a8703d06812bdd30602fff5aa5973f7ea0",
+    "PR-body.txt.from-draft22.diff": "bbd80a402c73c8f60cf316e9dee1239ae870cc001e36dd86412fe7f2c3f95fe4"
+  },
+  "native22_disposition": "Ordinary PASS; JPIP ASan failed4 HTTPS tests, no recognised sanitizer diagnostic;5 later gates UNEXECUTED; sequence UNQUALIFIED",
+  "diagnostic23": "Root-provided PREPARED/UNEXECUTED status only; no execution or qualification claim.",
+  "checks": {
+    "original_draft22_unchanged": true,
+    "all_prior_inputs_hash_stable": true,
+    "native_review_hash_and_pair_matched": true,
+    "no_pending_native22_placeholder": true,
+    "all_other_matrix_rows_unchanged": true,
+    "status_historical_tail_unchanged": true,
+    "no_repository_source_git_network_native_action": true
+  },
+  "report_sha256": "cef0e9054f778b571903a206f492c4a9c36ad23e76e66525f81b81548678ea9e",
+  "preparation_script_sha256": "3cd74bdf773c1180dd1017dd8c2740deda5bc2543e5314d1ef8dafd0f3e5e04c"
+}

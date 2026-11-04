@@ -1,0 +1,301 @@
+{
+  "schema": "swiftj2k-r3-documentation-correction-verification-v1",
+  "reviewer": "/root/readiness_check",
+  "state": "COMPLETED_CORRECTIONS_VERIFIED",
+  "started_at": "2026-10-31T08:51:52.139913+00:00",
+  "scope": "Narrow verification of DOC08-01..04 and refreshed package selection/identity only; prior 759-file/check audit not repeated.",
+  "files_before": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/README.md",
+      "bytes": 12146,
+      "sha256": "ed6ae9ce2a68e30c40359259aff5b8e23ebdbb3a5f3951e3f6d0c3d794bcd3ee"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "bytes": 95187,
+      "sha256": "3067dec2b819518253750e8500c01bb017df903820b6c6e5273728b9e9ceb9d5"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "bytes": 15180,
+      "sha256": "e14c673eae964a96eca9163eb624b239de0cc263e7a35070330b9aa4b7a21b49"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "bytes": 12836,
+      "sha256": "4986992b7ff0e17f8bdb5ca77827b6c030b5ee3b071bbdf4490dd7351529ee0a"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-performance-decision-08.json",
+      "workspace_relative_path": "work/r3-performance-decision-08.json",
+      "bytes": 11309,
+      "sha256": "25704184408257027f0fce2b0db941ffb3ee61910b548e19a8901614391a94f5"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-r3-evidence.py",
+      "workspace_relative_path": "work/package-r3-evidence.py",
+      "bytes": 40672,
+      "sha256": "48fb4df0d8649e3265ba882f582ec144df1657e5901628c676663580a8a2c8f7"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-08.json",
+      "workspace_relative_path": "work/package-final-dry-run-08.json",
+      "bytes": 986,
+      "sha256": "3cc81501d678e82281625e76679a2f38b0640e3495358a9d16047f8b4bfb3858"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-09.json",
+      "workspace_relative_path": "work/package-final-dry-run-09.json",
+      "bytes": 1025,
+      "sha256": "8de0c4af45157a593070e4a2e97fe509d178f9bf3c504ed4404ddb3bdffd7bcb"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08.txt",
+      "workspace_relative_path": "work/independent-final-documentation-review-08.txt",
+      "bytes": 10927,
+      "sha256": "2d363f4f7585d9af2e15143261d958f8a9dc85c74c98f3ef5d41ef7c22cc98ac"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08-source.json",
+      "workspace_relative_path": "work/independent-final-documentation-review-08-source.json",
+      "bytes": 617586,
+      "sha256": "e13c648b37cb865fd1a5faed3a985d9b489a079b17fd9142c6bf3ccc37965a43"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08.py",
+      "workspace_relative_path": "work/independent-final-native-check-08.py",
+      "bytes": 12124,
+      "sha256": "fae497ac384d7c5c00c07087822bdeea56a4c1c5a149e0a330178baf990e2a03"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08-summary.json",
+      "workspace_relative_path": "work/independent-final-native-check-08-summary.json",
+      "bytes": 14532,
+      "sha256": "1bbc03a8630141c5d264e4b7c7d563d8fb0d2e3dfeadfe7b3bb5ae9c97511d53"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-04/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-04/summary.json",
+      "bytes": 37545,
+      "sha256": "a906c036546e1d951dd9ace0f6f11b664dca559ac96d5bf35e26f052f23c349b"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-05/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-05/summary.json",
+      "bytes": 37540,
+      "sha256": "6f5fe887e5028120c944dfec03f9d21ccff37fb37f5cdbe5cd2200297b0b2beb"
+    }
+  ],
+  "prior_review": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08.txt",
+  "prior_performance_decision_sha256": "d2e53ec6d615c8a85274b6f4eb34c4d9997eba5c55f4031ee222ef329d14c7bb",
+  "native_execution": false,
+  "repository_or_helper_writes": false,
+  "completed_at": "2026-10-31T08:53:02.411775+00:00",
+  "report": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-09.txt",
+  "report_sha256": "3f16444cfffccb8978bca364633eb606f9f808330a8913e84c10847f15f68844",
+  "coordinator_spacing_changes_during_review": [
+    {
+      "path": "work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "before_sha256": "3067dec2b819518253750e8500c01bb017df903820b6c6e5273728b9e9ceb9d5",
+      "after_sha256": "6dbbf11f94e5e14a0cdee34e00b1600689ded8ae15d43904208d01bd82438d6c"
+    },
+    {
+      "path": "work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "before_sha256": "e14c673eae964a96eca9163eb624b239de0cc263e7a35070330b9aa4b7a21b49",
+      "after_sha256": "3ae0d68c05609c26623d02eddfaf66b0052a2a43388ba5403d1a0ca469bc5aa2"
+    },
+    {
+      "path": "work/r3-performance-decision-08.json",
+      "before_sha256": "25704184408257027f0fce2b0db941ffb3ee61910b548e19a8901614391a94f5",
+      "after_sha256": "6eb31541315c4f727a59a47aa0b370647fa29b9892db52bf8f92dfcc8679ab48"
+    }
+  ],
+  "final_scope_before": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/README.md",
+      "bytes": 12146,
+      "sha256": "ed6ae9ce2a68e30c40359259aff5b8e23ebdbb3a5f3951e3f6d0c3d794bcd3ee"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "bytes": 95205,
+      "sha256": "6dbbf11f94e5e14a0cdee34e00b1600689ded8ae15d43904208d01bd82438d6c"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "bytes": 15187,
+      "sha256": "3ae0d68c05609c26623d02eddfaf66b0052a2a43388ba5403d1a0ca469bc5aa2"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "bytes": 12836,
+      "sha256": "4986992b7ff0e17f8bdb5ca77827b6c030b5ee3b071bbdf4490dd7351529ee0a"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-performance-decision-08.json",
+      "workspace_relative_path": "work/r3-performance-decision-08.json",
+      "bytes": 11314,
+      "sha256": "6eb31541315c4f727a59a47aa0b370647fa29b9892db52bf8f92dfcc8679ab48"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-r3-evidence.py",
+      "workspace_relative_path": "work/package-r3-evidence.py",
+      "bytes": 40672,
+      "sha256": "48fb4df0d8649e3265ba882f582ec144df1657e5901628c676663580a8a2c8f7"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-08.json",
+      "workspace_relative_path": "work/package-final-dry-run-08.json",
+      "bytes": 986,
+      "sha256": "3cc81501d678e82281625e76679a2f38b0640e3495358a9d16047f8b4bfb3858"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-09.json",
+      "workspace_relative_path": "work/package-final-dry-run-09.json",
+      "bytes": 1025,
+      "sha256": "8de0c4af45157a593070e4a2e97fe509d178f9bf3c504ed4404ddb3bdffd7bcb"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08.txt",
+      "workspace_relative_path": "work/independent-final-documentation-review-08.txt",
+      "bytes": 10927,
+      "sha256": "2d363f4f7585d9af2e15143261d958f8a9dc85c74c98f3ef5d41ef7c22cc98ac"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08-source.json",
+      "workspace_relative_path": "work/independent-final-documentation-review-08-source.json",
+      "bytes": 617586,
+      "sha256": "e13c648b37cb865fd1a5faed3a985d9b489a079b17fd9142c6bf3ccc37965a43"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08.py",
+      "workspace_relative_path": "work/independent-final-native-check-08.py",
+      "bytes": 12124,
+      "sha256": "fae497ac384d7c5c00c07087822bdeea56a4c1c5a149e0a330178baf990e2a03"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08-summary.json",
+      "workspace_relative_path": "work/independent-final-native-check-08-summary.json",
+      "bytes": 14532,
+      "sha256": "1bbc03a8630141c5d264e4b7c7d563d8fb0d2e3dfeadfe7b3bb5ae9c97511d53"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-04/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-04/summary.json",
+      "bytes": 37545,
+      "sha256": "a906c036546e1d951dd9ace0f6f11b664dca559ac96d5bf35e26f052f23c349b"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-05/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-05/summary.json",
+      "bytes": 37540,
+      "sha256": "6f5fe887e5028120c944dfec03f9d21ccff37fb37f5cdbe5cd2200297b0b2beb"
+    }
+  ],
+  "files_after": [
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/README.md",
+      "bytes": 12146,
+      "sha256": "ed6ae9ce2a68e30c40359259aff5b8e23ebdbb3a5f3951e3f6d0c3d794bcd3ee"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md",
+      "bytes": 95205,
+      "sha256": "6dbbf11f94e5e14a0cdee34e00b1600689ded8ae15d43904208d01bd82438d6c"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md",
+      "bytes": 15187,
+      "sha256": "3ae0d68c05609c26623d02eddfaf66b0052a2a43388ba5403d1a0ca469bc5aa2"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "workspace_relative_path": "work/SwiftJ2K/Documentation/Engineering/OS27CLI/README.md",
+      "bytes": 12836,
+      "sha256": "4986992b7ff0e17f8bdb5ca77827b6c030b5ee3b071bbdf4490dd7351529ee0a"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-performance-decision-08.json",
+      "workspace_relative_path": "work/r3-performance-decision-08.json",
+      "bytes": 11314,
+      "sha256": "6eb31541315c4f727a59a47aa0b370647fa29b9892db52bf8f92dfcc8679ab48"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-r3-evidence.py",
+      "workspace_relative_path": "work/package-r3-evidence.py",
+      "bytes": 40672,
+      "sha256": "48fb4df0d8649e3265ba882f582ec144df1657e5901628c676663580a8a2c8f7"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-08.json",
+      "workspace_relative_path": "work/package-final-dry-run-08.json",
+      "bytes": 986,
+      "sha256": "3cc81501d678e82281625e76679a2f38b0640e3495358a9d16047f8b4bfb3858"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/package-final-dry-run-09.json",
+      "workspace_relative_path": "work/package-final-dry-run-09.json",
+      "bytes": 1025,
+      "sha256": "8de0c4af45157a593070e4a2e97fe509d178f9bf3c504ed4404ddb3bdffd7bcb"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08.txt",
+      "workspace_relative_path": "work/independent-final-documentation-review-08.txt",
+      "bytes": 10927,
+      "sha256": "2d363f4f7585d9af2e15143261d958f8a9dc85c74c98f3ef5d41ef7c22cc98ac"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-documentation-review-08-source.json",
+      "workspace_relative_path": "work/independent-final-documentation-review-08-source.json",
+      "bytes": 617586,
+      "sha256": "e13c648b37cb865fd1a5faed3a985d9b489a079b17fd9142c6bf3ccc37965a43"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08.py",
+      "workspace_relative_path": "work/independent-final-native-check-08.py",
+      "bytes": 12124,
+      "sha256": "fae497ac384d7c5c00c07087822bdeea56a4c1c5a149e0a330178baf990e2a03"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-final-native-check-08-summary.json",
+      "workspace_relative_path": "work/independent-final-native-check-08-summary.json",
+      "bytes": 14532,
+      "sha256": "1bbc03a8630141c5d264e4b7c7d563d8fb0d2e3dfeadfe7b3bb5ae9c97511d53"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-04/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-04/summary.json",
+      "bytes": 37545,
+      "sha256": "a906c036546e1d951dd9ace0f6f11b664dca559ac96d5bf35e26f052f23c349b"
+    },
+    {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-benchmark-results-05/summary.json",
+      "workspace_relative_path": "work/r3-benchmark-results-05/summary.json",
+      "bytes": 37540,
+      "sha256": "6f5fe887e5028120c944dfec03f9d21ccff37fb37f5cdbe5cd2200297b0b2beb"
+    }
+  ],
+  "final_scope_stable": true,
+  "final_performance_decision_sha256": "6eb31541315c4f727a59a47aa0b370647fa29b9892db52bf8f92dfcc8679ab48",
+  "unchanged_numeric_cost_payload_sha256": "e7b6fd77d88f9b80cf25164aca8cd4d9920bc8d70a497fe661e42d30bf986b25",
+  "closed_findings": [
+    "DOC08-01",
+    "DOC08-02",
+    "DOC08-03",
+    "DOC08-04"
+  ],
+  "remaining_findings": [],
+  "acceptance": "NOT_ACCEPTED; no whole-R3 acceptance, waiver, CI or merge decision",
+  "positive_stop": true
+}

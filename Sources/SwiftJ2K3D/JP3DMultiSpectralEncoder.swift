@@ -95,15 +95,19 @@ public actor JP3DMultiSpectralEncoder {
             processed = applySpectralDecorelation(processed)
         }
 
-        let encodedBands: [Data] = processed.enumerated().map { (index, samples) in
-            encodeBand(
+        var encodedBands: [Data] = []
+        encodedBands.reserveCapacity(processed.count)
+        for (index, samples) in processed.enumerated() {
+            let bandCodestream = try await encodeBand(
                 samples: samples,
                 bandIndex: index,
                 width: volume.width,
                 height: volume.height,
                 depth: volume.depth,
+                baseConfiguration: configuration.baseConfiguration,
                 qualityLayers: configuration.qualityLayersPerBand
             )
+            encodedBands.append(bandCodestream)
         }
 
         let effectiveMapping = volume.bands.isEmpty
@@ -152,29 +156,75 @@ public actor JP3DMultiSpectralEncoder {
 
     // MARK: - Private Helpers
 
+    /// Fixed-point reflectance scale factor (`1.0 == 8192` in signed 16-bit voxels,
+    /// supporting reflectance and signed inter-band/decorrelation residuals in `[-4.0, +3.9998]`).
+    internal static let reflectanceFixedPointScale: Double = 8192.0
+
+    private static func maxAxisLevels(for dimension: Int, requested: Int) -> Int {
+        guard dimension > 1, requested > 0 else { return 0 }
+        var maxLvl = 0
+        var d = dimension
+        while d > 1 {
+            d = (d + 1) / 2
+            maxLvl += 1
+        }
+        return min(requested, maxLvl)
+    }
+
     private func encodeBand(
         samples: [Float],
         bandIndex: Int,
         width: Int,
         height: Int,
         depth: Int,
+        baseConfiguration: JP3DEncoderConfiguration,
         qualityLayers: Int
-    ) -> Data {
-        _ = qualityLayers
-        var data = Data()
-        data.reserveCapacity(24 + samples.count)
-        // 4-byte magic "JP3M" (extended multi-spectral band header with width/height/depth)
-        data.append(contentsOf: [0x4A, 0x50, 0x33, 0x4D])
-        withUnsafeBytes(of: UInt32(clamping: bandIndex).bigEndian) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: UInt32(clamping: samples.count).bigEndian) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: UInt32(clamping: width).bigEndian) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: UInt32(clamping: height).bigEndian) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: UInt32(clamping: depth).bigEndian) { data.append(contentsOf: $0) }
-        for s in samples {
-            let clamped = max(0, min(1, s))
-            data.append(UInt8((clamped * 255).rounded()))
+    ) async throws -> Data {
+        _ = bandIndex
+        let w = max(1, width)
+        let h = max(1, height)
+        let d = max(1, depth)
+        let voxelCount = w * h * d
+        var pcm = Data(count: voxelCount * 2)
+        let scale = Self.reflectanceFixedPointScale
+        pcm.withUnsafeMutableBytes { rawBuf in
+            guard let base = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+            for i in 0..<voxelCount {
+                let f = i < samples.count ? Double(samples[i]) : 0.0
+                let scaled = f.isFinite ? (f * scale).rounded() : 0.0
+                let clamped = Int16(clamping: Int64(max(-32768.0, min(32767.0, scaled))))
+                let word = UInt16(bitPattern: clamped)
+                base[i * 2] = UInt8(truncatingIfNeeded: word)
+                base[i * 2 + 1] = UInt8(truncatingIfNeeded: word >> 8)
+            }
         }
-        return data
+        let component = J2KVolumeComponent(
+            index: 0,
+            bitDepth: 16,
+            signed: true,
+            width: w,
+            height: h,
+            depth: d,
+            data: pcm
+        )
+        let bandVolume = J2KVolume(width: w, height: h, depth: d, components: [component])
+        let tileW = min(w, max(1, baseConfiguration.tiling.tileSizeX))
+        let tileH = min(h, max(1, baseConfiguration.tiling.tileSizeY))
+        let tileD = min(d, max(1, baseConfiguration.tiling.tileSizeZ))
+        let bandEncConfig = JP3DEncoderConfiguration(
+            compressionMode: baseConfiguration.compressionMode,
+            tiling: JP3DTilingConfiguration(tileSizeX: tileW, tileSizeY: tileH, tileSizeZ: tileD),
+            progressionOrder: baseConfiguration.progressionOrder,
+            qualityLayers: max(1, qualityLayers),
+            levelsX: Self.maxAxisLevels(for: tileW, requested: baseConfiguration.levelsX),
+            levelsY: Self.maxAxisLevels(for: tileH, requested: baseConfiguration.levelsY),
+            levelsZ: Self.maxAxisLevels(for: tileD, requested: baseConfiguration.levelsZ),
+            parallelEncoding: baseConfiguration.parallelEncoding,
+            maximumWorkers: baseConfiguration.maximumWorkers
+        )
+        let encoder = JP3DEncoder(configuration: bandEncConfig)
+        let result = try await encoder.encode(bandVolume)
+        return result.data
     }
 
     private func applyInterBandPrediction(_ samplesPerBand: [[Float]]) -> [[Float]] {

@@ -1,0 +1,60 @@
+{
+  "state": "ALL_SIX_XML_FAILURE_MESSAGES_MATCH_RAW_ISSUES",
+  "diagnostic_xml_sha256": "8a338e93fbd97a6b27f4e7887c8016b9fc0220eaacfbf32233b8a2df2f1ae185",
+  "failures": [
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests",
+      "name": "descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest()",
+      "xml_failure_attributes": {
+        "message": "Caught error: Handshake budget fixture failed: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket request deadline elapsed.\"); stopped=true; phases=[0.00188675 seconds: accept.started; 20.085102584 seconds: first.send.begin; 20.092820459000002 seconds: accepted.1; 20.092884625 seconds: accept.finished; 20.095507709 seconds: handshake.read; 20.095632249999998 seconds: handshake.written; 21.981402499999998 seconds: request.read.1; 21.981452917 seconds: response.written.1; 22.096829500000002 seconds: worker.finished.1]; errors=[peer.1: Internal error: Network error: Unexpected EOF in WebSocket payload.]; closing=true, acceptFinished=true, workers=0 (error)"
+      },
+      "raw_issue_line": 3785,
+      "raw_message": "\u2718 Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() recorded an issue at CodexR3WebSocketBudgetTests.swift:218:6: Caught error: Handshake budget fixture failed: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP WebSocket request deadline elapsed.\"); stopped=true; phases=[0.00188675 seconds: accept.started; 20.085102584 seconds: first.send.begin; 20.092820459000002 seconds: accepted.1; 20.092884625 seconds: accept.finished; 20.095507709 seconds: handshake.read; 20.095632249999998 seconds: handshake.written; 21.981402499999998 seconds: request.read.1; 21.981452917 seconds: response.written.1; 22.096829500000002 seconds: worker.finished.1]; errors=[peer.1: Internal error: Network error: Unexpected EOF in WebSocket payload.]; closing=true, acceptFinished=true, workers=0"
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "absoluteDeadlineCancelsSilentResponse()",
+      "xml_failure_attributes": {
+        "message": "Expectation failed: (ContinuousClock.now - start \u2192 20.367459916 seconds) < (.seconds(2) \u2192 2.0 seconds) (error)"
+      },
+      "raw_issue_line": 3565,
+      "raw_message": "\u2718 Test absoluteDeadlineCancelsSilentResponse() recorded an issue at CodexR3HTTPStreamingTests.swift:179:9: Expectation failed: (ContinuousClock.now - start \u2192 20.367459916 seconds) < (.seconds(2) \u2192 2.0 seconds)"
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "xml_failure_attributes": {
+        "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+      },
+      "raw_issue_line": 3535,
+      "raw_message": "\u2718 Test completedRequestEventuallyReleasesItsDelegateOwnership() recorded an issue at CodexR3HTTPStreamingTests.swift:336:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "xml_failure_attributes": {
+        "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\") (error)"
+      },
+      "raw_issue_line": 3536,
+      "raw_message": "\u2718 Test completionAndCancellationHaveOneWinner(cancelFirst:) recorded an issue with 1 argument cancelFirst \u2192 false at CodexR3HTTPStreamingTests.swift:308:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests",
+      "name": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "xml_failure_attributes": {
+        "message": "Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\") (error)"
+      },
+      "raw_issue_line": 3537,
+      "raw_message": "\u2718 Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() recorded an issue at CodexR3HTTPStreamingTests.swift:116:6: Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "class": "SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests",
+      "name": "workerErrorAndCancellationDoNotPublishAReusableConnection()",
+      "xml_failure_attributes": {
+        "message": "Expectation failed: (peer.acceptedCount \u2192 4) == 3 (error)"
+      },
+      "raw_issue_line": 3796,
+      "raw_message": "\u2718 Test workerErrorAndCancellationDoNotPublishAReusableConnection() recorded an issue at CodexR3WorkerHandoffTests.swift:77:13: Expectation failed: (peer.acceptedCount \u2192 4) == 3"
+    }
+  ]
+}

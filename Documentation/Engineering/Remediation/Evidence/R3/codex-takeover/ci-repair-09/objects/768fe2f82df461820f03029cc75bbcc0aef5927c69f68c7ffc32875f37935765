@@ -1,0 +1,12 @@
+{
+  "input_stdout_sha256": "58c70cb8767ade2c3593a07bf8ead013117b1762857420aa61a83dc930958e11",
+  "phase_prefixes": 410,
+  "parsed_records": 410,
+  "parse_rule": "Timestamp/owner/event prefix through newline; multiline NSError descriptions remain in raw input and are not reconstructed.",
+  "main_source_edits": "NONE",
+  "native_by_writer": "NONE",
+  "outputs": {
+    "phase-records.json": "abe11db28650855b99324efe1df019682b85d0a1aef67ae535d352418034f7a9",
+    "phase-timelines.txt": "1d5f99129b663ee495b128104d4e28f8835eb1d8ae7371af0b8f04abb5edf69b"
+  }
+}

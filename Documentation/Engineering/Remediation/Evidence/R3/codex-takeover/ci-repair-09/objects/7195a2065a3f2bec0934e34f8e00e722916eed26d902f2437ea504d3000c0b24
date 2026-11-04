@@ -1,0 +1,97 @@
+{
+  "historical": [
+    {
+      "directory": "candidate-focused-09",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-09-source.json",
+      "expected_exit": 1,
+      "log_sha256": "638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994"
+    },
+    {
+      "directory": "candidate-full-10",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-source.json",
+      "expected_exit": 1,
+      "log_sha256": "9b5bda15317de0d877f5452c2d4ec00c01126912fd01a43c19c1026cad195d49"
+    },
+    {
+      "directory": "diagnostic-https-full-11",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-11-source.json",
+      "expected_exit": 1,
+      "log_sha256": "8db2f327d37043a25bf959bbde473e40b0df8080864a7161de8561d1f53e0ba8"
+    },
+    {
+      "directory": "diagnostic-https-full-12",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-12-source.json",
+      "expected_exit": 1,
+      "log_sha256": "7771302c1f4eaa91b3ad6cfe3fdfca68138d1a163fba512e3ac710055ba46d91"
+    },
+    {
+      "directory": "diagnostic-sampled-full-13",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-source.json",
+      "expected_exit": 1,
+      "log_sha256": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c"
+    },
+    {
+      "directory": "foundation-queue-policy-13",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-10-source.json",
+      "expected_exit": -11,
+      "log_sha256": "fb3e469ebef782ac4c8d93c520c72d28841c6d6cc4fa2e57acabe8cc53e4f346"
+    },
+    {
+      "directory": "candidate-jpip-asan-14",
+      "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-14-source.json",
+      "expected_exit": 1,
+      "log_sha256": "ab8584acea5871cb0215bb41bab9ab0e112ab740de5231fc745c554c75fa3d07"
+    }
+  ],
+  "boundaries": [
+    "This is a plan, not a receipt or claim of executed coverage.",
+    "All required final ordinary and sanitizer runs must exist and pass; no missing run is optional.",
+    "Reused release/CLI receipts require exact identity of every production, package, script, fixture and resource input.",
+    "The focused09 failed readiness run remains failed historical evidence.",
+    "No external decoder, peer, Linux, OS26, whole-R3, or full-cross-target sanitizer acceptance follows.",
+    "Fresh complete sanitizer partitions execute on15; no mixed-source sanitizer proof is permitted.",
+    "Release/CLI14 reuse requires exact identity of every production, package, script, resource and fixture input.",
+    "First affected JPIP ASan15 run supplies focused coverage; no separate focused15 run is implied.",
+    "All17 executions must use one exact frozen17 manifest; no runtime15/16 source carry-forward.",
+    "The2 live CLI16 startup observations are separately qualified by their independent review and input equality; no new17 execution is invented.",
+    "Historical hosted15 macOS ordinary failure and skipped sanitizers remain failed/unexecuted; local17 does not qualify hosted runners."
+  ],
+  "state": "PLANNED_NOT_EXECUTED_AWAITING_FROZEN17",
+  "candidate": "17",
+  "cli_candidate": "16",
+  "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17",
+  "manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-17-source.json",
+  "wrapper": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/run-validation.py",
+  "reconciliation_helper": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage/reconcile.py",
+  "ordinary": "candidate-full-17",
+  "focused": [
+    "candidate-jpip-asan-17"
+  ],
+  "release": "candidate-release-build-16",
+  "cli": "candidate-cli-16",
+  "cli_report": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/cli-integration-16/report.json",
+  "cli_manifest": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16-source.json",
+  "cli_source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16",
+  "expected_cli_checks": 246,
+  "modes": {
+    "address": {
+      "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-17/address",
+      "inventory_run": "candidate-asan-inventory-17",
+      "jpip": "candidate-jpip-asan-17",
+      "complement": "candidate-complement-asan-17",
+      "spec": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/planned-17/address-final-17.json",
+      "proof": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-address-17.json"
+    },
+    "thread": {
+      "inventory": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/sanitizer-inventory-17/thread",
+      "inventory_run": "candidate-tsan-inventory-17",
+      "jpip": "candidate-jpip-tsan-17",
+      "complement": "candidate-complement-tsan-17",
+      "spec": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/runtime-coverage-17/planned-17/thread-final-17.json",
+      "proof": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-sanitizer-execution-proof-thread-17.json"
+    }
+  },
+  "supporting_inputs": [],
+  "native_plan": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/planned-native-sequence-17.json",
+  "scope": "Planned fresh identical-source17 ordinary and complete sanitizer partitions; release/CLI16 reuse only after actual input-equivalence proof. No result exists or is implied here."
+}

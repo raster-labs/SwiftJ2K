@@ -1,0 +1,23 @@
+{
+  "state": "SOURCE_REPAIR_COMPLETE_NATIVE_AND_INDEPENDENT_REVIEW_PENDING",
+  "scope": "Sources/SwiftJ2KCLI/CLIVerbs.swift only",
+  "before_sha256": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43",
+  "after_sha256": "1b92d632abea8abe1aea4180b01045e3fcfddd1b32d11259e0832d29c00f535c",
+  "exact_removed_line": "    fflush(stdout)\n",
+  "before_equals_frozen15": true,
+  "claim_invocation_id": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+  "claim_verified_before_edit_and_unchanged_after": true,
+  "distinct_hosted_compile_causes": 1,
+  "native_execution": false,
+  "git_network_ci_execution": false,
+  "independent_review": "pending separate reviewer",
+  "artifacts": {
+    "CLIVerbs.after.swift": "1b92d632abea8abe1aea4180b01045e3fcfddd1b32d11259e0832d29c00f535c",
+    "CLIVerbs.before.swift": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43",
+    "before.json": "0f6101d7f98dd866d0963cccb6b3abe23f33cf824e1bf4ed929c9acb5757a400",
+    "observed-log-errors.json": "c48ed9ec8b8629e3d0c3f7b50a86b15fd2c229a8fc20137056ac36f79107d60b",
+    "report.txt": "bccea0c31234307b7ee98facf2af76a943d320f42e85952c87387dba3f61eb9c",
+    "source.diff": "86e17dac4446fb657aefd5f7cee0f5e116e6f58165a0adabb32dda66014b1ce1"
+  },
+  "stop": true
+}

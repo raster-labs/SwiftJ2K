@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="TestResults" errors="0" tests="104" failures="4" skipped="0" time="3.426479542">
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="volumeReportIncludesDescriptorHeavyWebSocketHandshake()" time="2.292743666" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="descriptorDenialPrecedesWireMaterialisation()" time="2.2319575" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="cacheProjectionAndMergeDenyBeforeMutation()" time="2.231954417" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="reassemblyReportIncludesDescriptorDominatedPhase()" time="2.232141167" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead()" time="2.275721375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="volumeResumptionDeductsEarlierWireBytesBeforeRead()" time="2.2803935" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead()" time="2.29193925" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="volumeReportCarriesDescriptorDominatedReassemblyPeak()" time="2.306799209" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="remainingWireAllowanceIsAppliedBeforeTheNextRead()" time="2.231927375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt()" time="2.236680875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3AdmissionTests" name="admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion()" time="2.280937875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="subtractiveLengthIsRemainingPrefix()" time="2.212739375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="normalAndExtendedMessagesMergeIntoOnePrecinct()" time="2.210439583" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="malformedTokensAndOverflowingQueryRangesRejected()" time="2.214879875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="sparseMsgOffsetAndCumulativeLimitsEnforcedPreAllocation()" time="2.2147555" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="deliverVolumeRegionVerificationTelemetryAndCombinedBudget()" time="2.31510025" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="corruptCodestreamPropagatesErrorInsteadOfRawFallback()" time="2.214355916" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="httpAndWebSocketDeadlinesAbortSilentPeersPromptlyWithoutExternalCancel()" time="2.610687625" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="stalledTCPTransportsCancelAndTimeoutPromptly()" time="2.295492625" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="extendedTileMergeCodestreamQualifiersAndSubtractiveCap()" time="2.212907042" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="lenAlwaysEmitsCompleteThreeByteEOR()" time="2.215412542" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="codestreamsDoNotReplaceEachOther()" time="2.2142515" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="normative3DQueryGrammarAndSubstantiatedFidelity()" time="2.235171459" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3IndependentTests" name="rfc6455FragmentedMessageSurvivesInterleavedControlFrame()" time="2.214274375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="declaredBodyLimitIsCheckedBeforeOwningMessageAllocation()" time="2.214263709" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="descriptorHeavyHTTPHeaderIsRejectedBeforeTextParsingOrBodyRead()" time="2.213855209" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="fragmentedMessageIncludesOldAndNewBuffersBeforeNextPayload()" time="2.214821417" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="priorQueuedPushesRetainStorageWithoutChargingNextBodyAgain()" time="2.212745792" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="oversizedFrameIsDeniedFromLengthWithoutReadingItsPayload()" time="2.2132085" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="acceptedPushCounterSurvivesQueueDrainAndChargesEachFrameOnce()" time="2.214092625" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest()" time="2.291441166" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="zeroPayloadPushesAreBoundedByDescriptorsBeforeAppend()" time="2.214253958" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="readerWaitsAfterResponseAndWakesForNextRequestOrClose()" time="2.307566083" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="deadlineWatchdogWakesDedicatedReaderAndCancellationDisarmsIt()" time="2.337041875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketBudgetTests" name="queuedPushesReduceTheNextResponseBodyAllowance()" time="2.207961334" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TransportCloseTests" name="staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel()" time="2.288560917" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TransportCloseTests" name="lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers()" time="2.282286709" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TransportCloseTests" name="repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:)" time="2.285533833" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TransportCloseTests" name="closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining()" time="2.278257792" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TransportCloseTests" name="publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation()" time="2.278681917" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests" name="workerCreatedConnectionsPublishBeforeCloseAndReuse()" time="2.342592042" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WorkerHandoffTests" name="workerErrorAndCancellationDoNotPublishAReusableConnection()" time="2.28901075" />
+    <testcase classname="SwiftJ2KJPIPTests.IndependentR2RemainingTests" name="tinyViewPixelTelemetry()" time="2.215357041" />
+    <testcase classname="SwiftJ2KJPIPTests.R2PixelAccountingTests" name="finalLegacyConversionAdmitsBothSourceAndDestination()" time="1.591220459" />
+    <testcase classname="SwiftJ2KJPIPTests.R2PixelAccountingTests" name="combinedViewCountsFullDecodeAndEveryMaterialisedView()" time="2.46629825" />
+    <testcase classname="SwiftJ2KJPIPTests.R2BinGenerationBudgetTests" name="binDescriptorCountHasARealBudget()" time="2.21647775" />
+    <testcase classname="SwiftJ2KJPIPTests.R2BinGenerationBudgetTests" name="zeroLengthFinalTileAndContainerRanges()" time="2.231936709" />
+    <testcase classname="SwiftJ2KJPIPTests.R2BinGenerationBudgetTests" name="requestBudgetFailureLeavesCacheUnchanged()" time="2.23228075" />
+    <testcase classname="SwiftJ2KJPIPTests.R2BinGenerationBudgetTests" name="malformedTileLengthsAreRejected()" time="2.215893875" />
+    <testcase classname="SwiftJ2KJPIPTests.R2BinGenerationBudgetTests" name="exactGenerationStorageBoundary()" time="2.231758666" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPColourAlphaPreservationTests" name="nativeColourAndPermutedOpacityDelivery()" time="2.853885666" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="headerDelimitersSurviveEveryTrailingFragmentBoundary()" time="2.286171875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="headerAndChunkCapsStillRejectBeforeAnAbsentBodyRead()" time="2.27948625" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="twoThousandHeaderHandshakeHasLinearDelimiterWork()" time="2.236035333" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="chunkLineScanVisitsEachByteOnceAndPreservesLineEndings()" time="2.29404" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="immediateAndTruncatedHeaderEOFRemainDistinct()" time="2.2406845" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPDelimiterTests" name="headerScanWorkRemainsLinearAsInputQuadruples()" time="2.282958958" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPRemediationTests" name="jpipPreservesPaletteCdefAndICCSemantics()" time="3.203370959" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPRemediationTests" name="jpipPoliciesAndOperationReportTelemetry()" time="2.218154209" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPRemediationTests" name="jpipPreservesPremultipliedAndAbsentAlphaThroughLegacyBridge()" time="3.077024792" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPRemediationTests" name="jpipSessionConfigurationCacheAndDeliveryEnforcement()" time="3.422554833" />
+    <testcase classname="SwiftJ2KJPIPTests.R2JPIPRemediationTests" name="jpipViewWindowConstraintCompositionAndBoundsValidation()" time="2.217542792" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="malformedVBASAndEORRejection()" time="2.231784292" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="http3UnsupportedAndOfflinePortFails()" time="2.277324208" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="realTCP3DJP3DOverHTTPAndWebSocket()" time="3.098944458" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="cacheModelGrammarAndIntervalMerging()" time="2.231987959" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="realTCPRFC6455WebSocketStreamingMultiplexingAndPush()" time="2.327828291" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="realTCPHTTP11JPPAndJPTBitExact()" time="3.119540625" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="statefulDeltaStatelessModelAndByteLimitedResumption()" time="2.505884959" />
+    <testcase classname="SwiftJ2KJPIPTests.R3JPIPRemediationTests" name="normativeTableA2WireClassesAndVBAS()" time="2.231967833" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest()" time="2.282576958" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="repeatedTransportCloseJoinsTheSameSilentHTTPSOwner()" time="2.285665375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks()" time="2.219120208" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain()" time="2.236863875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()" time="2.239012708" >
+      <failure message="Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: &quot;JPIP HTTPS operation deadline elapsed.&quot;) (error)" />
+    </testcase>
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath()" time="2.287085875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="taskCancellationJoinsAndAllowsFollowingRequest()" time="2.285936292" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact()" time="2.214278125" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="delegateRejectsOversizedAnnouncedOrUnknownBody(declared:)" time="2.23969175" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="headersEmptyBodyStatusAndResponseTypeRemainChecked()" time="2.213884833" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary()" time="2.208320875" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="absoluteDeadlineCancelsSilentResponse()" time="2.23854375" >
+      <failure message="Expectation failed: ContinuousClock.now - start &lt; .seconds(2) (error)" />
+    </testcase>
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="sharedWatchdogInterruptsAnAlreadyActiveTrickle()" time="2.35807625" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="expiredDeadlineReleasesUnstartedOwners()" time="2.210565375" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:)" time="2.238348541" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="completedRequestEventuallyReleasesItsDelegateOwnership()" time="2.23940225" >
+      <failure message="Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: &quot;JPIP operation deadline elapsed.&quot;) (error)" />
+    </testcase>
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests" name="completionAndCancellationHaveOneWinner(cancelFirst:)" time="2.2373885" >
+      <failure message="Caught error: CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: &quot;JPIP operation deadline elapsed.&quot;) (error)" />
+    </testcase>
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WireGrammarTests" name="emitsBracketedCodestreamQualifier()" time="2.207412167" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WireGrammarTests" name="multiCodestreamRangesHTTPQueryAndImplicitPrecinctSelectors()" time="2.210031291" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WireGrammarTests" name="standardCodestreamQualifierParses()" time="2.208251667" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="inventedFormsAreRejectedWithoutPartialMutation()" time="2.210389583" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="reassemblyAccountsForLargeBinBeforeSmallerReplacement()" time="2.212865084" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="additiveRectangleDoesNotMarkOutsidePrecinctsCached()" time="2.214297" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="normativeQualifierSeparatorAndBoundedRanges()" time="2.212944417" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="layerHintsCannotSuppressUndeliveredPackets()" time="2.213183083" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="sessionRestrictionsApplyToSubtractiveAndImplicitSelectors()" time="2.208668208" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3TakeoverJPIPTests" name="reassemblyRejectsBudgetThatFitsEachBufferButNotTheirOverlap()" time="2.214085417" />
+    <testcase classname="SwiftJ2KJPIPTests.R1JPIPRemediationTests" name="viewWindowValidatesRegionOverflowAndResolutionBounds()" time="2.231871" />
+    <testcase classname="SwiftJ2KJPIPTests.R1JPIPRemediationTests" name="streamingSessionEnforcesResourceLimitsAndDeadline()" time="2.233520666" />
+    <testcase classname="SwiftJ2KJPIPTests.R1JPIPRemediationTests" name="postCompletedCancellationAbortsJPIPDeliveries()" time="2.279329333" />
+    <testcase classname="SwiftJ2KJPIPTests.R1JPIPRemediationTests" name="streamingSessionTruthfulFidelity()" time="2.582181542" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests" name="staleCleanupCannotCloseReplacementHandshake(_:)" time="2.764703666" />
+    <testcase classname="SwiftJ2KJPIPTests.CodexR3WebSocketLifecycleTests" name="obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:)" time="2.300732875" />
+    <testcase classname="SwiftJ2KJPIPTests.R2CacheRecencyTests" name="readingAnOlderBinPreservesItUnderEitherCacheLimit()" time="2.214055416" />
+  </testsuite>
+</testsuites>

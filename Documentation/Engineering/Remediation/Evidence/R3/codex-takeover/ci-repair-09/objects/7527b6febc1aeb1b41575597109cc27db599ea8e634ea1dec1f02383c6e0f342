@@ -1,0 +1,40 @@
+{
+  "sha": "86be136665a3027f59863fb3844b014fd7bad8df",
+  "node_id": "C_kwDOUeVE1toAKDg2YmUxMzY2NjVhMzAyN2Y1OTg2M2ZiMzg0NGIwMTRmZDdiYWQ4ZGY",
+  "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/86be136665a3027f59863fb3844b014fd7bad8df",
+  "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/86be136665a3027f59863fb3844b014fd7bad8df",
+  "author": {
+    "name": "Suresh Viswanathan",
+    "email": "257696045+SureshKViswanathan@users.noreply.github.com",
+    "date": "2026-10-31T11:48:44Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-10-31T11:48:44Z"
+  },
+  "tree": {
+    "sha": "bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86",
+    "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/trees/bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86"
+  },
+  "message": "Merge e67136ade691af045570706d401f80d612359d0c into 46be90fc3bf50429956725ee592687d8ff8e7344",
+  "parents": [
+    {
+      "sha": "46be90fc3bf50429956725ee592687d8ff8e7344",
+      "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/46be90fc3bf50429956725ee592687d8ff8e7344",
+      "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/46be90fc3bf50429956725ee592687d8ff8e7344"
+    },
+    {
+      "sha": "e67136ade691af045570706d401f80d612359d0c",
+      "url": "https://api.github.com/repos/raster-labs/SwiftJ2K/git/commits/e67136ade691af045570706d401f80d612359d0c",
+      "html_url": "https://github.com/raster-labs/SwiftJ2K/commit/e67136ade691af045570706d401f80d612359d0c"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJq5dWcCRC1aQ7uu5UhlAAAgusQABIIotoY2MkkAFReG6d53hHW\nvfsr9eLulZl5m9yyih4OGStcxLXwo1qW+pWO/TmwFKTXfkD0iaL51oY46svBYFJz\nE6bfWhqo5nTlHeFWlf8o4yS9mzITjNhlrQPNjZojo8e9MzapnOTm6Hz2BRwnf0T4\nZCaOY8AjG5BDVDgEF4JaNYaWrL2eYViinHiJWB2KE+GX0DSpE37hJVG6upHBi3NX\noZPustYscQVUp3NPmX6RZz3DZjXZMV4v/ps3nu6wjMVHEueMQeHwhV2rFbSLb6Iq\nOMsR6YkewRqRp5rxsuwX6wFfT8N1q91Gvaw9wOt71F3sKHV9E/RRNrtXkEsjq43i\nSJXfy58mYKEQYFjhb27eGqtTRGFng1exd74VxOjf2r78qfYtqdc9tPoeYRpJVofc\nKJnDVegOL2vJJF6qCaBZIh0wuMlyNfsNlc4/8EOModt64d+mqqTE1JL5Xi1WPv4M\nc8WVnKyuywIMBtWMOvfYhwMNciWWkGiuXm0+HFG1938L/RLfQrSOpVLPuQsjZmDl\nFmw7zzeQMlKOd+udAt74n5Z6flBLCugz8QbUJPYOyItm9QX30ok7OOe29gG0I4GI\n3ARDjtrRGB9o5XgpjTbkBtkDj6QRJW0O8MV+lecbllslx5zaQO+YgzS0dWUzByNX\nf3CcG+AoNVARKTP41gdR\n=4xBb\n-----END PGP SIGNATURE-----\n",
+    "payload": "tree bf644ec0e4f00f83d18ef979f5c6158f9cdf2b86\nparent 46be90fc3bf50429956725ee592687d8ff8e7344\nparent e67136ade691af045570706d401f80d612359d0c\nauthor Suresh Viswanathan <257696045+SureshKViswanathan@users.noreply.github.com> 1793447324 +0000\ncommitter GitHub <noreply@github.com> 1793447324 +0000\n\nMerge e67136ade691af045570706d401f80d612359d0c into 46be90fc3bf50429956725ee592687d8ff8e7344\n",
+    "verified_at": "2026-10-31T11:48:45Z"
+  }
+}

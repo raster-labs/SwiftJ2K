@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Read-only preparation proof for candidate10 and reused09 CLI; no final runtime gate."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib
+import json
+import runpy
+import xml.etree.ElementTree as ET
+
+HERE = Path(__file__).resolve().parent
+WORK = HERE.parent
+OUT = HERE / 'preparation-10.json'
+if OUT.exists():
+    raise SystemExit('Refusing to overwrite preparation receipt')
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def read(path):
+    return json.loads(Path(path).read_text())
+
+
+audit = runpy.run_path(str(HERE / 'audit.py'))
+require, source_map, cli_input = (audit[k] for k in ['require', 'source_map', 'cli_input'])
+receipt = {'state': 'PREPARATION_AND_CLI_INPUT_IDENTITY_ONLY',
+           'checked_at': datetime.now(timezone.utc).isoformat(), 'inputs': {}, 'runs': {}}
+
+
+def record(path):
+    path = Path(path).resolve()
+    receipt['inputs'][str(path)] = sha(path)
+    return receipt['inputs'][str(path)]
+
+
+manifests = {}
+for suffix in ['09', '10']:
+    manifest_path = WORK / ('candidate-snapshot-' + suffix + '-source.json')
+    source = WORK / ('candidate-snapshot-' + suffix)
+    manifest = read(manifest_path)
+    require(source_map(source) == manifest, 'Frozen source/manifest mismatch: ' + suffix)
+    manifests[suffix] = manifest
+    receipt['source' + suffix] = {'source': str(source), 'manifest_sha256': record(manifest_path),
+                                 'files': len(manifest), 'all_file_bytes_verified': True}
+before, after = manifests['09'], manifests['10']
+delta = {p: {'candidate09': before.get(p), 'candidate10': after.get(p)} for p in sorted(set(before) | set(after))
+         if before.get(p) != after.get(p)}
+changed = 'Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift'
+require(set(delta) == {changed}, 'Unexpected09 to10 source delta')
+selected_before = {p: h for p, h in before.items() if cli_input(p)}
+selected_after = {p: h for p, h in after.items() if cli_input(p)}
+require(selected_before == selected_after, 'Production/CLI/fixture input mismatch')
+receipt['source_delta'] = delta
+receipt['cli_input_identity'] = {'matched_files': len(selected_before), 'inputs': selected_before,
+    'scope': 'Sources, Package, Scripts, VERSION, CLI guide, manual, examples/integration, fixture/resource paths and non-Swift test files.'}
+
+
+def check_run(name, exit_code):
+    directory = WORK / 'validation' / name
+    command, result = read(directory / 'command.json'), read(directory / 'result.json')
+    require(result['exit_code'] == exit_code and not result['changed_inputs'], 'Wrong exit/source drift: ' + name)
+    require(read(directory / 'source-before.json') == read(directory / 'source-after.json') == before,
+            'Run source does not match09: ' + name)
+    require(result['capture_complete'] and result['capture_threads_joined'] and not result['capture_errors']
+            and result['wrapper_exit_code'] == exit_code, 'Incomplete raw capture: ' + name)
+    require(result['log_sha256'] == sha(directory / 'native.log'), 'Merged log changed: ' + name)
+    require(command['wrapper_sha256'] == record(WORK / 'run-validation.py'), 'Wrapper changed: ' + name)
+    for kind, value in result['native_streams'].items():
+        path = directory / ('native.' + kind)
+        require(path.resolve() == Path(value['path']).resolve() and sha(path) == value['sha256']
+                and path.stat().st_size == value['bytes'], 'Raw stream changed: ' + name)
+    require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing stream: ' + name)
+    require(Counter((directory / 'native.log').read_bytes().splitlines()) ==
+            Counter((directory / 'native.stdout').read_bytes().splitlines()) +
+            Counter((directory / 'native.stderr').read_bytes().splitlines()), 'Merged/raw line mismatch: ' + name)
+    for path in directory.iterdir():
+        if path.is_file():
+            record(path)
+    receipt['runs'][name] = {'exit_code': exit_code, 'log_sha256': result['log_sha256'],
+                           'raw_capture_verified': True, 'source09_unchanged': True,
+                           'elapsed_seconds': result['elapsed_seconds'], 'command': command['command']}
+    return command, result
+
+
+_, failed = check_run('candidate-focused-09', 1)
+require(failed['log_sha256'] == '638908c28c6a6fb65e5bdd501cade1ec39ca9ad6c0f3ab00cfacf9e6c76cb994',
+        'Focused09 historical failure changed')
+_, build = check_run('candidate-release-build-09', 0)
+cli_command, _ = check_run('candidate-cli-09', 0)
+cli_path = WORK / 'cli-integration-09' / 'report.json'
+cli = read(cli_path)
+record(cli_path)
+require(cli['status'] == 'passed' and cli['checks'] == len(cli['commands']) == 246,
+        'CLI report count/status mismatch')
+require(all(c['exit_code'] == c['expected_exit_code'] for c in cli['commands']), 'CLI expected exit mismatch')
+release = build['built_cli_products_at_completion']['release']
+require(sha(release['path']) == release['sha256'] == cli['binary_sha256'] and
+        Path(release['path']).resolve() == Path(cli['binary']).resolve(), 'Release/CLI artifact mismatch')
+record(cli['binary'])
+binary_arg = cli_command['command'][cli_command['command'].index('--binary') + 1]
+require((Path(cli_command['cwd']) / binary_arg).resolve() == Path(cli['binary']).resolve(),
+        'Integration command invoked another binary')
+for key, path in [('test_runner_sha256', 'Scripts/test-cli.py'), ('installer_sha256', 'Scripts/install-cli.sh'),
+                  ('manual_sha256', 'ManPages/swiftj2k-cli.1')]:
+    require(cli[key] == before[path] == after[path], 'CLI runner/installer/manual changed: ' + path)
+receipt['reused_release_cli'] = {'release_sha256': cli['binary_sha256'], 'checks': 246,
+    'disposition': '09 release build and process-level CLI checks apply to identical10 production/CLI inputs; they do not establish10 ordinary or sanitizer runtime coverage.'}
+
+# Binding compatibility uses prior08 inventory plus21 new observed focused09 IDs.
+# This merged set is a source-format check, NOT an observed final10 discovery.
+helper_path = WORK / 'runtime-coverage' / 'reconcile.py'
+helper = runpy.run_path(str(helper_path))
+record(helper_path)
+old_inventory_path = WORK / 'sanitizer-inventory-08' / 'thread' / 'all.ids'
+old_ids = set(old_inventory_path.read_text().splitlines())
+record(old_inventory_path)
+xml = ET.parse(WORK / 'validation' / 'candidate-focused-09' / 'report-swift-testing.xml')
+observed = {node.attrib['classname'] + '/' + node.attrib['name'] for node in xml.iter('testcase')}
+new_ids = observed - old_ids
+require(len(new_ids) == 21 and len(observed) == 22, 'Unexpected focused09 declaration set')
+bindings, titles = helper['display_map'](WORK / 'candidate-snapshot-10', old_ids | new_ids)
+parsed = helper['parse_log'](WORK / 'validation' / 'candidate-focused-09' / 'native.stdout',
+                             {v: k for k, v in bindings.items()}, strict=False)
+failures = {k: v for k, v in parsed['swift_testing'].items() if v['status'] != 'passed'}
+require(set(failures) == {'SwiftJ2KJPIPTests.CodexR3HTTPStreamingTests/sharedWatchdogInterruptsAnAlreadyActiveTrickle()'},
+        'Focused09 failure identity changed')
+require(len(parsed['swift_testing']) == 22 and len(parsed['parameter_cases']) == 4 and
+        sum(sum(v.values()) for v in parsed['parameter_cases'].values()) == 9,
+        'Focused09 declaration/parameter compatibility mismatch')
+require(len(parsed['diagnostic_gaps']) == 1 and 'Failed Swift Testing events' in parsed['diagnostic_gaps'][0],
+        'Parser had unexpected diagnostic gaps')
+receipt['helper_compatibility'] = {'merged_source_format_inventory': len(old_ids | new_ids),
+    'new_observed_focused09_declarations': sorted(new_ids), 'observed_focused09_declarations': 22,
+    'observed_parameter_declarations': 4, 'observed_parameter_argument_starts': 9,
+    'failed_declarations': failures,
+    'scope': 'Source/display and raw failed09 format compatibility only; merged IDs are not final10 discovery or executed full coverage.'}
+
+probe = read(WORK / 'trickle-probe-10' / 'execution-identity.json')
+record(WORK / 'trickle-probe-10' / 'execution-identity.json')
+probe_source = read(WORK / 'trickle-probe-10' / 'source.json')
+require(record(probe['source']['path']) == probe['source']['sha256'] == probe_source['probe_sha256'],
+        'Standalone probe source mismatch')
+require(record(probe['compiled_binary']['path']) == probe['compiled_binary']['sha256_observed_after_execution'] and
+        Path(probe['compiled_binary']['path']).stat().st_size == probe['compiled_binary']['bytes'], 'Probe binary changed')
+for name, files in probe['runs'].items():
+    check_run(name, 0)
+    for filename, digest in files.items():
+        require(record(WORK / 'validation' / name / filename) == digest, 'Probe run changed')
+probe_results = json.loads((WORK / 'validation' / 'trickle-probe-run-10' / 'native.stdout').read_text())
+require(probe_results == probe['results'], 'Probe report differs from raw stdout')
+receipt['probe_observation'] = {'results': probe_results,
+    'scope': 'Standalone Foundation URLProtocol observation; source unlinked to SwiftJ2K. No TLS or peer qualification; binary identity observed after execution.'}
+for path in [HERE / 'audit.py', Path(__file__), WORK / 'https-trickle-delta-10.patch',
+             WORK / 'https-trickle-source-10.json', WORK / 'https-trickle-report-10.txt',
+             WORK / 'trickle-probe-10' / 'source.json', WORK / 'trickle-probe-10' / 'report.txt']:
+    record(path)
+for suffix, manifest in manifests.items():
+    require(source_map(WORK / ('candidate-snapshot-' + suffix)) == manifest, 'Frozen source drift during preparation')
+for path, digest in receipt['inputs'].items():
+    require(sha(path) == digest, 'Input drift during preparation: ' + path)
+receipt['boundaries'] = ['Focused09 remains FAILED; the harness repair has not erased that evidence.',
+    'No final ordinary, full inventory, sanitizer, independent-peer or whole-R3 acceptance is established by this preparation.',
+    'No Swift/native/test/codec/server execution, repository edits or publication were performed by this checker.']
+with OUT.open('x') as output:
+    output.write(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n')
+print(json.dumps({'state': receipt['state'], 'source_files': len(after), 'changed_files': list(delta),
+                  'identical_cli_inputs': len(selected_before), 'release_sha256': cli['binary_sha256'],
+                  'cli_checks': cli['checks'], 'focused09_status': 'FAILED_PRESERVED', 'output': str(OUT)}, indent=2))

@@ -1,0 +1,4 @@
+import Foundation
+let queue = OperationQueue()
+queue.maxConcurrentOperationCount = 1
+print("fresh_serial_queue_qos=\(queue.qualityOfService.rawValue) background=\(QualityOfService.background.rawValue) default=\(QualityOfService.default.rawValue) userInitiated=\(QualityOfService.userInitiated.rawValue) underlyingQueueNil=\(queue.underlyingQueue == nil)")

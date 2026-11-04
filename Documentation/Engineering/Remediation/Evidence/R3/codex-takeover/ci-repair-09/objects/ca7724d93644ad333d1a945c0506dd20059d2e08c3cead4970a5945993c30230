@@ -1,0 +1,8 @@
+{
+  "state": "ROOT_DIAGNOSTIC_LAUNCH",
+  "at": "2026-10-31T11:46:59.002895+00:00",
+  "review": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-diagnostic19-review/report.txt",
+  "source_files": 2283,
+  "other_native_processes_at_preflight": [],
+  "scope": "Diagnostic only; not release qualification."
+}

@@ -1,0 +1,86 @@
+{
+  "reviewed_at": "2026-10-31T10:26:13.531457+00:00",
+  "status": "CPU_OCCUPANCY_OBSERVED_CAUSE_NOT_UNIQUE",
+  "files": {
+    "work/sampled-full-diagnostic-13/sample-48911.txt": "89ade974051ab5d2130148748ff0ca00762eeb711450e55ef395e9c29eb955b4",
+    "work/sampled-full-diagnostic-13/processes-at-marker.txt": "0716b13582ac783e823f1e5de0ceacae5223382f8890d98e96b3bade94fed723",
+    "work/candidate-snapshot-10-source.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "work/validation/diagnostic-sampled-full-13/command.json": "dc3d2b0968d8d761f2db8634899b30a231946ac31edef14b6800aebac79fd2da",
+    "work/validation/diagnostic-sampled-full-13/result.json": "49b38bd64b1631ac9251ebbab0a2ee6088a3f5ab8d13acbc8a86792180a6c09a",
+    "work/validation/diagnostic-sampled-full-13/native.log": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+    "work/validation/diagnostic-sampled-full-13/native.stdout": "ae8c4f6c4c2ba0943653c14036c484b708d4859610f5fc1f4854e06d09004e5e",
+    "work/validation/diagnostic-sampled-full-13/native.stderr": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+    "work/validation/diagnostic-sampled-full-13/source-before.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2",
+    "work/validation/diagnostic-sampled-full-13/source-after.json": "a4b20c1ea19f342f51d55c80afa5999942d89a5c6a3ed40bfff3182eb32ae4e2"
+  },
+  "threads": [
+    {
+      "line": 25,
+      "header": "    109 Thread_12446598   DispatchQueue_1: com.apple.main-thread  (serial)"
+    },
+    {
+      "line": 42,
+      "header": "    109 Thread_12446601   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 376,
+      "header": "    109 Thread_12446602   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 697,
+      "header": "    109 Thread_12446603   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 1279,
+      "header": "    109 Thread_12446604   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 1740,
+      "header": "    109 Thread_12446605   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 2085,
+      "header": "    109 Thread_12446606   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 2629,
+      "header": "    109 Thread_12446607   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 3139,
+      "header": "    109 Thread_12446608   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 3758,
+      "header": "    109 Thread_12446609   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 4213,
+      "header": "    109 Thread_12446611   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 4747,
+      "header": "    109 Thread_12446612"
+    },
+    {
+      "line": 4751,
+      "header": "    109 Thread_12446622"
+    }
+  ],
+  "cooperative_threads": 10,
+  "reviewed_sources": {
+    "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift": "2c9fa3ada7e3fcbc0045e723c0700d7d7084ac458157a7981b4691fd176b9ec0",
+    "Tests/SwiftJ2KTests/AccelerationTests.swift": "1ea870fe514670faca4b1f76ff34a3cb4aa093d6e55df40c841f5a8e3f6ee23a",
+    "Tests/SwiftJ2KTests/Part1BreadthTests.swift": "7eab0d13070503db8112a1052d2764719533c7821336b6c04508b24da0d865cc",
+    "Tests/SwiftJ2KTests/LosslessCodecTests.swift": "c452fc3ec9f1a6ac5552f408ab81b0fec96216ce423374be127533568d2db9c0",
+    "Sources/SwiftJ2K/CodecAPI.swift": "747823cc2a829b64928133c63c44c8b598b209896a7c0a2f035292d1550705bd",
+    "Sources/SwiftJ2K/Codec/LosslessPipeline.swift": "262c7a730aaec9e9de4b5e784679ca35055905cebf454a48b8453965c0fee991",
+    "Sources/SwiftJ2K/Acceleration/MetalAcceleration.swift": "b5c8f406e873a74cb5ce1abc12dff71f2fed4af3dcb932df5b8520a202e1a593",
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": "3fd5eeebcaa0cbe270cb1c41659073a2de4317ff3d9cc478838701cc81266fc8",
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe"
+  },
+  "report_sha256": "c34c6a2acdf58cd95d30e5b6463e6bb71ecfe04af9a467a194e91c8c7217b42e",
+  "native_executed": false,
+  "repository_written": false,
+  "acceptance_granted": false
+}

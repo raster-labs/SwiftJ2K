@@ -72,44 +72,83 @@ let mqStateTable: [MQState] = [
 ]
 
 /// Adaptive context: a state-table index and the current more probable symbol.
-struct MQContext: Sendable {
-    var stateIndex: UInt8
-    var mps: Bool
-    init(stateIndex: UInt8 = 0, mps: Bool = false) {
+package struct MQContext: Sendable {
+    package var stateIndex: UInt8
+    package var mps: Bool
+    package init(stateIndex: UInt8 = 0, mps: Bool = false) {
         self.stateIndex = stateIndex; self.mps = mps
     }
 }
 
 /// MQ encoder producing a default-terminated codeword segment.
-struct MQEncoder: Sendable {
+package struct MQEncoder: Sendable {
     private var c: UInt32 = 0
     private var a: UInt32 = 0x8000
     private var ct = 12
     private var buffer = -1
     private var output: [UInt8] = []
     private let maximumOutputBytes: Int
-    private(set) var overflowed = false
+    private let chunkSize: Int
+    private let budget: EntropyOutputBudget?
+    package private(set) var reservedBudgetBytes: Int = 0
+    package private(set) var overflowed = false
 
-    init(capacityHint: Int = 256, maximumOutputBytes: Int = Int.max) {
+    package init(
+        capacityHint: Int = 256,
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
+    ) {
         self.maximumOutputBytes = maximumOutputBytes
-        let reserved = min(max(capacityHint, 16), max(0, maximumOutputBytes))
-        if reserved > 0 {
-            output.reserveCapacity(reserved)
+        self.chunkSize = min(64, max(8, capacityHint))
+        self.budget = budget
+        if budget == nil {
+            let reserved = min(max(capacityHint, 16), max(0, maximumOutputBytes))
+            if reserved > 0 {
+                output.reserveCapacity(reserved)
+            }
         }
     }
 
     @inline(__always)
     private mutating func emitByte(_ byte: UInt8) {
-        guard output.count < maximumOutputBytes else {
+        guard !overflowed, output.count < maximumOutputBytes else {
             overflowed = true
             return
+        }
+        if let budget, output.count >= reservedBudgetBytes {
+            let chunk = min(chunkSize, max(1, maximumOutputBytes - reservedBudgetBytes))
+            do {
+                try budget.reserve(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "mq-encoder-growth-overlap")
+                defer { budget.release(reservedBudgetBytes, countsTowardCompressedOutput: false, site: "mq-encoder-growth-overlap") }
+                try budget.reserve(chunk, countsTowardCompressedOutput: true, site: "mq-encoder-chunk")
+                budget.recordActualAllocation(chunk, site: "mq-encoder-chunk")
+                output.reserveCapacity(reservedBudgetBytes + chunk)
+            } catch {
+                overflowed = true
+                return
+            }
+            reservedBudgetBytes += chunk
         }
         output.append(byte)
     }
 
+    package mutating func releaseAllReservedBudget() {
+        if let budget, reservedBudgetBytes > 0 {
+            budget.release(reservedBudgetBytes, countsTowardCompressedOutput: true, site: "mq-encoder-rollback")
+            reservedBudgetBytes = 0
+        }
+    }
+
+    /// Drops the coder's alias after its finished array and reservation have been
+    /// transferred to a retained code-block result.
+    package mutating func discardFinishedStorage() {
+        output = []
+        reservedBudgetBytes = 0
+    }
+
     /// CODEMPS / CODELPS (C.2.4, C.2.6).
     @inline(__always)
-    mutating func encode(_ symbol: Bool, context: inout MQContext) {
+    package mutating func encode(_ symbol: Bool, context: inout MQContext) {
         let state = mqStateTable[Int(context.stateIndex)]
         let qe = state.qe
         a &-= qe
@@ -170,7 +209,7 @@ struct MQEncoder: Sendable {
 
     /// FLUSH with SETBITS (C.2.9, Figure C.11). Trailing 0xFF bytes are dropped
     /// because a decoder feeds 0xFF past the end of the segment.
-    mutating func finish() -> [UInt8] {
+    package mutating func finish() -> [UInt8] {
         let limit = c &+ a
         c |= 0x0000_FFFF
         if c >= limit { c &-= 0x8000 }
@@ -178,15 +217,22 @@ struct MQEncoder: Sendable {
         c <<= UInt32(ct); byteOut()
         if buffer >= 0 && buffer != 0xFF { emitByte(UInt8(buffer & 0xFF)) }
         while let last = output.last, last == 0xFF { output.removeLast() }
+        if !overflowed, let budget, reservedBudgetBytes > output.count {
+            do {
+                try budget.compactOutput(&output, reservedBytes: &reservedBudgetBytes, site: "mq-encoder-finish-compact")
+            } catch {
+                overflowed = true
+            }
+        }
         return output
     }
 
     /// Number of bytes already committed to `output` before termination.
-    var emittedByteCount: Int { output.count }
+    package var emittedByteCount: Int { output.count }
 
     /// Exact byte length that `finish()` would produce at the current state,
     /// computed in scalar registers without mutating `self` or copying `output`.
-    func terminatedByteCount() -> Int {
+    package func terminatedByteCount() -> Int {
         var cSim = c
         let aSim = a
         var ctSim = ct
@@ -241,7 +287,7 @@ struct MQEncoder: Sendable {
 
 /// MQ decoder over one codeword segment. Reading past the segment feeds 0xFF,
 /// as Annex C requires, so a corrupt length never reads outside the segment.
-struct MQDecoder: Sendable {
+package struct MQDecoder: Sendable {
     private let bytes: [UInt8]
     private let start: Int
     private let end: Int
@@ -252,7 +298,7 @@ struct MQDecoder: Sendable {
     private var buffer: UInt8 = 0
 
     /// `bytes[start..<end]` is the segment. The array is retained by value.
-    init(bytes: [UInt8], start: Int, end: Int) throws {
+    package init(bytes: [UInt8], start: Int, end: Int) throws {
         guard start >= 0, start <= end, end <= bytes.count else {
             throw CodecError(.malformedInput, "Code-block segment lies outside the tile data.")
         }
@@ -296,7 +342,7 @@ struct MQDecoder: Sendable {
 
     /// DECODE (C.3.2) using the "chigh" comparison convention.
     @inline(__always)
-    mutating func decode(context: inout MQContext) -> Bool {
+    package mutating func decode(context: inout MQContext) -> Bool {
         let state = mqStateTable[Int(context.stateIndex)]
         let qe = state.qe
         a &-= qe

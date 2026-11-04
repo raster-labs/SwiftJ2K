@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Read-only reconciliation of ordinary22 and failed JPIP ASan22; no qualification."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib, json, re, xml.etree.ElementTree as ET
+
+HERE = Path(__file__).resolve().parent
+WORK = HERE.parent
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+read = lambda p: json.loads(Path(p).read_text())
+FILES = {}
+def record(path):
+    path = Path(path).resolve(); value = sha(path)
+    assert str(path) not in FILES or FILES[str(path)] == value
+    FILES[str(path)] = value
+    return value
+
+source = WORK / 'candidate-snapshot-22'
+manifest_path = WORK / 'candidate-snapshot-22-source.json'
+manifest = read(manifest_path)
+def source_map():
+    return {str(p.relative_to(source)): sha(p) for p in source.rglob('*')
+            if p.is_file() and '.build' not in p.relative_to(source).parts}
+assert source_map() == manifest and len(manifest) == 2405
+record(manifest_path)
+record(WORK / 'candidate-snapshot-22-provenance.json')
+plan_path = WORK / 'planned-native-sequence-22.json'; plan = read(plan_path); record(plan_path)
+assert Path(plan['source']) == source and plan['source_manifest_sha256'] == sha(manifest_path)
+
+# Bind full-run XML identity to the literal source titles. This is not native
+# declaration discovery; missing declaration inventories remain unexecuted.
+ordinary_xml = ET.parse(WORK / 'validation/candidate-full-22/report-swift-testing.xml')
+all_xml_ids = [c.attrib['classname'] + '/' + c.attrib['name'] for c in ordinary_xml.iter('testcase')]
+assert len(all_xml_ids) == len(set(all_xml_ids)) == 325
+display_by_id = {identity: identity.split('/', 1)[1] for identity in all_xml_ids}
+title_receipts = []
+for path in sorted((source / 'Tests').rglob('*.swift')):
+    module = path.relative_to(source / 'Tests').parts[0]; text = path.read_text()
+    for match in re.finditer(r'@Test\s*\(\s*("(?:[^"\\]|\\.)*")', text):
+        following = text[match.end():]
+        function = re.search(r'\bfunc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(', following)
+        assert function and '@Test' not in following[:function.start()]
+        candidates = [identity for identity in all_xml_ids if identity.startswith(module + '.')
+            and identity.split('/', 1)[1].split('(', 1)[0] == function.group(1)]
+        assert len(candidates) == 1
+        identity = candidates[0]; title = json.loads(match.group(1))
+        display_by_id[identity] = '"' + title + '"'
+        title_receipts.append({'identity': identity, 'source': str(path),
+            'source_sha256': record(path), 'line': text[:match.start()].count('\n') + 1})
+assert len(set(display_by_id.values())) == len(display_by_id)
+id_by_display = {v: k for k, v in display_by_id.items()}
+SANITIZER = re.compile(r'WARNING: (?:ThreadSanitizer|MemorySanitizer)|'
+    r'ERROR: (?:AddressSanitizer|LeakSanitizer|MemorySanitizer)|'
+    r'SUMMARY: (?:ThreadSanitizer|AddressSanitizer|LeakSanitizer|MemorySanitizer)|runtime error:')
+
+def inspect(label, exit_code, xcount, swcount, suites, failure_count, gate_index):
+    directory = WORK / 'validation' / label
+    result, command = read(directory / 'result.json'), read(directory / 'command.json')
+    assert result['exit_code'] == result['wrapper_exit_code'] == exit_code
+    assert result['changed_inputs'] == []
+    assert read(directory / 'source-before.json') == read(directory / 'source-after.json') == manifest
+    assert command['source_files'] == len(manifest) and Path(command['cwd']) == source
+    assert result['capture_complete'] and result['capture_threads_joined'] and not result['capture_errors']
+    assert result['merged_synthetic_eof_newlines'] == 0
+    assert command['wrapper_sha256'] == record(WORK / 'run-validation.py')
+    assert command['command'] == plan['gates'][gate_index]['command']
+    assert label == plan['gates'][gate_index]['label']
+    assert command['test_environment'] == {'SWIFTJ2K_TEST_CLI_PATH': None, 'ASAN_OPTIONS': None, 'TSAN_OPTIONS': None}
+    argv = command['command']; assert argv[:2] == ['swift', 'test']
+    if gate_index == 0:
+        assert not any(flag in argv for flag in ['--filter', '--skip', '--sanitize'])
+    else:
+        assert argv[argv.index('--sanitize') + 1] == 'address'
+        assert argv[argv.index('--filter') + 1] == '^SwiftJ2KJPIPTests[./]' and '--skip' not in argv
+    assert set(result['native_streams']) == {'stdout', 'stderr'}
+    for kind, item in result['native_streams'].items():
+        path = directory / ('native.' + kind)
+        assert path.resolve() == Path(item['path']).resolve()
+        assert record(path) == item['sha256'] and path.stat().st_size == item['bytes']
+    assert record(directory / 'native.log') == result['log_sha256']
+    assert Counter((directory / 'native.log').read_bytes().splitlines()) == (
+        Counter((directory / 'native.stdout').read_bytes().splitlines()) +
+        Counter((directory / 'native.stderr').read_bytes().splitlines()))
+    for item in result.get('built_cli_products_at_completion', {}).values():
+        assert record(item['path']) == item['sha256']
+    for path in directory.iterdir():
+        if path.is_file(): record(path)
+    raw = (directory / 'native.stdout').read_text()
+    xcstart = Counter(a + '/' + b for a, b in re.findall(
+        r"^Test Case '-\[([^ ]+) ([^\]]+)\]' started\.$", raw, re.M))
+    xcpass = Counter(a + '/' + b for a, b in re.findall(
+        r"^Test Case '-\[([^ ]+) ([^\]]+)\]' passed \([^\n]+\)\.$", raw, re.M))
+    assert xcstart == xcpass and len(xcpass) == xcount and all(n == 1 for n in xcpass.values())
+    assert not re.search(r"^Test Case .* (?:failed|skipped)", raw, re.M)
+    start_displays = Counter(re.findall(r'^◇ Test (?!case |run )(.+) started\.$', raw, re.M))
+    assert all(n == 1 for n in start_displays.values())
+    starts = {id_by_display[name]: count for name, count in start_displays.items()}
+    ends = {}
+    for status, glyph in [('passed', '✔'), ('failed', '✘')]:
+        expression = (r'^' + glyph + r' Test (?!run )(.*?)(?: with (\d+) test cases?)? '
+            + status + r' after [0-9.]+ seconds(?: with \d+ issues?)?\.$')
+        for display, count in re.findall(expression, raw, re.M):
+            identity = id_by_display[display]; assert identity not in ends
+            ends[identity] = {'status': status, 'parameter_count': int(count) if count else None}
+    assert len(starts) == len(ends) == swcount and set(starts) == set(ends)
+    assert sum(v['status'] == 'failed' for v in ends.values()) == failure_count
+    cases = list(ET.parse(directory / 'report-swift-testing.xml').iter('testcase'))
+    xmlids = [c.attrib['classname'] + '/' + c.attrib['name'] for c in cases]
+    assert len(xmlids) == len(set(xmlids)) == swcount and set(xmlids) == set(ends)
+    failures = []
+    for case, identity in zip(cases, xmlids):
+        assert not case.findall('skipped') and not case.findall('error')
+        assert all(child.tag == 'failure' for child in case)
+        messages = [node.attrib.get('message', '') for node in case.findall('failure')]
+        assert bool(messages) == (ends[identity]['status'] == 'failed')
+        if messages: failures.append({'identity': identity, 'messages': messages})
+    assert len(failures) == failure_count
+    issues = [{'line': i, 'text': line} for i, line in enumerate(raw.splitlines(), 1)
+        if line.startswith('✘ Test ') and 'recorded an issue' in line]
+    assert len(issues) == failure_count
+    for failure in failures:
+        display = display_by_id[failure['identity']]
+        matching = [item for item in issues if item['text'].startswith('✘ Test ' + display + ' recorded an issue')]
+        assert len(matching) == 1
+        for message in failure['messages']:
+            assert message.endswith(' (error)') and matching[0]['text'].endswith(message[:-8])
+    suite_starts = Counter(re.findall(r'^◇ Suite (.+) started\.$', raw, re.M)); suite_ends = {}
+    for display, status in re.findall(r'^[✔✘] Suite (.+) (passed|failed) after [0-9.]+ seconds(?: with \d+ issues?)?\.$', raw, re.M):
+        assert display not in suite_ends; suite_ends[display] = status
+    assert len(suite_starts) == len(suite_ends) == suites and set(suite_starts) == set(suite_ends)
+    assert all(n == 1 for n in suite_starts.values())
+    summary = re.findall(r'^[✔✘] Test run with (\d+) tests in (\d+) suites (passed|failed) after ([0-9.]+) seconds(?: with (\d+) issues?)?\.$', raw, re.M)
+    assert len(summary) == 1
+    assert tuple(map(int, summary[0][:2])) == (swcount, suites)
+    assert summary[0][2] == ('failed' if failure_count else 'passed') and int(summary[0][4] or 0) == failure_count
+    assert not re.search(r'^[↷➜].*(?:skipped|disabled)|known issue', raw, re.M | re.I)
+    parameters = {}
+    for match in re.finditer(r'^◇ Test case passing (.*?) started\.$', raw, re.M | re.S):
+        payload = match.group(1)
+        assert not any(marker in payload for marker in ['◇ Test ', '✔ Test ', '✘ Test ', '↷ Test ', 'WARNING:', 'ERROR:'])
+        matching = [(name, identity) for name, identity in id_by_display.items() if payload.endswith(' to ' + name)]
+        assert len(matching) == 1
+        display, identity = matching[0]; argument = payload[:-len(' to ' + display)]
+        assert re.match(r'^\d+ arguments? ', argument)
+        argument = re.sub(r'^(\d+) argument ', r'\1 arguments ', argument)
+        parameters.setdefault(identity, Counter())[argument] += 1
+    assert set(parameters) == {identity for identity, value in ends.items() if value['parameter_count'] is not None}
+    assert all(sum(values.values()) == ends[identity]['parameter_count'] for identity, values in parameters.items())
+    diagnostics = []
+    for kind in ['stdout', 'stderr']:
+        for i, line in enumerate((directory / ('native.' + kind)).read_text().splitlines(), 1):
+            if SANITIZER.search(line): diagnostics.append({'stream': kind, 'line': i, 'text': line})
+    assert diagnostics == []
+    return {'label': label, 'exit_code': exit_code, 'elapsed_seconds': result['elapsed_seconds'],
+        'command': argv, 'source_files': len(manifest), 'source_stable': True,
+        'raw_capture_verified': True, 'log_sha256': result['log_sha256'],
+        'xctest': {'passed': xcount, 'failed': 0, 'skipped': 0},
+        'swift_testing': {'declarations': swcount, 'passed': swcount - failure_count,
+            'failed': failure_count, 'skipped': 0, 'suites': suites,
+            'parameter_declarations': len(parameters), 'parameter_argument_starts': sum(sum(v.values()) for v in parameters.values()),
+            'reported_seconds': float(summary[0][3])},
+        'statuses': ends, 'xctest_ids': sorted(xcpass),
+        'parameter_starts': {key: dict(value) for key, value in parameters.items()},
+        'failed_declarations_xml': failures, 'raw_issue_records': issues,
+        'sanitizer_diagnostic_records': diagnostics,
+        'sanitizer_boundary': 'No recognised sanitizer finding in complete streams; test timing failures still fail this gate.'}
+
+ordinary = inspect('candidate-full-22', 0, 1034, 325, 41, 0, 0)
+address = inspect('candidate-jpip-asan-22', 1, 544, 104, 18, 4, 1)
+assert {identity for identity in ordinary['statuses'] if identity.startswith('SwiftJ2KJPIPTests.')} == set(address['statuses'])
+assert {identity for identity in ordinary['xctest_ids'] if identity.startswith('SwiftJ2KJPIPTests.')} == set(address['xctest_ids'])
+assert {k: v for k, v in ordinary['parameter_starts'].items() if k.startswith('SwiftJ2KJPIPTests.')} == address['parameter_starts']
+regression = 'SwiftJ2KJPIPTests.CodexR3AdmissionTests/admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion()'
+assert ordinary['statuses'][regression]['status'] == address['statuses'][regression]['status'] == 'passed'
+unexecuted = []
+for gate in plan['gates'][2:]:
+    assert not (WORK / 'validation' / gate['label'] / 'result.json').exists()
+    unexecuted.append({'label': gate['label'], 'state': 'UNEXECUTED'})
+assert len(unexecuted) == 5
+assert not (HERE / 'proof-address-22.json').exists() and not (HERE / 'proof-thread-22.json').exists()
+unchanged = {}
+for version in ['15', '17', '18']:
+    previous_path = WORK / ('candidate-snapshot-' + version + '-source.json')
+    previous = read(previous_path); record(previous_path)
+    for relative in ['Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift', 'Sources/SwiftJ2KJPIP/JPIPTransport.swift',
+        'Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift', 'Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift',
+        'Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift']:
+        assert previous[relative] == manifest[relative]
+        unchanged[relative] = record(source / relative)
+assert 'Sources/SwiftJ2KJPIP/JPIPHTTPSPhaseTrace.swift' not in manifest
+assert source_map() == manifest
+for path, digest in FILES.items(): assert sha(path) == digest
+record(__file__)
+out = HERE / 'completed22-failed-sequence-check.json'; assert not out.exists()
+out.write_text(json.dumps({'state': 'ORDINARY22_PASS_JPIP_ASAN22_FAILED_LATER_GATES_UNEXECUTED',
+    'at': datetime.now(timezone.utc).isoformat(), 'source': str(source), 'source_files': len(manifest),
+    'ordinary': ordinary, 'address_jpip': address, 'unexecuted_native_gates': unexecuted,
+    'same_observed_jpip_runtime_id_set': True, 'same_observed_jpip_parameter_start_multisets': True,
+    'new_admission_regression_passed_both': True, 'unchanged_https_inputs_from15_17_18': unchanged,
+    'title_bindings': title_receipts, 'files': FILES,
+    'boundaries': ['Observed runtime/XML reconciliation only; fresh22 sanitizer inventories were not executed.',
+        'A passing ordinary run and no observed ASan diagnostic do not turn the failed ASan test gate into a pass.',
+        'Argument-start multisets and aggregate declaration results are observed, not individual parameter-completion identities.',
+        'No cause for HTTPS timing failures, final sanitizer proof, hosted pass, whole-R3 acceptance or waiver follows.',
+        'Validator22 preparation is unapproved and was not executed as a final audit.'],
+    'native_executed_by_reviewer': False}, indent=2) + '\n')
+print(json.dumps({'ordinary': ordinary['swift_testing'], 'address_jpip': address['swift_testing'],
+    'later_gates_unexecuted': len(unexecuted), 'new_regression_passed_both': True}, indent=2))

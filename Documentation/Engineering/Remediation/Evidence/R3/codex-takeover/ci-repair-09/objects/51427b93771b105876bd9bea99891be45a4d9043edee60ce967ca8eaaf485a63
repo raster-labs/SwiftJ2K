@@ -1,0 +1,6 @@
+{
+  "created_at": "2026-11-02T08:26:29.629404+00:00",
+  "base_head": "af6d52e055d726456dcb3025e3e1addf9bd55231",
+  "files": 2543,
+  "scope": "Frozen production/test/doc/script inputs for Apple-only CI scope (macOS + iOS Simulator) and SwiftJ2KTests #if os(macOS) || os(Linux) guards. No acceptance claim."
+}

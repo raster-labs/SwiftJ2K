@@ -1,0 +1,30 @@
+{
+  "finished_at": "2026-11-02T07:01:31.092968+00:00",
+  "exit_code": 1,
+  "elapsed_seconds": 17.522500917000002,
+  "changed_inputs": [],
+  "log_sha256": "4de1ba3abc766a3978849f391f11b6e8bc4dfcb96d06e72ff27f278b5ae74f59",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-socket26-focused-ordinary-02/native.stdout",
+      "sha256": "d10756a58acbae87f6de44e403a550184a705014757b156e4c501afbbc43298c",
+      "bytes": 7042
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-socket26-focused-ordinary-02/native.stderr",
+      "sha256": "08b1f1be99e19cb18be87d0336b104408459fb9205dcd4141328bed33a9929b4",
+      "bytes": 5937
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 0,
+  "wrapper_exit_code": 1,
+  "built_cli_products_at_completion": {
+    "debug": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/build/candidate-socket26-focused-ordinary-01/out/Products/Debug/swiftj2k-cli",
+      "sha256": "5498f46977f00fab35e9dae4f1e69161434d73af94bd4ac93e100393a4422b1e"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "finished_at": "2026-10-31T10:22:14.804227+00:00",
+  "exit_code": 1,
+  "elapsed_seconds": 87.527159125,
+  "changed_inputs": [],
+  "log_sha256": "a9f0ce7b829f44db85cf430e11043f399f989bf234f1cfce0b7545e0bc02226c",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stdout",
+      "sha256": "ae8c4f6c4c2ba0943653c14036c484b708d4859610f5fc1f4854e06d09004e5e",
+      "bytes": 361291
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/diagnostic-sampled-full-13/native.stderr",
+      "sha256": "5e9a5c404c53b0d815e221b2323b7516126a0a81e03cc6c89194cb89c5ace922",
+      "bytes": 252
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 0,
+  "wrapper_exit_code": 1
+}

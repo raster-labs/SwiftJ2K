@@ -1198,11 +1198,12 @@ final class JPIPBackwardCompatibilityTests: XCTestCase {
 
     func testDataBinClassAllCases() {
         let allCases = JPIPDataBinClass.allCases
-        XCTAssertEqual(allCases.count, 6)
+        XCTAssertEqual(allCases.count, 7)
         XCTAssertTrue(allCases.contains(.mainHeader))
         XCTAssertTrue(allCases.contains(.tileHeader))
         XCTAssertTrue(allCases.contains(.precinct))
         XCTAssertTrue(allCases.contains(.tile))
+        XCTAssertTrue(allCases.contains(.extendedTile))
         XCTAssertTrue(allCases.contains(.extendedPrecinct))
         XCTAssertTrue(allCases.contains(.metadata))
     }

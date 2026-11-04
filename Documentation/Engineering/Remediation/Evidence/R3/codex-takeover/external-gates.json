@@ -1,0 +1,37 @@
+{
+  "boundary": "Narrower diagnostics and research do not satisfy these gates. Reconcile explicitly if formal evidence later changes a state.",
+  "gates": [
+    {
+      "description": "Direct independent combined Part 10+15 profile",
+      "id": "combined-part10-part15",
+      "state": "UNEXECUTED",
+      "waived": false
+    },
+    {
+      "description": "Independent native 3D JPIP peer",
+      "id": "native-3d-jpip",
+      "state": "UNEXECUTED",
+      "waived": false
+    },
+    {
+      "description": "Independent peer for the exact repository WebSocket extension",
+      "id": "exact-websocket-extension",
+      "state": "UNEXECUTED",
+      "waived": false
+    },
+    {
+      "description": "Direct full38 Part 2-marker synthesis/output peer",
+      "id": "direct-full38-part2",
+      "state": "UNEXECUTED",
+      "waived": false
+    },
+    {
+      "description": "Multiple transmitted nonempty HT sets in independent peer/fixture",
+      "id": "multiple-active-ht-sets",
+      "state": "UNEXECUTED",
+      "waived": false
+    }
+  ],
+  "scope": "R3 mandatory external qualification",
+  "state": "NOT_ACCEPTED"
+}

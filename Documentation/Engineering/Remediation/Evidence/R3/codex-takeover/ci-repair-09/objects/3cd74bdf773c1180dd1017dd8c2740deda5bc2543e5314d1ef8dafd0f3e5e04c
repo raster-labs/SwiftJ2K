@@ -1,0 +1,88 @@
+from pathlib import Path
+import difflib
+import hashlib
+import json
+
+ROOT = Path.cwd()
+OLD = ROOT / 'work/publication-doc-draft-22'
+OUT = ROOT / 'work/publication-doc-draft-22b'
+old_receipt = json.loads((OLD / 'source.json').read_text())
+review_path = ROOT / 'work/runtime-coverage-22/failed-review.txt'
+review_receipt_path = ROOT / 'work/runtime-coverage-22/failed-review-source.json'
+reconciliation_path = ROOT / 'work/runtime-coverage-22/completed22-failed-sequence-check.json'
+review = json.loads(review_receipt_path.read_text())
+assert hashlib.sha256(review_path.read_bytes()).hexdigest() == '2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a'
+assert review['report_sha256'] == hashlib.sha256(review_path.read_bytes()).hexdigest()
+assert review['reconciliation_sha256'] == hashlib.sha256(reconciliation_path.read_bytes()).hexdigest()
+assert review['ordinary'] == {'xctest_passed': 1034, 'swift_testing_passed': 325, 'suites': 41, 'exit_code': 0}
+assert review['address_jpip'] == {'xctest_passed': 544, 'swift_testing_passed': 100, 'swift_testing_failed': 4, 'suites': 18, 'exit_code': 1, 'recognised_sanitizer_findings': 0}
+assert review['later_gates_unexecuted'] == 5 and review['new_admission_regression_passed_both']
+
+names = ['STATUS.md', 'R3_CAPABILITY_MATRIX.md', 'PR-body.txt']
+old = {name: (OLD / name).read_text() for name in names}
+for name in names:
+    assert hashlib.sha256((OLD / name).read_bytes()).hexdigest() == old_receipt['drafts'][name]
+    (OUT / ('before-draft22-' + name)).write_text(old[name])
+
+pending = old_receipt['canonical_pending_result_placeholder']
+native = "The candidate 22 native sequence **FAILED and remains UNQUALIFIED**. Full ordinary execution passed all 1,359 observed declarations: 1,034 XCTest cases and 325 Swift Testing declarations across 41 suites, with no failures or skips. The JPIP AddressSanitizer stage failed: its 648 observed declarations comprise 544 passing XCTest cases and 104 Swift Testing declarations across 18 suites (100 passed, four HTTPS timing/deadline failures, no skips). Neither complete raw stream contained a recognised sanitizer diagnostic; this is not a passing sanitizer stage. The five later stages—ASan declaration inventory and complement, then TSan declaration inventory, JPIP and complement—were UNEXECUTED. The independent review verified all 2,405 source hashes and complete raw captures, and reconciled runtime/XML identities; no fresh declaration-discovery inventory or complete sanitizer union is claimed. The new deterministic late-admission regression passed both executed stages. That result does not establish the cause of failures 17/18."
+publication = "This draft carries the source-reviewed 20–22 fixes for fresh Linux/macOS CI feedback. The latest completed hosted result remains failed candidate 18; candidate 22 has no hosted result or complete native qualification. Diagnostic 23 is prepared but unexecuted and contributes no qualification evidence."
+
+drafts = {}
+for name in names:
+    text = old[name]
+    assert text.count(pending) == 1
+    if name == 'STATUS.md':
+        label = '- **Candidate 22 source and pending qualification:** '
+        line = next(line for line in text.splitlines() if line.startswith(label))
+        source_part, tail = line[len(label):].split(' Native 22 result: ', 1)
+        qualification = tail.removeprefix(pending + ' ')
+        assert qualification != tail
+        replacement = '- **Candidate 22 reviewed draft repairs:** ' + source_part + ' ' + publication + '\n- **Candidate 22 completed native result:** ' + native + ' ' + qualification
+        text = text.replace(line, replacement)
+        text = text.replace('Candidate 22 contains independently source-reviewed test repairs and scoped CLI16 evidence; final-source native and hosted qualification remains open.', 'Candidate 22 has source-reviewed test repairs and scoped CLI16 evidence. Its ordinary run passed, but JPIP AddressSanitizer failed four HTTPS tests and the five later native stages did not execute. Candidate 22 remains unqualified; final-source native and hosted gates remain open.')
+    else:
+        paragraph = next(paragraph for paragraph in text.split('\n\n') if paragraph.startswith('Candidate 22: Independent source reviews support repairs 20–22:'))
+        source_part, tail = paragraph.split(' Native 22 result: ', 1)
+        qualification = tail.removeprefix(pending + ' ')
+        assert qualification != tail
+        text = text.replace(paragraph, source_part + ' ' + publication + '\n\n' + native + ' ' + qualification)
+    if name == 'R3_CAPABILITY_MATRIX.md':
+        old_row = next(line for line in text.splitlines() if line.startswith('| Final candidate native/resource/security and independent review |'))
+        new_row = '| Final candidate native/resource/security and independent review | **OPEN; candidate 22 sequence FAILED / UNQUALIFIED.** Ordinary passed 1,359 observed declarations; JPIP ASan completed 648 with four HTTPS test failures and no recognised sanitizer diagnostic. Five later native stages were unexecuted; no fresh discovery inventory or complete sanitizer union. Repairs 20–22 have independent source review and CLI16 reuse has 512 identical inputs. Historical 15 and diagnostic 19 do not qualify this source; failures 17/18 remain preserved |'
+        text = text.replace(old_row, new_row)
+    assert pending not in text and 'NATIVE22_RESULT_PENDING' not in text and 'RUNNING / UNQUALIFIED' not in text
+    drafts[name] = text
+    (OUT / name).write_text(text)
+    (OUT / (name + '.from-draft22.diff')).write_text(''.join(difflib.unified_diff(old[name].splitlines(keepends=True), text.splitlines(keepends=True), fromfile='draft22/' + name, tofile='draft22b/' + name)))
+    repository_original = (OLD / ('before-' + name)).read_text()
+    (OUT / (name + '.diff')).write_text(''.join(difflib.unified_diff(repository_original.splitlines(keepends=True), text.splitlines(keepends=True), fromfile='current/' + name, tofile='draft22b/' + name)))
+
+for name in names:
+    assert hashlib.sha256((OLD / name).read_bytes()).hexdigest() == old_receipt['drafts'][name]
+for relative, digest in old_receipt['inputs'].items():
+    assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == digest, relative
+for name in names:
+    assert 1034 + 325 == 1359 and 544 + 100 + 4 == 648
+    assert '313 passed, six failed and five skipped' in drafts[name]
+    assert '205–375 ms' in drafts[name]
+    assert 'NOT ACCEPTED' in drafts[name] and 'unwaived' in drafts[name].lower()
+for line in old['R3_CAPABILITY_MATRIX.md'].splitlines():
+    if line.startswith('| ') and not line.startswith('| Final candidate native/resource/security and independent review |'):
+        assert line in drafts['R3_CAPABILITY_MATRIX.md'], line
+marker = '- **Retained follow-up failures:**'
+assert old['STATUS.md'].split(marker, 1)[1] == drafts['STATUS.md'].split(marker, 1)[1]
+
+receipt = {
+    'state': 'DRAFT22B_OUTSIDE_REPOSITORY_NATIVE22_FAILED_UNQUALIFIED_PENDING_INDEPENDENT_DOC_REVIEW',
+    'base_draft22_source_receipt_sha256': hashlib.sha256((OLD/'source.json').read_bytes()).hexdigest(),
+    'inputs': {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in [review_path, review_receipt_path, reconciliation_path, OLD/'source.json'] + [OLD/name for name in names]},
+    'current_repository_and_published_pr_inputs': {path: digest for path, digest in old_receipt['inputs'].items() if path.startswith('work/SwiftJ2K/') or path == 'work/r3-pr-body-published-18.txt'},
+    'drafts': {name: hashlib.sha256((OUT/name).read_bytes()).hexdigest() for name in names},
+    'diffs': {name + suffix: hashlib.sha256((OUT/(name+suffix)).read_bytes()).hexdigest() for name in names for suffix in ['.diff', '.from-draft22.diff']},
+    'native22_disposition': 'Ordinary PASS; JPIP ASan failed4 HTTPS tests, no recognised sanitizer diagnostic;5 later gates UNEXECUTED; sequence UNQUALIFIED',
+    'diagnostic23': 'Root-provided PREPARED/UNEXECUTED status only; no execution or qualification claim.',
+    'checks': {'original_draft22_unchanged': True, 'all_prior_inputs_hash_stable': True, 'native_review_hash_and_pair_matched': True, 'no_pending_native22_placeholder': True, 'all_other_matrix_rows_unchanged': True, 'status_historical_tail_unchanged': True, 'no_repository_source_git_network_native_action': True},
+}
+(OUT/'source.json').write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps(receipt['drafts'],indent=2))

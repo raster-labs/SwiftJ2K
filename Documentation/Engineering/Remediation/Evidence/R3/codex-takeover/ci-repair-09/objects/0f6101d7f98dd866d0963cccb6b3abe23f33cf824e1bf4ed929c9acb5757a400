@@ -1,0 +1,20 @@
+{
+  "authorised_scope": "CLIVerbs.swift only; root owns native validation and subsequent independent review",
+  "parent_supplied_revision": "PR30 f3c63e3; hosted run41195752705 attempt1 job124521448817",
+  "claim": {
+    "invocation_id": "1ce94f4b-ebfa-4309-98f6-5530103803d9",
+    "thread_id": "01a19078-3aea-7243-af7b-a8f72b510511",
+    "owner": "Codex Astra R3 takeover",
+    "scope": "isolated hydration, repair coordination, serialized native validation and acceptance preparation",
+    "acquired_at": "2026-10-31T05:42:23.862642+00:00"
+  },
+  "inputs": {
+    "work/SwiftJ2K/Sources/SwiftJ2KCLI/CLIVerbs.swift": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43",
+    "work/SwiftJ2K/Sources/SwiftJ2KCLI/main.swift": "d04d38953b4ea081c0623e0a375394f4284e8ad00226dfd60e287c3260479e9c",
+    "work/candidate-snapshot-15/Sources/SwiftJ2KCLI/CLIVerbs.swift": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43",
+    "work/ci-downloads/run-41195752705-attempt1-job124521448817.log": "9567293a3bd72c38a5357db50fbdb007af08ac8e30dbb18900626d50f30be554",
+    "work/active-claim.json": "2bfeebdfc10f6c080905bf480844488a359a9bc59887dd006621c4030d989303"
+  },
+  "canonical_claim_path": "/Users/raster/Documents/Codex/2026-10-13/che/work/swiftj2k-audit/audit.claim/owner.json",
+  "canonical_claim_sha256": "2bfeebdfc10f6c080905bf480844488a359a9bc59887dd006621c4030d989303"
+}

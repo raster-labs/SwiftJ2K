@@ -1,0 +1,45 @@
+{
+  "state": "INDEPENDENT_NATIVE22_FAILED_SEQUENCE_RECONCILED_STOPPED",
+  "at": "2026-10-31T12:24:25.429433+00:00",
+  "reviewer": "/root/runtime_coverage22",
+  "report_sha256": "2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a",
+  "reconciliation_sha256": "98eb0cdb11fbb34163271f5e54ac0a19f8ec83b84e5fcf98cd3e4ae24235eaef",
+  "script_sha256": "12d5cd3089c25309e76d8e35bdf29173a02a0a73317f8087bc74d0acee9a11d2",
+  "preparation_stop_sha256": "b143f4ebc242689c8381f2dcc8dc1029f923304d0dc3f60c75c505c112f4ab15",
+  "source_manifest_sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96",
+  "ordinary": {
+    "xctest_passed": 1034,
+    "swift_testing_passed": 325,
+    "suites": 41,
+    "exit_code": 0
+  },
+  "address_jpip": {
+    "xctest_passed": 544,
+    "swift_testing_passed": 100,
+    "swift_testing_failed": 4,
+    "suites": 18,
+    "exit_code": 1,
+    "recognised_sanitizer_findings": 0
+  },
+  "later_gates_unexecuted": 5,
+  "new_admission_regression_passed_both": true,
+  "validator22_final_proof": "NOT_EXECUTED_UNAPPROVED",
+  "native_executed": false,
+  "source_edited": false,
+  "writes_stopped": true,
+  "files": {
+    "auditor-delta-from15.patch": "3ed4d9fc8439089aa877156c677ffaaa715692e8f326394c8beb2b5445c78d80",
+    "address-final-22.json": "109e1b532c20749a8b83c9bab0475c75523e95c9ecde3188f94ed790b0bb8a65",
+    "audit-plan-final.json": "628c667daeb66541694b3d125f8ed2c4c4c0611b4bb53e883880c6a2838cff26",
+    "guard-insertion.txt": "509287783ff836da977745a160c288aafe9ec508524b803a5d88e06f017c43a2",
+    "preparation-stop.json": "b143f4ebc242689c8381f2dcc8dc1029f923304d0dc3f60c75c505c112f4ab15",
+    "audit-final.py": "2967c5d4e0f6238cda86f225436136475314f6f2175cc0c514aaeb6a863009bc",
+    "verify-auditor-delta.py": "76d2e49ee7b635fd172ea4d40545ce98513b0a7fd90ed84a0bef16c3045d1964",
+    "failed-review.txt": "2f9e678b5aed8a0bbd2ba2b25147380578bc9e7eaac5353a4dd8d2ed113fa38a",
+    "completed22-failed-sequence-check.json": "98eb0cdb11fbb34163271f5e54ac0a19f8ec83b84e5fcf98cd3e4ae24235eaef",
+    "thread-final-22.json": "17502aeee176a7995937943dfbdc1ad237175e9094a94669f69f5f0c1de59f2e",
+    "fixture-lineage-pins.json": "8049fe741f1c9f28a006bcbe9ae308a139cf59f3370f349c0eb77ccd180f7318",
+    "prepare.py": "0c50c7d372ec3fff7640313d9556694cc1d6a0054dc0c50f3bad027898396236",
+    "check-completed22.py": "12d5cd3089c25309e76d8e35bdf29173a02a0a73317f8087bc74d0acee9a11d2"
+  }
+}

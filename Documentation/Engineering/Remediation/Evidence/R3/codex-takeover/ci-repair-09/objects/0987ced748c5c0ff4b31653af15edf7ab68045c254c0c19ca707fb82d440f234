@@ -1,0 +1,221 @@
+{
+  "scope": "Selected exact call-graph lines; nested counts are inclusive, not independent CPU percentages",
+  "lines": [
+    {
+      "line": 25,
+      "text": "    109 Thread_12446598   DispatchQueue_1: com.apple.main-thread  (serial)"
+    },
+    {
+      "line": 42,
+      "text": "    109 Thread_12446601   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 67,
+      "text": "    +                                                 83 nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:)  (in SwiftJ2KPackageTests) + 2432  [0x10aa8d810]  HTJ2KCodecTests.swift:285"
+    },
+    {
+      "line": 68,
+      "text": "    +                                                 ! 83 static ScalarLosslessCodec.extractTileCoefficients(bytes:profile:)  (in SwiftJ2KPackageTests) + 856  [0x1099738c0]  LosslessPipeline.swift:652"
+    },
+    {
+      "line": 72,
+      "text": "    +                                                 !         82 static ScalarLosslessCodec.decodeTileCoefficients(bytes:tile:work:backend:completed:total:progress:)  (in SwiftJ2KPackageTests) + 5644  [0x10996bd38]  LosslessPipeline.swift:290"
+    },
+    {
+      "line": 73,
+      "text": "    +                                                 !         : 28 static BitPlaneCoder.decode(segments:width:height:orientation:zeroBitPlanes:passCount:magnitudeBitPlanes:style:)  (in SwiftJ2KPackageTests) + 3004  [0x10982da84]  BitPlaneCoder.swift:382"
+    },
+    {
+      "line": 376,
+      "text": "    109 Thread_12446602   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 401,
+      "text": "    +                                                 56 encoderOutputDecodesExactlyWithDefaultOptions(name:)  (in SwiftJ2KPackageTests) + 1  [0x10ab4094d]  LosslessCodecTests.swift:167"
+    },
+    {
+      "line": 402,
+      "text": "    +                                                 ! 56 Decoder.decode(_:options:)  (in SwiftJ2KPackageTests) + 1172  [0x1098544c4]  CodecAPI.swift:739"
+    },
+    {
+      "line": 404,
+      "text": "    +                                                 !     56 static ScalarLosslessCodec.decode(bytes:profile:into:limits:backend:progress:)  (in SwiftJ2KPackageTests) + 1036  [0x10996d104]  LosslessPipeline.swift:336"
+    },
+    {
+      "line": 697,
+      "text": "    109 Thread_12446603   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 722,
+      "text": "    +                                           !     17 nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:)  (in SwiftJ2KPackageTests) + 1  [0x10aa8df6d]  HTJ2KCodecTests.swift:287"
+    },
+    {
+      "line": 723,
+      "text": "    +                                           !     : 17 Transcoder.transcode(_:to:options:)  (in SwiftJ2KPackageTests) + 3736  [0x109a21798]  Transcoding.swift:138"
+    },
+    {
+      "line": 724,
+      "text": "    +                                           !     :   16 static ScalarLosslessCodec.transcode(bytes:profile:to:codecOptions:metadataPolicy:limits:backend:progress:)  (in SwiftJ2KPackageTests) + 9636  [0x10997608c]  LosslessPipeline.swift:862"
+    },
+    {
+      "line": 1279,
+      "text": "    109 Thread_12446604   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 1300,
+      "text": "    +                                         67 multiTileMultiLayerPrecinctsProgressionsAndPOCRoundTrip()  (in SwiftJ2KPackageTests) + 1  [0x10aba7fb5]  Part1BreadthTests.swift:484"
+    },
+    {
+      "line": 1301,
+      "text": "    +                                         ! 67 Encoder.encode(_:options:)  (in SwiftJ2KPackageTests) + 9604  [0x10984f3ac]  CodecAPI.swift:571"
+    },
+    {
+      "line": 1302,
+      "text": "    +                                         !   67 static Part1Pipeline.encode(image:configuration:limits:backend:progress:)  (in SwiftJ2KPackageTests) + 18540  [0x1099b0dc4]  Part1Pipeline.swift:982"
+    },
+    {
+      "line": 1740,
+      "text": "    109 Thread_12446605   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 1765,
+      "text": "    +                                                 85 encoderOutputDecodesExactlyWithDefaultOptions(name:)  (in SwiftJ2KPackageTests) + 1  [0x10ab3fd39]  LosslessCodecTests.swift:163"
+    },
+    {
+      "line": 1766,
+      "text": "    +                                                 ! 84 Encoder.encode(_:options:)  (in SwiftJ2KPackageTests) + 9152  [0x10984f1e8]  CodecAPI.swift:566"
+    },
+    {
+      "line": 1767,
+      "text": "    +                                                 ! : 84 static ScalarLosslessCodec.encode(image:parameters:limits:progress:)  (in SwiftJ2KPackageTests) + 4648  [0x109971c10]  LosslessPipeline.swift:598"
+    },
+    {
+      "line": 2085,
+      "text": "    109 Thread_12446606   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 2110,
+      "text": "    +                                                 25 nativeTranscodeRoundTripsPart1AndHTJ2KInCoefficientDomain(name:)  (in SwiftJ2KPackageTests) + 1  [0x10aa91c9d]  HTJ2KCodecTests.swift:308"
+    },
+    {
+      "line": 2111,
+      "text": "    +                                                 ! 25 Decoder.decode(_:options:)  (in SwiftJ2KPackageTests) + 1172  [0x1098544c4]  CodecAPI.swift:739"
+    },
+    {
+      "line": 2629,
+      "text": "    109 Thread_12446607   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 2650,
+      "text": "    +                                         46 acceleratedPart1BreadthAndContainersAreByteIdenticalAcrossAllFixtures()  (in SwiftJ2KPackageTests) + 1  [0x10a9b711d]  AccelerationTests.swift:232"
+    },
+    {
+      "line": 2651,
+      "text": "    +                                         ! 46 Decoder.decode(_:options:)  (in SwiftJ2KPackageTests) + 2244  [0x1098548f4]  CodecAPI.swift:745"
+    },
+    {
+      "line": 2653,
+      "text": "    +                                         !     46 static Part1Pipeline.decode(bytes:profile:into:limits:backend:progress:paletteMapping:channelPermutation:maxQualityLayers:)  (in SwiftJ2KPackageTests) + 3516  [0x1099a104c]  Part1Pipeline.swift:375"
+    },
+    {
+      "line": 3139,
+      "text": "    109 Thread_12446608   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 3160,
+      "text": "    +                                       ! 53 singleBitCorruptionOnHTJ2KNeverTrapsOrHangs()  (in SwiftJ2KPackageTests) + 1  [0x10aad23b5]  HTJ2KCodecTests.swift:771"
+    },
+    {
+      "line": 3161,
+      "text": "    +                                       ! : 47 Transcoder.transcode(_:to:options:)  (in SwiftJ2KPackageTests) + 3736  [0x109a21798]  Transcoding.swift:138"
+    },
+    {
+      "line": 3589,
+      "text": "    +                                           :     |                                       1 MetalAccelerationEngine.inverseWavelet53(plane:stride:x0:x1:y0:y1:levels:cancellation:)  (in SwiftJ2KPackageTests) + 508  [0x10998bd08]  MetalAcceleration.swift:274"
+    },
+    {
+      "line": 3590,
+      "text": "    +                                           :     |                                         1 closure #1 in MetalAccelerationEngine.inverseWavelet53(plane:stride:x0:x1:y0:y1:levels:cancellation:)  (in SwiftJ2KPackageTests) + 1664  [0x10998c4d4]  MetalAcceleration.swift:345"
+    },
+    {
+      "line": 3591,
+      "text": "    +                                           :     |                                           1 -[_MTLCommandBuffer waitUntilCompleted]  (in Metal) + 80  [0x1acda1c4c]"
+    },
+    {
+      "line": 3592,
+      "text": "    +                                           :     |                                             1 _pthread_cond_wait  (in libsystem_pthread.dylib) + 980  [0x1a00ca1d0]"
+    },
+    {
+      "line": 3758,
+      "text": "    109 Thread_12446609   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 3779,
+      "text": "    +                                         60 acceleratedHTJ2KAndTranscodeAreByteIdenticalAcrossAllFixtures()  (in SwiftJ2KPackageTests) + 1  [0x10a9ac925]  AccelerationTests.swift:180"
+    },
+    {
+      "line": 3780,
+      "text": "    +                                         ! 60 Decoder.decode(_:options:)  (in SwiftJ2KPackageTests) + 1172  [0x1098544c4]  CodecAPI.swift:739"
+    },
+    {
+      "line": 4148,
+      "text": "    +                                         ! :                                 |   1 static AcceleratedCodec.shouldUseMetal(sampleCount:)  (in SwiftJ2KPackageTests) + 52  [0x10981e28c]  AcceleratedCodec.swift:49"
+    },
+    {
+      "line": 4149,
+      "text": "    +                                         ! :                                 |     1 MetalAccelerationEngine.isAvailable.getter  (in SwiftJ2KPackageTests) + 80  [0x109988d2c]  MetalAcceleration.swift:118"
+    },
+    {
+      "line": 4150,
+      "text": "    +                                         ! :                                 |       1 _os_unfair_lock_lock_slow  (in libsystem_platform.dylib) + 172  [0x1a00d1aa0]"
+    },
+    {
+      "line": 4151,
+      "text": "    +                                         ! :                                 |         1 __ulock_wait2  (in libsystem_kernel.dylib) + 8  [0x1a0092d9c]"
+    },
+    {
+      "line": 4213,
+      "text": "    109 Thread_12446611   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)"
+    },
+    {
+      "line": 4237,
+      "text": "    +                                       !   :   59 $s13SwiftJ2KTests50htj2kEncoderOutputDecodesExactlyWithDefaultOptions4TestfMp_17Z3d7f874956321678fMu_@Sendable (name:)  (in SwiftJ2KPackageTests) + 1  [0x10aa7ae85]  @__swiftmacro_13SwiftJ2KTests50htj2kEncoderOutputDecodesExactlyWithDefaultOptions4TestfMp_.swift:3"
+    },
+    {
+      "line": 4238,
+      "text": "    +                                       !   :     35 htj2kEncoderOutputDecodesExactlyWithDefaultOptions(name:)  (in SwiftJ2KPackageTests) + 1  [0x10aa7e469]  HTJ2KCodecTests.swift:138"
+    },
+    {
+      "line": 4747,
+      "text": "    109 Thread_12446612"
+    },
+    {
+      "line": 4748,
+      "text": "    + 109 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a00c4ce0]"
+    },
+    {
+      "line": 4749,
+      "text": "    +   109 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a00c5fe8]"
+    },
+    {
+      "line": 4750,
+      "text": "    +     109 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a00869ec]"
+    },
+    {
+      "line": 4751,
+      "text": "    109 Thread_12446622"
+    },
+    {
+      "line": 4752,
+      "text": "      109 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a00c4ce0]"
+    },
+    {
+      "line": 4753,
+      "text": "        109 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a00c5fe8]"
+    },
+    {
+      "line": 4754,
+      "text": "          109 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a00869ec]"
+    }
+  ]
+}

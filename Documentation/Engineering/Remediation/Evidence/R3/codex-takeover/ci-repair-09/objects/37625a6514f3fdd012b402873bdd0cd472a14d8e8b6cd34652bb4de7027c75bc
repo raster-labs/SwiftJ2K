@@ -1,0 +1,40 @@
+Independent frozen-source TCP close review 09
+
+Decision: R3-TCP-CLOSE-01 SOURCE CLOSED on candidate-snapshot-09. No blocking defect found in the reviewed TCP/shared-close change. The coordinator's focused09 receipt additionally verifies the four TCP close declarations (six cases). That overall focused run failed in one separate HTTPS harness test; full, sanitizer and hosted results remain separate and pending. This report does not confer whole-R3 acceptance.
+
+Independence and version
+The reviewer did not implement the transport lifetime, worker handoff change, or new TCP tests. The reviewer's earlier two volume-test macro intermediates are outside this review and were independently reviewed by root. The paired -source.json binds ten reviewed files, the frozen 1857-file manifest and provenance, before/after equality, and the historical source-findings reference. All reviewed inputs matched the frozen manifest. No repository source or native process was changed/launched by this review.
+
+Finding closure
+The previous source detached an idle TCP socket and awaited finite off-pool I/O without retaining an actor-visible cancellation/join owner. close could return before that work and an old successful response could republish the socket and negotiated channel path.
+
+Candidate09 registers a unique JPIPHTTPRequestOwner and captured request generation before its first worker suspension (JPIPTransport.swift:327–340). Captured existing connections are already bound to that owner's token. Fresh connects and stale-keepalive retries continue through the same cancellation token; the original per-worker limits, retry count, HTTP framing and lock-based owning-result publication remain intact.
+
+close retires the generation and snapshots all owners before any await (647–668). It cancels each captured owner, clears retired telemetry/path and pooled socket, detaches the WebSocket owner, then awaits the captured completions. Registry entries remain until each sending task exits; duplicate closes therefore observe the same unfinished owners. No shared pool/path/telemetry/registry cleanup is performed after close's suspensions. Later requests may explicitly form a new generation; old close completion cannot mutate those owners.
+
+An obsolete TCP success compares its captured generation before publishing receive peak, cached socket, negotiated path or successful response (385–399). Rejection closes only that returned connection. Error paths map retired work to cancellation, and sender defer removes only its own unique registry entry. These checks close both the fresh-connection and detached-keepalive variants identified by the source finding.
+
+Owner and join reasoning
+JPIPHTTPRequestOwner guards start/cancel state with a Mutex. Cancellation before beginWorker makes subsequent startup fail and completes the never-started owner. If startup wins, completion is supplied only after the finite worker operation and the original locked Result publication. Token cancellation is separately serialised so an overlapping cancellation call cannot acknowledge before a previous cancellation's captured socket close. Completion is idempotent and broadcasts to independent waiters without consuming a response result.
+
+The new optional JPIPBlockingWorker onCompletion hook runs after handoff.publish and before the sender continuation. This acknowledges finite I/O plus explicit result publication; it is not an OS-thread-exit join and does not free every suspended sender/result reference. It avoids requiring the JPIPTransport actor to resume a sender before close can acknowledge finite-worker completion. No universal deadline/cancellation bound for getaddrinfo or other opaque OS work is claimed.
+
+Deterministic test assessment (source only)
+CodexR3TransportCloseTests declares four tests, with one parameterised over fresh, reused and stale-idle-retry modes (six planned cases total). The held-response tests obtain peer readiness before closing, hold the dedicated worker's completion acknowledgement, and assert two closes have not finished while one owner is registered and unfinished. They release that gate, require CancellationError without Task.cancel, and join peer EOF. The retry case requires two accepted connections. The pre-start test proves a joined, cancelled registration cannot later open a socket. The old-success/old-close test holds publication and close around a fresh request, then checks fresh channel path and connection reuse survive obsolete cleanup.
+
+The added publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation test covers exactly a first cnew already received and held by the peer. JPIPClient.close routes to transport.close, the initial creation task must throw, active session must stay nil, and peer closure is joined. It does not cover every JPIPClient/createSession suspension before transport registration or after a transport response has already returned. No new client-generation state machine was added. This test must not be described as complete facade or embedded-server lifecycle qualification.
+
+The cooperative TransportLifecycleProbe releases awaiting barriers on tracked request failure. The HTTPCompletionGate blocks only the dedicated finite I/O worker, not a cooperative Swift worker. Test readiness uses explicit barriers; existing 2-second request deadlines and runtime concurrency remain unchanged. Existing worker reuse/retry/task-cancellation regressions remain separate mandatory coverage.
+
+Scope limits and remaining checks
+- Source closure concerns HTTP requests registered at close entry and the reviewed shared owner registry. HTTPS buffering/delegate completion and WebSocket state machines have separate independent review.
+- Acknowledging retired I/O is distinct from releasing every suspended caller-owned response buffer and from physical Thread exit.
+- Public-client held-cnew coverage does not prove all upper-layer close interleavings; embedded-server and other facade paths are not newly qualified.
+- Required full tests, complete sanitizer partitions, exact-head hosted Linux/macOS checks and external interoperability gates remain separate. The focused TCP result below is narrowly scoped.
+
+Executed evidence inspected (coordinator-owned, no independent native invocation)
+work/validation/candidate-focused-09 command/result/raw stdout/stderr/log/XML and before/after manifests were independently read and hash-checked. Inputs equal the frozen09 manifest; capture completed without errors. Apple Swift6.4 on arm64 macOS compiled the selected tests. The TCP suite's four declaration completions passed, with the fresh/reused/retry declaration reporting all three cases passed; the corresponding four XML testcase entries have no failure/skip children. The wavelet test passed separately; its implementation was not self-reviewed here.
+
+The command exit was1 and the overall 22-declaration/three-suite run FAILED. The separate HTTPS sharedWatchdogInterruptsAnAlreadyActiveTrickle test failed after2.010s because the harness did not become active. This report neither diagnoses that issue nor treats the overall focused run as a pass. Root has assigned the test investigation separately. Any successor candidate needs unchanged reviewed TCP source hashes or a fresh delta review; these candidate09 receipts remain immutable historical evidence.
+
+Positive stop: report/receipt only, no source mutation, native execution, commit or push.

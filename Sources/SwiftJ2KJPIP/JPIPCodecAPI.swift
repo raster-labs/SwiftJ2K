@@ -277,7 +277,10 @@ public actor JPIPStreamingSession {
             serverURL: url,
             configuration: configuration
         )
-        self.jp3dClient = JP3DJPIPClient(serverURL: url)
+        self.jp3dClient = JP3DJPIPClient(
+            server: server,
+            serverURL: url
+        )
     }
 
     /// Delivers a full 2D image or a constrained ``JPIPViewWindow`` from the JPIP server.
@@ -366,12 +369,6 @@ public actor JPIPStreamingSession {
             )
         }
 
-        try checkWork()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
-        try checkWork()
-
         let hasReducedResolution = (viewWindow?.resolutionLevel ?? 0) > 0
         let hasReducedLayers: Bool
         if let reqLayers = viewWindow?.maxQualityLayers {
@@ -406,6 +403,14 @@ public actor JPIPStreamingSession {
             discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataKinds : []
         )
 
+        try checkWork()
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        // Completion callbacks may cancel their current task. Preserve that
+        // cancellation boundary after all backend/report qualification is done.
+        try Task.checkCancellation()
+
         return JPIPDeliveredImage(
             image: contractImage,
             legacyImage: legacyImage,
@@ -416,7 +421,7 @@ public actor JPIPStreamingSession {
         )
     }
 
-    /// Delivers a 3D volumetric streaming region (`JP3DStreamingRegion`) as `JP3DDataBin` packets.
+    /// Delivers a 3D volumetric streaming region (`JP3DStreamingRegion`) as normative `JP3DDataBin` packets.
     public func deliverVolumeRegion(
         volumeID: String,
         region: JP3DStreamingRegion,
@@ -464,16 +469,6 @@ public actor JPIPStreamingSession {
                 "3D streaming region voxel count exceeds pixel limit \(limits.maximumPixels)"
             )
         }
-        let estimatedBins = min(max(1, depth), 8)
-        let estimatedBinBytes = estimatedBins * 64
-        guard estimatedBinBytes <= limits.maximumCompressedBytes,
-              estimatedBinBytes <= limits.maximumWorkspaceBytes,
-              estimatedBinBytes <= limits.maximumMemoryBytes else {
-            throw CodecError(
-                .resourceLimitExceeded,
-                "3D streaming region data-bin budget (\(estimatedBinBytes) bytes) exceeds resource limits"
-            )
-        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 2) {
             options.progress?(p)
@@ -482,14 +477,27 @@ public actor JPIPStreamingSession {
 
         let bins: [JP3DDataBin]
         do {
-            try await jp3dClient.connect()
-            try await jp3dClient.createSession(volumeID: volumeID)
-            bins = try await jp3dClient.requestRegion(region)
+            try await jp3dClient.connect(deadline: deadline, limits: limits)
+            try await jp3dClient.createSession(volumeID: volumeID, limits: limits, deadline: deadline)
+            bins = try await jp3dClient.requestRegion(region, limits: limits, deadline: deadline)
+        } catch let codecError as CodecError {
+            throw codecError
+        } catch let cancelError as CancellationError {
+            throw cancelError
         } catch let error as J2KError {
             throw error.asCodecError
+        } catch let error as JP3DClientError {
+            switch error {
+            case .invalidRegion(let msg), .unknownVolume(let msg):
+                throw CodecError(.invalidArgument, msg)
+            case .notConnected, .noSession, .serverError, .networkError:
+                throw CodecError(.internalFailure, "\(error)")
+            }
         }
 
-        let totalBinBytes = bins.reduce(0) { $0 + $1.data.count }
+        try checkWork()
+
+        let totalBinBytes = try bins.reduce(0) { try jpipCheckedSum($0, $1.data.count) }
         guard totalBinBytes <= limits.maximumCompressedBytes,
               totalBinBytes <= limits.maximumWorkspaceBytes,
               totalBinBytes <= limits.maximumMemoryBytes else {
@@ -499,24 +507,148 @@ public actor JPIPStreamingSession {
             )
         }
 
-        try checkWork()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 2, totalUnits: 2) {
-            options.progress?(p)
+        // Substantiate 3D stream integrity, completeness, workspace footprint, and sample fidelity.
+        // Reserve retained live cache/bin storage BEFORE invoking codestream reassembly and verification decode.
+        let returnedBinDescriptors = try jpipCheckedProduct([bins.count, MemoryLayout<JP3DDataBin>.stride])
+        let snapshot = try await jp3dClient.verificationCacheSnapshot(
+            limits: limits,
+            retainingAdditionalBytes: jpipCheckedSum(totalBinBytes, returnedBinDescriptors)
+        )
+        let wireBins = snapshot.bins
+        guard let mhBin = wireBins.first(where: { $0.binClass == .mainHeader }),
+              mhBin.isComplete,
+              JP3DJPIPIndexer.isJP3DCodestream(mhBin.data) else {
+            throw CodecError(
+                .malformedInput,
+                "Delivered 3D JPIP stream is missing a complete Part 10 JP3D main header."
+            )
         }
-        try checkWork()
+
+        let retainedBeforeReconstruct = snapshot.retainedWorkspaceBytes
+        guard retainedBeforeReconstruct < limits.maximumWorkspaceBytes,
+              retainedBeforeReconstruct < limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "Retained 3D JPIP cache/bin storage (\(retainedBeforeReconstruct) bytes) leaves no workspace/memory headroom for codestream reassembly."
+            )
+        }
+
+        func makeRemainingLimits(deducting retainedLiveBytes: Int) throws -> ResourceLimits {
+            let remSecs = try JPIPTransport.remainingSeconds(until: deadline)
+            guard retainedLiveBytes < limits.maximumWorkspaceBytes,
+                  retainedLiveBytes < limits.maximumMemoryBytes else {
+                throw CodecError(
+                    .resourceLimitExceeded,
+                    "Simultaneous retained 3D JPIP storage (\(retainedLiveBytes) bytes) exceeds operation workspace/memory limits."
+                )
+            }
+            return try ResourceLimits(
+                maximumCompressedBytes: limits.maximumCompressedBytes,
+                maximumDecodedBytes: limits.maximumDecodedBytes,
+                maximumWorkspaceBytes: limits.maximumWorkspaceBytes - retainedLiveBytes,
+                maximumPixels: limits.maximumPixels,
+                maximumDimension: limits.maximumDimension,
+                maximumFrames: limits.maximumFrames,
+                maximumMetadataBytes: limits.maximumMetadataBytes,
+                maximumICCBytes: limits.maximumICCBytes,
+                maximumNestingDepth: limits.maximumNestingDepth,
+                maximumWorkers: limits.maximumWorkers,
+                deadlineSeconds: remSecs,
+                maximumMemoryBytes: limits.maximumMemoryBytes - retainedLiveBytes
+            )
+        }
+
+        let reconstructLimits = try makeRemainingLimits(deducting: retainedBeforeReconstruct)
+        let reconstructed: Data
+        let reassemblyPeak: Int
+        do {
+            let reassembly = try JPIPDataBinGenerator().reassembleCodestreamBounded(
+                from: wireBins, reconstructContainer: false, limits: reconstructLimits
+            )
+            reconstructed = reassembly.data
+            reassemblyPeak = try jpipCheckedSum(retainedBeforeReconstruct, reassembly.peakWorkspaceBytes)
+        } catch let codecError as CodecError {
+            throw codecError
+        } catch let j2kError as J2KError {
+            throw j2kError.asCodecError
+        } catch {
+            throw CodecError(.malformedInput, "Failed to reconstruct 3D JPIP codestream: \(error)")
+        }
+
+        let retainedStreamWorkspace = try jpipCheckedSum(retainedBeforeReconstruct, reconstructed.count)
+        let verificationLimits = try makeRemainingLimits(deducting: retainedStreamWorkspace)
+        let decodeOptions = VolumeDecodeOptions(
+            resourceLimits: verificationLimits,
+            executionPolicy: options.executionPolicy,
+            copyPolicy: options.copyPolicy,
+            metadataPolicy: options.metadataPolicy,
+            regionOfInterest: JP3DRegion(
+                x: region.xRange,
+                y: region.yRange,
+                z: region.zRange
+            )
+        )
+        let volInfo = try VolumeDecoder().inspect(reconstructed, options: decodeOptions)
+
+        let lastEOR = await jp3dClient.lastEORReason
+        let eorCompleted = (lastEOR == .imageDone || lastEOR == .windowDone)
+        let hasPayloadBins = wireBins.contains {
+            $0.binClass == .precinct
+                || $0.binClass == .extendedPrecinct
+                || $0.binClass == .tile
+                || $0.binClass == .extendedTile
+        }
+        let allWireBinsComplete = hasPayloadBins && wireBins.allSatisfy(\.isComplete)
+        let reducedResolution = region.resolutionLevel > 0
+        let reducedQualityLayers = region.qualityLayer > 0 && region.qualityLayer < volInfo.qualityLayers
+        let candidateExact = volInfo.isLossless
+            && eorCompleted
+            && allWireBinsComplete
+            && !reducedResolution
+            && !reducedQualityLayers
+
+        let verifyDecoder = try VolumeDecoder(
+            configuration: VolumeDecoderConfiguration(
+                maxQualityLayers: region.qualityLayer,
+                resolutionLevel: region.resolutionLevel,
+                tolerateTruncation: !candidateExact
+            )
+        )
+        let verifyDecoded = try await verifyDecoder.decode(reconstructed, options: decodeOptions)
+        let isExact3D = candidateExact && (verifyDecoded.report.fidelity == Fidelity.exactSamples)
+
+        let verificationPeak = try jpipCheckedSum(retainedStreamWorkspace, verifyDecoded.report.peakWorkspaceBytes ?? 0)
+        let clientPeak = await jp3dClient.lastPeakWorkspaceBytes
+        let measuredPeakWorkspace = max(clientPeak, max(reassemblyPeak, verificationPeak))
+        guard measuredPeakWorkspace <= limits.maximumWorkspaceBytes,
+              measuredPeakWorkspace <= limits.maximumMemoryBytes else {
+            throw CodecError(
+                .resourceLimitExceeded,
+                "3D JPIP streaming + verification workspace (\(measuredPeakWorkspace) bytes) exceeds resource limits."
+            )
+        }
 
         let elapsed = clock.now - started
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         let report = OperationReport(
-            backend: resolvedBackend.backend,
-            fallbackReason: resolvedBackend.fallbackReason,
-            fidelity: region.resolutionLevel > 0 ? .lossy : .exactSamples,
-            copyEvents: [],
-            pixelAllocationCount: 0,
-            peakPixelBytes: 0,
-            peakWorkspaceBytes: totalBinBytes,
-            elapsedSeconds: elapsedSeconds
+            backend: verifyDecoded.report.backend,
+            fallbackReason: verifyDecoded.report.fallbackReason ?? resolvedBackend.fallbackReason,
+            fidelity: isExact3D ? .exactSamples : .lossy,
+            copyEvents: verifyDecoded.report.copyEvents,
+            pixelAllocationCount: verifyDecoded.report.pixelAllocationCount,
+            peakPixelBytes: verifyDecoded.report.peakPixelBytes,
+            peakWorkspaceBytes: measuredPeakWorkspace,
+            elapsedSeconds: elapsedSeconds,
+            discardedMetadataCount: verifyDecoded.report.discardedMetadataCount,
+            discardedMetadataBytes: verifyDecoded.report.discardedMetadataBytes,
+            discardedMetadataKinds: verifyDecoded.report.discardedMetadataKinds
         )
+
+        try checkWork()
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 2, totalUnits: 2) {
+            options.progress?(p)
+        }
+        try Task.checkCancellation()
 
         return JPIPDeliveredVolumeSliceBins(
             region: region,

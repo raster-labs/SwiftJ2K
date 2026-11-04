@@ -1,0 +1,49 @@
+{
+  "binary_sha256": "27d601f7fedb0fdeebf45ff605521ac4be4322d673add2ba0bb095c54e0a7266",
+  "fixture_sha256": "34447afd2dcea953f9a04f6c78764c740e2f60cbceba35f89755b59426928ceb",
+  "cases": [
+    {
+      "mode": "text",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "pid": 55149,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006577832999999998,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    },
+    {
+      "mode": "json",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0",
+        "--json"
+      ],
+      "pid": 55150,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006740916999999999,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    }
+  ]
+}

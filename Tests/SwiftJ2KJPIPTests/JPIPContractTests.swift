@@ -324,6 +324,19 @@ final class JPIPContractTests: XCTestCase {
         )
 
         // 4. 3D Volumetric region delivery
+        let volComp = J2KVolumeComponent(
+            index: 0,
+            bitDepth: 8,
+            signed: false,
+            width: 16,
+            height: 16,
+            depth: 4,
+            data: Data((0..<(16 * 16 * 4)).map { UInt8($0 & 0xFF) })
+        )
+        let contractVolume = J2KVolume(width: 16, height: 16, depth: 4, components: [volComp])
+        let encodedVol = try await JP3DEncoder(configuration: .lossless).encode(contractVolume)
+        await server.registerImageData(name: "vol-1", data: encodedVol.data)
+
         let volRegion = JP3DStreamingRegion(
             xRange: 0..<16,
             yRange: 0..<16,

@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Prepare one explicit, incomplete supplement manifest; no publication/native work."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+
+WORKSPACE = Path(__file__).resolve().parents[2]
+WORK = WORKSPACE / 'work'
+OUT = Path(__file__).resolve().parent
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def ref(path):
+    path = path.absolute()
+    assert path.is_file() and not path.is_symlink(), path
+    return {'path': str(path), 'sha256': digest(path)}
+
+def save(name, value):
+    with (OUT / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+manifest = json.loads((WORK / 'ci-repair-evidence-09/manifest-initial.json').read_text())
+manifest['candidate_label'] = ('Candidate14 preparation only: completed09–13 diagnostics and focused14; '
+    'final ordinary, release/CLI, sanitizer, independent runtime and exact-head hosted qualification pending')
+
+run_names = [
+    'candidate-cli-09', 'candidate-focused-09', 'candidate-release-build-09',
+    'candidate-focused-10', 'candidate-full-10', 'trickle-probe-build-10', 'trickle-probe-run-10',
+    'diagnostic-https-full-11', 'diagnostic-https-full-12', 'diagnostic-sampled-full-13',
+    'foundation-queue-policy-13', 'queue-policy-build-13', 'queue-policy-run-13',
+    'candidate-focused-14',
+]
+for name in run_names:
+    run = WORK / 'validation' / name
+    result = json.loads((run / 'result.json').read_text())
+    assert result.get('finished_at') and type(result.get('exit_code')) is int, name
+    entry = {key: ref(run / filename) for key, filename in (
+        ('result', 'result.json'), ('command', 'command.json'),
+        ('before', 'source-before.json'), ('after', 'source-after.json'))}
+    entry['reports'] = [ref(p) for p in sorted(run.rglob('*.xml'))]
+    entry['diagnostic_only'] = not name.startswith('candidate-')
+    manifest['native_runs'].append(entry)
+
+review_pairs = [
+    ('independent-tcp-close-review-09.txt', 'independent-tcp-close-review-09-source.json'),
+    ('independent-https-review-09.txt', 'independent-https-review-09-source.json'),
+    ('independent-https-review-10.txt', 'independent-https-review-10-source.json'),
+    ('independent-https-full10-diagnosis.txt', 'independent-https-full10-diagnosis-source.json'),
+    ('independent-https-diagnostic-review-11.txt', 'independent-https-diagnostic-review-11-source.json'),
+    ('independent-https-diagnostic-review-12.txt', 'independent-https-diagnostic-review-12-source.json'),
+    ('independent-final-documentation-review-09.txt', 'independent-final-documentation-review-09-source.json'),
+    ('full-concurrency-diagnosis-10/report.txt', 'full-concurrency-diagnosis-10/source.json'),
+    ('sampled-full-diagnostic-13-independent-review/report.txt',
+     'sampled-full-diagnostic-13-independent-review/source.json'),
+]
+for report, source in review_pairs:
+    manifest['reviews'].append({'report': ref(WORK / report), 'source': ref(WORK / source),
+        'completed': True, 'supporting': []})
+
+# Expand only these named, stopped evidence directories. The emitted manifest
+# contains an explicit path/hash for every file; the packager never performs
+# directory discovery. Binary names are explicitly excluded below.
+directories = [
+    'https-portability-before-close-09', 'https-portability-review-09',
+    'tcp-close-scope-review-09', 'tcp-close-delta-advisory-09',
+    'trickle-probe-10', 'https-full-concurrency-diagnosis-11',
+    'https-full-concurrency-diagnosis-12', 'sampled-full-diagnostic-13',
+    'queue-policy-probe-13', 'https-test-proof-fixes-13',
+    'https-delegate-policy-14', 'tcp-peer-lifetime-14', 'runtime-coverage-09',
+]
+excluded_names = {'trickle-delivery-probe', 'queue-policy'}
+suffixes = {'.json', '.jsonl', '.txt', '.log', '.stdout', '.stderr', '.xml', '.ids',
+            '.py', '.swift', '.patch', '.diff', '.md', '.yml', '.yaml', '.csv'}
+extra = []
+excluded = []
+for directory in directories:
+    for path in sorted((WORK / directory).rglob('*')):
+        if not path.is_file():
+            continue
+        if '__pycache__' in path.parts or path.name in excluded_names:
+            excluded.append(str(path.relative_to(WORKSPACE)))
+            continue
+        assert path.suffix.lower() in suffixes, path
+        extra.append(path)
+
+extra += [WORK / name for name in [
+    'https-accumulation-model.txt', 'https-portability-before.json',
+    'https-portability-close-report.txt', 'https-portability-close-source.json',
+    'https-portability-report.txt', 'https-portability-source.json',
+    'https-trickle-delta-10.patch', 'https-trickle-report-10.txt', 'https-trickle-source-10.json',
+    'full-concurrency-diagnosis-10/duration-comparison.json',
+    'sampled-full-diagnostic-13-independent-review/stack-extracts.json',
+    'https-full10-independent-diagnosis/diagnostic11-analysis.json',
+    'https-full10-independent-diagnosis/diagnostic12-analysis.json',
+    'https-full10-independent-diagnosis/diagnostic12-source-before.json',
+    'https-full10-independent-diagnosis/source-before.json',
+    'https-full10-independent-diagnosis/sampled13-analysis.json',
+    'https-full10-independent-diagnosis/proof13-source-before.json',
+    'cli-integration-09/report.json', 'final-implementation-identity-10.json',
+    'common-contract-identity-10.json', 'performance-core-identity-10.json',
+    'run-validation.py', 'snapshot-candidate.py', 'run-native-sequence-10.py',
+    'run-native-sequence-14.py', 'planned-native-sequence-10.json',
+    'planned-native-sequence-14.json', 'sample-full-diagnostic-13.py',
+    'publication-commit-08.json', 'publication-pr-30.json',
+    'ci-repair-evidence-09/manifest-initial.json',
+]]
+for snapshot in ['candidate-snapshot-09', 'candidate-snapshot-10', 'candidate-snapshot-14',
+                 'diagnostic-source-11', 'diagnostic-source-12']:
+    extra += [WORK / (snapshot + '-source.json'), WORK / (snapshot + '-provenance.json')]
+
+# Only the changed source/test inputs are selected, not a full source snapshot.
+for path in [
+    'Sources/SwiftJ2KJPIP/JPIPTransport.swift', 'Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift',
+    'Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift', 'Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift',
+    'Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift',
+    'Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift',
+    'Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift',
+    'Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift',
+]:
+    extra.append(WORK / 'candidate-snapshot-14' / path)
+
+already = {e['file']['path'] for e in manifest['supplemental']}
+already |= {entry[k]['path'] for entry in manifest['reviews'] for k in ['report', 'source']}
+for path in sorted(set(extra)):
+    if str(path) in already:
+        continue
+    role = 'supplement-' + path.relative_to(WORK).as_posix().replace('/', '--')
+    manifest['supplemental'].append({'file': ref(path), 'role': role})
+    already.add(str(path))
+
+pending_native = [gate['label'] for gate in json.loads((WORK / 'planned-native-sequence-14.json').read_text())['gates']]
+pending = {
+    'state': 'PREPARATION_ONLY_NOT_FOR_FINAL_PUBLICATION',
+    'prepared_at': datetime.now(timezone.utc).isoformat(),
+    'candidate': 'candidate-snapshot-14',
+    'completed_native_selected': run_names,
+    'pending_native': pending_native,
+    'pending_receipt_categories': [
+        'Exact final-source implementation and CI identities, including scoped carry-forward decisions.',
+        'Final independent14 source review report and source pair after positive stop.',
+        'Final14 complete ordinary and partitioned sanitizer declaration/argument execution proofs and independent audit.',
+        'Release14 CLI246 process report and artifact identity.',
+        'Final14 native gate decision and updated capability/status documentation review.',
+        'Subsequent exact-head hosted run metadata, every raw job log, retention reconstruction and runtime proof.',
+        'Final publication head/tree/base/merge-tree identity and scoped PR/checkpoint records.',
+    ],
+    'external_gates': {'state': 'UNEXECUTED_UNWAIVED', 'R3_acceptance': 'NOT_ACCEPTED', 'R4': 'GATED'},
+    'excluded_binaries_or_cache': excluded,
+    'publication_policy': ('Only root may publish after the exclusive claim and stopped writers; '
+        'use the existing package.py unchanged, fixed ci-repair-09 destination and immutable versioned index. '
+        'This preparatory manifest is incomplete; append completed receipts into a NEW manifest version.'),
+}
+save('manifest-preparation-01.json', manifest)
+save('pending-inputs-01.json', pending)
+save('selection-01.json', {
+    'state': 'EXPLICIT_PREPARATORY_SELECTION',
+    'manifest': ref(OUT / 'manifest-preparation-01.json'),
+    'generator': ref(Path(__file__)),
+    'selected_native_runs': len(manifest['native_runs']),
+    'selected_review_pairs': len(manifest['reviews']),
+    'selected_hosted_runs': len(manifest['hosted_runs']),
+    'selected_supplemental_receipts': len(manifest['supplemental']),
+    'excluded': excluded,
+})
+print(json.dumps({'manifest': str(OUT / 'manifest-preparation-01.json'),
+    'native_runs': len(manifest['native_runs']), 'review_pairs': len(manifest['reviews']),
+    'supplemental_receipts': len(manifest['supplemental']), 'pending_native': pending_native}, indent=2))

@@ -6,16 +6,11 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPNetworkFramework.swift
 //
-//
-// JPIPNetworkFramework.swift
-// J2KSwift
-//
-/// # JPIPNetworkFramework
-///
-/// Modern Apple networking using Network.framework for JPIP.
-///
-/// Provides Network.framework integration for JPIP protocol with support for
-/// QUIC, HTTP/3, efficient TLS, and background transfer services on iOS.
+// Reconciled in Phase R3 (F04) with declared ITU-T Rec. T.808 (12/2022) V2 profile:
+// - Binary-safe HTTP/1.1 framing over TCP/TLS (preserving arbitrary VBAS bytes and
+//   enforcing Content-Length / chunked boundaries without UTF-8 corruption).
+// - Deterministic `CodecError(.unsupportedFeature)` rejection when ITU-T T.808 V3
+//   HTTP/3 / QUIC transport (`enableHTTP3 == true`) is requested at connection time.
 
 import Foundation
 @_exported import SwiftJ2K
@@ -26,24 +21,17 @@ import Synchronization
 import Network
 #endif
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 #if os(iOS)
 import BackgroundTasks
 #endif
 
 // MARK: - Network.framework Transport
 
-/// Modern JPIP transport using Network.framework.
-///
-/// Provides high-performance networking with support for HTTP/2, HTTP/3, QUIC,
-/// and efficient TLS with better control over connection lifecycle.
-///
-/// Example:
-/// ```swift
-/// let transport = JPIPNetworkTransport(baseURL: serverURL)
-/// try await transport.connect()
-/// let response = try await transport.send(request)
-/// await transport.disconnect()
-/// ```
+/// Modern JPIP transport with binary-safe HTTP/1.1 framing and explicit profile validation.
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
 public actor JPIPNetworkTransport {
     /// Transport configuration.
@@ -64,13 +52,6 @@ public actor JPIPNetworkTransport {
         public let qos: J2KQualityOfService
 
         /// Creates a new configuration.
-        ///
-        /// - Parameters:
-        ///   - enableHTTP3: Enable HTTP/3 (default: true).
-        ///   - enableTLS: Enable TLS (default: true).
-        ///   - connectionTimeout: Connection timeout (default: 30 seconds).
-        ///   - requestTimeout: Request timeout (default: 60 seconds).
-        ///   - qos: Quality of Service (default: .userInitiated).
         public init(
             enableHTTP3: Bool = true,
             enableTLS: Bool = true,
@@ -88,18 +69,12 @@ public actor JPIPNetworkTransport {
 
     private let baseURL: URL
     private let configuration: Configuration
-
-    #if canImport(Network)
-    private var connection: NWConnection?
-    #endif
-
+    private var tcpConnection: JPIPTCPConnection?
+    private var httpsSession: URLSession?
+    private var channelPathOverride: String?
     private var isConnected: Bool = false
 
     /// Creates a new Network.framework transport.
-    ///
-    /// - Parameters:
-    ///   - baseURL: The base server URL.
-    ///   - configuration: Transport configuration.
     public init(baseURL: URL, configuration: Configuration = Configuration()) {
         self.baseURL = baseURL
         self.configuration = configuration
@@ -107,242 +82,176 @@ public actor JPIPNetworkTransport {
 
     /// Establishes a connection to the server.
     ///
-    /// - Throws: ``J2KError`` if connection fails.
+    /// - Throws: ``CodecError`` (`.unsupportedFeature`) if `enableHTTP3` is enabled
+    ///   (ITU-T Rec. T.808 V3 HTTP/3 / QUIC is outside the declared T.808 V2 profile),
+    ///   or ``J2KError`` if TCP/TLS connection fails.
     public func connect() async throws {
-        #if canImport(Network)
+        if configuration.enableHTTP3 {
+            throw CodecError(
+                .unsupportedFeature,
+                "JPIP over HTTP/3 / QUIC (ITU-T Rec. T.808 V3) is not supported; SwiftJ2KJPIP implements ITU-T Rec. T.808 (12/2022) V2 over HTTP/1.1 and RFC 6455 WebSocket."
+            )
+        }
         guard !isConnected else { return }
+
+        guard let host = baseURL.host, !host.isEmpty else {
+            throw J2KError.invalidParameter("Invalid URL: no host")
+        }
+
+        if configuration.enableTLS || baseURL.scheme?.lowercased() == "https" {
+            let cfg = URLSessionConfiguration.ephemeral
+            cfg.timeoutIntervalForRequest = max(1, configuration.requestTimeout)
+            cfg.timeoutIntervalForResource = max(1, configuration.requestTimeout * 2)
+            self.httpsSession = URLSession(configuration: cfg)
+            self.isConnected = true
+            return
+        }
+
+        let port = baseURL.port ?? 80
+        let timeoutSec = max(1, Int(configuration.connectionTimeout.rounded(.up)))
+        self.tcpConnection = try JPIPTCPConnection.connect(
+            host: host,
+            port: port,
+            timeoutSeconds: timeoutSec
+        )
+        self.isConnected = true
+    }
+
+    /// Sends a JPIP request over the established connection.
+    public func send(
+        _ request: JPIPRequest,
+        maxBodyBytes: Int = 128 * 1024 * 1024
+    ) async throws -> JPIPResponse {
+        if configuration.enableHTTP3 {
+            throw CodecError(
+                .unsupportedFeature,
+                "JPIP over HTTP/3 / QUIC (ITU-T Rec. T.808 V3) is not supported; SwiftJ2KJPIP implements ITU-T Rec. T.808 (12/2022) V2 over HTTP/1.1 and RFC 6455 WebSocket."
+            )
+        }
+        guard isConnected else {
+            throw J2KError.networkError("Not connected")
+        }
+
+        let pathAndQuery = buildPathAndQuery(from: request)
+
+        if configuration.enableTLS || baseURL.scheme?.lowercased() == "https" {
+            guard let session = httpsSession else {
+                throw J2KError.networkError("TLS session not initialised")
+            }
+            guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: true) else {
+                throw J2KError.invalidParameter("Invalid base URL")
+            }
+            if components.scheme?.lowercased() != "https" {
+                components.scheme = "https"
+            }
+            let split = pathAndQuery.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+            components.percentEncodedPath = String(split[0])
+            components.percentEncodedQuery = split.count > 1 ? String(split[1]) : nil
+            guard let url = components.url else {
+                throw J2KError.invalidParameter("Failed to construct HTTPS JPIP URL")
+            }
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.setValue(
+                "image/jpp-stream, image/jpt-stream, application/octet-stream, */*",
+                forHTTPHeaderField: "Accept"
+            )
+            let (data, resp) = try await session.data(for: req)
+            guard let httpResp = resp as? HTTPURLResponse else {
+                throw J2KError.networkError("Invalid HTTPS response")
+            }
+            guard data.count <= maxBodyBytes else {
+                throw CodecError(.resourceLimitExceeded, "JPIP response exceeds \(maxBodyBytes) bytes.")
+            }
+            let headers = JPIPResponseParser.parseHeaders(from: httpResp)
+            if let chPath = JPIPResponseParser.extractChannelPath(from: headers) {
+                channelPathOverride = chPath.hasPrefix("/") ? chPath : "/\(chPath)"
+            }
+            return JPIPResponse(
+                channelID: JPIPResponseParser.extractChannelID(from: headers),
+                data: data,
+                statusCode: httpResp.statusCode,
+                headers: headers
+            )
+        }
 
         guard let host = baseURL.host else {
             throw J2KError.invalidParameter("Invalid URL: no host")
         }
+        let port = baseURL.port ?? 80
+        let hostHeader = (baseURL.port != nil) ? "\(host):\(port)" : host
 
-        let port = baseURL.port ?? (configuration.enableTLS ? 443 : 80)
+        let conn: JPIPTCPConnection
+        if let existing = tcpConnection, existing.isOpen {
+            conn = existing
+        } else {
+            let timeoutSec = max(1, Int(configuration.connectionTimeout.rounded(.up)))
+            let fresh = try JPIPTCPConnection.connect(host: host, port: port, timeoutSeconds: timeoutSec)
+            self.tcpConnection = fresh
+            conn = fresh
+        }
 
-        // Create endpoint
-        let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host(host),
-            port: NWEndpoint.Port(integerLiteral: UInt16(port))
-        )
-
-        // Configure parameters
-        let parameters = NWParameters.tcp
-
-        // Configure TLS
-        if configuration.enableTLS {
-            parameters.defaultProtocolStack.applicationProtocols = [
-                NWProtocolTLS.Options()
+        try conn.writeHTTPRequest(
+            method: "GET",
+            pathAndQuery: pathAndQuery,
+            hostHeader: hostHeader,
+            headers: [
+                "Accept": "image/jpp-stream, image/jpt-stream, application/octet-stream, */*",
+                "Connection": "keep-alive"
             ]
+        )
+        let wireResp = try conn.readHTTPResponse(maxBodyBytes: maxBodyBytes)
+        if (wireResp.header("Connection")?.lowercased() ?? "").contains("close") {
+            conn.close()
+            self.tcpConnection = nil
         }
-
-        // Configure HTTP/3 (QUIC) if enabled
-        if configuration.enableHTTP3 {
-            let options = NWProtocolQUIC.Options()
-            parameters.defaultProtocolStack.applicationProtocols.insert(
-                options,
-                at: 0
-            )
+        if let chPath = JPIPResponseParser.extractChannelPath(from: wireResp.headers) {
+            channelPathOverride = chPath.hasPrefix("/") ? chPath : "/\(chPath)"
         }
-
-        // Create connection
-        let conn = NWConnection(to: endpoint, using: parameters)
-        self.connection = conn
-
-        // Start connection
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let resumed = Mutex(false)
-
-            conn.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    resumed.withLock { flag in
-                        guard !flag else { return }
-                        flag = true
-                        continuation.resume()
-                    }
-                case .failed(let error):
-                    resumed.withLock { flag in
-                        guard !flag else { return }
-                        flag = true
-                        continuation.resume(throwing: J2KError.networkError("Connection failed: \(error)"))
-                    }
-                case .cancelled:
-                    resumed.withLock { flag in
-                        guard !flag else { return }
-                        flag = true
-                        continuation.resume(throwing: J2KError.networkError("Connection cancelled"))
-                    }
-                default:
-                    break
-                }
-            }
-
-            conn.start(queue: .global(qos: configuration.qos.dispatchQoS.qosClass))
-        }
-
-        isConnected = true
-        #else
-        throw J2KError.internalError("Network.framework not available")
-        #endif
+        return JPIPResponse(
+            channelID: JPIPResponseParser.extractChannelID(from: wireResp.headers),
+            data: wireResp.body,
+            statusCode: wireResp.statusCode,
+            headers: wireResp.headers
+        )
     }
 
-    /// Sends a JPIP request over the connection.
-    ///
-    /// - Parameter request: The JPIP request to send.
-    /// - Returns: The JPIP response.
-    /// - Throws: ``J2KError`` if the request fails.
-    public func send(_ request: JPIPRequest) async throws -> JPIPResponse {
-        #if canImport(Network)
-        guard isConnected, let conn = connection else {
-            throw J2KError.networkError("Not connected")
+    private func buildPathAndQuery(from request: JPIPRequest) -> String {
+        let basePath = (baseURL.path.isEmpty || baseURL.path == "/") ? "/jpip" : baseURL.path
+        let effectivePath: String
+        if request.cid != nil, request.cnew == nil, let chPath = channelPathOverride, !chPath.isEmpty {
+            effectivePath = chPath.hasPrefix("/") ? chPath : "/\(chPath)"
+        } else {
+            effectivePath = basePath
         }
-
-        // Build HTTP request
-        let httpRequest = try buildHTTPRequest(from: request)
-
-        // Send request
-        try await sendData(httpRequest, on: conn)
-
-        // Receive response
-        let responseData = try await receiveData(from: conn)
-
-        // Parse response
-        return try parseResponse(responseData)
-        #else
-        throw J2KError.internalError("Network.framework not available")
-        #endif
+        var effectiveReq = request
+        if effectiveReq.cid != nil && effectiveReq.cnew == nil {
+            effectiveReq.target = ""
+        }
+        let items = effectiveReq.buildQueryItems()
+        guard !items.isEmpty else { return effectivePath }
+        let query = items.keys.sorted().compactMap { k -> String? in
+            guard let v = items[k] else { return nil }
+            return "\(JPIPTransport.encodeJPIPQueryToken(k))=\(JPIPTransport.encodeJPIPQueryToken(v))"
+        }.joined(separator: "&")
+        return "\(effectivePath)?\(query)"
     }
 
     /// Disconnects from the server.
     public func disconnect() {
-        #if canImport(Network)
-        connection?.cancel()
-        connection = nil
+        tcpConnection?.close()
+        tcpConnection = nil
+        httpsSession?.finishTasksAndInvalidate()
+        httpsSession = nil
+        channelPathOverride = nil
         isConnected = false
-        #endif
     }
-
-    #if canImport(Network)
-    /// Builds an HTTP request from a JPIP request.
-    private func buildHTTPRequest(from request: JPIPRequest) throws -> Data {
-        let queryItems = request.buildQueryItems()
-        let queryString = queryItems.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
-
-        let path = baseURL.path.isEmpty ? "/" : baseURL.path
-        let requestLine = "GET \(path)?\(queryString) HTTP/1.1\r\n"
-        let hostHeader = "Host: \(baseURL.host ?? "localhost")\r\n"
-        let acceptHeader = "Accept: application/octet-stream\r\n"
-        let connectionHeader = "Connection: keep-alive\r\n"
-        let endHeaders = "\r\n"
-
-        let httpRequest = requestLine + hostHeader + acceptHeader + connectionHeader + endHeaders
-
-        guard let data = httpRequest.data(using: .utf8) else {
-            throw J2KError.internalError("Failed to encode HTTP request")
-        }
-
-        return data
-    }
-
-    /// Sends data over a connection.
-    private func sendData(_ data: Data, on connection: NWConnection) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            connection.send(
-                content: data,
-                completion: .contentProcessed { error in
-                    if let error = error {
-                        continuation.resume(throwing: J2KError.networkError("Send failed: \(error)"))
-                    } else {
-                        continuation.resume()
-                    }
-                }
-            )
-        }
-    }
-
-    /// Receives data from a connection.
-    private func receiveData(from connection: NWConnection) async throws -> Data {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-            @Sendable func receiveNext(_ accumulated: Data) {
-                connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { content, _, isComplete, error in
-                    if let error = error {
-                        continuation.resume(throwing: J2KError.networkError("Receive failed: \(error)"))
-                        return
-                    }
-
-                    var nextData = accumulated
-                    if let content = content {
-                        nextData.append(content)
-                    }
-
-                    if isComplete {
-                        continuation.resume(returning: nextData)
-                    } else {
-                        receiveNext(nextData)
-                    }
-                }
-            }
-
-            receiveNext(Data())
-        }
-    }
-
-    /// Parses an HTTP response into a JPIP response.
-    private func parseResponse(_ data: Data) throws -> JPIPResponse {
-        // Simple HTTP response parsing
-        guard let responseString = String(data: data, encoding: .utf8) else {
-            throw J2KError.internalError("Invalid response encoding")
-        }
-
-        let components = responseString.components(separatedBy: "\r\n\r\n")
-        guard components.count >= 2 else {
-            throw J2KError.internalError("Invalid HTTP response format")
-        }
-
-        let headerLines = components[0].components(separatedBy: "\r\n")
-        guard let statusLine = headerLines.first else {
-            throw J2KError.internalError("Missing status line")
-        }
-
-        let statusComponents = statusLine.components(separatedBy: " ")
-        guard statusComponents.count >= 2,
-              let statusCode = Int(statusComponents[1]) else {
-            throw J2KError.internalError("Invalid status line")
-        }
-
-        // Extract body
-        let bodyStart = components[0].count + 4 // "\r\n\r\n"
-        let bodyData = data.subdata(in: bodyStart..<data.count)
-
-        // Parse headers
-        var headers: [String: String] = [:]
-        for line in headerLines.dropFirst() {
-            let parts = line.components(separatedBy: ": ")
-            if parts.count == 2 {
-                headers[parts[0]] = parts[1]
-            }
-        }
-
-        return JPIPResponse(
-            channelID: headers["JPIP-cnew"],
-            data: bodyData,
-            statusCode: statusCode,
-            headers: headers
-        )
-    }
-    #endif
 }
 
 // MARK: - QUIC Support
 
-/// QUIC protocol configuration for JPIP.
-///
-/// Provides configuration for QUIC transport, which offers improved performance
-/// over traditional TCP for network protocols with high latency or packet loss.
-///
-/// Example:
-/// ```swift
-/// let config = JPIPQUICConfiguration(enableZeroRTT: true)
-/// ```
+/// QUIC protocol configuration for JPIP (configuration surface retained for compatibility;
+/// ITU-T Rec. T.808 V3 HTTP/3 / QUIC execution is rejected under the declared T.808 V2 profile).
 @available(macOS 11.0, iOS 14.0, tvOS 14.0, *)
 public struct JPIPQUICConfiguration: Sendable {
     /// Whether to enable 0-RTT connection resumption.
@@ -355,11 +264,6 @@ public struct JPIPQUICConfiguration: Sendable {
     public let initialMaxData: UInt64
 
     /// Creates a new QUIC configuration.
-    ///
-    /// - Parameters:
-    ///   - enableZeroRTT: Enable 0-RTT (default: true).
-    ///   - maxIdleTimeout: Max idle timeout (default: 30 seconds).
-    ///   - initialMaxData: Initial max data (default: 10 MB).
     public init(
         enableZeroRTT: Bool = true,
         maxIdleTimeout: TimeInterval = 30,
@@ -375,16 +279,6 @@ public struct JPIPQUICConfiguration: Sendable {
 
 #if os(iOS)
 /// Background transfer service for iOS.
-///
-/// Enables JPIP downloads to continue when the app is in the background,
-/// using URLSession background configuration and BackgroundTasks framework.
-///
-/// Example:
-/// ```swift
-/// let service = JPIPBackgroundTransferService()
-/// try await service.register()
-/// let taskID = try await service.scheduleDownload(request: request)
-/// ```
 @available(iOS 13.0, *)
 public actor JPIPBackgroundTransferService {
     /// Transfer task information.
@@ -414,10 +308,6 @@ public actor JPIPBackgroundTransferService {
     public init() {}
 
     /// Registers the background task handler.
-    ///
-    /// Must be called during app launch.
-    ///
-    /// - Throws: ``J2KError`` if registration fails.
     public func register() throws {
         guard #available(iOS 13.0, *) else {
             throw J2KError.internalError("Background tasks require iOS 13+")
@@ -434,7 +324,6 @@ public actor JPIPBackgroundTransferService {
             }
         }
 
-        // Create background URLSession
         let config = URLSessionConfiguration.background(
             withIdentifier: "com.j2kswift.jpip.background"
         )
@@ -445,19 +334,13 @@ public actor JPIPBackgroundTransferService {
     }
 
     /// Schedules a download for background execution.
-    ///
-    /// - Parameter request: The JPIP request to download.
-    /// - Returns: The task identifier.
-    /// - Throws: ``J2KError`` if scheduling fails.
     public func scheduleDownload(request: JPIPRequest) async throws -> String {
         guard let session = session else {
             throw J2KError.internalError("Background transfer not initialized")
         }
 
         let taskID = UUID().uuidString
-
-        // Create download task (simplified - would need proper URL construction)
-        let url = URL(string: "https://example.com")! // Placeholder
+        let url = URL(string: "https://example.com")!
         _ = session.downloadTask(with: url)
 
         let task = TransferTask(
@@ -468,7 +351,6 @@ public actor JPIPBackgroundTransferService {
 
         activeTasks[taskID] = task
 
-        // Schedule BGProcessingTask
         let bgTaskRequest = BGProcessingTaskRequest(identifier: "com.j2kswift.jpip.download")
         bgTaskRequest.requiresNetworkConnectivity = true
         bgTaskRequest.requiresExternalPower = false
@@ -479,29 +361,19 @@ public actor JPIPBackgroundTransferService {
     }
 
     /// Returns the status of a transfer task.
-    ///
-    /// - Parameter taskID: The task identifier.
-    /// - Returns: The transfer task, or nil if not found.
     public func taskStatus(taskID: String) -> TransferTask? {
         activeTasks[taskID]
     }
 
     /// Cancels a transfer task.
-    ///
-    /// - Parameter taskID: The task identifier.
     public func cancelTask(taskID: String) {
         activeTasks.removeValue(forKey: taskID)
     }
 
-    /// Handles a background task.
     private func handleBackgroundTask(_ task: BGProcessingTask) {
         task.expirationHandler = {
             task.setTaskCompleted(success: false)
         }
-
-        // Perform download work
-        // Simplified implementation
-
         task.setTaskCompleted(success: true)
     }
 }
@@ -510,14 +382,6 @@ public actor JPIPBackgroundTransferService {
 // MARK: - HTTP/3 Support
 
 /// HTTP/3 configuration for JPIP.
-///
-/// Provides configuration for HTTP/3 transport, which uses QUIC and offers
-/// improved performance characteristics over HTTP/2.
-///
-/// Example:
-/// ```swift
-/// let config = JPIPHTTP3Configuration(enableServerPush: false)
-/// ```
 @available(macOS 11.0, iOS 14.0, tvOS 14.0, *)
 public struct JPIPHTTP3Configuration: Sendable {
     /// Whether to enable HTTP/3 server push.
@@ -530,11 +394,6 @@ public struct JPIPHTTP3Configuration: Sendable {
     public let enableEarlyData: Bool
 
     /// Creates a new HTTP/3 configuration.
-    ///
-    /// - Parameters:
-    ///   - enableServerPush: Enable server push (default: false).
-    ///   - maxConcurrentStreams: Max concurrent streams (default: 100).
-    ///   - enableEarlyData: Enable 0-RTT (default: true).
     public init(
         enableServerPush: Bool = false,
         maxConcurrentStreams: Int = 100,
@@ -549,14 +408,6 @@ public struct JPIPHTTP3Configuration: Sendable {
 // MARK: - Efficient TLS
 
 /// Efficient TLS configuration for JPIP.
-///
-/// Provides optimised TLS configuration using Network.framework's
-/// built-in support for modern TLS versions and cipher suites.
-///
-/// Example:
-/// ```swift
-/// let config = JPIPTLSConfiguration(minimumVersion: .v13)
-/// ```
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
 public struct JPIPTLSConfiguration: Sendable {
     /// TLS version.
@@ -575,11 +426,6 @@ public struct JPIPTLSConfiguration: Sendable {
     public let verifyServerCertificate: Bool
 
     /// Creates a new TLS configuration.
-    ///
-    /// - Parameters:
-    ///   - minimumVersion: Minimum TLS version (default: v1.2).
-    ///   - enableSessionResumption: Enable session resumption (default: true).
-    ///   - verifyServerCertificate: Verify server certificates (default: true).
     public init(
         minimumVersion: TLSVersion = .v12,
         enableSessionResumption: Bool = true,

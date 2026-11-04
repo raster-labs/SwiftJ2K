@@ -135,7 +135,8 @@ public actor JP3DProgressiveDecoder {
         _ data: Data,
         onProgress: @Sendable (JP3DProgressiveResult) async -> Bool
     ) async throws {
-        let steps = 3
+        let codestream = try JP3DCodestreamParser().parse(data)
+        let steps = max(1, codestream.cod.numLayers)
         for step in 0..<steps {
             guard !cancelled else { return }
 
@@ -214,10 +215,10 @@ public actor JP3DProgressiveDecoder {
         let w = siz.width
         let h = siz.height
         let d = z1 - z0
-        let bytesPerSample = (siz.bitDepth + 7) / 8
         var components: [J2KVolumeComponent] = []
 
         for comp in volume.components {
+            let bytesPerSample = (comp.bitDepth + 7) / 8
             let sliceBytes = w * h * bytesPerSample
             var outData = Data(count: d * sliceBytes)
             for z in 0..<d {

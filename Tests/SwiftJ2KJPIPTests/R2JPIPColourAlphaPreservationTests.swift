@@ -7,6 +7,8 @@ import Testing
 struct R2JPIPColourAlphaPreservationTests {
     @Test("F07: JPIP preserves permuted premultiplied roles and native sYCC through both coding preferences")
     func nativeColourAndPermutedOpacityDelivery() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("r2-colour-view-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }

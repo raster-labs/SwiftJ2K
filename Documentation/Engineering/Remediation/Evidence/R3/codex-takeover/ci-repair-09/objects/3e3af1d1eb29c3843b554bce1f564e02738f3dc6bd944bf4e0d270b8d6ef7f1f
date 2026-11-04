@@ -1,0 +1,75 @@
+{
+  "state": "SCOPED_CLI16_NATIVE_VERIFIED",
+  "recorded_at": "2026-10-31T11:20:54.049401+00:00",
+  "source_candidate": "candidate-snapshot-16",
+  "binary_sha256": "27d601f7fedb0fdeebf45ff605521ac4be4322d673add2ba0bb095c54e0a7266",
+  "runs": [
+    {
+      "label": "candidate-release-build-16",
+      "result_sha256": "e8002389da976aa05edcddc8a76af604e34f4aabd9c5e3e48c5572424ddcfac5",
+      "source_inputs": 2281,
+      "elapsed_seconds": 105.027026667
+    },
+    {
+      "label": "candidate-cli-16",
+      "result_sha256": "a308a6f78fc390baee4a1b33db4c53b3082eb7d4677dd7e1d9e49be9a5b4fd51",
+      "source_inputs": 2281,
+      "elapsed_seconds": 4.739821624999999
+    },
+    {
+      "label": "candidate-cli-startup-16",
+      "result_sha256": "705ea51bc877b265755f84b08e56d892c3f5bb753e266836bb9456f04d8e10ab",
+      "source_inputs": 2281,
+      "elapsed_seconds": 0.186806416
+    }
+  ],
+  "existing_process_checks": 246,
+  "startup_cases": [
+    {
+      "mode": "text",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "pid": 55149,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006577832999999998,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    },
+    {
+      "mode": "json",
+      "command": [
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-build-16/arm64-apple-macosx/release/swiftj2k-cli",
+        "jpip",
+        "server",
+        "--single-file",
+        "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-16/Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0",
+        "--json"
+      ],
+      "pid": 55150,
+      "startup_observed_while_alive": true,
+      "ready_seconds": 0.006740916999999999,
+      "returncode": 130,
+      "process_joined": true,
+      "forced_kill": false,
+      "failure": null
+    }
+  ],
+  "source_review": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-cli-portability-16/report.txt",
+  "scope": "CLI16 only. Native15 ordinary/sanitizers remain15 source-scoped; hosted15 failed and newhostedhead required. Root authoredstartup probe and executedchecks; productionrepair independentlysource-reviewed.",
+  "whole_r3": "NOT_ACCEPTED"
+}

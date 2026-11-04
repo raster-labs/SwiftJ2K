@@ -1,0 +1,72 @@
+--- runtime-coverage-14/audit-final.py
++++ runtime-coverage-15/audit-final.py
+@@ -8,6 +8,7 @@
+ import json
+ import re
+ import xml.etree.ElementTree as ET
++import difflib
+ 
+ 
+ def require(ok, message):
+@@ -97,6 +98,48 @@
+         return True
+     # Non-Swift test files are conservatively treated as fixtures/resources.
+     return parts[0] == 'Tests' and not path.endswith('.swift')
++
++
++def verify_authorised_websocket_fixture(source, manifest, historical_manifest, work, record):
++    """Recognise only the independently reviewed14-to15 fixture repair.
++
++    This replaces an obsolete historical byte-preservation assertion. It does
++    not relax final-source equality across ordinary and sanitizer executions.
++    Both source hashes, the exact diff and normalised recovery are mandatory;
++    any future or tampered fixture requires a new independently reviewed rule.
++    """
++    relative = 'Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift'
++    before_hash = '28c4093ba4c2a5a0b486d673c848a102862685f2cd3380ef4328f58308e2dcdd'
++    after_hash = '674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386'
++    diff_hash = 'b3218f7d2c1a1c6db5a7f9d0a29424c06f9d8aa740877e39d7428fc301f04434'
++    old_path = work / 'candidate-snapshot-14' / relative
++    new_path = source / relative
++    patch_path = work / 'websocket-peer-lifetime-15/delta-from14.patch'
++    require(historical_manifest[relative] == before_hash and manifest[relative] == after_hash,
++            'Unreviewed WebSocket fixture source identity')
++    require(record(old_path) == before_hash and record(new_path) == after_hash and
++            record(patch_path) == diff_hash, 'Pinned WebSocket fixture bytes/diff changed')
++    old_text, new_text = old_path.read_text(), new_path.read_text()
++    actual_diff = ''.join(difflib.unified_diff(old_text.splitlines(keepends=True),
++        new_text.splitlines(keepends=True), fromfile='frozen14/' + relative, tofile='fixture15/' + relative))
++    require(actual_diff == patch_path.read_text(), 'WebSocket fixture diff does not describe inspected bytes')
++    normalised, labels = re.subn(r'eventually\("(?:[^"\\]|\\.)*"\)', 'eventually', new_text)
++    require(labels == 10, 'Unexpected WebSocket phase-label count')
++    replacements = {
++        'private func eventually(_ phase: String, _ condition:': 'private func eventually(_ condition:',
++        'throw LifecycleTestError.barrierTimedOut(phase: phase)': 'throw LifecycleTestError.barrierTimedOut',
++        'case barrierTimedOut(phase: String)': 'case barrierTimedOut',
++        '                // This timeout belongs to accepted sockets, not listener polling.\n'
++        '                // Explicit shutdown and worker completion govern the held peer lifetime.\n': '',
++        'peer.listener.acceptConnection(timeoutSeconds: 0)': 'peer.listener.acceptConnection(timeoutSeconds: 1)'
++    }
++    for old, new in replacements.items():
++        require(normalised.count(old) == 1, 'Unexpected authorised fixture edit shape')
++        normalised = normalised.replace(old, new)
++    require(normalised == old_text, 'Changes exceed the authorised fixture lifetime/phase-label repair')
++    return {'path': relative, 'candidate14_sha256': before_hash, 'candidate15_sha256': after_hash,
++            'exact_diff_sha256': diff_hash, 'phase_labels': labels, 'normalised_recovery_verified': True,
++            'scope': 'Accepted-socket idle expiry1-to0 and diagnostic phase labels only; request/barrier limits unchanged.'}
+ 
+ 
+ def main():
+@@ -341,9 +384,11 @@
+     m04 = read(m04_path)
+     record(m04_path)
+     preserved = ['Tests/SwiftJ2KJPIPTests/' + name for name in
+-                 ['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift', 'CodexR3WebSocketLifecycleTests.swift']]
++                 ['CodexR3IndependentTests.swift', 'CodexR3WebSocketBudgetTests.swift']]
+     require(all(m04[p] == manifest[p] for p in preserved), 'Previously repaired assertions were changed')
+     receipt['unchanged_tests_from_failed_04'] = {p: manifest[p] for p in preserved}
++    receipt['authorised_websocket_fixture_delta_15'] = verify_authorised_websocket_fixture(
++        source, manifest, m04, work, record)
+     after = source_map(source)
+     require(before == after and cli_before == source_map(cli_source), 'Frozen source changed during audit')
+     for path, digest in receipt['files'].items():

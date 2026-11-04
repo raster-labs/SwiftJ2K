@@ -1,0 +1,217 @@
+{
+  "state": "PURE_SYNTHETIC_SELFTEST_ONLY",
+  "checks": [
+    {
+      "name": "exact roundtrip: empty/control/Unicode/multiple chunks/all 32 paths",
+      "result": "passed"
+    },
+    {
+      "name": "missing begin",
+      "result": "rejected as required",
+      "reason": "Require exactly one begin record"
+    },
+    {
+      "name": "duplicate begin",
+      "result": "rejected as required",
+      "reason": "Require exactly one begin record"
+    },
+    {
+      "name": "missing end/truncated log",
+      "result": "rejected as required",
+      "reason": "Require exactly one end record"
+    },
+    {
+      "name": "duplicate end/combined attempts",
+      "result": "rejected as required",
+      "reason": "Require exactly one end record"
+    },
+    {
+      "name": "run attempt mismatch",
+      "result": "rejected as required",
+      "reason": "Run/repository/attempt/ref/PR/step identity mismatch"
+    },
+    {
+      "name": "PR head mismatch",
+      "result": "rejected as required",
+      "reason": "Run/repository/attempt/ref/PR/step identity mismatch"
+    },
+    {
+      "name": "merge tree mismatch",
+      "result": "rejected as required",
+      "reason": "Tested checkout head/tree mismatch"
+    },
+    {
+      "name": "step outcome mismatch",
+      "result": "rejected as required",
+      "reason": "Run/repository/attempt/ref/PR/step identity mismatch"
+    },
+    {
+      "name": "tracked tree dirty",
+      "result": "rejected as required",
+      "reason": "Tracked checkout drift was recorded"
+    },
+    {
+      "name": "path traversal",
+      "result": "rejected as required",
+      "reason": "Path outside fixed allowlist: '../outside'"
+    },
+    {
+      "name": "absolute path",
+      "result": "rejected as required",
+      "reason": "Path outside fixed allowlist: '/tmp/outside'"
+    },
+    {
+      "name": "unknown allowlist path",
+      "result": "rejected as required",
+      "reason": "Path outside fixed allowlist: 'address/secret.txt'"
+    },
+    {
+      "name": "duplicate file",
+      "result": "rejected as required",
+      "reason": "Missing/interleaved chunk: address/all.ids/0"
+    },
+    {
+      "name": "missing path record",
+      "result": "rejected as required",
+      "reason": "Duplicate, missing or unordered path record: expected ordinary/full.xml, got thread/all.ids"
+    },
+    {
+      "name": "duplicate chunk",
+      "result": "rejected as required",
+      "reason": "Unexpected record 'chunk' before address/complement-swift-testing.xml; file/identity errors are not recoverable evidence"
+    },
+    {
+      "name": "unordered chunk index",
+      "result": "rejected as required",
+      "reason": "Duplicate, missing, unordered or misbound chunk: address/reference.stdout/0"
+    },
+    {
+      "name": "wrong chunk owner",
+      "result": "rejected as required",
+      "reason": "Duplicate, missing, unordered or misbound chunk: address/all.ids/0"
+    },
+    {
+      "name": "missing chunk",
+      "result": "rejected as required",
+      "reason": "Missing/interleaved chunk: address/all.ids/0"
+    },
+    {
+      "name": "masked content",
+      "result": "rejected as required",
+      "reason": "Exact bytes/SHA mismatch (truncation, masking or modification): address/all.ids"
+    },
+    {
+      "name": "masked file hash",
+      "result": "rejected as required",
+      "reason": "Invalid/masked hash: address/all.ids"
+    },
+    {
+      "name": "wrong UTF8 byte count",
+      "result": "rejected as required",
+      "reason": "Exact bytes/SHA mismatch (truncation, masking or modification): address/all.ids"
+    },
+    {
+      "name": "lone surrogate/invalid UTF8",
+      "result": "rejected as required",
+      "reason": "'utf-8' codec can't encode character '\\ud800' in position 0: surrogates not allowed"
+    },
+    {
+      "name": "non-final short chunk",
+      "result": "rejected as required",
+      "reason": "Invalid Unicode-character chunk boundary: address/reference.stdout/0"
+    },
+    {
+      "name": "boolean chunk index",
+      "result": "rejected as required",
+      "reason": "Duplicate, missing, unordered or misbound chunk: address/all.ids/0"
+    },
+    {
+      "name": "footer file mismatch",
+      "result": "rejected as required",
+      "reason": "Footer counts differ from recovered data"
+    },
+    {
+      "name": "footer byte mismatch",
+      "result": "rejected as required",
+      "reason": "Footer counts differ from recovered data"
+    },
+    {
+      "name": "retention problem",
+      "result": "rejected as required",
+      "reason": "Emitter recorded retention problems or incomplete evidence"
+    },
+    {
+      "name": "incomplete footer",
+      "result": "rejected as required",
+      "reason": "Emitter recorded retention problems or incomplete evidence"
+    },
+    {
+      "name": "unknown record field",
+      "result": "rejected as required",
+      "reason": "Unexpected/missing end record fields: ['ignored']"
+    },
+    {
+      "name": "declared file ceiling",
+      "result": "rejected as required",
+      "reason": "Invalid file byte count: 8388609"
+    },
+    {
+      "name": "changed emitter ceiling",
+      "result": "rejected as required",
+      "reason": "Emitter byte ceilings differ from reviewed format"
+    },
+    {
+      "name": "missing timestamp",
+      "result": "rejected as required",
+      "reason": "Evidence record lacks runner timestamp at line 3"
+    },
+    {
+      "name": "malformed matching JSON",
+      "result": "rejected as required",
+      "reason": "Malformed evidence JSON at log line 62: Expecting property name enclosed in double quotes: line 1 column 37 (char 36)"
+    },
+    {
+      "name": "duplicate JSON key",
+      "result": "rejected as required",
+      "reason": "Malformed evidence JSON at log line 3: Duplicate JSON key: kind"
+    },
+    {
+      "name": "required inventory missing despite consistent footer",
+      "result": "rejected as required",
+      "reason": "Missing required inventory evidence: ['address/all.ids']"
+    },
+    {
+      "name": "entire invocation XML group missing despite consistent footer",
+      "result": "rejected as required",
+      "reason": "No report retained for invocation: ordinary/full.xml"
+    },
+    {
+      "name": "matching failed step retained without success claim",
+      "result": "passed"
+    },
+    {
+      "name": "fresh work directory exact file-byte writes",
+      "result": "passed"
+    },
+    {
+      "name": "existing output refused",
+      "result": "rejected as required"
+    },
+    {
+      "name": "output boundary /Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work",
+      "result": "rejected as required"
+    },
+    {
+      "name": "output boundary /private/tmp/hosted-evidence-not-authorized-output",
+      "result": "rejected as required"
+    },
+    {
+      "name": "symlinked output ancestor refused",
+      "result": "rejected as required"
+    }
+  ],
+  "count": 43,
+  "reconstructor_sha256": "9c93b12ba20c62ae2560adc2878d426c0c7b1f54e0d92c9a2c64d436a5e6a614",
+  "selftest_sha256": "b2a571134f28602865330de90c95a5d3dbdfad36fb45557af740ab74401afde8",
+  "boundary": "No actual hosted log, GitHub metadata, Swift/native runner or repository was accessed. Synthetic temporary outputs were removed. This does not qualify hosted evidence."
+}

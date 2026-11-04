@@ -1,0 +1,3341 @@
+{
+  "rows": [
+    {
+      "ns": 883299979562083,
+      "owner": "72B5FDC3-B90D-4ADC-8827-C4FBFC1F3486",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883299981140083,
+      "owner": "72B5FDC3-B90D-4ADC-8827-C4FBFC1F3486",
+      "event": "read-entry host=a17a6791-71fe-4b0f-ab05-a10965f47882.invalid remaining=Optional(1.999769917 seconds)"
+    },
+    {
+      "ns": 883299981147583,
+      "owner": "72B5FDC3-B90D-4ADC-8827-C4FBFC1F3486",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883299981148083,
+      "owner": "72B5FDC3-B90D-4ADC-8827-C4FBFC1F3486",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883299981308041,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "read-entry host=cb070747-73a8-48aa-8afe-d4cf18554cbd.invalid remaining=Optional(1.999995125 seconds)"
+    },
+    {
+      "ns": 883299981308708,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883299981325541,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883299981327500,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883299981327666,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883299981345958,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883299981559000,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883299981568166,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883299981626875,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "session-created"
+    },
+    {
+      "ns": 883299981631416,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883299981832833,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "read-entry host=a2509ff6-063a-4599-9dd5-c847102c7955.invalid remaining=Optional(1.999996834 seconds)"
+    },
+    {
+      "ns": 883299981833416,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883299981838625,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883299981839583,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883299981839666,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883299981845625,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883299981847833,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883299981851916,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883299981865375,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "session-created"
+    },
+    {
+      "ns": 883299981866166,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883299981918708,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-published"
+    },
+    {
+      "ns": 883299982344625,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883299982351625,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883299983495875,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+    },
+    {
+      "ns": 883299983499041,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883299983507833,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883299983510250,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "body-first-entry"
+    },
+    {
+      "ns": 883299983511583,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-completion-entry nil"
+    },
+    {
+      "ns": 883299983511833,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883299983513250,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883299983513333,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883299983513958,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883299995365166,
+      "owner": "1030B022-E8C9-49C5-9580-AE9DEFBA4E94",
+      "event": "protocol-queue-start host=81a4f700-8f95-4245-b01c-987174ff1404.invalid"
+    },
+    {
+      "ns": 883299984458625,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "read-entry host=81a4f700-8f95-4245-b01c-987174ff1404.invalid remaining=Optional(0.11998425 seconds)"
+    },
+    {
+      "ns": 883299984460458,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883299984475333,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883299984477708,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883299984478000,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883299984491250,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883299984496958,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883299984501000,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883299984541375,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "session-created"
+    },
+    {
+      "ns": 883299984542833,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883299984587208,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "task-published"
+    },
+    {
+      "ns": 883299984587458,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883299984587541,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883299989575500,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883299995310791,
+      "owner": "819147CA-55CB-4828-886E-BFB018BF3BD4",
+      "event": "protocol-startLoading-entry host=81a4f700-8f95-4245-b01c-987174ff1404.invalid"
+    },
+    {
+      "ns": 883299998153875,
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "event": "read-entry host=e5616017-3a8a-4088-a667-526ab73524eb.invalid remaining=Optional(-0.00101 seconds)"
+    },
+    {
+      "ns": 883299998155250,
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883299998189250,
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "event": "deadline-preflight-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883299998194125,
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883299998194375,
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883300006414083,
+      "owner": "completedRequestEventuallyReleasesItsDelegateOwnership()",
+      "event": "test-entry"
+    },
+    {
+      "ns": 883300006575375,
+      "owner": "sharedWatchdogInterruptsAnAlreadyActiveTrickle()",
+      "event": "test-entry"
+    },
+    {
+      "ns": 883300006858541,
+      "owner": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "event": "test-entry"
+    },
+    {
+      "ns": 883300007108041,
+      "owner": "completionAndCancellationHaveOneWinner(cancelFirst:)",
+      "event": "test-entry"
+    },
+    {
+      "ns": 883300033058291,
+      "owner": "sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel()",
+      "event": "test-entry"
+    },
+    {
+      "ns": 883300033169291,
+      "owner": "f716d5e1-1f20-44be-b859-01371609407d.invalid",
+      "event": "success-caller-before-send"
+    },
+    {
+      "ns": 883300491128500,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300491130750,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883301984491458,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883301984527416,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883301801468958,
+      "owner": "3D052611-CE4E-486F-BC5B-4087B7FC3A71",
+      "event": "protocol-queue-start host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid"
+    },
+    {
+      "ns": 883301801520875,
+      "owner": "3D052611-CE4E-486F-BC5B-4087B7FC3A71",
+      "event": "protocol-submitted-chunks=1 host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid"
+    },
+    {
+      "ns": 883300491139208,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300491139958,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883301984530333,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883301984541416,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300110625666,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883300110663791,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300491143291,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300491144375,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883300005832166,
+      "owner": "4A9D6AB0-8086-4761-9663-CBBC82E04490",
+      "event": "protocol-queue-start host=31cf8c89-8797-4491-b488-294ad9469f40.invalid"
+    },
+    {
+      "ns": 883300005400958,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "read-entry host=31cf8c89-8797-4491-b488-294ad9469f40.invalid remaining=Optional(1.999990167 seconds)"
+    },
+    {
+      "ns": 883300005402333,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300005422750,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300005425083,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300005425458,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300005436958,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300005445375,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300005451583,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300005481500,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300005482958,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300005531083,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300005531375,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300005531458,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300005575416,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300510627541,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300510629333,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302007356458,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302007388250,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300005992583,
+      "owner": "3DE8441B-83E7-4FC3-BB63-DD61E0E85013",
+      "event": "protocol-queue-start host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid"
+    },
+    {
+      "ns": 883300006036291,
+      "owner": "3DE8441B-83E7-4FC3-BB63-DD61E0E85013",
+      "event": "protocol-submitted-chunks=1 host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid"
+    },
+    {
+      "ns": 883300005677833,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "read-entry host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid remaining=Optional(1.999983875 seconds)"
+    },
+    {
+      "ns": 883300005678916,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300005688833,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300005690791,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300005691000,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300005698958,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300005716916,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300005722458,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300005749625,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300005756583,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300005799583,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300005800166,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300005800291,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300005817041,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300510638625,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300510639250,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302007397833,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302007409375,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300005809916,
+      "owner": "D44B046D-67DC-43EE-B694-1518A9F1DE3C",
+      "event": "protocol-startLoading-entry host=31cf8c89-8797-4491-b488-294ad9469f40.invalid"
+    },
+    {
+      "ns": 883300005859500,
+      "owner": "D44B046D-67DC-43EE-B694-1518A9F1DE3C",
+      "event": "protocol-response-submit host=31cf8c89-8797-4491-b488-294ad9469f40.invalid"
+    },
+    {
+      "ns": 883300005969708,
+      "owner": "ACED0050-E45A-4670-890F-D2C3879DDF5F",
+      "event": "protocol-startLoading-entry host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid"
+    },
+    {
+      "ns": 883300006004541,
+      "owner": "ACED0050-E45A-4670-890F-D2C3879DDF5F",
+      "event": "protocol-response-submit host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid"
+    },
+    {
+      "ns": 883300006721375,
+      "owner": "4392A1F8-78B3-4723-B084-6E6C78C46E22",
+      "event": "protocol-queue-start host=2f02c401-2955-4be8-85be-0d048109b96a.invalid"
+    },
+    {
+      "ns": 883300006751750,
+      "owner": "4392A1F8-78B3-4723-B084-6E6C78C46E22",
+      "event": "protocol-submitted-chunks=1 host=2f02c401-2955-4be8-85be-0d048109b96a.invalid"
+    },
+    {
+      "ns": 883300006444416,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "deinit-helper-before-read"
+    },
+    {
+      "ns": 883300006460666,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "read-entry host=2f02c401-2955-4be8-85be-0d048109b96a.invalid remaining=Optional(1.999994 seconds)"
+    },
+    {
+      "ns": 883300006461875,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300006476166,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300006477541,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300006478125,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300006484416,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300006487875,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300006493083,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300006513000,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300006513541,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300006529750,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300006529958,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300006530041,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300006547958,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300510641541,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300510642083,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302007414875,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302007424750,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883301802512458,
+      "owner": "98608AC2-0490-4205-9277-B6F341485216",
+      "event": "protocol-queue-start host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid"
+    },
+    {
+      "ns": 883301802564791,
+      "owner": "98608AC2-0490-4205-9277-B6F341485216",
+      "event": "protocol-submitted-chunks=1 host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid"
+    },
+    {
+      "ns": 883300006596041,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "trickle-caller-task-creation host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid"
+    },
+    {
+      "ns": 883300006599666,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "trickle-readiness-clock-start"
+    },
+    {
+      "ns": 883301802140958,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "trickle-request-task-entered"
+    },
+    {
+      "ns": 883301802151166,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "read-entry host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid remaining=nil"
+    },
+    {
+      "ns": 883301802151916,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883301802152500,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883301802153541,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883301802153625,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883301802158875,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883301802162750,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883301802169666,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883301802200291,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "session-created"
+    },
+    {
+      "ns": 883301802200958,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883301802219458,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "task-published"
+    },
+    {
+      "ns": 883301802219666,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883301802219750,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883301802235000,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300006697750,
+      "owner": "4D1D5889-E6B4-49CA-97B3-B38E5A98E5D8",
+      "event": "protocol-startLoading-entry host=2f02c401-2955-4be8-85be-0d048109b96a.invalid"
+    },
+    {
+      "ns": 883300006731916,
+      "owner": "4D1D5889-E6B4-49CA-97B3-B38E5A98E5D8",
+      "event": "protocol-response-submit host=2f02c401-2955-4be8-85be-0d048109b96a.invalid"
+    },
+    {
+      "ns": 883301802546291,
+      "owner": "909EC6E1-C436-47FE-8990-D32F1617BF82",
+      "event": "protocol-queue-start host=def90387-d90c-4331-9af0-3240225c492b.invalid"
+    },
+    {
+      "ns": 883301802249625,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "read-entry host=def90387-d90c-4331-9af0-3240225c492b.invalid remaining=Optional(1.999996208 seconds)"
+    },
+    {
+      "ns": 883301802250250,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883301802256041,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883301802256916,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883301802257000,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883301802260500,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883301802262041,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883301802266208,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883301802280833,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "session-created"
+    },
+    {
+      "ns": 883301802281541,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883301802289166,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "task-published"
+    },
+    {
+      "ns": 883301802289291,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883301802289375,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883301802301125,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883301969694833,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883300006904000,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "scripted-caller-before-read cancelFirst=false"
+    },
+    {
+      "ns": 883300006915708,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "read-entry host=3c89cce1-0876-4646-8174-a96d5043b410.invalid remaining=Optional(1.999995041 seconds)"
+    },
+    {
+      "ns": 883300006916666,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300006925708,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300006927000,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300006927500,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300006933625,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300006936125,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300006941541,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300006962208,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300006962708,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300006981833,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300006983041,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883300006997208,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "response-callback-disposition allow=true"
+    },
+    {
+      "ns": 883300007000041,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "body-first-entry"
+    },
+    {
+      "ns": 883300007009041,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-completion-entry nil"
+    },
+    {
+      "ns": 883300007027333,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883300007069166,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+    },
+    {
+      "ns": 883300007071125,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300007072083,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300007072333,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300510643958,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300510644666,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302007431000,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302007440500,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300007138625,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "scripted-caller-before-read cancelFirst=true"
+    },
+    {
+      "ns": 883300007148625,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "read-entry host=160d5024-a3b7-411c-8e02-938eb70258c2.invalid remaining=Optional(1.99999575 seconds)"
+    },
+    {
+      "ns": 883300007149500,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300007158083,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300007159375,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300007159833,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300007164291,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300007166291,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300007171208,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300007199250,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300007199666,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300007209708,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300007216416,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883300007220750,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883300007221416,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883300007223333,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "body-first-entry"
+    },
+    {
+      "ns": 883300007225000,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-completion-entry nil"
+    },
+    {
+      "ns": 883300007229208,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883300007247583,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+    },
+    {
+      "ns": 883300007249708,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300007249791,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300007249916,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300510646333,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300510646833,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302007442583,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302007450666,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883301802576666,
+      "owner": "74D2129B-9323-4C8E-99EE-83D6C7187127",
+      "event": "protocol-queue-start host=1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid"
+    },
+    {
+      "ns": 883300034193708,
+      "owner": "DE7FA5AC-4F05-4710-8CE4-D31D0A58F1E1",
+      "event": "protocol-queue-start host=f716d5e1-1f20-44be-b859-01371609407d.invalid"
+    },
+    {
+      "ns": 883300034241833,
+      "owner": "DE7FA5AC-4F05-4710-8CE4-D31D0A58F1E1",
+      "event": "protocol-submitted-chunks=1 host=f716d5e1-1f20-44be-b859-01371609407d.invalid"
+    },
+    {
+      "ns": 883300033781458,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "transport-before-read"
+    },
+    {
+      "ns": 883300033815708,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "read-entry host=f716d5e1-1f20-44be-b859-01371609407d.invalid remaining=Optional(1.999362208 seconds)"
+    },
+    {
+      "ns": 883300033816958,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883300033830166,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883300033832333,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883300033833208,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883300033841208,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883300033846708,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883300033855416,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883300033879000,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "session-created"
+    },
+    {
+      "ns": 883300033879666,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883300033909833,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "task-published"
+    },
+    {
+      "ns": 883300033910000,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883300033910083,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883300033930708,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883300534497083,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883300534498625,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883302034487125,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883302034523083,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883300034166500,
+      "owner": "A38A10DC-4C62-4F30-977F-B09AD37D6191",
+      "event": "protocol-startLoading-entry host=f716d5e1-1f20-44be-b859-01371609407d.invalid"
+    },
+    {
+      "ns": 883300034228916,
+      "owner": "A38A10DC-4C62-4F30-977F-B09AD37D6191",
+      "event": "protocol-response-submit host=f716d5e1-1f20-44be-b859-01371609407d.invalid"
+    },
+    {
+      "ns": 883301801014958,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "transport-before-read"
+    },
+    {
+      "ns": 883301801062291,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "read-entry host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid remaining=Optional(1.999792291 seconds)"
+    },
+    {
+      "ns": 883301801063875,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883301801101708,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883301801104000,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883301801104833,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883301801117000,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883301801125041,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883301801133208,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883301801175750,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "session-created"
+    },
+    {
+      "ns": 883301801176500,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883301801209708,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "task-published"
+    },
+    {
+      "ns": 883301801209916,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883301801210000,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883301801239458,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883301801447125,
+      "owner": "4450BE43-330D-498D-8E66-CCB0189CC10F",
+      "event": "protocol-startLoading-entry host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid"
+    },
+    {
+      "ns": 883301801497875,
+      "owner": "4450BE43-330D-498D-8E66-CCB0189CC10F",
+      "event": "protocol-response-submit host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid"
+    },
+    {
+      "ns": 883301969184375,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883301969231791,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883302045172291,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "transport-before-read"
+    },
+    {
+      "ns": 883302045219083,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "read-entry host=17a673c2-5e34-494c-bb1c-3a28a412bc3d.invalid remaining=Optional(1.756669625 seconds)"
+    },
+    {
+      "ns": 883302045224250,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883302045225250,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883301802354208,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "transport-before-read"
+    },
+    {
+      "ns": 883301802364125,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "read-entry host=1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid remaining=Optional(1.999941125 seconds)"
+    },
+    {
+      "ns": 883301802364708,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883301802370125,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883301802370708,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883301802371166,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883301802373583,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883301802374875,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883301802378750,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883301802389208,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "session-created"
+    },
+    {
+      "ns": 883301802389416,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883301802399666,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "task-published"
+    },
+    {
+      "ns": 883301802401916,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883301802402000,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883301802412208,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883302045250375,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883301802490708,
+      "owner": "54400C02-5F46-42BA-A611-108EB64A21D6",
+      "event": "protocol-startLoading-entry host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid"
+    },
+    {
+      "ns": 883301802532208,
+      "owner": "54400C02-5F46-42BA-A611-108EB64A21D6",
+      "event": "protocol-response-submit host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid"
+    },
+    {
+      "ns": 883301802524833,
+      "owner": "B15ACDA6-007B-40A5-969B-17620F06EB85",
+      "event": "protocol-startLoading-entry host=def90387-d90c-4331-9af0-3240225c492b.invalid"
+    },
+    {
+      "ns": 883301802558000,
+      "owner": "F09B0F78-8186-44D5-A0FB-EC147104A83C",
+      "event": "protocol-startLoading-entry host=1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid"
+    },
+    {
+      "ns": 883302046698125,
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "event": "transport-original-error CancellationError()"
+    },
+    {
+      "ns": 883302045274208,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883304353828083,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353858750,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304353861250,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304353837208,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353867208,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304353880875,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304353915166,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304353916208,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304353840041,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353844500,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353874916,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304353876583,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304353893458,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304353846166,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353886208,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304353887000,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304353901083,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304353847208,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353890250,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304353890750,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304353900416,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883302143831416,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "trickle-readiness-expired submitted=35 received=0"
+    },
+    {
+      "ns": 883302143850375,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883302310642166,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883302310643791,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883304353854333,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883302310646125,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883302310646916,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883303802466583,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883303802478458,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883304353855541,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353848291,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353849166,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304353850916,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883302310629666,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883302310632458,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883303802404791,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883303802454000,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883304353852291,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883302310649125,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-delayed-timer-fired"
+    },
+    {
+      "ns": 883302310649916,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-delayed-enqueue"
+    },
+    {
+      "ns": 883303802481708,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "watchdog-fired"
+    },
+    {
+      "ns": 883303802491000,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "cancel-entry CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883304353856916,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304354093333,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354110375,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a2509ff6-063a-4599-9dd5-c847102c7955.invalid/jpip, NSErrorFailingURLKey=https://a2509ff6-063a-4599-9dd5-c847102c7955.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304353977500,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://81a4f700-8f95-4245-b01c-987174ff1404.invalid/jpip, NSErrorFailingURLKey=https://81a4f700-8f95-4245-b01c-987174ff1404.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304353993583,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354028583,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354053000,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354060333,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354181416,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304354191208,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304354192166,
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304354166208,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://31cf8c89-8797-4491-b488-294ad9469f40.invalid/jpip, NSErrorFailingURLKey=https://31cf8c89-8797-4491-b488-294ad9469f40.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354182208,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid/jpip, NSErrorFailingURLKey=https://b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354150666,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://2f02c401-2955-4be8-85be-0d048109b96a.invalid/jpip, NSErrorFailingURLKey=https://2f02c401-2955-4be8-85be-0d048109b96a.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354031458,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304354032125,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304354051625,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354047083,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://def90387-d90c-4331-9af0-3240225c492b.invalid/jpip, NSErrorFailingURLKey=https://def90387-d90c-4331-9af0-3240225c492b.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354055625,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354203041,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304353972250,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://3c89cce1-0876-4646-8174-a96d5043b410.invalid/jpip, NSErrorFailingURLKey=https://3c89cce1-0876-4646-8174-a96d5043b410.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354121666,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354134583,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354013500,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://160d5024-a3b7-411c-8e02-938eb70258c2.invalid/jpip, NSErrorFailingURLKey=https://160d5024-a3b7-411c-8e02-938eb70258c2.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354188583,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354197416,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354022000,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304354022625,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304354047708,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354027500,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304354028083,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "response-callback-disposition allow=false"
+    },
+    {
+      "ns": 883304354053375,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354064458,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid/jpip?target=silent, NSErrorFailingURLKey=https://1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid/jpip?target=silent, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354089750,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354244541,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354526291,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304354536250,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304354537416,
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304354259500,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354393541,
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354304416,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354314041,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354472583,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354333708,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354341208,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354474958,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354294500,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354301166,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354461208,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354225875,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid/jpip, NSErrorFailingURLKey=https://2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354359083,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354366750,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354477125,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354213625,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354440666,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354297500,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354401916,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354324375,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-delayed-execute"
+    },
+    {
+      "ns": 883304354431708,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354240250,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://f716d5e1-1f20-44be-b859-01371609407d.invalid/jpip?target=a%20b.j2k, NSErrorFailingURLKey=https://f716d5e1-1f20-44be-b859-01371609407d.invalid/jpip?target=a%20b.j2k, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354369458,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354376416,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354479083,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354272083,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=old, NSErrorFailingURLKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=old, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304354414291,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354419625,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354481083,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354250125,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304354256041,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304354457666,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304354727500,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304354737666,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304354739083,
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304354589000,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304354590625,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "result-taken"
+    },
+    {
+      "ns": 883304354591250,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "deadline-final-check"
+    },
+    {
+      "ns": 883304354608583,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304354609458,
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355212916,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355223375,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355224500,
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355280791,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355285708,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355286625,
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355274833,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355283791,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355285125,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355329666,
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "event": "transport-original-error CancellationError()"
+    },
+    {
+      "ns": 883304355364666,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355372958,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355374083,
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355537291,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355545708,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355546750,
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355606250,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355611666,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355612875,
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355641125,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355648458,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355649458,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355691041,
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "event": "transport-original-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883304355868208,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304355875666,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304355876791,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304355916000,
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "event": "transport-original-error CodecError(category: SwiftJ2K.CodecError.Category.resourceLimitExceeded, message: \"JPIP HTTPS operation deadline elapsed.\")"
+    },
+    {
+      "ns": 883304356771625,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "read-entry host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid remaining=Optional(1.999990333 seconds)"
+    },
+    {
+      "ns": 883304356773041,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883304356786708,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883304356789416,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883304356789583,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883304356799541,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883304356804791,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883304356816541,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883304356853375,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "session-created"
+    },
+    {
+      "ns": 883304356854750,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883304356877000,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "task-published"
+    },
+    {
+      "ns": 883304356877250,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883304356877333,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883304356909041,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883304357201041,
+      "owner": "493BF169-29B7-4601-ABBD-D15320A21E2C",
+      "event": "protocol-queue-start host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid"
+    },
+    {
+      "ns": 883304357225666,
+      "owner": "493BF169-29B7-4601-ABBD-D15320A21E2C",
+      "event": "protocol-submitted-chunks=1 host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid"
+    },
+    {
+      "ns": 883304357275000,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304357280083,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "response-callback-entry"
+    },
+    {
+      "ns": 883304357294541,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "response-callback-disposition allow=true"
+    },
+    {
+      "ns": 883304357357916,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "body-first-entry"
+    },
+    {
+      "ns": 883304357071416,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "transport-before-read"
+    },
+    {
+      "ns": 883304357088291,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "read-entry host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid remaining=Optional(1.999901167 seconds)"
+    },
+    {
+      "ns": 883304357089333,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "deadline-preflight"
+    },
+    {
+      "ns": 883304357096875,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "watchdog-scheduled-if-deadline"
+    },
+    {
+      "ns": 883304357098333,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "continuation-entered"
+    },
+    {
+      "ns": 883304357099041,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "start-entry"
+    },
+    {
+      "ns": 883304357106041,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "canary-immediate-enqueue"
+    },
+    {
+      "ns": 883304357108916,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "canary-delayed-timer-scheduled after=0.5"
+    },
+    {
+      "ns": 883304357111958,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "session-create-before"
+    },
+    {
+      "ns": 883304357131208,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "session-created"
+    },
+    {
+      "ns": 883304357131833,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "task-create-before"
+    },
+    {
+      "ns": 883304357145208,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "cancel-entry CancellationError()"
+    },
+    {
+      "ns": 883304357158333,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "task-published"
+    },
+    {
+      "ns": 883304357158625,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "publication-hook-returned"
+    },
+    {
+      "ns": 883304357158708,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "task-resume-before"
+    },
+    {
+      "ns": 883304357170333,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "task-resume-after"
+    },
+    {
+      "ns": 883304357278416,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "canary-immediate-execute"
+    },
+    {
+      "ns": 883304357315875,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=fresh, NSErrorFailingURLKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=fresh, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+    },
+    {
+      "ns": 883304357335500,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304357344708,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304357363500,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304357374166,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304357382375,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304357383208,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "read-exit"
+    },
+    {
+      "ns": 883304357100208,
+      "owner": "1577157F-2ED7-491F-8BEB-A994CA3EDC26",
+      "event": "protocol-startLoading-entry host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid"
+    },
+    {
+      "ns": 883304357214333,
+      "owner": "1577157F-2ED7-491F-8BEB-A994CA3EDC26",
+      "event": "protocol-response-submit host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid"
+    },
+    {
+      "ns": 883304357480250,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "task-completion-entry nil"
+    },
+    {
+      "ns": 883304357484000,
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "event": "transport-original-error CancellationError()"
+    },
+    {
+      "ns": 883304357508083,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "session-invalidation-entry"
+    },
+    {
+      "ns": 883304357517750,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "tail-enqueued"
+    },
+    {
+      "ns": 883304357523125,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "tail-executing"
+    },
+    {
+      "ns": 883304357528958,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "caller-woke"
+    },
+    {
+      "ns": 883304357529791,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "result-taken"
+    },
+    {
+      "ns": 883304357530541,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "deadline-final-check"
+    },
+    {
+      "ns": 883304357531625,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "read-return"
+    },
+    {
+      "ns": 883304357535083,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "canary-cancelled-at-read-exit"
+    },
+    {
+      "ns": 883304357535666,
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "event": "read-exit"
+    }
+  ],
+  "first_line_only_for_multiline_error": true,
+  "prefix_count": 503,
+  "summary": [
+    {
+      "owner": "72B5FDC3-B90D-4ADC-8827-C4FBFC1F3486",
+      "events": [
+        [
+          0.0,
+          "read-entry host=a17a6791-71fe-4b0f-ab05-a10965f47882.invalid remaining=Optional(1.999769917 seconds)"
+        ],
+        [
+          8e-06,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "C3CD900E-2340-42CD-86A3-DB318ECED0B3",
+      "events": [
+        [
+          0.0,
+          "read-entry host=cb070747-73a8-48aa-8afe-d4cf18554cbd.invalid remaining=Optional(1.999995125 seconds)"
+        ],
+        [
+          1.7e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          3.8e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          0.000251,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.50982,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.509823,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.003183,
+          "watchdog-fired"
+        ],
+        [
+          4.37252,
+          "canary-immediate-execute"
+        ],
+        [
+          4.372785,
+          "canary-delayed-execute"
+        ],
+        [
+          4.373218,
+          "caller-woke"
+        ],
+        [
+          4.373228,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "E4DDB201-D997-413D-B94F-F566DCFDA4EE",
+      "events": [
+        [
+          0.0,
+          "read-entry host=a2509ff6-063a-4599-9dd5-c847102c7955.invalid remaining=Optional(1.999996834 seconds)"
+        ],
+        [
+          6e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          1.3e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          1.5e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.001663,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+        ],
+        [
+          0.001679,
+          "task-completion-entry nil"
+        ],
+        [
+          0.509306,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.509307,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.002698,
+          "watchdog-fired"
+        ],
+        [
+          4.372004,
+          "canary-immediate-execute"
+        ],
+        [
+          4.372048,
+          "caller-woke"
+        ],
+        [
+          4.372082,
+          "canary-cancelled-at-read-exit"
+        ],
+        [
+          4.372278,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a2509ff6-063a-4599-9dd5-c847102c7955.invalid/jpip, NSErrorFailingURLKey=https://a2509ff6-063a-4599-9dd5-c847102c7955.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.372561,
+          "canary-delayed-execute"
+        ]
+      ]
+    },
+    {
+      "owner": "041A0D7C-8E19-44B1-95A4-4761A374DB4E",
+      "events": [
+        [
+          0.0,
+          "read-entry host=81a4f700-8f95-4245-b01c-987174ff1404.invalid remaining=Optional(0.11998425 seconds)"
+        ],
+        [
+          1.7e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          3.3e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          3.8e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.126167,
+          "watchdog-fired"
+        ],
+        [
+          0.506685,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.506686,
+          "canary-delayed-enqueue"
+        ],
+        [
+          4.369381,
+          "canary-immediate-execute"
+        ],
+        [
+          4.369519,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://81a4f700-8f95-4245-b01c-987174ff1404.invalid/jpip, NSErrorFailingURLKey=https://81a4f700-8f95-4245-b01c-987174ff1404.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.369535,
+          "canary-delayed-execute"
+        ],
+        [
+          4.369723,
+          "caller-woke"
+        ],
+        [
+          4.369733,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "EA3499D6-CE3F-4F41-9306-8A6D101EE721",
+      "events": [
+        [
+          0.0,
+          "read-entry host=e5616017-3a8a-4088-a667-526ab73524eb.invalid remaining=Optional(-0.00101 seconds)"
+        ],
+        [
+          4e-05,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "F0C1B3D7-B81F-4B0A-902D-BE294A7FDD22",
+      "events": [
+        [
+          0.0,
+          "read-entry host=31cf8c89-8797-4491-b488-294ad9469f40.invalid remaining=Optional(1.999990167 seconds)"
+        ],
+        [
+          2.2e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          3.6e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          4.4e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.505227,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.505228,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.001956,
+          "watchdog-fired"
+        ],
+        [
+          4.348444,
+          "canary-immediate-execute"
+        ],
+        [
+          4.348492,
+          "canary-delayed-execute"
+        ],
+        [
+          4.348765,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://31cf8c89-8797-4491-b488-294ad9469f40.invalid/jpip, NSErrorFailingURLKey=https://31cf8c89-8797-4491-b488-294ad9469f40.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.349964,
+          "caller-woke"
+        ],
+        [
+          4.349972,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "9AE64EB9-C575-4819-8AB6-C69764873FD6",
+      "events": [
+        [
+          0.0,
+          "read-entry host=b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid remaining=Optional(1.999983875 seconds)"
+        ],
+        [
+          1.1e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          2.1e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          3.9e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.504961,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.504961,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.00172,
+          "watchdog-fired"
+        ],
+        [
+          4.348168,
+          "canary-immediate-execute"
+        ],
+        [
+          4.348223,
+          "canary-delayed-execute"
+        ],
+        [
+          4.348504,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid/jpip, NSErrorFailingURLKey=https://b52e2243-2fa6-4f61-8105-2b9ee8f7ef0e.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.349859,
+          "caller-woke"
+        ],
+        [
+          4.349868,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "4BD505B7-0C9D-463A-9015-E412430204BC",
+      "events": [
+        [
+          0.0,
+          "read-entry host=2f02c401-2955-4be8-85be-0d048109b96a.invalid remaining=Optional(1.999994 seconds)"
+        ],
+        [
+          1.6e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          2.4e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          2.7e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.504181,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.504181,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000954,
+          "watchdog-fired"
+        ],
+        [
+          4.347387,
+          "canary-immediate-execute"
+        ],
+        [
+          4.34744,
+          "canary-delayed-execute"
+        ],
+        [
+          4.34769,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://2f02c401-2955-4be8-85be-0d048109b96a.invalid/jpip, NSErrorFailingURLKey=https://2f02c401-2955-4be8-85be-0d048109b96a.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.34882,
+          "caller-woke"
+        ],
+        [
+          4.348825,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "AAA8E824-291F-4939-9779-CF5941E87789",
+      "events": [
+        [
+          0.0,
+          "read-entry host=2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid remaining=nil"
+        ],
+        [
+          1e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          8e-06,
+          "canary-immediate-enqueue"
+        ],
+        [
+          1.2e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.508491,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.508493,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.551703,
+          "canary-immediate-execute"
+        ],
+        [
+          2.5519,
+          "canary-delayed-execute"
+        ],
+        [
+          2.552075,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid/jpip, NSErrorFailingURLKey=https://2e42b658-471c-4ab0-a401-034e9dbe18ab.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          2.553455,
+          "caller-woke"
+        ],
+        [
+          2.55346,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "45688BF6-3BD5-4D82-941F-FB86B82F7146",
+      "events": [
+        [
+          0.0,
+          "read-entry host=def90387-d90c-4331-9af0-3240225c492b.invalid remaining=Optional(1.999996208 seconds)"
+        ],
+        [
+          6e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          1.1e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          1.2e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.508397,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.508397,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000217,
+          "watchdog-fired"
+        ],
+        [
+          2.551606,
+          "canary-immediate-execute"
+        ],
+        [
+          2.551797,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://def90387-d90c-4331-9af0-3240225c492b.invalid/jpip, NSErrorFailingURLKey=https://def90387-d90c-4331-9af0-3240225c492b.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          2.551806,
+          "canary-delayed-execute"
+        ],
+        [
+          2.552963,
+          "caller-woke"
+        ],
+        [
+          2.552974,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "57BC3CD5-7350-427E-8400-2018311C1EE6",
+      "events": [
+        [
+          0.0,
+          "read-entry host=3c89cce1-0876-4646-8174-a96d5043b410.invalid remaining=Optional(1.999995041 seconds)"
+        ],
+        [
+          1e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          1.8e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          2e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          9.3e-05,
+          "task-completion-entry nil"
+        ],
+        [
+          0.000153,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+        ],
+        [
+          0.503728,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.503729,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000515,
+          "watchdog-fired"
+        ],
+        [
+          4.346933,
+          "canary-immediate-execute"
+        ],
+        [
+          4.347057,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://3c89cce1-0876-4646-8174-a96d5043b410.invalid/jpip, NSErrorFailingURLKey=https://3c89cce1-0876-4646-8174-a96d5043b410.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.347382,
+          "canary-delayed-execute"
+        ],
+        [
+          4.347673,
+          "caller-woke"
+        ],
+        [
+          4.347693,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "59710418-CDEE-4995-AE7D-60F399AFE55F",
+      "events": [
+        [
+          0.0,
+          "read-entry host=160d5024-a3b7-411c-8e02-938eb70258c2.invalid remaining=Optional(1.99999575 seconds)"
+        ],
+        [
+          9e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          1.6e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          1.8e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          7.6e-05,
+          "task-completion-entry nil"
+        ],
+        [
+          9.9e-05,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"(null)\")"
+        ],
+        [
+          0.503498,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.503498,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000294,
+          "watchdog-fired"
+        ],
+        [
+          4.346701,
+          "canary-immediate-execute"
+        ],
+        [
+          4.346865,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://160d5024-a3b7-411c-8e02-938eb70258c2.invalid/jpip, NSErrorFailingURLKey=https://160d5024-a3b7-411c-8e02-938eb70258c2.invalid/jpip, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.347176,
+          "canary-delayed-execute"
+        ],
+        [
+          4.347579,
+          "caller-woke"
+        ],
+        [
+          4.347589,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "694C118C-FEA7-4942-8827-DBF911CDFECE",
+      "events": [
+        [
+          0.0,
+          "read-entry host=f716d5e1-1f20-44be-b859-01371609407d.invalid remaining=Optional(1.999362208 seconds)"
+        ],
+        [
+          1.4e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          2.5e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          3.1e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.500681,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.500683,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000671,
+          "watchdog-fired"
+        ],
+        [
+          4.320035,
+          "canary-immediate-execute"
+        ],
+        [
+          4.320232,
+          "canary-delayed-execute"
+        ],
+        [
+          4.320425,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://f716d5e1-1f20-44be-b859-01371609407d.invalid/jpip?target=a%20b.j2k, NSErrorFailingURLKey=https://f716d5e1-1f20-44be-b859-01371609407d.invalid/jpip?target=a%20b.j2k, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          4.321825,
+          "caller-woke"
+        ],
+        [
+          4.321833,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "F092B4FC-A5C5-4F7D-985E-9DC4C27978D6",
+      "events": [
+        [
+          0.0,
+          "read-entry host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid remaining=Optional(1.999792291 seconds)"
+        ],
+        [
+          3.9e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          5.5e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          6.3e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.509567,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.50957,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.001342,
+          "watchdog-fired"
+        ],
+        [
+          2.55279,
+          "canary-immediate-execute"
+        ],
+        [
+          2.552991,
+          "canary-delayed-execute"
+        ],
+        [
+          2.55321,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=old, NSErrorFailingURLKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=old, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          2.554806,
+          "caller-woke"
+        ],
+        [
+          2.554813,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "880597C4-1C7B-430A-A8A5-433A7EAB041A",
+      "events": [
+        [
+          0.0,
+          "read-entry host=17a673c2-5e34-494c-bb1c-3a28a412bc3d.invalid remaining=Optional(1.756669625 seconds)"
+        ],
+        [
+          5e-06,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "6FC35ADD-8F9D-4BE7-954B-8D9268558B3C",
+      "events": [
+        [
+          0.0,
+          "read-entry host=1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid remaining=Optional(1.999941125 seconds)"
+        ],
+        [
+          6e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          9e-06,
+          "canary-immediate-enqueue"
+        ],
+        [
+          1.1e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.508285,
+          "canary-delayed-timer-fired"
+        ],
+        [
+          0.508286,
+          "canary-delayed-enqueue"
+        ],
+        [
+          2.000118,
+          "watchdog-fired"
+        ],
+        [
+          2.551493,
+          "canary-immediate-execute"
+        ],
+        [
+          2.5517,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid/jpip?target=silent, NSErrorFailingURLKey=https://1e421977-d5e5-41e6-a5ea-8d7155c80b14.invalid/jpip?target=silent, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          2.551726,
+          "canary-delayed-execute"
+        ],
+        [
+          2.552911,
+          "caller-woke"
+        ],
+        [
+          2.55292,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "8500039C-1C05-4CA7-83DD-E66C83F69B2B",
+      "events": [
+        [
+          0.0,
+          "read-entry host=5e9b2574-25c5-42a3-b2ef-00919e171d83.invalid remaining=Optional(1.999990333 seconds)"
+        ],
+        [
+          1.5e-05,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          2.8e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          3.3e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.000503,
+          "canary-immediate-execute"
+        ],
+        [
+          0.000709,
+          "task-completion-entry nil"
+        ],
+        [
+          0.000757,
+          "caller-woke"
+        ],
+        [
+          0.000763,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    },
+    {
+      "owner": "B5BA86E7-BC90-46DF-80B9-1A2CE9FCF0F6",
+      "events": [
+        [
+          0.0,
+          "read-entry host=a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid remaining=Optional(1.999901167 seconds)"
+        ],
+        [
+          9e-06,
+          "watchdog-scheduled-if-deadline"
+        ],
+        [
+          1.8e-05,
+          "canary-immediate-enqueue"
+        ],
+        [
+          2.1e-05,
+          "canary-delayed-timer-scheduled after=0.5"
+        ],
+        [
+          0.00019,
+          "canary-immediate-execute"
+        ],
+        [
+          0.000228,
+          "task-completion-entry Optional(Error Domain=NSURLErrorDomain Code=-999 \"cancelled\" UserInfo={NSErrorFailingURLStringKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=fresh, NSErrorFailingURLKey=https://a938ebd7-3e68-4ef4-aa80-b2897f4de402.invalid/jpip?target=fresh, _NSURLErrorRelatedURLSessionTaskErrorKey=("
+        ],
+        [
+          0.000286,
+          "caller-woke"
+        ],
+        [
+          0.000294,
+          "canary-cancelled-at-read-exit"
+        ]
+      ]
+    }
+  ]
+}

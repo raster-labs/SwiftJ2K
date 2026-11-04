@@ -1,0 +1,43 @@
+Candidate15 preparation checkpoint03 — POSITIVE STOP
+
+Current proposed input: manifest-preparation-03.json. Read-only dry-run03 passed.
+It binds 25 completed native receipts at the recorded cut-off, 12 completed
+review pairs and 243 additional receipts. All first-hosted failure logs and
+completed14 campaigns remain preserved, including failed JPIP ASan14 and the
+explicitly unexecuted ASan14 complement. Three completed15 receipts were observed
+at selection time: JPIP ASan, ordinary full and address inventory. Later running
+or completed15 gates are deliberately not chased by this preparation checkpoint;
+the final manifest will add the complete stopped evidence once.
+
+The current CI difference is intentional and independently bound. Root's
+ci-comment-correction-15.json documents a comment-only correction of the external
+oracle annotation description. I verified both file hashes and independently
+removed comment lines: all remaining workflow bytes are identical. The exact
+frozen15 workflow and stopped current workflow are selected separately. No job,
+step, command, permission, timeout or emitter change is inferred; no frozen
+manifest was rewritten. This clarification supersedes the provisional uncertainty
+in this directory's earlier report.txt/current-ci-identity-note.json. Root's
+runtime-auditor15 static review and all newly referenced helper/delta/check bytes
+are also verified and selected. No helper modification or test rerun occurred.
+
+Final local execution/coverage/reuse decisions, independent final native review,
+root's final documentation reconciliation and its review remain required before
+the NEW final local supplement manifest. Current mutable documentation is not
+pinned. Initial supplement publication precedes commit/push and subsequent
+exact-head hosted CI. Later hosted receipts remain separate work/outputs and PR
+links; they are post-publication pending, never a prerequisite to publishing the
+initial reviewed local supplement.
+
+Dry-run03 proposes 468 artifact roles, 357 payloads including index/README,
+16,837,988 bytes and 34 prior08 references. Proposed index SHA256:
+5307140d7adc9dc0111a0cb869dfd872dc3112dfbbd8634f8913b10cbcc6e283.
+The real supplement directory is still absent; prior08 index is unchanged.
+These are packaging-integrity observations, not native or whole-R3 acceptance.
+
+Reviewed helper14 remains unchanged. All prior preparatory manifests, helper files,
+raw native logs, failures and review receipts remain immutable. Broad unrelated
+application/project inventories remain local-only and excluded; no binaries,
+build directories or full source snapshots were selected. No repository writes,
+commit/push/publication, or native compiler/test/codec/server runs by this agent.
+All five direct peers remain UNEXECUTED/UNWAIVED; R3 is NOT_ACCEPTED, R4 gated.
+Positive stop: all preparation writes are complete and no process is owned here.

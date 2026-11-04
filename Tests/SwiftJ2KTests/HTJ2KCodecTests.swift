@@ -51,23 +51,23 @@ enum HTJ2KFixtures {
 }
 
 enum HTOracle {
+    #if os(macOS) || os(Linux)
     static let openJPH = ["/opt/homebrew/bin/ojph_expand", "/usr/local/bin/ojph_expand"].first {
         FileManager.default.isExecutableFile(atPath: $0)
     }
+    #else
+    static let openJPH: String? = nil
+    #endif
     static let openJPEG = Oracle.openJPEG
     static let kakadu = Oracle.kakadu
     static var available: Bool { openJPH != nil || openJPEG != nil || kakadu != nil }
 
     #if os(macOS) || os(Linux)
-    static func decodePGM(_ tool: String, _ input: URL, _ output: URL) throws -> [UInt16] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: tool)
-        process.arguments = ["-i", input.path, "-o", output.path] + (tool.contains("kdu") ? ["-quiet"] : [])
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
-        #expect(process.terminationStatus == 0, "\(tool) exited with \(process.terminationStatus) on \(input.lastPathComponent)")
+    static func decodePGM(_ tool: String, _ input: URL, _ output: URL) async throws -> [UInt16] {
+        let status = try await CLITestProcess.runDiscardingOutput(
+            ["-i", input.path, "-o", output.path] + (tool.contains("kdu") ? ["-quiet"] : []),
+            executable: URL(fileURLWithPath: tool))
+        #expect(status == 0, "\(tool) exited with \(status) on \(input.lastPathComponent)")
         let pgm = [UInt8](try Data(contentsOf: output))
         var fields: [String] = []
         var i = 0
@@ -171,7 +171,7 @@ func htj2kEncoderOptionsRoundTrip(levels: Int, blockWidth: Int, blockHeight: Int
         for (label, tool) in [("ojph", HTOracle.openJPH), ("kdu", HTOracle.kakadu), ("opj", HTOracle.openJPEG)] {
             guard let tool else { continue }
             let output = directory.appendingPathComponent("out.\(label).pgm")
-            let oracleDecoded = try HTOracle.decodePGM(tool, input, output)
+            let oracleDecoded = try await HTOracle.decodePGM(tool, input, output)
             #expect(oracleDecoded == samples, "\(tool) mismatch for levels=\(levels) block=\(blockWidth)x\(blockHeight)")
         }
     }
@@ -264,7 +264,7 @@ func independentHTDecodersReadSuccessorHTJ2KCodestreams(name: String) async thro
     for (label, tool) in [("ojph", HTOracle.openJPH), ("kdu", HTOracle.kakadu), ("opj", HTOracle.openJPEG)] {
         guard let tool else { continue }
         let output = directory.appendingPathComponent("\(name).\(label).pgm")
-        let decoded = try HTOracle.decodePGM(tool, input, output)
+        let decoded = try await HTOracle.decodePGM(tool, input, output)
         #expect(decoded == samples, "\(tool) decoded different samples for \(name)")
     }
     #endif
@@ -496,7 +496,7 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     for (label, tool) in [("ojph", HTOracle.openJPH), ("kdu", HTOracle.kakadu), ("opj", HTOracle.openJPEG)] {
         guard let tool else { continue }
         let outPGM = directory.appendingPathComponent("\(name).ht.\(label).pgm")
-        #expect(try HTOracle.decodePGM(tool, htFile, outPGM) == expected, "\(tool) failed on transcoded HTJ2K \(name)")
+        #expect(try await HTOracle.decodePGM(tool, htFile, outPGM) == expected, "\(tool) failed on transcoded HTJ2K \(name)")
     }
 
     let transcodedPart1 = try await transcoder.transcode(htInput, to: .jpeg2000).data
@@ -505,7 +505,7 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     for (label, tool) in [("kdu", HTOracle.kakadu), ("opj", HTOracle.openJPEG)] {
         guard let tool else { continue }
         let outPGM = directory.appendingPathComponent("\(name).part1.\(label).pgm")
-        #expect(try HTOracle.decodePGM(tool, part1File, outPGM) == expected, "\(tool) failed on transcoded Part 1 \(name)")
+        #expect(try await HTOracle.decodePGM(tool, part1File, outPGM) == expected, "\(tool) failed on transcoded Part 1 \(name)")
     }
     #endif
 }

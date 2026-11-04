@@ -39,6 +39,7 @@ struct CodexR2VolumeGridTests {
     }
 
     private func encode(_ volume: J2KVolume, tile: Int) async throws -> Data {
+        await VolumeTestCooperativeQuiescence.settle()
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: .lossless,
             tiling: JP3DTilingConfiguration(tileSizeX: tile, tileSizeY: tile, tileSizeZ: 1),
@@ -121,6 +122,7 @@ struct CodexR2VolumeGridTests {
 
     @Test("Lossy reduced tiles select the same spatial samples as full reconstruction", arguments: [false, true])
     func lossyGridMatchesFullReconstruction(ht: Bool) async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let source = ramp(width: 9, height: 7, depth: 2)
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: ht ? .lossyHTJ2K(psnr: 38) : .lossy(psnr: 38),
@@ -169,10 +171,25 @@ struct CodexR2VolumeGridTests {
     func sliceReductionHasExplicitStride() async throws {
         let source = ramp(width: 5, height: 5, depth: 1)
         let data = try await encode(source, tile: 5)
-        let parsed = try JP3DCodestreamParser().parse(data)
-        let tile = try #require(parsed.tiles.first)
+        let normativeReduced = try await VolumeDecoder(
+            configuration: VolumeDecoderConfiguration(resolutionLevel: 1)
+        ).decode(data, options: VolumeDecodeOptions(executionPolicy: .scalarCPU))
+        #expect(values(normativeReduced.volume) == [0, 2, 4, 18, 20, 22, 36, 38, 40])
+
+        // Also keep direct legacy J3DS compatibility helper stride-reduction verification:
+        let rawSamples = [values(source).map { Int64($0) }]
+        let budget = JP3DLiveBudgetTracker(baseBytes: 0, limits: .default)
+        let legacyTile = try JP3DSliceStackCodec().encodeTileInteger(
+            componentSamples: rawSamples,
+            tileWidth: 5, tileHeight: 5, tileDepth: 1,
+            bitDepth: 8, signed: false,
+            levelsX: 1, levelsY: 1, levelsZ: 0,
+            compressionMode: .lossless, qualityLayers: 1, zDeltaPolicy: .never,
+            budget: budget, limits: .default, executionPolicy: .scalarCPU
+        )
+        defer { legacyTile.reservation.release() }
         let decoded = try JP3DSliceStackCodec().decodeTileInteger(
-            tile.data, expectedComponents: 1, expectedWidth: 5, expectedHeight: 5,
+            legacyTile.data, expectedComponents: 1, expectedWidth: 5, expectedHeight: 5,
             expectedDepth: 1, resolutionLevel: 1, executionPolicy: .scalarCPU
         )
         #expect(decoded[0] == [0, 2, 4, 18, 20, 22, 36, 38, 40])
@@ -210,6 +227,7 @@ struct CodexR2VolumeGridTests {
 
     @Test("Reduced lossy decoding charges nested slice buffers", arguments: [false, true])
     func reducedLossyWorkspaceIncludesNestedSlices(useROI: Bool) async throws {
+        await VolumeTestCooperativeQuiescence.settle()
         let source = ramp(width: 64, height: 64, depth: 2)
         let configuration = try VolumeEncoderConfiguration(
             compressionMode: .lossy(psnr: 38),

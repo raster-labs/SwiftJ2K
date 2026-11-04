@@ -1,0 +1,531 @@
+{
+  "observed_at": "2026-10-31T09:08:05.257822+00:00",
+  "state": "FAILED_BEFORE_TEST_EXECUTION",
+  "run": 41186617163,
+  "attempt": 1,
+  "pr": 30,
+  "head": "7f1b123c1c8705666b3c19838f3ed22c00dc6145",
+  "tested_merge": "5c88ca1961d4a294991310b035a26b7ddce5084c",
+  "tree": "934266a4d41b742f8d3f3be8fdf894b8ad033ac8",
+  "base": "46be90fc3bf50429956725ee592687d8ff8e7344",
+  "jobs": [
+    {
+      "id": 124494725970,
+      "name": "Independent consumer resolves at tools 6.2",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Build a fresh consumer against the checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        }
+      ]
+    },
+    {
+      "id": 124494726046,
+      "name": "Swift 6.2 / ubuntu-24.04",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run swift --version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run swift build",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5
+        },
+        {
+          "name": "Run swift test",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6
+        },
+        {
+          "name": "Run swift build -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Run swift test -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    },
+    {
+      "id": 124494726061,
+      "name": "Swift 6.4 / ubuntu-24.04",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run swift --version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run swift build",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5
+        },
+        {
+          "name": "Run swift test",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6
+        },
+        {
+          "name": "Run swift build -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Run swift test -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    },
+    {
+      "id": 124494726067,
+      "name": "macOS 26 / Xcode 26.6 (Swift 6.3.3)",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run swift --version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run xcodebuild -version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run swift build",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Ordinary tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 6
+        },
+        {
+          "name": "Address sanitizer",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Thread sanitizer",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Retain exact test evidence in downloadable logs",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19
+        }
+      ]
+    },
+    {
+      "id": 124494726069,
+      "name": "Shared contract byte-identity",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Verify COMMON_CONTRACT_SHA256.txt matches the documents",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        }
+      ]
+    },
+    {
+      "id": 124494726111,
+      "name": "Swift 6.2 / ubuntu-24.04-arm",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run swift --version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run swift build",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5
+        },
+        {
+          "name": "Run swift test",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6
+        },
+        {
+          "name": "Run swift build -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Run swift test -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    },
+    {
+      "id": 124494726161,
+      "name": "Swift 6.4 / ubuntu-24.04-arm",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 41186617163,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run swift --version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run swift build",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5
+        },
+        {
+          "name": "Run swift test",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6
+        },
+        {
+          "name": "Run swift build -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Run swift test -c release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    }
+  ],
+  "logs": {
+    "ci-downloads/run-41186617163-attempt1-arm64-swift64.log": {
+      "sha256": "72e7366afb316a52eeedf459439850ddb75884a33309bc25d38761c6af00c536",
+      "bytes": 27434
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494725970.log": {
+      "sha256": "89370fa39e3f1962bc55e1d668d2dbfb85123e3925c9def70668a67d57469cc1",
+      "bytes": 24009
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494726046.log": {
+      "sha256": "e6daf365044fc9fe80abcafb15021882aed611c3a5391189a3928108e623ad63",
+      "bytes": 40301
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494726061.log": {
+      "sha256": "ddf52e578850efe46466f5599e0b7edf626c7693bf6f06ef521a0ec5eefaab00",
+      "bytes": 27604
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494726067.log": {
+      "sha256": "679268228c01bbb6e462658e04a07a673afbcb6f743c44da6fcd09790dd0a155",
+      "bytes": 76625
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494726069.log": {
+      "sha256": "13b782eb7071b43fc33bfceb908388c9550ad2e87d2f14ca3e17cda79dadde00",
+      "bytes": 12574
+    },
+    "ci-downloads/run-41186617163-attempt1-job-124494726111.log": {
+      "sha256": "ffc0747ef4842e2a2e453ce853829fddfd216073b8114f1a87ca9ea688f010c5",
+      "bytes": 40315
+    }
+  },
+  "findings": [
+    {
+      "id": "CI09-01",
+      "scope": "All four Linux jobs Swift6.2.4/6.4.2 x86_64/aarch64",
+      "finding": "FoundationNetworking URLSession has no bytes(for:) API; production build failed at JPIPTransport.swift551.",
+      "repair": "Portable bounded request-owned URLSessionDataDelegate; independent review and new native/hosted gates required."
+    },
+    {
+      "id": "CI09-02",
+      "scope": "Hosted macOS26 Xcode26.6 Swift6.3.3",
+      "finding": "Production build passed; test compilation failed for two #expect expressions in R3VolumeRemediationTests.swift650/658. Repeated batch diagnostics are the same two sites. No ordinary/ASan/TSan execution.",
+      "repair": "Typed intermediate expected arrays preserving both assertions."
+    }
+  ],
+  "retention": "macOS emitter correctly records all32 evidence paths missing, 0 files, retention_complete=false after test compile failure. No reconstruction/coverage success claimed.",
+  "acceptance": "NOT_ACCEPTED; all five external peer gates UNEXECUTED / UNWAIVED; no merge."
+}

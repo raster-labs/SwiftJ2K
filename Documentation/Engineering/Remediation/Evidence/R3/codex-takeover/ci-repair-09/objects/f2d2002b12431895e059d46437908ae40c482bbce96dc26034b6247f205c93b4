@@ -1,0 +1,7 @@
+Swift 6.3.3 hosted test compilation repair
+
+Two overloaded range/map arithmetic expressions inside #expect expanded beyond the compiler type-check budget. The expressions are now evaluated as explicitly typed [Int64] local constants before the same equality assertions. Formulas, range, assertion count, test title/function and round-trip execution are unchanged.
+
+The hosted macOS log repeats these two origins (original lines 650 and 658) seven times each; the final fatalError is the compilation termination. No separate compiler error cause was observed. Ordinary tests never ran, sanitizers were skipped, and the retention step failed because all required reports were missing. No runtime or CI pass is claimed.
+
+Only the assigned test source and work/compiler-portability-09 receipts were written. No native/compiler/test command, commit, push or other source edit was performed. Whole-file transformation equality verified the narrow diff. Native and hosted verification remain for the coordinator. Positive stop.

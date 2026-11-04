@@ -1,0 +1,81 @@
+{
+  "state": "FINAL_INCREMENTAL18_SELECTION_WITH_REVIEWED_DOCS_NOT_ACCEPTED",
+  "at": "2026-10-31T11:43:44.750256+00:00",
+  "published08_index": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/generated-index.json",
+    "sha256": "6dfeb1e3b90266e54d847e7ce1a5bf9096748e5d9611ed33e0a07568526f2e54"
+  },
+  "published15_index": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/Evidence/R3/codex-takeover/ci-repair-09/indexes/b05cc28b4195a726a1fe2101ddfebeefb43b923e9a48f03f811ca5440de07c42.json",
+    "sha256": "b05cc28b4195a726a1fe2101ddfebeefb43b923e9a48f03f811ca5440de07c42"
+  },
+  "source18_manifest": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-18-source.json",
+    "sha256": "20e72ac651207620fb5eb8e12f79217af96c255a4597160c21347ca8203b5a94"
+  },
+  "source18": "Source-reviewed CLI16 repair plus three test-fixture files; fixture17 finding closed18 at source level only.",
+  "cli16_reuse": {
+    "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/ci-repair-evidence-18/cli16-input-equivalence18.json",
+    "sha256": "56f31b97a017cbd3c230e9b187c7f5def212dfe28adabae826663d61d95e49ee"
+  },
+  "native18": "No native18 result selected or success claimed. Source-only review does not qualify runtime.",
+  "native17": {
+    "ordinary": "FAILED: four unchanged HTTPS declarations; exact raw/XML/reviews retained.",
+    "remaining_stages": {
+      "candidate-jpip-asan-17": "UNEXECUTED",
+      "candidate-asan-inventory-17": "UNEXECUTED",
+      "candidate-complement-asan-17": "UNEXECUTED",
+      "candidate-tsan-inventory-17": "UNEXECUTED",
+      "candidate-jpip-tsan-17": "UNEXECUTED",
+      "candidate-complement-tsan-17": "UNEXECUTED"
+    }
+  },
+  "hosted15": {
+    "run_id": 41195752705,
+    "attempt": 1,
+    "state": "FAILED_HOSTED_RUN_RETAINED_NO_QUALIFICATION",
+    "linux": "Four jobs failed compilation; tests/release stages unexecuted.",
+    "macos": "Ordinary failed three issues, five external skips; sanitizer stages unexecuted.",
+    "strict_reconstruction": "Rejected incomplete retention; partial XML is diagnosis only."
+  },
+  "runtime17_helper": "Unapproved maintenance, retained for provenance only; no final successful17 audit or sanitizer proof exists.",
+  "diagnostic19": "Excluded entirely; active or future diagnostic observations do not qualify source18.",
+  "documentation": {
+    "state": "STOPPED_CORRECTED_DOCS_REVIEWED_FOR_DRAFT_PUBLICATION_ONLY",
+    "report": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-18/report.txt",
+      "sha256": "133837ac0b03611dc8ed03177566aa48b4dc84e4959a4a02d58a3e7502138ee5"
+    },
+    "source": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/independent-publication-doc-review-18/source.json",
+      "sha256": "886c78ac276b8feb63053134eaf9b29e3494bd764c2d4aac85cf533c65df431b"
+    },
+    "reviewed_publication_hashes": {
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/STATUS.md": "7eaff070ff5f3fd90b2699787968b7c145c1aa472a36ca3862d23c40cb626dad",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Documentation/Engineering/Remediation/R3_CAPABILITY_MATRIX.md": "011169b5867cf63353036b8deaba4d5a02a38f3257e63c758b977c638c27db76",
+      "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/r3-pr-body-reviewed-local-18.txt": "7a105429a239f994dbe46a7f6f9b49af0625ae6a5c8289ef4d78dfd448bb815e"
+    },
+    "boundary": "Later exact publication/source/index/run links may be substituted without changing claims; those future body/link bytes are not selected here."
+  },
+  "publication_order": "Root reviews this append-only incremental selection, publishes source18 to existing draft PR, then retains actual new exact-head hosted feedback separately.",
+  "future_exact_head_hosted": "PENDING_SOURCE18_PUBLICATION; no Linux/macOS18 pass assumed.",
+  "remaining_root_steps": [
+    "Review this final explicit manifest and verify existing claim/stopped source and documentation writers.",
+    "Root-only append-only package and source18 draft-PR publication.",
+    "Retain and independently review subsequent actual exact-head hosted feedback separately."
+  ],
+  "external_gates": "Five independent direct gates remain UNEXECUTED_UNWAIVED",
+  "R3": "NOT_ACCEPTED",
+  "merge_allowed": false,
+  "R4": "GATED",
+  "excluded": [
+    "Binaries/build/cache trees",
+    "Full source snapshot trees",
+    "Broad unrelated application/project inventory",
+    "All diagnostic19 files and unexecuted native stages",
+    "Future PR-link body and unreviewed future documentation changes"
+  ],
+  "preparation_actions": "Filesystem/hash/receipt processing only; no native/Git/network/repository publication.",
+  "finalized_at": "2026-10-31T11:46:32.654392+00:00",
+  "supersedes": "Earlier incremental-scope-18.json documentation-pending checkpoint only; historical failure/runtime boundaries are unchanged."
+}

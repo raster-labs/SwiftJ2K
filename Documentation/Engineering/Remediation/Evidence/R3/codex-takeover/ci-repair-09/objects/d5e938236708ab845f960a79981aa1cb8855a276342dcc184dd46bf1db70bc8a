@@ -1,0 +1,120 @@
+{
+  "state": "INDEPENDENT_STATIC_PRESERVATION_CHECK",
+  "at": "2026-10-31T12:11:24.786346+00:00",
+  "inputs_before": {
+    "candidate-snapshot-22/Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": {
+      "sha256": "5bd55bb8f77ac3f4dddbe96cf09502965deb556310536c72f8e61ae9e316e4a9",
+      "bytes": 24609
+    },
+    "candidate-snapshot-18/Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": {
+      "sha256": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+      "bytes": 18772
+    },
+    "candidate-snapshot-22/Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": {
+      "sha256": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe",
+      "bytes": 60026
+    },
+    "candidate-snapshot-22/Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": {
+      "sha256": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7",
+      "bytes": 1791
+    },
+    "candidate-snapshot-22-source.json": {
+      "sha256": "41b544ac524dc2b6e9fb537adaf7300cce16eb7423fb2f1d8f56f865293dab96",
+      "bytes": 408598
+    },
+    "candidate-snapshot-22-provenance.json": {
+      "sha256": "bfbb5ea10d00792c643058821a0b2fb6d581de95ecef9f8c6295983020beb853",
+      "bytes": 236
+    },
+    "candidate-snapshot-18-source.json": {
+      "sha256": "20e72ac651207620fb5eb8e12f79217af96c255a4597160c21347ca8203b5a94",
+      "bytes": 381041
+    },
+    "admission-fixture-cleanup-22/source.diff": {
+      "sha256": "f42ecd38ae066434ca5f8b778164604f3b770266ffce3ca844fac1ed2b340d60",
+      "bytes": 22766
+    },
+    "admission-fixture-cleanup-22/preservation.json": {
+      "sha256": "ad11733bbdf5f0222031985a18f9429ed520383ed96d35f692faa3a344396701",
+      "bytes": 6182
+    },
+    "admission-fixture-cleanup-22/before.json": {
+      "sha256": "35fb5fc2a283429cb84dc02f8186f26d276c1b35e7a6b7f50bfbd8a57aa3883b",
+      "bytes": 1244
+    },
+    "admission-fixture-cleanup-22/CodexR3AdmissionTests.before.swift": {
+      "sha256": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91",
+      "bytes": 18772
+    },
+    "admission-fixture-cleanup-22/CodexR3AdmissionTests.after.swift": {
+      "sha256": "5bd55bb8f77ac3f4dddbe96cf09502965deb556310536c72f8e61ae9e316e4a9",
+      "bytes": 24609
+    },
+    "hosted-timing18-diagnosis/report.txt": {
+      "sha256": "4f1313f56902ce358fd8e1b4a1ecc1b79eeda3739aa40cde81784f52ed2a379c",
+      "bytes": 13441
+    },
+    "hosted-timing18-diagnosis/source.json": {
+      "sha256": "0532325955484af51a7a7d0fc73009c351f3c207e5d676665d06986545568e34",
+      "bytes": 6130
+    }
+  },
+  "all_frozen22_inputs_verified": 2405,
+  "exact_diff_reproduced": true,
+  "original_test_bodies_recovered_exactly": true,
+  "original_declarations": [
+    "descriptorDenialPrecedesWireMaterialisation",
+    "cacheProjectionAndMergeDenyBeforeMutation",
+    "remainingWireAllowanceIsAppliedBeforeTheNextRead",
+    "imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt",
+    "volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead",
+    "volumeResumptionDeductsEarlierWireBytesBeforeRead",
+    "volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead",
+    "reassemblyReportIncludesDescriptorDominatedPhase",
+    "volumeReportCarriesDescriptorDominatedReassemblyPeak",
+    "volumeReportIncludesDescriptorHeavyWebSocketHandshake"
+  ],
+  "new_declarations": [
+    "admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion"
+  ],
+  "six_cleanup_wrappers": [
+    "imageSessionCreationRejectsAnnouncedBodyWithoutReceivingIt",
+    "volumeSessionCreationUsesMemoryAllowanceBeforeBodyRead",
+    "volumeResumptionDeductsEarlierWireBytesBeforeRead",
+    "volumeRepeatedPushReplacementUsesCumulativeAllowanceBeforeSecondPayloadRead",
+    "volumeReportCarriesDescriptorDominatedReassemblyPeak",
+    "volumeReportIncludesDescriptorHeavyWebSocketHandshake"
+  ],
+  "original_expectations": 40,
+  "new_expectations": 8,
+  "original_Issue_records": 5,
+  "scripts": {
+    "HandshakeReportPeer": {
+      "normalised_script_sha256": "982e073ada33f4a0c0a1163560c29e75251721758574d6d591509ebb31dceec7",
+      "original_script_lines_preserved": true,
+      "accepted_socket_timeouts": [
+        "30"
+      ]
+    },
+    "RepeatedPushAdmissionPeer": {
+      "normalised_script_sha256": "ec04eddf11a41e6f26563a6a8f3d72102c5e7864c103c70d3892e8f24852f67b",
+      "original_script_lines_preserved": true,
+      "accepted_socket_timeouts": [
+        "30"
+      ]
+    },
+    "HeaderOnlyAdmissionPeer": {
+      "normalised_script_sha256": "c0fcb0adda7eb7261d6064bfa25c697891384d6f15d70c5562c6c863cd935a13",
+      "original_script_lines_preserved": true,
+      "accepted_socket_timeouts": [
+        "1"
+      ]
+    }
+  },
+  "implementation_delta18_to22": [
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift",
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift"
+  ],
+  "native_executed": false
+}

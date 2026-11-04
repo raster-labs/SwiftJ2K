@@ -1,0 +1,24 @@
+{
+  "finished_at": "2026-11-02T09:03:22.511546+00:00",
+  "exit_code": 0,
+  "elapsed_seconds": 185.330732875,
+  "changed_inputs": [],
+  "log_sha256": "742707dddaa20eafcebef3a17a391b2bf4e5d980ab61518127cf155e1eee83a3",
+  "native_streams": {
+    "stdout": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-ios-simulator-30/native.stdout",
+      "sha256": "742707dddaa20eafcebef3a17a391b2bf4e5d980ab61518127cf155e1eee83a3",
+      "bytes": 797110
+    },
+    "stderr": {
+      "path": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/validation/candidate-ios-simulator-30/native.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "capture_complete": true,
+  "capture_errors": [],
+  "capture_threads_joined": true,
+  "merged_synthetic_eof_newlines": 0,
+  "wrapper_exit_code": 0
+}

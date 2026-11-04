@@ -1,0 +1,27 @@
+{
+  "seed": 2026103107,
+  "cases": 40000,
+  "alphabet": [
+    "LF",
+    "CR",
+    "X",
+    "Z"
+  ],
+  "length_range": [
+    0,
+    128
+  ],
+  "initial_buffer_range": "0...input length",
+  "initial_read_offset_range": [
+    0,
+    16
+  ],
+  "cap_range": [
+    0,
+    129
+  ],
+  "old_new_outcomes_equal": true,
+  "header_work_bound": "<= 4 * input length",
+  "line_work_bound": "<= input length",
+  "scope": "Independent Python operational models, not native Swift execution or proof against all inputs."
+}

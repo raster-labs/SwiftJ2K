@@ -1,0 +1,11 @@
+--- a/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
++++ b/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift
+@@ -7,8 +7,6 @@
+ // for Phase R3 rework items F04-01 through F04-10.
+ 
+ import Foundation
+-import CryptoKit
+-import Darwin
+ import Dispatch
+ import Synchronization
+ import Testing

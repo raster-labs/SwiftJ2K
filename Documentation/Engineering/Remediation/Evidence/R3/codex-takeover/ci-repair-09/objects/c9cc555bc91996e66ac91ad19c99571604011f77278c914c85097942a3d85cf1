@@ -1,0 +1,19 @@
+{
+  "excludes": [
+    "Documentation/**",
+    "Git/build/cache directories"
+  ],
+  "files": {
+    ".github/workflows/contract.yml": {
+      "bytes": 23813,
+      "mode": "0644",
+      "sha256": "7f39c8377e6c593d94480a6d449e4e08f7e6d093cdd37fe791c30acba832a904"
+    }
+  },
+  "is_git_tree": false,
+  "meaning": "Current contents/modes only; not validation or acceptance.",
+  "scope": [
+    ".github"
+  ],
+  "scope_sha256": "42753ecfd988218581ba46b01526dfd61a5f280bb6f10294b24fc096247874d2"
+}

@@ -1,0 +1,56 @@
+CLI test-harness repair — implementer source freeze; native and independent review pending
+
+Scope: only Tests/SwiftJ2KTests/CLITestProcessSupport.swift (new) and the CLI
+helper/caller portions of CLIBreadthAndConsumerTests.swift, R1RemediationTests.swift,
+R2RemediationTests.swift. No production, repository docs, git operation or native
+execution. Verified root claim before writes. Root retains native ownership.
+
+The three duplicated helpers searched source-relative .build paths, silently ran
+swift build when a separately located scratch product was absent, then synchronously
+waited and drained stdout before stderr. Those hidden builds contended for SwiftPM
+locks; blocking calls occupied test executor workers. Sequential drains can also
+deadlock when stderr fills while stdout remains open.
+
+The shared helper now resolves SWIFTJ2K_TEST_CLI_PATH when supplied, requiring an
+absolute regular executable file and rejecting an invalid supplied value without
+fallback. Otherwise it searches only debug/release ancestors of the active test
+executable and test/main bundle, covering Darwin .xctest/Contents/MacOS, Linux
+.xctest executables and Xcode Debug/Release products. No source-relative search,
+PATH lookup or build occurs. Missing CLI returns a clear prebuild/scratch-path error.
+The root native wrapper can set SWIFTJ2K_TEST_CLI_PATH to its exact built/hashed CLI.
+Package.swift already declares SwiftJ2KCLI as a test dependency; ordinary swift test
+is expected to have its sibling product, but native verification remains required.
+
+Each invocation suspends through a checked continuation and owns a dedicated Thread
+for Process launch/wait. Separate dedicated threads concurrently drain stdout and
+stderr and feed optional stdin. The process and every I/O worker finish before the
+continuation resumes; no global Dispatch work queue is occupied. DispatchGroup is
+used only to join the I/O workers from the dedicated blocking thread. All handles
+close. Result status, termination reason and output byte/text behavior are retained.
+There is no change to production deadlines or test concurrency/serialization traits.
+
+Six CLI-calling test methods are now async; 63 call sites await the helper (13 M12,
+21 R1, 29 R2). A Python structural comparison removed only helpers and normalized
+these async/await additions: all remaining text equals candidate-snapshot-04,
+proving command arguments, assertions, expected errors, fixtures and timing bounds
+were preserved. Whitespace validation passed. Source hashes are in
+work/r3-cli-harness-repair-source.json.
+
+Two focused tests added: active-scratch resolution for Darwin/Linux-shaped paths,
+valid explicit path and no invalid-path fallback; and a child shell emitting 256KiB
+stderr before echoing 256KiB stdin to stdout. The latter reproduces the sequential
+pipe-drain deadlock while verifying full byte output and normal exit after joins.
+No native run was performed by this implementer.
+
+Inventory also found external independent-decoder Process helpers in
+HTJ2KCodecTests.swift:HTOracle.decodePGM and LosslessCodecTests.swift:Oracle.decode.
+They do not locate/build swiftj2k-cli and remain unchanged in this bounded repair;
+their synchronous waits are a separate possible executor-blocking concern when
+external oracles are enabled. No oracle capability or fixture was weakened.
+
+Requested root-exclusive validation: compile with the exact scratch-built CLI,
+run CLITestProcessSupportTests and the six affected CLI cases, then the broad suite
+at its existing concurrency and existing 120ms / <2s production timing bounds.
+Confirm logs contain no nested SwiftPM builds/lock waits. Independent reviewer
+/root/independent_jpip_review has been asked to inspect the frozen test-only delta.
+This report is implementation evidence, not self-approval.

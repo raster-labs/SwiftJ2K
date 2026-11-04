@@ -14,37 +14,37 @@
 // neighbour reads need no bounds arithmetic and stay ordinary array indexing.
 
 /// Wavelet subband orientation, which selects the significance table.
-enum BandOrientation: Sendable, Equatable {
+package enum BandOrientation: Sendable, Equatable {
     case ll, hl, lh, hh
 }
 
 /// Per-coefficient state flags kept in a padded `[UInt8]` plane.
-enum CoefficientFlag {
-    static let significant: UInt8 = 1 << 0
-    static let visited: UInt8 = 1 << 1      // coded in the current bit-plane
-    static let negative: UInt8 = 1 << 2     // sign of a significant coefficient
-    static let refined: UInt8 = 1 << 3      // has had a magnitude-refinement bit
+package enum CoefficientFlag {
+    package static let significant: UInt8 = 1 << 0
+    package static let visited: UInt8 = 1 << 1      // coded in the current bit-plane
+    package static let negative: UInt8 = 1 << 2     // sign of a significant coefficient
+    package static let refined: UInt8 = 1 << 3      // has had a magnitude-refinement bit
 }
 
 /// Context labels. Only the grouping matters to the bitstream; the numbers
 /// select adaptive states inside `ContextSet`.
-enum ContextLabel {
-    static let significanceBase: UInt8 = 0    // 0...8
-    static let signBase: UInt8 = 9            // 9...13
-    static let refinementFirstNoNeighbours: UInt8 = 14
-    static let refinementFirstWithNeighbours: UInt8 = 15
-    static let refinementSubsequent: UInt8 = 16
-    static let runLength: UInt8 = 17
-    static let uniform: UInt8 = 18
-    static let count = 19
+package enum ContextLabel {
+    package static let significanceBase: UInt8 = 0    // 0...8
+    package static let signBase: UInt8 = 9            // 9...13
+    package static let refinementFirstNoNeighbours: UInt8 = 14
+    package static let refinementFirstWithNeighbours: UInt8 = 15
+    package static let refinementSubsequent: UInt8 = 16
+    package static let runLength: UInt8 = 17
+    package static let uniform: UInt8 = 18
+    package static let count = 19
 }
 
 /// The 19 adaptive MQ contexts of one code-block, with Table D.7 initial states.
-struct ContextSet: Sendable {
-    var contexts: [MQContext]
+package struct ContextSet: Sendable {
+    package var contexts: [MQContext]
 
     @inline(__always)
-    init() {
+    package init() {
         contexts = [MQContext](repeating: MQContext(), count: ContextLabel.count)
         contexts[0] = MQContext(stateIndex: 4)
         contexts[Int(ContextLabel.runLength)] = MQContext(stateIndex: 3)
@@ -53,16 +53,16 @@ struct ContextSet: Sendable {
 }
 
 /// Significance and sign context tables for one subband orientation.
-struct ContextTables: Sendable {
+package struct ContextTables: Sendable {
     /// Indexed by `h * 15 + v * 5 + d` with h, v ∈ 0...2 and d ∈ 0...4.
-    let significance: [UInt8]
+    package let significance: [UInt8]
 
     private static let llAndLH = ContextTables(make: .lh)
     private static let hl = ContextTables(make: .hl)
     private static let hh = ContextTables(make: .hh)
 
     @inline(__always)
-    init(orientation: BandOrientation) {
+    package init(orientation: BandOrientation) {
         switch orientation {
         case .ll, .lh: self = Self.llAndLH
         case .hl: self = Self.hl
@@ -142,13 +142,13 @@ struct ContextTables: Sendable {
 /// Neighbourhood queries over the padded state plane. The plane has width
 /// `stride = width + 2` and one zero row above and below, so index arithmetic
 /// for the eight neighbours never leaves the array.
-struct StatePlane: Sendable {
-    let width: Int
-    let height: Int
-    let stride: Int
-    var flags: [UInt8]
+package struct StatePlane: Sendable {
+    package let width: Int
+    package let height: Int
+    package let stride: Int
+    package var flags: [UInt8]
 
-    init(width: Int, height: Int) {
+    package init(width: Int, height: Int) {
         self.width = width
         self.height = height
         self.stride = width + 2
@@ -157,13 +157,13 @@ struct StatePlane: Sendable {
 
     /// Index of coefficient (x, y) inside the padded plane.
     @inline(__always)
-    func index(x: Int, y: Int) -> Int { (y + 1) * stride + x + 1 }
+    package func index(x: Int, y: Int) -> Int { (y + 1) * stride + x + 1 }
 
     /// Significance-table key for the coefficient at padded index `i`.
     /// `ignoreBelow` implements vertically causal context formation (D.7):
     /// the row below is treated as insignificant.
     @inline(__always)
-    func significanceKey(at i: Int, ignoreBelow: Bool) -> Int {
+    package func significanceKey(at i: Int, ignoreBelow: Bool) -> Int {
         let s = CoefficientFlag.significant
         let h = Int(flags[i - 1] & s) + Int(flags[i + 1] & s)
         var v = Int(flags[i - stride] & s)
@@ -177,7 +177,7 @@ struct StatePlane: Sendable {
 
     /// Packed sign-context entry for the coefficient at padded index `i`.
     @inline(__always)
-    func signEntry(at i: Int, ignoreBelow: Bool) -> UInt8 {
+    package func signEntry(at i: Int, ignoreBelow: Bool) -> UInt8 {
         @inline(__always) func contribution(_ f: UInt8) -> Int {
             guard f & CoefficientFlag.significant != 0 else { return 0 }
             return f & CoefficientFlag.negative != 0 ? -1 : 1
@@ -190,7 +190,7 @@ struct StatePlane: Sendable {
 
     /// Whether any considered neighbour of padded index `i` is significant.
     @inline(__always)
-    func hasSignificantNeighbour(at i: Int, ignoreBelow: Bool) -> Bool {
+    package func hasSignificantNeighbour(at i: Int, ignoreBelow: Bool) -> Bool {
         let s = CoefficientFlag.significant
         var union = flags[i - 1] | flags[i + 1] | flags[i - stride] | flags[i - stride - 1] | flags[i - stride + 1]
         if !ignoreBelow { union |= flags[i + stride] | flags[i + stride - 1] | flags[i + stride + 1] }
@@ -199,7 +199,7 @@ struct StatePlane: Sendable {
 
     /// Clears the per-bit-plane visited flag on every coefficient.
     @inline(__always)
-    mutating func clearVisited() {
+    package mutating func clearVisited() {
         let mask = ~CoefficientFlag.visited
         for i in flags.indices { flags[i] &= mask }
     }

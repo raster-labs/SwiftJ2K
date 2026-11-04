@@ -1,0 +1,49 @@
+{
+  "native_executed": false,
+  "provisional_not_frozen": true,
+  "source_arithmetic_model": true,
+  "original": [
+    {
+      "limit_without_headers": 1200,
+      "desired_body_bytes": 600,
+      "received_body_bytes": 600,
+      "accumulation_copies": 49995,
+      "final_exact_copy": 600,
+      "allocations": 98,
+      "denied_at": null
+    },
+    {
+      "limit_without_headers": 12000,
+      "desired_body_bytes": 6000,
+      "received_body_bytes": 6000,
+      "accumulation_copies": 9620535,
+      "final_exact_copy": 6000,
+      "allocations": 1917,
+      "denied_at": null
+    }
+  ],
+  "new": [
+    {
+      "limit_without_headers": 1200,
+      "desired_body_bytes": 600,
+      "received_body_bytes": 600,
+      "accumulation_copies": 1623,
+      "final_exact_copy": 600,
+      "allocations": 11,
+      "denied_at": null
+    },
+    {
+      "limit_without_headers": 12000,
+      "desired_body_bytes": 6000,
+      "received_body_bytes": 6000,
+      "accumulation_copies": 14191,
+      "final_exact_copy": 6000,
+      "allocations": 14,
+      "denied_at": null
+    }
+  ],
+  "observed_files": {
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": "6603c8a422e7cf9deb1e298541ce08a2c04b9e867eacb3ea3ed5bb3c5f1d934a",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": "475204b4dd0bb86461d72d0760ed2e73ec8f3cee268369607d6a3e3d3b9c3b43"
+  }
+}

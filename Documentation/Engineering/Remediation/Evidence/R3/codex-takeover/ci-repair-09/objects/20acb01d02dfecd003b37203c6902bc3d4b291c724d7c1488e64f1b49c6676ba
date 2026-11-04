@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Execute and reconcile iOS Simulator build-for-testing and test-without-building cleanly."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+INAPPLICABLE_MACOS_ONLY_CLI_TESTS = [
+    "SwiftJ2KTests.CLITestProcessSupportTests/activeBuildResolution()",
+    "SwiftJ2KTests.CLITestProcessSupportTests/pipeCapacityDoesNotDeadlock()",
+    "SwiftJ2KTests.CodexR3CLIHostTests/onceVerificationUsesTheAcceptedBindAddress(host:)",
+    "SwiftJ2KTests.CodexR3CLIHostTests/invalidBindAddressFailsWithoutATrap()",
+    "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliMultiFormat16BitAndCompareMetrics()",
+    "SwiftJ2KTests.CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions()",
+    "SwiftJ2KTests.R1RemediationTests/cliRemediationSubprocessRegressions()",
+    "SwiftJ2KTests.R2RemediationTests/normativePNGSbitReadWriteAndValidation()",
+    "SwiftJ2KTests.R2RemediationTests/tiffPhotometricInterpretationSemanticsAndRejection()",
+    "SwiftJ2KTests.R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation()",
+]
+
+UNEXECUTED_EXTERNAL_ORACLE_TESTS = [
+    "independentDecodersReadSuccessorCodestreams(name:)",
+    "independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)",
+    "independentOraclesVerifyTranscodedOutputsInBothDirections(name:)",
+    "independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()",
+    "independentOraclesCrossDecodePart1BreadthEncodings()",
+]
+
+
+def select_simulator() -> dict:
+    raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+    data = json.loads(raw)
+    candidates = []
+    for runtime, devices in data.get("devices", {}).items():
+        if "iOS" not in runtime:
+            continue
+        for dev in devices:
+            if dev.get("isAvailable") and "iPhone" in dev.get("name", ""):
+                candidates.append((runtime, dev["name"], dev["udid"], dev.get("state", "")))
+    if not candidates:
+        raise RuntimeError("No available iPhone Simulator found")
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    runtime, name, udid, state = candidates[0]
+    return {"runtime": runtime, "name": name, "udid": udid, "initial_state": state}
+
+
+def run_streamed(cmd: list[str], cwd: Path, log_file: Path) -> int:
+    print(f"+ {' '.join(cmd)}", flush=True)
+    with log_file.open("w", encoding="utf-8") as f:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            f.write(line)
+            f.flush()
+        return proc.wait()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--derived-data", required=True)
+    parser.add_argument("--source-packages", required=True)
+    args = parser.parse_args()
+
+    cwd = Path.cwd().resolve()
+    out_dir = (cwd / args.output).resolve()
+    dd_dir = (cwd / args.derived_data).resolve()
+    spm_dir = (cwd / args.source_packages).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dd_dir.mkdir(parents=True, exist_ok=True)
+    spm_dir.mkdir(parents=True, exist_ok=True)
+
+    xcres = out_dir / "ios-tests.xcresult"
+    if xcres.exists():
+        shutil.rmtree(xcres)
+
+    build_log = out_dir / "xcodebuild-build.log"
+    test_log = out_dir / "xcodebuild-test.log"
+
+    sim = None
+    booted_by_run = False
+    try:
+        sim = select_simulator()
+        booted_by_run = sim.get("initial_state") != "Booted"
+        sim["booted_by_this_run"] = booted_by_run
+        (out_dir / "simulator.json").write_text(json.dumps(sim, indent=2) + "\n")
+        print(f"Selected simulator: {json.dumps(sim)}", flush=True)
+        if booted_by_run:
+            subprocess.run(["xcrun", "simctl", "boot", sim["udid"]], check=False)
+
+        build_cmd = [
+            "xcodebuild",
+            "build-for-testing",
+            "-scheme",
+            "SwiftJ2K-Package",
+            "-destination",
+            f"platform=iOS Simulator,id={sim['udid']}",
+            "-derivedDataPath",
+            str(dd_dir),
+            "-clonedSourcePackagesDirPath",
+            str(spm_dir),
+            "CODE_SIGNING_ALLOWED=NO",
+        ]
+        rc_build = run_streamed(build_cmd, cwd, build_log)
+        if rc_build != 0:
+            return rc_build
+
+        test_cmd = [
+            "xcodebuild",
+            "test-without-building",
+            "-scheme",
+            "SwiftJ2K-Package",
+            "-destination",
+            f"platform=iOS Simulator,id={sim['udid']}",
+            "-derivedDataPath",
+            str(dd_dir),
+            "-clonedSourcePackagesDirPath",
+            str(spm_dir),
+            "-parallel-testing-enabled",
+            "NO",
+            "-resultBundlePath",
+            str(xcres),
+            "CODE_SIGNING_ALLOWED=NO",
+        ]
+        rc_test = run_streamed(test_cmd, cwd, test_log)
+        if rc_test != 0:
+            return rc_test
+
+        summary_raw = subprocess.check_output(
+            ["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", str(xcres)],
+            text=True,
+        )
+        (out_dir / "xcresult-summary.json").write_text(summary_raw)
+        summary = json.loads(summary_raw)
+        log_text = test_log.read_text(encoding="utf-8", errors="replace")
+
+        xctest_started = re.findall(r"Test Case '-\[([^\]]+)\]' started\.", log_text)
+        xctest_passed = re.findall(r"Test Case '-\[([^\]]+)\]' passed \([0-9.]+ seconds\)\.", log_text)
+        xctest_failed = re.findall(r"Test Case '-\[([^\]]+)\]' failed", log_text)
+        st_runs = re.findall(r"Test run with (\d+) tests in (\d+) suites passed after ([0-9.]+) seconds\.", log_text)
+        st_skips = re.findall(r"Test ([^\s]+) skipped: \"([^\"]+)\"", log_text)
+
+        st_total_declarations = sum(int(r[0]) for r in st_runs)
+        st_total_suites = sum(int(r[1]) for r in st_runs)
+        st_skipped_names = sorted(s[0] for s in st_skips)
+        st_passed_declarations = st_total_declarations - len(st_skips)
+
+        reconciliation = {
+            "simulator": sim,
+            "xcresult_result": summary.get("result"),
+            "xcresult_total_test_count": summary.get("totalTestCount"),
+            "xcresult_passed_tests": summary.get("passedTests"),
+            "xcresult_skipped_tests": summary.get("skippedTests"),
+            "xcresult_failed_tests": summary.get("failedTests"),
+            "build_log_sha256": hashlib.sha256(build_log.read_bytes()).hexdigest(),
+            "test_log_sha256": hashlib.sha256(test_log.read_bytes()).hexdigest(),
+            "xcresult_summary_sha256": hashlib.sha256((out_dir / "xcresult-summary.json").read_bytes()).hexdigest(),
+            "xctest": {
+                "started": len(xctest_started),
+                "passed": len(set(xctest_passed)),
+                "failed": len(xctest_failed),
+                "ios_only_background_transfer_tests_executed": [
+                    t for t in sorted(set(xctest_passed)) if "BackgroundTransferService" in t
+                ],
+            },
+            "swift_testing": {
+                "bundle_runs": [{"tests": int(r[0]), "suites": int(r[1]), "seconds": float(r[2])} for r in st_runs],
+                "compiled_declarations_on_ios": st_total_declarations,
+                "compiled_suites_on_ios": st_total_suites,
+                "passed_declarations_on_ios": st_passed_declarations,
+                "skipped_external_oracle_declarations_on_ios": len(st_skips),
+                "skipped_external_oracle_names": st_skipped_names,
+            },
+            "inapplicable_macos_only_cli_process_declarations": {
+                "count": len(INAPPLICABLE_MACOS_ONLY_CLI_TESTS),
+                "counted_as_ios_pass": False,
+                "counted_as_ios_skip": False,
+                "reason": "Requires macOS Foundation.Process and swiftj2k-cli child process execution; guarded by #if os(macOS) || os(Linux)",
+                "declarations": INAPPLICABLE_MACOS_ONLY_CLI_TESTS,
+            },
+            "five_external_feature_gates_state": "PENDING_OWNER_INPUT / UNEXECUTED / UNWAIVED",
+        }
+        (out_dir / "ios-reconciliation.json").write_text(json.dumps(reconciliation, indent=2) + "\n")
+        print(json.dumps(reconciliation, indent=2), flush=True)
+
+        if summary.get("result") != "Passed" or summary.get("failedTests") != 0:
+            raise RuntimeError("xcresult summary did not pass with 0 failures")
+        if len(set(xctest_passed)) != 1037 or len(xctest_failed) != 0:
+            raise RuntimeError(f"Expected 1037 XCTest passes and 0 failures, got {len(set(xctest_passed))}/{len(xctest_failed)}")
+        if st_total_declarations != 323 or st_passed_declarations != 318 or len(st_skips) != 5:
+            raise RuntimeError(
+                f"Expected 323 compiled Swift Testing declarations (318 passed, 5 skipped), got {st_total_declarations} ({st_passed_declarations}/{len(st_skips)})"
+            )
+        if st_skipped_names != sorted(UNEXECUTED_EXTERNAL_ORACLE_TESTS):
+            raise RuntimeError(f"Unexpected skipped test list: {st_skipped_names}")
+        return 0
+    finally:
+        shutil.rmtree(cwd / ".swiftpm", ignore_errors=True)
+        if booted_by_run and sim is not None:
+            subprocess.run(["xcrun", "simctl", "shutdown", sim["udid"]], check=False)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

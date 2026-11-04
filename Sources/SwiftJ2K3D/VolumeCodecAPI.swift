@@ -416,6 +416,13 @@ public struct VolumeEncoder: Sendable {
         }
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        if case .required(.accelerated) = options.executionPolicy,
+           volume.voxelCount < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(volume.voxelCount)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -458,10 +465,6 @@ public struct VolumeEncoder: Sendable {
         }
 
         try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
-        try work.check()
 
         let elapsed = ContinuousClock.now - startedAt
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
@@ -473,9 +476,31 @@ public struct VolumeEncoder: Sendable {
             sourceLayout: "j2kvolume-component-data",
             destinationLayout: "jp3d-tile-sample-buffers"
         )
+        let actualBackend: Backend
+        let actualFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if result.usedAcceleratedKernel {
+                actualBackend = .accelerated
+                actualFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions were below the 4-lane SIMD vector threshold."
+                    )
+                }
+                actualBackend = .scalarCPU
+                actualFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualBackend = resolvedExec.backend
+            actualFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualBackend,
+            fallbackReason: actualFallback,
             fidelity: fidelity,
             copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
             pixelAllocationCount: pixelAccounting.allocationCount,
@@ -487,6 +512,14 @@ public struct VolumeEncoder: Sendable {
             discardedMetadataBytes: discardedGeometry ? JP3DVolumeGeometry.payloadByteCount : 0,
             discardedMetadataKinds: discardedGeometry ? ["volumeGeometry"] : []
         )
+
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
         return EncodedVolume(
             data: result.data,
@@ -568,16 +601,17 @@ public struct VolumeDecoder: Sendable {
             )
         }
 
-        let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) } ?? 1
+        let detectedLayers = parsed.tiles.first.flatMap { JP3DSliceStackCodec.peekQualityLayers($0.data) }
+            ?? max(1, cod.numLayers)
         let inspectedGeometry: JP3DVolumeGeometry? = (options.metadataPolicy == .preserve) ? parsed.geometry : nil
 
         return VolumeInfo(
             width: siz.width,
             height: siz.height,
             depth: siz.depth,
-            componentCount: siz.componentCount,
-            bitDepth: siz.bitDepth,
-            signed: siz.signed,
+            componentCount: parsed.logicalComponentCount,
+            bitDepth: parsed.logicalBitDepth(forComponent: 0),
+            signed: parsed.logicalIsSigned(forComponent: 0),
             tileSizeX: siz.tileSizeX,
             tileSizeY: siz.tileSizeY,
             tileSizeZ: siz.tileSizeZ,
@@ -585,7 +619,7 @@ public struct VolumeDecoder: Sendable {
             levelsY: cod.levelsY,
             levelsZ: cod.levelsZ,
             qualityLayers: detectedLayers,
-            isLossless: cod.isLossless && parsed.isLosslessQuantization,
+            isLossless: parsed.isFullyReversible,
             isHTJ2K: parsed.containsHTJ2KTiles,
             tileCount: parsed.tiles.count,
             spacingX: inspectedGeometry?.spacingX ?? 0,
@@ -661,6 +695,13 @@ public struct VolumeDecoder: Sendable {
         }
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        if case .required(.accelerated) = options.executionPolicy,
+           voxels < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(voxels)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -675,6 +716,7 @@ public struct VolumeDecoder: Sendable {
         let sourceCommentCount: Int
         let sourceCommentBytes: Int
         let sourceHadGeometry: Bool
+        let usedAcceleratedKernel: Bool
         do {
             if let roi = options.regionOfInterest {
                 let roiConfig = JP3DDecoderConfiguration(
@@ -708,6 +750,7 @@ public struct VolumeDecoder: Sendable {
                 sourceCommentCount = roiResult.commentCount
                 sourceCommentBytes = roiResult.commentPayloadBytes
                 sourceHadGeometry = roiResult.hadVolumeGeometry
+                usedAcceleratedKernel = roiResult.usedAcceleratedKernel
             } else {
                 let jp3dConfig = JP3DDecoderConfiguration(
                     maxQualityLayers: configuration.maxQualityLayers,
@@ -737,15 +780,12 @@ public struct VolumeDecoder: Sendable {
                 sourceCommentCount = result.commentCount
                 sourceCommentBytes = result.commentPayloadBytes
                 sourceHadGeometry = result.hadVolumeGeometry
+                usedAcceleratedKernel = result.usedAcceleratedKernel
             }
         } catch let error as J2KError {
             throw error.asCodecError
         }
 
-        try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
         try work.check()
 
         let reducedResolution = configuration.resolutionLevel > 0
@@ -778,9 +818,31 @@ public struct VolumeDecoder: Sendable {
             destinationLayout: "j2kvolume-component-data"
         )
 
+        let actualBackend: Backend
+        let actualFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if usedAcceleratedKernel {
+                actualBackend = .accelerated
+                actualFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions were below the 4-lane SIMD vector threshold."
+                    )
+                }
+                actualBackend = .scalarCPU
+                actualFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualBackend = resolvedExec.backend
+            actualFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualBackend,
+            fallbackReason: actualFallback,
             fidelity: fidelity,
             copyEvents: [copyEvent] + (try pixelAccounting.copyEvents),
             pixelAllocationCount: try jp3dDecodeAdd(volume.componentCount, pixelAccounting.allocationCount),
@@ -791,6 +853,14 @@ public struct VolumeDecoder: Sendable {
             discardedMetadataBytes: discardedBytes,
             discardedMetadataKinds: discardedKinds
         )
+
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
         return DecodedVolume(
             volume: volume,
@@ -831,6 +901,15 @@ public struct VolumeTranscoder: Sendable {
         )
 
         let resolvedExec = try AccelerationRuntime.resolve(options.executionPolicy)
+        let infoWH = try jp3dDecodeMultiply(info.width, info.height)
+        let infoVoxels = try jp3dDecodeMultiply(infoWH, info.depth)
+        if case .required(.accelerated) = options.executionPolicy,
+           infoVoxels < 4 {
+            throw CodecError(
+                .backendUnavailable,
+                "Requested required accelerated backend, but volume voxel count (\(infoVoxels)) is below the 4-lane SIMD vector threshold."
+            )
+        }
 
         if let p = try? ProgressUpdate(phase: .inspecting, completedUnits: 0, totalUnits: 3) {
             options.progress?(p)
@@ -873,10 +952,6 @@ public struct VolumeTranscoder: Sendable {
         }
 
         try work.check()
-        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
-            options.progress?(p)
-        }
-        try work.check()
 
         let elapsed = ContinuousClock.now - startedAt
         let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
@@ -901,9 +976,31 @@ public struct VolumeTranscoder: Sendable {
         } else {
             discardedKinds = ["COM"]
         }
+        let actualTranscodeBackend: Backend
+        let actualTranscodeFallback: String?
+        if resolvedExec.backend == .accelerated {
+            if result.usedAcceleratedKernel {
+                actualTranscodeBackend = .accelerated
+                actualTranscodeFallback = resolvedExec.fallbackReason
+            } else {
+                if case .required(.accelerated) = options.executionPolicy {
+                    throw CodecError(
+                        .backendUnavailable,
+                        "Requested required accelerated backend, but tile dimensions or format had no eligible SIMD vector kernel."
+                    )
+                }
+                actualTranscodeBackend = .scalarCPU
+                actualTranscodeFallback = resolvedExec.fallbackReason
+                    ?? "Tile dimensions or codestream format below 4-lane SIMD vector threshold; executed on scalar CPU."
+            }
+        } else {
+            actualTranscodeBackend = resolvedExec.backend
+            actualTranscodeFallback = resolvedExec.fallbackReason
+        }
+
         let report = OperationReport(
-            backend: resolvedExec.backend,
-            fallbackReason: resolvedExec.fallbackReason,
+            backend: actualTranscodeBackend,
+            fallbackReason: actualTranscodeFallback,
             fidelity: isExact ? .exactSamples : .lossy,
             copyEvents: copyEvents + (try pixelAccounting.copyEvents),
             pixelAllocationCount: try jp3dDecodeAdd(
@@ -916,6 +1013,14 @@ public struct VolumeTranscoder: Sendable {
             discardedMetadataBytes: discardedBytes,
             discardedMetadataKinds: discardedKinds
         )
+
+        try work.check()
+        // Backend qualification and report construction precede completion.
+        // Preserve the established contract that callback cancellation is honoured.
+        if let p = try? ProgressUpdate(phase: .completed, completedUnits: 3, totalUnits: 3) {
+            options.progress?(p)
+        }
+        try work.check()
 
         return EncodedVolume(
             data: result.data,

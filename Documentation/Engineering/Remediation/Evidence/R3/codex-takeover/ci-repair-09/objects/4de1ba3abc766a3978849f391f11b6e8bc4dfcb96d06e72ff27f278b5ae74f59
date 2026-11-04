@@ -1,0 +1,138 @@
+Building for debugging...
+[Using on-disk description]
+[4 / 36] swiftj2k-cli-product
+[9 / 37] SwiftJ2K3DTests-product
+[18 / 59] SwiftJ2KJPIPTests-product
+[19 / 59] SwiftJ2KJPIPTests-product
+[20 / 70] SwiftJ2KTests-product
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m219 |[0;0m         for configuration in [JP3DHTJ2KConfiguration.default,
+[0;36m220 |[0;0m                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+[0;36m221 |[0;0m             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m222 |[0;0m             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+[0;36m223 |[0;0m         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m237 |[0;0m 
+[0;36m238 |[0;0m     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+[0;36m239 |[0;0m         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    [0;36m|[0;0m                                     `- [1;33mwarning: [1;39m'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data.[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+[0;36m240 |[0;0m         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+[0;36m241 |[0;0m     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[20 / 70] SwiftJ2K3DTests-product
+[22 / 70] SwiftJ2KTests-product
+[24 / 70] SwiftJ2KTests-product
+[26 / 70] SwiftJ2KTests-product
+[29 / 70] SwiftJ2KJPIPTests-product
+[38 / 68] SwiftJ2KTests-product
+[39 / 68] SwiftJ2KJPIPTests-product
+[40 / 68] SwiftJ2KJPIPTests-product
+[42 / 68] SwiftJ2KJPIPTests-product
+[43 / 68] SwiftJ2KJPIPTests-product
+[45 / 68] SwiftJ2KJPIPTests-product
+[47 / 68] SwiftJ2KJPIPTests-product
+[48 / 68] SwiftJ2K3DTests-product
+[49 / 68] SwiftJ2K3DTests-product
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: [1;33mwarning: [1;39m'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture\ImplicitStrongCapture]8;;\]
+[0;36m531 |[0;0m         let request = self.request
+[0;36m532 |[0;0m         let client = self.client
+[0;36m533 |[0;0m         queue.async(execute: DispatchWorkItem { [self] in
+    [0;36m|[0;0m                                               |- [1;39mnote: [1;39m'client' implicitly strongly captured here[0;0m
+    [0;36m|[0;0m                                               `- [1;39mnote: [1;39madd 'client' as a capture list item to silence[0;0m
+[0;36m534 |[0;0m             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+[0;36m535 |[0;0m                   let url = request.url else { return }
+    [0;36m:[0;0m
+[0;36m548 |[0;0m                 let tick = DispatchSource.makeTimerSource(queue: queue)
+[0;36m549 |[0;0m                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+[0;36m550 |[0;0m                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    [0;36m|[0;0m                                                                                   |- [1;33mwarning: [1;39m'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture\ImplicitStrongCapture]8;;\]
+    [0;36m|[0;0m                                                                                   `- [1;39mnote: [1;39mexplicitly assign the capture list item to silence[0;0m
+[0;36m551 |[0;0m                     guard let self, !self.stopped else { return }
+[0;36m552 |[0;0m                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[50 / 68] AllIncludingTests
+[50 / 68] SwiftJ2KJPIPTests-product
+[50 / 68] SwiftJ2K3DTests-product
+[50 / 68] SwiftJ2KTests-product
+[50 / 68] SwiftJ2K3DTests-product
+[52 / 68] SwiftJ2KTests-product
+[54 / 68] SwiftJ2KTests-product
+[56 / 68] SwiftJ2K3DTests-product
+[58 / 68] SwiftJ2K3DTests-product
+[60 / 68] SwiftJ2K3DTests-product
+[62 / 68] SwiftJ2KJPIPTests-product
+[64 / 68] SwiftJ2KJPIPTests-product
+Build complete! (13.41 sec)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "R3 portable HTTPS streaming transport harness" started.
+◇ Suite "Codex R3 Socket Lifetime & Server Generation Tests" started.
+◇ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() started.
+◇ Test expiredDeadlineReleasesUnstartedOwners() started.
+◇ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test completedRequestEventuallyReleasesItsDelegateOwnership() started.
+◇ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() started.
+◇ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() started.
+◇ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() started.
+◇ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() started.
+◇ Test absoluteDeadlineCancelsSilentResponse() started.
+◇ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() started.
+◇ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test "T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot" started.
+◇ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() started.
+◇ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() started.
+◇ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() started.
+◇ Test "T1: Listener closed twice before accept returns nil with zero poll/accept syscalls" started.
+◇ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" started.
+◇ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" started.
+◇ Test "T2: Close while listener borrower held retires immediately and defers physical close until release" started.
+◇ Test completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test taskCancellationJoinsAndAllowsFollowingRequest() started.
+◇ Test "T3: Real loopback accept paused before publication closes accepted fd once on listener close and client sees EOF" started.
+◇ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() started.
+◇ Test "T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers" started.
+◇ Test "T4: Stale readiness EAGAIN, EINTR, POLLNVAL/POLLERR, and fcntl setup failures retire cleanly without spin or leak" started.
+◇ Test case passing 1 argument declared → true to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test case passing 1 argument declared → false to delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) started.
+◇ Test case passing 1 argument inPublicationGap → false to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument inPublicationGap → true to cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) started.
+◇ Test case passing 1 argument cancelFirst → false to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+◇ Test case passing 1 argument cancelFirst → true to completionAndCancellationHaveOneWinner(cancelFirst:) started.
+✔ Test declaredUnknownAndSingleCallbackOversizeLeavePreviousStorageIntact() passed after 0.008 seconds.
+✔ Test expiredDeadlineReleasesUnstartedOwners() passed after 0.008 seconds.
+✔ Test "T3: Real loopback accept paused before publication closes accepted fd once on listener close and client sees EOF" passed after 0.008 seconds.
+✔ Test "T1: Listener closed twice before accept returns nil with zero poll/accept syscalls" passed after 0.008 seconds.
+✔ Test observableBodyOverlapIsAdmittedBeforeGrowthAtExactBoundary() passed after 0.008 seconds.
+✔ Test headersEmptyBodyStatusAndResponseTypeRemainChecked() passed after 0.008 seconds.
+✔ Test invalidationAloneCannotReleaseTaskAndLateCallbacksCannotResumeAgain() passed after 0.008 seconds.
+✔ Test cancellationBeforeTaskPublicationNeverStartsProtocol(inPublicationGap:) with 2 test cases passed after 0.008 seconds.
+✔ Test "T2: Close while listener borrower held retires immediately and defers physical close until release" passed after 0.008 seconds.
+✔ Test closeBeforeHTTPSReadStartupJoinsWithoutResurrectingARequest() passed after 0.008 seconds.
+✔ Test "T4: Stale readiness EAGAIN, EINTR, POLLNVAL/POLLERR, and fcntl setup failures retire cleanly without spin or leak" passed after 0.008 seconds.
+✔ Test "T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot" passed after 0.009 seconds.
+✔ Test completionAndCancellationHaveOneWinner(cancelFirst:) with 2 test cases passed after 0.009 seconds.
+✔ Test "T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers" passed after 0.009 seconds.
+✔ Test completedRequestEventuallyReleasesItsDelegateOwnership() passed after 0.010 seconds.
+✔ Test budgetClampedGrowthHasBoundedCopyWorkForOneByteCallbacks() passed after 0.010 seconds.
+✔ Test delegateRejectsOversizedAnnouncedOrUnknownBody(declared:) with 2 test cases passed after 0.010 seconds.
+✔ Test repeatedTransportCloseJoinsTheSameSilentHTTPSOwner() passed after 0.010 seconds.
+✔ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() passed after 0.010 seconds.
+✔ Test taskCancellationJoinsAndAllowsFollowingRequest() passed after 0.010 seconds.
+✔ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() passed after 0.010 seconds.
+✔ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" passed after 0.110 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 0.125 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 0.143 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 0.143 seconds.
+✘ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" recorded an issue at CodexR3SocketLifetimeTests.swift:1118:6: Caught error: Internal error: Network error: Server closed connection before sending HTTP response headers.
+✘ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" failed after 0.151 seconds with 1 issue.
+✘ Suite "Codex R3 Socket Lifetime & Server Generation Tests" failed after 0.151 seconds with 1 issue.
+↳ /// Deterministic socket descriptor lifetime, non-blocking listener poll/accept,
+↳ /// descriptor-reuse model, and generation-bound server lifecycle tests (`proposal25` T1–T8).
+✘ Test run with 25 tests in 2 suites failed after 0.151 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - SwiftJ2KJPIPTests (Swift Testing)

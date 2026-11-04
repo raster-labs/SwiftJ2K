@@ -1,0 +1,138 @@
+Runtime coverage reconciliation helper — component checked, final proof pending
+
+Ownership and scope
+Only work/runtime-coverage/ was written. No repository edits, native build/test,
+listeners, subprocess test execution, commits, external actions or child agents.
+reconcile.py passed Python syntax validation and the non-native preserved-receipt
+component checks below. Its main proof entry point has NOT established final-source
+runtime coverage; complete successful native inputs are still pending.
+
+Read evidence
+- candidate-full-05/native.log: qualified XCTest start/completion identities,
+  custom Swift Testing display titles, exact argument-value starts, and per-test
+  successful aggregate parameter-case counts. No XML exists for that run.
+- candidate-handoff-tsan-06/native.log and report-swift-testing.xml: the XML
+  lists four canonical class/function declarations, while raw logs retain five
+  lifecycle arguments and successful two/three-case completion counts.
+- sanitizer-inventory-06/thread: 1,328 unique declarations; XCTest names lack
+  trailing parentheses, Swift Testing signatures include them. Swift Testing
+  short signatures are unique in this installed inventory.
+- candidate-full-07, only after result.json existed: exit 1, unchanged source,
+  300 Swift Testing declarations, zero skipped, one deadline failure. Its XML
+  confirms canonical function names even for tests whose logs use custom titles.
+  This failed run is useful format evidence and is rejected as a proof baseline.
+- sanitizer-partition-proposal/proposal.txt: intended exact JPIP/complement
+  partition and boundaries; no independent acceptance inferred.
+
+What the helper checks
+1. Both instrumented partitions and the ordinary reference have successful root
+   result receipts, unchanged and identical complete source manifests, and raw
+   log hashes matching those receipts. Frozen test source used for display-name
+   binding must match every recorded Tests/ file hash.
+2. Every XCTest declaration has its exact qualified start and completion once.
+   Swift Testing XML has every canonical declaration once, with no failure/error.
+   The exact framework union equals the intended inventory for each run.
+3. Every Swift Testing start/completion display is bound to one canonical ID.
+   Untitled signatures bind directly; simple first-argument @Test string literals
+   bind to a unique module/function ID, preserving file, line, literal and hash.
+   Unknown title syntax, duplicate names or ambiguous functions fail explicitly.
+4. The exact argument-value multiset for each parameterized declaration matches
+   the ordinary run, and each run reports the same successful aggregate case
+   count as its argument-start count. Order is irrelevant; multiplicity is not.
+5. Partition IDs are disjoint and their union is the complete ordinary inventory.
+   Every canonical status and parameter completion count matches the ordinary
+   reference; newly missing or skipped tests fail. Existing skipped declarations
+   are explicitly retained as unexecuted and cannot become successful oracle
+   evidence. Actual known-issue events stop automatic proof for manual review.
+6. Real sanitizer warning/error markers fail. Unrecognized/interleaved runtime
+   event lines fail rather than silently disappearing. An intact Unicode event
+   suffix after a prefixed compiler warning is readable; an event spliced in its
+   middle remains unresolved. All known/skip/unexecuted text remains in the proof.
+7. New wrapper receipts with native_streams require capture_complete=true, joined
+   capture threads, no capture_errors and wrapper_exit_code=0. Both exact raw file
+   hashes and byte counts are checked. Execution events come from native.stdout;
+   both stdout and stderr are scanned for sanitizer reports. The merged native.log
+   is still hashed and retained. Historical receipts without streams use the strict
+   merged-log parser; no historical stream identity is invented.
+
+Corrective parser work and executed component checks
+The coordinator found a real bug in the first draft: SwiftPM free-function IDs
+use Module.function(signature), while suite members use Module.Suite/function.
+The original split-on-slash assumed all IDs were members. signature() now handles
+both; XML class/name pairs are resolved against the exact inventory by requiring
+one and only one matching dot/slash candidate. Inventory IDs remain unchanged.
+
+component-check.py executed over real preserved records, with no native process:
+- Real06 inventory contains 1,328 declarations. Source title binding resolves all
+  130 custom titles, including free functions. Focused06 XML and log reconcile
+  exactly as four declarations, five parameter arguments and zero gaps.
+- Full07 component inventory adds only its six new XML scanner declarations for
+  parser-format checks, yielding 1,334. All 1,034 XCTest identities are recognized.
+  XML contains 300 Swift Testing declarations and one real failure; strict XML
+  and strict log parsing both reject it. The warning-spliced success line at3358
+  remains unresolved, leaving that declaration's completion absent in log proof.
+- Focused08 component inventory adds two new XML CLI-host declarations, yielding
+  1,336. Six canonical XML/log declaration completions are recognized. All five
+  CLI host arguments are preserved, including the literal tab/newline argument
+  printed across lines269–270. Its matching five-case completion is verified.
+  The old merged-stream warning inserted into another parameter event at292 is
+  retained as a gap; only three of that declaration's four starts are readable.
+  Strict parsing rejects focused08 for proof despite its successful native exit.
+
+These derived07/08 component inventories are explicitly NOT discovered inventories
+and cannot close final coverage. component-check-result.json preserves raw input
+hashes, each diagnostic gap and the multiline argument values. Failed07 and the
+spliced logs were never modified. The complete main proof still requires actual
+final ordinary/sanitizer inventories and successful complete execution receipts.
+
+Multiline parsing joins only a started parameter event through the terminal suffix
+for its known declaration. Literal tabs/newlines and argument multiplicity survive.
+Unrelated framework events or diagnostics interrupt the record and retain a gap.
+Diagnostic strict=False component calls expose failures for review; the main proof
+always uses strict parsing and cannot accept those diagnostic records.
+
+Use after the coordinator finishes successful final-source ordinary and both
+sanitizer partitions. Run once separately for ASan and TSan with distinct output
+paths. spec-example.json contains proposed candidate08 path placeholders, not
+existing-success assertions. Replace all paths/labels with actual completed
+receipts. Paths resolve from the current working directory (use the takeover
+workspace or absolute paths). No native commands are launched by this helper.
+
+python3 work/runtime-coverage/reconcile.py \
+  --spec work/runtime-coverage/thread-final.json \
+  --output work/runtime-coverage/thread-final-proof.json
+
+Each partition may provide swift_testing_xml explicitly (a list of report paths).
+Without it, the helper expects report-swift-testing.xml in the receipt directory.
+The default serial XCTest path need not produce XML: its qualified raw start/pass
+records provide declaration proof without changing runner concurrency. The helper
+never overwrites an existing proof. Preserve failed stderr and fix/report the
+evidence gap; do not edit native logs or relabel a failure to make it pass.
+
+Limits and manual checklist
+- This is purpose-built for observed Apple Swift 6.4 report formats; hosted
+  Swift 6.3.3 needs actual format/identity review. Format changes are explicit
+  errors, not evidence that tests themselves failed or that omissions are safe.
+- The reporter does not emit per-argument completion identities. Exact argument
+  starts plus the successful declaration's matching case count establish the
+  runner's completion statement for those cases, not individual completion-event
+  receipts. If stronger evidence is required, obtain structured framework events;
+  do not claim these XML files contain records they do not contain.
+- Review every extracted custom title binding against its frozen @Test declaration
+  if syntax/overloading is nontrivial. Unsupported interpolated/raw/multiline titles
+  or conditional source declarations require an explicit reviewed mapping or parser
+  extension. This limited text reader is not a general Swift parser.
+- Inspect retained skipped/known-issue/raw oracle lines and environment separately.
+  A framework test that conditionally avoids a tool internally can still report
+  passed. Neither framework coverage nor this helper establishes independent peer
+  availability, exact tool execution, combined Part10+15, native 3D JPIP, repository
+  WebSocket binding, full38 synthesis/output or multiple-active-HT-set qualification.
+- Source identity is the wrapper's full file manifest, not a Git tree or a compiled
+  binary proof. Keep command/compiler/CLI binding and artifact receipts alongside it.
+- Complete partitioned sanitizer coverage is not a passing fully concurrent
+  cross-target sanitizer run. The ordinary full concurrent gate remains required.
+- Retain previous failed full07/fullTSan05 evidence. No whole R3 acceptance, waived
+  independent gate or merge recommendation is issued by this helper.
+
+Positive stop: helper/spec/report/component-check writes finished after non-native
+parser validation. No complete final proof, native execution or acceptance claimed.

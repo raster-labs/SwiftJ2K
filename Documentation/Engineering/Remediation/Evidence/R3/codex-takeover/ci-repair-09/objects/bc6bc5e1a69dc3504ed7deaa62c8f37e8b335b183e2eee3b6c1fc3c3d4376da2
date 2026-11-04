@@ -1,0 +1,64 @@
+Independent local runtime audit — candidate 15
+
+Result: LOCAL_RUNTIME_RECEIPTS_INDEPENDENTLY_RECONCILED.
+
+Verified the frozen candidate15 source before and after audit: all 1,857 file
+hashes match manifest382af3bc03fe266f3050031d004b5fe4e5f4e936075d659d9755ee6479003a07.
+The final audit also binds 248 evidence-file hashes, actual/planned commands,
+compiler and environment records, separate exact raw streams, merged-log line
+multisets, XML, discovery output, title-source bindings and artifact identities.
+All native execution was performed by root; this reviewer ran only read-only
+evidence processing and owned auditor-verification fixtures.
+
+Ordinary full execution passed 1,034 XCTest cases and 324 Swift Testing
+declarations: exactly all 1,358 discovered declarations. The runtime includes
+38 parameterised declarations and 406 argument starts. No skipped, failed or
+known-issue declaration is promoted to success.
+
+ThreadSanitizer and AddressSanitizer each passed complete sequential partitions
+on the identical frozen15 source:
+- JPIP: 647 declarations (544 XCTest + 103 Swift Testing), six parameterised
+  declarations and 14 argument starts.
+- Complement: 711 declarations (490 XCTest + 221 Swift Testing), 32 parameterised
+  declarations and 392 argument starts.
+Each disjoint union equals the full ordinary inventory. Exact argument-start
+multisets and successful aggregate completion counts match ordinary execution.
+Both the unchanged strict reconciler and the secondary raw/XML parser agree.
+No sanitizer diagnostics or suppression/override environment were found.
+The installed reporter does not emit individual parameter-case completion IDs;
+this proof uses exact starts plus successful declaration aggregate counts.
+This is complete partitioned coverage, not a fully concurrent cross-target
+sanitizer pass. No14 sanitizer run is reused in the15 proof.
+
+The candidate14 release/CLI product is reused only after proving equality of
+all 512 production/package/script/resource/fixture inputs with15. All 246 CLI
+checks have their exact expected exit codes; binary identity is
+f91f721d59103b8e7278916198a29431c1e2f7a179d90fd82c72ad6ef1b1b585.
+The14-to15 snapshot differences are two documentation files and the separately
+reviewed WebSocket test fixture. No release build from changed production is
+substituted through this mechanism.
+
+Auditor maintenance is narrowly scoped and independently reviewed by root.
+Only its obsolete historical byte-equality assertion for the repaired WebSocket
+fixture changed: mandatory pinned14/15 hashes, the exact reviewed diff, ten
+phase labels and byte-identical normalisation recovery now identify that repair.
+Five tamper cases reject. The other historical test equalities and every final
+source/runtime/inventory/argument/capture check remain unchanged. The strict
+reconciliation helper remains byte-identical to its reviewed predecessor.
+
+Failed focused09, full10, diagnostic11/12, sampled13, the standalone interpreter
+crash, and JPIP ASan14 receipts remain immutable and independently rebound.
+The ASan14 complement remains unexecuted and no address14 proof was created.
+Those failures are not retrospectively passed or attributed solely to one
+scheduling or fixture cause by this audit.
+
+This audit qualifies only the recorded local evidence. It does not qualify
+hosted CI, Linux, macOS26 runtime, other hardware, real TLS, universal DNS/close
+latency, direct external peers or whole R3. Source reviews retain their stated
+ownership/storage/teardown limits. Direct combined Part10+15, native3D JPIP, the
+exact WebSocket extension, direct full38 Part2 output and multiple transmitted
+nonempty HT sets remain UNEXECUTED/UNWAIVED. No merge or gate waiver is authorised
+by this receipt. Final publication must retain its source-to-commit binding.
+
+Positive STOP: all runtime reviewer writes are complete. No native work or
+repository writes remain active under this reviewer. Root retains coordination.

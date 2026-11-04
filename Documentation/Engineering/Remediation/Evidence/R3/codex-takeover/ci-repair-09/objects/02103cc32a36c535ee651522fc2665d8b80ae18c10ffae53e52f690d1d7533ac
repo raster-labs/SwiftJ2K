@@ -1,0 +1,446 @@
+[0/1] Planning build
+Building for debugging...
+[0/13] Write sources
+[7/13] Copying Fixtures
+[8/13] Write swift-version--58304C5D6DBC2206.txt
+[8/13] Compiling CZlibShim CZlibShim.c
+[11/45] Compiling SwiftJ2K Wavelet53.swift
+[12/45] Compiling SwiftJ2K Wavelet97.swift
+[13/45] Compiling SwiftJ2K CodecAPI.swift
+[14/45] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+[15/45] Compiling SwiftJ2K JP2Boxes.swift
+[16/45] Compiling SwiftJ2K JP2Container.swift
+[17/45] Compiling SwiftJ2K JP2ReaderRequirements.swift
+[18/45] Compiling SwiftJ2K Errors.swift
+[19/45] Compiling SwiftJ2K Image.swift
+[20/54] Compiling SwiftJ2K ImageDescriptor.swift
+[21/54] Compiling SwiftJ2K ImageStorage.swift
+[22/54] Compiling SwiftJ2K LegacyImageBridge.swift
+[23/54] Compiling SwiftJ2K LegacyPixelAccounting.swift
+[24/54] Compiling SwiftJ2K Options.swift
+[25/54] Compiling SwiftJ2K Telemetry.swift
+[26/54] Compiling SwiftJ2K Transcoding.swift
+[27/54] Compiling SwiftJ2K Volume.swift
+[28/54] Compiling SwiftJ2K VolumePixelAccounting.swift
+[29/54] Compiling SwiftJ2K AcceleratedCodec.swift
+[30/54] Compiling SwiftJ2K AccelerationRuntime.swift
+[31/54] Compiling SwiftJ2K MetalAcceleration.swift
+[32/54] Compiling SwiftJ2K SIMDAcceleration.swift
+[33/54] Compiling SwiftJ2K BitIO.swift
+[34/54] Compiling SwiftJ2K BitPlaneCoder.swift
+[35/54] Compiling SwiftJ2K BoundedByteWriter.swift
+[36/54] Compiling SwiftJ2K Codestream.swift
+[37/54] Compiling SwiftJ2K ColourTransform.swift
+[38/54] Compiling SwiftJ2K ContextModeling.swift
+[39/54] Compiling SwiftJ2K HTBlockCoder.swift
+[40/54] Compiling SwiftJ2K HTTables.swift
+[41/54] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+[42/54] Compiling SwiftJ2K LosslessPipeline.swift
+[43/54] Compiling SwiftJ2K MQCoder.swift
+[44/54] Compiling SwiftJ2K Part1Pipeline.swift
+[45/54] Compiling SwiftJ2K Quantization.swift
+[46/54] Compiling SwiftJ2K ROI.swift
+[47/54] Compiling SwiftJ2K TagTree.swift
+[48/54] Compiling SwiftJ2K Tier2.swift
+[49/54] Emitting module SwiftJ2K
+[50/80] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+[51/80] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+[52/80] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+[53/80] Compiling SwiftJ2K3D JP3DRateControl.swift
+[54/80] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+[55/80] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+[56/80] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+[57/80] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+[58/80] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+[59/80] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+[60/80] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+[61/80] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+[62/80] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+[63/80] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+[64/80] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+[65/80] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+[66/88] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+[67/88] Compiling SwiftJ2K3D JP3DConfiguration.swift
+[68/88] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+[69/88] Compiling SwiftJ2K3D JP3DDecoder.swift
+[70/88] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+[71/88] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+[72/88] Compiling SwiftJ2K3D JP3DEncoder.swift
+[73/88] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+[74/88] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+[75/88] Emitting module SwiftJ2K3D
+[76/88] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+[77/88] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+[78/88] Compiling SwiftJ2K3D JP3DTiling.swift
+[79/88] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+[80/88] Compiling SwiftJ2K3D JP3DTranscoder.swift
+[81/88] Compiling SwiftJ2K3D JP3DTypes.swift
+[82/88] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+[83/88] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+[84/132] Emitting module SwiftJ2KJPIP
+[85/141] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+[86/141] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+[87/141] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+[88/141] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+[89/141] Compiling SwiftJ2KJPIP JPIPHTTPSRequest.swift
+[90/141] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+[91/141] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+[92/141] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+[93/141] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+[94/141] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+[95/141] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+[96/141] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+[97/141] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+[98/141] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+[99/141] Compiling SwiftJ2KJPIP JPIP.swift
+[100/141] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+[101/141] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+[102/141] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+    |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+223 |         }
+
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+237 | 
+238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+    |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+241 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[108/141] Compiling SwiftJ2KJPIP JPIPRequest.swift
+[109/141] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+[110/141] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+[111/141] Compiling SwiftJ2KJPIP JPIPResponse.swift
+[112/141] Compiling SwiftJ2KJPIP JPIPServer.swift
+[113/146] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+[119/146] Compiling SwiftJ2K3DTests JP3DWaveletTests.swift
+[120/146] Compiling SwiftJ2K3DTests R1VolumeRemediationTests.swift
+[121/146] Compiling SwiftJ2K3DTests R2VolumeRemediationTests.swift
+[122/146] Emitting module SwiftJ2K3DTests
+[128/146] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+[129/146] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+[130/146] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+[131/146] Compiling SwiftJ2KJPIP JPIPTransport.swift
+[132/146] Compiling SwiftJ2KJPIP JPIPTransportRequestLifetime.swift
+[133/146] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+[134/146] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+[135/146] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+[136/146] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+[137/181] Emitting module SwiftJ2KJPIPTests
+[138/190] Compiling SwiftJ2KJPIPTests CodexR3WorkerHandoffTests.swift
+[139/190] Compiling SwiftJ2KJPIPTests IndependentR2RemainingTests.swift
+[140/190] Compiling SwiftJ2KJPIPTests JP3DStreamingTests.swift
+[141/190] Compiling SwiftJ2KJPIPTests JPIPBandwidthAwareDeliveryTests.swift
+[142/190] Compiling SwiftJ2KJPIPTests JPIPCacheTests.swift
+[143/190] Compiling SwiftJ2KJPIPTests JPIPClientCacheManagerTests.swift
+[144/190] Compiling SwiftJ2KJPIPTests JPIPClientServerIntegrationTests.swift
+[145/190] Compiling SwiftJ2KJPIPTests JPIPContractTests.swift
+[146/190] Compiling SwiftJ2KJPIPTests JPIPDataBinGeneratorTests.swift
+[147/190] Compiling SwiftJ2KJPIPTests JPIPEndToEndTests.swift
+[148/190] Compiling SwiftJ2KCLI main.swift
+[149/190] Compiling SwiftJ2KCLI CLIImageIO.swift
+[150/190] Emitting module SwiftJ2KCLI
+[151/190] Compiling SwiftJ2KCLI CLIVerbs.swift
+[151/190] Write Objects.LinkFileList
+[152/190] Linking swiftj2k-cli
+[153/190] Applying swiftj2k-cli
+[155/211] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+[156/211] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+[157/211] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+[158/211] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+[159/211] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+[160/211] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+[161/211] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+[162/211] Compiling SwiftJ2KJPIPTests R3OwnedScriptedPeer.swift
+[163/211] Compiling SwiftJ2KJPIPTests TransportLifecycleProbe.swift
+[164/211] Compiling SwiftJ2KTests AccelerationTests.swift
+[165/211] Compiling SwiftJ2KTests BehaviourTests.swift
+[166/211] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+[167/211] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+[168/211] Compiling SwiftJ2KTests CLITestProcessSupport.swift
+[169/211] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+[170/211] Compiling SwiftJ2KTests CodexR3CLIHostTests.swift
+[171/217] Compiling SwiftJ2KTests OwnershipTests.swift
+[172/217] Compiling SwiftJ2KTests Part1BreadthTests.swift
+[173/217] Compiling SwiftJ2KTests R1RemediationTests.swift
+[174/217] Compiling SwiftJ2KTests R2CLIExtraSampleOrderingTests.swift
+[175/217] Compiling SwiftJ2KTests R2ColourAlphaPreservationTests.swift
+[176/217] Emitting module SwiftJ2KTests
+[177/217] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+[178/217] Compiling SwiftJ2KTests ContainerTests.swift
+[179/217] Compiling SwiftJ2KTests ContractTests.swift
+[180/217] Compiling SwiftJ2KTests DescriptorTests.swift
+[181/217] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+[182/217] Compiling SwiftJ2KTests IndependentR2AuditTests.swift
+[183/217] Compiling SwiftJ2KTests LimitTests.swift
+[184/217] Compiling SwiftJ2KTests LosslessCodecTests.swift
+[190/217] Compiling SwiftJ2KTests R2ICCModelPreservationTests.swift
+[191/217] Compiling SwiftJ2KTests R2LegacyBudgetProbes.swift
+[192/217] Compiling SwiftJ2KTests R2RemediationTests.swift
+[193/217] Compiling SwiftJ2KTests SampleAccessTests.swift
+[194/217] Compiling SwiftJ2KTests SharedStorageTests.swift
+[195/217] Compiling SwiftJ2KTests resource_bundle_accessor.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[202/217] Compiling SwiftJ2KJPIPTests CodexR3TransportCloseTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[203/217] Compiling SwiftJ2KJPIPTests CodexR3WebSocketBudgetTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[204/217] Compiling SwiftJ2KJPIPTests CodexR3WebSocketLifecycleTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[205/217] Compiling SwiftJ2KJPIPTests CodexR3WireGrammarTests.swift
+/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/candidate-snapshot-30/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift:550:83: warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+531 |         let request = self.request
+532 |         let client = self.client
+533 |         queue.async(execute: DispatchWorkItem { [self] in
+    |                                               |- note: 'client' implicitly strongly captured here
+    |                                               `- note: add 'client' as a capture list item to silence
+534 |             guard !stopped, let scenario = Self.scenarios.withLock({ $0[request.url?.host ?? ""] }),
+535 |                   let url = request.url else { return }
+    :
+548 |                 let tick = DispatchSource.makeTimerSource(queue: queue)
+549 |                 tick.schedule(deadline: .now(), repeating: .milliseconds(10))
+550 |                 tick.setEventHandler(handler: DispatchWorkItem { [weak self, weak client] in
+    |                                                                                   |- warning: 'weak' ownership of capture 'client' differs from implicitly-captured strong reference in outer scope [#ImplicitStrongCapture]
+    |                                                                                   `- note: explicitly assign the capture list item to silence
+551 |                     guard let self, !self.stopped else { return }
+552 |                     scenario.delivered()
+
+[#ImplicitStrongCapture]: <https://docs.swift.org/compiler/documentation/diagnostics/implicit-strong-capture>
+[216/219] Compiling SwiftJ2KPackageTests runner.swift
+[217/219] Emitting module SwiftJ2KPackageTests
+[217/219] Write Objects.LinkFileList
+[218/219] Linking SwiftJ2KPackageTests
+Build complete! (36.17s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.

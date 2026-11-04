@@ -1,0 +1,32 @@
+[
+  {
+    "file": "rate12.ht.j2k",
+    "sha256": "de0850b49bb5ac2904b7794f5afc53be33e433ba02b7ced36c979dc56d089c5b",
+    "matches_retained": true
+  },
+  {
+    "file": "rate12.part1.j2k",
+    "sha256": "7feb613f4d3e12ed7328fc42987819d015f557eaddb3cc38abbc62d303d9aaa1",
+    "matches_retained": true
+  },
+  {
+    "file": "rate4.ht.j2k",
+    "sha256": "bae00562f6943fdaeb530534a1929416547d119703d292edafb91ce6ca44e89f",
+    "matches_retained": true
+  },
+  {
+    "file": "rate4.part1.j2k",
+    "sha256": "11ed823287c355a3d2a1dc95ae03557635aabbc88aac7f035989605e7eaaa450",
+    "matches_retained": true
+  },
+  {
+    "file": "rate8.ht.j2k",
+    "sha256": "f6eece804d349238de0d4b7941f53f5d84866107335c827023c3892998290b84",
+    "matches_retained": true
+  },
+  {
+    "file": "rate8.part1.j2k",
+    "sha256": "150169d9e56b6e45b9c764a47c49621e0a30d5031337d221b24357463a7cab2d",
+    "matches_retained": true
+  }
+]

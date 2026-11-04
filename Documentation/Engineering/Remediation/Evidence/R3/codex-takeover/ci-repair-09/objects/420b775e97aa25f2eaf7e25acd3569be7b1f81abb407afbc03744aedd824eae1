@@ -1,0 +1,2712 @@
+{
+  "excludes": [
+    "Documentation/**",
+    "Git/build/cache directories"
+  ],
+  "files": {
+    "Package.swift": {
+      "bytes": 1538,
+      "mode": "0644",
+      "sha256": "b1dbf8e6cd77e002d8a2aa182e187833ae8d70b72d4ccbb02bbd39c0e92c531c"
+    },
+    "Scripts/README.md": {
+      "bytes": 4702,
+      "mode": "0644",
+      "sha256": "7cc22ddd50c61f1069a271604c199fff54e5c9f5b3b83fb59fc6f733aa4c8941"
+    },
+    "Scripts/benchmark-lossless.py": {
+      "bytes": 14166,
+      "mode": "0644",
+      "sha256": "11e8dbd2936905125f527191319ea1913080335aef2ed18dd538f9dc34aab2cd"
+    },
+    "Scripts/generate-container-fixtures.py": {
+      "bytes": 13882,
+      "mode": "0644",
+      "sha256": "9fdac980931bcaf416342e1c5ed43a9850e30b941524a2517e576d34e149732a"
+    },
+    "Scripts/generate-htj2k-fixtures.py": {
+      "bytes": 7881,
+      "mode": "0644",
+      "sha256": "5a6e1e0d53a9714bffd0747bc6cea67e92a54c7fa3314b2fbb1506b095e3a7fa"
+    },
+    "Scripts/generate-lossless-fixtures.py": {
+      "bytes": 14783,
+      "mode": "0644",
+      "sha256": "aab74584e34898d5e59c9c744e96abc63b8e1422f24405d42d75b00b9827d9f2"
+    },
+    "Scripts/generate-part1-breadth-fixtures.py": {
+      "bytes": 21494,
+      "mode": "0644",
+      "sha256": "f2a78a1d6275386d7fef00b00eb59e87592b8b6c6e34e8e85c0f776ff873ba0e"
+    },
+    "Scripts/generate-r3-ht-fixtures.py": {
+      "bytes": 5478,
+      "mode": "0644",
+      "sha256": "7b7d724183be4b88e8ec230b28e20a7f254cce08cb9e3556238e9c91158ae7d2"
+    },
+    "Scripts/install-cli.sh": {
+      "bytes": 3561,
+      "mode": "0755",
+      "sha256": "10ff1fbd8b59292545c245175090a8fedd27663b921409dff56deaa0a5952d55"
+    },
+    "Scripts/test-cli.py": {
+      "bytes": 29812,
+      "mode": "0755",
+      "sha256": "8f0ec78786f01135062c28c678d58b0b2f3e6896744e296544009058d254b7ed"
+    },
+    "Scripts/validate-swift64.py": {
+      "bytes": 16260,
+      "mode": "0755",
+      "sha256": "da528d6e8bcf21a5bc369b2abec9a67c47737152fafff2c38ef884f2d07e83ef"
+    },
+    "Scripts/validate.sh": {
+      "bytes": 266,
+      "mode": "0755",
+      "sha256": "5edc7443bf7b061f728d652d45e1fb1d5c6e90d2666554a677d6a14a6a752311"
+    },
+    "Scripts/verify-sanitizer-inventory.py": {
+      "bytes": 4835,
+      "mode": "0644",
+      "sha256": "b94b52ce0d76db2035eaa6726d3c06d7cb603632e027bf27f8aa6f6687e45f13"
+    },
+    "Sources/CZlibShim/CZlibShim.c": {
+      "bytes": 103,
+      "mode": "0644",
+      "sha256": "4f89d98c6ee1f8befba6c94d3c22c722c6b385910ace38ea48f20624f1bfd414"
+    },
+    "Sources/CZlibShim/include/CZlibShim.h": {
+      "bytes": 154,
+      "mode": "0644",
+      "sha256": "1acd737ddae21b0054fdeeaaee828a7768c47e6aa0313b7a37dcb179a637d94b"
+    },
+    "Sources/SwiftJ2K/Acceleration/AcceleratedCodec.swift": {
+      "bytes": 13944,
+      "mode": "0644",
+      "sha256": "4bc62f99230900cb70a0385213d63fb25571ce6130d45718b60258ce505a3f83"
+    },
+    "Sources/SwiftJ2K/Acceleration/AccelerationRuntime.swift": {
+      "bytes": 5035,
+      "mode": "0644",
+      "sha256": "586dff51dbb2ebafe20b472cb100e1dba24734f3dfc9585620cbdb3a438d3e4a"
+    },
+    "Sources/SwiftJ2K/Acceleration/MetalAcceleration.swift": {
+      "bytes": 44467,
+      "mode": "0644",
+      "sha256": "b5c8f406e873a74cb5ce1abc12dff71f2fed4af3dcb932df5b8520a202e1a593"
+    },
+    "Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift": {
+      "bytes": 60599,
+      "mode": "0644",
+      "sha256": "638cbc9acfdccb59940c1cebbe9540021d45377581d059c1c71b28a337a1c811"
+    },
+    "Sources/SwiftJ2K/Codec/BitIO.swift": {
+      "bytes": 10142,
+      "mode": "0644",
+      "sha256": "6e679285729c6462e68198038287815ae647e69d948858514615a4a0d4f1ef6e"
+    },
+    "Sources/SwiftJ2K/Codec/BitPlaneCoder.swift": {
+      "bytes": 56334,
+      "mode": "0644",
+      "sha256": "01a682d2b2d982c69f50bc93fda4ef9755db49d770e4a048946798b24c2c65a6"
+    },
+    "Sources/SwiftJ2K/Codec/BoundedByteWriter.swift": {
+      "bytes": 8216,
+      "mode": "0644",
+      "sha256": "0103fb51de7042d1fe37c6110431da0a92b6289ec6ba39e94ac8e009cad723a4"
+    },
+    "Sources/SwiftJ2K/Codec/Codestream.swift": {
+      "bytes": 66116,
+      "mode": "0644",
+      "sha256": "b5f13fc2392fae3bf466a9df24c176e077272208966d851c9135ac1b681b74ca"
+    },
+    "Sources/SwiftJ2K/Codec/ColourTransform.swift": {
+      "bytes": 6049,
+      "mode": "0644",
+      "sha256": "98063f977426ffb79c2dbd04f0d222917ec7337728446c763497a9fd649c0024"
+    },
+    "Sources/SwiftJ2K/Codec/ContextModeling.swift": {
+      "bytes": 8301,
+      "mode": "0644",
+      "sha256": "8e5ee26099e569169dc96e8f4768ce0eeaeb809923529fe7498c39892b4a1131"
+    },
+    "Sources/SwiftJ2K/Codec/HTBlockCoder.swift": {
+      "bytes": 81787,
+      "mode": "0644",
+      "sha256": "c6c47152148064060a757f01b006e648d666990e796bd22d62866af194cd8af0"
+    },
+    "Sources/SwiftJ2K/Codec/HTTables.swift": {
+      "bytes": 39395,
+      "mode": "0644",
+      "sha256": "6797f6d815ea715466a5cfb923d56adbe44e15c172161cb29eeea6dffd9610d0"
+    },
+    "Sources/SwiftJ2K/Codec/JPIPCodestreamIndexer.swift": {
+      "bytes": 48746,
+      "mode": "0644",
+      "sha256": "0f6f13b5fada4cd5bf913dd9e954e06752e378ceb2cde5e09706ba052928baa9"
+    },
+    "Sources/SwiftJ2K/Codec/LosslessPipeline.swift": {
+      "bytes": 57348,
+      "mode": "0644",
+      "sha256": "262c7a730aaec9e9de4b5e784679ca35055905cebf454a48b8453965c0fee991"
+    },
+    "Sources/SwiftJ2K/Codec/MQCoder.swift": {
+      "bytes": 15084,
+      "mode": "0644",
+      "sha256": "7dcfc57e1283304e14fcdfe7c0ae7ed8f3e93f25c0de1b2fc8bbcd241558babb"
+    },
+    "Sources/SwiftJ2K/Codec/Part1Pipeline.swift": {
+      "bytes": 77340,
+      "mode": "0644",
+      "sha256": "b6e147bfd80d7f873fd8afc408b6c92d0edf89277e8200be5cf2e43814570264"
+    },
+    "Sources/SwiftJ2K/Codec/Quantization.swift": {
+      "bytes": 12255,
+      "mode": "0644",
+      "sha256": "21644fde5b6549cf9ecb7060d1e7a4e244df20b02461d6850133997d069c1117"
+    },
+    "Sources/SwiftJ2K/Codec/ROI.swift": {
+      "bytes": 2970,
+      "mode": "0644",
+      "sha256": "769b0b862c083e17f75f0bc08f3f60dd19be81fde18a78c02f7234dfae20c65f"
+    },
+    "Sources/SwiftJ2K/Codec/TagTree.swift": {
+      "bytes": 5041,
+      "mode": "0644",
+      "sha256": "d94813a7e571851aa2d1c5d40628e96d9133d41513657c739b89391c98034a94"
+    },
+    "Sources/SwiftJ2K/Codec/Tier2.swift": {
+      "bytes": 59454,
+      "mode": "0644",
+      "sha256": "328d5cf57204573ba8b760c38225d2e93a234f84c04822453a4d1df243c1b389"
+    },
+    "Sources/SwiftJ2K/Codec/Wavelet53.swift": {
+      "bytes": 9939,
+      "mode": "0644",
+      "sha256": "770a5743dbd958cea185f93bd4adbb54d49994fb3fc82b5563b66a3ab5446de8"
+    },
+    "Sources/SwiftJ2K/Codec/Wavelet97.swift": {
+      "bytes": 7559,
+      "mode": "0644",
+      "sha256": "fe858e91b3b62b9bf11c5091680a1ef3a6a180695fb9a4044f38a7fd1fa070b8"
+    },
+    "Sources/SwiftJ2K/CodecAPI.swift": {
+      "bytes": 42461,
+      "mode": "0644",
+      "sha256": "747823cc2a829b64928133c63c44c8b598b209896a7c0a2f035292d1550705bd"
+    },
+    "Sources/SwiftJ2K/Container/JP2BoxReaderWriter.swift": {
+      "bytes": 10212,
+      "mode": "0644",
+      "sha256": "713f0098d2a600ceecb1dd5eb6dd4d79c4a7731589a2e441e735b22a6ad139f5"
+    },
+    "Sources/SwiftJ2K/Container/JP2Boxes.swift": {
+      "bytes": 42812,
+      "mode": "0644",
+      "sha256": "d98a32913b8b5de8014dabd8bad1a72440dfe40f02ef5c7cf589cf534097aa7b"
+    },
+    "Sources/SwiftJ2K/Container/JP2Container.swift": {
+      "bytes": 63821,
+      "mode": "0644",
+      "sha256": "55e95270084f87846f44ca08e3713c08dce756de2a4f7f95041841a21041daf6"
+    },
+    "Sources/SwiftJ2K/Container/JP2ReaderRequirements.swift": {
+      "bytes": 15991,
+      "mode": "0644",
+      "sha256": "3368b70938caac7198f213879d508587aacc546a80f5e98257e79c0a7468de64"
+    },
+    "Sources/SwiftJ2K/Errors.swift": {
+      "bytes": 1187,
+      "mode": "0644",
+      "sha256": "f71dd532405f2bca468ef39b29117513c686a89c64dd908ef598d1bca4f4fe6b"
+    },
+    "Sources/SwiftJ2K/Image.swift": {
+      "bytes": 18780,
+      "mode": "0644",
+      "sha256": "d3c74f26f580539d18b7fa7ba6e1d19a11bbcb39573678af4ac93eba4ef7b5be"
+    },
+    "Sources/SwiftJ2K/ImageDescriptor.swift": {
+      "bytes": 18115,
+      "mode": "0644",
+      "sha256": "bfaedf6d90b96c621cd73245259fb8ec15ea52f360824b3ba4cd42e68ce83a7b"
+    },
+    "Sources/SwiftJ2K/ImageStorage.swift": {
+      "bytes": 6226,
+      "mode": "0644",
+      "sha256": "e3510fcaac091ac4d3f333684c09b48a3f64efd1696ef5d5464d89e74566e22a"
+    },
+    "Sources/SwiftJ2K/LegacyImageBridge.swift": {
+      "bytes": 83928,
+      "mode": "0644",
+      "sha256": "7b899e3339d6de1b7a4c15766df526acf4f33bfc81afdc201874b1e971c2653b"
+    },
+    "Sources/SwiftJ2K/LegacyPixelAccounting.swift": {
+      "bytes": 2969,
+      "mode": "0644",
+      "sha256": "abee73c2017edcd57081e252c2e858ddd0964a86775be1b0c0fbd77cbae45ba6"
+    },
+    "Sources/SwiftJ2K/Options.swift": {
+      "bytes": 5921,
+      "mode": "0644",
+      "sha256": "dd43c63592bf4d74c53626374fb4494b0815315f0f64bc1a2831f9c066b5d787"
+    },
+    "Sources/SwiftJ2K/Telemetry.swift": {
+      "bytes": 8899,
+      "mode": "0644",
+      "sha256": "632729999d47bb415b35374d5b660e32bc8bb78128c16af76791f4fea468fde8"
+    },
+    "Sources/SwiftJ2K/Transcoding.swift": {
+      "bytes": 9219,
+      "mode": "0644",
+      "sha256": "ed201f60b2fa663a73f027b0c924ab6bfcfcb4f4124425357e46b0bbb896495f"
+    },
+    "Sources/SwiftJ2K/Volume.swift": {
+      "bytes": 32019,
+      "mode": "0644",
+      "sha256": "18fe71b0965b5c8d9f0ca20ab132d023e10a3c3723035aaaffc0d1a3e0177dcc"
+    },
+    "Sources/SwiftJ2K/VolumePixelAccounting.swift": {
+      "bytes": 3000,
+      "mode": "0644",
+      "sha256": "f82f46d2d866b1e5e08143c017e7940cc684c312b83c88371b03d19fb70cc767"
+    },
+    "Sources/SwiftJ2K3D/JP3DCodestreamParser.swift": {
+      "bytes": 101171,
+      "mode": "0644",
+      "sha256": "bbffea6154b96cb31f272a8037310ab7154722542d07ca4bd71f24c9d9e77175"
+    },
+    "Sources/SwiftJ2K3D/JP3DConfiguration.swift": {
+      "bytes": 10836,
+      "mode": "0644",
+      "sha256": "3536915428cacfdaa64ad2c4708e82822d9de20581e8a4e5bb42e0d755955f55"
+    },
+    "Sources/SwiftJ2K3D/JP3DDecoder+ProgressStream.swift": {
+      "bytes": 704,
+      "mode": "0644",
+      "sha256": "f7dfd138c5ff364c152fc033c3f54cba699ebf7a97ae30a990c117e17f16a120"
+    },
+    "Sources/SwiftJ2K3D/JP3DDecoder.swift": {
+      "bytes": 71862,
+      "mode": "0644",
+      "sha256": "2f37df932a1d8315fc92af3f429031668be743a6f111b9055b6578af7b0d0614"
+    },
+    "Sources/SwiftJ2K3D/JP3DEncoder+PreWarm.swift": {
+      "bytes": 498,
+      "mode": "0644",
+      "sha256": "4a5477e1fab2eb47f17fafe7b418d93f96c3e1705329c58932907c360c4f7f0f"
+    },
+    "Sources/SwiftJ2K3D/JP3DEncoder+ProgressStream.swift": {
+      "bytes": 704,
+      "mode": "0644",
+      "sha256": "0d2fa3ea1d6d22012570fb1d005b0720df70e65c829aada528233cfabc0937b9"
+    },
+    "Sources/SwiftJ2K3D/JP3DEncoder.swift": {
+      "bytes": 50207,
+      "mode": "0644",
+      "sha256": "84015a2413b44e01002dc46a20acf2dd3ffcd4893c2607f9747c76efd9fd11b2"
+    },
+    "Sources/SwiftJ2K3D/JP3DHTJ2K.swift": {
+      "bytes": 23200,
+      "mode": "0644",
+      "sha256": "0bd3da9b8db112ab19ad8c27ac6b56cd7db23027fd35a6f9ca2be58813e47f11"
+    },
+    "Sources/SwiftJ2K3D/JP3DJPIPIndexer.swift": {
+      "bytes": 43349,
+      "mode": "0644",
+      "sha256": "b519891df01c31b130303006227ed101e3a033ce9c91b33756223e7b7357fe18"
+    },
+    "Sources/SwiftJ2K3D/JP3DMetalDWT.swift": {
+      "bytes": 31517,
+      "mode": "0644",
+      "sha256": "1725ed1a000f7ad1859491345f93fa1c5307b386592e24bd27c144b79f0e1e6f"
+    },
+    "Sources/SwiftJ2K3D/JP3DMultiSpectralDecoder+PreWarm.swift": {
+      "bytes": 539,
+      "mode": "0644",
+      "sha256": "ab070cffe64bba16fb17dc220ef18c7c8e3d7f05ccdc1c0d7f01dd04f412c6e9"
+    },
+    "Sources/SwiftJ2K3D/JP3DMultiSpectralDecoder.swift": {
+      "bytes": 9398,
+      "mode": "0644",
+      "sha256": "ff31cafbcb8aace81c74985959a4032b7735c8b374b6055e4116777c10efe780"
+    },
+    "Sources/SwiftJ2K3D/JP3DMultiSpectralEncoder+PreWarm.swift": {
+      "bytes": 539,
+      "mode": "0644",
+      "sha256": "3dcb0c97ca8d56eaf3c1859f1772ee00197849efd893a084f14df7bda552ca7f"
+    },
+    "Sources/SwiftJ2K3D/JP3DMultiSpectralEncoder.swift": {
+      "bytes": 9600,
+      "mode": "0644",
+      "sha256": "b43c951c406ef9b463cdf584ddd7a7b112b99056aba4526d774849b523838578"
+    },
+    "Sources/SwiftJ2K3D/JP3DMultiSpectralTypes.swift": {
+      "bytes": 7157,
+      "mode": "0644",
+      "sha256": "170d298ec5acf4ba1b87a612086388559f00f57fe4574223838f3a74bb8f5bc4"
+    },
+    "Sources/SwiftJ2K3D/JP3DPacketFormation.swift": {
+      "bytes": 45992,
+      "mode": "0644",
+      "sha256": "88449c5aa70e52f8969e362826774fcdc1bd8eb834083d1b0a01269ddfa5099c"
+    },
+    "Sources/SwiftJ2K3D/JP3DProgressiveDecoder+PreWarm.swift": {
+      "bytes": 532,
+      "mode": "0644",
+      "sha256": "6a4fa8b72fc2810ee44453ca7701a6604c4fad95d1f8fbfd0f741f77d43a1edd"
+    },
+    "Sources/SwiftJ2K3D/JP3DProgressiveDecoder.swift": {
+      "bytes": 7907,
+      "mode": "0644",
+      "sha256": "fedc3c21a12296711d26f86658a64926d01041064421760a7b8718fb33b7db12"
+    },
+    "Sources/SwiftJ2K3D/JP3DROIDecoder+ProgressStream.swift": {
+      "bytes": 710,
+      "mode": "0644",
+      "sha256": "dc611f63984ed2676278f572eea19ac5c14d72fe801af35a7f1823584fe206bb"
+    },
+    "Sources/SwiftJ2K3D/JP3DROIDecoder.swift": {
+      "bytes": 39673,
+      "mode": "0644",
+      "sha256": "9c83ddb5ca2990d5069b0136cad46dc3c36e750afc611d07b71864fe334a8428"
+    },
+    "Sources/SwiftJ2K3D/JP3DRateControl.swift": {
+      "bytes": 6248,
+      "mode": "0644",
+      "sha256": "151662b91fa2bfe0c63ee365adf6b85d0804086e8555ee81bae988f77f63f9dd"
+    },
+    "Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift": {
+      "bytes": 99109,
+      "mode": "0644",
+      "sha256": "7929d88a300abd0843eba5cc986df995300aa92d260f0a204702591b18f11602"
+    },
+    "Sources/SwiftJ2K3D/JP3DSpectralAnalysis.swift": {
+      "bytes": 5340,
+      "mode": "0644",
+      "sha256": "6177138404e82cebf7327d1d551a2b99d87a045d6a48eba00695be74cc453e48"
+    },
+    "Sources/SwiftJ2K3D/JP3DStreamWriter+PreWarm.swift": {
+      "bytes": 518,
+      "mode": "0644",
+      "sha256": "822767c4ee54aa26bca943255f04c67eeb8f642877e5c205a129398ed28e1719"
+    },
+    "Sources/SwiftJ2K3D/JP3DStreamWriter+ProgressStream.swift": {
+      "bytes": 711,
+      "mode": "0644",
+      "sha256": "9d3289fd19da126635f4ecab173e0d541c79442c6287372e14da5df2e70edd3e"
+    },
+    "Sources/SwiftJ2K3D/JP3DStreamWriter.swift": {
+      "bytes": 13950,
+      "mode": "0644",
+      "sha256": "1bc0da69fdf27e8159d3c8f9e3c4c4099d8118a942bcc3bef7509fff750001fe"
+    },
+    "Sources/SwiftJ2K3D/JP3DTier12Coder.swift": {
+      "bytes": 251528,
+      "mode": "0644",
+      "sha256": "3cdf7bda65f3aeaf220c1203392b1d20b58df1e9c2bb0067d85b4959eb4f180f"
+    },
+    "Sources/SwiftJ2K3D/JP3DTiling.swift": {
+      "bytes": 9996,
+      "mode": "0644",
+      "sha256": "8c1ed1037b83186cc4e8c36c3fc3d7a5fa37f7a75cc1706af530804f19beeabe"
+    },
+    "Sources/SwiftJ2K3D/JP3DTranscoder+PreWarm.swift": {
+      "bytes": 507,
+      "mode": "0644",
+      "sha256": "51cb78637e29d2018fb7d564a0aeb93246a379a5f0b81b9871a0729ed5873edc"
+    },
+    "Sources/SwiftJ2K3D/JP3DTranscoder.swift": {
+      "bytes": 59213,
+      "mode": "0644",
+      "sha256": "3e92182f4815668b1299b2e4212f54fb21ca0438ff1cd98f30a509e085a8712e"
+    },
+    "Sources/SwiftJ2K3D/JP3DTypes.swift": {
+      "bytes": 6593,
+      "mode": "0644",
+      "sha256": "95964e78f406f662ad7cba10fa16070e4d0c66ce3affdbe4f7754e942829ae47"
+    },
+    "Sources/SwiftJ2K3D/JP3DWaveletTransform.swift": {
+      "bytes": 29245,
+      "mode": "0644",
+      "sha256": "ead53bcb5cb64868ddd34c932fe0c0820105496433015175fb81e8f0cfdc743d"
+    },
+    "Sources/SwiftJ2K3D/SwiftJ2K3D.docc/SwiftJ2K3D.md": {
+      "bytes": 3735,
+      "mode": "0644",
+      "sha256": "6d0141c584923c829af713575bef90f441561cf2de40c5d12bdd890822f8b87f"
+    },
+    "Sources/SwiftJ2K3D/VolumeCodecAPI.swift": {
+      "bytes": 43386,
+      "mode": "0644",
+      "sha256": "faabf16d2d2e49b9a5699d200e3fe44b6f40ad9b77e01940d5f67917f3fd89c2"
+    },
+    "Sources/SwiftJ2KCLI/CLIImageIO.swift": {
+      "bytes": 139582,
+      "mode": "0644",
+      "sha256": "21e8c8b3739c155bc1ef3b6fbe7f4ab268b1d95d1a40944c948a43495322ebbc"
+    },
+    "Sources/SwiftJ2KCLI/CLIVerbs.swift": {
+      "bytes": 121288,
+      "mode": "0644",
+      "sha256": "7e5cc572205a7d165eb4bed107ffd80fa391937e07199c97aa5da1df0f97eb43"
+    },
+    "Sources/SwiftJ2KCLI/main.swift": {
+      "bytes": 89259,
+      "mode": "0644",
+      "sha256": "d04d38953b4ea081c0623e0a375394f4284e8ad00226dfd60e287c3260479e9c"
+    },
+    "Sources/SwiftJ2KJPIP/JP3DCacheManager.swift": {
+      "bytes": 10827,
+      "mode": "0644",
+      "sha256": "0eb3d56f8d83d61739f384cfd27e2aa3b348f258ce6bc98534e3af65df4d9b24"
+    },
+    "Sources/SwiftJ2KJPIP/JP3DJPIPClient.swift": {
+      "bytes": 42850,
+      "mode": "0644",
+      "sha256": "06882e235271ff6430f7b475836e5e26e91988b6c0e18c28913d21e48f458560"
+    },
+    "Sources/SwiftJ2KJPIP/JP3DJPIPServer.swift": {
+      "bytes": 19126,
+      "mode": "0644",
+      "sha256": "1a8dea72668d06cdc7f0ccba99ebd7add5fdb428fb019c083ef593d16df4fff9"
+    },
+    "Sources/SwiftJ2KJPIP/JP3DProgressiveDelivery.swift": {
+      "bytes": 13529,
+      "mode": "0644",
+      "sha256": "257e9e067434b19aed69bbc5414fb6e229323d4cd849efe9448ebd7a35506ff2"
+    },
+    "Sources/SwiftJ2KJPIP/JP3DStreamingTypes.swift": {
+      "bytes": 19580,
+      "mode": "0644",
+      "sha256": "0b157ee7683d2c86428236f8e1db72a1a12b1b909af23bd400c947df8cd3f64d"
+    },
+    "Sources/SwiftJ2KJPIP/JPIP.swift": {
+      "bytes": 36293,
+      "mode": "0644",
+      "sha256": "071b1d3ea2dca72d663ebaefb504ef75a22de21e2300eee8346cd8ba5d30912c"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPAdaptiveQualityEngine.swift": {
+      "bytes": 14028,
+      "mode": "0644",
+      "sha256": "da9ec1706a3c1c88291c8d40d91c8961fdee6f6b4d8959349c1113165b8b1053"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPBandwidthEstimator.swift": {
+      "bytes": 12571,
+      "mode": "0644",
+      "sha256": "d1a408b83a5c91c544e388bea2ffd5cc605dc3d03a8af15501dac567b4599d32"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPBandwidthThrottle.swift": {
+      "bytes": 6953,
+      "mode": "0644",
+      "sha256": "ff2fbd5765ec1de48bb4b2bcf4390defc5dbdc3b4390afa9f81c9d53c7a61dc8"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPClientCacheManager.swift": {
+      "bytes": 43491,
+      "mode": "0644",
+      "sha256": "25a558893ae745d48004fc4fe1144adc25380e499f87c45deef4af67ac876105"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPCodecAPI.swift": {
+      "bytes": 31830,
+      "mode": "0644",
+      "sha256": "31874b17950dd333859878cbb16d0122aa56b1388b3f383867c1966fffdb2c84"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPDataBinGenerator.swift": {
+      "bytes": 60106,
+      "mode": "0644",
+      "sha256": "dbdff090c3085fab6ed576356f9b2e9fbc924e840fe814c94dd851eefe10e399"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTJ2KSupport.swift": {
+      "bytes": 6706,
+      "mode": "0644",
+      "sha256": "a528444564fe0d2b1eaaaf5fcbdedc09201fa83e22b2b2e75285d8547952ad8f"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift": {
+      "bytes": 19022,
+      "mode": "0644",
+      "sha256": "eab372589ca81e0a0a618baaa92339e5c424f0c3ccd81b9bac1756ef2ca504b8"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPMultiResolutionTileManager.swift": {
+      "bytes": 15757,
+      "mode": "0644",
+      "sha256": "c7b321bf8a6d6fb06329140f4a44a278fb82235934bf32d605dd5485270ab17f"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPNetworkFramework.swift": {
+      "bytes": 15421,
+      "mode": "0644",
+      "sha256": "967e40e0422042ffb0c88a39a2f4344438195f65cbc10bf1551931cf715e5bda"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPPrecinctCache.swift": {
+      "bytes": 10960,
+      "mode": "0644",
+      "sha256": "d0d88f951df38b241f2c8bc41ffe9fe665398742a9233553b7509e6d098bea27"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPProgressiveDeliveryScheduler.swift": {
+      "bytes": 18268,
+      "mode": "0644",
+      "sha256": "0fdcfe944b4f9bee2b4f1350dac80813fbd3416aefa7015f886082f2c5d29c2d"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPProgressiveStreamingPipeline.swift": {
+      "bytes": 15223,
+      "mode": "0644",
+      "sha256": "cf9441d05d20381646d339ec84c0afe5abccffb9e5067230050f169ff0cde750"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPRequest.swift": {
+      "bytes": 30478,
+      "mode": "0644",
+      "sha256": "f0f73255c53b91a03a102f493e0de79c9f007ed7e5e9834468cb8c50e1470693"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPRequestQueue.swift": {
+      "bytes": 5527,
+      "mode": "0644",
+      "sha256": "940112fb435bb286239c78de6892297a5f9c8613fdb7ff1df861a9b137f9b332"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPResourceAdmission.swift": {
+      "bytes": 6502,
+      "mode": "0644",
+      "sha256": "bc46224f15a12bdff97f3e2f088b10fa66cc71e38bacdb333a4f1e9d6d763389"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPResponse.swift": {
+      "bytes": 31289,
+      "mode": "0644",
+      "sha256": "db620b0ee5413e3585d583e5c2033c25112923ef48b89b0514aa4dfb033fd80b"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPServer.swift": {
+      "bytes": 53709,
+      "mode": "0644",
+      "sha256": "300f496491e2608fc3a6d1aa6c9ca1780ca44ee62a1a3b5fb8c887ac3bc32d9e"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPServerPush.swift": {
+      "bytes": 52358,
+      "mode": "0644",
+      "sha256": "52e2f98b4ab3f09c3278f933d457533fcbfe2f11982e113418e6e1edf1da0647"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPServerSession.swift": {
+      "bytes": 21312,
+      "mode": "0644",
+      "sha256": "caabcb4438fb38f70a579015a4dae365ef02ada4ffc5632cd2cf46d361eedece"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPSessionManager.swift": {
+      "bytes": 47028,
+      "mode": "0644",
+      "sha256": "a59ca2fe738398aa99a9119c73f620a8a23b476614e24387ea2ff32e14420909"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPSessionPersistence.swift": {
+      "bytes": 38185,
+      "mode": "0644",
+      "sha256": "7313b2c15a84aef792d1a23c5daceff5c8f3d5d787169fcc67717fac73be3c51"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTCPSocket.swift": {
+      "bytes": 60026,
+      "mode": "0644",
+      "sha256": "4dd4abb7dc9d8744a599735ad114878421b985b01163264da58ce0bab3a4a5fe"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTranscodingService.swift": {
+      "bytes": 8807,
+      "mode": "0644",
+      "sha256": "b24f395858a4e92e1c728f91fd176b3fb8f2e3809b2b1f10972d10783e0410f8"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransport.swift": {
+      "bytes": 29286,
+      "mode": "0644",
+      "sha256": "3c6773376acc9907d01fbd6ed8bb9ba66799ec223686a1092d6017bb1438ef7a"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPTransportRequestLifetime.swift": {
+      "bytes": 2981,
+      "mode": "0644",
+      "sha256": "da0d6dcea1f749dd64bd6363e8f747b9853dbef8ab1bc6ee99a60bac5aebad64"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketClient.swift": {
+      "bytes": 13568,
+      "mode": "0644",
+      "sha256": "e60159f386bccc43ba0dc8b95093a728248a529192f68147442fe21a2540e7d2"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketServer.swift": {
+      "bytes": 22401,
+      "mode": "0644",
+      "sha256": "3d517b091f0b9e5ba68a707aca7324f336ce0b5bb39c44d605ea95b9f23e2118"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPWebSocketTransport.swift": {
+      "bytes": 62518,
+      "mode": "0644",
+      "sha256": "08a045827994c9715742753e38cbd0011f578bc36f20190e80bcff88443d4088"
+    },
+    "Sources/SwiftJ2KJPIP/JPIPWorkerHandoff.swift": {
+      "bytes": 1791,
+      "mode": "0644",
+      "sha256": "a147320765989f79ed8268ec2a02cca20ec5eaca0c8ac79d278c2e3eba5ccef7"
+    },
+    "Sources/SwiftJ2KJPIP/SwiftJ2KJPIP.docc/SwiftJ2KJPIP.md": {
+      "bytes": 1606,
+      "mode": "0644",
+      "sha256": "7200e41ec38d2d97f5a1ace9867ce4ae1eb99fda14c272c0bbb50a1d959804cd"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR2VolumeGridTests.swift": {
+      "bytes": 16818,
+      "mode": "0644",
+      "sha256": "0c2d58db81cb26b69711ac3e5313fd7349deadea6a8b9e355ea043586211827a"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR2VolumePixelAccountingTests.swift": {
+      "bytes": 5508,
+      "mode": "0644",
+      "sha256": "bc8f7f3802f148137585932560440e03bd40078c3632efdb83577dbeed610d7f"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR3IndependentHTTests.swift": {
+      "bytes": 10160,
+      "mode": "0644",
+      "sha256": "f4efba37995ae3191241301d1828e770fc05c77a5ecc2c8b7160b70036769981"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR3LayerBudgetTests.swift": {
+      "bytes": 17216,
+      "mode": "0644",
+      "sha256": "b26d47e6c62a4268e9f4c17a188040c477747326aa0b191328479a4b7c0f3f03"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR3Part2MarkerTests.swift": {
+      "bytes": 3284,
+      "mode": "0644",
+      "sha256": "c8a9de037b96a53b9c5e7b2aacc34c6e5db3ddb7f8769ddbab266a09b42e3a90"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR3ProgressTests.swift": {
+      "bytes": 2397,
+      "mode": "0644",
+      "sha256": "1db195a9cadc2088aa765a4720c381c2ac91a6497c0283a65982d61a1bdc4d4e"
+    },
+    "Tests/SwiftJ2K3DTests/CodexR3ResourceTests.swift": {
+      "bytes": 9713,
+      "mode": "0644",
+      "sha256": "97e2ea6b3159965d6528c99b028ff3832f35e5be0f707cdeb40b6cb7b519b9d1"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DComplianceTests.swift": {
+      "bytes": 45221,
+      "mode": "0644",
+      "sha256": "d7c7efcfc11366fe6b02188b3894e756f11d24eb792782145a36ab42dbb467b8"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DCoreTypeTests.swift": {
+      "bytes": 24622,
+      "mode": "0644",
+      "sha256": "254b2a8a10bf77b22c3f3f728e7cdc5bc711aec810466d2bea43ba283c687d8b"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DDecoderTests.swift": {
+      "bytes": 34833,
+      "mode": "0644",
+      "sha256": "e54c6106748e0abab37de133d51e4fe12a84be492b8afe3cead90770763c5b33"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DEncoderTests.swift": {
+      "bytes": 31047,
+      "mode": "0644",
+      "sha256": "73a9f0a431b9dfdf313f8ae17941e33b77bda49773f10743dc64517820be80a5"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift": {
+      "bytes": 23313,
+      "mode": "0644",
+      "sha256": "efe23a31a3a5a47e42e45623ec3d574c31be5428692dcb0a752e333ad508a0c2"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DIntegrationTests.swift": {
+      "bytes": 19709,
+      "mode": "0644",
+      "sha256": "01207abfb3a7b9e4ec2d2e219ed5dd00c8057c120dcd2ede5c6af52cb754e922"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DMultiSpectralTests.swift": {
+      "bytes": 14803,
+      "mode": "0644",
+      "sha256": "890ca3de26e4752e11d691413c84898e754f94d5eda68743a9e1eefcd3d44544"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DParityAndSurfaceTests.swift": {
+      "bytes": 24796,
+      "mode": "0644",
+      "sha256": "fa13a683da2a521349d8e0df8fde01e7bfea7bc646e41c70124b5bc4f5b50fe6"
+    },
+    "Tests/SwiftJ2K3DTests/JP3DWaveletTests.swift": {
+      "bytes": 19825,
+      "mode": "0644",
+      "sha256": "9b4e4e7ef0865b981f02c1494dbe3fd05510e62e3b7f92fdb84f187d64eaf071"
+    },
+    "Tests/SwiftJ2K3DTests/R1VolumeRemediationTests.swift": {
+      "bytes": 97581,
+      "mode": "0644",
+      "sha256": "18a2ded7459b48405f7bba099a9a7d7948ed1fb6dbb801aacfe534a536955479"
+    },
+    "Tests/SwiftJ2K3DTests/R2VolumeRemediationTests.swift": {
+      "bytes": 21027,
+      "mode": "0644",
+      "sha256": "78a1510aa0115371ab9ecf383998b9427aa0a758559187361e99a4b49eecdf43"
+    },
+    "Tests/SwiftJ2K3DTests/R3VolumeRemediationTests.swift": {
+      "bytes": 70752,
+      "mode": "0644",
+      "sha256": "c0ccf4fe5f8413201ebe5255164c94477ed26a9fc879804f871d88e422762663"
+    },
+    "Tests/SwiftJ2K3DTests/VolumeContractTests.swift": {
+      "bytes": 14450,
+      "mode": "0644",
+      "sha256": "e2404a295370205ca79df7c4f6649dadd1b2788a577a2c0376024a46adc448c4"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3AdmissionTests.swift": {
+      "bytes": 18772,
+      "mode": "0644",
+      "sha256": "00c3dcec0e5a23cf0de124cd6416fbaa9cefc055fff51df018c17611cf6b9a91"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPDelimiterTests.swift": {
+      "bytes": 10220,
+      "mode": "0644",
+      "sha256": "857d250b0f2550199e392575305238dd57d5dcdf45031d845447487dadcedf49"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift": {
+      "bytes": 30185,
+      "mode": "0644",
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift": {
+      "bytes": 36600,
+      "mode": "0644",
+      "sha256": "4b7c2ba03a82a851b0bbb98440d41d7728b09527da56fb93736ccec1957118bd"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3TakeoverJPIPTests.swift": {
+      "bytes": 6973,
+      "mode": "0644",
+      "sha256": "e6f8df4f0d9286ddca0942bc1e440e478505422272a0b7b1121b32f08ba4376d"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3TransportCloseTests.swift": {
+      "bytes": 15244,
+      "mode": "0644",
+      "sha256": "af479ff104df41184d0d40998f12bc87464ba5cf1459187b642ed9473b8a7034"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketBudgetTests.swift": {
+      "bytes": 15754,
+      "mode": "0644",
+      "sha256": "402af47d104d18a0034f2e27f39946cbffb77c8639bb6567379a4f7a56ecccd5"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WebSocketLifecycleTests.swift": {
+      "bytes": 14071,
+      "mode": "0644",
+      "sha256": "674e2f555e6746c59d8e0a0fe1c1e5d4aa598a51c1cdcfc4f6e9012fc1912386"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WireGrammarTests.swift": {
+      "bytes": 5389,
+      "mode": "0644",
+      "sha256": "2dd6de0ce92fbbff261833289c9fd53a88fe48a5c7aeb9ea500e310e46de5b71"
+    },
+    "Tests/SwiftJ2KJPIPTests/CodexR3WorkerHandoffTests.swift": {
+      "bytes": 8845,
+      "mode": "0644",
+      "sha256": "5dfc3d57e25110931aed6edb461803d9f5ca7daf38a7249f3f7818e871a9e663"
+    },
+    "Tests/SwiftJ2KJPIPTests/IndependentR2RemainingTests.swift": {
+      "bytes": 2159,
+      "mode": "0644",
+      "sha256": "cd26ff026365ce3e3dd912236bdd587f38ea8ba20e9edf2c7885b88f186c912c"
+    },
+    "Tests/SwiftJ2KJPIPTests/JP3DStreamingTests.swift": {
+      "bytes": 37085,
+      "mode": "0644",
+      "sha256": "73ffbcece0f7b7fad25bd39d6ad4480e203fec1dbe5eb197fd5bd925ffca3218"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPBandwidthAwareDeliveryTests.swift": {
+      "bytes": 19155,
+      "mode": "0644",
+      "sha256": "6ed0beab89dd29b08536a03958c9a3e220f863fb7abd90a0e739dbd7174b894d"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPCacheTests.swift": {
+      "bytes": 23643,
+      "mode": "0644",
+      "sha256": "2ac924fb6acb4be2b590f22e09b9c01ce7a3fc5c1310e55459322a9278e008d2"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPClientCacheManagerTests.swift": {
+      "bytes": 32272,
+      "mode": "0644",
+      "sha256": "34e07bcf8ce3452d100a904e9b8763b378678163e48a9a6aa745cedd3070a5b8"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPClientServerIntegrationTests.swift": {
+      "bytes": 13571,
+      "mode": "0644",
+      "sha256": "98a5f295085bcaebf955ab89291562b8799263c5ed2ba5a0288488d8010d6a22"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPContractTests.swift": {
+      "bytes": 17054,
+      "mode": "0644",
+      "sha256": "2bd756ddae4d36150551d02986a77b5bc3618228107c5eeec13835642fbb05bb"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPDataBinGeneratorTests.swift": {
+      "bytes": 8054,
+      "mode": "0644",
+      "sha256": "65bb1b29b34a1c481cc91dc46f5a15387cd69c82c210773bc6856c63d9ca2904"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPEndToEndTests.swift": {
+      "bytes": 24079,
+      "mode": "0644",
+      "sha256": "0b479365ebadfebe125c5a7d8f2195f85d9e52c88dcbc15af9df9ac094f5ddc3"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPHTJ2KSupportTests.swift": {
+      "bytes": 14833,
+      "mode": "0644",
+      "sha256": "da1e8ea8c8acb3864ead6774c9ce1bbe295259e7941f039d5c292962e77eac0e"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPNetworkFrameworkTests.swift": {
+      "bytes": 8914,
+      "mode": "0644",
+      "sha256": "d7cd72e4ea1c624aac4b7b400ef55a4a3fd8f7f6eedde220d7f7a38ba442ef70"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPProgressiveStreamingTests.swift": {
+      "bytes": 16307,
+      "mode": "0644",
+      "sha256": "6eae143c68904f46ba21997cf4a7e219c50ad0825d729f8484689e14138b49b0"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPServerComponentTests.swift": {
+      "bytes": 14747,
+      "mode": "0644",
+      "sha256": "f10fc8e0833af732d4f8539a017bf203df128424c5d3e5068c05fa91107e5403"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPServerPushTests.swift": {
+      "bytes": 44657,
+      "mode": "0644",
+      "sha256": "0672e1af5694b4e081940bc4f376cc83d8ca6984fc0f7bfb7d1a8bd592602d46"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPServerTests.swift": {
+      "bytes": 12506,
+      "mode": "0644",
+      "sha256": "38def91d87eaf043b32df710f855d3fda993c51aa42aca81e43a2d094d3ea944"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPSessionPersistenceTests.swift": {
+      "bytes": 42132,
+      "mode": "0644",
+      "sha256": "f7da2a4c6740898c56775045cb0dde2f79e6dee895d6d071c81031609f5cd346"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPTests.swift": {
+      "bytes": 16521,
+      "mode": "0644",
+      "sha256": "76908b6112ca3787ebbf18f864f5d2daa4d08e33236236fd544488cd3f01e4f8"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPTranscodingServiceTests.swift": {
+      "bytes": 14600,
+      "mode": "0644",
+      "sha256": "dacaf1b0a3e0062c45db957de7ce044eff34fe49aed20fd288e74537257d9e8e"
+    },
+    "Tests/SwiftJ2KJPIPTests/JPIPWebSocketTests.swift": {
+      "bytes": 38745,
+      "mode": "0644",
+      "sha256": "3dab40da49f01c79f2fb413de68573aea6ef6641b17be5d22333cf455c586538"
+    },
+    "Tests/SwiftJ2KJPIPTests/R1JPIPRemediationTests.swift": {
+      "bytes": 13166,
+      "mode": "0644",
+      "sha256": "1c3852957deb5233ad2f87696d0b6bcef5c7fb3832a40fa1f461da20295332a2"
+    },
+    "Tests/SwiftJ2KJPIPTests/R2BinGenerationBudgetTests.swift": {
+      "bytes": 8865,
+      "mode": "0644",
+      "sha256": "5c9176c73f78ebfcc5d767b068e91cfe924864f367fd120501b790c5ee0ef538"
+    },
+    "Tests/SwiftJ2KJPIPTests/R2CacheRecencyTests.swift": {
+      "bytes": 1081,
+      "mode": "0644",
+      "sha256": "8844e7b49db036b8e54625b3c1c71b90ff75e9f1cdbbd9c0f8a7e405fe2dd7e1"
+    },
+    "Tests/SwiftJ2KJPIPTests/R2JPIPColourAlphaPreservationTests.swift": {
+      "bytes": 4357,
+      "mode": "0644",
+      "sha256": "3eea1370857a4a3caefe24c3da38d480460f60ab1f4899f2bb19d3aaf28dd77e"
+    },
+    "Tests/SwiftJ2KJPIPTests/R2JPIPRemediationTests.swift": {
+      "bytes": 30104,
+      "mode": "0644",
+      "sha256": "6393e609054cec2835cc44cd6123829a2c614dea99125a8b608e665149a011e2"
+    },
+    "Tests/SwiftJ2KJPIPTests/R2PixelAccountingTests.swift": {
+      "bytes": 2418,
+      "mode": "0644",
+      "sha256": "97b1a746697a885a2c28648b30e79df748f586ca41b35dabc6ae4a27498e6779"
+    },
+    "Tests/SwiftJ2KJPIPTests/R3JPIPRemediationTests.swift": {
+      "bytes": 28666,
+      "mode": "0644",
+      "sha256": "4d8130bc414abf98d02dbb1ad65c889c510e8bb569d6477429dde14b6ba9f6d6"
+    },
+    "Tests/SwiftJ2KJPIPTests/TransportLifecycleProbe.swift": {
+      "bytes": 2736,
+      "mode": "0644",
+      "sha256": "20936f356b36f11c1249b686973dc35b2e26cd456307b12a9c9363f11badce46"
+    },
+    "Tests/SwiftJ2KTests/AccelerationTests.swift": {
+      "bytes": 27811,
+      "mode": "0644",
+      "sha256": "1ea870fe514670faca4b1f76ff34a3cb4aa093d6e55df40c841f5a8e3f6ee23a"
+    },
+    "Tests/SwiftJ2KTests/BehaviourTests.swift": {
+      "bytes": 8595,
+      "mode": "0644",
+      "sha256": "9965af06626e9dd537eb74bf7036dfac91eaa3ca023804a8f6fefda013cf7a91"
+    },
+    "Tests/SwiftJ2KTests/BoundedByteWriterTests.swift": {
+      "bytes": 3633,
+      "mode": "0644",
+      "sha256": "47f62a123aecd24c1c223c5d2e3c195c88745ef0544dfe35a6e59ae6adc6bdb4"
+    },
+    "Tests/SwiftJ2KTests/CLIBreadthAndConsumerTests.swift": {
+      "bytes": 10433,
+      "mode": "0644",
+      "sha256": "11d07069ea2ef4dcadffa94a7182da08161c157c3bee97908e5e0ad011521486"
+    },
+    "Tests/SwiftJ2KTests/CLITestProcessSupport.swift": {
+      "bytes": 9971,
+      "mode": "0644",
+      "sha256": "8a88b65da154686a82c92a57a684e50f16e2a3baca6ea2028eedf7e557cc7450"
+    },
+    "Tests/SwiftJ2KTests/CancellationPublicationTests.swift": {
+      "bytes": 2562,
+      "mode": "0644",
+      "sha256": "23c0de9146e2c4a09ec66fc45bd0d021fdbb77da05d5d7eef332faa05385570b"
+    },
+    "Tests/SwiftJ2KTests/CodexR3CLIHostTests.swift": {
+      "bytes": 1760,
+      "mode": "0644",
+      "sha256": "94d574f5ac1bdd395a346ab53fed8486349b75f722781f0f6ed973b88a846d73"
+    },
+    "Tests/SwiftJ2KTests/CodexR3JPPReassemblyResourceTests.swift": {
+      "bytes": 4886,
+      "mode": "0644",
+      "sha256": "92b3e8f347f61260a19ec4c04b3964c4057ac5f0deb9ea9f8ab1b37f1c29a9a8"
+    },
+    "Tests/SwiftJ2KTests/ContainerTests.swift": {
+      "bytes": 27113,
+      "mode": "0644",
+      "sha256": "3d7a7cdd2697cb7b874c862b87e5b1bcecf35502284c9dd3bf35964627e4662e"
+    },
+    "Tests/SwiftJ2KTests/ContractTests.swift": {
+      "bytes": 6137,
+      "mode": "0644",
+      "sha256": "d555898ef7df94df4c03b9026de44e64b617b52d32ef8fe7a8a668691eff73ca"
+    },
+    "Tests/SwiftJ2KTests/DescriptorTests.swift": {
+      "bytes": 6454,
+      "mode": "0644",
+      "sha256": "281cd251a69aa145cedafa4180f1d380ec132e768435827a95908e9bac6e775b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_g16_lossless.kdu.jp2": {
+      "bytes": 394,
+      "mode": "0644",
+      "sha256": "f3e62da4effbd7a1d7b4e34043940fb2f9a352c0bd4556a28f680db26f5f5a72"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_g16_lossless.opj.jp2": {
+      "bytes": 295,
+      "mode": "0644",
+      "sha256": "a8a9a107587265cd8d7bd0eeaea8a99afba1cc4db3ce4d3c78fc50b27501d54e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_pal8_pclr_cmap_resc.kdu.jp2": {
+      "bytes": 1246,
+      "mode": "0644",
+      "sha256": "ed20cce9182746bc64b7786dd51b899be90b7a7cd1b649a0d127d832a16b7410"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_icc_res_meta.kdu.jp2": {
+      "bytes": 1683,
+      "mode": "0644",
+      "sha256": "7424ff68ae060baaddcdbd36c603914c43c35692a6ef383be2b34671766d1fa5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_ict_lossy.kdu.jp2": {
+      "bytes": 467,
+      "mode": "0644",
+      "sha256": "022daff1944fc6038929d15b87c25198eaee4c7a82ae88c37142e3d02d1f7237"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_ict_lossy.opj.jp2": {
+      "bytes": 413,
+      "mode": "0644",
+      "sha256": "36a7eb6d7608d00d9021f6e198f80f872bc87faf258f80094e1d054e85b698a0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.kdu.jp2": {
+      "bytes": 830,
+      "mode": "0644",
+      "sha256": "34447afd2dcea953f9a04f6c78764c740e2f60cbceba35f89755b59426928ceb"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgb8_rct.opj.jp2": {
+      "bytes": 682,
+      "mode": "0644",
+      "sha256": "7c8bd1d761162677b3c375124353a0543b02ed9995a3bf03679f368920d60c63"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_rgba8_cdef.kdu.jp2": {
+      "bytes": 1032,
+      "mode": "0644",
+      "sha256": "b0433e919c6ea06905eadb7d50104f9dbd365d2a0e3748fb896fd2a1e2cdf269"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_s16_lossless.kdu.jp2": {
+      "bytes": 365,
+      "mode": "0644",
+      "sha256": "e085afe80688f93a70669f87e143aee6cf9c5d432c16f82e0f5f3a9bc8edc34d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jp2_s16_lossless.opj.jp2": {
+      "bytes": 275,
+      "mode": "0644",
+      "sha256": "09b35cb5bba828894c00417d9919501565d7f79e0913d649b0e51a630412b794"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jph_g16_lossless.kdu.jph": {
+      "bytes": 451,
+      "mode": "0644",
+      "sha256": "06c02bd2f5a717175cb470920206aabfe55f570f022eeacc67de8ede48185424"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jph_rgb8_rct.kdu.jph": {
+      "bytes": 1029,
+      "mode": "0644",
+      "sha256": "7bec8d9ab0277e56c3dda7d0b7ccad6c84e4df61e8bd66223067ea88e732d0b6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jph_rgba8_cdef.kdu.jph": {
+      "bytes": 1281,
+      "mode": "0644",
+      "sha256": "53448d3d750d453cb4978f3589474095de3924c7dba0ded2f33f0132a823f233"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jpx_rgb8_htj2k.kdu.jpx": {
+      "bytes": 1106,
+      "mode": "0644",
+      "sha256": "e7da3b016f2a0ea76e17a5a12d8e8c8f9fa2f19cd9f779cb026b8f391b44bb3f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/jpx_rgb8_part1.kdu.jpx": {
+      "bytes": 911,
+      "mode": "0644",
+      "sha256": "f7fc8503a86f5083fd893efefc2ab6ce889020175b6f4ee3610670b78791d5c5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Containers/manifest.json": {
+      "bytes": 171797,
+      "mode": "0644",
+      "sha256": "fe25ec21f5fcb8483d9a3b8adc0abd2e3bff6f421ad7b70d5c8a39af5a1ee5e7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht.j2k": {
+      "bytes": 1335,
+      "mode": "0644",
+      "sha256": "4cfe4c37133a6be44a6249a9e0b88eafae32a2e4dad6cd1957a9806f2b502cbc"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht_l3.j2k": {
+      "bytes": 1301,
+      "mode": "0644",
+      "sha256": "e12981e26a03731761bf619b129bf21e9dbdd754e7a834930279de74b87465db"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht_layers.j2k": {
+      "bytes": 1411,
+      "mode": "0644",
+      "sha256": "73c94b3e7db23f18e21bbd7ea3cd0b5057d441ecb491c3a57fdc0d5100abaafc"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 1411,
+      "mode": "0644",
+      "sha256": "dcb7cb348e92fc1d42eb18bffd90d1f3efdbf8c1593c7b59be9fb3469d21b993"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht_precincts.j2k": {
+      "bytes": 1411,
+      "mode": "0644",
+      "sha256": "f30dbc4d4b648c2231b6e3ed6bef796021c893810396cf3af72e5646f85f7d02"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_ht_tiles.j2k": {
+      "bytes": 1416,
+      "mode": "0644",
+      "sha256": "ce18c22f66f2812b3bc9c6e142fb9d03cb7382c9687cc7890d80a726a27675be"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.kdu_htmix.j2k": {
+      "bytes": 1338,
+      "mode": "0644",
+      "sha256": "e68a98f8e19f591b0e55e31a3d5e1aad23f54e18fe68e339928d0f054ffc71d9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.ojph.j2c": {
+      "bytes": 1243,
+      "mode": "0644",
+      "sha256": "27110a19906e0cb3d02294576062af3e19fb003a10c2c7824eae510a129fcb53"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.ojph_b16_n2.j2c": {
+      "bytes": 1192,
+      "mode": "0644",
+      "sha256": "090b4f10559bfad8937d4fbdcb4849ad24ee4f800d6546c193bfcb0bb21dcd0b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.ojph_b32.j2c": {
+      "bytes": 1243,
+      "mode": "0644",
+      "sha256": "b04d07379cfdb043aa5928c7af2f1010c5830b6b931be4bac58794f17828c50f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.ojph_lrcp.j2c": {
+      "bytes": 1243,
+      "mode": "0644",
+      "sha256": "2da26afeb2158e5b0976269ef0a4f43bd1f6ec64e76cb55e2fa6a44726b4c9f0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g08_37x23_random.ojph_n1.j2c": {
+      "bytes": 1144,
+      "mode": "0644",
+      "sha256": "18eb14725a9c416660a10aec90e4869a05f24ae6921c0f758c8f3b68483f7151"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht.j2k": {
+      "bytes": 35379,
+      "mode": "0644",
+      "sha256": "8642964e721bc2be6b358dc64221fcb3d16d3e4a6369037859be76e8773402ef"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht_l3.j2k": {
+      "bytes": 35781,
+      "mode": "0644",
+      "sha256": "bfecfdf1fe7f8e0a181c45491f3feda82512cea3cf2f87c9c17465b1b0dcd9b1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht_layers.j2k": {
+      "bytes": 35507,
+      "mode": "0644",
+      "sha256": "0e9f0a316b61af00e9230b813e74ae1a0efe820260ccb37db9a4e2d90d6f40d6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 35507,
+      "mode": "0644",
+      "sha256": "cb960343f9fa6ff5a7f9d85b3bd3a0bfaa7572dfaaccb82e08546b60d18410e4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht_precincts.j2k": {
+      "bytes": 37442,
+      "mode": "0644",
+      "sha256": "780043d22eb92dffcf2e22c26cb74bf1313de37ff80243ceace19c4007d2f784"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_ht_tiles.j2k": {
+      "bytes": 42146,
+      "mode": "0644",
+      "sha256": "cdd1acd84746df199d141971aee4137a91f6dd76f1ab6135b4cad3367aa56f58"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.kdu_htmix.j2k": {
+      "bytes": 35387,
+      "mode": "0644",
+      "sha256": "87199dd3e39f1a93e59a9a7cffbd3cbbfe33aa17f412dc4dce1bda0e457bdbb4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.ojph.j2c": {
+      "bytes": 35281,
+      "mode": "0644",
+      "sha256": "01b2ebcf23c49e2d77183d92c159c82b088a920c272040d24cad71f1672ae492"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.ojph_b16_n2.j2c": {
+      "bytes": 37310,
+      "mode": "0644",
+      "sha256": "8e737416874dd2b2af76ec475a8542a09f34ddcd749269cb33ea8ac2f0a2e6ad"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.ojph_b32.j2c": {
+      "bytes": 35404,
+      "mode": "0644",
+      "sha256": "cb35076207e2bb95aea32b2f4fe21bf1988863e9f66b2fd76f42b302225c21a1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.ojph_lrcp.j2c": {
+      "bytes": 35281,
+      "mode": "0644",
+      "sha256": "118f033472f1d765c242efb55a682817db0f956ed536b9ebaad3eae1919238c6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g10_300x200_gradient.ojph_n1.j2c": {
+      "bytes": 40312,
+      "mode": "0644",
+      "sha256": "adce79e5b90339368bdeaab4ec0210fff3431673828340dd056929c03cd2e858"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht.j2k": {
+      "bytes": 4311,
+      "mode": "0644",
+      "sha256": "655b07e4be626a3525188c863087ec45bc08f6a573b896e81356adeb26bbfbfc"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht_l3.j2k": {
+      "bytes": 4365,
+      "mode": "0644",
+      "sha256": "2820fc0a521cc7e63416944aec887d53e98a3a4204b2a1a70b2a8e6f7a796bb6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht_layers.j2k": {
+      "bytes": 4393,
+      "mode": "0644",
+      "sha256": "ca83daaa23de034e083d6169a62938888feaad833cc34ba138676cb210b04cc9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 4393,
+      "mode": "0644",
+      "sha256": "b224d7a0252fe074ff7ead62fa1d1ae33654dbaa155ee98832458cba5c4c64f7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht_precincts.j2k": {
+      "bytes": 4808,
+      "mode": "0644",
+      "sha256": "051a2317262901c35276a0d27e61cc183a150fd1f56fa926d92b5dc05d8d0b7b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_ht_tiles.j2k": {
+      "bytes": 5659,
+      "mode": "0644",
+      "sha256": "7746b97d63d3125cd25973d5f53c123183804f2febc9233a0b04fd506e39e46c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.kdu_htmix.j2k": {
+      "bytes": 4317,
+      "mode": "0644",
+      "sha256": "5970e3899810c511dfca2ce641b35f6c907936c11e769c7d813126ec39222ef8"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.ojph.j2c": {
+      "bytes": 4218,
+      "mode": "0644",
+      "sha256": "c9600e9f8864b58ca45154d4cbd3e0c5f0ca53bf1e97f6a25c85a7eaf329bb68"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.ojph_b16_n2.j2c": {
+      "bytes": 4573,
+      "mode": "0644",
+      "sha256": "b0f3de442f22201c42d691268d8b272b57703439d3167e5e03d405507348c5a9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.ojph_b32.j2c": {
+      "bytes": 4263,
+      "mode": "0644",
+      "sha256": "14387ad49673f594cace1b0bc2df37ca5c67b90c0c52e7859c549d1c504c880e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.ojph_lrcp.j2c": {
+      "bytes": 4218,
+      "mode": "0644",
+      "sha256": "71e742993e8be0757375d0505b4366d141e246307561affc89300b3f6d38d59b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_129x67_gradient.ojph_n1.j2c": {
+      "bytes": 5240,
+      "mode": "0644",
+      "sha256": "638973b8376c4f60a8817efcf36e4d4dd1d0ccce784d6d88357ad8eb83f05f2b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht.j2k": {
+      "bytes": 272,
+      "mode": "0644",
+      "sha256": "57f1b490e3a2e2cda589615ef2fecac9a44c6f09d511f0d0e67251796fea21d5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht_l3.j2k": {
+      "bytes": 262,
+      "mode": "0644",
+      "sha256": "b6a634fd90dbdf0e0ae4349ffe80ec3e4d50a1a6038c4abe6eda3ea0dfdffb91"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht_layers.j2k": {
+      "bytes": 323,
+      "mode": "0644",
+      "sha256": "e743d0c8d580ed4ab31cc68b250b7d627da93e4dc41d7a06b8cb0863a0f4c9f0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 323,
+      "mode": "0644",
+      "sha256": "746c72a06f28d4069ff49a6077185595e64dfcb27fead52f4c2d0ae0e65b7199"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht_precincts.j2k": {
+      "bytes": 320,
+      "mode": "0644",
+      "sha256": "55390f36b48c0e0f8d712030dc179204d84650179c53e87e63627c24dfe7e512"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_ht_tiles.j2k": {
+      "bytes": 272,
+      "mode": "0644",
+      "sha256": "1bba77ca6a47eb20c7cdcd3baaf62738560afa0598a9184b143aa15be7d41fa5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.kdu_htmix.j2k": {
+      "bytes": 274,
+      "mode": "0644",
+      "sha256": "03081d20edd230206aeafa5fd285a70d95b73bd1c96e73703611b2fad0cb13f9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.ojph.j2c": {
+      "bytes": 178,
+      "mode": "0644",
+      "sha256": "3a2035336f3fd8177d213e5d7644a99a8dd07919e1bef2b10e858cb672eb9ce3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.ojph_b16_n2.j2c": {
+      "bytes": 160,
+      "mode": "0644",
+      "sha256": "f44980998c681d37181973220d0203704afcd01d44dd417035de32fe71cf40c0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.ojph_b32.j2c": {
+      "bytes": 178,
+      "mode": "0644",
+      "sha256": "de390d60bcfddad970ed2069c166405628e5573fdf1536b4f5445883c8e83473"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.ojph_lrcp.j2c": {
+      "bytes": 178,
+      "mode": "0644",
+      "sha256": "8032a5febf8f3225e4cd9dedd404dbf7fcb1d706ca3a003bbc17667a3052b17b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g12_5x3_ramp_extremes.ojph_n1.j2c": {
+      "bytes": 152,
+      "mode": "0644",
+      "sha256": "8a3e044957a8913a9a045a47a14887fdb9cc503af26b224aa56f210401216cc7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht.j2k": {
+      "bytes": 321,
+      "mode": "0644",
+      "sha256": "2c758636c6ef1cc6fc1ef9f7bb580fb4e0346f4f55c4ea2950d1de3a26efe10a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht_l3.j2k": {
+      "bytes": 311,
+      "mode": "0644",
+      "sha256": "e4a7a2697f63930df497feb905bcc7e20f3b59159bf80cbcf71755a54401e66d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht_layers.j2k": {
+      "bytes": 366,
+      "mode": "0644",
+      "sha256": "c05b8b958e33961176859f2c6af843d2551e3499b731fb62bf9087754d8bbe94"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 366,
+      "mode": "0644",
+      "sha256": "40d2fc14fd09e2c97293f29bd697baaa4d6ea8e6d5b43940ff899484438c7c25"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht_precincts.j2k": {
+      "bytes": 369,
+      "mode": "0644",
+      "sha256": "a4ed14bfb1f4f05e1b7200a661d53307650f02317fe72ca2732132946ad4814d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_ht_tiles.j2k": {
+      "bytes": 321,
+      "mode": "0644",
+      "sha256": "5ec3ba0184e6090595b5b6cb25a2fb061bf366f92309e05b75b545914a2e9e30"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.kdu_htmix.j2k": {
+      "bytes": 321,
+      "mode": "0644",
+      "sha256": "52a6c9edfbe54147192378f1c667cdd9e3e3461f740a106bba7504b58b3daeb0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.ojph.j2c": {
+      "bytes": 227,
+      "mode": "0644",
+      "sha256": "cf6d0ad2862b12eef16a7f3c0b19472b35e267c22b79a440db2adc5dc66a28aa"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.ojph_b16_n2.j2c": {
+      "bytes": 215,
+      "mode": "0644",
+      "sha256": "b725fe2e1c45e70436bb6cafdb535adc8968359d68f8b09bea2e533101862f60"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.ojph_b32.j2c": {
+      "bytes": 227,
+      "mode": "0644",
+      "sha256": "0406ed4ba297aeb2833b21275d537f454fd70a4e8f73eb7328d0f487c9af3e34"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.ojph_lrcp.j2c": {
+      "bytes": 227,
+      "mode": "0644",
+      "sha256": "2f69985194cdef29edc8a9d1a2319ba4b1ce1d174b84f0a630f264d1c01ab8ab"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_17x9_alternating.ojph_n1.j2c": {
+      "bytes": 211,
+      "mode": "0644",
+      "sha256": "ff4f5635e2ab31fe06c223cbceee96d2006b1555a1af445941b960cc2191987b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht.j2k": {
+      "bytes": 238,
+      "mode": "0644",
+      "sha256": "25e7db7e6ac4af847ccad13eaac405931ae56a70ddc0f5fb42df6cabf41797e1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht_l3.j2k": {
+      "bytes": 228,
+      "mode": "0644",
+      "sha256": "ec0b3ed9bd9de6caa08707f421f7cc55cf274744da93c1786ef09977dab5beb4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht_layers.j2k": {
+      "bytes": 285,
+      "mode": "0644",
+      "sha256": "08dbb0e81bea2a489325f83794a7f5991aab7b3d5b7f90a68ebc61345dce2734"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 285,
+      "mode": "0644",
+      "sha256": "d326c320823aec9694993b3b507cc317de5a6043a220bd437914e31ec061cae1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht_precincts.j2k": {
+      "bytes": 286,
+      "mode": "0644",
+      "sha256": "edb57aac0b19bb94e1d84782b6a378f4aebbcb0305e80ecbdb57584cbaa7b5fa"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_ht_tiles.j2k": {
+      "bytes": 238,
+      "mode": "0644",
+      "sha256": "124717844488d464ed2242b682f6b82f34890b12b6a11d6f263c46d78ce6053c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.kdu_htmix.j2k": {
+      "bytes": 239,
+      "mode": "0644",
+      "sha256": "d1273f87e2981dde3da96d7736d7e95a5548f9beb60a3621d55c0f5df1a7c85e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.ojph.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "2a285b40ef35eb4870198b1e6c0b8eeffd428652d0ff4b405dc14eb3b5b9ded1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.ojph_b16_n2.j2c": {
+      "bytes": 132,
+      "mode": "0644",
+      "sha256": "cab581e053d79347cf93021946763b4a1baef8a0eeb30d398b91d7de39687e84"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.ojph_b32.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "c2dc5401ef3c110b1cb65aa7141538ce7e79548b4d45f9e96869d012bd5fe84f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.ojph_lrcp.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "a00b886de600a5c8439e0a7350f46084b37526895b0a9155b57af55d1fc6741a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_1x1_max.ojph_n1.j2c": {
+      "bytes": 128,
+      "mode": "0644",
+      "sha256": "8c9b254827e4bd4deef174f4079d887c1f853f982623874e9bd9f9dc337db1e2"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht.j2k": {
+      "bytes": 72895,
+      "mode": "0644",
+      "sha256": "cb55db627adaf75951543a1105eaca19f1d2d8d382b604742c6a46caf5c6410e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht_l3.j2k": {
+      "bytes": 73556,
+      "mode": "0644",
+      "sha256": "9bfe869070ad6b75a0c09bee63ba7be202b32ea04a8d8910221b1319f98d4608"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht_layers.j2k": {
+      "bytes": 72996,
+      "mode": "0644",
+      "sha256": "98355d9dbef560a382fb04445487607cca07a0dee65d86b49948aabece797260"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 72996,
+      "mode": "0644",
+      "sha256": "d3c11b8f7403d140e6aaff71007527e39eca240c559f71e7456b1e86ed1c809e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht_precincts.j2k": {
+      "bytes": 76256,
+      "mode": "0644",
+      "sha256": "391257e5d9dd505b9234a7ffa00a2fe57eabb22af82dd7c401aa14d5bc6041de"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_ht_tiles.j2k": {
+      "bytes": 85032,
+      "mode": "0644",
+      "sha256": "9a245e844a372d813d960a61681ad7033ead94758042a6d2b32b5646de23c9da"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.kdu_htmix.j2k": {
+      "bytes": 72902,
+      "mode": "0644",
+      "sha256": "6baf9a8f8d0dc61de96cf28f8ef3c5d06a1867e4c9e7eec8ebde5a61df88de8a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.ojph.j2c": {
+      "bytes": 72801,
+      "mode": "0644",
+      "sha256": "9e01e6f926d28b6f59f80be9948b27c6b762fe7173c5531e644adde3aaeb356e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.ojph_b16_n2.j2c": {
+      "bytes": 76408,
+      "mode": "0644",
+      "sha256": "dadaf5917a2ee07bce5b1c595cf8085533a8ca15abe37d4650eed54cec492784"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.ojph_b32.j2c": {
+      "bytes": 73391,
+      "mode": "0644",
+      "sha256": "d41196ec85eb708d88527538d3d2e72dd6736b9621915cd7f46d05f0609dfbc3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.ojph_lrcp.j2c": {
+      "bytes": 72801,
+      "mode": "0644",
+      "sha256": "88ddb6b307051d53342c1ef905c3dc99a30cd0f9405ceb98d36cbbdff2d5df19"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_256x256_smooth.ojph_n1.j2c": {
+      "bytes": 83161,
+      "mode": "0644",
+      "sha256": "39657cf27bb2d4c348369be302700928dd8ae88199b72bef6650d6cc1631658a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht.j2k": {
+      "bytes": 9140,
+      "mode": "0644",
+      "sha256": "bc7f7a009a7dc018a2a6735e85f7f1aa70744428b12e7398f927966555929012"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht_l3.j2k": {
+      "bytes": 9089,
+      "mode": "0644",
+      "sha256": "e7145b4cad62fc7ea61b0d86ee7ba7273e9c42f211e752fad56d39e3a5ccbadd"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht_layers.j2k": {
+      "bytes": 9213,
+      "mode": "0644",
+      "sha256": "679653a7987ba1dcd458ce790f0db690e3ea6fc6e1d184a81dea47ab34aa0c71"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 9213,
+      "mode": "0644",
+      "sha256": "ddef656fa645165c6038f805d03832103491c0088ec98ff228cc8a701ac61342"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht_precincts.j2k": {
+      "bytes": 9324,
+      "mode": "0644",
+      "sha256": "025ace15909c0a8189032df24a9e27a2a7a3ca0648cfff61e9827bc9f8067b21"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_ht_tiles.j2k": {
+      "bytes": 9589,
+      "mode": "0644",
+      "sha256": "4ee8c65be4349d9a2fa430d6aa1b5141307b4beeda8445387e2c44e053ce2761"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.kdu_htmix.j2k": {
+      "bytes": 9145,
+      "mode": "0644",
+      "sha256": "0f09a9d89b881acba694cf2b8a3d56454d15c0beede5e7443598799b324f264c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph.j2c": {
+      "bytes": 9046,
+      "mode": "0644",
+      "sha256": "0e4ea8f2a5cc9521abdf94fea602971e0e808978f89a7cad4bc4734285dd890f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph_b16_n2.j2c": {
+      "bytes": 9052,
+      "mode": "0644",
+      "sha256": "20e145838a3c340337eaa50c527f26a050568df7f931275ac3d7c72805b83dac"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph_b32.j2c": {
+      "bytes": 9046,
+      "mode": "0644",
+      "sha256": "eddf8d8def67cbd2a712f79924ea96741cf60d422a8509b8d84261211303ec1a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph_lrcp.j2c": {
+      "bytes": 9046,
+      "mode": "0644",
+      "sha256": "d4e67f6961254916417bb0e39b6a0291a549535a5fee223b0f84210512bf75b0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_64x64_random.ojph_n1.j2c": {
+      "bytes": 8912,
+      "mode": "0644",
+      "sha256": "7e55bd516dc85bf14d802442e2aa6cedc20f3b08e929a9b4bd7e7c64e1ecd8e5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht.j2k": {
+      "bytes": 238,
+      "mode": "0644",
+      "sha256": "52385cf989575a3942db29c166b289a0b2e0829c4e84e4656f5bd917be0f3ba8"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht_l3.j2k": {
+      "bytes": 228,
+      "mode": "0644",
+      "sha256": "cd6e965b6491b3eeb6bb7cbb779ba44ca045133375be121a519afa207acccb44"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht_layers.j2k": {
+      "bytes": 285,
+      "mode": "0644",
+      "sha256": "6cfbf8f19018f55af73220182bb0df492f4d5e342f1a9cb6eccefbc84d3d146f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 285,
+      "mode": "0644",
+      "sha256": "76eb24746e005111cd13f73328d7b4c509eae29d3188a57bb7fc4c3b566c1ac0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht_precincts.j2k": {
+      "bytes": 286,
+      "mode": "0644",
+      "sha256": "7e9cc437544d084a7b2a07654d36110292d178014290b045a1e0f77b1312a584"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_ht_tiles.j2k": {
+      "bytes": 238,
+      "mode": "0644",
+      "sha256": "25748c181ddd636504c0b13eb9c5bd50d469ee2739d681719af06f36f4ce57d3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.kdu_htmix.j2k": {
+      "bytes": 239,
+      "mode": "0644",
+      "sha256": "ea71af9e59c5b7375164f40327e456ec59ad76d301a4c79aadb5c837e3958189"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.ojph.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "9731ffea0c560eb738b91749a8ae8d2f021baf93fdf6d56d4c016e323595b05d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.ojph_b16_n2.j2c": {
+      "bytes": 139,
+      "mode": "0644",
+      "sha256": "83eeb0810381b28e08dcf75ebd1c4f73703b01614d08b9b4fa12e3a6a1d12955"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.ojph_b32.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "ccce5825f8899db8847078de6da1f33c2386664298732a8c584d847ad76fd83b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.ojph_lrcp.j2c": {
+      "bytes": 144,
+      "mode": "0644",
+      "sha256": "cc34ff3f5ee399840dbdad1e2c1e715a96e890814c19a85768851f3a4bdb5e09"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_const.ojph_n1.j2c": {
+      "bytes": 164,
+      "mode": "0644",
+      "sha256": "74bf7e5bc15605eab37502f5eaa6c2bb303c622a1fce7b0fc729eb25c256bfd9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht.j2k": {
+      "bytes": 239,
+      "mode": "0644",
+      "sha256": "b7152424b56e62d669a4c00cebfcc44a3e1f262bd294580a52ee6665faae6501"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht_l3.j2k": {
+      "bytes": 229,
+      "mode": "0644",
+      "sha256": "e10c55c8f4dc3f109871eb546d0300364e368a51b58f169ce00ee6f99534d55f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht_layers.j2k": {
+      "bytes": 286,
+      "mode": "0644",
+      "sha256": "74f1b0ec9e4a7689ac1d80cbd9e3ef2f54a800893dc3ffec8615fd49e8fcc594"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht_layers_lrcp.j2k": {
+      "bytes": 286,
+      "mode": "0644",
+      "sha256": "5e9eda924522ccdd2185770684edde5be36b9c9ffffcb7e198f4d494e4d0f80e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht_precincts.j2k": {
+      "bytes": 287,
+      "mode": "0644",
+      "sha256": "e8e02927ef312106761c029244b04c52f00f5b6497f1580c72ecfd3c79d1cd44"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_ht_tiles.j2k": {
+      "bytes": 239,
+      "mode": "0644",
+      "sha256": "4a42883202d96f05e69e38bbdc5a1eb2603d7d770a0699d95e2ebfe51bd41ff1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.kdu_htmix.j2k": {
+      "bytes": 240,
+      "mode": "0644",
+      "sha256": "96c4cf74c11ee463fe4f381bb70bc60b374b9b3bbb42e645215e965d4fa94916"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.ojph.j2c": {
+      "bytes": 145,
+      "mode": "0644",
+      "sha256": "842e8dad7f6c9f3ac483656d6eac8ca7c8fbcf6980515d42f24970b76478086f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.ojph_b16_n2.j2c": {
+      "bytes": 140,
+      "mode": "0644",
+      "sha256": "3140bff078c5d165f49ba1ef3359832b48831c71475a8ff4fe959f606c1d61be"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.ojph_b32.j2c": {
+      "bytes": 145,
+      "mode": "0644",
+      "sha256": "3e89caadfea144a7d6f367636d7dacafb492eba789fe3ea8e7d5bae3d716d66b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.ojph_lrcp.j2c": {
+      "bytes": 145,
+      "mode": "0644",
+      "sha256": "599b4397e73b9ef2351c3b2f6338aff2c5a488f94763173d2edf0e16abc25c42"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/g16_8x8_zero.ojph_n1.j2c": {
+      "bytes": 164,
+      "mode": "0644",
+      "sha256": "b66917b1b17b886443aa6c43488b8af335c3ab48d7dbab5bdb684ede797339fa"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/HTJ2K/manifest.json": {
+      "bytes": 62421,
+      "mode": "0644",
+      "sha256": "87f629f820534e764315e60febaf4d00481b70a8b1ffc53cf39edc65993b928a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.kdu.j2k": {
+      "bytes": 1198,
+      "mode": "0644",
+      "sha256": "188f5516f95297d11dfccf42bb686558a1f285a8ca60e40e2458593a1a315b2b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.kdu_l3.j2k": {
+      "bytes": 1175,
+      "mode": "0644",
+      "sha256": "ed65e4bbae41959a81c0d20ad808eaf5b200cc50c97d7c3bd9cccefc92a0961c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.opj_n1.j2k": {
+      "bytes": 1030,
+      "mode": "0644",
+      "sha256": "fb4b6605eae88692fd1d290f326a8a587cf8cdca97d4226f886f22fac84cf7b3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.opj_n2_b16.j2k": {
+      "bytes": 1090,
+      "mode": "0644",
+      "sha256": "5ae7c9d388ae4a4695970d27a76c55e849b0335438796aeebc07599a189f2456"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g08_37x23_random.pgm": {
+      "bytes": 864,
+      "mode": "0644",
+      "sha256": "884b65208c052d3d8ca92c45f01b1ccb95ba179365b05f4981314544eedf3e32"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.kdu.j2k": {
+      "bytes": 25359,
+      "mode": "0644",
+      "sha256": "f7b4dc02c3305cea54f866d354503721ac4043143e4a87a01230a3b813421ca4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.kdu_l3.j2k": {
+      "bytes": 26916,
+      "mode": "0644",
+      "sha256": "3d7ce5676825c367bfefe4f75a5db4ac030b06fb8149108d80e4db681c7216bb"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.opj.j2k": {
+      "bytes": 25285,
+      "mode": "0644",
+      "sha256": "7236ec28bbcfed11cf945f91a09dc06997b03defb9ac88c9366bab78404050d9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.opj_b32.j2k": {
+      "bytes": 26701,
+      "mode": "0644",
+      "sha256": "f8e51cb56fb978551ad3e24f2e7f3f14e7395b2d4a39764a70266554fa4f7223"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.opj_n1.j2k": {
+      "bytes": 44920,
+      "mode": "0644",
+      "sha256": "b9a0ac520a54a8a84f8611374f6d52e13968f9a2e2143129747ad330b841f1e2"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.opj_n2_b16.j2k": {
+      "bytes": 31625,
+      "mode": "0644",
+      "sha256": "86659e4165f1a21bfe898081185cbf1762d5b1ce3578b793a186364187d13dc7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.opj_rpcl.j2k": {
+      "bytes": 25285,
+      "mode": "0644",
+      "sha256": "c080441236d4ab77591b559416589760b7d0ba525d604279a61c1196b3b19cd3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g10_300x200_gradient.pgm": {
+      "bytes": 120016,
+      "mode": "0644",
+      "sha256": "5f87477abe608abb7f417ac1bfbd09564195f9a72eb4d712b867cd32ef41e11e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.kdu.j2k": {
+      "bytes": 3681,
+      "mode": "0644",
+      "sha256": "1d6aa0a9f8406c64187bba83d42eacdb6a173aca1701ae6c7a862b86e1bb7883"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.kdu_l3.j2k": {
+      "bytes": 3757,
+      "mode": "0644",
+      "sha256": "374f8e62c51c92821d80c5731c2ae4d9d3aaba958d615d643985bc8b1596c272"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.opj.j2k": {
+      "bytes": 3609,
+      "mode": "0644",
+      "sha256": "99c71eb4418369ae95dfb639158d40605d96109992cef296cc0f53ca6912ba39"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.opj_b32.j2k": {
+      "bytes": 3687,
+      "mode": "0644",
+      "sha256": "8a336efaf78dbdc8b1b3eed2eb61f60d4047804c5312831ecf3e7deafd8e076c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.opj_n1.j2k": {
+      "bytes": 8835,
+      "mode": "0644",
+      "sha256": "46dc73c575526e85120a918ebba41cf2d0d9b20ab74e19058f3a76f815470982"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.opj_n2_b16.j2k": {
+      "bytes": 4422,
+      "mode": "0644",
+      "sha256": "3da17a3d9d8cd82e0ab1a29047eb7d40a846dbec932730423f87dc1861184e2e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.opj_rpcl.j2k": {
+      "bytes": 3609,
+      "mode": "0644",
+      "sha256": "88fe89ef967a8b884b4d20a5f1cdce5ef228b61b95a891dab38b6c0faf4ed6be"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.pgm": {
+      "bytes": 17301,
+      "mode": "0644",
+      "sha256": "7b4fcaabb0c07ba2ac997984dd79c1a0b973ef1528018636d54030ae67953f0e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.allstyles_kdu.j2k": {
+      "bytes": 6103,
+      "mode": "0644",
+      "sha256": "b8fe2847f57cfbc79278913f8552cc7fcbba18f868fe1f14d361dfef3f26bbb3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.allstyles_opj.j2k": {
+      "bytes": 6029,
+      "mode": "0644",
+      "sha256": "daa8a0be051f3ca3ba5bae5ae7b347f01b0c1a5742a59ab1c0b1f22bc9760403"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.bypass_opj.j2k": {
+      "bytes": 5957,
+      "mode": "0644",
+      "sha256": "8f173d0e619f348834db2eea5e15dbd80726cf6a28452a879a5ee2324f2d3b15"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.bypass_restart_kdu.j2k": {
+      "bytes": 6090,
+      "mode": "0644",
+      "sha256": "4bd351037302be2ffe6459d609994456d02d94042f31cd00541eaa3a746cfc8b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.causal_opj.j2k": {
+      "bytes": 3617,
+      "mode": "0644",
+      "sha256": "4002a6fe1353f2a8ec48d343f9549e93e27988de615f7134ef0c95013604170c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.cprl_precincts_opj.j2k": {
+      "bytes": 3975,
+      "mode": "0644",
+      "sha256": "6e66e8fd0f02e007941a173b1e7d0bf7f52f03a7928d4c3b701c704a05e30276"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.erterm_opj.j2k": {
+      "bytes": 3605,
+      "mode": "0644",
+      "sha256": "126189fe73ed92443fbdb4e61c3a95b65a599ed655841ba096eaae4754fe68a0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.everything_kdu.j2k": {
+      "bytes": 13395,
+      "mode": "0644",
+      "sha256": "f3b33ce7c9630279a8cd70aa018e52a1d19b109bc0e3d21c96ecf980ba1c3ab9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.everything_opj.j2k": {
+      "bytes": 11856,
+      "mode": "0644",
+      "sha256": "5050fda3abb83776710a7bfe012d1aa7120ca08cbbc4808c334d1679a433b0f7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.layers3_kdu.j2k": {
+      "bytes": 3750,
+      "mode": "0644",
+      "sha256": "9e5e8178c2b95d71d11ccad190382f8a0790f6c82c4d6a2d631732200ed3b0fe"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.layers3_opj.j2k": {
+      "bytes": 3635,
+      "mode": "0644",
+      "sha256": "d890e2c931d90fc1e21821994da6a9bb44741604c9d659e03948981db610c8b3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.origin_kdu.j2k": {
+      "bytes": 3816,
+      "mode": "0644",
+      "sha256": "7d51e38a04a03fdc4c8797b20a2c4772b90b58061668d8f2c34c8ce9c5dad585"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.origin_opj.j2k": {
+      "bytes": 3744,
+      "mode": "0644",
+      "sha256": "dc98bbce0e394f5d418054623a13f49d900761b532b9353fd717409ca6c17ec0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.origin_tiles_opj.j2k": {
+      "bytes": 4483,
+      "mode": "0644",
+      "sha256": "efeb8e632c91ba9b712bf349e7282d39fbf6402af669aa6db7e38347b27c3278"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.pcrl_precincts_opj.j2k": {
+      "bytes": 3975,
+      "mode": "0644",
+      "sha256": "a38248cb91468e8569171419009a01e1e71cbeeadd61789f0fbca0f8ac9e2124"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.reset_opj.j2k": {
+      "bytes": 3765,
+      "mode": "0644",
+      "sha256": "879e4a3eda6d9819a397b96a775e307d54f1e24c30ba447f7b127c1e8495dda6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.restart_opj.j2k": {
+      "bytes": 4094,
+      "mode": "0644",
+      "sha256": "483af1b765c44b6555281ae6816cfa700283bc05d1c4cd25e33bde3ba64dd96a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.rpcl_precincts_kdu.j2k": {
+      "bytes": 4044,
+      "mode": "0644",
+      "sha256": "7e17d1d52d3b2388892adf28ff988d64896c59df6f38bf98046be3a5739fc316"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.segsym_opj.j2k": {
+      "bytes": 3667,
+      "mode": "0644",
+      "sha256": "64d74a42c3491831889c91b405392e9b1529d66615df6ac1217c2f3f793d4d66"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.tiles37x29_opj.j2k": {
+      "bytes": 4382,
+      "mode": "0644",
+      "sha256": "b92b88c3202c1bdf015e16fcbdd365e3063afb954bcff3646ef2cd2106b60f17"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.tiles64_opj.j2k": {
+      "bytes": 3880,
+      "mode": "0644",
+      "sha256": "7a89bc177c30ed2100cf18618d213a336ebe3d8bf15462f29c2f9ccbb24c14a2"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_129x67_gradient.syntax.tiles_kdu.j2k": {
+      "bytes": 4544,
+      "mode": "0644",
+      "sha256": "e750281a35d1bcac320214981984e7550543b6dabd52de7e56056c28bc7b1c6e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.kdu.j2k": {
+      "bytes": 245,
+      "mode": "0644",
+      "sha256": "ea9ceb9c659f7b6f9312acc4b712d2cbc9b98e8943fc74f2be6a961c9385816d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.kdu_l3.j2k": {
+      "bytes": 237,
+      "mode": "0644",
+      "sha256": "e0075a41ecd393a2b3e551a5706d6ac5b7486a5ad202bdf63f3b9d51e08fe869"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.opj_n1.j2k": {
+      "bytes": 132,
+      "mode": "0644",
+      "sha256": "fe7e814455fbef06c0d173fbab4229e9e5abc89c52c8a83e0150dce79996ea88"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.opj_n2_b16.j2k": {
+      "bytes": 151,
+      "mode": "0644",
+      "sha256": "2f06770b3ff508076b2975d869b39533f40cc2f5402afdc62e53bebcd5ad99c0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g12_5x3_ramp_extremes.pgm": {
+      "bytes": 42,
+      "mode": "0644",
+      "sha256": "ab4bf95cfcefa76e0233f2613be1009baaf4898941aa607d8ea7c9b55a0798d2"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.kdu.j2k": {
+      "bytes": 230,
+      "mode": "0644",
+      "sha256": "6274adb90ef22f2d5262f192d922832307e8c5bc55718ab8b1ff91820850a90b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.kdu_l3.j2k": {
+      "bytes": 222,
+      "mode": "0644",
+      "sha256": "ab9a51a34f6ce4184312b0cf2a1ab23df42253f7ffee535daf3fecad632354ee"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.opj_n1.j2k": {
+      "bytes": 394,
+      "mode": "0644",
+      "sha256": "0ca6ec831098cae6e68d28451033c0686dde6ac1d6cb3b4dd4ef7dff9085d62e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.opj_n2_b16.j2k": {
+      "bytes": 141,
+      "mode": "0644",
+      "sha256": "973fa7b2d52bbb69e656d6ee759fb31f84640316e231ba3c4f7b743c20a074c5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_17x9_alternating.pgm": {
+      "bytes": 320,
+      "mode": "0644",
+      "sha256": "483754f4e221d8b65ddd387bdf13a6830604f3cd95f386e81c8872cd0302ec9e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_1x1_max.kdu.j2k": {
+      "bytes": 220,
+      "mode": "0644",
+      "sha256": "3f2e6b4965ae97868e6a7bc65fcd4c90d62f7071e65a581b4ee88344b526d953"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_1x1_max.kdu_l3.j2k": {
+      "bytes": 212,
+      "mode": "0644",
+      "sha256": "484e9da429c68de08b96045f0393383f573ceeea7c9ca953def95f4ceb7828db"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_1x1_max.opj_n1.j2k": {
+      "bytes": 126,
+      "mode": "0644",
+      "sha256": "e74efcd41c7f81989d0f3788b8ec75327dc7e598ba117831015a4525964525b7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_1x1_max.pgm": {
+      "bytes": 15,
+      "mode": "0644",
+      "sha256": "9ed7cb3531838771cb9db512e1ccb15b7efd8dd30c77b1905da25c64557072f4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.kdu.j2k": {
+      "bytes": 64439,
+      "mode": "0644",
+      "sha256": "283fb618548c649d969071582e8131b575b5d763ee6ed1e085ba7476ee3232df"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.kdu_l3.j2k": {
+      "bytes": 65278,
+      "mode": "0644",
+      "sha256": "68535a475511fccb5bb179d9432ca08d28f82cb0a449c7ec59f926c56a897cb1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.opj.j2k": {
+      "bytes": 64367,
+      "mode": "0644",
+      "sha256": "036cfe4890835ebac8f272b765834eaf550b212773b9cbdbb668bd3f20ff6d4f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.opj_b32.j2k": {
+      "bytes": 65171,
+      "mode": "0644",
+      "sha256": "e03a34c22a1d2a38f57ee916fa2352437e05e399987adb83f88394bc1f0e4539"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.opj_n1.j2k": {
+      "bytes": 107558,
+      "mode": "0644",
+      "sha256": "2c9af7f5c3a8b3e3886caf0b2ed6d9d00da96a9dab4dea602655f04c946bae71"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.opj_n2_b16.j2k": {
+      "bytes": 76298,
+      "mode": "0644",
+      "sha256": "6e8cc33eaedceeeb63f955d610e945ad7937cb5c7d96773d71958baed5a99719"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.opj_rpcl.j2k": {
+      "bytes": 64367,
+      "mode": "0644",
+      "sha256": "a42bcad3ec4071952bd88f7936e613a6a91ecbce36a277fc9154f85311378c94"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_256x256_smooth.pgm": {
+      "bytes": 131089,
+      "mode": "0644",
+      "sha256": "f976af0067bf5fa298922bb1d341d3358e83ecba28b087fcb8ef7f4c6fc516a5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.bypass.j2k": {
+      "bytes": 8967,
+      "mode": "0644",
+      "sha256": "9c6173b113944f56e8b685e72e691ddf74840c187c3422c2889d3f24f693177a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.cprl.j2k": {
+      "bytes": 8924,
+      "mode": "0644",
+      "sha256": "a524ee7d84263368bedc5916fd80ffb5b663035d2100370fe8ea8a90adb5859d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.irreversible97.j2k": {
+      "bytes": 8928,
+      "mode": "0644",
+      "sha256": "35fd9cdebaa4ae31b7cc822957fc8f4c0cc7676290242c9a898baf941e16d334"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.kdu.j2k": {
+      "bytes": 9061,
+      "mode": "0644",
+      "sha256": "7a4ad98121a44569fd4eb586da8e4f077d55fdf848c8105afa72a6ef0c224a69"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.kdu_ht.j2k": {
+      "bytes": 9140,
+      "mode": "0644",
+      "sha256": "bc7f7a009a7dc018a2a6735e85f7f1aa70744428b12e7398f927966555929012"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.kdu_l3.j2k": {
+      "bytes": 9023,
+      "mode": "0644",
+      "sha256": "0d78a0703033572d11edaf74e8b87b8ec68fea8c4aa2e28d62b029eccc99d393"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.kdu_plt.j2k": {
+      "bytes": 9035,
+      "mode": "0644",
+      "sha256": "2f78a263be2431632dcf3a3bf12ae59e39f9d2ca504da5007a5ec294b1f40879"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.kdu_tileparts.j2k": {
+      "bytes": 9065,
+      "mode": "0644",
+      "sha256": "6c66f075b2f75918222f8e35979296647f1b9f0d704ebf90c1675cc216c5432e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.layers2.j2k": {
+      "bytes": 8934,
+      "mode": "0644",
+      "sha256": "86973e60c292a45664592c9ac1e2996b3c56c490baa885e6c5889f131c84f0f6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.opj.j2k": {
+      "bytes": 8988,
+      "mode": "0644",
+      "sha256": "d8a092d717301dcdf91b1ba95e43f87f181af79500ee7b01cf52cb123431c5d9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.opj_b32.j2k": {
+      "bytes": 8988,
+      "mode": "0644",
+      "sha256": "0cc799fe7dcfb1d8cceab6efa7069c812fb39bf5c87fc0da4ba5829af78a07d7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.opj_n1.j2k": {
+      "bytes": 8688,
+      "mode": "0644",
+      "sha256": "43f9be253c96a30d4f2db6ca852324991fae0672271523ae0e5fbd9d1c081a1e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.opj_n2_b16.j2k": {
+      "bytes": 8987,
+      "mode": "0644",
+      "sha256": "c93128d548ed738e961c866beea740763ba70b6343b738b89f48c2e7986b5b7b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.opj_rpcl.j2k": {
+      "bytes": 8988,
+      "mode": "0644",
+      "sha256": "0d050d95dbdf9cfbbe1adfd708b82effc1cc2d197ce6ba05cafd179ff797bfe6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.precincts.j2k": {
+      "bytes": 9013,
+      "mode": "0644",
+      "sha256": "faa3778786e887afb9fba841fda0f931f293dd556587b7c83539fe54f3e723fb"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.rpcl.j2k": {
+      "bytes": 8924,
+      "mode": "0644",
+      "sha256": "4e5e3ade511b751e99c7afe91e41439c0597977ff2727d47525ae5d1ce372d90"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.segsym.j2k": {
+      "bytes": 8983,
+      "mode": "0644",
+      "sha256": "b1de15943ae04e81d9a2982059539b081248b9ce5c94eab7ad276ab4afc1f055"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.sop_eph.j2k": {
+      "bytes": 8948,
+      "mode": "0644",
+      "sha256": "4525450547d7116928e471597b76bff7b17947a62df9d92c95dda8d1376d68a4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.allstyles_kdu.j2k": {
+      "bytes": 9318,
+      "mode": "0644",
+      "sha256": "58dbd9ef4d29320dc2dfd2a4f4d54431ee5f84b7b4e1f9aa1e336ac62fbcb69f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.allstyles_opj.j2k": {
+      "bytes": 9244,
+      "mode": "0644",
+      "sha256": "137a822bd0c12b75f3beb6cd9c0014cedeee0243d1ddbb6f6d291a743ff75ab4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.bypass_opj.j2k": {
+      "bytes": 9084,
+      "mode": "0644",
+      "sha256": "0660212cac14b8cec967ba281bf45ce13d9f84c014a0475ede6926c6d3a08b2e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.bypass_restart_kdu.j2k": {
+      "bytes": 9133,
+      "mode": "0644",
+      "sha256": "260b1b183492312f551b631063461938659fd56284a42cc97b10307e3fa2641b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.causal_opj.j2k": {
+      "bytes": 8951,
+      "mode": "0644",
+      "sha256": "9b964bf4c59d5e7c8b9b195e3a71305b2856456d6ae01cbe78e102a7f15efd7c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.cprl_precincts_opj.j2k": {
+      "bytes": 9040,
+      "mode": "0644",
+      "sha256": "8831a6fc806f34583a29e0b5675a9b474d08de3f04307083db69a91b126d8819"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.erterm_opj.j2k": {
+      "bytes": 8951,
+      "mode": "0644",
+      "sha256": "66f3d2c349208e9602100d2f2a0a1969515b6f92e4e64993b1aa7a9faaf79906"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.everything_kdu.j2k": {
+      "bytes": 12968,
+      "mode": "0644",
+      "sha256": "adcf194b830890c868e6ffeff853b0a1a8e9de4eec51ee25aad6f7e2f8c9359c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.everything_opj.j2k": {
+      "bytes": 12170,
+      "mode": "0644",
+      "sha256": "cf3b0c886bc4e63c830e006803343b8c0b77302e49bed5f701db0285fe4f4102"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.layers3_kdu.j2k": {
+      "bytes": 9091,
+      "mode": "0644",
+      "sha256": "d682edfbbab453a83c859583288acea0f2ff19840846346cb9f2775d8327cbbf"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.layers3_opj.j2k": {
+      "bytes": 8967,
+      "mode": "0644",
+      "sha256": "8ec76c3365b0ef806eb6a0d8122333576ccc8348777b80daac2a7f54076ac28a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.origin_kdu.j2k": {
+      "bytes": 9016,
+      "mode": "0644",
+      "sha256": "8b9d5a4fa287913d343d9d831419b9261f9f7f4c4ecd67047abeda2f59090630"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.origin_opj.j2k": {
+      "bytes": 8945,
+      "mode": "0644",
+      "sha256": "5442ad115208f5936bb353048140387d2c0672aef4bd28c4849a4ec1080f5ff5"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.origin_tiles_opj.j2k": {
+      "bytes": 9238,
+      "mode": "0644",
+      "sha256": "c42f90d523131d149c1a6cb2fd23b464afafc194088d0f61f03829c4789d5657"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.pcrl_precincts_opj.j2k": {
+      "bytes": 9040,
+      "mode": "0644",
+      "sha256": "3a5783679108104f16da52ae4b52ccb3bba3559b361a45ed1f019a8b52a95392"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.reset_opj.j2k": {
+      "bytes": 8977,
+      "mode": "0644",
+      "sha256": "f3aa04b2b616481ce69256eec2f8d4bfb931cd2d8d1b3c095ea95ad668260b28"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.restart_opj.j2k": {
+      "bytes": 9762,
+      "mode": "0644",
+      "sha256": "f8ad414188e62065affd66e8561b6c2baa79c0b161412ba56479ce7ed5abd706"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.rpcl_precincts_kdu.j2k": {
+      "bytes": 9114,
+      "mode": "0644",
+      "sha256": "3f5b9866bf5e604220c3de561c275d49fb8939caada4a390e035fae5c0508a8a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.segsym_opj.j2k": {
+      "bytes": 9028,
+      "mode": "0644",
+      "sha256": "3722a228345eaa1fc950d6bb9d3b813417eaff75598cb025b8aea8b37a64180a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.tiles37x29_opj.j2k": {
+      "bytes": 9233,
+      "mode": "0644",
+      "sha256": "bdbcab1dd0b1e184f6e5476b4f0ab6e924e3f2da0dd36e8d750d629342f27841"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.tiles64_opj.j2k": {
+      "bytes": 8950,
+      "mode": "0644",
+      "sha256": "6d8990fc8a0106cd5c9bab99cc17176c65c98ccee36903128a0cb015ba4774c0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.syntax.tiles_kdu.j2k": {
+      "bytes": 9388,
+      "mode": "0644",
+      "sha256": "c809b96b9921a2d7f10517c81b689e2f223c4fdbafa0e23fa8b5e1411a6c162e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.termall.j2k": {
+      "bytes": 9533,
+      "mode": "0644",
+      "sha256": "7dd781d960881069f37ed672aec8aacfec5d0dc24bf2659967258c932d78cad3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.tiled.j2k": {
+      "bytes": 9129,
+      "mode": "0644",
+      "sha256": "11d96cd62286f9713541d971fefee2452199a831e21b54952011a1615cd09901"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_const.kdu.j2k": {
+      "bytes": 220,
+      "mode": "0644",
+      "sha256": "c48e4da12c0a582b2e9b4b70fce89a107e484f3f433051ff0ac2826998437f10"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_const.kdu_l3.j2k": {
+      "bytes": 212,
+      "mode": "0644",
+      "sha256": "c8a91344714ec92d75c331bac4a167615126921f0c914487e25dab4040f3a2c1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_const.opj_n1.j2k": {
+      "bytes": 129,
+      "mode": "0644",
+      "sha256": "8b7866d8717b7c78716ae408181c675e00a7a96e1409529b3d135df4300813cb"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_const.opj_n2_b16.j2k": {
+      "bytes": 132,
+      "mode": "0644",
+      "sha256": "92b6e893d4f820df3484daa79c818827679e7925d33060617d12fa4465ac0b05"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_const.pgm": {
+      "bytes": 141,
+      "mode": "0644",
+      "sha256": "ea241d039ee22c239e0988ca256b294ae92ea06078b06fb78f3418ac00f6f6c1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_zero.kdu.j2k": {
+      "bytes": 219,
+      "mode": "0644",
+      "sha256": "40c937fe74530b662809b2b8498276ff7cc9bab1ef29220b849d8d27a120052c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_zero.kdu_l3.j2k": {
+      "bytes": 211,
+      "mode": "0644",
+      "sha256": "0afcc61d96fc3655568a47be7e9ab529dc8035ef46853ab37d43b460e32ff2cc"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_zero.opj_n1.j2k": {
+      "bytes": 129,
+      "mode": "0644",
+      "sha256": "79a281bdc70142b85a7898ca2b56f84f0f0f2e83bd63449f7d0aaada2965a8f3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_zero.opj_n2_b16.j2k": {
+      "bytes": 132,
+      "mode": "0644",
+      "sha256": "cde78a617ed8ea1fa964e5d2b4e4acc0122bc492220ed1b6e4c12425be744e41"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/g16_8x8_zero.pgm": {
+      "bytes": 141,
+      "mode": "0644",
+      "sha256": "a30c8ac78ac77c0017e018bccead0ac39d8ef380fb192d6d0b1da765b0dfe2c9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/manifest.json": {
+      "bytes": 53793,
+      "mode": "0644",
+      "sha256": "961fc6ce93e2c8efc15819e0c471740dc29ab98643b10c46a414608f4b4f074f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Lossless/rgb8_16x16.opj.j2k": {
+      "bytes": 165,
+      "mode": "0644",
+      "sha256": "98aa2e3f283b22d2ab6e99ee17e1671c408b301d215023cffa778b5d7a823b0c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g08_64x64_smooth.kdu_roi.j2k": {
+      "bytes": 2431,
+      "mode": "0644",
+      "sha256": "cb3c03c901bf33c525000278254c45a47cf0b0eb074779b0dbc53d89ea018290"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g08_64x64_smooth.le.raw": {
+      "bytes": 4096,
+      "mode": "0644",
+      "sha256": "52930e318bf92e8845762bbdd3e347714a6dbcffa53a83642b6b62a05d95cf52"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g08_64x64_smooth.opj_roi.j2k": {
+      "bytes": 1936,
+      "mode": "0644",
+      "sha256": "cda7e68b44c4a13b104e17234e753898b5ed9149b44fda0fbd35b15c1136aff4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g16_64x64_smooth.kdu_derived.j2k": {
+      "bytes": 1279,
+      "mode": "0644",
+      "sha256": "07121489b6b23c76f8bc6939f3c5289a2f045fd2a55a6b4c1cf35ff2eb45539c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g16_64x64_smooth.kdu_expounded_gb4.j2k": {
+      "bytes": 1267,
+      "mode": "0644",
+      "sha256": "53a4eb377152fd8cba617a084d70fad74df4d54ac8ead8a6c9899d3872dc83f4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g16_64x64_smooth.le.raw": {
+      "bytes": 8192,
+      "mode": "0644",
+      "sha256": "a1f3a95b2408fea4579ca9c46ae7d17a375d4dc1addf09283b2855ff89246ab9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/g16_64x64_smooth.opj_expounded.j2k": {
+      "bytes": 263,
+      "mode": "0644",
+      "sha256": "f657233bc95c402f45e56907b44d0fa0a195c22553cb91056c77f89a6c2570f1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/manifest.json": {
+      "bytes": 17022,
+      "mode": "0644",
+      "sha256": "fd53258b4303d91b5d28680434e4ffe5bf18f27865e5c60e218b821e5e98f2ef"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb12_33x25_pattern.kdu_rct.j2k": {
+      "bytes": 2656,
+      "mode": "0644",
+      "sha256": "24ab791fc8fddb3ab066a6546ebc1ce70b572c9b4d55609aa4eed26e165c2a68"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb12_33x25_pattern.le.raw": {
+      "bytes": 4950,
+      "mode": "0644",
+      "sha256": "eb5ccec844b1339a61af848d42b89803f9980aa103a32eb6ae2b70cd3c06e26a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.kdu_ict.j2k": {
+      "bytes": 1136,
+      "mode": "0644",
+      "sha256": "07cf202688be2662dcde40c95107369efa5498a38db273ba3efcd2c675fc50d9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.kdu_nomct.j2k": {
+      "bytes": 3844,
+      "mode": "0644",
+      "sha256": "59bf0d318cce332edce73bce53123ec59b550129d73ff869101b6f1277875af3"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.kdu_rct.j2k": {
+      "bytes": 4542,
+      "mode": "0644",
+      "sha256": "a8fd71cdcf7c8504ae3736bd46a8499a3881fc181641f6a34569dc3d03e9a7fe"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.kdu_tiles_layers_precincts.j2k": {
+      "bytes": 10310,
+      "mode": "0644",
+      "sha256": "d9a53c8de9caf57c91f8ab74414180e3a932a796d95512bc8da52e7fd8f35d65"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.le.raw": {
+      "bytes": 9216,
+      "mode": "0644",
+      "sha256": "ff8854734dd4a601f641f155d1caac7ea6c98d264d3eb6283407dc1bcae41bc9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.opj_ict.j2k": {
+      "bytes": 1356,
+      "mode": "0644",
+      "sha256": "fb8b183d9518f065d4d21f20e8b33d901da416de91717830bbe1e47002d3c1f7"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.opj_layers_poc.j2k": {
+      "bytes": 4825,
+      "mode": "0644",
+      "sha256": "a422238e152a86d9bcfb9be3198d0cead9ea7591b1bd31b0f861450d9a11bae9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.opj_rct.j2k": {
+      "bytes": 4530,
+      "mode": "0644",
+      "sha256": "e8d6f69a3605a10ffecf583b78266f49f16f2c52fbaecd710fce1f585acf3ade"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.opj_tiles_layers.j2k": {
+      "bytes": 6111,
+      "mode": "0644",
+      "sha256": "6172432865452844c9f1ab0b8210a19350ad62aec164ec9fb683424624e8a109"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgb8_64x48_gradient.opj_tiles_layers_poc.j2k": {
+      "bytes": 4907,
+      "mode": "0644",
+      "sha256": "3a0379c4297de02286d818a39e04ab05bb6609d47dbdca96344e99b3351183ba"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgba8_32x24_pattern.kdu.j2k": {
+      "bytes": 1565,
+      "mode": "0644",
+      "sha256": "9f2060fa32709e4199848fea1c39ad6664230f56592085e7ca7f210f705c85d4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/rgba8_32x24_pattern.le.raw": {
+      "bytes": 3072,
+      "mode": "0644",
+      "sha256": "22e1210b730ce7b15261915d86981ce444ef1e33b187376c4f12331edfbe4f3e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s08_37x23_signed.kdu_rev.j2k": {
+      "bytes": 882,
+      "mode": "0644",
+      "sha256": "081d25183797f568cd4ae2d32c823ca629dd7549c740f45978403224b7fead62"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s08_37x23_signed.le.raw": {
+      "bytes": 851,
+      "mode": "0644",
+      "sha256": "e620792b122d62a5454777b449522f891c5ccd8c62b94d2c572b6eee6e9b5855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s08_37x23_signed.opj_rev.j2k": {
+      "bytes": 799,
+      "mode": "0644",
+      "sha256": "7ea1063a9f12b3618046d55c994b480c62650cd4be0caef9fd0e9ad2b4732427"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s12_45x31_signed.kdu_rev.j2k": {
+      "bytes": 1435,
+      "mode": "0644",
+      "sha256": "7cc6b174ded833fad2bdd823ad1560015720295d3a9f9701eede1ca1ba37d4c8"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s12_45x31_signed.le.raw": {
+      "bytes": 2790,
+      "mode": "0644",
+      "sha256": "e729e5e662e3e2e5f61c3f22e6da5107229f3736f7fbd12e0b135825974fb1d0"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s12_45x31_signed.opj_rev.j2k": {
+      "bytes": 1345,
+      "mode": "0644",
+      "sha256": "0c36a613a883790245f602134aebd26ea1d55192e956472331641a2cfa861f2b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s16_64x48_signed.kdu_irrev.j2k": {
+      "bytes": 1182,
+      "mode": "0644",
+      "sha256": "36981895a66de3b964c1c8f27de8ddd8017c4b1c7fb93201b5377d7e7eeffe47"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s16_64x48_signed.kdu_rev.j2k": {
+      "bytes": 3546,
+      "mode": "0644",
+      "sha256": "26ce1db9d7f0294b8ea7e0c6462bae90ac7743c5e96f6eb5ff0c61cd713f9b05"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s16_64x48_signed.le.raw": {
+      "bytes": 6144,
+      "mode": "0644",
+      "sha256": "8b0d02ced06164efe4de2853b1bab54f5dbad5b846c61e33635bec23362b9b83"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/Part1Breadth/s16_64x48_signed.opj_rev.j2k": {
+      "bytes": 3470,
+      "mode": "0644",
+      "sha256": "61a813b27191f65af50601a7bbba5bc7b14da98afb8bdc278b1917f1a67687c4"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/README.txt": {
+      "bytes": 998,
+      "mode": "0644",
+      "sha256": "3abaf4eaee372638a48471117c556dd4acf10efed74c58a1024d886693dde487"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g08_37x23_random.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g08_37x23_random.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g08_37x23_random.decoded.pgm": {
+      "bytes": 864,
+      "mode": "0644",
+      "sha256": "884b65208c052d3d8ca92c45f01b1ccb95ba179365b05f4981314544eedf3e32"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g08_37x23_random.kdu_ht_n0_layers_lrcp.j2k": {
+      "bytes": 1208,
+      "mode": "0644",
+      "sha256": "1d5ce3a2d74a544296f0ea12413795cab44ed81f3fd9c7e4533970ab344b6a3a"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g12_5x3_ramp_extremes.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g12_5x3_ramp_extremes.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g12_5x3_ramp_extremes.decoded.pgm": {
+      "bytes": 42,
+      "mode": "0644",
+      "sha256": "ab4bf95cfcefa76e0233f2613be1009baaf4898941aa607d8ea7c9b55a0798d2"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g12_5x3_ramp_extremes.kdu_ht_n0_layers_lrcp.j2k": {
+      "bytes": 276,
+      "mode": "0644",
+      "sha256": "e0ab43dd11b000fb9b4a28e986e77b1b42608cd63b45fb62abc61bcceb25e0b9"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g16_17x9_alternating.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g16_17x9_alternating.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g16_17x9_alternating.decoded.pgm": {
+      "bytes": 320,
+      "mode": "0644",
+      "sha256": "483754f4e221d8b65ddd387bdf13a6830604f3cd95f386e81c8872cd0302ec9e"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/g16_17x9_alternating.kdu_ht_n0_layers_lrcp.j2k": {
+      "bytes": 606,
+      "mode": "0644",
+      "sha256": "517844ead4e120ed6a9d84133a255124e5cee02dfdc9dce9a518bf060075170c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3PlanarHT/manifest.json": {
+      "bytes": 6184,
+      "mode": "0644",
+      "sha256": "6171eea87445461bbd9a0e09ddf2a8df614d3e2784b8c9dfa3b4aa0b1e383c91"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/README.txt": {
+      "bytes": 2320,
+      "mode": "0644",
+      "sha256": "b54935cb3dd24fd0a95ecb692047e3c7326fd0cb4999d156d21bded41f0b85db"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/manifest.json": {
+      "bytes": 9980,
+      "mode": "0644",
+      "sha256": "cac44a9d49cddcd5b5898b6fd6026ac0366b15f4ca7b5b861d84d8bad5ab6cc6"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.2.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.3.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.ht.j2k": {
+      "bytes": 6409,
+      "mode": "0644",
+      "sha256": "de0850b49bb5ac2904b7794f5afc53be33e433ba02b7ced36c979dc56d089c5b"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.ht.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "82e5a1be74db963fdb727ad8b5963d3831d5ae7dc6beb4c0d047c57478e9ee25"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.part1.j2k": {
+      "bytes": 6046,
+      "mode": "0644",
+      "sha256": "7feb613f4d3e12ed7328fc42987819d015f557eaddb3cc38abbc62d303d9aaa1"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate12.part1.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "82e5a1be74db963fdb727ad8b5963d3831d5ae7dc6beb4c0d047c57478e9ee25"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.2.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.3.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.ht.j2k": {
+      "bytes": 2241,
+      "mode": "0644",
+      "sha256": "bae00562f6943fdaeb530534a1929416547d119703d292edafb91ce6ca44e89f"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.ht.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "e005816b9ac3f42d28596fd0fa79937f85fb703d752ef285a9447660da850306"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.part1.j2k": {
+      "bytes": 2034,
+      "mode": "0644",
+      "sha256": "11ed823287c355a3d2a1dc95ae03557635aabbc88aac7f035989605e7eaaa450"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate4.part1.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "e005816b9ac3f42d28596fd0fa79937f85fb703d752ef285a9447660da850306"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.0.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.1.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.2.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.3.log": {
+      "bytes": 0,
+      "mode": "0644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.ht.j2k": {
+      "bytes": 4354,
+      "mode": "0644",
+      "sha256": "f6eece804d349238de0d4b7941f53f5d84866107335c827023c3892998290b84"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.ht.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "e9f77287f5162a03f4aa17c39b10272a0ad00f33b4e0930f2566e54c79b2395c"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.part1.j2k": {
+      "bytes": 4080,
+      "mode": "0644",
+      "sha256": "150169d9e56b6e45b9c764a47c49621e0a30d5031337d221b24357463a7cab2d"
+    },
+    "Tests/SwiftJ2KTests/Fixtures/R3RefinementHT/rate8.part1.pgm": {
+      "bytes": 8207,
+      "mode": "0644",
+      "sha256": "e9f77287f5162a03f4aa17c39b10272a0ad00f33b4e0930f2566e54c79b2395c"
+    },
+    "Tests/SwiftJ2KTests/HTJ2KCodecTests.swift": {
+      "bytes": 63759,
+      "mode": "0644",
+      "sha256": "2c9fa3ada7e3fcbc0045e723c0700d7d7084ac458157a7981b4691fd176b9ec0"
+    },
+    "Tests/SwiftJ2KTests/IndependentR2AuditTests.swift": {
+      "bytes": 3494,
+      "mode": "0644",
+      "sha256": "c1eec9044e3af903db0d3ad3bef30841c488db6c4ee6d7582300551a77eddb4a"
+    },
+    "Tests/SwiftJ2KTests/LimitTests.swift": {
+      "bytes": 2477,
+      "mode": "0644",
+      "sha256": "3e817d2b28b01df430d4e53a0f883f95272ced5baec968b66d95ad320bcefccd"
+    },
+    "Tests/SwiftJ2KTests/LosslessCodecTests.swift": {
+      "bytes": 28867,
+      "mode": "0644",
+      "sha256": "c452fc3ec9f1a6ac5552f408ab81b0fec96216ce423374be127533568d2db9c0"
+    },
+    "Tests/SwiftJ2KTests/OwnershipTests.swift": {
+      "bytes": 8681,
+      "mode": "0644",
+      "sha256": "a6e49c9357eecf823a58685df79a7f047bb820ec343a9af1da49b6e2e2c8c234"
+    },
+    "Tests/SwiftJ2KTests/Part1BreadthTests.swift": {
+      "bytes": 27012,
+      "mode": "0644",
+      "sha256": "7eab0d13070503db8112a1052d2764719533c7821336b6c04508b24da0d865cc"
+    },
+    "Tests/SwiftJ2KTests/R1RemediationTests.swift": {
+      "bytes": 74709,
+      "mode": "0644",
+      "sha256": "f12fca3308e302901673ed4266e7b8e75c1d2330b455f9ac12a9f5189cf3dd9a"
+    },
+    "Tests/SwiftJ2KTests/R2CLIExtraSampleOrderingTests.swift": {
+      "bytes": 16002,
+      "mode": "0644",
+      "sha256": "be9f933e3135e4af9f442fe87d272a65f3345f70cb43cbeaa0777764152a5419"
+    },
+    "Tests/SwiftJ2KTests/R2ColourAlphaPreservationTests.swift": {
+      "bytes": 10616,
+      "mode": "0644",
+      "sha256": "f2bfe40b3678fd30d1a1761028f0ffbb9682fae8c1135cdfc461966ccdd2094a"
+    },
+    "Tests/SwiftJ2KTests/R2ICCModelPreservationTests.swift": {
+      "bytes": 9548,
+      "mode": "0644",
+      "sha256": "8592f2c7913b40057a621a6f4c4811751e3acc56e2f28e221efb8c91a494853f"
+    },
+    "Tests/SwiftJ2KTests/R2LegacyBudgetProbes.swift": {
+      "bytes": 7115,
+      "mode": "0644",
+      "sha256": "5b667d979bd7712a8775450fd1571f9b5f39452c14b22080cd009af79a74151b"
+    },
+    "Tests/SwiftJ2KTests/R2RemediationTests.swift": {
+      "bytes": 78478,
+      "mode": "0644",
+      "sha256": "0674a1351166b601a1a651980fa56def857eb40e956e36537f7691bd1e2db75b"
+    },
+    "Tests/SwiftJ2KTests/SampleAccessTests.swift": {
+      "bytes": 11757,
+      "mode": "0644",
+      "sha256": "9e431242a68b5fa0ef5282e89e49f26878c79d460f0377d90a0db67bd8365ba0"
+    },
+    "Tests/SwiftJ2KTests/SharedStorageTests.swift": {
+      "bytes": 19240,
+      "mode": "0644",
+      "sha256": "81923a6757a55df6fbf01a0187b4ffd251df3711eac30aaa36e6bc51b06365df"
+    }
+  },
+  "is_git_tree": false,
+  "meaning": "Current contents/modes only; not validation or acceptance.",
+  "scope": [
+    "Package.swift",
+    "Sources/**",
+    "Tests/**",
+    "Scripts/**"
+  ],
+  "scope_sha256": "1d5ccfdb41f0dc80c2b045c6a320ed14d71e3d8871a7273530d18a52fe4b068a"
+}

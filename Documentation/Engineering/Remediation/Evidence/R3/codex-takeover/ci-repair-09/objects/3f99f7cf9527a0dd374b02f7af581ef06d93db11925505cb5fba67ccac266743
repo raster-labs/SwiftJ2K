@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Reconcile completed focused14 only; no discovery or whole-suite claim."""
+from pathlib import Path
+from collections import Counter
+from datetime import datetime, timezone
+import json
+import runpy
+import xml.etree.ElementTree as ET
+
+here = Path(__file__).resolve().parent
+work = here.parent
+out = here / 'focused14-check.json'
+if out.exists(): raise SystemExit('Refusing to overwrite focused receipt')
+audit = runpy.run_path(str(here / 'audit-final.py'))
+parse, require, sha = (audit[k] for k in ['independently_parse', 'require', 'sha'])
+helper = runpy.run_path(str(work / 'runtime-coverage/reconcile.py'))
+read = lambda p: json.loads(Path(p).read_text())
+d = work / 'validation/candidate-focused-14'
+manifest_path = work / 'candidate-snapshot-14-source.json'
+manifest = read(manifest_path)
+command, result = read(d / 'command.json'), read(d / 'result.json')
+require(result['exit_code'] == 0 and result['wrapper_exit_code'] == 0 and
+        result['changed_inputs'] == [] and result['capture_complete'] and
+        result['capture_threads_joined'] and result['capture_errors'] == [], 'Failed/incomplete focused receipt')
+require(read(d / 'source-before.json') == read(d / 'source-after.json') == manifest, 'Focused source identity differs')
+require(command['wrapper_sha256'] == sha(work / 'run-validation.py'), 'Wrapper changed')
+require(command['command'][command['command'].index('--filter') + 1] ==
+        'CodexR3HTTPStreamingTests|CodexR3TransportCloseTests|waveletWholeSampleSymmetricBoundaryCompliance',
+        'Unexpected focused selection')
+require(sha(d / 'native.log') == result['log_sha256'], 'Merged log changed')
+for kind, value in result['native_streams'].items():
+    p = d / ('native.' + kind)
+    require(p.resolve() == Path(value['path']).resolve() and sha(p) == value['sha256'] and
+            p.stat().st_size == value['bytes'], 'Focused raw capture changed')
+require(set(result['native_streams']) == {'stdout', 'stderr'}, 'Missing raw stream')
+require(Counter((d / 'native.log').read_bytes().splitlines()) ==
+        Counter((d / 'native.stdout').read_bytes().splitlines()) +
+        Counter((d / 'native.stderr').read_bytes().splitlines()), 'Merged/raw line multiset differs')
+xml = ET.parse(d / 'report-swift-testing.xml')
+observed = {n.attrib['classname'] + '/' + n.attrib['name'] for n in xml.iter('testcase')}
+old_ids_path = work / 'sanitizer-inventory-08/thread/all.ids'
+binding_only_ids = set(old_ids_path.read_text().splitlines()) | observed
+bindings, titles = helper['display_map'](work / 'candidate-snapshot-14', binding_only_ids)
+xc, sw, params = parse(d, bindings)
+require(not xc and set(sw) == observed and len(sw) == 23, 'Focused declaration identity/count differs')
+require(len(params) == 4 and sum(sum(v.values()) for v in params.values()) == 9,
+        'Focused parameter shape differs')
+require('SwiftJ2KJPIPTests.CodexR3TransportCloseTests/lifecycleWaitPropagatesStartupFailureAndReleasesHeldObservers()'
+        in sw, 'New probe regression did not execute')
+files = [p for p in d.iterdir() if p.is_file()] + [Path(__file__), here / 'audit-final.py',
+    work / 'runtime-coverage/reconcile.py', work / 'run-validation.py', manifest_path, old_ids_path]
+files += [Path(t['source']) for t in titles]
+receipt = {'state': 'SCOPED_FOCUSED_RECEIPT_RECONCILED', 'at': datetime.now(timezone.utc).isoformat(),
+    'source_files': len(manifest), 'declarations': len(sw), 'parameter_declarations': len(params),
+    'parameter_argument_starts': sum(sum(v.values()) for v in params.values()),
+    'runtime': sw, 'arguments': params, 'raw_capture_verified': True,
+    'files': {str(p): sha(p) for p in files},
+    'boundaries': ['This proves only the23 executed focused declarations and9 argument starts.',
+        'The old inventory plus observed XML IDs was used only for source display binding, not final14 discovery.',
+        'Full ordinary, complete sanitizer partitions, release/CLI and independent-peer gates remain separate.',
+        'No native tests, Swift tools, codecs or servers were run by this reviewer.']}
+with out.open('x') as output: output.write(json.dumps(receipt, indent=2) + '\n')
+print(json.dumps({k: receipt[k] for k in ['state', 'source_files', 'declarations', 'parameter_declarations',
+    'parameter_argument_starts', 'raw_capture_verified']}, indent=2))

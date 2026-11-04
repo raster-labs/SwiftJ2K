@@ -1,0 +1,25 @@
+{
+  "time_utc": "2026-10-31T07:20:01.986766+00:00",
+  "files": {
+    "work/r3-benchmark-results-04/metadata.json": "3e14bc443c1fc5274ee410ada221dfb9585c48e23af8d7ba70aeef01e2d2bb98",
+    "work/r3-benchmark-results-04/samples.jsonl": "10d18e4b6d42ab8b327d2d98727fec0b1487bd185230f9468027ef9e9afc0788",
+    "work/r3-benchmark-results-04/summary.json": "a906c036546e1d951dd9ace0f6f11b664dca559ac96d5bf35e26f052f23c349b",
+    "work/validation/perf-comparison-04/command.json": "2421fabfb24edac4ad4784f413f74856bb01181e49c8fc7abb2e8ea25b562ef5",
+    "work/validation/perf-comparison-04/result.json": "ae675afe5a26e83be11e4f71861a582263fed57cc15c838d2b408d9a973c6f62",
+    "work/validation/perf-comparison-04/native.log": "35556feab972ea2c0b739311c303b4de4a018996ddaa87dd03ba22ff49621b57",
+    "work/r3-benchmark-results-05/metadata.json": "2b8cf497c6b81e7f56496674379f92ea6a05d2c83b802771b47064fe05007a4a",
+    "work/r3-benchmark-results-05/samples.jsonl": "e811db177752d193460a2b8a7025c4cbf06d953d4d00ae34016c4d26863acf41",
+    "work/r3-benchmark-results-05/summary.json": "6f5fe887e5028120c944dfec03f9d21ccff37fb37f5cdbe5cd2200297b0b2beb",
+    "work/validation/perf-comparison-05/command.json": "1cda877d2c4180323ddc0c9adfb209259c267fcbb9ae99826323569a77cbf8aa",
+    "work/validation/perf-comparison-05/result.json": "fe144f48075acf6592d07aff5940005e8d03b90453398ad78896ff7b3f4090df",
+    "work/validation/perf-comparison-05/native.log": "4ed44167d9a98471bcf2ae4b447471aea6a3e4e4b4b3028e937febe6b1fc606a",
+    "work/candidate-snapshot-03-source.json": "c883b84995d14abff342f7f468d50ba8fc92aba39ca42ccacb9219ffd74249a1",
+    "work/candidate-snapshot-03/Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift": "7929d88a300abd0843eba5cc986df995300aa92d260f0a204702591b18f11602",
+    "work/candidate-snapshot-03/Sources/SwiftJ2K3D/JP3DTranscoder.swift": "3e92182f4815668b1299b2e4212f54fb21ca0438ff1cd98f30a509e085a8712e",
+    "work/candidate-snapshot-03/Sources/SwiftJ2K/Codec/MQCoder.swift": "7dcfc57e1283304e14fcdfe7c0ae7ed8f3e93f25c0de1b2fc8bbcd241558babb"
+  },
+  "candidate03_core_changes_since_review02": [
+    "Sources/SwiftJ2K3D/JP3DSliceStackCodec.swift"
+  ],
+  "main_matches_candidate03_core": true
+}

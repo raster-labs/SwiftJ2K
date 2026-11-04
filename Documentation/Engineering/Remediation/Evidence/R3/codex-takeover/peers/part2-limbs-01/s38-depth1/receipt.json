@@ -1,0 +1,123 @@
+{
+  "status": "passed-narrow-composite-diagnostic",
+  "nativeStatus": "exited",
+  "scope": "independent Kakadu signed-limb decode + separate exact AnnexJ synthesis of header-adapted2D fixture",
+  "directPart10Peer": "UNEXECUTED",
+  "directPart10Plus15Peer": "UNEXECUTED",
+  "directLogical38KakaduDecode": "UNEXECUTED",
+  "gatesWaived": false,
+  "scriptSHA256": "f31383f222bb6cb53af5aad2b3aca1151be64fea47c3085fef0e01556963838a",
+  "part2MarkerPeer": "NOT_EXECUTED_BY_LIMBS_ONLY_FALLBACK",
+  "originalRsiz": 49408,
+  "originalPcap": 1078067200,
+  "wireComponents": [
+    {
+      "bitDepth": 20,
+      "signed": true
+    },
+    {
+      "bitDepth": 19,
+      "signed": true
+    }
+  ],
+  "logicalComponents": [
+    {
+      "bitDepth": 38,
+      "signed": true
+    }
+  ],
+  "levelsXY": 0,
+  "layers": 1,
+  "codeBlockStyle": 64,
+  "matrix": [
+    1,
+    524288
+  ],
+  "collections": [
+    {
+      "inputs": [
+        0,
+        1
+      ],
+      "output": 0,
+      "tmcc": 1
+    }
+  ],
+  "entropySHA256": "8e0f8b236be887bf5c65dcb45d9124051aae9b590a3664e30943b4e4fdc3cae3",
+  "entropyBytes": 283,
+  "originalCPFnum": null,
+  "originalCorrespondingProfileClaimValidated": false,
+  "preservedQCDSHA256": "69c1d1d0fcdce4570bc2f3d3317691d565286493b696d709a3508c6f879df2a3",
+  "preservedQCC": [],
+  "tilePartSHA256": "ef3038f867aaee95e49496f00bad41ce56e7150c9b618ec43c60a2d0d24ab6b1",
+  "preservedPart2MarkerSHA256": {
+    "ff74": "2731270ed7677f3180419a02a7c3f8503b13ae3120a87714d05d62e3c36e20c8",
+    "ff75": "a2aedc69393f576d22004e96d9a231dd1a6a5475a1077b20e348774e8a517c86",
+    "ff77": "168a29359e4bd4e3804f8139ffb73ffbc2503b3734cd13300a35d8da0fcd68da",
+    "ff78": "a0be341d8454698260e0761c84f61f44f1504adf8e1a72fdce4eaa2cbb4040d2"
+  },
+  "headerChanges": [
+    "SIZ Rsiz signals Part2 MCT and any remaining CAP",
+    "removed Part10 CAP; preserved optional Part2/15 CAP words",
+    "removed NSI dimensional marker",
+    "3D COD replaced by equivalent bounded2D COD",
+    "EXPLICIT LIMBS-ONLY FALLBACK: removed CBD/MCT/MCC/MCO, Part2 capability and COD array usage after validating original; peer does not interpret the matrix"
+  ],
+  "input": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-peer-01/s38-depth1.jp3d",
+  "inputSHA256": "238611a7bed7d92c0ef6b374df2de68a6daf67a92150bea8dfeaa657135fd998",
+  "expectation": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/peer-fixtures/s38-depth1.json",
+  "expectationSHA256": "647a2249c7f2691f5a3d3ff5ba473876983e47b286f2269447723baeda09d3b1",
+  "peer": {
+    "path": "/Library/Kakadu/8.4.1/bin/kdu_expand",
+    "sha256": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"
+  },
+  "adaptedSHA256": "c4c3294ff18d371cbb11c66537a018dbd53f89e5554f6f97ff3d94b121e31c2c",
+  "command": [
+    "/Library/Kakadu/8.4.1/bin/kdu_expand",
+    "-i",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/s38-depth1/derived-2d-part2.j2c",
+    "-o",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/s38-depth1/wire-000.pgx,/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/s38-depth1/wire-001.pgx",
+    "-codestream_components",
+    "-precise",
+    "-fussy",
+    "-num_threads",
+    "0",
+    "-record",
+    "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/part2-limbs-01/s38-depth1/kakadu-parameters.txt"
+  ],
+  "nativeSeconds": 0.011999332999999997,
+  "nativeExitCode": 0,
+  "peerOutputs": [
+    {
+      "file": "wire-000.pgx",
+      "sha256": "f9d54db2d19def99089743dc344e3a780db361989a924c5beee9bbc9dff5c3f9",
+      "header": "PG LM -20 8 8",
+      "bytesPerSample": 4,
+      "endianness": "little",
+      "minimum": 0,
+      "maximum": 524287
+    },
+    {
+      "file": "wire-001.pgx",
+      "sha256": "46105fe574af2d0f722a61e577db2bc6f09ef7c3cd46d51aa09fb0b417f028a7",
+      "header": "PG LM -19 8 8",
+      "bytesPerSample": 4,
+      "endianness": "little",
+      "minimum": -262144,
+      "maximum": 262143
+    }
+  ],
+  "comparisons": [
+    {
+      "component": 0,
+      "samples": 64,
+      "minimum": -137438953472,
+      "maximum": 137438953471,
+      "mismatches": 0,
+      "firstMismatches": [],
+      "actualSignedInt64LESHA256": "83898ffb479b7333636d8ec5d66661af3fca0de11a9c64163ab48ad2b1d94903",
+      "expectedSignedInt64LESHA256": "83898ffb479b7333636d8ec5d66661af3fca0de11a9c64163ab48ad2b1d94903"
+    }
+  ]
+}

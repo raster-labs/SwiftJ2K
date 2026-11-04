@@ -1,0 +1,754 @@
+﻿2026-10-31T11:48:51.8485631Z Current runner version: '2.338.2'
+2026-10-31T11:48:51.8516262Z ##[group]Runner Image Provisioner
+2026-10-31T11:48:51.8517179Z Hosted Compute Agent
+2026-10-31T11:48:51.8518101Z Version: 20261021.618
+2026-10-31T11:48:51.8518780Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-31T11:48:51.8519820Z Build Date: 2026-10-21T00:45:21Z
+2026-10-31T11:48:51.8520698Z Worker ID: {bc19f52f-a6bb-44eb-ae60-ad726e869bc9}
+2026-10-31T11:48:51.8521429Z Region: eastus2
+2026-10-31T11:48:51.8522124Z Cloud: Azure
+2026-10-31T11:48:51.8522704Z ##[endgroup]
+2026-10-31T11:48:51.8524599Z ##[group]Operating System
+2026-10-31T11:48:51.8525472Z Ubuntu
+2026-10-31T11:48:51.8526034Z 24.04.5
+2026-10-31T11:48:51.8526720Z LTS
+2026-10-31T11:48:51.8527251Z ##[endgroup]
+2026-10-31T11:48:51.8527818Z ##[group]Runner Image
+2026-10-31T11:48:51.8528506Z Image: ubuntu-24.04-arm
+2026-10-31T11:48:51.8529138Z Version: 20261025.165.1
+2026-10-31T11:48:51.8531052Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24-arm64/20261025.165/images/ubuntu/Ubuntu2404-Arm64-Readme.md
+2026-10-31T11:48:51.8532765Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24-arm64%2F20261025.165
+2026-10-31T11:48:51.8533780Z ##[endgroup]
+2026-10-31T11:48:51.8535109Z ##[group]GITHUB_TOKEN Permissions
+2026-10-31T11:48:51.8537691Z Contents: read
+2026-10-31T11:48:51.8538286Z Metadata: read
+2026-10-31T11:48:51.8539118Z ##[endgroup]
+2026-10-31T11:48:51.8542918Z Secret source: Actions
+2026-10-31T11:48:51.8544231Z Cache mode: write
+2026-10-31T11:48:51.8545068Z Prepare workflow directory
+2026-10-31T11:48:51.9169051Z Prepare all required actions
+2026-10-31T11:48:51.9221695Z Getting action download info
+2026-10-31T11:48:52.0694693Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-31T11:48:52.2656799Z Complete job name: Swift 6.2 / ubuntu-24.04-arm
+2026-10-31T11:48:52.3317633Z ##[group]Checking docker version
+2026-10-31T11:48:52.3332712Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-31T11:48:52.3991580Z '1.48'
+2026-10-31T11:48:52.4002426Z Docker daemon API version: '1.48'
+2026-10-31T11:48:52.4003482Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-31T11:48:52.4165694Z '1.48'
+2026-10-31T11:48:52.4180851Z Docker client API version: '1.48'
+2026-10-31T11:48:52.4186906Z ##[endgroup]
+2026-10-31T11:48:52.4191281Z ##[group]Clean up resources from previous jobs
+2026-10-31T11:48:52.4196968Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=d1ad04"
+2026-10-31T11:48:52.4340235Z ##[command]/usr/bin/docker network prune --force --filter "label=d1ad04"
+2026-10-31T11:48:52.4472017Z ##[endgroup]
+2026-10-31T11:48:52.4472937Z ##[group]Create local container network
+2026-10-31T11:48:52.4484818Z ##[command]/usr/bin/docker network create --label d1ad04 github_network_b4e1f95ba4e2453f8b0c2eee2b14968e
+2026-10-31T11:48:52.5424642Z e91f64e720ce26cac9d4dee22d6eef37de19d702e879f996da7ff885fedbc0bb
+2026-10-31T11:48:52.5440156Z ##[endgroup]
+2026-10-31T11:48:52.5468162Z ##[group]Starting job container
+2026-10-31T11:48:52.5491788Z ##[command]/usr/bin/docker pull swift:6.2-noble
+2026-10-31T11:48:52.8494977Z 6.2-noble: Pulling from library/swift
+2026-10-31T11:48:52.9372152Z e2d2bb84d022: Pulling fs layer
+2026-10-31T11:48:52.9374078Z b1577a653bfe: Pulling fs layer
+2026-10-31T11:48:52.9376009Z c555dda0e12b: Pulling fs layer
+2026-10-31T11:48:52.9376927Z f02813221472: Pulling fs layer
+2026-10-31T11:48:52.9378024Z f02813221472: Waiting
+2026-10-31T11:48:53.1227872Z e2d2bb84d022: Verifying Checksum
+2026-10-31T11:48:53.1230169Z e2d2bb84d022: Download complete
+2026-10-31T11:48:53.1822390Z f02813221472: Verifying Checksum
+2026-10-31T11:48:53.1824108Z f02813221472: Download complete
+2026-10-31T11:48:53.4055355Z b1577a653bfe: Verifying Checksum
+2026-10-31T11:48:53.4058397Z b1577a653bfe: Download complete
+2026-10-31T11:48:54.3907091Z e2d2bb84d022: Pull complete
+2026-10-31T11:48:55.8822620Z c555dda0e12b: Verifying Checksum
+2026-10-31T11:48:55.8839822Z c555dda0e12b: Download complete
+2026-10-31T11:49:02.7313088Z b1577a653bfe: Pull complete
+2026-10-31T11:49:15.0046488Z c555dda0e12b: Pull complete
+2026-10-31T11:49:17.2155880Z f02813221472: Pull complete
+2026-10-31T11:49:17.7288029Z Digest: sha256:e508ef1e4be68087f720de622b91cbf1e32799a7aa96134b35e6f1a1d656db7a
+2026-10-31T11:49:17.7303950Z Status: Downloaded newer image for swift:6.2-noble
+2026-10-31T11:49:17.7312980Z docker.io/library/swift:6.2-noble
+2026-10-31T11:49:17.7403178Z ##[command]/usr/bin/docker create --name dfb5b126daf648c4970de84a9de875af_swift62noble_f1ef60 --label d1ad04 --workdir /__w/SwiftJ2K/SwiftJ2K --network github_network_b4e1f95ba4e2453f8b0c2eee2b14968e  -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true -v "/var/run/docker.sock":"/var/run/docker.sock" -v "/home/runner/work":"/__w" -v "/home/runner/extracted/externals":"/__e":ro -v "/home/runner/work/_temp":"/__w/_temp" -v "/home/runner/work/_actions":"/__w/_actions" -v "/opt/hostedtoolcache":"/__t" -v "/home/runner/work/_temp/_github_home":"/github/home" -v "/home/runner/work/_temp/_github_workflow":"/github/workflow" --entrypoint "tail" swift:6.2-noble "-f" "/dev/null"
+2026-10-31T11:49:17.7650416Z bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:49:17.7676576Z ##[command]/usr/bin/docker start bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:49:17.9081687Z bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:49:17.9099978Z ##[command]/usr/bin/docker ps --all --filter id=bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-31T11:49:17.9216114Z bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2 Up Less than a second
+2026-10-31T11:49:17.9235227Z ##[command]/usr/bin/docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:49:17.9349882Z HOME=/github/home
+2026-10-31T11:49:17.9350505Z GITHUB_ACTIONS=true
+2026-10-31T11:49:17.9351066Z CI=true
+2026-10-31T11:49:17.9351442Z PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-10-31T11:49:17.9352035Z SWIFT_SIGNING_KEY=52BB7E3DE28A71BE22EC05FFEF80A866B47A981F
+2026-10-31T11:49:17.9352653Z SWIFT_PLATFORM=ubuntu24.04
+2026-10-31T11:49:17.9353018Z SWIFT_BRANCH=swift-6.2.4-release
+2026-10-31T11:49:17.9353439Z SWIFT_VERSION=swift-6.2.4-RELEASE
+2026-10-31T11:49:17.9353983Z SWIFT_WEBROOT=https://download.swift.org
+2026-10-31T11:49:17.9375464Z ##[endgroup]
+2026-10-31T11:49:17.9385702Z ##[group]Waiting for all services to be ready
+2026-10-31T11:49:17.9388051Z ##[endgroup]
+2026-10-31T11:49:17.9774152Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-10-31T11:49:17.9775309Z with:
+2026-10-31T11:49:17.9775649Z   persist-credentials: false
+2026-10-31T11:49:17.9776156Z   repository: raster-labs/SwiftJ2K
+2026-10-31T11:49:17.9779170Z   token: ***
+2026-10-31T11:49:17.9779804Z   ssh-strict: true
+2026-10-31T11:49:17.9780165Z   ssh-user: git
+2026-10-31T11:49:17.9780445Z   clean: true
+2026-10-31T11:49:17.9780846Z   sparse-checkout-cone-mode: true
+2026-10-31T11:49:17.9781210Z   fetch-depth: 1
+2026-10-31T11:49:17.9781509Z   fetch-tags: false
+2026-10-31T11:49:17.9781798Z   show-progress: true
+2026-10-31T11:49:17.9782078Z   lfs: false
+2026-10-31T11:49:17.9782377Z   submodules: false
+2026-10-31T11:49:17.9782669Z   set-safe-directory: true
+2026-10-31T11:49:17.9782975Z   allow-unsafe-pr-checkout: false
+2026-10-31T11:49:17.9783871Z ##[endgroup]
+2026-10-31T11:49:17.9853934Z ##[command]/usr/bin/docker exec  bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T11:49:18.1552784Z Syncing repository: raster-labs/SwiftJ2K
+2026-10-31T11:49:18.1554642Z ##[group]Getting Git version info
+2026-10-31T11:49:18.1555293Z Working directory is '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T11:49:18.1556066Z [command]/usr/bin/git version
+2026-10-31T11:49:18.1556491Z git version 2.43.0
+2026-10-31T11:49:18.1558405Z ##[endgroup]
+2026-10-31T11:49:18.1563667Z Temporarily overriding HOME='/__w/_temp/8439c576-b292-4f78-ab42-b32e2e58c161' before making global git config changes
+2026-10-31T11:49:18.1564466Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T11:49:18.1565094Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T11:49:18.1566337Z Deleting the contents of '/__w/SwiftJ2K/SwiftJ2K'
+2026-10-31T11:49:18.1567088Z ##[group]Initializing the repository
+2026-10-31T11:49:18.1570323Z [command]/usr/bin/git init /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T11:49:18.1589932Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-31T11:49:18.1606884Z hint: is subject to change. To configure the initial branch name to use in all
+2026-10-31T11:49:18.1613399Z hint: of your new repositories, which will suppress this warning, call:
+2026-10-31T11:49:18.1614518Z hint: 
+2026-10-31T11:49:18.1618463Z hint: 	git config --global init.defaultBranch <name>
+2026-10-31T11:49:18.1619246Z hint: 
+2026-10-31T11:49:18.1620135Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-31T11:49:18.1620826Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-31T11:49:18.1621329Z hint: 
+2026-10-31T11:49:18.1621683Z hint: 	git branch -m <name>
+2026-10-31T11:49:18.1622229Z Initialized empty Git repository in /__w/SwiftJ2K/SwiftJ2K/.git/
+2026-10-31T11:49:18.1624265Z [command]/usr/bin/git remote add origin https://github.com/raster-labs/SwiftJ2K
+2026-10-31T11:49:18.1643351Z ##[endgroup]
+2026-10-31T11:49:18.1644637Z ##[group]Disabling automatic garbage collection
+2026-10-31T11:49:18.1645681Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-31T11:49:18.1683746Z ##[endgroup]
+2026-10-31T11:49:18.1684952Z ##[group]Setting up auth
+2026-10-31T11:49:18.1685726Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T11:49:18.1712749Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T11:49:18.1981733Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T11:49:18.2015035Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T11:49:18.2260831Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T11:49:18.2296680Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T11:49:18.2543509Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-31T11:49:18.2596819Z ##[endgroup]
+2026-10-31T11:49:18.2597905Z ##[group]Fetching the repository
+2026-10-31T11:49:18.2605554Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +86be136665a3027f59863fb3844b014fd7bad8df:refs/remotes/pull/30/merge
+2026-10-31T11:49:19.3737594Z From https://github.com/raster-labs/SwiftJ2K
+2026-10-31T11:49:19.3738429Z  * [new ref]         86be136665a3027f59863fb3844b014fd7bad8df -> pull/30/merge
+2026-10-31T11:49:19.3760021Z ##[endgroup]
+2026-10-31T11:49:19.3760653Z ##[group]Determining the checkout info
+2026-10-31T11:49:19.3761215Z ##[endgroup]
+2026-10-31T11:49:19.3765259Z [command]/usr/bin/git sparse-checkout disable
+2026-10-31T11:49:19.3812045Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-31T11:49:19.3842259Z ##[group]Checking out the ref
+2026-10-31T11:49:19.3845588Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/30/merge
+2026-10-31T11:49:19.5847045Z Note: switching to 'refs/remotes/pull/30/merge'.
+2026-10-31T11:49:19.5847855Z 
+2026-10-31T11:49:19.5848134Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-31T11:49:19.5848887Z changes and commit them, and you can discard any commits you make in this
+2026-10-31T11:49:19.5849715Z state without impacting any branches by switching back to a branch.
+2026-10-31T11:49:19.5850061Z 
+2026-10-31T11:49:19.5850286Z If you want to create a new branch to retain commits you create, you may
+2026-10-31T11:49:19.5850846Z do so (now or later) by using -c with the switch command. Example:
+2026-10-31T11:49:19.5851140Z 
+2026-10-31T11:49:19.5851309Z   git switch -c <new-branch-name>
+2026-10-31T11:49:19.5851497Z 
+2026-10-31T11:49:19.5851703Z Or undo this operation with:
+2026-10-31T11:49:19.5851914Z 
+2026-10-31T11:49:19.5852088Z   git switch -
+2026-10-31T11:49:19.5852260Z 
+2026-10-31T11:49:19.5852517Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-31T11:49:19.5852889Z 
+2026-10-31T11:49:19.5853269Z HEAD is now at 86be136 Merge e67136ade691af045570706d401f80d612359d0c into 46be90fc3bf50429956725ee592687d8ff8e7344
+2026-10-31T11:49:19.5907652Z ##[endgroup]
+2026-10-31T11:49:19.5918529Z [command]/usr/bin/git log -1 --format=%H
+2026-10-31T11:49:19.5948214Z 86be136665a3027f59863fb3844b014fd7bad8df
+2026-10-31T11:49:19.5962660Z ##[group]Removing auth
+2026-10-31T11:49:19.5963121Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T11:49:19.5993577Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T11:49:19.6237411Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T11:49:19.6267884Z http.https://github.com/.extraheader
+2026-10-31T11:49:19.6275213Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-31T11:49:19.6309953Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T11:49:19.6553088Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T11:49:19.6586236Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T11:49:19.6823733Z ##[endgroup]
+2026-10-31T11:49:19.7057994Z ##[group]Run swift --version
+2026-10-31T11:49:19.7058682Z [36;1mswift --version[0m
+2026-10-31T11:49:19.7062943Z shell: sh -e {0}
+2026-10-31T11:49:19.7063227Z ##[endgroup]
+2026-10-31T11:49:19.8021007Z Swift version 6.2.4 (swift-6.2.4-RELEASE)
+2026-10-31T11:49:19.8021462Z Target: aarch64-unknown-linux-gnu
+2026-10-31T11:49:19.8128100Z ##[group]Run swift build
+2026-10-31T11:49:19.8128500Z [36;1mswift build[0m
+2026-10-31T11:49:19.8129011Z shell: sh -e {0}
+2026-10-31T11:49:19.8129343Z ##[endgroup]
+2026-10-31T11:49:20.4391511Z Building for debugging...
+2026-10-31T11:49:20.4474635Z [0/12] Write sources
+2026-10-31T11:49:20.4745397Z [4/12] Compiling CZlibShim CZlibShim.c
+2026-10-31T11:49:20.4975044Z [5/12] Write swift-version-24593BA9C3E375BF.txt
+2026-10-31T11:49:24.7928525Z [7/42] Emitting module SwiftJ2K
+2026-10-31T11:49:31.6857490Z [8/51] Compiling SwiftJ2K ImageDescriptor.swift
+2026-10-31T11:49:31.6858418Z [9/51] Compiling SwiftJ2K ImageStorage.swift
+2026-10-31T11:49:31.6859230Z [10/51] Compiling SwiftJ2K LegacyImageBridge.swift
+2026-10-31T11:49:31.6860086Z [11/51] Compiling SwiftJ2K LegacyPixelAccounting.swift
+2026-10-31T11:49:31.6861234Z [12/51] Compiling SwiftJ2K Options.swift
+2026-10-31T11:49:31.6861946Z [13/51] Compiling SwiftJ2K Telemetry.swift
+2026-10-31T11:49:31.6864247Z [14/51] Compiling SwiftJ2K Transcoding.swift
+2026-10-31T11:49:31.6868587Z [15/51] Compiling SwiftJ2K Volume.swift
+2026-10-31T11:49:31.6869244Z [16/51] Compiling SwiftJ2K VolumePixelAccounting.swift
+2026-10-31T11:49:31.8526760Z [17/51] Compiling SwiftJ2K Wavelet53.swift
+2026-10-31T11:49:31.8537164Z [18/51] Compiling SwiftJ2K Wavelet97.swift
+2026-10-31T11:49:31.8547015Z [19/51] Compiling SwiftJ2K CodecAPI.swift
+2026-10-31T11:49:31.8557596Z [20/51] Compiling SwiftJ2K JP2BoxReaderWriter.swift
+2026-10-31T11:49:31.8566997Z [21/51] Compiling SwiftJ2K JP2Boxes.swift
+2026-10-31T11:49:31.8576208Z [22/51] Compiling SwiftJ2K JP2Container.swift
+2026-10-31T11:49:31.8586283Z [23/51] Compiling SwiftJ2K JP2ReaderRequirements.swift
+2026-10-31T11:49:31.8594677Z [24/51] Compiling SwiftJ2K Errors.swift
+2026-10-31T11:49:31.8603227Z [25/51] Compiling SwiftJ2K Image.swift
+2026-10-31T11:49:32.0410005Z [26/51] Compiling SwiftJ2K AcceleratedCodec.swift
+2026-10-31T11:49:32.0419251Z [27/51] Compiling SwiftJ2K AccelerationRuntime.swift
+2026-10-31T11:49:32.0427955Z [28/51] Compiling SwiftJ2K MetalAcceleration.swift
+2026-10-31T11:49:32.0436623Z [29/51] Compiling SwiftJ2K SIMDAcceleration.swift
+2026-10-31T11:49:32.0445927Z [30/51] Compiling SwiftJ2K BitIO.swift
+2026-10-31T11:49:32.0454427Z [31/51] Compiling SwiftJ2K BitPlaneCoder.swift
+2026-10-31T11:49:32.0463399Z [32/51] Compiling SwiftJ2K BoundedByteWriter.swift
+2026-10-31T11:49:32.0471778Z [33/51] Compiling SwiftJ2K Codestream.swift
+2026-10-31T11:49:32.0480451Z [34/51] Compiling SwiftJ2K ColourTransform.swift
+2026-10-31T11:49:32.0488849Z [35/51] Compiling SwiftJ2K ContextModeling.swift
+2026-10-31T11:49:39.5144130Z [36/51] Compiling SwiftJ2K HTBlockCoder.swift
+2026-10-31T11:49:39.5144617Z [37/51] Compiling SwiftJ2K HTTables.swift
+2026-10-31T11:49:39.5145257Z [38/51] Compiling SwiftJ2K JPIPCodestreamIndexer.swift
+2026-10-31T11:49:39.5145642Z [39/51] Compiling SwiftJ2K LosslessPipeline.swift
+2026-10-31T11:49:39.5146018Z [40/51] Compiling SwiftJ2K MQCoder.swift
+2026-10-31T11:49:39.5146441Z [41/51] Compiling SwiftJ2K Part1Pipeline.swift
+2026-10-31T11:49:39.5146787Z [42/51] Compiling SwiftJ2K Quantization.swift
+2026-10-31T11:49:39.5147145Z [43/51] Compiling SwiftJ2K ROI.swift
+2026-10-31T11:49:39.5147462Z [44/51] Compiling SwiftJ2K TagTree.swift
+2026-10-31T11:49:39.5147756Z [45/51] Compiling SwiftJ2K Tier2.swift
+2026-10-31T11:49:39.6234574Z [46/52] Wrapping AST for SwiftJ2K for debugging
+2026-10-31T11:49:40.7603250Z [48/78] Emitting module SwiftJ2K3D
+2026-10-31T11:49:48.6048139Z [49/86] Compiling SwiftJ2K3D JP3DCodestreamParser.swift
+2026-10-31T11:49:48.6049003Z [50/86] Compiling SwiftJ2K3D JP3DConfiguration.swift
+2026-10-31T11:49:48.6049673Z [51/86] Compiling SwiftJ2K3D JP3DDecoder+ProgressStream.swift
+2026-10-31T11:49:48.6050140Z [52/86] Compiling SwiftJ2K3D JP3DDecoder.swift
+2026-10-31T11:49:48.6050521Z [53/86] Compiling SwiftJ2K3D JP3DEncoder+PreWarm.swift
+2026-10-31T11:49:48.6050940Z [54/86] Compiling SwiftJ2K3D JP3DEncoder+ProgressStream.swift
+2026-10-31T11:49:48.6051407Z [55/86] Compiling SwiftJ2K3D JP3DEncoder.swift
+2026-10-31T11:49:48.6052451Z [56/86] Compiling SwiftJ2K3D JP3DHTJ2K.swift
+2026-10-31T11:49:48.6052832Z [57/86] Compiling SwiftJ2K3D JP3DJPIPIndexer.swift
+2026-10-31T11:49:50.8144987Z [58/86] Compiling SwiftJ2K3D JP3DStreamWriter.swift
+2026-10-31T11:49:50.8146281Z [59/86] Compiling SwiftJ2K3D JP3DTier12Coder.swift
+2026-10-31T11:49:50.8146785Z [60/86] Compiling SwiftJ2K3D JP3DTiling.swift
+2026-10-31T11:49:50.8147434Z [61/86] Compiling SwiftJ2K3D JP3DTranscoder+PreWarm.swift
+2026-10-31T11:49:50.8147918Z [62/86] Compiling SwiftJ2K3D JP3DTranscoder.swift
+2026-10-31T11:49:50.8148349Z [63/86] Compiling SwiftJ2K3D JP3DTypes.swift
+2026-10-31T11:49:50.8148761Z [64/86] Compiling SwiftJ2K3D JP3DWaveletTransform.swift
+2026-10-31T11:49:50.8149153Z [65/86] Compiling SwiftJ2K3D VolumeCodecAPI.swift
+2026-10-31T11:50:02.5288836Z [66/86] Compiling SwiftJ2K3D JP3DMetalDWT.swift
+2026-10-31T11:50:02.5290586Z [67/86] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder+PreWarm.swift
+2026-10-31T11:50:02.6269827Z [68/86] Compiling SwiftJ2K3D JP3DMultiSpectralDecoder.swift
+2026-10-31T11:50:02.6270556Z [69/86] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder+PreWarm.swift
+2026-10-31T11:50:02.6271263Z [70/86] Compiling SwiftJ2K3D JP3DMultiSpectralEncoder.swift
+2026-10-31T11:50:02.6272154Z [71/86] Compiling SwiftJ2K3D JP3DMultiSpectralTypes.swift
+2026-10-31T11:50:02.6272616Z [72/86] Compiling SwiftJ2K3D JP3DPacketFormation.swift
+2026-10-31T11:50:02.6273071Z [73/86] Compiling SwiftJ2K3D JP3DProgressiveDecoder+PreWarm.swift
+2026-10-31T11:50:02.6273546Z [74/86] Compiling SwiftJ2K3D JP3DProgressiveDecoder.swift
+2026-10-31T11:50:02.6274025Z [75/86] Compiling SwiftJ2K3D JP3DROIDecoder+ProgressStream.swift
+2026-10-31T11:50:02.6274440Z [76/86] Compiling SwiftJ2K3D JP3DROIDecoder.swift
+2026-10-31T11:50:02.6274809Z [77/86] Compiling SwiftJ2K3D JP3DRateControl.swift
+2026-10-31T11:50:02.6275233Z [78/86] Compiling SwiftJ2K3D JP3DSliceStackCodec.swift
+2026-10-31T11:50:02.6275689Z [79/86] Compiling SwiftJ2K3D JP3DSpectralAnalysis.swift
+2026-10-31T11:50:02.6276126Z [80/86] Compiling SwiftJ2K3D JP3DStreamWriter+PreWarm.swift
+2026-10-31T11:50:02.6276578Z [81/86] Compiling SwiftJ2K3D JP3DStreamWriter+ProgressStream.swift
+2026-10-31T11:50:02.6276983Z [82/87] Wrapping AST for SwiftJ2K3D for debugging
+2026-10-31T11:50:03.5180949Z [84/115] Emitting module SwiftJ2KJPIP
+2026-10-31T11:50:07.1111129Z [85/124] Compiling SwiftJ2KJPIP JP3DCacheManager.swift
+2026-10-31T11:50:07.1130543Z [86/124] Compiling SwiftJ2KJPIP JP3DJPIPClient.swift
+2026-10-31T11:50:07.1150316Z [87/124] Compiling SwiftJ2KJPIP JP3DJPIPServer.swift
+2026-10-31T11:50:07.1151517Z [88/124] Compiling SwiftJ2KJPIP JP3DProgressiveDelivery.swift
+2026-10-31T11:50:07.1152071Z [89/124] Compiling SwiftJ2KJPIP JP3DStreamingTypes.swift
+2026-10-31T11:50:07.1152447Z [90/124] Compiling SwiftJ2KJPIP JPIP.swift
+2026-10-31T11:50:07.1152822Z [91/124] Compiling SwiftJ2KJPIP JPIPAdaptiveQualityEngine.swift
+2026-10-31T11:50:07.1153312Z [92/124] Compiling SwiftJ2KJPIP JPIPBandwidthEstimator.swift
+2026-10-31T11:50:07.1153816Z [93/124] Compiling SwiftJ2KJPIP JPIPBandwidthThrottle.swift
+2026-10-31T11:50:07.8691947Z [94/124] Compiling SwiftJ2KJPIP JPIPProgressiveStreamingPipeline.swift
+2026-10-31T11:50:07.8692815Z [95/124] Compiling SwiftJ2KJPIP JPIPRequest.swift
+2026-10-31T11:50:07.8693632Z [96/124] Compiling SwiftJ2KJPIP JPIPRequestQueue.swift
+2026-10-31T11:50:07.8694189Z [97/124] Compiling SwiftJ2KJPIP JPIPResourceAdmission.swift
+2026-10-31T11:50:07.8695297Z [98/124] Compiling SwiftJ2KJPIP JPIPResponse.swift
+2026-10-31T11:50:07.8695771Z [99/124] Compiling SwiftJ2KJPIP JPIPServer.swift
+2026-10-31T11:50:07.8696152Z [100/124] Compiling SwiftJ2KJPIP JPIPServerPush.swift
+2026-10-31T11:50:07.8696659Z [101/124] Compiling SwiftJ2KJPIP JPIPServerSession.swift
+2026-10-31T11:50:07.8697088Z [102/124] Compiling SwiftJ2KJPIP JPIPSessionManager.swift
+2026-10-31T11:50:08.3307506Z [103/124] Compiling SwiftJ2KJPIP JPIPClientCacheManager.swift
+2026-10-31T11:50:08.3308983Z [104/124] Compiling SwiftJ2KJPIP JPIPCodecAPI.swift
+2026-10-31T11:50:08.3310395Z [105/124] Compiling SwiftJ2KJPIP JPIPDataBinGenerator.swift
+2026-10-31T11:50:08.3310899Z [106/124] Compiling SwiftJ2KJPIP JPIPHTJ2KSupport.swift
+2026-10-31T11:50:08.3311291Z [107/124] Compiling SwiftJ2KJPIP JPIPHTTPSRequest.swift
+2026-10-31T11:50:08.3311846Z [108/124] Compiling SwiftJ2KJPIP JPIPMultiResolutionTileManager.swift
+2026-10-31T11:50:08.3313349Z [109/124] Compiling SwiftJ2KJPIP JPIPNetworkFramework.swift
+2026-10-31T11:50:08.3313935Z [110/124] Compiling SwiftJ2KJPIP JPIPPrecinctCache.swift
+2026-10-31T11:50:08.3314904Z [111/124] Compiling SwiftJ2KJPIP JPIPProgressiveDeliveryScheduler.swift
+2026-10-31T11:50:09.5994244Z [112/124] Compiling SwiftJ2KJPIP JPIPSessionPersistence.swift
+2026-10-31T11:50:09.5994841Z [113/124] Compiling SwiftJ2KJPIP JPIPTCPSocket.swift
+2026-10-31T11:50:09.5995472Z [114/124] Compiling SwiftJ2KJPIP JPIPTranscodingService.swift
+2026-10-31T11:50:09.5995884Z [115/124] Compiling SwiftJ2KJPIP JPIPTransport.swift
+2026-10-31T11:50:09.5996386Z [116/124] Compiling SwiftJ2KJPIP JPIPTransportRequestLifetime.swift
+2026-10-31T11:50:09.5996890Z [117/124] Compiling SwiftJ2KJPIP JPIPWebSocketClient.swift
+2026-10-31T11:50:09.5997304Z [118/124] Compiling SwiftJ2KJPIP JPIPWebSocketServer.swift
+2026-10-31T11:50:09.5998187Z [119/124] Compiling SwiftJ2KJPIP JPIPWebSocketTransport.swift
+2026-10-31T11:50:09.5998622Z [120/124] Compiling SwiftJ2KJPIP JPIPWorkerHandoff.swift
+2026-10-31T11:50:09.7013066Z [121/125] Wrapping AST for SwiftJ2KJPIP for debugging
+2026-10-31T11:50:13.4801153Z [123/129] Compiling SwiftJ2KCLI main.swift
+2026-10-31T11:50:16.8283928Z [124/129] Compiling SwiftJ2KCLI CLIVerbs.swift
+2026-10-31T11:50:16.8284391Z [125/129] Compiling SwiftJ2KCLI CLIImageIO.swift
+2026-10-31T11:50:16.8284716Z [126/129] Emitting module SwiftJ2KCLI
+2026-10-31T11:50:16.8983880Z [127/130] Wrapping AST for SwiftJ2KCLI for debugging
+2026-10-31T11:50:16.8988699Z [128/130] Write Objects.LinkFileList
+2026-10-31T11:50:17.1926309Z [129/130] Linking swiftj2k-cli
+2026-10-31T11:50:17.1959344Z Build complete! (56.89s)
+2026-10-31T11:50:17.2084795Z ##[group]Run swift test
+2026-10-31T11:50:17.2085204Z [36;1mswift test[0m
+2026-10-31T11:50:17.2085806Z shell: sh -e {0}
+2026-10-31T11:50:17.2086114Z ##[endgroup]
+2026-10-31T11:50:17.8306762Z [0/1] Planning build
+2026-10-31T11:50:17.8457718Z Building for debugging...
+2026-10-31T11:50:17.8506483Z [0/17] Write sources
+2026-10-31T11:50:17.8671119Z [3/21] Copying Fixtures
+2026-10-31T11:50:17.9050567Z [4/21] Write swift-version-24593BA9C3E375BF.txt
+2026-10-31T11:50:21.7443074Z [6/83] Compiling SwiftJ2KJPIPTests JPIPNetworkFrameworkTests.swift
+2026-10-31T11:50:21.7444160Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7444994Z   8 | 
+2026-10-31T11:50:21.7445716Z   9 | import Foundation
+2026-10-31T11:50:21.7446280Z  10 | import CryptoKit
+2026-10-31T11:50:21.7446829Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7447314Z  11 | import Darwin
+2026-10-31T11:50:21.7447911Z  12 | import Dispatch
+2026-10-31T11:50:21.7448428Z [7/83] Compiling SwiftJ2KJPIPTests JPIPProgressiveStreamingTests.swift
+2026-10-31T11:50:21.7449223Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7450280Z   8 | 
+2026-10-31T11:50:21.7450633Z   9 | import Foundation
+2026-10-31T11:50:21.7451072Z  10 | import CryptoKit
+2026-10-31T11:50:21.7451488Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7451908Z  11 | import Darwin
+2026-10-31T11:50:21.7452308Z  12 | import Dispatch
+2026-10-31T11:50:21.7452772Z [8/83] Compiling SwiftJ2KJPIPTests JPIPServerComponentTests.swift
+2026-10-31T11:50:21.7453606Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7454280Z   8 | 
+2026-10-31T11:50:21.7454598Z   9 | import Foundation
+2026-10-31T11:50:21.7455014Z  10 | import CryptoKit
+2026-10-31T11:50:21.7455431Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7455864Z  11 | import Darwin
+2026-10-31T11:50:21.7456213Z  12 | import Dispatch
+2026-10-31T11:50:21.7456646Z [9/83] Compiling SwiftJ2KJPIPTests JPIPServerPushTests.swift
+2026-10-31T11:50:21.7457459Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7458136Z   8 | 
+2026-10-31T11:50:21.7458542Z   9 | import Foundation
+2026-10-31T11:50:21.7458916Z  10 | import CryptoKit
+2026-10-31T11:50:21.7459297Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7460027Z  11 | import Darwin
+2026-10-31T11:50:21.7460434Z  12 | import Dispatch
+2026-10-31T11:50:21.7460851Z [10/83] Compiling SwiftJ2KJPIPTests JPIPServerTests.swift
+2026-10-31T11:50:21.7461637Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7462346Z   8 | 
+2026-10-31T11:50:21.7462711Z   9 | import Foundation
+2026-10-31T11:50:21.7463117Z  10 | import CryptoKit
+2026-10-31T11:50:21.7463516Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7463939Z  11 | import Darwin
+2026-10-31T11:50:21.7464276Z  12 | import Dispatch
+2026-10-31T11:50:21.7465366Z [11/83] Compiling SwiftJ2KJPIPTests JPIPSessionPersistenceTests.swift
+2026-10-31T11:50:21.7466158Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7466851Z   8 | 
+2026-10-31T11:50:21.7467185Z   9 | import Foundation
+2026-10-31T11:50:21.7467554Z  10 | import CryptoKit
+2026-10-31T11:50:21.7467968Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7468410Z  11 | import Darwin
+2026-10-31T11:50:21.7468790Z  12 | import Dispatch
+2026-10-31T11:50:21.7469214Z [12/83] Compiling SwiftJ2KJPIPTests JPIPTests.swift
+2026-10-31T11:50:21.7470202Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7471301Z   8 | 
+2026-10-31T11:50:21.7471723Z   9 | import Foundation
+2026-10-31T11:50:21.7472306Z  10 | import CryptoKit
+2026-10-31T11:50:21.7472809Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7473279Z  11 | import Darwin
+2026-10-31T11:50:21.7473714Z  12 | import Dispatch
+2026-10-31T11:50:21.7474200Z [13/83] Compiling SwiftJ2KJPIPTests JPIPTranscodingServiceTests.swift
+2026-10-31T11:50:21.7474981Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7475706Z   8 | 
+2026-10-31T11:50:21.7476036Z   9 | import Foundation
+2026-10-31T11:50:21.7476478Z  10 | import CryptoKit
+2026-10-31T11:50:21.7476916Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7477336Z  11 | import Darwin
+2026-10-31T11:50:21.7477757Z  12 | import Dispatch
+2026-10-31T11:50:21.7478200Z [14/83] Compiling SwiftJ2KJPIPTests JPIPWebSocketTests.swift
+2026-10-31T11:50:21.7479118Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7480281Z   8 | 
+2026-10-31T11:50:21.7480624Z   9 | import Foundation
+2026-10-31T11:50:21.7481082Z  10 | import CryptoKit
+2026-10-31T11:50:21.7481488Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:21.7481986Z  11 | import Darwin
+2026-10-31T11:50:21.7482345Z  12 | import Dispatch
+2026-10-31T11:50:26.1981369Z [15/92] Compiling SwiftJ2KTests R1RemediationTests.swift
+2026-10-31T11:50:26.1982470Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1983547Z   8 | 
+2026-10-31T11:50:26.1983977Z   9 | import Foundation
+2026-10-31T11:50:26.1984479Z  10 | import CryptoKit
+2026-10-31T11:50:26.1984922Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1985377Z  11 | import Darwin
+2026-10-31T11:50:26.1985805Z  12 | import Dispatch
+2026-10-31T11:50:26.1986351Z [16/92] Compiling SwiftJ2KTests R2CLIExtraSampleOrderingTests.swift
+2026-10-31T11:50:26.1987790Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1988551Z   8 | 
+2026-10-31T11:50:26.1988904Z   9 | import Foundation
+2026-10-31T11:50:26.1989354Z  10 | import CryptoKit
+2026-10-31T11:50:26.1990077Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1990577Z  11 | import Darwin
+2026-10-31T11:50:26.1990936Z  12 | import Dispatch
+2026-10-31T11:50:26.1991409Z [17/92] Compiling SwiftJ2KTests R2ColourAlphaPreservationTests.swift
+2026-10-31T11:50:26.1992239Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1992988Z   8 | 
+2026-10-31T11:50:26.1993360Z   9 | import Foundation
+2026-10-31T11:50:26.1993734Z  10 | import CryptoKit
+2026-10-31T11:50:26.1994238Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1994710Z  11 | import Darwin
+2026-10-31T11:50:26.1995118Z  12 | import Dispatch
+2026-10-31T11:50:26.1995526Z [18/92] Compiling SwiftJ2KTests AccelerationTests.swift
+2026-10-31T11:50:26.1996339Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1997523Z   8 | 
+2026-10-31T11:50:26.1997972Z   9 | import Foundation
+2026-10-31T11:50:26.1998357Z  10 | import CryptoKit
+2026-10-31T11:50:26.1998743Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.1999252Z  11 | import Darwin
+2026-10-31T11:50:26.1999844Z  12 | import Dispatch
+2026-10-31T11:50:26.2000400Z [19/92] Compiling SwiftJ2KTests BehaviourTests.swift
+2026-10-31T11:50:26.2001154Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2001873Z   8 | 
+2026-10-31T11:50:26.2002205Z   9 | import Foundation
+2026-10-31T11:50:26.2002565Z  10 | import CryptoKit
+2026-10-31T11:50:26.2003104Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2003836Z  11 | import Darwin
+2026-10-31T11:50:26.2004309Z  12 | import Dispatch
+2026-10-31T11:50:26.2004775Z [20/92] Compiling SwiftJ2KTests BoundedByteWriterTests.swift
+2026-10-31T11:50:26.2005586Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2006311Z   8 | 
+2026-10-31T11:50:26.2006658Z   9 | import Foundation
+2026-10-31T11:50:26.2007039Z  10 | import CryptoKit
+2026-10-31T11:50:26.2007506Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2008031Z  11 | import Darwin
+2026-10-31T11:50:26.2008588Z  12 | import Dispatch
+2026-10-31T11:50:26.2009054Z [21/92] Compiling SwiftJ2KTests CLIBreadthAndConsumerTests.swift
+2026-10-31T11:50:26.2010041Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2010791Z   8 | 
+2026-10-31T11:50:26.2011166Z   9 | import Foundation
+2026-10-31T11:50:26.2011614Z  10 | import CryptoKit
+2026-10-31T11:50:26.2012007Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2012421Z  11 | import Darwin
+2026-10-31T11:50:26.2012831Z  12 | import Dispatch
+2026-10-31T11:50:26.2013304Z [22/92] Compiling SwiftJ2KTests CLITestProcessSupport.swift
+2026-10-31T11:50:26.2014084Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2014773Z   8 | 
+2026-10-31T11:50:26.2015111Z   9 | import Foundation
+2026-10-31T11:50:26.2015527Z  10 | import CryptoKit
+2026-10-31T11:50:26.2015947Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2016388Z  11 | import Darwin
+2026-10-31T11:50:26.2016748Z  12 | import Dispatch
+2026-10-31T11:50:26.2017201Z [23/92] Compiling SwiftJ2KTests CancellationPublicationTests.swift
+2026-10-31T11:50:26.2018020Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2018759Z   8 | 
+2026-10-31T11:50:26.2019571Z   9 | import Foundation
+2026-10-31T11:50:26.2020046Z  10 | import CryptoKit
+2026-10-31T11:50:26.2020464Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2020946Z  11 | import Darwin
+2026-10-31T11:50:26.2021355Z  12 | import Dispatch
+2026-10-31T11:50:26.2021773Z [24/92] Compiling SwiftJ2KTests CodexR3CLIHostTests.swift
+2026-10-31T11:50:26.2022586Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2023275Z   8 | 
+2026-10-31T11:50:26.2023651Z   9 | import Foundation
+2026-10-31T11:50:26.2024065Z  10 | import CryptoKit
+2026-10-31T11:50:26.2024521Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:26.2024964Z  11 | import Darwin
+2026-10-31T11:50:26.2025330Z  12 | import Dispatch
+2026-10-31T11:50:26.2881397Z [25/92] Emitting module SwiftJ2K3DTests
+2026-10-31T11:50:29.1684021Z [26/97] Compiling SwiftJ2KTests CodexR3JPPReassemblyResourceTests.swift
+2026-10-31T11:50:29.1685664Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.1687973Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T11:50:29.1688734Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T11:50:29.1689594Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T11:50:29.1690950Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.1692172Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.1693167Z 223 |         }
+2026-10-31T11:50:29.1693504Z 
+2026-10-31T11:50:29.1694495Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.1695791Z 237 | 
+2026-10-31T11:50:29.1696280Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T11:50:29.1696964Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T11:50:29.1698162Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.1699350Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.1700165Z 241 |     }
+2026-10-31T11:50:29.1700500Z 
+2026-10-31T11:50:29.1701025Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T11:50:29.2163421Z [27/97] Compiling SwiftJ2KTests ContainerTests.swift
+2026-10-31T11:50:29.2195826Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2197697Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T11:50:29.2198361Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T11:50:29.2198960Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T11:50:29.2200197Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2201415Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.2201918Z 223 |         }
+2026-10-31T11:50:29.2202030Z 
+2026-10-31T11:50:29.2203099Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2204359Z 237 | 
+2026-10-31T11:50:29.2204700Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T11:50:29.2205331Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T11:50:29.2206381Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2207975Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.2208439Z 241 |     }
+2026-10-31T11:50:29.2208575Z 
+2026-10-31T11:50:29.2208912Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T11:50:29.2770962Z [28/97] Compiling SwiftJ2KTests ContractTests.swift
+2026-10-31T11:50:29.2772385Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2773842Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T11:50:29.2774753Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T11:50:29.2775392Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T11:50:29.2776510Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2777574Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.2778099Z 223 |         }
+2026-10-31T11:50:29.2778219Z 
+2026-10-31T11:50:29.2779093Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2780426Z 237 | 
+2026-10-31T11:50:29.2780794Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T11:50:29.2781349Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T11:50:29.2782419Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.2783437Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.2783951Z 241 |     }
+2026-10-31T11:50:29.2784070Z 
+2026-10-31T11:50:29.2784446Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T11:50:29.3323746Z [29/97] Compiling SwiftJ2KTests DescriptorTests.swift
+2026-10-31T11:50:29.3331164Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3332417Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T11:50:29.3332997Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T11:50:29.3333541Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T11:50:29.3334571Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3335671Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.3336139Z 223 |         }
+2026-10-31T11:50:29.3336276Z 
+2026-10-31T11:50:29.3337206Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3338856Z 237 | 
+2026-10-31T11:50:29.3339202Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T11:50:29.3340047Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T11:50:29.3341040Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3342105Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.3342645Z 241 |     }
+2026-10-31T11:50:29.3342754Z 
+2026-10-31T11:50:29.3343581Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T11:50:29.3881414Z [30/97] Compiling SwiftJ2KTests HTJ2KCodecTests.swift
+2026-10-31T11:50:29.3883755Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:221:41: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3885000Z 219 |         for configuration in [JP3DHTJ2KConfiguration.default,
+2026-10-31T11:50:29.3885609Z 220 |                               JP3DHTJ2KConfiguration(allowMixedTiles: true)] {
+2026-10-31T11:50:29.3886328Z 221 |             let cpfData = JP3DHTMarkers.cpfMarkerData(for: configuration, isLossless: true)
+2026-10-31T11:50:29.3890582Z     |                                         `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3891664Z 222 |             XCTAssertTrue(cpfData.isEmpty, "Lossless coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.3892220Z 223 |         }
+2026-10-31T11:50:29.3892378Z 
+2026-10-31T11:50:29.3893229Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2K3DTests/JP3DHTJ2KTests.swift:239:37: warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3894336Z 237 | 
+2026-10-31T11:50:29.3894746Z 238 |     func testLossyConfigurationDoesNotClaimCorrespondingProfile() {
+2026-10-31T11:50:29.3895303Z 239 |         let cpfData = JP3DHTMarkers.cpfMarkerData(for: .default, isLossless: false)
+2026-10-31T11:50:29.3896337Z     |                                     `- warning: 'cpfMarkerData(for:isLossless:)' is deprecated: A block configuration cannot establish a corresponding profile; this overload omits CPF and returns empty data. [#DeprecatedDeclaration]
+2026-10-31T11:50:29.3897375Z 240 |         XCTAssertTrue(cpfData.isEmpty, "Lossy coding alone does not establish a CPF profile")
+2026-10-31T11:50:29.3897873Z 241 |     }
+2026-10-31T11:50:29.3898026Z 
+2026-10-31T11:50:29.3898405Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+2026-10-31T11:50:32.9551322Z [31/97] Compiling SwiftJ2KTests IndependentR2AuditTests.swift
+2026-10-31T11:50:32.9552830Z [32/97] Compiling SwiftJ2KTests LimitTests.swift
+2026-10-31T11:50:32.9553362Z [33/97] Compiling SwiftJ2KTests LosslessCodecTests.swift
+2026-10-31T11:50:32.9554129Z [34/97] Compiling SwiftJ2KTests OwnershipTests.swift
+2026-10-31T11:50:32.9554602Z [35/97] Compiling SwiftJ2KTests Part1BreadthTests.swift
+2026-10-31T11:50:37.5241504Z error: emit-module command failed with exit code 1 (use -v to see invocation)
+2026-10-31T11:50:37.5242124Z [41/97] Emitting module SwiftJ2KJPIPTests
+2026-10-31T11:50:37.5242875Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5243608Z   8 | 
+2026-10-31T11:50:37.5280858Z   9 | import Foundation
+2026-10-31T11:50:37.5290829Z  10 | import CryptoKit
+2026-10-31T11:50:37.5291473Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5292015Z  11 | import Darwin
+2026-10-31T11:50:37.5292502Z  12 | import Dispatch
+2026-10-31T11:50:37.5293217Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5293975Z   8 | 
+2026-10-31T11:50:37.5294386Z   9 | import Foundation
+2026-10-31T11:50:37.5294784Z  10 | import CryptoKit
+2026-10-31T11:50:37.5295284Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5295757Z  11 | import Darwin
+2026-10-31T11:50:37.5296163Z  12 | import Dispatch
+2026-10-31T11:50:37.5297318Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5298034Z   8 | 
+2026-10-31T11:50:37.5298429Z   9 | import Foundation
+2026-10-31T11:50:37.5298828Z  10 | import CryptoKit
+2026-10-31T11:50:37.5299287Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5300065Z  11 | import Darwin
+2026-10-31T11:50:37.5300418Z  12 | import Dispatch
+2026-10-31T11:50:37.5301168Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5301881Z   8 | 
+2026-10-31T11:50:37.5302242Z   9 | import Foundation
+2026-10-31T11:50:37.5302603Z  10 | import CryptoKit
+2026-10-31T11:50:37.5302995Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5303524Z  11 | import Darwin
+2026-10-31T11:50:37.5303868Z  12 | import Dispatch
+2026-10-31T11:50:37.5304670Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5305369Z   8 | 
+2026-10-31T11:50:37.5305695Z   9 | import Foundation
+2026-10-31T11:50:37.5306093Z  10 | import CryptoKit
+2026-10-31T11:50:37.5306541Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5306991Z  11 | import Darwin
+2026-10-31T11:50:37.5307346Z  12 | import Dispatch
+2026-10-31T11:50:37.5307975Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5308723Z   8 | 
+2026-10-31T11:50:37.5309053Z   9 | import Foundation
+2026-10-31T11:50:37.5309682Z  10 | import CryptoKit
+2026-10-31T11:50:37.5310267Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5310678Z  11 | import Darwin
+2026-10-31T11:50:37.5311098Z  12 | import Dispatch
+2026-10-31T11:50:37.5311721Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5312364Z   8 | 
+2026-10-31T11:50:37.5312800Z   9 | import Foundation
+2026-10-31T11:50:37.5313182Z  10 | import CryptoKit
+2026-10-31T11:50:37.5313772Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5314249Z  11 | import Darwin
+2026-10-31T11:50:37.5314581Z  12 | import Dispatch
+2026-10-31T11:50:37.5315292Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5315959Z   8 | 
+2026-10-31T11:50:37.5316350Z   9 | import Foundation
+2026-10-31T11:50:37.5316721Z  10 | import CryptoKit
+2026-10-31T11:50:37.5317101Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5317573Z  11 | import Darwin
+2026-10-31T11:50:37.5317903Z  12 | import Dispatch
+2026-10-31T11:50:37.5318729Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5319566Z   8 | 
+2026-10-31T11:50:37.5319915Z   9 | import Foundation
+2026-10-31T11:50:37.5320338Z  10 | import CryptoKit
+2026-10-31T11:50:37.5320843Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5321366Z  11 | import Darwin
+2026-10-31T11:50:37.5321710Z  12 | import Dispatch
+2026-10-31T11:50:37.5322326Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5323549Z   8 | 
+2026-10-31T11:50:37.5323907Z   9 | import Foundation
+2026-10-31T11:50:37.5324281Z  10 | import CryptoKit
+2026-10-31T11:50:37.5324699Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5325112Z  11 | import Darwin
+2026-10-31T11:50:37.5325489Z  12 | import Dispatch
+2026-10-31T11:50:37.5326160Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5326852Z   8 | 
+2026-10-31T11:50:37.5327173Z   9 | import Foundation
+2026-10-31T11:50:37.5327516Z  10 | import CryptoKit
+2026-10-31T11:50:37.5327949Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:37.5328388Z  11 | import Darwin
+2026-10-31T11:50:37.5328969Z  12 | import Dispatch
+2026-10-31T11:50:45.1593808Z [59/97] Emitting module SwiftJ2KTests
+2026-10-31T11:50:47.4196318Z [60/103] Compiling SwiftJ2KJPIPTests R1JPIPRemediationTests.swift
+2026-10-31T11:50:47.4198552Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4199974Z   8 | 
+2026-10-31T11:50:47.4200918Z   9 | import Foundation
+2026-10-31T11:50:47.4201436Z  10 | import CryptoKit
+2026-10-31T11:50:47.4201721Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4202078Z  11 | import Darwin
+2026-10-31T11:50:47.4202325Z  12 | import Dispatch
+2026-10-31T11:50:47.4202719Z [61/103] Compiling SwiftJ2KJPIPTests R2BinGenerationBudgetTests.swift
+2026-10-31T11:50:47.4203435Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4204018Z   8 | 
+2026-10-31T11:50:47.4204258Z   9 | import Foundation
+2026-10-31T11:50:47.4204545Z  10 | import CryptoKit
+2026-10-31T11:50:47.4204856Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4205187Z  11 | import Darwin
+2026-10-31T11:50:47.4205418Z  12 | import Dispatch
+2026-10-31T11:50:47.4205761Z [62/103] Compiling SwiftJ2KJPIPTests R2CacheRecencyTests.swift
+2026-10-31T11:50:47.4206447Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4207060Z   8 | 
+2026-10-31T11:50:47.4207313Z   9 | import Foundation
+2026-10-31T11:50:47.4207560Z  10 | import CryptoKit
+2026-10-31T11:50:47.4207860Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4208186Z  11 | import Darwin
+2026-10-31T11:50:47.4208457Z  12 | import Dispatch
+2026-10-31T11:50:47.4208890Z [63/103] Compiling SwiftJ2KJPIPTests R2JPIPColourAlphaPreservationTests.swift
+2026-10-31T11:50:47.4209921Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4210592Z   8 | 
+2026-10-31T11:50:47.4210947Z   9 | import Foundation
+2026-10-31T11:50:47.4211232Z  10 | import CryptoKit
+2026-10-31T11:50:47.4211522Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4211845Z  11 | import Darwin
+2026-10-31T11:50:47.4212119Z  12 | import Dispatch
+2026-10-31T11:50:47.4212498Z [64/103] Compiling SwiftJ2KJPIPTests R2JPIPRemediationTests.swift
+2026-10-31T11:50:47.4224221Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4224982Z   8 | 
+2026-10-31T11:50:47.4225712Z   9 | import Foundation
+2026-10-31T11:50:47.4226037Z  10 | import CryptoKit
+2026-10-31T11:50:47.4226454Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4226847Z  11 | import Darwin
+2026-10-31T11:50:47.4227183Z  12 | import Dispatch
+2026-10-31T11:50:47.4236924Z [65/103] Compiling SwiftJ2KJPIPTests R2PixelAccountingTests.swift
+2026-10-31T11:50:47.4238092Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4238812Z   8 | 
+2026-10-31T11:50:47.4239117Z   9 | import Foundation
+2026-10-31T11:50:47.4239367Z  10 | import CryptoKit
+2026-10-31T11:50:47.4240973Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4241638Z  11 | import Darwin
+2026-10-31T11:50:47.4241987Z  12 | import Dispatch
+2026-10-31T11:50:47.4257006Z [66/103] Compiling SwiftJ2KJPIPTests R3JPIPRemediationTests.swift
+2026-10-31T11:50:47.4257916Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4258491Z   8 | 
+2026-10-31T11:50:47.4264351Z   9 | import Foundation
+2026-10-31T11:50:47.4265151Z  10 | import CryptoKit
+2026-10-31T11:50:47.4265505Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4265858Z  11 | import Darwin
+2026-10-31T11:50:47.4266191Z  12 | import Dispatch
+2026-10-31T11:50:47.4266783Z [67/103] Compiling SwiftJ2KJPIPTests R3OwnedScriptedPeer.swift
+2026-10-31T11:50:47.4267521Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4268084Z   8 | 
+2026-10-31T11:50:47.4268333Z   9 | import Foundation
+2026-10-31T11:50:47.4268633Z  10 | import CryptoKit
+2026-10-31T11:50:47.4268894Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4269215Z  11 | import Darwin
+2026-10-31T11:50:47.4269719Z  12 | import Dispatch
+2026-10-31T11:50:47.4279986Z [68/103] Compiling SwiftJ2KJPIPTests TransportLifecycleProbe.swift
+2026-10-31T11:50:47.4288205Z /__w/SwiftJ2K/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3IndependentTests.swift:10:8: error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4288951Z   8 | 
+2026-10-31T11:50:47.4289344Z   9 | import Foundation
+2026-10-31T11:50:47.4289841Z  10 | import CryptoKit
+2026-10-31T11:50:47.4290471Z     |        `- error: no such module 'CryptoKit'
+2026-10-31T11:50:47.4290835Z  11 | import Darwin
+2026-10-31T11:50:47.4291259Z  12 | import Dispatch
+2026-10-31T11:50:47.4943934Z error: fatalError
+2026-10-31T11:50:47.5029732Z ##[error]Process completed with exit code 1.
+2026-10-31T11:50:47.5204372Z Post job cleanup.
+2026-10-31T11:50:47.5214355Z ##[command]/usr/bin/docker exec  bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2 sh -c "cat /etc/*release | grep ^ID"
+2026-10-31T11:50:47.6633742Z [command]/usr/bin/git version
+2026-10-31T11:50:47.6673443Z git version 2.43.0
+2026-10-31T11:50:47.6713757Z Temporarily overriding HOME='/__w/_temp/8681950e-642a-4133-af2e-1d4e85f5f0b1' before making global git config changes
+2026-10-31T11:50:47.6714573Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T11:50:47.6717045Z [command]/usr/bin/git config --global --add safe.directory /__w/SwiftJ2K/SwiftJ2K
+2026-10-31T11:50:47.6758263Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T11:50:47.6801977Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T11:50:47.7057292Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T11:50:47.7095138Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T11:50:47.7356284Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T11:50:47.7390472Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T11:50:47.7766360Z Stop and remove container: dfb5b126daf648c4970de84a9de875af_swift62noble_f1ef60
+2026-10-31T11:50:47.7771503Z ##[command]/usr/bin/docker rm --force bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:50:48.2547620Z bef54561850a78ae2c0fe8b80c99f85a9814d7ef66232f594b07eadc5f2819d2
+2026-10-31T11:50:48.2585990Z Remove container network: github_network_b4e1f95ba4e2453f8b0c2eee2b14968e
+2026-10-31T11:50:48.2591363Z ##[command]/usr/bin/docker network rm github_network_b4e1f95ba4e2453f8b0c2eee2b14968e
+2026-10-31T11:50:48.3877743Z github_network_b4e1f95ba4e2453f8b0c2eee2b14968e
+2026-10-31T11:50:48.3962149Z Cleaning up orphan processes
+2026-10-31T11:50:48.4565735Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

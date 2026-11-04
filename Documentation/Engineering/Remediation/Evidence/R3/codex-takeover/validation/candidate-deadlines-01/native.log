@@ -1,0 +1,12 @@
+[0/1] Planning build
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" started.
+◇ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" started.
+◇ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" started.
+✔ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" passed after 0.129 seconds.
+✔ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" passed after 0.390 seconds.
+✔ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" passed after 0.390 seconds.
+✔ Test run with 2 tests in 1 suite passed after 0.390 seconds.

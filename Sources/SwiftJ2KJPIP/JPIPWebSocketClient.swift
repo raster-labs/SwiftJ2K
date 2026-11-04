@@ -6,17 +6,14 @@
 // Migrated from Raster-Lab/J2KSwift at 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca:
 //   - Sources/JPIP/JPIPWebSocketClient.swift
 //
-//
-// JPIPWebSocketClient.swift
-// J2KSwift
-//
 /// # JPIPWebSocketClient
 ///
-/// WebSocket-based JPIP client implementation.
+/// RFC 6455 WebSocket-based JPIP client implementation.
 ///
-/// Provides session management over WebSocket with multiplexed
-/// request/response, low-latency data bin delivery via push,
-/// and automatic fallback to HTTP transport on WebSocket failure.
+/// Provides session management over a real persistent WebSocket TCP connection
+/// with multiplexed request/response correlation, normative ITU-T T.808 VBAS
+/// data-bin caching and codestream reassembly, server-push data-bin ingestion,
+/// and optional fallback to HTTP/1.1 JPIP transport on WebSocket failure.
 
 import Foundation
 @_exported import SwiftJ2K
@@ -49,14 +46,6 @@ public struct JPIPWebSocketClientConfiguration: Sendable {
     public let acceptServerPush: Bool
 
     /// Creates a new client configuration.
-    ///
-    /// - Parameters:
-    ///   - enableHTTPFallback: Enable HTTP fallback (default: true).
-    ///   - reconnectionConfig: Reconnection config (default: .default).
-    ///   - keepaliveInterval: Keepalive interval in seconds (default: 30).
-    ///   - requestTimeout: Request timeout in seconds (default: 30).
-    ///   - maxConcurrentRequests: Max concurrent requests (default: 16).
-    ///   - acceptServerPush: Accept server push (default: true).
     public init(
         enableHTTPFallback: Bool = true,
         reconnectionConfig: JPIPWebSocketReconnectionConfig = .default,
@@ -76,26 +65,9 @@ public struct JPIPWebSocketClientConfiguration: Sendable {
 
 // MARK: - WebSocket Client
 
-/// A JPIP client that communicates over WebSocket transport.
-///
-/// Provides full JPIP client functionality over a persistent WebSocket
-/// connection, with support for:
-/// - Session creation and management via WebSocket
-/// - Multiplexed request/response over a single connection
-/// - Low-latency data bin delivery via server push
-/// - Automatic fallback to HTTP transport on WebSocket failure
-///
-/// Example usage:
-/// ```swift
-/// let client = JPIPWebSocketClient(
-///     serverURL: URL(string: "ws://localhost:8080/jpip")!
-/// )
-/// try await client.connect()
-/// let session = try await client.createSession(target: "image.jp2")
-/// let response = try await client.sendRequest(request)
-/// ```
+/// A JPIP client that communicates over RFC 6455 WebSocket transport (with optional HTTP/1.1 fallback).
 public actor JPIPWebSocketClient {
-    /// The server URL (ws:// or wss://).
+    /// The server URL (`ws://` or `wss://`).
     nonisolated public let serverURL: URL
 
     /// Client configuration.
@@ -116,32 +88,22 @@ public actor JPIPWebSocketClient {
     /// Number of in-flight requests.
     private var inFlightRequests: Int
 
+    /// Data-bin reassembler for codestream/image reconstruction.
+    private let dataBinGenerator = JPIPDataBinGenerator()
+
     /// Client statistics.
     public private(set) var statistics: Statistics
 
     /// Client statistics.
     public struct Statistics: Sendable {
-        /// Total requests sent via WebSocket.
         public var webSocketRequests: Int = 0
-
-        /// Total requests sent via HTTP fallback.
         public var httpFallbackRequests: Int = 0
-
-        /// Total data bins received via push.
         public var pushedDataBins: Int = 0
-
-        /// Number of fallback activations.
         public var fallbackActivations: Int = 0
-
-        /// Total sessions created.
         public var sessionsCreated: Int = 0
     }
 
     /// Creates a new WebSocket JPIP client.
-    ///
-    /// - Parameters:
-    ///   - serverURL: The WebSocket URL of the JPIP server.
-    ///   - configuration: Client configuration.
     public init(
         serverURL: URL,
         configuration: JPIPWebSocketClientConfiguration = .init()
@@ -151,7 +113,8 @@ public actor JPIPWebSocketClient {
         self.webSocketTransport = JPIPWebSocketTransport(
             url: serverURL,
             reconnectionConfig: configuration.reconnectionConfig,
-            keepaliveInterval: configuration.keepaliveInterval
+            keepaliveInterval: configuration.keepaliveInterval,
+            requestTimeout: configuration.requestTimeout
         )
         self.httpTransport = nil
         self.isUsingHTTPFallback = false
@@ -159,9 +122,7 @@ public actor JPIPWebSocketClient {
         self.statistics = Statistics()
     }
 
-    /// Connects to the JPIP server via WebSocket.
-    ///
-    /// - Throws: ``J2KError`` if connection fails and no fallback available.
+    /// Connects to the JPIP server via RFC 6455 WebSocket (or activates HTTP fallback when enabled).
     public func connect() async throws {
         do {
             try await webSocketTransport.connect()
@@ -175,25 +136,32 @@ public actor JPIPWebSocketClient {
         }
     }
 
-    /// Creates a new JPIP session over WebSocket.
-    ///
-    /// - Parameter target: The target image identifier.
-    /// - Returns: A JPIP session.
-    /// - Throws: ``J2KError`` if session creation fails.
+    /// Creates a new JPIP session over WebSocket (or HTTP fallback).
     public func createSession(target: String) async throws -> JPIPSession {
         let sessionID = UUID().uuidString
         let newSession = JPIPSession(sessionID: sessionID)
         await newSession.setTarget(target)
 
-        // Send session creation request
         var request = JPIPRequest(target: target)
         request.cnew = isUsingHTTPFallback ? .http : .webSocket
 
         let response = try await sendRequest(request)
+        guard response.statusCode == 200 else {
+            throw J2KError.networkError("JPIP session creation failed with status \(response.statusCode)")
+        }
 
         if let channelID = response.channelID {
             await newSession.setChannelID(channelID)
             await newSession.activate()
+        }
+        if let tid = JPIPResponseParser.extractTargetID(from: response.headers) {
+            await newSession.setTargetID(tid)
+        }
+        if !response.data.isEmpty,
+           let parsed = try? JPIPWireCodec.decodeStream(response.data) {
+            for bin in parsed.bins {
+                await newSession.recordDataBin(bin)
+            }
         }
 
         self.session = newSession
@@ -202,13 +170,6 @@ public actor JPIPWebSocketClient {
     }
 
     /// Sends a JPIP request, using WebSocket or HTTP fallback.
-    ///
-    /// Supports multiplexed requests over WebSocket - multiple requests
-    /// can be in flight simultaneously over the single connection.
-    ///
-    /// - Parameter request: The JPIP request to send.
-    /// - Returns: The JPIP response.
-    /// - Throws: ``J2KError`` if the request fails on both transports.
     public func sendRequest(_ request: JPIPRequest) async throws -> JPIPResponse {
         guard inFlightRequests < configuration.maxConcurrentRequests else {
             throw J2KError.invalidState(
@@ -225,7 +186,6 @@ public actor JPIPWebSocketClient {
                 statistics.webSocketRequests += 1
                 return response
             } catch {
-                // Try fallback if enabled
                 if configuration.enableHTTPFallback {
                     try activateHTTPFallback()
                     return try await sendViaHTTP(request)
@@ -237,7 +197,103 @@ public actor JPIPWebSocketClient {
         }
     }
 
-    /// Sends a request via HTTP fallback transport.
+    /// Sends a JPIP stream request, decodes its normative VBAS stream, and merges all received
+    /// (and server-pushed) data bins into the active session cache.
+    public func sendStreamRequest(
+        _ request: JPIPRequest
+    ) async throws -> (response: JPIPResponse, stream: JPIPParsedStream) {
+        var effective = request
+        if effective.cid == nil, effective.cnew == nil, effective.model == nil,
+           let currentSession = session,
+           let cid = await currentSession.channelID {
+            effective.cid = cid
+        }
+
+        let response = try await sendRequest(effective)
+        guard response.statusCode == 200 else {
+            throw J2KError.networkError("JPIP WebSocket request failed with HTTP \(response.statusCode)")
+        }
+
+        let parsed = try JPIPWireCodec.decodeStream(response.data)
+        if session == nil {
+            let implicit = JPIPSession(sessionID: UUID().uuidString)
+            if !effective.target.isEmpty {
+                await implicit.setTarget(effective.target)
+            }
+            if let cid = response.channelID {
+                await implicit.setChannelID(cid)
+                await implicit.activate()
+            }
+            session = implicit
+        }
+
+        if let currentSession = session {
+            if let cid = response.channelID {
+                await currentSession.setChannelID(cid)
+                await currentSession.activate()
+            }
+            if let tid = JPIPResponseParser.extractTargetID(from: response.headers) {
+                await currentSession.setTargetID(tid)
+            }
+            for bin in parsed.bins {
+                await currentSession.recordDataBin(bin)
+            }
+            if configuration.acceptServerPush {
+                let pushed = await drainPushedDataBins()
+                for bin in pushed {
+                    await currentSession.recordDataBin(bin)
+                }
+            }
+        }
+
+        return (response, parsed)
+    }
+
+    /// Reconstructs the cached codestream or JP2/JP3D stream from accumulated session data bins.
+    public func reconstructCachedCodestream() async throws -> Data {
+        if configuration.acceptServerPush, let currentSession = session {
+            let pushed = await drainPushedDataBins()
+            for bin in pushed {
+                await currentSession.recordDataBin(bin)
+            }
+        }
+        guard let currentSession = session else {
+            throw J2KError.invalidState("No active JPIP WebSocket session cache")
+        }
+        let bins = await currentSession.cachedDataBins()
+        return dataBinGenerator.reassembleCodestream(from: bins)
+    }
+
+    /// Requests and decodes a full 2D image over WebSocket (automatically resuming `EOR=0x04` byte-limited responses).
+    public func requestImage(
+        imageID: String,
+        streamType: JPIPStreamType = .jppStream
+    ) async throws -> J2KImage {
+        if session == nil {
+            _ = try await createSession(target: imageID)
+        } else if let current = session, await current.target != imageID {
+            _ = try await createSession(target: imageID)
+        }
+
+        var rounds = 0
+        while rounds < 256 {
+            rounds += 1
+            var req = JPIPRequest(target: "")
+            req.cid = await session?.channelID
+            if req.cid == nil {
+                req = JPIPRequest(target: imageID)
+            }
+            req.streamType = streamType
+            let (_, stream) = try await sendStreamRequest(req)
+            if stream.eor?.reason != .byteLimitReached || stream.bins.isEmpty {
+                break
+            }
+        }
+
+        let codestream = try await reconstructCachedCodestream()
+        return try await J2KDecoder().decode(codestream)
+    }
+
     private func sendViaHTTP(_ request: JPIPRequest) async throws -> JPIPResponse {
         guard let transport = httpTransport else {
             throw J2KError.networkError("HTTP fallback transport not initialized")
@@ -247,13 +303,11 @@ public actor JPIPWebSocketClient {
         return response
     }
 
-    /// Activates HTTP fallback transport.
     private func activateHTTPFallback() throws {
         guard configuration.enableHTTPFallback else {
             throw J2KError.networkError("HTTP fallback is disabled")
         }
 
-        // Convert ws:// to http:// for fallback
         let httpURLString = serverURL.absoluteString
             .replacingOccurrences(of: "wss://", with: "https://")
             .replacingOccurrences(of: "ws://", with: "http://")
@@ -270,10 +324,6 @@ public actor JPIPWebSocketClient {
     }
 
     /// Retrieves data bins pushed by the server.
-    ///
-    /// Only available when using WebSocket transport (not HTTP fallback).
-    ///
-    /// - Returns: Array of pushed data bins, empty if using HTTP fallback.
     public func drainPushedDataBins() async -> [JPIPDataBin] {
         guard !isUsingHTTPFallback else { return [] }
         let bins = await webSocketTransport.drainReceivedDataBins()
@@ -282,23 +332,17 @@ public actor JPIPWebSocketClient {
     }
 
     /// Sends a keepalive ping.
-    ///
-    /// - Throws: ``J2KError`` if the ping cannot be sent.
     public func sendPing() async throws {
         guard !isUsingHTTPFallback else { return }
         try await webSocketTransport.sendPing()
     }
 
     /// Gets the measured WebSocket latency.
-    ///
-    /// - Returns: The measured round-trip latency, or nil if not measured.
     public func getLatency() async -> TimeInterval? {
         await webSocketTransport.measuredLatency
     }
 
     /// Gets the current connection state.
-    ///
-    /// - Returns: The WebSocket connection state.
     public func getConnectionState() async -> JPIPWebSocketConnectionState {
         if isUsingHTTPFallback {
             return .connected
@@ -307,22 +351,24 @@ public actor JPIPWebSocketClient {
     }
 
     /// Gets the current session.
-    ///
-    /// - Returns: The active session, or nil.
     public func getSession() -> JPIPSession? {
         session
     }
 
     /// Gets the number of in-flight requests.
-    ///
-    /// - Returns: Number of currently in-flight requests.
     public func getInFlightRequestCount() -> Int {
         inFlightRequests
     }
 
-    /// Disconnects from the server and cleans up resources.
+    /// Sends `cclose` if a channel is active, disconnects from the server, and cleans up resources.
     public func close() async throws {
         if let currentSession = session {
+            if let cid = await currentSession.channelID {
+                var closeReq = JPIPRequest(target: "")
+                closeReq.cid = cid
+                closeReq.cclose = [cid]
+                _ = try? await sendRequest(closeReq)
+            }
             try await currentSession.close()
             session = nil
         }

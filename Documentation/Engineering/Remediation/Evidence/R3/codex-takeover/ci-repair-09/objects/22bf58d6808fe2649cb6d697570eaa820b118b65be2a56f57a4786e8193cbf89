@@ -1,0 +1,25 @@
+Candidate14 runtime evidence disposition
+
+Ordinary full execution, fresh release/CLI and complete ThreadSanitizer
+partitions are independently reconciled on frozen14. Ordinary discovery and
+execution contain1,358 declarations (1,034 XCTest,324 Swift Testing),38
+parameterised declarations and406 argument starts. The fresh CLI passed246
+checks. ThreadSanitizer's647 JPIP plus711 complement declarations form the
+exact ordinary union with identical parameter argument multisets.
+
+JPIP AddressSanitizer14 FAILED:544 XCTest cases passed;103 Swift Testing
+declarations contain one failed parameterised declaration with three
+barrierTimedOut issues (timeout, duplicateReaderClose, cancellation). All1,857
+source hashes and complete raw stream receipts remain stable. No sanitizer
+diagnostic was found in those streams. The complement ASan14 run has no
+completed receipt and no address/final proof was created.
+
+The successful-run parser rejects the parameterised failed-completion format;
+the failure checker preserves those gaps and separately binds the explicit
+failed completion to XML and all three argument starts. This does not alter
+or weaken any successful coverage proof.
+
+The underlying timeout cause is not established by this receipt. Earlier
+passes retain only their recorded source/scope. No wholeR3 acceptance, direct
+peer waiver or merge is established. Root owns any further diagnosis and
+native execution. Candidate15 plans must preserve these14 receipts unchanged.

@@ -1,0 +1,39 @@
+{
+  "state": "POSITIVELY_STOPPED_IMPLEMENTED_SOURCE_ONLY_INDEPENDENT_REVIEW_AND_COMPILE_RUNTIME_PENDING",
+  "source": "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+  "before_sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+  "after_sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+  "selected_proposal_receipt": {
+    "path": "work/https-harness-portability-24/proposal-source.json",
+    "sha256": "1b79d2ebc2a20d6619ecd76191716607dc2ee36941f8cf4172e5e90b4aa944f1"
+  },
+  "artifacts": {
+    "before.json": {
+      "sha256": "158eded2cce02530899104da59becddfe514952990705a9c3bad81e08de2664e",
+      "bytes": 751
+    },
+    "CodexR3HTTPStreamingTests.before.swift": {
+      "sha256": "5890157e438dda30d4748b3bcd26963d77b99b774111383a21d1c9c9b7d8aa78",
+      "bytes": 30185
+    },
+    "CodexR3HTTPStreamingTests.after.swift": {
+      "sha256": "40bd33c35682425d345de11d9e58e6961d8ebe4df296fe72652287a259412ca7",
+      "bytes": 30399
+    },
+    "source.diff": {
+      "sha256": "5cdaede9bf79c39ae6ea3e17b64c04d34e58587d52b62d2c1bd58686a777085a",
+      "bytes": 2507
+    },
+    "proof.json": {
+      "sha256": "04895b0eadb732dabe9d5f9520858d75b0abc012d534bc4acf0b6fab6132141e",
+      "bytes": 974
+    },
+    "report.txt": {
+      "sha256": "e0ba51b96b9ede85ea0779ccf3d08de0b940f1db9a33fbfcb192a4d38bc039dd",
+      "bytes": 4112
+    }
+  },
+  "only_repository_file_written": "work/SwiftJ2K/Tests/SwiftJ2KJPIPTests/CodexR3HTTPStreamingTests.swift",
+  "native_compiler_git_network_server_executed": false,
+  "async_stop_is_not_synchronous_callback_join": true
+}

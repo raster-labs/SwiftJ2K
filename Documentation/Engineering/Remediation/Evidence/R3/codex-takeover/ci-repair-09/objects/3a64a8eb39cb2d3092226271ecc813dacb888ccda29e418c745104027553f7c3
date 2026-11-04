@@ -1,0 +1,76 @@
+[
+  {
+    "path": "work/ci-downloads/run-41198397609-attempt1-job124529119499.log",
+    "sha256": "cfcebbbd00ad88f93480f31ca9071af730858c8bacc20a221c7a51076382b2e0",
+    "bytes": 62042,
+    "build_complete_lines": [
+      {
+        "line": 322,
+        "text": "2026-10-31T11:50:17.1959344Z Build complete! (56.89s)"
+      }
+    ],
+    "unique_error_messages": {
+      "no such module 'CryptoKit'": 78,
+      "emit-module command failed with exit code 1 (use -v to see invocation)": 1,
+      "fatalError": 1
+    },
+    "crypto_module_diagnostic_count": 78,
+    "runtime_start_records": 0
+  },
+  {
+    "path": "work/ci-downloads/run-41198397609-attempt1-job124529119597.log",
+    "sha256": "4629d695d1771b5c1f2e324a7b7ea6d6482fc66237aab59b5ca886f3abe524c4",
+    "bytes": 62587,
+    "build_complete_lines": [
+      {
+        "line": 321,
+        "text": "2026-10-31T11:50:27.7277552Z Build complete! (58.70s)"
+      }
+    ],
+    "unique_error_messages": {
+      "no such module 'CryptoKit'": 78,
+      "emit-module command failed with exit code 1 (use -v to see invocation)": 1,
+      "fatalError": 1
+    },
+    "crypto_module_diagnostic_count": 78,
+    "runtime_start_records": 0
+  },
+  {
+    "path": "work/ci-downloads/run-41198397609-attempt1-job124529119601.log",
+    "sha256": "2f9acb5fc210a28aace5a636ceb571b15f28907ad77522202a984f38339434e7",
+    "bytes": 27288,
+    "build_complete_lines": [
+      {
+        "line": 222,
+        "text": "2026-10-31T11:49:53.4371082Z Build complete! (29.86 secs)"
+      }
+    ],
+    "unique_error_messages": {
+      "SwiftCompile normal aarch64 failed with a nonzero exit code. Command line:     cd /__w/SwiftJ2K": 1,
+      "no such module 'CryptoKit'": 2,
+      "Build failed": 1,
+      "fatalError": 1
+    },
+    "crypto_module_diagnostic_count": 2,
+    "runtime_start_records": 0
+  },
+  {
+    "path": "work/ci-downloads/run-41198397609-attempt1-job124529119665.log",
+    "sha256": "1d7d9df0dc8fd9550faced745b28de64cfbd023fe21c76c5920e774bccf6d06f",
+    "bytes": 27437,
+    "build_complete_lines": [
+      {
+        "line": 223,
+        "text": "2026-10-31T11:50:12.3985064Z Build complete! (47.84 secs)"
+      }
+    ],
+    "unique_error_messages": {
+      "SwiftCompile normal x86_64 failed with a nonzero exit code. Command line:     cd /__w/SwiftJ2K": 1,
+      "no such module 'CryptoKit'": 2,
+      "Build failed": 1,
+      "fatalError": 1
+    },
+    "crypto_module_diagnostic_count": 2,
+    "runtime_start_records": 0
+  }
+]

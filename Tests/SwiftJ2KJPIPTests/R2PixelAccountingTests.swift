@@ -6,6 +6,8 @@ import SwiftJ2KJPIP
 
 struct R2PixelAccountingTests {
     @Test func combinedViewCountsFullDecodeAndEveryMaterialisedView() async throws {
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let descriptor = try ImageDescriptor.rgbPlanar(width: 64, height: 64, storageBits: 8, meaningfulBits: 8)
         let source = try ImageDestination.allocate(descriptor: descriptor).writeSamples { c, x, y in
             (c * 40 + x + y) & 255
