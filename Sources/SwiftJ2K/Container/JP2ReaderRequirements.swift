@@ -67,6 +67,7 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
         .profile0Codestream,
         .profile1Codestream,
         .unrestrictedJPEG2000Part1,
+        .unrestrictedJPEG2000Part2,
         .noOpacity,
         .opacityChannel,
         .premultipliedOpacityChannel,
@@ -295,20 +296,27 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
     static func defaultJPX(
         isLossless: Bool,
         isHTJ2K: Bool,
+        isPart2MCT: Bool = false,
         colour: ColourInterpretation,
         hasAlpha: Bool,
         isPremultipliedAlpha: Bool = false,
         hasRestrictedICC: Bool = false,
         colourFeatures: [StandardFeature]? = nil
     ) throws -> JP2ReaderRequirementsBox {
-        _ = isLossless // T.801 SF=5 covers both reversible and irreversible Part 1 codestreams.
+        _ = isLossless // T.801 SF=5/SF=6 cover both reversible and irreversible codestreams.
         let fallbackEnumFeature: StandardFeature = (colour == .rgb)
             ? .sRGBEnumeratedColourSpace : .greyscaleEnumeratedColourSpace
         let requestedColours = colourFeatures ?? (hasRestrictedICC
             ? [.restrictedICCProfile, fallbackEnumFeature] : [fallbackEnumFeature])
         var colours: [StandardFeature] = []
         for feature in requestedColours where !colours.contains(feature) { colours.append(feature) }
-        let bitCount = (isHTJ2K ? 6 : 7) + colours.count + (colours.count > 1 ? 1 : 0)
+        let baseFeatureCount: Int
+        if isPart2MCT {
+            baseFeatureCount = isHTJ2K ? 7 : 6
+        } else {
+            baseFeatureCount = isHTJ2K ? 6 : 7
+        }
+        let bitCount = baseFeatureCount + colours.count + (colours.count > 1 ? 1 : 0)
         guard bitCount <= 64 else {
             throw CodecError(.unsupportedFeature, "Too many independent JPX reader requirements.")
         }
@@ -331,8 +339,15 @@ public struct JP2ReaderRequirementsBox: Sendable, Equatable {
             entries.append(StandardFeatureEntry(feature: feature, mask: b))
         }
 
-        addRequired(isHTJ2K ? .htj2kCodestream : .unrestrictedJPEG2000Part1)
-        if !isHTJ2K {
+        if isHTJ2K {
+            addRequired(.htj2kCodestream)
+            if isPart2MCT {
+                addRequired(.unrestrictedJPEG2000Part2)
+            }
+        } else if isPart2MCT {
+            addRequired(.unrestrictedJPEG2000Part2)
+        } else {
+            addRequired(.unrestrictedJPEG2000Part1)
             addRequired(.codestreamContainsNoExtensions)
         }
         addRequired(.codestreamContiguous)

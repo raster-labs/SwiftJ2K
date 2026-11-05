@@ -1348,6 +1348,30 @@ package enum HTBlockDecoder {
         allowMultiHT: Bool = true,
         midpointReconstruction: Bool = false
     ) throws -> [Int64] {
+        try decodeHTCodeBlockWithPlanes(
+            segments: segments,
+            zeroBitPlanes: zeroBitPlanes,
+            totalPasses: totalPasses,
+            width: width,
+            height: height,
+            kMax: kMax,
+            causal: causal,
+            allowMultiHT: allowMultiHT,
+            midpointReconstruction: midpointReconstruction
+        ).coefficients
+    }
+
+    package static func decodeHTCodeBlockWithPlanes(
+        segments: [HTSegmentInput],
+        zeroBitPlanes: Int,
+        totalPasses: Int,
+        width: Int,
+        height: Int,
+        kMax: Int,
+        causal: Bool = false,
+        allowMultiHT: Bool = true,
+        midpointReconstruction: Bool = false
+    ) throws -> (coefficients: [Int64], lastUpdatedPlanes: [Int8]) {
         guard width >= 1, height >= 1 else {
             throw CodecError(.invalidArgument, "Invalid HTJ2K code-block dimensions \(width)x\(height).")
         }
@@ -1359,7 +1383,7 @@ package enum HTBlockDecoder {
             throw CodecError(.malformedInput, "Negative HTJ2K zeroBitPlanes (\(zeroBitPlanes)).")
         }
         if segments.isEmpty || totalPasses <= 0 {
-            return [Int64](repeating: 0, count: sampleCount)
+            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
         }
 
         // Partition segments into leading placeholder passes (`3 * P0`) followed by HT sets `(cleanup, refinement?)`
@@ -1385,7 +1409,7 @@ package enum HTBlockDecoder {
 
         // All segments empty => pure placeholder-pass contribution (`Z_blk = 0`, all zeros).
         if idx >= segments.count {
-            return [Int64](repeating: 0, count: sampleCount)
+            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
         }
 
         // Note: per Annex B.2–B.3, if a single packet included both trailing placeholder passes of the `3 * P0`
@@ -1470,7 +1494,7 @@ package enum HTBlockDecoder {
         }
 
         guard let chosen = activeSet, let parsed = HTBlockLayout.parse(block: chosen.cleanupData) else {
-            return [Int64](repeating: 0, count: sampleCount)
+            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
         }
 
         let sBlk = zeroBitPlanes + p0 + chosen.sSkip
@@ -1587,6 +1611,7 @@ package enum HTBlockDecoder {
         let p = kMax - 1 - sBlk
         let maxMagnitudeBound: UInt64 = (kMax >= 64) ? UInt64.max : (UInt64(1) << UInt64(kMax))
         var output = [Int64](repeating: 0, count: sampleCount)
+        var lastPlanes = [Int8](repeating: -1, count: sampleCount)
         for i in 0..<sampleCount {
             let mu = muArr[i]
             let z = Int(zN[i])
@@ -1606,11 +1631,10 @@ package enum HTBlockDecoder {
                     mag |= r << UInt64(p - 1)
                 }
             }
-            if midpointReconstruction && mag > 0 {
-                let lastDecodedPlane = p - z
-                if lastDecodedPlane > 0 {
-                    mag |= UInt64(1) << UInt64(lastDecodedPlane - 1)
-                }
+            let lastDecodedPlane = max(0, p - z)
+            lastPlanes[i] = Int8(clamping: lastDecodedPlane)
+            if midpointReconstruction && mag > 0 && lastDecodedPlane > 0 {
+                mag |= UInt64(1) << UInt64(lastDecodedPlane - 1)
             }
             guard mag < maxMagnitudeBound, mag <= UInt64(Int64.max) else {
                 throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
@@ -1618,7 +1642,7 @@ package enum HTBlockDecoder {
             let signedVal = Int64(bitPattern: mag)
             output[i] = sign[i] ? -signedVal : signedVal
         }
-        return output
+        return (output, lastPlanes)
     }
 }
 

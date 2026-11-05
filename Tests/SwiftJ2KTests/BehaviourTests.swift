@@ -36,7 +36,8 @@ import SwiftJ2K
 @Test func configurationsAndBackendRequestsRejectUnsupportedChoices() throws {
     #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .nearLossless(maximumAbsoluteError: 0)) }
     #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossless, codecOptions: CodecOptions(wavelet: .irreversible97)) }
-    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossy, codecOptions: CodecOptions(blockCoding: .htj2k)) }
+    #expect(throws: CodecError.self) { try EncoderConfiguration(mode: .lossy, codecOptions: CodecOptions(blockCoding: .htj2k, wavelet: .reversible53)) }
+    _ = try EncoderConfiguration(mode: .lossy, codecOptions: CodecOptions(blockCoding: .htj2k))
     _ = try EncoderConfiguration(mode: .nearLossless(maximumAbsoluteError: 1))
     _ = try EncoderConfiguration(mode: .lossy)
     do {

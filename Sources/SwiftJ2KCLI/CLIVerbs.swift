@@ -2387,6 +2387,7 @@ func runBenchmarkCommand(_ context: CodecContext, started: ContinuousClock.Insta
     limitOpts.values.removeValue(forKey: "--max-error")
     let lim = try limits(from: limitOpts, command: "benchmark")
     let execPolicy = try parseExecutionPolicy(options.values["--backend"])
+    let enginePref = try parseEnginePreference(options.values["--engine"])
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
     let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     let rawGeom = try parseRawGeometry(from: options)
@@ -2473,14 +2474,14 @@ func runBenchmarkCommand(_ context: CodecContext, started: ContinuousClock.Insta
             for _ in 0..<warmup {
                 lastEncoded = try await encoder.encode(
                     image,
-                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, acceleratedEnginePreference: enginePref, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
                 )
             }
             for _ in 0..<runs {
                 let t0 = clock.now
                 let enc = try await encoder.encode(
                     image,
-                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, acceleratedEnginePreference: enginePref, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
                 )
                 let dt = clock.now - t0
                 let ms = elapsedSeconds(dt) * 1000.0
@@ -2490,7 +2491,7 @@ func runBenchmarkCommand(_ context: CodecContext, started: ContinuousClock.Insta
         } else {
             lastEncoded = try await encoder.encode(
                 image,
-                options: .init(resourceLimits: lim, executionPolicy: execPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                options: .init(resourceLimits: lim, executionPolicy: execPolicy, acceleratedEnginePreference: enginePref, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
             )
         }
 
@@ -2503,14 +2504,14 @@ func runBenchmarkCommand(_ context: CodecContext, started: ContinuousClock.Insta
             for _ in 0..<warmup {
                 _ = try await decoder.decode(
                     codestream,
-                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, acceleratedEnginePreference: enginePref, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
                 )
             }
             for _ in 0..<runs {
                 let t0 = clock.now
                 _ = try await decoder.decode(
                     codestream,
-                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                    options: .init(resourceLimits: lim, executionPolicy: execPolicy, acceleratedEnginePreference: enginePref, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
                 )
                 let dt = clock.now - t0
                 let ms = elapsedSeconds(dt) * 1000.0
@@ -2519,6 +2520,7 @@ func runBenchmarkCommand(_ context: CodecContext, started: ContinuousClock.Insta
         }
 
         var entry: [String: Any] = [
+            "acceleratedEngine": acceleratedEngineString(lastEncoded!.report.acceleratedEngine),
             "backend": backendStr,
             "compressedBytes": codestream.count,
             "compressionRatio": ratio,
@@ -2675,7 +2677,7 @@ private func generateBashCompletions() -> String {
         local commands="encode decode transcode inspect validate convert compare batch encode3d decode3d jpip benchmark capabilities completions help version"
         local global_opts="-h --help --version -v -vv -vvv -vvvv -vvvvv --verbose -q --quiet --json"
         local io_opts="-i --input -o --output --input-format --output-format --container --overwrite"
-        local codec_opts="--mode --lossy --near-lossless --max-error --quality --bpp --layers --wavelet --mct --progression --tile-size --precincts --roi --guard-bits --qstyle --sop --eph --levels --code-block --precision --bit-depth --dimensions --components --signed --backend --copy-policy --metadata-policy --threads --max-memory --max-metadata --timeout"
+        local codec_opts="--mode --lossy --near-lossless --max-error --quality --bpp --layers --wavelet --mct --progression --tile-size --precincts --roi --guard-bits --qstyle --sop --eph --levels --code-block --precision --bit-depth --dimensions --components --signed --backend --engine --copy-policy --metadata-policy --threads --max-memory --max-metadata --timeout"
 
         case "${prev}" in
             -i|--input|-o|--output|--reference|-r|--single-file|--data-dir|--output-dir|--input-list)
@@ -2698,12 +2700,16 @@ private func generateBashCompletions() -> String {
                 COMPREPLY=( $(compgen -W "auto scalar accelerated" -- "${cur}") )
                 return 0
                 ;;
+            --engine)
+                COMPREPLY=( $(compgen -W "auto simd metal" -- "${cur}") )
+                return 0
+                ;;
             --wavelet)
                 COMPREPLY=( $(compgen -W "auto 53 97" -- "${cur}") )
                 return 0
                 ;;
             --mct)
-                COMPREPLY=( $(compgen -W "auto none rct ict" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "auto none rct ict part2" -- "${cur}") )
                 return 0
                 ;;
             --progression)
@@ -2776,6 +2782,7 @@ private func generateZshCompletions() -> String {
             '--container[Output container wrapper]:container:(codestream jp2 jph jpx)' \\
             '--mode[Compression or comparison mode]:mode:(lossless near-lossless lossy 2d 3d)' \\
             '--backend[Execution backend]:backend:(auto scalar accelerated)' \\
+            '--engine[Accelerated engine preference]:engine:(auto simd metal)' \\
             '--overwrite[Overwrite existing output file]' \\
             '1:command:->cmds' \\
             '*::arg:->args'
@@ -2831,6 +2838,7 @@ private func generateFishCompletions() -> String {
     complete -c \(tool) -l container -r -a "codestream jp2 jph jpx" -d "Output container"
     complete -c \(tool) -l mode -r -a "lossless near-lossless lossy 2d 3d" -d "Operation mode"
     complete -c \(tool) -l backend -r -a "auto scalar accelerated" -d "Execution backend"
+    complete -c \(tool) -l engine -r -a "auto simd metal" -d "Accelerated engine preference"
     complete -c \(tool) -l overwrite -d "Permit replacing an existing output file"
 
     """

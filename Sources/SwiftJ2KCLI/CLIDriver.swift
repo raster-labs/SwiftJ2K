@@ -27,7 +27,7 @@ private let codecCommands = [
 ]
 private let valueOptions: Set<String> = [
     "--input", "-i", "--output", "-o", "--input-format", "--output-format",
-    "--container", "--mode", "--max-error", "--near-lossless", "--backend", "--copy-policy",
+    "--container", "--mode", "--max-error", "--near-lossless", "--backend", "--engine", "--copy-policy",
     "--metadata-policy", "--threads", "--max-memory", "--max-metadata", "--timeout",
     "--levels", "--code-block", "--precision",
     "--quality", "--bpp", "--layers", "--wavelet", "--mct", "--colour-transform",
@@ -232,6 +232,7 @@ private func help(_ command: String?) -> String {
       --mode MODE               lossless (default), near-lossless or lossy (encode only).
       --max-error E             Maximum absolute sample error E >= 1 for near-lossless mode.
       --backend NAME            auto (default), scalar or accelerated; unavailable backends exit 4.
+      --engine NAME             auto (default), simd or metal accelerated engine preference.
       --copy-policy POLICY      require-sharing (default) or allow-copy; neither copies here.
       --metadata-policy POLICY  preserve (default) or discard-ancillary (COM and ancillary boxes).
       --threads N               Worker limit (1..8; the scalar path uses one).
@@ -275,7 +276,7 @@ private func help(_ command: String?) -> String {
               --bpp RATE                Target compressed bitrate in bits per pixel (> 0).
               --layers N                Number of quality layers 1..255 (default 1).
               --wavelet auto|53|97      Wavelet transform filter (default auto).
-              --mct auto|none|rct|ict   Multi-component colour transform (default auto).
+              --mct auto|none|rct|ict|part2 Multi-component colour transform (default auto).
               --progression ORDER       lrcp (default), rlcp, rpcl, pcrl or cprl.
               --tile-size WxH           Tile dimensions in reference grid samples.
               --precincts WxH           Precinct size, powers of two 1..32768.
@@ -958,6 +959,10 @@ func limits(from options: Options, command: String) throws -> ResourceLimits {
        !["auto", "automatic", "scalar", "scalarcpu", "accelerated", "preferred-accelerated"].contains(backend) {
         throw ExitFailure(status: 4, message: "unsupported: backend '\(backend)' is not available; use auto, scalar or accelerated.")
     }
+    if let engine = options.values["--engine"]?.lowercased(),
+       !["auto", "automatic", "simd", "cpusimd", "cpu-simd", "accelerate", "metal", "metalgpu", "metal-gpu"].contains(engine) {
+        throw ExitFailure(status: 4, message: "unsupported: engine '\(engine)' is not available; use auto, simd or metal.")
+    }
     if let policy = options.values["--copy-policy"] {
         guard ["require-sharing", "allow-copy"].contains(policy) else { throw UsageError(message: "--copy-policy must be require-sharing or allow-copy.") }
     }
@@ -987,10 +992,29 @@ func parseExecutionPolicy(_ raw: String?) throws -> ExecutionPolicy {
     }
 }
 
+func parseEnginePreference(_ raw: String?) throws -> AcceleratedEnginePreference {
+    guard let raw = raw?.lowercased() else { return .automatic }
+    switch raw {
+    case "auto", "automatic": return .automatic
+    case "simd", "cpusimd", "cpu-simd", "accelerate": return .cpuSIMD
+    case "metal", "metalgpu", "metal-gpu": return .metalGPU
+    default:
+        throw ExitFailure(status: 4, message: "unsupported: engine '\(raw)' is not available; use auto, simd or metal.")
+    }
+}
+
 func backendString(_ backend: Backend) -> String {
     switch backend {
     case .scalarCPU: return "scalar"
     case .accelerated: return "accelerated"
+    }
+}
+
+func acceleratedEngineString(_ engine: AcceleratedEngine) -> String {
+    switch engine {
+    case .none: return "none"
+    case .cpuSIMD: return "cpuSIMD"
+    case .metalGPU: return "metalGPU"
     }
 }
 
@@ -1097,13 +1121,17 @@ func parseEncodeConfiguration(
     }
 
     var colourTransform: CodecOptions.ColourTransform = .automatic
+    var multiComponentTransform: CodecOptions.MultiComponentTransform = .automatic
     if let mText = options.values["--mct"]?.lowercased() {
         switch mText {
         case "auto", "automatic": colourTransform = .automatic
         case "none": colourTransform = .none
         case "rct": colourTransform = .rct
         case "ict": colourTransform = .ict
-        default: throw UsageError(message: "--mct must be auto, none, rct or ict.")
+        case "part2":
+            colourTransform = .none
+            multiComponentTransform = .part2
+        default: throw UsageError(message: "--mct must be auto, none, rct, ict or part2.")
         }
     }
 
@@ -1231,7 +1259,8 @@ func parseEncodeConfiguration(
             usesSOP: options.sop,
             usesEPH: options.eph,
             regionOfInterest: roi,
-            containerFormat: containerFormat
+            containerFormat: containerFormat,
+            multiComponentTransform: multiComponentTransform
         )
         return try EncoderConfiguration(mode: mode, codecOptions: codecOptions)
     } catch let error as CodecError {
@@ -1323,6 +1352,7 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         throw UsageError(message: "\(command) requires --output.")
     }
     let executionPolicy = try parseExecutionPolicy(options.values["--backend"])
+    let enginePreference = try parseEnginePreference(options.values["--engine"])
     let copyPolicy: CopyPolicy = options.values["--copy-policy"] == "allow-copy" ? .allowCopy : .requireSharedStorage
     let metadataPolicy: MetadataPolicy = options.values["--metadata-policy"] == "discard-ancillary" ? .discardAncillary : .preserve
     try context.diagnostic(2, "reading input")
@@ -1431,7 +1461,13 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         } else {
             let decoded = try await Decoder().decode(
                 input,
-                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                options: .init(
+                    resourceLimits: limits,
+                    executionPolicy: executionPolicy,
+                    acceleratedEnginePreference: enginePreference,
+                    copyPolicy: copyPolicy,
+                    metadataPolicy: metadataPolicy
+                )
             )
             let elapsed = ContinuousClock.now - started
             let fields: [String: Any] = [
@@ -1439,6 +1475,7 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
                 "meaningfulBits": decoded.image.descriptor.meaningfulBits,
                 "components": decoded.image.descriptor.components.count,
                 "backend": backendString(decoded.report.backend),
+                "acceleratedEngine": acceleratedEngineString(decoded.report.acceleratedEngine),
                 "fidelity": fidelityString(decoded.report.fidelity),
                 "bytes": input.count, "elapsedSeconds": elapsedSeconds(elapsed)
             ]
@@ -1464,7 +1501,13 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         try context.diagnostic(2, "decoding")
         let decoded = try await Decoder().decode(
             input,
-            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(
+                resourceLimits: limits,
+                executionPolicy: executionPolicy,
+                acceleratedEnginePreference: enginePreference,
+                copyPolicy: copyPolicy,
+                metadataPolicy: metadataPolicy
+            )
         )
         let descriptor = decoded.image.descriptor
         let compCount = descriptor.components.count
@@ -1480,7 +1523,9 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         try report(["command": "decode", "inputBytes": input.count, "outputBytes": output.count,
                     "width": descriptor.width, "height": descriptor.height,
                     "components": compCount, "meaningfulBits": descriptor.meaningfulBits,
-                    "backend": backendString(decoded.report.backend), "fidelity": fidelityString(decoded.report.fidelity),
+                    "backend": backendString(decoded.report.backend),
+                    "acceleratedEngine": acceleratedEngineString(decoded.report.acceleratedEngine),
+                    "fidelity": fidelityString(decoded.report.fidelity),
                     "copyEvents": decoded.report.copyEvents.count,
                     "pixelAllocations": decoded.report.pixelAllocationCount ?? -1,
                     "peakWorkspaceBytes": decoded.report.peakWorkspaceBytes ?? -1,
@@ -1519,7 +1564,7 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
             if let explicitContainer, explicitContainer != .jpx {
                 throw UsageError(message: "--container \(explicitContainer.rawValue) conflicts with --output-format jpx.")
             }
-            blockCoding = .part1
+            blockCoding = options.htj2k ? .htj2k : .part1
             containerFormat = .jpx
         default:
             throw ExitFailure(status: 4, message: "unsupported format: encode writes j2k, htj2k, jp2, jph or jpx.")
@@ -1551,7 +1596,13 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
         let encoder = try Encoder(configuration: encoderConfig)
         let encoded = try await encoder.encode(
             image,
-            options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+            options: .init(
+                resourceLimits: limits,
+                executionPolicy: executionPolicy,
+                acceleratedEnginePreference: enginePreference,
+                copyPolicy: copyPolicy,
+                metadataPolicy: metadataPolicy
+            )
         )
         try context.diagnostic(2, "publishing output")
         try publish(encoded.data, to: outputPath, overwrite: options.overwrite)
@@ -1561,6 +1612,7 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
                     "width": imgDesc.width, "height": imgDesc.height, "components": imgDesc.components.count,
                     "meaningfulBits": imgDesc.meaningfulBits,
                     "format": encoded.encoding.format, "mode": modeStr, "backend": backendString(encoded.report.backend),
+                    "acceleratedEngine": acceleratedEngineString(encoded.report.acceleratedEngine),
                     "fidelity": fidelityString(encoded.report.fidelity),
                     "copyEvents": encoded.report.copyEvents.count, "peakWorkspaceBytes": encoded.report.peakWorkspaceBytes ?? -1,
                     "elapsedSeconds": elapsedSeconds(elapsed)], json: options.json, to: .standardError)
@@ -1673,7 +1725,13 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
             let transcoded = try await transcoder.transcode(
                 input,
                 to: target,
-                options: .init(resourceLimits: limits, executionPolicy: executionPolicy, copyPolicy: copyPolicy, metadataPolicy: metadataPolicy)
+                options: .init(
+                    resourceLimits: limits,
+                    executionPolicy: executionPolicy,
+                    acceleratedEnginePreference: enginePreference,
+                    copyPolicy: copyPolicy,
+                    metadataPolicy: metadataPolicy
+                )
             )
             try context.diagnostic(2, "publishing output")
             try publish(transcoded.data, to: outputPath, overwrite: options.overwrite)
@@ -1687,6 +1745,7 @@ func runCodecCommand(_ command: String, _ context: CodecContext) async throws ->
             try report(["command": "transcode", "inputBytes": input.count, "outputBytes": transcoded.data.count,
                         "sourceFormat": sourceFormatCanonical,
                         "format": transcoded.encoding.format, "mode": "lossless", "backend": backendString(transcoded.report.backend),
+                        "acceleratedEngine": acceleratedEngineString(transcoded.report.acceleratedEngine),
                         "fidelity": "exactSamples", "processingPath": "coefficients",
                         "copyEvents": transcoded.report.copyEvents.count,
                         "pixelAllocations": transcoded.report.pixelAllocationCount ?? -1,
@@ -1739,7 +1798,8 @@ private func run() async throws -> Int32 {
             let payload: [String: Any] = ["tool": tool, "version": version, "minimumAppleOS": "26.0",
                 "canEncode": encoder.canEncode, "canDecode": decoder.canDecode,
                 "canInspect": decoder.canInspect, "canTranscode": canTranscode,
-                "formats": formats, "availableBackends": backends]
+                "formats": formats, "availableBackends": backends,
+                "isSIMDAvailable": encoder.isSIMDAvailable, "isMetalAvailable": encoder.isMetalAvailable]
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             try FileHandle.standardOutput.write(contentsOf: data + Data([10]))
         } else {

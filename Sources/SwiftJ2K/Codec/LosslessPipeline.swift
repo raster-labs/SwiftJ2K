@@ -85,9 +85,22 @@ enum ScalarLosslessCodec {
         guard size.capabilities & 0x8000 == 0 else {
             throw CodecError(.unsupportedFeature, "Rsiz signals Part 2 extensions (0x8000), which are not supported.")
         }
+        guard parsed.componentBitDepth == nil,
+              parsed.mctTables.isEmpty,
+              parsed.mccStages.isEmpty,
+              parsed.mco == nil,
+              parsed.tileOverrides.values.allSatisfy({
+                  $0.mctFragments.isEmpty && $0.mccFragments.isEmpty && $0.mco == nil
+              }),
+              parsed.extendedCapabilities?.hasPart2 != true else {
+            throw CodecError(.unsupportedFeature, "Part 2 multi-component transform markers require the general pipeline.")
+        }
         if let cap = parsed.extendedCapabilities {
             guard !cap.multiHT else {
                 throw CodecError(.unsupportedFeature, "Multiple HT sets per code-block (MULTIHT) are not supported.")
+            }
+            guard !cap.heterogeneousTileParts else {
+                throw CodecError(.unsupportedFeature, "Heterogeneous HTJ2K tile-parts (HETERO) are not supported.")
             }
             guard !cap.irreversible else {
                 throw CodecError(.unsupportedFeature, "Irreversible HTJ2K coding (HTIRV) is not supported in the lossless profile.")
@@ -193,6 +206,9 @@ enum ScalarLosslessCodec {
             guard (cod.codeBlockStyle & 0x3E) == 0 else {
                 throw CodecError(.malformedInput, "COD/COC sets reserved code-block style bits in HTJ2K mode.")
             }
+            guard (cod.codeBlockStyle & 0x01) == 0 else {
+                throw CodecError(.unsupportedFeature, "HTJ2K code-block style bit 0 (0x01) is not supported.")
+            }
         }
         guard cod.componentTransform == 0 else {
             throw CodecError(.malformedInput, "A component transform is signalled for a single component.")
@@ -266,26 +282,35 @@ enum ScalarLosslessCodec {
                         guard contribution.included, contribution.passes > 0 else { continue }
                         let coefficients: [Int32]
                         if contribution.isHT {
-                            // ISO/IEC 15444-15 Clause B.10.5: placeholder passes come in sets of 3
-                            // before the single HT cleanup pass.
                             let htPasses = ((contribution.passes - 1) % 3) + 1
-                            guard htPasses == 1, contribution.segments.count <= 1 else {
-                                if style.bypass {
-                                    throw CodecError(.unsupportedFeature, "HTJ2K SigProp and MagRef refinement passes are not supported in the lossless profile.")
-                                }
-                                throw CodecError(.malformedInput, "HTJ2K code-block has \(htPasses) passes in a single HT set without refinement signalling (0x01).")
+                            if htPasses == 1 && contribution.segments.count <= 1 && !style.causal {
+                                let placeholderSets = (contribution.passes - 1) / 3
+                                let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
+                                let rawBlock = contribution.segments.first?.data ?? []
+                                coefficients = try AcceleratedCodec.decodeHTCleanup(
+                                    block: rawBlock,
+                                    width: block.width,
+                                    height: block.height,
+                                    kMax: mb,
+                                    missingMSBs: effectiveMissingMSBs,
+                                    backend: backend
+                                )
+                            } else {
+                                let coeffs64 = try HTBlockDecoder.decodeHTCodeBlock(
+                                    segments: contribution.segments.map {
+                                        HTSegmentInput(data: $0.data, passes: $0.passes)
+                                    },
+                                    zeroBitPlanes: contribution.zeroBitPlanes,
+                                    totalPasses: contribution.passes,
+                                    width: block.width,
+                                    height: block.height,
+                                    kMax: mb,
+                                    causal: style.causal,
+                                    allowMultiHT: false,
+                                    midpointReconstruction: false
+                                )
+                                coefficients = coeffs64.map { Int32(clamping: $0) }
                             }
-                            let placeholderSets = (contribution.passes - 1) / 3
-                            let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
-                            let rawBlock = contribution.segments.first?.data ?? []
-                            coefficients = try AcceleratedCodec.decodeHTCleanup(
-                                block: rawBlock,
-                                width: block.width,
-                                height: block.height,
-                                kMax: mb,
-                                missingMSBs: effectiveMissingMSBs,
-                                backend: backend
-                            )
                         } else {
                             coefficients = try BitPlaneCoder.decode(
                                 segments: contribution.segments, width: block.width, height: block.height,
@@ -371,17 +396,25 @@ enum ScalarLosslessCodec {
                     total: total,
                     progress: progress
                 )
-                try AcceleratedCodec.inverseWavelet53(
-                    plane: &plane,
-                    stride: stride,
-                    x0: tile.x0,
-                    x1: tile.x1,
-                    y0: tile.y0,
-                    y1: tile.y1,
-                    levels: tile.codingStyle.decompositionLevels,
-                    backend: backend,
-                    cancellation: work.check
-                )
+                if tile.codingStyle.decompositionLevels == 0 && backend == .accelerated {
+                    if AcceleratedCodec.shouldUseMetal(sampleCount: plane.count) {
+                        try MetalAccelerationEngine.shared.levelShiftSamples32(samples: &plane, dcShift: 0)
+                    } else {
+                        AcceleratedCodec.recordSIMDDispatch()
+                    }
+                } else {
+                    try AcceleratedCodec.inverseWavelet53(
+                        plane: &plane,
+                        stride: stride,
+                        x0: tile.x0,
+                        x1: tile.x1,
+                        y0: tile.y0,
+                        y1: tile.y1,
+                        levels: tile.codingStyle.decompositionLevels,
+                        backend: backend,
+                        cancellation: work.check
+                    )
+                }
                 // Final-output stage: DC shift, clamp, write into the caller's plane.
                 for row in 0..<tile.height {
                     try work.check()
@@ -578,17 +611,25 @@ enum ScalarLosslessCodec {
                 }
             }
         }
-        try AcceleratedCodec.forwardWavelet53(
-            plane: &plane,
-            stride: stride,
-            x0: 0,
-            x1: width,
-            y0: 0,
-            y1: height,
-            levels: cod.decompositionLevels,
-            backend: parameters.backend,
-            cancellation: work.check
-        )
+        if cod.decompositionLevels == 0 && parameters.backend == .accelerated {
+            if AcceleratedCodec.shouldUseMetal(sampleCount: plane.count) {
+                try MetalAccelerationEngine.shared.levelShiftSamples32(samples: &plane, dcShift: 0)
+            } else {
+                AcceleratedCodec.recordSIMDDispatch()
+            }
+        } else {
+            try AcceleratedCodec.forwardWavelet53(
+                plane: &plane,
+                stride: stride,
+                x0: 0,
+                x1: width,
+                y0: 0,
+                y1: height,
+                levels: cod.decompositionLevels,
+                backend: parameters.backend,
+                cancellation: work.check
+            )
+        }
 
         let total = geometry.codeBlockCount
         var completed = 0

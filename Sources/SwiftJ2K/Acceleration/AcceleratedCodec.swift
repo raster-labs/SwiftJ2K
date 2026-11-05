@@ -18,7 +18,65 @@ import Synchronization
 //   quad classification when forced in tests).
 
 internal enum AcceleratedCodec {
+    internal final class ExecutionTracker: Sendable {
+        let engineMode: AccelerationRuntime.EngineMode
+        private let metalCount = Atomic<Int>(0)
+        private let simdCount = Atomic<Int>(0)
+
+        init(engineMode: AccelerationRuntime.EngineMode) {
+            self.engineMode = engineMode
+        }
+
+        func recordMetal() {
+            _ = metalCount.wrappingAdd(1, ordering: .relaxed)
+        }
+
+        func recordSIMD() {
+            _ = simdCount.wrappingAdd(1, ordering: .relaxed)
+        }
+
+        func resolvedEngine(for backend: Backend) -> AcceleratedEngine {
+            guard backend == .accelerated else { return .none }
+            if metalCount.load(ordering: .relaxed) > 0 {
+                return .metalGPU
+            }
+            if simdCount.load(ordering: .relaxed) > 0 {
+                return .cpuSIMD
+            }
+            return .none
+        }
+    }
+
     @TaskLocal private static var forceMetalDispatchTaskLocal: Bool = false
+    @TaskLocal private static var activeTracker: ExecutionTracker? = nil
+
+    internal static func recordMetalDispatch() {
+        activeTracker?.recordMetal()
+    }
+
+    internal static func recordSIMDDispatch() {
+        activeTracker?.recordSIMD()
+    }
+
+    internal static func withExecutionScope<R>(
+        resolved: AccelerationRuntime.ResolvedExecution,
+        _ body: () throws -> R
+    ) rethrows -> (result: R, engine: AcceleratedEngine) {
+        let tracker = ExecutionTracker(engineMode: resolved.engineMode)
+        let result = try $activeTracker.withValue(tracker, operation: body)
+        return (result, tracker.resolvedEngine(for: resolved.backend))
+    }
+
+    internal static func withExecutionScope<R>(
+        resolved: AccelerationRuntime.ResolvedExecution,
+        _ body: () async throws -> R
+    ) async rethrows -> (result: R, engine: AcceleratedEngine) {
+        let tracker = ExecutionTracker(engineMode: resolved.engineMode)
+        let result = try await $activeTracker.withValue(tracker) {
+            try await body()
+        }
+        return (result, tracker.resolvedEngine(for: resolved.backend))
+    }
 
     /// Test and benchmark helper that forces `.accelerated` operations on the current task to
     /// dispatch through `MetalAccelerationEngine.shared` regardless of sample count threshold.
@@ -41,11 +99,13 @@ internal enum AcceleratedCodec {
     }
 
     internal static var isMetalDispatchForced: Bool {
-        forceMetalDispatchTaskLocal
+        forceMetalDispatchTaskLocal || activeTracker?.engineMode == .metalGPU
     }
 
     @inline(__always)
-    private static func shouldUseMetal(sampleCount: Int) -> Bool {
+    internal static func shouldUseMetal(sampleCount: Int) -> Bool {
+        guard sampleCount > 0 else { return false }
+        if activeTracker?.engineMode == .cpuSIMD { return false }
         guard MetalAccelerationEngine.shared.isAvailable else { return false }
         if isMetalDispatchForced { return true }
         return sampleCount >= MetalAccelerationEngine.defaultGPUDispatchSampleThreshold
@@ -90,6 +150,7 @@ internal enum AcceleratedCodec {
             )
             return
         }
+        recordSIMDDispatch()
         try SIMDWavelet53.forward(
             plane: &plane,
             stride: stride,
@@ -139,6 +200,7 @@ internal enum AcceleratedCodec {
             )
             return
         }
+        recordSIMDDispatch()
         try SIMDWavelet53.inverse(
             plane: &plane,
             stride: stride,
@@ -177,6 +239,7 @@ internal enum AcceleratedCodec {
             )
             return
         }
+        recordSIMDDispatch()
         try SIMDWavelet97.forward(
             plane: &plane,
             stride: stride,
@@ -213,6 +276,7 @@ internal enum AcceleratedCodec {
             )
             return
         }
+        recordSIMDDispatch()
         try SIMDWavelet97.inverse(
             plane: &plane,
             stride: stride,
@@ -225,7 +289,7 @@ internal enum AcceleratedCodec {
         )
     }
 
-    // MARK: - Colour Transforms (RCT & ICT)
+    // MARK: - Colour Transforms (RCT, ICT & Part 2 MCT)
 
     internal static func forwardRCT(
         planes: inout [[Int32]],
@@ -239,6 +303,7 @@ internal enum AcceleratedCodec {
             try MetalAccelerationEngine.shared.forwardRCT(planes: &planes)
             return
         }
+        recordSIMDDispatch()
         SIMDColourTransform.forwardRCT(planes: &planes)
     }
 
@@ -254,6 +319,7 @@ internal enum AcceleratedCodec {
             try MetalAccelerationEngine.shared.inverseRCT(planes: &planes)
             return
         }
+        recordSIMDDispatch()
         SIMDColourTransform.inverseRCT(planes: &planes)
     }
 
@@ -265,6 +331,7 @@ internal enum AcceleratedCodec {
             ColourTransform.forwardICT(planes: &planes)
             return
         }
+        recordSIMDDispatch()
         SIMDColourTransform.forwardICT(planes: &planes)
     }
 
@@ -276,7 +343,109 @@ internal enum AcceleratedCodec {
             ColourTransform.inverseICT(planes: &planes)
             return
         }
+        recordSIMDDispatch()
         SIMDColourTransform.inverseICT(planes: &planes)
+    }
+
+    internal static func applyLinear3x3(
+        in0: [Double],
+        in1: [Double],
+        in2: [Double],
+        matrix: [Double],
+        offsets: [Double],
+        out0: inout [Double],
+        out1: inout [Double],
+        out2: inout [Double]
+    ) {
+        recordSIMDDispatch()
+        SIMDColourTransform.applyLinear3x3(
+            in0: in0, in1: in1, in2: in2,
+            matrix: matrix, offsets: offsets,
+            out0: &out0, out1: &out1, out2: &out2
+        )
+    }
+
+    internal static func forwardPart2ReversibleDep3(
+        r: [Int32],
+        g: [Int32],
+        b: [Int32],
+        anchorOffset: Int32
+    ) -> [[Int32]]? {
+        if shouldUseMetal(sampleCount: r.count),
+           let gpuOut = try? MetalAccelerationEngine.shared.forwardPart2ReversibleDep3(
+               r: r, g: g, b: b, anchorOffset: anchorOffset
+           ) {
+            return gpuOut
+        }
+        recordSIMDDispatch()
+        return SIMDColourTransform.forwardPart2ReversibleDep3(
+            r: r, g: g, b: b, anchorOffset: anchorOffset
+        )
+    }
+
+    internal static func inversePart2ReversibleDep3(
+        c0: [Int64],
+        c1: [Int64],
+        c2: [Int64],
+        a10: Int64,
+        shift1: Int,
+        a20: Int64,
+        a21: Int64,
+        shift2: Int,
+        offsets: [Int64]
+    ) -> [[Int64]]? {
+        guard abs(a10) <= 65_536, abs(a20) <= 65_536, abs(a21) <= 65_536,
+              offsets.allSatisfy({ abs($0) <= (Int64(1) << 30) }) else {
+            return nil
+        }
+        if shouldUseMetal(sampleCount: c0.count),
+           let gpuOut = try? MetalAccelerationEngine.shared.inversePart2ReversibleDep3(
+               c0: c0, c1: c1, c2: c2,
+               a10: a10, shift1: shift1,
+               a20: a20, a21: a21, shift2: shift2,
+               offsets: offsets
+           ) {
+            return gpuOut
+        }
+        recordSIMDDispatch()
+        return SIMDColourTransform.inversePart2ReversibleDep3(
+            c0: c0, c1: c1, c2: c2,
+            a10: a10, shift1: shift1,
+            a20: a20, a21: a21, shift2: shift2,
+            offsets: offsets
+        )
+    }
+
+    internal static func levelShiftSamples32IfMetal(
+        samples: inout [Int32],
+        dcShift: Int32,
+        backend: Backend
+    ) throws {
+        if backend == .accelerated && shouldUseMetal(sampleCount: samples.count) {
+            try MetalAccelerationEngine.shared.levelShiftSamples32(samples: &samples, dcShift: dcShift)
+        } else if dcShift != 0 {
+            for i in 0..<samples.count {
+                samples[i] -= dcShift
+            }
+        }
+    }
+
+    internal static func clampSamples64To32IfMetal(
+        samples: [Int64],
+        minVal: Int64,
+        maxVal: Int64,
+        backend: Backend
+    ) throws -> [Int32] {
+        if backend == .accelerated && shouldUseMetal(sampleCount: samples.count) {
+            return try MetalAccelerationEngine.shared.clampSamples64To32(
+                samples: samples, minVal: minVal, maxVal: maxVal
+            )
+        }
+        var out = Array(repeating: Int32(0), count: samples.count)
+        for i in 0..<samples.count {
+            out[i] = Int32(min(maxVal, max(minVal, samples[i])))
+        }
+        return out
     }
 
     // MARK: - Quantization & ROI MaxShift
@@ -303,6 +472,7 @@ internal enum AcceleratedCodec {
             }
             return
         }
+        recordSIMDDispatch()
         SIMDQuantizationAndROI.quantizeSubband(
             doublePlane: doublePlane,
             quantisedPlane: &quantisedPlane,
@@ -336,6 +506,7 @@ internal enum AcceleratedCodec {
             }
             return
         }
+        recordSIMDDispatch()
         SIMDQuantizationAndROI.scaleROISubband(
             quantisedPlane: &quantisedPlane,
             stride: stride,
@@ -365,6 +536,7 @@ internal enum AcceleratedCodec {
             )
             return
         }
+        recordSIMDDispatch()
         SIMDQuantizationAndROI.descaleROICoefficients(
             coefficients: &coefficients,
             shift: shift
@@ -390,13 +562,15 @@ internal enum AcceleratedCodec {
                 maximumOutputBytes: maximumOutputBytes
             )
         }
-        if isMetalDispatchForced && MetalAccelerationEngine.shared.isAvailable && !coefficients.isEmpty {
+        if activeTracker?.engineMode != .cpuSIMD && isMetalDispatchForced
+            && MetalAccelerationEngine.shared.isAvailable && !coefficients.isEmpty {
             let quads = try MetalAccelerationEngine.shared.classifyHTQuads(
                 coefficients: coefficients,
                 width: width,
                 height: height,
                 bandShift: bandShift
             )
+            recordSIMDDispatch()
             return try SIMDHTBlockCoder.encodeCleanup(
                 coefficients: coefficients,
                 width: width,
@@ -406,6 +580,7 @@ internal enum AcceleratedCodec {
                 preclassifiedQuads: quads
             )
         }
+        recordSIMDDispatch()
         return try SIMDHTBlockCoder.encodeCleanup(
             coefficients: coefficients,
             width: width,
@@ -432,6 +607,7 @@ internal enum AcceleratedCodec {
                 missingMSBs: missingMSBs
             )
         }
+        recordSIMDDispatch()
         return try SIMDHTBlockCoder.decodeCleanup(
             block: block,
             width: width,

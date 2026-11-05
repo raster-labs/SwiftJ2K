@@ -100,6 +100,8 @@ package struct CodewordSegment: Sendable {
 package struct CodeBlockContribution: Sendable {
     package var included = false
     package var isHT = false
+    package var headerHasHTCleanup = false
+    package var bodyHasHTCleanup = false
     package var lblock = 3
     package var zeroBitPlanes = 0
     package var passes = 0
@@ -455,6 +457,203 @@ package enum Tier2 {
         return chunks
     }
 
+    /// Computes ISO/IEC 15444-15 / ITU-T T.814 Annex B (`B.1`–`B.3`) packet-header codeword
+    /// segment pass chunks for an HT code-block after its first cleanup pass has been observed.
+    package static func htSegmentPassCounts(
+        start: Int,
+        count: Int,
+        firstCleanupPass: Int = 0
+    ) -> [Int] {
+        guard count > 0 else { return [] }
+        if start + count <= firstCleanupPass {
+            return [count]
+        }
+        var chunks: [Int] = []
+        var index = start
+        var remaining = count
+        var current = 0
+        while remaining > 0 {
+            current += 1
+            remaining -= 1
+            let terminates: Bool
+            if index < firstCleanupPass {
+                terminates = false
+            } else if index == firstCleanupPass {
+                terminates = true
+            } else {
+                terminates = (index % 3 == 0) || (index % 3 == 2)
+            }
+            if terminates || remaining == 0 {
+                chunks.append(current)
+                current = 0
+            }
+            index += 1
+        }
+        return chunks
+    }
+
+    /// Reads packet-header codeword segment lengths for one code-block inclusion, implementing
+    /// ISO/IEC 15444-15 Clause B.3 (`3 * P0` placeholder awareness, `[Lcup, Lref]` splitting for
+    /// `SigProp`/`MagRef` refinement segments, and Clause B.10.6 mixed-mode MSB probing).
+    private static func readCodeBlockPacketLengths(
+        reader: inout PacketBitReader,
+        state: inout CodeBlockContribution,
+        firstInclusion: Bool,
+        newPasses: Int,
+        style: CodeBlockStyle
+    ) throws -> (chunks: [Int], lengths: [Int]) {
+        var preReadFirstMSB: Int? = nil
+        if firstInclusion && style.ht && style.htMixed {
+            if state.lblock <= 3 {
+                state.isHT = false
+            } else {
+                let msbBit = try reader.readBit() ? 1 : 0
+                preReadFirstMSB = msbBit
+                state.isHT = (msbBit == 0)
+            }
+        }
+
+        @inline(__always)
+        func readFirstLength(width w: Int) throws -> Int {
+            guard w >= 1 else { return 0 }
+            if let msb = preReadFirstMSB {
+                let low = w > 1 ? (try reader.readBits(w - 1)) : 0
+                return (msb << (w - 1)) | low
+            }
+            return try reader.readBits(w)
+        }
+
+        var chunks: [Int] = []
+        var lengths: [Int] = []
+
+        if state.isHT {
+            if !state.headerHasHTCleanup {
+                let endPasses = state.passes + newPasses
+                let rem = endPasses % 3
+                if rem == 1 || (rem == 2 && newPasses == 1) || (rem == 0 && newPasses <= 2) {
+                    let w1 = state.lblock + floorLog2(newPasses)
+                    let len0 = try readFirstLength(width: w1)
+                    if len0 > 0 {
+                        guard rem == 1 else {
+                            throw CodecError(
+                                .malformedInput,
+                                "HTJ2K non-zero first cleanup segment encountered at non-cleanup pass alignment (endPasses=\(endPasses))."
+                            )
+                        }
+                        state.headerHasHTCleanup = true
+                    }
+                    chunks = [newPasses]
+                    lengths = [len0]
+                } else if rem == 2 {
+                    let c0 = newPasses - 1
+                    let w1 = state.lblock + floorLog2(newPasses)
+                    let w2 = state.lblock + floorLog2(c0)
+                    let len0 = try readFirstLength(width: w2)
+                    if len0 == 0 {
+                        if w1 > w2 {
+                            let extra = try reader.readBits(w1 - w2)
+                            guard extra == 0 else {
+                                throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
+                            }
+                        }
+                        chunks = [newPasses]
+                        lengths = [0]
+                    } else {
+                        state.headerHasHTCleanup = true
+                        let len1 = try reader.readBits(state.lblock)
+                        chunks = [c0, 1]
+                        lengths = [len0, len1]
+                    }
+                } else {
+                    let c0 = newPasses - 2
+                    let w1 = state.lblock + floorLog2(newPasses)
+                    let w2 = state.lblock + floorLog2(c0)
+                    let len0 = try readFirstLength(width: w2)
+                    if len0 == 0 {
+                        if w1 > w2 {
+                            let extra = try reader.readBits(w1 - w2)
+                            guard extra == 0 else {
+                                throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
+                            }
+                        }
+                        chunks = [newPasses]
+                        lengths = [0]
+                    } else {
+                        state.headerHasHTCleanup = true
+                        let len1 = try reader.readBits(state.lblock + 1)
+                        chunks = [c0, 2]
+                        lengths = [len0, len1]
+                    }
+                }
+            } else {
+                chunks = htSegmentPassCounts(start: state.passes, count: newPasses, firstCleanupPass: 0)
+                for (idx, chunk) in chunks.enumerated() {
+                    let bitCount = state.lblock + floorLog2(chunk)
+                    let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
+                    lengths.append(len)
+                }
+            }
+        } else {
+            let ebcotStyle = CodeBlockStyle(bits: (style.bypass ? 0x01 : 0)
+                | (style.reset ? 0x02 : 0)
+                | (style.terminateAll ? 0x04 : 0)
+                | (style.causal ? 0x08 : 0)
+                | (style.predictable ? 0x10 : 0)
+                | (style.segmentationSymbols ? 0x20 : 0))
+            chunks = segmentPassCounts(start: state.passes, count: newPasses, style: ebcotStyle)
+            for (idx, chunk) in chunks.enumerated() {
+                let bitCount = state.lblock + floorLog2(chunk)
+                let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
+                lengths.append(len)
+            }
+        }
+        return (chunks, lengths)
+    }
+
+    /// Appends one decoded packet body segment `(chunk, bytes[cursor..<cursor+length])` to `state`.
+    private static func appendCodeBlockPacketSegment(
+        state: inout CodeBlockContribution,
+        chunk: Int,
+        bytes: [UInt8],
+        cursor: Int,
+        length: Int,
+        style: CodeBlockStyle
+    ) {
+        if state.isHT {
+            if !state.bodyHasHTCleanup {
+                if length == 0 {
+                    if state.segments.isEmpty {
+                        state.segments.append(CodewordSegment())
+                    }
+                } else {
+                    state.segments.append(CodewordSegment())
+                    state.bodyHasHTCleanup = true
+                }
+            } else {
+                let pStart = state.passes
+                if state.segments.isEmpty || (pStart % 3) != 2 {
+                    state.segments.append(CodewordSegment())
+                }
+            }
+        } else {
+            let ebcotStyle = CodeBlockStyle(bits: (style.bypass ? 0x01 : 0)
+                | (style.reset ? 0x02 : 0)
+                | (style.terminateAll ? 0x04 : 0)
+                | (style.causal ? 0x08 : 0)
+                | (style.predictable ? 0x10 : 0)
+                | (style.segmentationSymbols ? 0x20 : 0))
+            let lastTerminated = state.passes == 0 || ebcotStyle.passTerminates(state.passes - 1)
+            if lastTerminated || state.segments.isEmpty {
+                state.segments.append(CodewordSegment())
+            }
+        }
+        if length > 0 {
+            state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
+        }
+        state.segments[state.segments.count - 1].passes += chunk
+        state.passes += chunk
+    }
+
     // MARK: - Decoding
 
     /// Per-precinct tag trees survive across layers.
@@ -521,19 +720,13 @@ package enum Tier2 {
                             state.lblock += 1
                             guard state.lblock <= 40 else { throw CodecError(.malformedInput, "Lblock signalling is not representable.") }
                         }
-                        let chunks = segmentPassCounts(start: state.passes, count: newPasses, style: style)
-                        var lengths: [Int] = []
-                        for (chunkIndex, chunk) in chunks.enumerated() {
-                            let bitCount = state.lblock + floorLog2(chunk)
-                            let length = try reader.readBits(bitCount)
-                            if firstInclusion && chunkIndex == 0 && style.ht && style.htMixed {
-                                // ISO/IEC 15444-15 Clause B.10.6: in mixed HT/Part 1 mode, an HT
-                                // code-block signals lblock > 3 on first inclusion and has the MSB
-                                // of its first length field equal to 0.
-                                state.isHT = state.lblock > 3 && bitCount >= 1 && ((length >> (bitCount - 1)) == 0)
-                            }
-                            lengths.append(length)
-                        }
+                        let (chunks, lengths) = try readCodeBlockPacketLengths(
+                            reader: &reader,
+                            state: &state,
+                            firstInclusion: firstInclusion,
+                            newPasses: newPasses,
+                            style: style
+                        )
                         order.append((b, k, chunks, lengths))
                         result[address.resolution][address.precinct][b][k] = state
                     }
@@ -550,20 +743,17 @@ package enum Tier2 {
             for entry in order {
                 var state = result[address.resolution][address.precinct][entry.band][entry.block]
                 for (chunk, length) in zip(entry.chunks, entry.lengths) {
-                    guard cursor + length <= end else {
+                    guard length >= 0, cursor + length <= end else {
                         throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
                     }
-                    if state.isHT {
-                        if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
-                            state.segments.append(CodewordSegment())
-                        }
-                    } else {
-                        let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
-                        if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
-                    }
-                    state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
-                    state.segments[state.segments.count - 1].passes += chunk
-                    state.passes += chunk
+                    appendCodeBlockPacketSegment(
+                        state: &state,
+                        chunk: chunk,
+                        bytes: bytes,
+                        cursor: cursor,
+                        length: length,
+                        style: style
+                    )
                     cursor += length
                 }
                 result[address.resolution][address.precinct][entry.band][entry.block] = state
@@ -896,16 +1086,13 @@ package enum Tier2 {
                                 throw CodecError(.malformedInput, "Lblock signalling is not representable.")
                             }
                         }
-                        let chunks = segmentPassCounts(start: state.passes, count: newPasses, style: style)
-                        var lengths: [Int] = []
-                        for (chunkIndex, chunk) in chunks.enumerated() {
-                            let bitCount = state.lblock + floorLog2(chunk)
-                            let length = try reader.readBits(bitCount)
-                            if firstInclusion && chunkIndex == 0 && style.ht && style.htMixed {
-                                state.isHT = state.lblock > 3 && bitCount >= 1 && ((length >> (bitCount - 1)) == 0)
-                            }
-                            lengths.append(length)
-                        }
+                        let (chunks, lengths) = try readCodeBlockPacketLengths(
+                            reader: &reader,
+                            state: &state,
+                            firstInclusion: firstInclusion,
+                            newPasses: newPasses,
+                            style: style
+                        )
                         order.append((b, k, chunks, lengths))
                         wireState[c][r][p][b][k] = state
                         if keepLayer {
@@ -916,6 +1103,7 @@ package enum Tier2 {
                                 outState.isHT = state.isHT
                             }
                             outState.lblock = state.lblock
+                            outState.headerHasHTCleanup = state.headerHasHTCleanup
                             result[c][r][p][b][k] = outState
                         }
                     }
@@ -933,21 +1121,18 @@ package enum Tier2 {
                 var wState = wireState[c][r][p][entry.band][entry.block]
                 var state = result[c][r][p][entry.band][entry.block]
                 for (chunk, length) in zip(entry.chunks, entry.lengths) {
-                    guard cursor + length <= end else {
+                    guard length >= 0, cursor + length <= end else {
                         throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
                     }
                     if keepLayer {
-                        if state.isHT {
-                            if state.segments.isEmpty || (length > 0 && !state.segments[state.segments.count - 1].data.isEmpty) {
-                                state.segments.append(CodewordSegment())
-                            }
-                        } else {
-                            let lastTerminated = state.passes == 0 || style.passTerminates(state.passes - 1)
-                            if lastTerminated || state.segments.isEmpty { state.segments.append(CodewordSegment()) }
-                        }
-                        state.segments[state.segments.count - 1].data.append(contentsOf: bytes[cursor..<cursor + length])
-                        state.segments[state.segments.count - 1].passes += chunk
-                        state.passes += chunk
+                        appendCodeBlockPacketSegment(
+                            state: &state,
+                            chunk: chunk,
+                            bytes: bytes,
+                            cursor: cursor,
+                            length: length,
+                            style: style
+                        )
                     }
                     wState.passes += chunk
                     cursor += length

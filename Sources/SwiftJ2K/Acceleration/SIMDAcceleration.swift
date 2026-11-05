@@ -862,6 +862,138 @@ internal enum SIMDColourTransform {
         planes[1] = cbPlane
         planes[2] = crPlane
     }
+
+    /// Vectorised general 3×3 linear transform (`out = M * in + offsets`) using `SIMD4<Double>`.
+    internal static func applyLinear3x3(
+        in0: [Double],
+        in1: [Double],
+        in2: [Double],
+        matrix: [Double],
+        offsets: [Double],
+        out0: inout [Double],
+        out1: inout [Double],
+        out2: inout [Double]
+    ) {
+        let count = min(in0.count, min(in1.count, in2.count))
+        let m00 = SIMD4<Double>(repeating: matrix[0]), m01 = SIMD4<Double>(repeating: matrix[1]), m02 = SIMD4<Double>(repeating: matrix[2])
+        let m10 = SIMD4<Double>(repeating: matrix[3]), m11 = SIMD4<Double>(repeating: matrix[4]), m12 = SIMD4<Double>(repeating: matrix[5])
+        let m20 = SIMD4<Double>(repeating: matrix[6]), m21 = SIMD4<Double>(repeating: matrix[7]), m22 = SIMD4<Double>(repeating: matrix[8])
+        let o0 = SIMD4<Double>(repeating: offsets[0])
+        let o1 = SIMD4<Double>(repeating: offsets[1])
+        let o2 = SIMD4<Double>(repeating: offsets[2])
+
+        var i = 0
+        while i + 4 <= count {
+            let x0 = SIMD4<Double>(in0[i], in0[i + 1], in0[i + 2], in0[i + 3])
+            let x1 = SIMD4<Double>(in1[i], in1[i + 1], in1[i + 2], in1[i + 3])
+            let x2 = SIMD4<Double>(in2[i], in2[i + 1], in2[i + 2], in2[i + 3])
+            let y0 = m00 * x0 + m01 * x1 + m02 * x2 + o0
+            let y1 = m10 * x0 + m11 * x1 + m12 * x2 + o1
+            let y2 = m20 * x0 + m21 * x1 + m22 * x2 + o2
+            out0[i] = y0[0]; out0[i + 1] = y0[1]; out0[i + 2] = y0[2]; out0[i + 3] = y0[3]
+            out1[i] = y1[0]; out1[i + 1] = y1[1]; out1[i + 2] = y1[2]; out1[i + 3] = y1[3]
+            out2[i] = y2[0]; out2[i + 1] = y2[1]; out2[i + 2] = y2[2]; out2[i + 3] = y2[3]
+            i += 4
+        }
+        while i < count {
+            let x0 = in0[i], x1 = in1[i], x2 = in2[i]
+            out0[i] = matrix[0] * x0 + matrix[1] * x1 + matrix[2] * x2 + offsets[0]
+            out1[i] = matrix[3] * x0 + matrix[4] * x1 + matrix[5] * x2 + offsets[1]
+            out2[i] = matrix[6] * x0 + matrix[7] * x1 + matrix[8] * x2 + offsets[2]
+            i += 1
+        }
+    }
+
+    /// Vectorised 3-component Part 2 reversible dependency forward transform (`SIMD4<Int32>`).
+    internal static func forwardPart2ReversibleDep3(
+        r: [Int32],
+        g: [Int32],
+        b: [Int32],
+        anchorOffset: Int32
+    ) -> [[Int32]] {
+        let count = min(r.count, min(g.count, b.count))
+        var w0 = Array(repeating: Int32(0), count: count)
+        var w1 = Array(repeating: Int32(0), count: count)
+        var w2 = Array(repeating: Int32(0), count: count)
+        let off = SIMD4<Int32>(repeating: anchorOffset)
+        var i = 0
+        while i + 4 <= count {
+            let rv = SIMD4<Int32>(r[i], r[i + 1], r[i + 2], r[i + 3])
+            let gv = SIMD4<Int32>(g[i], g[i + 1], g[i + 2], g[i + 3])
+            let bv = SIMD4<Int32>(b[i], b[i + 1], b[i + 2], b[i + 3])
+            let y0 = gv &- off
+            let d1 = rv &- gv
+            let d2 = bv &- gv
+            w0[i] = y0[0]; w0[i + 1] = y0[1]; w0[i + 2] = y0[2]; w0[i + 3] = y0[3]
+            w1[i] = d1[0]; w1[i + 1] = d1[1]; w1[i + 2] = d1[2]; w1[i + 3] = d1[3]
+            w2[i] = d2[0]; w2[i + 1] = d2[1]; w2[i + 2] = d2[2]; w2[i + 3] = d2[3]
+            i += 4
+        }
+        while i < count {
+            w0[i] = g[i] - anchorOffset
+            w1[i] = r[i] - g[i]
+            w2[i] = b[i] - g[i]
+            i += 1
+        }
+        return [w0, w1, w2]
+    }
+
+    /// Vectorised 3-component Part 2 reversible dependency inverse transform (`SIMD4<Int64>`).
+    internal static func inversePart2ReversibleDep3(
+        c0: [Int64],
+        c1: [Int64],
+        c2: [Int64],
+        a10: Int64,
+        shift1: Int,
+        a20: Int64,
+        a21: Int64,
+        shift2: Int,
+        offsets: [Int64]
+    ) -> [[Int64]] {
+        let count = min(c0.count, min(c1.count, c2.count))
+        var out0 = Array(repeating: Int64(0), count: count)
+        var out1 = Array(repeating: Int64(0), count: count)
+        var out2 = Array(repeating: Int64(0), count: count)
+
+        let o0 = SIMD4<Int64>(repeating: offsets[0])
+        let o1 = SIMD4<Int64>(repeating: offsets[1])
+        let o2 = SIMD4<Int64>(repeating: offsets[2])
+        let vA10 = SIMD4<Int64>(repeating: a10)
+        let vA20 = SIMD4<Int64>(repeating: a20)
+        let vA21 = SIMD4<Int64>(repeating: a21)
+        let half1 = SIMD4<Int64>(repeating: (shift1 > 0) ? (Int64(1) << (shift1 - 1)) : 0)
+        let half2 = SIMD4<Int64>(repeating: (shift2 > 0) ? (Int64(1) << (shift2 - 1)) : 0)
+        let s1 = SIMD4<Int64>(repeating: Int64(shift1))
+        let s2 = SIMD4<Int64>(repeating: Int64(shift2))
+
+        var i = 0
+        while i + 4 <= count {
+            let x0 = SIMD4<Int64>(c0[i], c0[i + 1], c0[i + 2], c0[i + 3])
+            let x1 = SIMD4<Int64>(c1[i], c1[i + 1], c1[i + 2], c1[i + 3])
+            let x2 = SIMD4<Int64>(c2[i], c2[i + 1], c2[i + 2], c2[i + 3])
+            let y0 = x0 &+ o0
+            let p1 = (vA10 &* y0 &+ half1) &>> s1
+            let y1 = x1 &+ p1 &+ o1
+            let p2 = (vA20 &* y0 &+ vA21 &* y1 &+ half2) &>> s2
+            let y2 = x2 &+ p2 &+ o2
+            out0[i] = y0[0]; out0[i + 1] = y0[1]; out0[i + 2] = y0[2]; out0[i + 3] = y0[3]
+            out1[i] = y1[0]; out1[i + 1] = y1[1]; out1[i + 2] = y1[2]; out1[i + 3] = y1[3]
+            out2[i] = y2[0]; out2[i + 1] = y2[1]; out2[i + 2] = y2[2]; out2[i + 3] = y2[3]
+            i += 4
+        }
+        let scHalf1: Int64 = (shift1 > 0) ? (Int64(1) << (shift1 - 1)) : 0
+        let scHalf2: Int64 = (shift2 > 0) ? (Int64(1) << (shift2 - 1)) : 0
+        while i < count {
+            let y0 = c0[i] &+ offsets[0]
+            let y1 = c1[i] &+ ((a10 &* y0 &+ scHalf1) >> shift1) &+ offsets[1]
+            let y2 = c2[i] &+ ((a20 &* y0 &+ a21 &* y1 &+ scHalf2) >> shift2) &+ offsets[2]
+            out0[i] = y0
+            out1[i] = y1
+            out2[i] = y2
+            i += 1
+        }
+        return [out0, out1, out2]
+    }
 }
 
 // MARK: - 4. SIMD Quantization & ROI MaxShift (ISO/IEC 15444-1 Annex E / Annex H)
