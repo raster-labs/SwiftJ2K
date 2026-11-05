@@ -1,6 +1,6 @@
 # Third-party and provenance notices
 
-SwiftJ2K ships under Apache-2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)). The shipped products (`SwiftJ2K` library, `swiftj2k-cli` executable) declare no external package dependency; `swift package show-dependencies` on a consumer resolves this repository alone. Everything below is either third-party BSD-2-Clause material retained with its original copyright and licence notice per owner decision, in-house material whose provenance the contract requires to be recorded, or a development tool that never enters the shipped dependency graph (SUITE_POLICY.md POL-01, POL-07).
+SwiftJ2K ships under Apache-2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)). The declared package products (`SwiftJ2K`, `SwiftJ2K3D`, and `SwiftJ2KJPIP` libraries — with `SwiftJ2K3D` and `SwiftJ2KJPIP` validation/enhancement currently held per [Documentation/MILESTONE13.md](Documentation/MILESTONE13.md) — and the `swiftj2k-cli` executable) declare no external package dependency; `swift package show-dependencies` on a consumer resolves this repository alone. Everything below is either third-party BSD-2-Clause material retained with its original copyright and licence notice per owner decision, in-house material whose provenance the contract requires to be recorded, or a development tool that never enters the shipped dependency graph (SUITE_POLICY.md POL-01, POL-07).
 
 ## Adapted third-party code (OpenJPH, BSD-2-Clause)
 
@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## In-house predecessor code
 
-Files under `Sources/SwiftJ2K/Codec/` and `Sources/SwiftJ2K/Container/` whose provenance header names Raster-Lab/J2KSwift were adapted from that repository at commit `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`. J2KSwift is MIT-licensed and its copyright is held by Raster Images Private Limited, which authorised relicensing of in-house predecessor code under Apache-2.0 (contract revision 0.8.0, POL-07). Original authorship is preserved in the provenance headers and in [HISTORY.md](HISTORY.md), which records what was adapted and what is new. Published J2KSwift tags keep their MIT licence text unchanged.
+Files under `Sources/SwiftJ2K/Codec/`, `Sources/SwiftJ2K/Container/`, `Sources/SwiftJ2K/Acceleration/`, `Sources/SwiftJ2K3D/`, `Sources/SwiftJ2KJPIP/`, and `Sources/SwiftJ2KCLI/` whose provenance header names Raster-Lab/J2KSwift were adapted from that repository at commit `7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca`. J2KSwift is MIT-licensed and its copyright is held by Raster Images Private Limited, which authorised relicensing of in-house predecessor code under Apache-2.0 (contract revision 0.8.0, POL-07). Original authorship is preserved in the provenance headers and in [HISTORY.md](HISTORY.md), which records what was adapted and what is new. Published J2KSwift tags keep their MIT licence text unchanged.
 
 ## Test fixtures
 
