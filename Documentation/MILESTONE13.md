@@ -22,7 +22,7 @@ Prepared on **5 November 2026** on isolated branch `codex/m13-swiftj2k-release-p
 | `DICOMKit` pinned predecessor (`J2KSwift`) | `11.0.3` @ `768f6b53499b806fd0304962056e1fc7833f12e5` (retained in root `DICOMKit/Package.resolved`) |
 | `DICOMSwiftJ2KIntegration` pinned successor (`SwiftJ2K`) | `76850bc2286184847a1ecd1dc3ea61ab449ac4bd` (pinned in `Integrations/DICOMSwiftJ2KIntegration/Package.swift` and `Package.resolved`) |
 
-Because `codex/m13-swiftj2k-release-preparation` modifies documentation only and keeps `Package.swift`, `VERSION`, `Sources/**`, `Tests/**`, and `Scripts/**` byte-identical to `76850bc2286184847a1ecd1dc3ea61ab449ac4bd`:
+Because `codex/m13-swiftj2k-release-preparation` modifies release documentation and the Swift Testing `--skip` source-location suffix pattern in `.github/workflows/contract.yml` only, keeping `Package.swift`, `VERSION`, `Sources/**`, `Tests/**`, and `Scripts/**` byte-identical to `76850bc2286184847a1ecd1dc3ea61ab449ac4bd`:
 1. `DICOMKit`'s `Integrations/DICOMSwiftJ2KIntegration` package resolves the exact `SwiftJ2K` production source tree on `codex/m13-swiftj2k-release-preparation`.
 2. All source-bound `SwiftJ2K` R1, R2, and owner-revised R3 verification receipts recorded against `76850bc2286184847a1ecd1dc3ea61ab449ac4bd` / `eb0bcd6f314962575e9b45c0871f9139c0fb11ba` remain valid unchanged-input evidence without inventing new broad test runs.
 

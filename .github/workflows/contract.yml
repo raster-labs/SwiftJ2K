@@ -81,7 +81,7 @@ jobs:
             --output .build/sanitizer-evidence/ordinary
           swift test --skip-build \
             --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
             --xunit-output .build/sanitizer-evidence/ordinary/selected.xml \
             2>&1 | tee .build/sanitizer-evidence/ordinary/test.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
@@ -102,7 +102,7 @@ jobs:
             --output .build/sanitizer-evidence/address
           swift test --scratch-path .build/asan --sanitize address --skip-build \
             --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
             --xunit-output .build/sanitizer-evidence/address/selected.xml \
             2>&1 | tee .build/sanitizer-evidence/address/test.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
@@ -123,7 +123,7 @@ jobs:
             --output .build/sanitizer-evidence/thread
           swift test --scratch-path .build/tsan --sanitize thread --skip-build \
             --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\))$' \
+            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
             --xunit-output .build/sanitizer-evidence/thread/selected.xml \
             2>&1 | tee .build/sanitizer-evidence/thread/test.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
