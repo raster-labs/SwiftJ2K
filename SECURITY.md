@@ -1,6 +1,6 @@
 # Security policy and implementation requirements
 
-Status: release preparation (Milestone 5). No successor stable release or tag exists yet and no vulnerability response time is promised here. The supported-version policy below takes effect with the first stable tag.
+Status: release preparation (Milestone 5 baseline, reconciled in Milestone 13; see [Documentation/MILESTONE13.md](Documentation/MILESTONE13.md)). No successor stable release or tag exists yet and no vulnerability response time is promised here. The supported-version policy below takes effect with the first stable tag.
 
 ## Reporting
 
