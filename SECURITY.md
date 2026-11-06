@@ -1,22 +1,22 @@
 # Security policy and implementation requirements
 
-Status: release preparation (Milestone 5 baseline, reconciled in Milestone 13; see [Documentation/MILESTONE13.md](Documentation/MILESTONE13.md)). No successor stable release or tag exists yet and no vulnerability response time is promised here. The supported-version policy below takes effect with the first stable tag.
+Status: active (`SwiftJ2K v12.1.0` released 6 November 2026; see [Documentation/RELEASE-v12.1.0.md](Documentation/RELEASE-v12.1.0.md)). No vulnerability response-time SLA is promised here. The supported-version policy below applies to the `12.1.x` stable line.
 
 ## Reporting
 
-Use the repository's private vulnerability reporting option in its Security tab if it is enabled. Otherwise use an established private channel to a Raster-Lab organisation owner to arrange disclosure. Do not post exploitable payloads, credentials or patient information in a public issue. This document does not assert that GitHub private reporting or a dedicated security mailbox has already been configured.
+Use the repository's **Private Vulnerability Reporting** option in the GitHub Security tab on `raster-labs/SwiftJ2K`. Do not post exploitable payloads, credentials or patient information in a public issue.
 
 Include affected version/commit, platform, a minimal safe reproducer, expected/actual behaviour and impact. Use synthetic data where possible.
 
-Checked on 22 September 2026 through the GitHub API: private vulnerability reporting is **not enabled** on Raster-Lab/SwiftJ2K, and Dependabot security updates, secret scanning and push protection are disabled. Enabling private reporting is an organisation-owner action that this repository's maintainers cannot perform from a pull request; it is listed as a release precondition in [Documentation/RELEASE.md](Documentation/RELEASE.md). Until it is enabled, use the private channel above.
+Checked on **6 November 2026** through the GitHub API (`gh api repos/raster-labs/SwiftJ2K/private-vulnerability-reporting`): private vulnerability reporting is **enabled** (`"enabled": true`), satisfying Precondition 2 of [Documentation/RELEASE.md](Documentation/RELEASE.md) (superseding the earlier 22 September 2026 pre-release check when it had not yet been enabled).
 
 ## Supported versions
 
 | Version | Status |
 | --- | --- |
-| `12.1.x` (first stable line, not yet tagged) | Will receive correctness and security fixes on `main`, released as patch versions, from the `12.1.0` tag onwards |
-| `12.1.0-dev.*` development identifiers | No support; each is superseded by the next commit on `main` |
-| Predecessor J2KSwift | Maintenance window under contract revision 0.8.0 item 6: security and correctness fixes only, in the predecessor repository, until its last in-house consumer has moved |
+| `12.1.x` (`v12.1.0`, active stable line) | Receives correctness and security fixes on `main`, released as patch versions, for the stable 2D `SwiftJ2K` codec and 2D `swiftj2k-cli` scope (`SwiftJ2K3D` and `SwiftJ2KJPIP` are experimental preview products in `12.1.0`, scheduled for full qualification in `12.2.0`) |
+| `12.1.0-dev.*` development identifiers | No support; superseded by `v12.1.0` |
+| Predecessor J2KSwift | Maintenance window under contract revision 0.8.0 item 6: security and correctness fixes only, in the predecessor repository, until its last in-house consumer (including JP3D/JPIP consumers awaiting `SwiftJ2K 12.2.0` and pre-OS 26 targets) has moved |
 
 A report against an unsupported version is still welcome; it will be reproduced on `main` first.
 
