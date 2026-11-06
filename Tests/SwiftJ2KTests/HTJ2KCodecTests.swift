@@ -567,10 +567,16 @@ func independentOraclesVerifyTranscodedOutputsInBothDirections(name: String) asy
     do { _ = try decoder.inspect(Data(multiHT)); Issue.record("MULTIHT accepted") }
     catch let error as CodecError { #expect(error.category == .unsupportedFeature) }
 
-    // 7. CAP with HTIRV (bit 5 of Ccap15 set: byte 54 |= 0x20) -> .unsupportedFeature
-    var irreversibleHT = validHT
-    irreversibleHT[54] |= 0x20
-    do { _ = try decoder.inspect(Data(irreversibleHT)); Issue.record("HTIRV accepted") }
+    // 7. CAP with HTIRV (bit 5 of Ccap15 set: byte 54 |= 0x20) on a reversible 5/3 COD -> .malformedInput;
+    //    CAP with HETERO (bit 10 of Ccap15 set: byte 53 |= 0x04) -> .unsupportedFeature.
+    var inconsistentHTIRV = validHT
+    inconsistentHTIRV[54] |= 0x20
+    do { _ = try decoder.inspect(Data(inconsistentHTIRV)); Issue.record("HTIRV on 5/3 COD accepted") }
+    catch let error as CodecError { #expect(error.category == .malformedInput) }
+
+    var heteroHT = validHT
+    heteroHT[53] |= 0x04
+    do { _ = try decoder.inspect(Data(heteroHT)); Issue.record("HETERO accepted") }
     catch let error as CodecError { #expect(error.category == .unsupportedFeature) }
 
     // 8. CAP with non-Part-15 Pcap bit -> .unsupportedFeature

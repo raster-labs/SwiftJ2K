@@ -20,10 +20,17 @@ enum Marker {
     static let tlm: UInt16 = 0xFF55, plm: UInt16 = 0xFF57, plt: UInt16 = 0xFF58
     static let ppm: UInt16 = 0xFF60, ppt: UInt16 = 0xFF61, sop: UInt16 = 0xFF91, eph: UInt16 = 0xFF92
     static let crg: UInt16 = 0xFF63, com: UInt16 = 0xFF64, cap: UInt16 = 0xFF50, cpf: UInt16 = 0xFF59
+    // ISO/IEC 15444-2 (Part 2) extension markers:
+    static let dco: UInt16 = 0xFF70, vms: UInt16 = 0xFF71, dfs: UInt16 = 0xFF72, ads: UInt16 = 0xFF73
+    static let mct: UInt16 = 0xFF74, mcc: UInt16 = 0xFF75, nlt: UInt16 = 0xFF76, mco: UInt16 = 0xFF77
+    static let cbd: UInt16 = 0xFF78, atk: UInt16 = 0xFF79
 }
 
-/// Extended capabilities marker segment `CAP` (ISO/IEC 15444-15 Annex A, Table A.1–A.3).
+/// Extended capabilities marker segment `CAP` (ISO/IEC 15444-15 Annex A, Table A.1–A.3 & Part 2 `Pcap^2`).
 struct ExtendedCapabilitiesSegment: Sendable, Equatable {
+    static let pcapPart2Bit: UInt32  = 0x4000_0000 // Pcap^2  (bit 32 - 2 = 30)
+    static let pcapPart15Bit: UInt32 = 0x0002_0000 // Pcap^15 (bit 32 - 15 = 17)
+
     enum CodingMode: UInt8, Sendable, Equatable {
         case htOnly = 0       // Bits 14–15 = 0: all code-blocks are HT code-blocks
         case htDeclared = 1   // Bits 14–15 = 1: tile-parts are either all HT or all Part 1 per COD/COC
@@ -31,6 +38,7 @@ struct ExtendedCapabilitiesSegment: Sendable, Equatable {
     }
 
     let pcap: UInt32
+    let ccap2: UInt16?
     let ccap15: UInt16
     let mode: CodingMode
     let multiHT: Bool
@@ -40,47 +48,141 @@ struct ExtendedCapabilitiesSegment: Sendable, Equatable {
     let magbField: Int
     let magnitudeBound: Int
 
-    init(ccap15: UInt16, pcap: UInt32 = 0x0002_0000) throws {
-        guard pcap == 0x0002_0000 else {
-            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 15 (HTJ2K).")
+    var hasPart2: Bool { (pcap & Self.pcapPart2Bit) != 0 }
+    var hasPart15: Bool { (pcap & Self.pcapPart15Bit) != 0 }
+
+    init(ccap15: UInt16, pcap: UInt32 = 0x0002_0000, ccap2: UInt16? = nil) throws {
+        let supportedMask = Self.pcapPart2Bit | Self.pcapPart15Bit
+        guard pcap != 0 else {
+            throw CodecError(.malformedInput, "CAP marker segment Pcap is zero.")
         }
-        let rawMode = UInt8((ccap15 >> 14) & 0x03)
-        guard let mode = CodingMode(rawValue: rawMode) else {
-            throw CodecError(.malformedInput, "CAP Ccap15 bits 14–15 carry reserved value 2.")
+        guard (pcap & ~supportedMask) == 0 else {
+            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 2 MCT and Part 15 (HTJ2K).")
         }
-        let multiField = (ccap15 >> 12) & 0x03
-        guard multiField <= 1 else {
-            throw CodecError(.malformedInput, "CAP Ccap15 bits 12–13 carry reserved value \(multiField).")
+        if (pcap & Self.pcapPart2Bit) != 0 {
+            let raw2 = ccap2 ?? 0
+            // Allow Part 2 MCT (bit 8 = 0x0100) and variable scalar quantisation (bit 1 = 0x0002);
+            // reject unsupported Part 2 capability flags in Ccap^2.
+            let supportedPart2CcapMask: UInt16 = 0x0102
+            guard (raw2 & ~supportedPart2CcapMask) == 0 else {
+                throw CodecError(
+                    .unsupportedFeature,
+                    "CAP Ccap2 signals unsupported Part 2 capabilities (0x\(String(raw2, radix: 16)))."
+                )
+            }
         }
-        guard (ccap15 >> 6) & 0x0F == 0 else {
-            throw CodecError(.malformedInput, "CAP Ccap15 reserved bits 6–9 must be zero.")
-        }
-        let magb = Int(ccap15 & 0x1F)
-        let bound: Int
-        if magb < 27 {
-            bound = 8 + magb
-        } else if magb < 31 {
-            bound = 35 + 4 * (magb - 27)
+        if (pcap & Self.pcapPart15Bit) != 0 {
+            let rawMode = UInt8((ccap15 >> 14) & 0x03)
+            guard let mode = CodingMode(rawValue: rawMode) else {
+                throw CodecError(.malformedInput, "CAP Ccap15 bits 14–15 carry reserved value 2.")
+            }
+            let multiField = (ccap15 >> 12) & 0x03
+            guard multiField <= 1 else {
+                throw CodecError(.malformedInput, "CAP Ccap15 bits 12–13 carry reserved value \(multiField).")
+            }
+            guard (ccap15 >> 6) & 0x0F == 0 else {
+                throw CodecError(.malformedInput, "CAP Ccap15 reserved bits 6–9 must be zero.")
+            }
+            let magb = Int(ccap15 & 0x1F)
+            let bound = Self.decodeMAGB(magb)
+            self.pcap = pcap
+            self.ccap2 = ((pcap & Self.pcapPart2Bit) != 0) ? (ccap2 ?? 0) : nil
+            self.ccap15 = ccap15
+            self.mode = mode
+            self.multiHT = (multiField == 1)
+            self.regionOfInterestPresent = ((ccap15 >> 11) & 0x01) != 0
+            self.heterogeneousTileParts = ((ccap15 >> 10) & 0x01) != 0
+            self.irreversible = ((ccap15 >> 5) & 0x01) != 0
+            self.magbField = magb
+            self.magnitudeBound = bound
         } else {
-            bound = 74
+            self.pcap = pcap
+            self.ccap2 = ccap2 ?? 0
+            self.ccap15 = 0
+            self.mode = .htDeclared
+            self.multiHT = false
+            self.regionOfInterestPresent = false
+            self.heterogeneousTileParts = false
+            self.irreversible = false
+            self.magbField = 0
+            self.magnitudeBound = 8
         }
-        self.pcap = pcap
-        self.ccap15 = ccap15
-        self.mode = mode
-        self.multiHT = (multiField == 1)
-        self.regionOfInterestPresent = ((ccap15 >> 11) & 0x01) != 0
-        self.heterogeneousTileParts = ((ccap15 >> 10) & 0x01) != 0
-        self.irreversible = ((ccap15 >> 5) & 0x01) != 0
-        self.magbField = magb
-        self.magnitudeBound = bound
+    }
+
+    /// Decodes the 5-bit `MAGB` field from `Ccap^15` per ISO/IEC 15444-15 Table A.3.
+    static func decodeMAGB(_ magb: Int) -> Int {
+        if magb < 20 {
+            return 8 + magb
+        } else if magb < 31 {
+            return 27 + 4 * (magb - 19)
+        } else {
+            return 74
+        }
+    }
+
+    /// Encodes a required magnitude bit-plane bound `B` into the 5-bit `MAGB` field per ISO/IEC 15444-15 Table A.3.
+    static func encodeMAGB(_ bound: Int) -> UInt16 {
+        if bound <= 8 {
+            return 0
+        } else if bound <= 27 {
+            return UInt16(bound - 8)
+        } else if bound <= 71 {
+            return UInt16((bound >> 2) + 13)
+        } else {
+            return 31
+        }
+    }
+
+    /// Computes the required `MAGB` magnitude bound `B` for a `QCD`/`QCC` segment per ISO/IEC 15444-15 Clause A.2.
+    static func requiredMagnitudeBound(for qcd: QuantizationSegment, decompositionLevels: Int) -> Int {
+        switch qcd.style {
+        case .none:
+            let maxExp = qcd.exponents.max() ?? 0
+            return max(0, qcd.guardBits + maxExp - 1)
+        case .scalarDerived:
+            let exp0 = qcd.exponents.first ?? 0
+            return max(0, qcd.guardBits + exp0 - decompositionLevels)
+        case .scalarExpounded:
+            let nl = max(0, (qcd.exponents.count - 1) / 3)
+            var maxBound = 0
+            for (b, exp) in qcd.exponents.enumerated() {
+                let nb: Int
+                if nl == 0 {
+                    nb = 0
+                } else if b == 0 {
+                    nb = nl
+                } else {
+                    nb = max(1, nl - ((b - 1) / 3))
+                }
+                maxBound = max(maxBound, qcd.guardBits + exp - nb)
+            }
+            return maxBound
+        }
+    }
+
+    /// Builds a Part 15 `HTONLY` / `SINGLEHT` `CAP` segment (`HTREV` or `HTIRV`).
+    static func htOnly(
+        for qcd: QuantizationSegment,
+        componentQCDs: [Int: QuantizationSegment] = [:],
+        decompositionLevels: Int = 0,
+        irreversible: Bool = false,
+        ccap2: UInt16? = nil
+    ) throws -> Self {
+        var maxB = requiredMagnitudeBound(for: qcd, decompositionLevels: decompositionLevels)
+        for compQCD in componentQCDs.values {
+            maxB = max(maxB, requiredMagnitudeBound(for: compQCD, decompositionLevels: decompositionLevels))
+        }
+        var ccap15 = encodeMAGB(maxB)
+        if irreversible {
+            ccap15 |= 0x0020 // Bit 5: HTIRV
+        }
+        let pcap: UInt32 = (ccap2 != nil) ? (Self.pcapPart2Bit | Self.pcapPart15Bit) : Self.pcapPart15Bit
+        return try Self(ccap15: ccap15, pcap: pcap, ccap2: ccap2)
     }
 
     /// Builds a Part 15 `HTONLY` / `SINGLEHT` / `HTREV` `CAP` segment for the given quantization segment.
     static func losslessHTOnly(for qcd: QuantizationSegment) throws -> Self {
-        let maxExponent = qcd.exponents.max() ?? 0
-        let maxMb = qcd.guardBits + maxExponent - 1
-        let magb = UInt16(max(0, min(26, maxMb - 8)))
-        return try Self(ccap15: magb)
+        try htOnly(for: qcd, irreversible: false)
     }
 }
 
@@ -232,6 +334,9 @@ struct TileHeaderOverrides: Sendable {
     var componentQuantizations: [Int: QuantizationSegment] = [:]
     var regionsOfInterest: [Int: RegionOfInterestSegment] = [:]
     var progressionChanges: [ProgressionOrderChangeEntry] = []
+    var mctFragments: [Part2MCTSegmentFragment] = []
+    var mccFragments: [Part2MCCSegmentFragment] = []
+    var mco: Part2MCOSegment?
 }
 
 /// Everything the main header and the tile-part headers declare.
@@ -239,6 +344,10 @@ struct ParsedCodestream: Sendable {
     let size: ImageSizeSegment
     let extendedCapabilities: ExtendedCapabilitiesSegment?
     let correspondingProfile: CorrespondingProfileSegment?
+    let componentBitDepth: ComponentBitDepthSegment?
+    let mctTables: [Part2MCTTable.Key: Part2MCTTable]
+    let mccStages: [Int: Part2MCCStage]
+    let mco: Part2MCOSegment?
     let codingStyle: CodingStyleSegment           // COD merged with any COC for component 0
     let quantization: QuantizationSegment         // QCD merged with any QCC for component 0
     let baseCodingStyle: CodingStyleSegment
@@ -261,6 +370,10 @@ struct ParsedCodestream: Sendable {
         size: ImageSizeSegment,
         extendedCapabilities: ExtendedCapabilitiesSegment?,
         correspondingProfile: CorrespondingProfileSegment?,
+        componentBitDepth: ComponentBitDepthSegment? = nil,
+        mctTables: [Part2MCTTable.Key: Part2MCTTable] = [:],
+        mccStages: [Int: Part2MCCStage] = [:],
+        mco: Part2MCOSegment? = nil,
         codingStyle: CodingStyleSegment,
         quantization: QuantizationSegment,
         baseCodingStyle: CodingStyleSegment? = nil,
@@ -282,6 +395,10 @@ struct ParsedCodestream: Sendable {
         self.size = size
         self.extendedCapabilities = extendedCapabilities
         self.correspondingProfile = correspondingProfile
+        self.componentBitDepth = componentBitDepth
+        self.mctTables = mctTables
+        self.mccStages = mccStages
+        self.mco = mco
         self.codingStyle = codingStyle
         self.quantization = quantization
         self.baseCodingStyle = baseCodingStyle ?? codingStyle
@@ -303,7 +420,7 @@ struct ParsedCodestream: Sendable {
 
     /// Whether the codestream signals Part 15 (HTJ2K) extended capabilities or HT block coding.
     var isHTJ2K: Bool {
-        if extendedCapabilities != nil { return true }
+        if let cap = extendedCapabilities, cap.hasPart15 { return true }
         if (codingStyle.codeBlockStyle & 0x40) != 0 { return true }
         for coc in componentCodingStyles.values where (coc.codeBlockStyle & 0x40) != 0 { return true }
         for override in tileOverrides.values {
@@ -312,6 +429,43 @@ struct ParsedCodestream: Sendable {
             for coc in override.componentCodingStyles.values where (coc.codeBlockStyle & 0x40) != 0 { return true }
         }
         return false
+    }
+
+    /// Effective Part 2 multi-component transform plan for a given tile, merging any tile-part 0
+    /// `MCT`, `MCC`, and `MCO` overrides onto main-header definitions.
+    func effectivePart2MCTPlan(
+        tile: Int,
+        admitMetadataBytes: (Int) throws -> Void = { _ in }
+    ) throws -> Part2MCTPlan? {
+        var tables = mctTables
+        var stages = mccStages
+        var effectiveMCO = mco
+        if let overrides = tileOverrides[tile] {
+            if !overrides.mctFragments.isEmpty {
+                let tileTables = try Part2MCTTable.assemble(
+                    fragments: overrides.mctFragments,
+                    admitMetadataBytes: admitMetadataBytes
+                )
+                for (k, v) in tileTables { tables[k] = v }
+            }
+            if !overrides.mccFragments.isEmpty {
+                let tileStages = try Part2MCCStage.assemble(
+                    fragments: overrides.mccFragments,
+                    admitMetadataBytes: admitMetadataBytes
+                )
+                for (k, v) in tileStages { stages[k] = v }
+            }
+            if let tileMCO = overrides.mco {
+                effectiveMCO = tileMCO
+            }
+        }
+        return try Part2MCTPlan.resolve(
+            codestreamComponentCount: size.components.count,
+            cbd: componentBitDepth,
+            mctTables: tables,
+            mccStages: stages,
+            mco: effectiveMCO
+        )
     }
 
     /// Effective coding style and quantization for a tile and component (COC/QCC beat COD/QCD;
@@ -374,6 +528,10 @@ enum CodestreamSyntax {
         var size: ImageSizeSegment?
         var cap: ExtendedCapabilitiesSegment?
         var cpf: CorrespondingProfileSegment?
+        var cbd: ComponentBitDepthSegment?
+        var mctFragments: [Part2MCTSegmentFragment] = []
+        var mccFragments: [Part2MCCSegmentFragment] = []
+        var mco: Part2MCOSegment?
         var cod: CodingStyleSegment?
         var coc: [Int: CodingStyleSegment] = [:]
         var qcd: QuantizationSegment?
@@ -385,6 +543,7 @@ enum CodestreamSyntax {
         var crg: [UInt8]?
         var totalCommentBytes = 0
         var totalCommentCount = 0
+        var totalPart2MetadataBytes = 0
         var retainedMetadataBytes = 0
 
         func admitRetained(
@@ -627,6 +786,73 @@ enum CodestreamSyntax {
                     message: "Retained CRG metadata exceeds workspace or memory limits."
                 )
                 crg = payload
+            case Marker.cbd:
+                guard size != nil else { throw CodecError(.malformedInput, "CBD precedes SIZ.") }
+                guard cbd == nil else { throw CodecError(.malformedInput, "Duplicate CBD marker segment.") }
+                totalPart2MetadataBytes = try checkedAdd(totalPart2MetadataBytes, payload.count)
+                guard totalPart2MetadataBytes <= limits.maximumMetadataBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Part 2 CBD/MCT/MCC/MCO metadata exceeds the metadata byte limit.")
+                }
+                let parsedCBD = try ComponentBitDepthSegment.parse(payload)
+                let expandedCBD = try checkedAdd(
+                    32,
+                    try checkedMultiply(parsedCBD.components.count, MemoryLayout<ComponentBitDepthSegment.Component>.stride)
+                )
+                try admitRetained(
+                    expandedCBD,
+                    liveTransientBytes: payloadTransientBytes,
+                    parserStage: "part2-cbd",
+                    message: "Retained CBD metadata exceeds workspace or memory limits."
+                )
+                cbd = parsedCBD
+            case Marker.mct:
+                guard size != nil else { throw CodecError(.malformedInput, "MCT precedes SIZ.") }
+                totalPart2MetadataBytes = try checkedAdd(totalPart2MetadataBytes, payload.count)
+                guard totalPart2MetadataBytes <= limits.maximumMetadataBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Part 2 MCT metadata exceeds the metadata byte limit.")
+                }
+                let frag = try Part2MCTSegmentFragment.parse(payload)
+                try admitRetained(
+                    try checkedAdd(64, frag.rawBytes.count),
+                    liveTransientBytes: payloadTransientBytes,
+                    parserStage: "part2-mct",
+                    message: "Retained MCT metadata exceeds workspace or memory limits."
+                )
+                mctFragments.append(frag)
+            case Marker.mcc:
+                guard size != nil else { throw CodecError(.malformedInput, "MCC precedes SIZ.") }
+                totalPart2MetadataBytes = try checkedAdd(totalPart2MetadataBytes, payload.count)
+                guard totalPart2MetadataBytes <= limits.maximumMetadataBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Part 2 MCC metadata exceeds the metadata byte limit.")
+                }
+                let frag = try Part2MCCSegmentFragment.parse(payload)
+                try admitRetained(
+                    try checkedAdd(64, frag.rawBytes.count),
+                    liveTransientBytes: payloadTransientBytes,
+                    parserStage: "part2-mcc",
+                    message: "Retained MCC metadata exceeds workspace or memory limits."
+                )
+                mccFragments.append(frag)
+            case Marker.mco:
+                guard size != nil else { throw CodecError(.malformedInput, "MCO precedes SIZ.") }
+                guard mco == nil else { throw CodecError(.malformedInput, "Duplicate MCO marker segment in main header.") }
+                totalPart2MetadataBytes = try checkedAdd(totalPart2MetadataBytes, payload.count)
+                guard totalPart2MetadataBytes <= limits.maximumMetadataBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Part 2 MCO metadata exceeds the metadata byte limit.")
+                }
+                let parsedMCO = try Part2MCOSegment.parse(payload)
+                try admitRetained(
+                    try checkedAdd(32, parsedMCO.stageIndices.count * MemoryLayout<Int>.stride),
+                    liveTransientBytes: payloadTransientBytes,
+                    parserStage: "part2-mco",
+                    message: "Retained MCO metadata exceeds workspace or memory limits."
+                )
+                mco = parsedMCO
+            case Marker.dco, Marker.vms, Marker.dfs, Marker.ads, Marker.nlt, Marker.atk:
+                throw CodecError(
+                    .unsupportedFeature,
+                    "Part 2 extension marker segment 0x\(String(marker, radix: 16, uppercase: true)) is not supported."
+                )
             default:
                 throw CodecError(.unsupportedFeature, "Marker segment \(String(marker, radix: 16)) is not supported.")
             }
@@ -634,6 +860,20 @@ enum CodestreamSyntax {
         guard let size else { throw CodecError(.malformedInput, "Main header has no SIZ marker segment.") }
         guard let baseCOD = cod else { throw CodecError(.malformedInput, "Main header has no COD marker segment.") }
         guard let baseQCD = qcd else { throw CodecError(.malformedInput, "Main header has no QCD marker segment.") }
+        let assembledMCTTables = try Part2MCTTable.assemble(fragments: mctFragments) { bytesCount in
+            try admitRetained(
+                try checkedAdd(64, bytesCount * 2),
+                parserStage: "part2-mct-assembled",
+                message: "Assembled Part 2 MCT tables exceed workspace or memory limits."
+            )
+        }
+        let assembledMCCStages = try Part2MCCStage.assemble(fragments: mccFragments) { bytesCount in
+            try admitRetained(
+                try checkedAdd(96, bytesCount * 4),
+                parserStage: "part2-mcc-assembled",
+                message: "Assembled Part 2 MCC stages exceed workspace or memory limits."
+            )
+        }
         var codingStyle = baseCOD
         var quantization = baseQCD
         if let override = coc[0] { codingStyle = codingStyle.applying(coc: override) }
@@ -757,6 +997,69 @@ enum CodestreamSyntax {
                         )
                         overrides.regionsOfInterest[segment.component] = segment
                     }
+                case Marker.mct, Marker.mcc, Marker.mco:
+                    guard partIndex == 0 else {
+                        throw CodecError(.malformedInput, "Part 2 MCT/MCC/MCO overrides are only allowed in a tile's first tile-part header.")
+                    }
+                    let payload = try readSegmentPayload(
+                        &reader,
+                        marker: tileMarker,
+                        limits: limits,
+                        codestreamBytes: bytes.count,
+                        retainedBytes: retainedMetadataBytes
+                    )
+                    let payloadTransientBytes = try checkedAdd(32, payload.count)
+                    totalPart2MetadataBytes = try checkedAdd(totalPart2MetadataBytes, payload.count)
+                    guard totalPart2MetadataBytes <= limits.maximumMetadataBytes else {
+                        throw CodecError(.resourceLimitExceeded, "Tile Part 2 MCT/MCC/MCO metadata exceeds the metadata byte limit.")
+                    }
+                    if !hasOverrides {
+                        try admitRetained(
+                            128,
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-overrides",
+                            message: "Retained tile-header overrides exceed workspace or memory limits."
+                        )
+                        hasOverrides = true
+                    }
+                    switch tileMarker {
+                    case Marker.mct:
+                        let frag = try Part2MCTSegmentFragment.parse(payload)
+                        try admitRetained(
+                            try checkedAdd(64, frag.rawBytes.count),
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-part2-mct",
+                            message: "Retained tile MCT metadata exceeds workspace or memory limits."
+                        )
+                        overrides.mctFragments.append(frag)
+                    case Marker.mcc:
+                        let frag = try Part2MCCSegmentFragment.parse(payload)
+                        try admitRetained(
+                            try checkedAdd(64, frag.rawBytes.count),
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-part2-mcc",
+                            message: "Retained tile MCC metadata exceeds workspace or memory limits."
+                        )
+                        overrides.mccFragments.append(frag)
+                    default:
+                        guard overrides.mco == nil else {
+                            throw CodecError(.malformedInput, "Duplicate MCO marker segment in tile-part 0 header.")
+                        }
+                        let parsedTileMCO = try Part2MCOSegment.parse(payload)
+                        try admitRetained(
+                            try checkedAdd(32, parsedTileMCO.stageIndices.count * MemoryLayout<Int>.stride),
+                            liveTransientBytes: payloadTransientBytes,
+                            parserStage: "tile-part2-mco",
+                            message: "Retained tile MCO metadata exceeds workspace or memory limits."
+                        )
+                        overrides.mco = parsedTileMCO
+                    }
+                case Marker.dco, Marker.vms, Marker.dfs, Marker.ads, Marker.nlt, Marker.atk:
+                    _ = try skipSegmentPayload(&reader, marker: tileMarker)
+                    throw CodecError(
+                        .unsupportedFeature,
+                        "Part 2 extension marker segment 0x\(String(tileMarker, radix: 16, uppercase: true)) is not supported."
+                    )
                 case Marker.poc:
                     let payload = try readSegmentPayload(
                         &reader,
@@ -831,6 +1134,10 @@ enum CodestreamSyntax {
             size: size,
             extendedCapabilities: cap,
             correspondingProfile: cpf,
+            componentBitDepth: cbd,
+            mctTables: assembledMCTTables,
+            mccStages: assembledMCCStages,
+            mco: mco,
             codingStyle: codingStyle,
             quantization: quantization,
             baseCodingStyle: baseCOD,
@@ -871,13 +1178,13 @@ enum CodestreamSyntax {
                 throw CodecError(.malformedInput, "COD/COC sets HT mixed bit (0x80) without HT coding bit (0x40).")
             }
             if htBit {
-                guard let cap else {
+                guard let cap, cap.hasPart15 else {
                     throw CodecError(.malformedInput, "COD/COC enables HTJ2K block coding (0x40) without a Part 15 CAP marker segment.")
                 }
                 if mixedBit && cap.mode != .mixed {
                     throw CodecError(.malformedInput, "COD/COC enables mixed HT/Part 1 coding (0xC0) when CAP Ccap15 is not HTMIXED.")
                 }
-            } else if let cap, cap.mode == .htOnly {
+            } else if let cap, cap.hasPart15, cap.mode == .htOnly {
                 throw CodecError(.malformedInput, "CAP Ccap15 signals HTONLY but COD/COC does not set the HT coding style bit (0x40).")
             }
         }
@@ -912,11 +1219,13 @@ enum CodestreamSyntax {
         guard pcap != 0 else {
             throw CodecError(.malformedInput, "CAP marker segment Pcap is zero.")
         }
-        guard pcap == 0x0002_0000 else {
-            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 15 (HTJ2K).")
+        let supportedMask = ExtendedCapabilitiesSegment.pcapPart2Bit | ExtendedCapabilitiesSegment.pcapPart15Bit
+        guard (pcap & ~supportedMask) == 0 else {
+            throw CodecError(.unsupportedFeature, "CAP marker signals extended capabilities outside Part 2 MCT and Part 15 (HTJ2K).")
         }
-        let ccap15 = try r.readUInt16()
-        return try ExtendedCapabilitiesSegment(ccap15: ccap15, pcap: pcap)
+        let ccap2: UInt16? = ((pcap & ExtendedCapabilitiesSegment.pcapPart2Bit) != 0) ? try r.readUInt16() : nil
+        let ccap15: UInt16 = ((pcap & ExtendedCapabilitiesSegment.pcapPart15Bit) != 0) ? try r.readUInt16() : 0
+        return try ExtendedCapabilitiesSegment(ccap15: ccap15, pcap: pcap, ccap2: ccap2)
     }
 
     static func parseCPF(
@@ -1285,9 +1594,14 @@ enum CodestreamSyntax {
     }
 
     static func writeCAP<Output: CodestreamByteSink & ~Copyable>(_ cap: ExtendedCapabilitiesSegment, into w: inout Output) throws {
-        var p = ByteWriter(capacity: 6)
+        var p = ByteWriter(capacity: 8)
         p.writeUInt32(cap.pcap)
-        p.writeUInt16(cap.ccap15)
+        if cap.hasPart2 {
+            p.writeUInt16(cap.ccap2 ?? 0)
+        }
+        if cap.hasPart15 {
+            p.writeUInt16(cap.ccap15)
+        }
         try w.writeSegment(marker: Marker.cap, payload: p.bytes)
     }
 
@@ -1330,6 +1644,68 @@ enum CodestreamSyntax {
             }
         }
         try w.writeSegment(marker: Marker.qcd, payload: p.bytes)
+    }
+
+    static func writeQCC<Output: CodestreamByteSink & ~Copyable>(
+        component: Int,
+        componentCount: Int,
+        qcc: QuantizationSegment,
+        into w: inout Output
+    ) throws {
+        var p = ByteWriter(capacity: 4 + 2 * qcc.exponents.count)
+        if componentCount < 257 {
+            p.writeUInt8(UInt8(component))
+        } else {
+            p.writeUInt16(UInt16(component))
+        }
+        p.writeUInt8(UInt8(qcc.guardBits) << 5 | qcc.style.rawValue)
+        switch qcc.style {
+        case .none:
+            for exponent in qcc.exponents { p.writeUInt8(UInt8(exponent) << 3) }
+        case .scalarDerived:
+            if let exp0 = qcc.exponents.first, let man0 = qcc.mantissas.first {
+                p.writeUInt16(UInt16(exp0) << 11 | UInt16(man0))
+            }
+        case .scalarExpounded:
+            for (exponent, mantissa) in zip(qcc.exponents, qcc.mantissas) {
+                p.writeUInt16(UInt16(exponent) << 11 | UInt16(mantissa))
+            }
+        }
+        try w.writeSegment(marker: Marker.qcc, payload: p.bytes)
+    }
+
+    static func writeCBD<Output: CodestreamByteSink & ~Copyable>(
+        _ cbd: ComponentBitDepthSegment,
+        into w: inout Output
+    ) throws {
+        try w.writeSegment(marker: Marker.cbd, payload: cbd.serialiseBody())
+    }
+
+    static func writeMCT<Output: CodestreamByteSink & ~Copyable>(
+        _ table: Part2MCTTable,
+        maxPayloadBytesPerSegment: Int = 65_520,
+        into w: inout Output
+    ) throws {
+        for fragment in try table.serialiseFragments(maxPayloadBytesPerSegment: maxPayloadBytesPerSegment) {
+            try w.writeSegment(marker: Marker.mct, payload: try fragment.serialiseBody())
+        }
+    }
+
+    static func writeMCC<Output: CodestreamByteSink & ~Copyable>(
+        _ stage: Part2MCCStage,
+        maxPayloadBytesPerSegment: Int = 65_520,
+        into w: inout Output
+    ) throws {
+        for fragment in try stage.serialiseFragments(maxPayloadBytesPerSegment: maxPayloadBytesPerSegment) {
+            try w.writeSegment(marker: Marker.mcc, payload: try fragment.serialiseBody())
+        }
+    }
+
+    static func writeMCO<Output: CodestreamByteSink & ~Copyable>(
+        _ mco: Part2MCOSegment,
+        into w: inout Output
+    ) throws {
+        try w.writeSegment(marker: Marker.mco, payload: mco.serialiseBody())
     }
 
     static func writeRGN<Output: CodestreamByteSink & ~Copyable>(_ rgn: RegionOfInterestSegment, componentCount: Int, into w: inout Output) throws {

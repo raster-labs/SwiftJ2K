@@ -9,6 +9,26 @@ public enum MetadataPolicy: Sendable { case preserve, discardAncillary }
 public enum Backend: Sendable { case scalarCPU, accelerated }
 public enum ExecutionPolicy: Sendable { case automatic, scalarCPU, preferred(Backend), required(Backend) }
 
+/// Concrete accelerated engine used by an operation when `backend == .accelerated`.
+public enum AcceleratedEngine: String, Sendable, Equatable, CaseIterable {
+    /// No accelerated engine was used (`backend == .scalarCPU` or header/coefficient-only operation).
+    case none
+    /// CPU vector SIMD / Accelerate path executed.
+    case cpuSIMD
+    /// Apple Metal GPU compute path executed.
+    case metalGPU
+}
+
+/// Caller preference between CPU vector SIMD and Metal GPU when `ExecutionPolicy` permits `.accelerated`.
+public enum AcceleratedEnginePreference: String, Sendable, Equatable, CaseIterable {
+    /// Select CPU SIMD or Metal GPU automatically according to workload size and availability.
+    case automatic
+    /// Prefer or require CPU vector SIMD acceleration.
+    case cpuSIMD
+    /// Prefer or require Metal GPU compute acceleration.
+    case metalGPU
+}
+
 /// Independent admission ceilings. No allocation may infer a larger budget from input.
 public struct ResourceLimits: Sendable, Equatable {
     public let maximumCompressedBytes: Int
@@ -86,13 +106,16 @@ public struct ProgressUpdate: Sendable, Equatable {
 public struct EncodeOptions: Sendable {
     public let resourceLimits: ResourceLimits
     public let executionPolicy: ExecutionPolicy
+    public let acceleratedEnginePreference: AcceleratedEnginePreference
     public let copyPolicy: CopyPolicy
     public let metadataPolicy: MetadataPolicy
     public let progress: (@Sendable (ProgressUpdate) -> Void)?
     public init(resourceLimits: ResourceLimits = .default, executionPolicy: ExecutionPolicy = .automatic,
+                acceleratedEnginePreference: AcceleratedEnginePreference = .automatic,
                 copyPolicy: CopyPolicy = .requireSharedStorage, metadataPolicy: MetadataPolicy = .preserve,
                 progress: (@Sendable (ProgressUpdate) -> Void)? = nil) {
         self.resourceLimits = resourceLimits; self.executionPolicy = executionPolicy
+        self.acceleratedEnginePreference = acceleratedEnginePreference
         self.copyPolicy = copyPolicy; self.metadataPolicy = metadataPolicy; self.progress = progress
     }
 }
@@ -100,13 +123,16 @@ public struct EncodeOptions: Sendable {
 public struct DecodeOptions: Sendable {
     public let resourceLimits: ResourceLimits
     public let executionPolicy: ExecutionPolicy
+    public let acceleratedEnginePreference: AcceleratedEnginePreference
     public let copyPolicy: CopyPolicy
     public let metadataPolicy: MetadataPolicy
     public let progress: (@Sendable (ProgressUpdate) -> Void)?
     public init(resourceLimits: ResourceLimits = .default, executionPolicy: ExecutionPolicy = .automatic,
+                acceleratedEnginePreference: AcceleratedEnginePreference = .automatic,
                 copyPolicy: CopyPolicy = .requireSharedStorage, metadataPolicy: MetadataPolicy = .preserve,
                 progress: (@Sendable (ProgressUpdate) -> Void)? = nil) {
         self.resourceLimits = resourceLimits; self.executionPolicy = executionPolicy
+        self.acceleratedEnginePreference = acceleratedEnginePreference
         self.copyPolicy = copyPolicy; self.metadataPolicy = metadataPolicy; self.progress = progress
     }
 }

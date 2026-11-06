@@ -89,6 +89,26 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
         var s3: UInt32
     }
 
+    private struct Part2RevDep3Params {
+        var count: UInt32
+        var shift1: Int32
+        var shift2: Int32
+        var pad: Int32
+        var a10: Int64
+        var a20: Int64
+        var a21: Int64
+        var o0: Int64
+        var o1: Int64
+        var o2: Int64
+    }
+
+    private struct SampleShiftClampParams {
+        var count: UInt32
+        var dcShift: Int32
+        var minVal: Int64
+        var maxVal: Int64
+    }
+
     private struct EngineState {
         var initialized: Bool = false
         var device: (any MTLDevice)?
@@ -237,6 +257,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             if cmdBuf.status != .completed {
                 throw CodecError(.internalFailure, "Metal forward 5/3 DWT command buffer failed.")
@@ -344,6 +365,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             if cmdBuf.status != .completed {
                 throw CodecError(.internalFailure, "Metal inverse 5/3 DWT command buffer failed.")
@@ -413,6 +435,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             planes[0].withUnsafeMutableBytes { _ = memcpy($0.baseAddress!, buf0.contents(), byteCount) }
             planes[1].withUnsafeMutableBytes { _ = memcpy($0.baseAddress!, buf1.contents(), byteCount) }
@@ -469,6 +492,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             planes[0].withUnsafeMutableBytes { _ = memcpy($0.baseAddress!, buf0.contents(), byteCount) }
             planes[1].withUnsafeMutableBytes { _ = memcpy($0.baseAddress!, buf1.contents(), byteCount) }
@@ -519,6 +543,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             coefficients.withUnsafeMutableBytes { _ = memcpy($0.baseAddress!, coeffBuf.contents(), byteCount) }
         }
@@ -593,6 +618,7 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
             state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
 
             if flagBuf.contents().load(as: UInt32.self) != 0 {
                 throw CodecError(.invalidArgument, "HTJ2K coefficient magnitude exceeds 30-bit reversible range.")
@@ -616,6 +642,247 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
                     s3: g.s3
                 ))
             }
+            return result
+        }
+        #else
+        throw CodecError(.backendUnavailable, "Metal is not available on this platform.")
+        #endif
+    }
+
+    // MARK: - 5. Part 2 Reversible Dependency MCT & Bit-Exact Sample Shift/Clamp
+
+    internal func forwardPart2ReversibleDep3(
+        r: [Int32],
+        g: [Int32],
+        b: [Int32],
+        anchorOffset: Int32
+    ) throws -> [[Int32]] {
+        let count = min(r.count, min(g.count, b.count))
+        guard count > 0 else { return [[], [], []] }
+        #if canImport(Metal)
+        return try stateMutex.withLock { state in
+            guard ensureInitialized(&state),
+                  let commandQueue = state.commandQueue,
+                  let pipelineState = try pipeline(named: "j2k_part2_rev_dep3_forward", state: &state)
+            else {
+                throw CodecError(.backendUnavailable, "Metal Part 2 forward reversible MCT pipeline is unavailable.")
+            }
+            let byteCount = max(4, count * MemoryLayout<Int32>.stride)
+            let b0 = try acquireBuffer(minBytes: byteCount, state: &state)
+            let b1 = try acquireBuffer(minBytes: byteCount, state: &state)
+            let b2 = try acquireBuffer(minBytes: byteCount, state: &state)
+            defer {
+                releaseBuffer(b0, state: &state)
+                releaseBuffer(b1, state: &state)
+                releaseBuffer(b2, state: &state)
+            }
+            r.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b0.contents(), base, count * 4) } }
+            g.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b1.contents(), base, count * 4) } }
+            b.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b2.contents(), base, count * 4) } }
+
+            guard let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let encoder = cmdBuf.makeComputeCommandEncoder()
+            else {
+                throw CodecError(.internalFailure, "Failed to create Metal command buffer for Part 2 forward MCT.")
+            }
+            var params = Part2RevDep3Params(
+                count: UInt32(count), shift1: 0, shift2: 0, pad: 0,
+                a10: 0, a20: 0, a21: 0, o0: Int64(anchorOffset), o1: 0, o2: 0
+            )
+            encoder.setComputePipelineState(pipelineState)
+            encoder.setBuffer(b0, offset: 0, index: 0)
+            encoder.setBuffer(b1, offset: 0, index: 1)
+            encoder.setBuffer(b2, offset: 0, index: 2)
+            encoder.setBytes(&params, length: MemoryLayout<Part2RevDep3Params>.stride, index: 3)
+            dispatch1D(encoder: encoder, pipeline: pipelineState, width: count)
+            encoder.endEncoding()
+
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            if cmdBuf.status != .completed {
+                throw CodecError(.internalFailure, "Metal Part 2 forward MCT command buffer failed.")
+            }
+            state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
+
+            var w0 = Array(repeating: Int32(0), count: count)
+            var w1 = Array(repeating: Int32(0), count: count)
+            var w2 = Array(repeating: Int32(0), count: count)
+            w0.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b0.contents(), count * 4) } }
+            w1.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b1.contents(), count * 4) } }
+            w2.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b2.contents(), count * 4) } }
+            return [w0, w1, w2]
+        }
+        #else
+        throw CodecError(.backendUnavailable, "Metal is not available on this platform.")
+        #endif
+    }
+
+    internal func inversePart2ReversibleDep3(
+        c0: [Int64],
+        c1: [Int64],
+        c2: [Int64],
+        a10: Int64,
+        shift1: Int,
+        a20: Int64,
+        a21: Int64,
+        shift2: Int,
+        offsets: [Int64]
+    ) throws -> [[Int64]] {
+        let count = min(c0.count, min(c1.count, c2.count))
+        guard count > 0 else { return [[], [], []] }
+        #if canImport(Metal)
+        return try stateMutex.withLock { state in
+            guard ensureInitialized(&state),
+                  let commandQueue = state.commandQueue,
+                  let pipelineState = try pipeline(named: "j2k_part2_rev_dep3_inverse", state: &state)
+            else {
+                throw CodecError(.backendUnavailable, "Metal Part 2 inverse reversible MCT pipeline is unavailable.")
+            }
+            let byteCount = max(8, count * MemoryLayout<Int64>.stride)
+            let b0 = try acquireBuffer(minBytes: byteCount, state: &state)
+            let b1 = try acquireBuffer(minBytes: byteCount, state: &state)
+            let b2 = try acquireBuffer(minBytes: byteCount, state: &state)
+            defer {
+                releaseBuffer(b0, state: &state)
+                releaseBuffer(b1, state: &state)
+                releaseBuffer(b2, state: &state)
+            }
+            c0.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b0.contents(), base, count * 8) } }
+            c1.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b1.contents(), base, count * 8) } }
+            c2.withUnsafeBytes { if let base = $0.baseAddress { memcpy(b2.contents(), base, count * 8) } }
+
+            guard let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let encoder = cmdBuf.makeComputeCommandEncoder()
+            else {
+                throw CodecError(.internalFailure, "Failed to create Metal command buffer for Part 2 inverse MCT.")
+            }
+            var params = Part2RevDep3Params(
+                count: UInt32(count),
+                shift1: Int32(shift1),
+                shift2: Int32(shift2),
+                pad: 0,
+                a10: a10,
+                a20: a20,
+                a21: a21,
+                o0: offsets[0],
+                o1: offsets[1],
+                o2: offsets[2]
+            )
+            encoder.setComputePipelineState(pipelineState)
+            encoder.setBuffer(b0, offset: 0, index: 0)
+            encoder.setBuffer(b1, offset: 0, index: 1)
+            encoder.setBuffer(b2, offset: 0, index: 2)
+            encoder.setBytes(&params, length: MemoryLayout<Part2RevDep3Params>.stride, index: 3)
+            dispatch1D(encoder: encoder, pipeline: pipelineState, width: count)
+            encoder.endEncoding()
+
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            if cmdBuf.status != .completed {
+                throw CodecError(.internalFailure, "Metal Part 2 inverse MCT command buffer failed.")
+            }
+            state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
+
+            var out0 = Array(repeating: Int64(0), count: count)
+            var out1 = Array(repeating: Int64(0), count: count)
+            var out2 = Array(repeating: Int64(0), count: count)
+            out0.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b0.contents(), count * 8) } }
+            out1.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b1.contents(), count * 8) } }
+            out2.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, b2.contents(), count * 8) } }
+            return [out0, out1, out2]
+        }
+        #else
+        throw CodecError(.backendUnavailable, "Metal is not available on this platform.")
+        #endif
+    }
+
+    internal func levelShiftSamples32(samples: inout [Int32], dcShift: Int32) throws {
+        guard !samples.isEmpty else { return }
+        #if canImport(Metal)
+        try stateMutex.withLock { state in
+            guard ensureInitialized(&state),
+                  let commandQueue = state.commandQueue,
+                  let pipelineState = try pipeline(named: "j2k_level_shift_i32", state: &state)
+            else {
+                throw CodecError(.backendUnavailable, "Metal sample level-shift pipeline is unavailable.")
+            }
+            let count = samples.count
+            let byteCount = max(4, count * MemoryLayout<Int32>.stride)
+            let buf = try acquireBuffer(minBytes: byteCount, state: &state)
+            defer { releaseBuffer(buf, state: &state) }
+            samples.withUnsafeBytes { if let base = $0.baseAddress { memcpy(buf.contents(), base, count * 4) } }
+
+            guard let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let encoder = cmdBuf.makeComputeCommandEncoder()
+            else {
+                throw CodecError(.internalFailure, "Failed to create Metal command buffer for sample level-shift.")
+            }
+            var params = SampleShiftClampParams(count: UInt32(count), dcShift: dcShift, minVal: 0, maxVal: 0)
+            encoder.setComputePipelineState(pipelineState)
+            encoder.setBuffer(buf, offset: 0, index: 0)
+            encoder.setBytes(&params, length: MemoryLayout<SampleShiftClampParams>.stride, index: 1)
+            dispatch1D(encoder: encoder, pipeline: pipelineState, width: count)
+            encoder.endEncoding()
+
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            if cmdBuf.status != .completed {
+                throw CodecError(.internalFailure, "Metal sample level-shift command buffer failed.")
+            }
+            state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
+
+            samples.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, buf.contents(), count * 4) } }
+        }
+        #else
+        throw CodecError(.backendUnavailable, "Metal is not available on this platform.")
+        #endif
+    }
+
+    internal func clampSamples64To32(samples: [Int64], minVal: Int64, maxVal: Int64) throws -> [Int32] {
+        guard !samples.isEmpty else { return [] }
+        #if canImport(Metal)
+        return try stateMutex.withLock { state in
+            guard ensureInitialized(&state),
+                  let commandQueue = state.commandQueue,
+                  let pipelineState = try pipeline(named: "j2k_clamp_i64_to_i32", state: &state)
+            else {
+                throw CodecError(.backendUnavailable, "Metal sample clamp pipeline is unavailable.")
+            }
+            let count = samples.count
+            let inBuf = try acquireBuffer(minBytes: max(8, count * MemoryLayout<Int64>.stride), state: &state)
+            let outBuf = try acquireBuffer(minBytes: max(4, count * MemoryLayout<Int32>.stride), state: &state)
+            defer {
+                releaseBuffer(inBuf, state: &state)
+                releaseBuffer(outBuf, state: &state)
+            }
+            samples.withUnsafeBytes { if let base = $0.baseAddress { memcpy(inBuf.contents(), base, count * 8) } }
+
+            guard let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let encoder = cmdBuf.makeComputeCommandEncoder()
+            else {
+                throw CodecError(.internalFailure, "Failed to create Metal command buffer for sample clamp.")
+            }
+            var params = SampleShiftClampParams(count: UInt32(count), dcShift: 0, minVal: minVal, maxVal: maxVal)
+            encoder.setComputePipelineState(pipelineState)
+            encoder.setBuffer(inBuf, offset: 0, index: 0)
+            encoder.setBuffer(outBuf, offset: 0, index: 1)
+            encoder.setBytes(&params, length: MemoryLayout<SampleShiftClampParams>.stride, index: 2)
+            dispatch1D(encoder: encoder, pipeline: pipelineState, width: count)
+            encoder.endEncoding()
+
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            if cmdBuf.status != .completed {
+                throw CodecError(.internalFailure, "Metal sample clamp command buffer failed.")
+            }
+            state.dispatchCount += 1
+            AcceleratedCodec.recordMetalDispatch()
+
+            var result = Array(repeating: Int32(0), count: count)
+            result.withUnsafeMutableBytes { if let base = $0.baseAddress { memcpy(base, outBuf.contents(), count * 4) } }
             return result
         }
         #else
@@ -867,6 +1134,26 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
         uint s1;
         uint s2;
         uint s3;
+    };
+
+    struct Part2RevDep3Params {
+        uint count;
+        int shift1;
+        int shift2;
+        int pad;
+        long a10;
+        long a20;
+        long a21;
+        long o0;
+        long o1;
+        long o2;
+    };
+
+    struct SampleShiftClampParams {
+        uint count;
+        int dcShift;
+        long minVal;
+        long maxVal;
     };
 
     // ISO/IEC 15444-1 Annex F Table F.2 periodic symmetric extension (matches Wavelet53.extended)
@@ -1146,6 +1433,62 @@ internal final class MetalAccelerationEngine: @unchecked Sendable {
         outQuad.s2 = sArr[2];
         outQuad.s3 = sArr[3];
         quads[gid] = outQuad;
+    }
+
+    kernel void j2k_part2_rev_dep3_forward(
+        device int* p0 [[buffer(0)]],
+        device int* p1 [[buffer(1)]],
+        device int* p2 [[buffer(2)]],
+        constant Part2RevDep3Params& p [[buffer(3)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid >= p.count) { return; }
+        int r = p0[gid];
+        int g = p1[gid];
+        int b = p2[gid];
+        p0[gid] = g - int(p.o0);
+        p1[gid] = r - g;
+        p2[gid] = b - g;
+    }
+
+    kernel void j2k_part2_rev_dep3_inverse(
+        device long* p0 [[buffer(0)]],
+        device long* p1 [[buffer(1)]],
+        device long* p2 [[buffer(2)]],
+        constant Part2RevDep3Params& p [[buffer(3)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid >= p.count) { return; }
+        long half1 = (p.shift1 > 0) ? (1L << long(p.shift1 - 1)) : 0L;
+        long half2 = (p.shift2 > 0) ? (1L << long(p.shift2 - 1)) : 0L;
+        long y0 = p0[gid] + p.o0;
+        long y1 = p1[gid] + ((p.a10 * y0 + half1) >> long(p.shift1)) + p.o1;
+        long y2 = p2[gid] + ((p.a20 * y0 + p.a21 * y1 + half2) >> long(p.shift2)) + p.o2;
+        p0[gid] = y0;
+        p1[gid] = y1;
+        p2[gid] = y2;
+    }
+
+    kernel void j2k_level_shift_i32(
+        device int* samples [[buffer(0)]],
+        constant SampleShiftClampParams& p [[buffer(1)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid >= p.count) { return; }
+        samples[gid] = samples[gid] - p.dcShift;
+    }
+
+    kernel void j2k_clamp_i64_to_i32(
+        device const long* src [[buffer(0)]],
+        device int* dst [[buffer(1)]],
+        constant SampleShiftClampParams& p [[buffer(2)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid >= p.count) { return; }
+        long v = src[gid];
+        if (v < p.minVal) { v = p.minVal; }
+        if (v > p.maxVal) { v = p.maxVal; }
+        dst[gid] = int(v);
     }
     """#
     #endif

@@ -289,27 +289,54 @@ enum JP2Container {
                 "Container 'ihdr' dimensions (\(ihdr.width)x\(ihdr.height)) do not match codestream SIZ (\(sizWidth)x\(sizHeight))."
             )
         }
-        guard Int(ihdr.numComponents) == siz.components.count else {
-            throw CodecError(
-                .malformedInput,
-                "Container 'ihdr' component count (\(ihdr.numComponents)) does not match codestream SIZ (\(siz.components.count))."
-            )
-        }
-
-        for (index, comp) in siz.components.enumerated() {
-            let expected: JP2ComponentBitDepth
-            if let bpcc = container.header.bitsPerComponent {
-                expected = bpcc.components[index]
-            } else if let uniform = ihdr.uniformBitDepth {
-                expected = uniform
-            } else {
-                throw CodecError(.malformedInput, "Container 'ihdr' specifies BPC=0xFF without 'bpcc' box.")
-            }
-            guard expected.bitDepth == comp.precision && expected.isSigned == comp.signed else {
+        let hasActivePart2MCT = (syntax.mco?.stageIndices.isEmpty == false)
+            || syntax.tileOverrides.values.contains { $0.mco?.stageIndices.isEmpty == false }
+        if hasActivePart2MCT, let cbd = syntax.componentBitDepth {
+            guard Int(ihdr.numComponents) == cbd.components.count else {
                 throw CodecError(
                     .malformedInput,
-                    "Container bit-depth/sign (\(expected.bitDepth)-bit, signed=\(expected.isSigned)) for component \(index) disagrees with codestream SIZ (\(comp.precision)-bit, signed=\(comp.signed))."
+                    "Container 'ihdr' component count (\(ihdr.numComponents)) does not match codestream CBD (\(cbd.components.count))."
                 )
+            }
+            for (index, comp) in cbd.components.enumerated() {
+                let expected: JP2ComponentBitDepth
+                if let bpcc = container.header.bitsPerComponent {
+                    expected = bpcc.components[index]
+                } else if let uniform = ihdr.uniformBitDepth {
+                    expected = uniform
+                } else {
+                    throw CodecError(.malformedInput, "Container 'ihdr' specifies BPC=0xFF without 'bpcc' box.")
+                }
+                guard expected.bitDepth == comp.precision && expected.isSigned == comp.signed else {
+                    throw CodecError(
+                        .malformedInput,
+                        "Container bit-depth/sign (\(expected.bitDepth)-bit, signed=\(expected.isSigned)) for component \(index) disagrees with codestream CBD (\(comp.precision)-bit, signed=\(comp.signed))."
+                    )
+                }
+            }
+        } else {
+            guard Int(ihdr.numComponents) == siz.components.count else {
+                throw CodecError(
+                    .malformedInput,
+                    "Container 'ihdr' component count (\(ihdr.numComponents)) does not match codestream SIZ (\(siz.components.count))."
+                )
+            }
+
+            for (index, comp) in siz.components.enumerated() {
+                let expected: JP2ComponentBitDepth
+                if let bpcc = container.header.bitsPerComponent {
+                    expected = bpcc.components[index]
+                } else if let uniform = ihdr.uniformBitDepth {
+                    expected = uniform
+                } else {
+                    throw CodecError(.malformedInput, "Container 'ihdr' specifies BPC=0xFF without 'bpcc' box.")
+                }
+                guard expected.bitDepth == comp.precision && expected.isSigned == comp.signed else {
+                    throw CodecError(
+                        .malformedInput,
+                        "Container bit-depth/sign (\(expected.bitDepth)-bit, signed=\(expected.isSigned)) for component \(index) disagrees with codestream SIZ (\(comp.precision)-bit, signed=\(comp.signed))."
+                    )
+                }
             }
         }
 
@@ -581,7 +608,7 @@ enum JP2Container {
             let profile = reconciled.part1Profile
             coreWorkspace = try checkedAdd(
                 try Part1Pipeline.workspaceBytes(
-                    planePixels: profile.largestTilePixels, componentCount: profile.componentCount,
+                    planePixels: profile.largestTilePixels, componentCount: profile.workspaceComponentCount,
                     bytesPerCoeff: profile.isReversibleLossless ? 4 : 8, joinedBytes: profile.largestTileBytes
                 ), profile.retainedMetadataBytes
             )
@@ -598,7 +625,10 @@ enum JP2Container {
     ) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
-        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
+        let resolvedBackend = try AccelerationRuntime.resolve(
+            options.executionPolicy,
+            enginePreference: options.acceleratedEnginePreference
+        )
         let destDesc = destination.descriptor
         let expectedDesc = reconciled.outputDescriptor
         guard destDesc.width == expectedDesc.width,
@@ -618,33 +648,33 @@ enum JP2Container {
 
         let codecLimits = try containerCodecLimits(reconciled: reconciled, limits: options.resourceLimits)
         let sealedImage: Image
-        let peakWorkspace: Int
 
-        let rawImage: Image
-        if let losslessProfile = scalarDecodeProfile(
-            reconciled: reconciled, descriptor: destDesc, codecLimits: codecLimits,
-            metadataPolicy: options.metadataPolicy, maxQualityLayers: maxQualityLayers
-        ) {
-            (rawImage, peakWorkspace) = try ScalarLosslessCodec.decode(
-                bytes: reconciled.codestreamBytes,
-                profile: losslessProfile,
-                into: destination,
-                limits: codecLimits,
-                backend: resolvedBackend.backend,
-                progress: options.progress
-            )
-        } else {
-            (rawImage, peakWorkspace) = try Part1Pipeline.decode(
-                bytes: reconciled.codestreamBytes,
-                profile: reconciled.part1Profile,
-                into: destination,
-                limits: codecLimits,
-                backend: resolvedBackend.backend,
-                progress: options.progress,
-                paletteMapping: reconciled.paletteMapping,
-                channelPermutation: reconciled.channelPermutation,
-                maxQualityLayers: maxQualityLayers
-            )
+        let ((rawImage, peakWorkspace), execEngine) = try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) { () throws -> (Image, Int) in
+            if let losslessProfile = scalarDecodeProfile(
+                reconciled: reconciled, descriptor: destDesc, codecLimits: codecLimits,
+                metadataPolicy: options.metadataPolicy, maxQualityLayers: maxQualityLayers
+            ) {
+                return try ScalarLosslessCodec.decode(
+                    bytes: reconciled.codestreamBytes,
+                    profile: losslessProfile,
+                    into: destination,
+                    limits: codecLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress
+                )
+            } else {
+                return try Part1Pipeline.decode(
+                    bytes: reconciled.codestreamBytes,
+                    profile: reconciled.part1Profile,
+                    into: destination,
+                    limits: codecLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress,
+                    paletteMapping: reconciled.paletteMapping,
+                    channelPermutation: reconciled.channelPermutation,
+                    maxQualityLayers: maxQualityLayers
+                )
+            }
         }
         // Attach container metadata to the sealed Image view (same underlying storage & allocationID).
         sealedImage = try Image(
@@ -674,7 +704,8 @@ enum JP2Container {
             elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
             discardedMetadataCount: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataCount : nil,
             discardedMetadataBytes: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataBytes : nil,
-            discardedMetadataKinds: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataKinds : []
+            discardedMetadataKinds: (options.metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataKinds : [],
+            acceleratedEngine: execEngine
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
         try Task.checkCancellation()
@@ -795,11 +826,18 @@ enum JP2Container {
         containerFormat: CodecOptions.ContainerFormat,
         isLossless: Bool,
         isHTJ2K: Bool,
+        isPart2MCT: Bool = false,
         captureResolution: JP2GridResolution?,
         displayResolution: JP2GridResolution?,
         metadataPolicy: MetadataPolicy,
         limits: ResourceLimits
     ) throws -> WrappedContainerResult {
+        if isPart2MCT && containerFormat == .jp2 {
+            throw CodecError(
+                .invalidArgument,
+                "JP2 container ('jp2 ') requires Part 1 coding; use .jpx or .jph for Part 2 multi-component transforms."
+            )
+        }
         // Validate ICC and metadata limits before constructing boxes.
         let iccBytes = descriptor.iccProfile?.count ?? 0
         guard iccBytes <= limits.maximumICCBytes else {
@@ -875,7 +913,7 @@ enum JP2Container {
             formatName = jphFormat
         case .jpx:
             var cl = [JP2FileTypeBox.brandJPX]
-            if !isHTJ2K && jp2Colour { cl.append(JP2FileTypeBox.brandJP2) }
+            if !isHTJ2K && !isPart2MCT && jp2Colour { cl.append(JP2FileTypeBox.brandJP2) }
             if permitsBaselineJPXColour(colrBoxes) { cl.append(JP2FileTypeBox.brandJPXB) }
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPX,
@@ -920,7 +958,8 @@ enum JP2Container {
                 return feature
             }
             let rreqPayload = try JP2ReaderRequirementsBox.defaultJPX(
-                isLossless: isLossless, isHTJ2K: isHTJ2K, colour: descriptor.colour,
+                isLossless: isLossless, isHTJ2K: isHTJ2K, isPart2MCT: isPart2MCT,
+                colour: descriptor.colour,
                 hasAlpha: descriptor.alpha != .absent,
                 isPremultipliedAlpha: descriptor.alpha == .premultiplied,
                 hasRestrictedICC: descriptor.iccProfile != nil,
@@ -1053,7 +1092,9 @@ enum JP2Container {
         limits: ResourceLimits
     ) throws -> [UInt8] {
         let sourceFormat = reconciled.container.format
-        let outputFormat: CodecOptions.ContainerFormat = sourceFormat == jpxFormat ? .jpx : (targetIsHT ? .jph : .jp2)
+        let isPart2MCT = reconciled.part1Profile.isPart2MCT
+        let outputFormat: CodecOptions.ContainerFormat = (sourceFormat == jpxFormat || (!targetIsHT && isPart2MCT))
+            ? .jpx : (targetIsHT ? .jph : .jp2)
         let sourceHeader = reconciled.container.header
         let outputColour = try colourBoxesForOutput(sourceHeader.colourSpecifications, format: outputFormat)
         let outputHeader = try JP2HeaderSuperbox(
@@ -1066,9 +1107,9 @@ enum JP2Container {
         try writer.appendBox(type: .signature, payload: JP2SignatureBox.expectedPayload)
 
         let ftyp: JP2FileTypeBox
-        if sourceFormat == jpxFormat {
+        if outputFormat == .jpx {
             var cl = [JP2FileTypeBox.brandJPX]
-            if !targetIsHT && permitsJP2Colour(outputColour) { cl.append(JP2FileTypeBox.brandJP2) }
+            if !targetIsHT && !isPart2MCT && permitsJP2Colour(outputColour) { cl.append(JP2FileTypeBox.brandJP2) }
             if permitsBaselineJPXColour(outputColour) { cl.append(JP2FileTypeBox.brandJPXB) }
             ftyp = try JP2FileTypeBox(
                 brand: JP2FileTypeBox.brandJPX,
@@ -1090,11 +1131,12 @@ enum JP2Container {
         }
         try writer.appendBox(type: .fileType, payload: ftyp.serialise())
 
-        if sourceFormat == jpxFormat {
+        if outputFormat == .jpx {
             let desc = reconciled.outputDescriptor
             let rreq = try JP2ReaderRequirementsBox.defaultJPX(
                 isLossless: reconciled.part1Profile.isReversibleLossless,
                 isHTJ2K: targetIsHT,
+                isPart2MCT: isPart2MCT,
                 colour: desc.colour,
                 hasAlpha: desc.alpha != .absent,
                 isPremultipliedAlpha: desc.alpha == .premultiplied,

@@ -56,9 +56,9 @@ jobs:
 
   macos:
     # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`).
-    # Executes the 160 selected non-held core/2D-CLI declarations in SwiftJ2KTests
+    # Executes the 166 selected non-held core/2D-CLI declarations in SwiftJ2KTests
     # across ordinary, AddressSanitizer, and ThreadSanitizer builds, verifying
-    # strict compiled-inventory parity (1,373 total = 160 selected + 1,213 held)
+    # strict compiled-inventory parity (1,379 total = 166 selected + 1,213 held)
     # and exact executed declaration/parameter-case reconciliation in each mode.
     name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
@@ -236,8 +236,8 @@ jobs:
 
   ios-simulator:
     # Actual iOS Simulator build and test execution for selected non-held core
-    # declarations in `SwiftJ2KTests` (153 declarations = 160 selected macOS core
-    # minus 7 macOS-only `Foundation.Process` CLI declarations; excludes the 3 held
+    # declarations in `SwiftJ2KTests` (158 declarations = 166 selected macOS core
+    # minus 8 macOS-only `Foundation.Process` CLI declarations; excludes the 3 held
     # `CodexR3JPPReassemblyResourceTests` declarations and does not execute held
     # `SwiftJ2K3DTests` or `SwiftJ2KJPIPTests` runtime bundles).
     name: iOS Simulator 26 / Xcode 26.6 (Swift 6.3.3)
@@ -564,9 +564,9 @@ jobs:
                   "missing_selected_ids": verified_missing,
                   "extra_ids": verified_extra,
               },
-              "verified_exact_153_selected": (
+              "verified_exact_158_selected": (
                   verified_duplicates == 0
-                  and len(verified_set) == 153
+                  and len(verified_set) == 158
                   and verified_set == selected_ios_expected
                   and not verified_held
                   and not verified_inapplicable
@@ -574,8 +574,8 @@ jobs:
           }
           (ROOT / "ios-selection-preflight.json").write_text(json.dumps(preflight, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(preflight, indent=2), flush=True)
-          if not preflight["verified_exact_153_selected"]:
-              raise RuntimeError("iOS pre-runtime enumeration failed exact 153 selected core declaration check")
+          if not preflight["verified_exact_158_selected"]:
+              raise RuntimeError("iOS pre-runtime enumeration failed exact 158 selected core declaration check")
           PY_IOS_PREFLIGHT
           rm -rf .swiftpm
       - name: Execute selected non-held core iOS Simulator tests
@@ -672,8 +672,8 @@ jobs:
               problems.append("Missing ios-selection-preflight.json")
           else:
               preflight_data = json.loads(PREFLIGHT_JSON.read_text(encoding="utf-8"))
-              if not preflight_data.get("verified_exact_153_selected"):
-                  problems.append("ios-selection-preflight.json did not verify exact 153 selected core declarations")
+              if not preflight_data.get("verified_exact_158_selected"):
+                  problems.append("ios-selection-preflight.json did not verify exact 158 selected core declarations")
 
           if not XCRES.exists() or not LOG.exists():
               problems.append("Missing ios-tests.xcresult or xcodebuild-test.log")

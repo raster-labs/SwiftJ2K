@@ -73,14 +73,14 @@ public struct Transcoder: Sendable {
             source: .jpeg2000,
             target: .htj2k,
             preservation: .exactSamples,
-            profileLimits: [CodecCapabilities.sharedGreyscaleLayout],
+            profileLimits: CodecCapabilities.supportedLayouts,
             processingPaths: [.coefficients]
         ),
         TranscodeCapability(
             source: .htj2k,
             target: .jpeg2000,
             preservation: .exactSamples,
-            profileLimits: [CodecCapabilities.sharedGreyscaleLayout],
+            profileLimits: CodecCapabilities.supportedLayouts,
             processingPaths: [.coefficients]
         )
     ]
@@ -102,7 +102,10 @@ public struct Transcoder: Sendable {
               data.count <= options.resourceLimits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Compressed input exceeds the admission budget.")
         }
-        let resolvedBackend = try AccelerationRuntime.resolve(options.executionPolicy)
+        let resolvedBackend = try AccelerationRuntime.resolve(
+            options.executionPolicy,
+            enginePreference: options.acceleratedEnginePreference
+        )
         let inputCopyBytes = try checkedAdd(32, data.count)
         let inputResidentBytes = try checkedAdd(data.count, inputCopyBytes)
         guard data.count <= options.resourceLimits.maximumCompressedBytes,
@@ -130,27 +133,70 @@ public struct Transcoder: Sendable {
             codestreamInput = bytes
         }
 
-        let profile = try ScalarLosslessCodec.inspect(
-            codestreamInput,
-            limits: options.resourceLimits,
-            metadataPolicy: options.metadataPolicy
-        )
-        let (transcodedData, workspace) = try ScalarLosslessCodec.transcode(
-            bytes: codestreamInput,
-            profile: profile,
-            to: target,
-            codecOptions: configuration.codecOptions,
-            metadataPolicy: options.metadataPolicy,
-            limits: options.resourceLimits,
-            backend: resolvedBackend.backend,
-            progress: options.progress
-        )
+        var scalarProfile: LosslessProfile?
+        if configuration.codecOptions.usesDefaultLosslessProfile {
+            do {
+                scalarProfile = try ScalarLosslessCodec.inspect(
+                    codestreamInput,
+                    limits: options.resourceLimits,
+                    metadataPolicy: options.metadataPolicy
+                )
+            } catch let error as CodecError where error.category == .unsupportedFeature {
+                scalarProfile = nil
+            }
+        }
+
+        let part1Profile: Part1Profile?
+        let commentCount: Int
+        let commentPayloadBytes: Int
+        if let profile = scalarProfile {
+            part1Profile = nil
+            commentCount = profile.commentCount
+            commentPayloadBytes = profile.commentPayloadBytes
+        } else {
+            let p1 = try Part1Pipeline.inspect(
+                codestreamInput,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            part1Profile = p1
+            commentCount = p1.commentCount
+            commentPayloadBytes = p1.commentPayloadBytes
+        }
+
+        let ((transcodedData, workspace), execEngine) = try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) { () throws -> (Data, Int) in
+            if let profile = scalarProfile {
+                return try ScalarLosslessCodec.transcode(
+                    bytes: codestreamInput,
+                    profile: profile,
+                    to: target,
+                    codecOptions: configuration.codecOptions,
+                    metadataPolicy: options.metadataPolicy,
+                    limits: options.resourceLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress
+                )
+            } else if let p1 = part1Profile {
+                return try Part1Pipeline.transcodeLosslessCoefficients(
+                    bytes: codestreamInput,
+                    profile: p1,
+                    to: target,
+                    codecOptions: configuration.codecOptions,
+                    metadataPolicy: options.metadataPolicy,
+                    limits: options.resourceLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress
+                )
+            } else {
+                throw CodecError(.internalFailure, "Missing inspected transcoding profile.")
+            }
+        }
         bytes = []
 
         var publishedData = transcodedData
         var outputFormat = (target == .htj2k) ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format
-        var discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
-        var discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
+        var discardedCount = (options.metadataPolicy == .discardAncillary) ? commentCount : 0
+        var discardedBytes = (options.metadataPolicy == .discardAncillary) ? commentPayloadBytes : 0
         var discardedKinds = (discardedCount > 0) ? ["COM"] : []
         if let rec = reconciledContainer, options.metadataPolicy == .discardAncillary {
             discardedCount = rec.discardedMetadataCount
@@ -165,13 +211,17 @@ public struct Transcoder: Sendable {
             let desc: ImageDescriptor
             if let rec = reconciledContainer {
                 desc = rec.outputDescriptor
-            } else {
+            } else if let p1 = part1Profile {
+                desc = try p1.defaultDescriptor(limits: options.resourceLimits)
+            } else if let profile = scalarProfile {
                 desc = try ImageDescriptor.greyscale16(
                     width: profile.width,
                     height: profile.height,
                     meaningfulBits: profile.precision,
                     limits: options.resourceLimits
                 )
+            } else {
+                throw CodecError(.internalFailure, "Missing descriptor for container wrapping.")
             }
             let wrapped = try JP2Container.wrap(
                 codestream: [UInt8](transcodedData),
@@ -180,6 +230,7 @@ public struct Transcoder: Sendable {
                 containerFormat: configuration.codecOptions.containerFormat,
                 isLossless: true,
                 isHTJ2K: target == .htj2k,
+                isPart2MCT: part1Profile?.isPart2MCT ?? false,
                 captureResolution: configuration.codecOptions.captureResolution,
                 displayResolution: configuration.codecOptions.displayResolution,
                 metadataPolicy: options.metadataPolicy,
@@ -202,7 +253,8 @@ public struct Transcoder: Sendable {
             elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
             discardedMetadataCount: discardedCount,
             discardedMetadataBytes: discardedBytes,
-            discardedMetadataKinds: discardedKinds
+            discardedMetadataKinds: discardedKinds,
+            acceleratedEngine: execEngine
         )
         options.progress?(try ProgressUpdate(phase: .completed, completedUnits: 1, totalUnits: 1))
         try Task.checkCancellation()

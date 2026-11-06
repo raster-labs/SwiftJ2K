@@ -34,6 +34,7 @@ struct Part1TileProfile: Sendable {
     let x0: Int, x1: Int, y0: Int, y1: Int
     let defaultCodingStyle: CodingStyleSegment
     let progressionChanges: [ProgressionOrderChangeEntry]
+    let part2MCTPlan: Part2MCTPlan?
     let components: [Part1ComponentTileProfile]
     let dataRanges: [Range<Int>]
     let comments: [[UInt8]]
@@ -48,6 +49,7 @@ struct Part1Profile: Sendable {
     let tileWidth: Int, tileHeight: Int
     let tileOriginX: Int, tileOriginY: Int
     let componentCount: Int
+    let wireComponents: [ComponentSignalling]
     let precision: Int
     let signed: Bool
     let isHTJ2K: Bool
@@ -58,6 +60,8 @@ struct Part1Profile: Sendable {
     let retainedMetadataBytes: Int
 
     var format: String { isHTJ2K ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format }
+    var isPart2MCT: Bool { tiles.contains { $0.part2MCTPlan != nil } }
+    var workspaceComponentCount: Int { max(wireComponents.count, componentCount) }
     var codeBlockCount: Int {
         tiles.reduce(0) { acc, tile in
             acc + tile.components.reduce(0) { $0 + $1.geometry.codeBlockCount }
@@ -104,34 +108,46 @@ enum Part1Pipeline {
     ) throws -> Part1Profile {
         let parsed = try CodestreamSyntax.parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
         let size = parsed.size
-        guard size.capabilities & 0x8000 == 0 else {
-            throw CodecError(.unsupportedFeature, "Rsiz signals Part 2 extensions (0x8000), which are not supported.")
+        let hasPart2MCTMarkers = parsed.componentBitDepth != nil
+            || !parsed.mctTables.isEmpty
+            || !parsed.mccStages.isEmpty
+            || parsed.mco != nil
+            || parsed.tileOverrides.values.contains {
+                !$0.mctFragments.isEmpty || !$0.mccFragments.isEmpty || $0.mco != nil
+            }
+        if (size.capabilities & 0x8000) != 0 {
+            let allowedPart2Mask: UInt16 = hasPart2MCTMarkers ? 0xC102 : 0xC100
+            guard (size.capabilities & ~allowedPart2Mask) == 0 else {
+                throw CodecError(
+                    .unsupportedFeature,
+                    String(format: "Part 2 SIZ Rsiz capability 0x%04X is not supported.", size.capabilities)
+                )
+            }
+            if !hasPart2MCTMarkers && (parsed.extendedCapabilities?.hasPart2 != true) {
+                throw CodecError(
+                    .unsupportedFeature,
+                    String(format: "Part 2 SIZ Rsiz capability 0x%04X has no supported Part 2 extension.", size.capabilities)
+                )
+            }
         }
         if let cap = parsed.extendedCapabilities {
             guard !cap.multiHT else {
                 throw CodecError(.unsupportedFeature, "Multiple HT sets per code-block (MULTIHT) are not supported.")
             }
-            guard !cap.irreversible else {
-                throw CodecError(.unsupportedFeature, "Irreversible HTJ2K coding (HTIRV) is not supported in the lossless profile.")
+            guard !cap.heterogeneousTileParts else {
+                throw CodecError(.unsupportedFeature, "Heterogeneous HTJ2K tile-parts (HETERO) are not supported.")
             }
             guard !cap.regionOfInterestPresent else {
                 throw CodecError(.unsupportedFeature, "Region-of-interest (RGN) coding is not supported in HTJ2K mode.")
             }
         }
-        let componentCount = size.components.count
-        guard componentCount >= 1 else {
+        let wireComponentCount = size.components.count
+        guard wireComponentCount >= 1 else {
             throw CodecError(.malformedInput, "SIZ declares no components.")
         }
-        let firstComp = size.components[0]
         for comp in size.components {
-            guard comp.precision >= 1 && comp.precision <= 16 else {
-                throw CodecError(.unsupportedFeature, "Component precision above 16 bits is not supported.")
-            }
             guard comp.horizontalSeparation == 1 && comp.verticalSeparation == 1 else {
                 throw CodecError(.unsupportedFeature, "Sub-sampled components are not supported.")
-            }
-            guard comp.signed == firstComp.signed && comp.precision == firstComp.precision else {
-                throw CodecError(.unsupportedFeature, "Heterogeneous component precision or signedness is not supported.")
             }
         }
 
@@ -147,6 +163,7 @@ enum Part1Pipeline {
         var tiles: [Part1TileProfile] = []
         var runningGeometryBytes = parsed.retainedMetadataBytes
         var allReversibleLossless = true
+        var anyPart2MCTActive = false
 
         for (tileIndex, parts) in partsByTile.sorted(by: { $0.key < $1.key }) {
             guard tileIndex < tilesWide * tilesHigh else {
@@ -167,24 +184,50 @@ enum Part1Pipeline {
                 throw CodecError(.malformedInput, "Tile has an empty area.")
             }
 
+            let part2Plan = try parsed.effectivePart2MCTPlan(tile: tileIndex) { addedBytes in
+                runningGeometryBytes = try checkedAdd(runningGeometryBytes, addedBytes)
+                guard runningGeometryBytes <= limits.maximumWorkspaceBytes,
+                      try checkedAdd(bytes.count, runningGeometryBytes) <= limits.maximumMemoryBytes else {
+                    throw CodecError(.resourceLimitExceeded, "Part 2 MCT tile tables exceed workspace or memory limits.")
+                }
+            }
+            if part2Plan != nil {
+                anyPart2MCTActive = true
+            }
+            if let plan = part2Plan, !plan.isAllReversible {
+                allReversibleLossless = false
+            }
+
             let (defaultCOD, _) = parsed.effectiveParameters(tile: tileIndex, component: 0)
-            if defaultCOD.componentTransform == 1 {
-                guard componentCount >= 3 else {
-                    throw CodecError(.malformedInput, "A component transform is signalled for fewer than 3 components.")
+            if (defaultCOD.componentTransform & 0x04) != 0 {
+                throw CodecError(.unsupportedFeature, "Part 2 wavelet multi-component transform is not supported.")
+            }
+            if part2Plan != nil {
+                guard defaultCOD.componentTransform == 0 || defaultCOD.componentTransform == 2 else {
+                    throw CodecError(.malformedInput, "Invalid COD componentTransform (\(defaultCOD.componentTransform)) for Part 2 MCT tile.")
+                }
+            } else {
+                guard defaultCOD.componentTransform <= 1 else {
+                    throw CodecError(.malformedInput, "COD signals Part 2 componentTransform (\(defaultCOD.componentTransform)) without active MCO.")
+                }
+                if defaultCOD.componentTransform == 1 {
+                    guard wireComponentCount >= 3 else {
+                        throw CodecError(.malformedInput, "A component transform is signalled for fewer than 3 components.")
+                    }
                 }
             }
 
             var compProfiles: [Part1ComponentTileProfile] = []
-            compProfiles.reserveCapacity(componentCount)
+            compProfiles.reserveCapacity(wireComponentCount)
 
-            for c in 0..<componentCount {
+            for c in 0..<wireComponentCount {
                 let (cod, rawQCD) = parsed.effectiveParameters(tile: tileIndex, component: c)
                 if (cod.codeBlockStyle & 0x40) != 0 && (cod.codeBlockStyle & 0x80) == 0 {
-                    guard (cod.codeBlockStyle & 0x3E) == 0 else {
+                    guard (cod.codeBlockStyle & 0x36) == 0 else {
                         throw CodecError(.malformedInput, "COD/COC sets reserved code-block style bits in HTJ2K mode.")
                     }
-                    guard cod.reversible && rawQCD.style == .none else {
-                        throw CodecError(.unsupportedFeature, "Irreversible or quantised HTJ2K codestreams are not supported.")
+                    guard (cod.codeBlockStyle & 0x01) == 0 else {
+                        throw CodecError(.unsupportedFeature, "HTJ2K SigProp and MagRef refinement passes are not supported.")
                     }
                 }
                 if !cod.reversible || rawQCD.style != .none {
@@ -204,9 +247,10 @@ enum Part1Pipeline {
                 }
                 let geometry = try Tier2.makeTileGeometry(x0: tx0, x1: tx1, y0: ty0, y1: ty1, codingStyle: cod)
 
-                // Component dynamic range Rb = precision + rctAdjust + band.gain
-                let rctAdjust = (defaultCOD.componentTransform == 1 && cod.reversible && (c == 1 || c == 2)) ? 1 : 0
-                let compRangePrecision = firstComp.precision + rctAdjust
+                // Component dynamic range Rb = wirePrecision + rctAdjust + band.gain
+                let wirePrecision = size.components[c].precision
+                let rctAdjust = (part2Plan == nil && defaultCOD.componentTransform == 1 && cod.reversible && (c == 1 || c == 2)) ? 1 : 0
+                let compRangePrecision = wirePrecision + rctAdjust
 
                 var magnitudeBitPlanes: [Int] = []
                 var stepSizes: [Double] = []
@@ -256,6 +300,7 @@ enum Part1Pipeline {
                 x0: tx0, x1: tx1, y0: ty0, y1: ty1,
                 defaultCodingStyle: defaultCOD,
                 progressionChanges: pocEntries,
+                part2MCTPlan: part2Plan,
                 components: compProfiles,
                 dataRanges: ordered.map(\.dataRange),
                 comments: ordered.flatMap(\.comments)
@@ -264,6 +309,67 @@ enum Part1Pipeline {
 
         guard tiles.count == tilesWide * tilesHigh else {
             throw CodecError(.malformedInput, "Codestream lacks tile-parts for \(tilesWide * tilesHigh - tiles.count) of its tiles.")
+        }
+
+        if let cap = parsed.extendedCapabilities, cap.hasPart15 {
+            let hasIrreversibleWavelet = tiles.contains { tile in
+                tile.components.contains { !$0.codingStyle.reversible }
+            }
+            if cap.irreversible != hasIrreversibleWavelet {
+                throw CodecError(.malformedInput, "CAP Ccap15 HTIRV/HTREV bit contradicts COD/COC wavelet transformation.")
+            }
+        }
+
+        let logicalComponentCount: Int
+        let logicalPrecision: Int
+        let logicalSigned: Bool
+
+        if anyPart2MCTActive || parsed.componentBitDepth != nil {
+            guard let cbd = parsed.componentBitDepth else {
+                throw CodecError(.malformedInput, "Part 2 MCT is active without a CBD marker segment.")
+            }
+            guard !cbd.components.isEmpty else {
+                throw CodecError(.malformedInput, "CBD declares no output components.")
+            }
+            for wireComp in size.components {
+                guard wireComp.precision >= 1 && wireComp.precision <= 28 else {
+                    throw CodecError(.unsupportedFeature, "Part 2 wire SIZ component precision (\(wireComp.precision)) is not supported.")
+                }
+            }
+            let firstCBD = cbd.components[0]
+            for cbdComp in cbd.components {
+                guard cbdComp.precision >= 1 && cbdComp.precision <= 16 else {
+                    throw CodecError(.unsupportedFeature, "CBD output component precision above 16 bits is not supported.")
+                }
+                guard cbdComp.signed == firstCBD.signed && cbdComp.precision == firstCBD.precision else {
+                    throw CodecError(.unsupportedFeature, "Heterogeneous CBD output component precision or signedness is not supported.")
+                }
+            }
+            for tile in tiles {
+                let tileOutCount = tile.part2MCTPlan?.outputComponentCount ?? wireComponentCount
+                guard tileOutCount == cbd.components.count else {
+                    throw CodecError(
+                        .malformedInput,
+                        "Tile \(tile.index) output component count (\(tileOutCount)) disagrees with CBD Ncbd (\(cbd.components.count))."
+                    )
+                }
+            }
+            logicalComponentCount = cbd.components.count
+            logicalPrecision = firstCBD.precision
+            logicalSigned = firstCBD.signed
+        } else {
+            let firstComp = size.components[0]
+            for comp in size.components {
+                guard comp.precision >= 1 && comp.precision <= 16 else {
+                    throw CodecError(.unsupportedFeature, "Component precision above 16 bits is not supported.")
+                }
+                guard comp.signed == firstComp.signed && comp.precision == firstComp.precision else {
+                    throw CodecError(.unsupportedFeature, "Heterogeneous component precision or signedness is not supported.")
+                }
+            }
+            logicalComponentCount = wireComponentCount
+            logicalPrecision = firstComp.precision
+            logicalSigned = firstComp.signed
         }
 
         return Part1Profile(
@@ -275,9 +381,10 @@ enum Part1Pipeline {
             tileHeight: size.tileHeight,
             tileOriginX: size.tileOriginX,
             tileOriginY: size.tileOriginY,
-            componentCount: componentCount,
-            precision: firstComp.precision,
-            signed: firstComp.signed,
+            componentCount: logicalComponentCount,
+            wireComponents: size.components,
+            precision: logicalPrecision,
+            signed: logicalSigned,
             isHTJ2K: parsed.isHTJ2K,
             isReversibleLossless: allReversibleLossless,
             tiles: tiles,
@@ -356,7 +463,7 @@ enum Part1Pipeline {
         let workspace = try checkedAdd(
             try workspaceBytes(
                 planePixels: profile.largestTilePixels,
-                componentCount: profile.componentCount,
+                componentCount: profile.workspaceComponentCount,
                 bytesPerCoeff: bytesPerCoeff,
                 joinedBytes: profile.largestTileBytes
             ),
@@ -404,7 +511,7 @@ enum Part1Pipeline {
         let descriptor = destination.descriptor
         let mutation = SharedPathMutation.active
         let order = mutation == .wrongByteOrder ? descriptor.byteOrder.opposite : descriptor.byteOrder
-        let shift = profile.signed ? 0 : (1 << (profile.precision - 1))
+        let wireShifts = profile.wireComponents.map { $0.signed ? 0 : (1 << ($0.precision - 1)) }
         let minVal = profile.signed ? -(1 << (profile.precision - 1)) : 0
         let maxVal = profile.signed ? ((1 << (profile.precision - 1)) - 1) : ((1 << profile.precision) - 1)
 
@@ -459,11 +566,11 @@ enum Part1Pipeline {
                 let planeCount = tile.width * tile.height
                 let tileUsesReversibleIntPath = tile.components.allSatisfy {
                     $0.codingStyle.reversible && $0.quantization.style == .none
-                }
+                } && (tile.part2MCTPlan?.isAllReversible ?? true)
 
                 if tileUsesReversibleIntPath {
                     var intPlanes: [[Int32]] = []
-                    intPlanes.reserveCapacity(profile.componentCount)
+                    intPlanes.reserveCapacity(profile.wireComponents.count)
                     for comp in tile.components {
                         let c = comp.componentIndex
                         StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 4)
@@ -482,21 +589,47 @@ enum Part1Pipeline {
                                         guard contribution.included, contribution.passes > 0, effectiveMB > 0 else { continue }
                                         if contribution.isHT {
                                             let htPasses = ((contribution.passes - 1) % 3) + 1
-                                            guard htPasses == 1, contribution.segments.count <= 1 else {
-                                                throw CodecError(.unsupportedFeature, "HTJ2K refinement passes are not supported.")
-                                            }
-                                            let placeholderSets = (contribution.passes - 1) / 3
-                                            let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
-                                            let rawBlock = contribution.segments.first?.data ?? []
-                                            let coeffs = try AcceleratedCodec.decodeHTCleanup(
-                                                block: rawBlock, width: block.width, height: block.height,
-                                                kMax: mb, missingMSBs: effectiveMissingMSBs,
-                                                backend: backend
-                                            )
-                                            for row in 0..<block.height {
-                                                let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
-                                                for col in 0..<block.width {
-                                                    plane[planeRow + col] = coeffs[row * block.width + col]
+                                            if htPasses == 1 && contribution.segments.count <= 1 && !style.causal && comp.roiShift == 0 {
+                                                let placeholderSets = (contribution.passes - 1) / 3
+                                                let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
+                                                let rawBlock = contribution.segments.first?.data ?? []
+                                                let coeffs = try AcceleratedCodec.decodeHTCleanup(
+                                                    block: rawBlock, width: block.width, height: block.height,
+                                                    kMax: mb, missingMSBs: effectiveMissingMSBs,
+                                                    backend: backend
+                                                )
+                                                for row in 0..<block.height {
+                                                    let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                                    for col in 0..<block.width {
+                                                        plane[planeRow + col] = coeffs[row * block.width + col]
+                                                    }
+                                                }
+                                            } else {
+                                                var coeffs64 = try HTBlockDecoder.decodeHTCodeBlock(
+                                                    segments: contribution.segments.map {
+                                                        HTSegmentInput(data: $0.data, passes: $0.passes)
+                                                    },
+                                                    zeroBitPlanes: contribution.zeroBitPlanes,
+                                                    totalPasses: contribution.passes,
+                                                    width: block.width,
+                                                    height: block.height,
+                                                    kMax: effectiveMB,
+                                                    causal: style.causal,
+                                                    allowMultiHT: false,
+                                                    midpointReconstruction: false
+                                                )
+                                                if comp.roiShift > 0 {
+                                                    try AcceleratedCodec.descaleROICoefficients(
+                                                        coefficients: &coeffs64,
+                                                        shift: comp.roiShift,
+                                                        backend: backend
+                                                    )
+                                                }
+                                                for row in 0..<block.height {
+                                                    let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                                    for col in 0..<block.width {
+                                                        plane[planeRow + col] = Int32(clamping: coeffs64[row * block.width + col])
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -541,8 +674,19 @@ enum Part1Pipeline {
                         intPlanes.append(plane)
                     }
 
-                    if tile.defaultCodingStyle.componentTransform == 1 && intPlanes.count >= 3 {
-                        try AcceleratedCodec.inverseRCT(planes: &intPlanes, backend: backend)
+                    let activePart2MCT: Bool
+                    if let mctPlan = tile.part2MCTPlan {
+                        intPlanes = try mctPlan.applyInverseReversible(
+                            planes: intPlanes,
+                            pixelCount: planeCount,
+                            backend: backend
+                        )
+                        activePart2MCT = true
+                    } else {
+                        if tile.defaultCodingStyle.componentTransform == 1 && intPlanes.count >= 3 {
+                            try AcceleratedCodec.inverseRCT(planes: &intPlanes, backend: backend)
+                        }
+                        activePart2MCT = false
                     }
 
                     for outC in 0..<outputComponentCount {
@@ -551,15 +695,33 @@ enum Part1Pipeline {
                         let cmapEntry = paletteMapping?.cmap.entries[mappedCh]
                         let srcComp = Int(cmapEntry?.componentIndex ?? UInt16(mappedCh))
                         let planeData = intPlanes[srcComp]
+                        let postShift = activePart2MCT ? 0 : wireShifts[srcComp]
                         let usePalette = (cmapEntry?.mappingType == 1)
                         let pcol = Int(cmapEntry?.paletteColumn ?? 0)
+                        let clampedPlane: [Int32]?
+                        if !usePalette && backend == .accelerated && AcceleratedCodec.shouldUseMetal(sampleCount: planeCount) {
+                            let shifted64 = planeData.map { Int64($0) + Int64(postShift) }
+                            clampedPlane = try AcceleratedCodec.clampSamples64To32IfMetal(
+                                samples: shifted64,
+                                minVal: Int64(minVal),
+                                maxVal: Int64(maxVal),
+                                backend: backend
+                            )
+                        } else {
+                            clampedPlane = nil
+                        }
                         for row in 0..<tile.height {
                             try work.check()
                             let y = tile.y0 - profile.originY + row
                             let rowBase = loc.plane.offset + y * loc.rowBytes + loc.sampleOffset
                             for col in 0..<tile.width {
                                 let x = tile.x0 - profile.originX + col
-                                let csValue = min(max(Int(planeData[row * stride + col]) + shift, minVal), maxVal)
+                                let csValue: Int
+                                if let cp = clampedPlane {
+                                    csValue = Int(cp[row * stride + col])
+                                } else {
+                                    csValue = min(max(Int(planeData[row * stride + col]) + postShift, minVal), maxVal)
+                                }
                                 let value: Int
                                 if usePalette, let (pclr, _) = paletteMapping {
                                     let idx = max(0, min(pclr.numEntries - 1, csValue))
@@ -576,7 +738,7 @@ enum Part1Pipeline {
                     }
                 } else {
                     var doublePlanes: [[Double]] = []
-                    doublePlanes.reserveCapacity(profile.componentCount)
+                    doublePlanes.reserveCapacity(profile.wireComponents.count)
                     for comp in tile.components {
                         let c = comp.componentIndex
                         StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 8)
@@ -596,15 +758,49 @@ enum Part1Pipeline {
                                         let contribution = contributions[c][resolution.index][p][b][k]
                                         completed += 1
                                         guard contribution.included, contribution.passes > 0, effectiveMB > 0 else { continue }
-                                        let (coeffs64, lastPlanes) = try BitPlaneCoder.decodeRich(
-                                            segments: contribution.segments,
-                                            width: block.width, height: block.height,
-                                            orientation: band.orientation,
-                                            zeroBitPlanes: contribution.zeroBitPlanes,
-                                            passCount: contribution.passes,
-                                            magnitudeBitPlanes: effectiveMB,
-                                            style: style
-                                        )
+                                        let coeffs64: [Int64]
+                                        let lastPlanes: [Int8]
+                                        if contribution.isHT {
+                                            let htPasses = ((contribution.passes - 1) % 3) + 1
+                                            if htPasses == 1 && contribution.segments.count <= 1 && !style.causal
+                                                && effectiveMB <= BitPlaneCoder.maximumMagnitudeBitPlanes {
+                                                let placeholderSets = (contribution.passes - 1) / 3
+                                                let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
+                                                let rawBlock = contribution.segments.first?.data ?? []
+                                                let coeffs32 = try AcceleratedCodec.decodeHTCleanup(
+                                                    block: rawBlock, width: block.width, height: block.height,
+                                                    kMax: effectiveMB, missingMSBs: effectiveMissingMSBs,
+                                                    backend: backend
+                                                )
+                                                coeffs64 = coeffs32.map { Int64($0) }
+                                                let basePlane = Int8(clamping: max(0, effectiveMB - 1 - effectiveMissingMSBs))
+                                                lastPlanes = [Int8](repeating: basePlane, count: coeffs32.count)
+                                            } else {
+                                                (coeffs64, lastPlanes) = try HTBlockDecoder.decodeHTCodeBlockWithPlanes(
+                                                    segments: contribution.segments.map {
+                                                        HTSegmentInput(data: $0.data, passes: $0.passes)
+                                                    },
+                                                    zeroBitPlanes: contribution.zeroBitPlanes,
+                                                    totalPasses: contribution.passes,
+                                                    width: block.width,
+                                                    height: block.height,
+                                                    kMax: effectiveMB,
+                                                    causal: style.causal,
+                                                    allowMultiHT: false,
+                                                    midpointReconstruction: false
+                                                )
+                                            }
+                                        } else {
+                                            (coeffs64, lastPlanes) = try BitPlaneCoder.decodeRich(
+                                                segments: contribution.segments,
+                                                width: block.width, height: block.height,
+                                                orientation: band.orientation,
+                                                zeroBitPlanes: contribution.zeroBitPlanes,
+                                                passCount: contribution.passes,
+                                                magnitudeBitPlanes: effectiveMB,
+                                                style: style
+                                            )
+                                        }
                                         for row in 0..<block.height {
                                             let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
                                             for col in 0..<block.width {
@@ -661,20 +857,31 @@ enum Part1Pipeline {
                         doublePlanes.append(plane)
                     }
 
-                    if tile.defaultCodingStyle.componentTransform == 1 && doublePlanes.count >= 3 {
-                        if tile.defaultCodingStyle.reversible {
-                            var rctPlanes = [
-                                doublePlanes[0].map { Int32($0.rounded()) },
-                                doublePlanes[1].map { Int32($0.rounded()) },
-                                doublePlanes[2].map { Int32($0.rounded()) }
-                            ]
-                            try AcceleratedCodec.inverseRCT(planes: &rctPlanes, backend: backend)
-                            doublePlanes[0] = rctPlanes[0].map { Double($0) }
-                            doublePlanes[1] = rctPlanes[1].map { Double($0) }
-                            doublePlanes[2] = rctPlanes[2].map { Double($0) }
-                        } else {
-                            AcceleratedCodec.inverseICT(planes: &doublePlanes, backend: backend)
+                    let activePart2MCT: Bool
+                    if let mctPlan = tile.part2MCTPlan {
+                        doublePlanes = try mctPlan.applyInverseFloat(
+                            planes: doublePlanes,
+                            pixelCount: planeCount,
+                            backend: backend
+                        )
+                        activePart2MCT = true
+                    } else {
+                        if tile.defaultCodingStyle.componentTransform == 1 && doublePlanes.count >= 3 {
+                            if tile.defaultCodingStyle.reversible {
+                                var rctPlanes = [
+                                    doublePlanes[0].map { Int32($0.rounded()) },
+                                    doublePlanes[1].map { Int32($0.rounded()) },
+                                    doublePlanes[2].map { Int32($0.rounded()) }
+                                ]
+                                try AcceleratedCodec.inverseRCT(planes: &rctPlanes, backend: backend)
+                                doublePlanes[0] = rctPlanes[0].map { Double($0) }
+                                doublePlanes[1] = rctPlanes[1].map { Double($0) }
+                                doublePlanes[2] = rctPlanes[2].map { Double($0) }
+                            } else {
+                                AcceleratedCodec.inverseICT(planes: &doublePlanes, backend: backend)
+                            }
                         }
+                        activePart2MCT = false
                     }
 
                     for outC in 0..<outputComponentCount {
@@ -683,16 +890,34 @@ enum Part1Pipeline {
                         let cmapEntry = paletteMapping?.cmap.entries[mappedCh]
                         let srcComp = Int(cmapEntry?.componentIndex ?? UInt16(mappedCh))
                         let planeData = doublePlanes[srcComp]
+                        let postShift = activePart2MCT ? 0 : wireShifts[srcComp]
                         let usePalette = (cmapEntry?.mappingType == 1)
                         let pcol = Int(cmapEntry?.paletteColumn ?? 0)
+                        let clampedPlane: [Int32]?
+                        if !usePalette && backend == .accelerated && AcceleratedCodec.shouldUseMetal(sampleCount: planeCount) {
+                            let rounded64 = planeData.map { Int64($0.rounded()) + Int64(postShift) }
+                            clampedPlane = try AcceleratedCodec.clampSamples64To32IfMetal(
+                                samples: rounded64,
+                                minVal: Int64(minVal),
+                                maxVal: Int64(maxVal),
+                                backend: backend
+                            )
+                        } else {
+                            clampedPlane = nil
+                        }
                         for row in 0..<tile.height {
                             try work.check()
                             let y = tile.y0 - profile.originY + row
                             let rowBase = loc.plane.offset + y * loc.rowBytes + loc.sampleOffset
                             for col in 0..<tile.width {
                                 let x = tile.x0 - profile.originX + col
-                                let rounded = Int(planeData[row * stride + col].rounded())
-                                let csValue = min(max(rounded + shift, minVal), maxVal)
+                                let csValue: Int
+                                if let cp = clampedPlane {
+                                    csValue = Int(cp[row * stride + col])
+                                } else {
+                                    let rounded = Int(planeData[row * stride + col].rounded())
+                                    csValue = min(max(rounded + postShift, minVal), maxVal)
+                                }
                                 let value: Int
                                 if usePalette, let (pclr, _) = paletteMapping {
                                     let idx = max(0, min(pclr.numEntries - 1, csValue))
@@ -742,6 +967,7 @@ enum Part1Pipeline {
         let componentCount = descriptor.components.count
         let opts = configuration.codecOptions
         let isHT = opts.blockCoding == .htj2k
+        let usePart2MCT = (opts.multiComponentTransform == .part2)
 
         // Resolve wavelet:
         let useReversibleWavelet: Bool
@@ -761,35 +987,79 @@ enum Part1Pipeline {
 
         // Resolve colour transform:
         let componentTransform: UInt8
-        switch opts.colourTransform {
-        case .none:
+        if usePart2MCT {
             componentTransform = 0
-        case .rct:
-            guard componentCount >= 3 else {
-                throw CodecError(.invalidArgument, "RCT requires at least 3 components.")
-            }
-            guard useReversibleWavelet else {
-                throw CodecError(.invalidArgument, "RCT requires the reversible 5/3 wavelet.")
-            }
-            componentTransform = 1
-        case .ict:
-            guard componentCount >= 3 else {
-                throw CodecError(.invalidArgument, "ICT requires at least 3 components.")
-            }
-            guard !useReversibleWavelet else {
-                throw CodecError(.invalidArgument, "ICT requires the irreversible 9/7 wavelet.")
-            }
-            componentTransform = 1
-        case .automatic:
-            if componentCount >= 3 && descriptor.components[0] == .red && descriptor.components[1] == .green && descriptor.components[2] == .blue {
-                if case .nearLossless = configuration.mode, useReversibleWavelet {
-                    componentTransform = 0
-                } else {
-                    componentTransform = 1
-                }
-            } else {
+        } else {
+            switch opts.colourTransform {
+            case .none:
                 componentTransform = 0
+            case .rct:
+                guard componentCount >= 3 else {
+                    throw CodecError(.invalidArgument, "RCT requires at least 3 components.")
+                }
+                guard useReversibleWavelet else {
+                    throw CodecError(.invalidArgument, "RCT requires the reversible 5/3 wavelet.")
+                }
+                componentTransform = 1
+            case .ict:
+                guard componentCount >= 3 else {
+                    throw CodecError(.invalidArgument, "ICT requires at least 3 components.")
+                }
+                guard !useReversibleWavelet else {
+                    throw CodecError(.invalidArgument, "ICT requires the irreversible 9/7 wavelet.")
+                }
+                componentTransform = 1
+            case .automatic:
+                if componentCount >= 3 && descriptor.components[0] == .red && descriptor.components[1] == .green && descriptor.components[2] == .blue {
+                    if case .nearLossless = configuration.mode, useReversibleWavelet {
+                        componentTransform = 0
+                    } else {
+                        componentTransform = 1
+                    }
+                } else {
+                    componentTransform = 0
+                }
             }
+        }
+
+        let useReversibleUnquantized = useReversibleWavelet && (opts.quantizationStyle == .automatic || opts.quantizationStyle == .none)
+        let part2Package: Part2MCTPlan.EncodedMCTPackage?
+        let part2IrrevForwardMatrix: [Double]?
+        let part2ReversibleCheckPlan: Part2MCTPlan?
+        if usePart2MCT {
+            if useReversibleUnquantized {
+                let pkg = try Part2MCTPlan.makeReversibleEncoderPackage(
+                    componentCount: componentCount,
+                    precision: precision,
+                    signed: signed
+                )
+                part2Package = pkg
+                part2IrrevForwardMatrix = nil
+                var tableMap: [Part2MCTTable.Key: Part2MCTTable] = [:]
+                for t in pkg.mctTables {
+                    tableMap[Part2MCTTable.Key(arrayType: t.arrayType, tableIndex: t.tableIndex)] = t
+                }
+                part2ReversibleCheckPlan = try Part2MCTPlan.resolve(
+                    codestreamComponentCount: componentCount,
+                    cbd: pkg.cbd,
+                    mctTables: tableMap,
+                    mccStages: [pkg.mccStage.stageIndex: pkg.mccStage],
+                    mco: pkg.mco
+                )
+            } else {
+                let (pkg, fwd) = try Part2MCTPlan.makeIrreversibleEncoderPackage(
+                    componentCount: componentCount,
+                    precision: precision,
+                    signed: signed
+                )
+                part2Package = pkg
+                part2IrrevForwardMatrix = fwd
+                part2ReversibleCheckPlan = nil
+            }
+        } else {
+            part2Package = nil
+            part2IrrevForwardMatrix = nil
+            part2ReversibleCheckPlan = nil
         }
 
         if let roi = opts.regionOfInterest {
@@ -914,12 +1184,14 @@ enum Part1Pipeline {
         let maxVal = signed ? ((1 << (precision - 1)) - 1) : ((1 << precision) - 1)
 
         // Build per-component QCD/QCC segments:
-        // Note: For RCT, components 1 and 2 have +1 nominal dynamic range bit.
-        // Putting the max precision in main QCD (precision + (componentTransform == 1 && useReversibleWavelet ? 1 : 0))
-        // avoids even needing separate QCC markers, while staying 100% conformant!
-        let maxEffectivePrecision = precision + ((componentTransform == 1 && useReversibleWavelet && componentCount >= 3) ? 1 : 0)
+        let maxEffectivePrecision: Int
+        if let pkg = part2Package {
+            maxEffectivePrecision = pkg.wireComponentFormats.map(\.precision).max() ?? precision
+        } else {
+            maxEffectivePrecision = precision + ((componentTransform == 1 && useReversibleWavelet && componentCount >= 3) ? 1 : 0)
+        }
         var mainQCD: QuantizationSegment
-        if useReversibleWavelet && (opts.quantizationStyle == .automatic || opts.quantizationStyle == .none) {
+        if useReversibleUnquantized {
             var exponents: [Int] = [maxEffectivePrecision]
             if levels >= 1 {
                 for _ in 1...levels {
@@ -1018,9 +1290,14 @@ enum Part1Pipeline {
                             guard sample >= minVal && sample <= maxVal else {
                                 throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
                             }
-                            compPlane[row * tw + col] = Int32(sample - shift)
+                            compPlane[row * tw + col] = Int32(sample)
                         }
                     }
+                    try AcceleratedCodec.levelShiftSamples32IfMetal(
+                        samples: &compPlane,
+                        dcShift: Int32(shift),
+                        backend: backend
+                    )
                     originalIntTile.append(compPlane)
                 }
 
@@ -1028,9 +1305,17 @@ enum Part1Pipeline {
                 var quantisedPlanes = [[Int64]](repeating: [Int64](repeating: 0, count: tilePixels), count: componentCount)
 
                 if useReversibleWavelet && expandedQCD.style == .none {
-                    var workingPlanes = originalIntTile
-                    if componentTransform == 1 && componentCount >= 3 {
-                        try AcceleratedCodec.forwardRCT(planes: &workingPlanes, backend: backend)
+                    var workingPlanes: [[Int32]]
+                    if usePart2MCT {
+                        workingPlanes = Part2MCTPlan.applyForwardReversibleEncoder(
+                            centeredPlanes: originalIntTile,
+                            backend: backend
+                        )
+                    } else {
+                        workingPlanes = originalIntTile
+                        if componentTransform == 1 && componentCount >= 3 {
+                            try AcceleratedCodec.forwardRCT(planes: &workingPlanes, backend: backend)
+                        }
                     }
                     for c in 0..<componentCount {
                         try AcceleratedCodec.forwardWavelet53(
@@ -1079,14 +1364,25 @@ enum Part1Pipeline {
                                     levels: levels, backend: backend, cancellation: work.check
                                 )
                             }
-                            if componentTransform == 1 && componentCount >= 3 {
-                                try AcceleratedCodec.inverseRCT(planes: &reconPlanes, backend: backend)
+                            let recShift: Int
+                            if let checkPlan = part2ReversibleCheckPlan {
+                                reconPlanes = try checkPlan.applyInverseReversible(
+                                    planes: reconPlanes,
+                                    pixelCount: tilePixels,
+                                    backend: backend
+                                )
+                                recShift = 0
+                            } else {
+                                if componentTransform == 1 && componentCount >= 3 {
+                                    try AcceleratedCodec.inverseRCT(planes: &reconPlanes, backend: backend)
+                                }
+                                recShift = shift
                             }
                             var worstError = 0
                             outerCheck: for c in 0..<componentCount {
                                 for i in 0..<tilePixels {
                                     let orig = min(max(Int(originalIntTile[c][i]) + shift, minVal), maxVal)
-                                    let rec = min(max(Int(reconPlanes[c][i]) + shift, minVal), maxVal)
+                                    let rec = min(max(Int(reconPlanes[c][i]) + recShift, minVal), maxVal)
                                     let err = abs(orig - rec)
                                     if err > worstError {
                                         worstError = err
@@ -1112,7 +1408,13 @@ enum Part1Pipeline {
                 } else {
                     // Floating-point / quantised path (9/7 or quantised 5/3):
                     var doublePlanes: [[Double]] = originalIntTile.map { $0.map { Double($0) } }
-                    if componentTransform == 1 && componentCount >= 3 {
+                    if let irrevFwd = part2IrrevForwardMatrix {
+                        doublePlanes = Part2MCTPlan.applyForwardIrreversibleEncoder(
+                            centeredPlanes: doublePlanes,
+                            forwardMatrix: irrevFwd,
+                            backend: backend
+                        )
+                    } else if componentTransform == 1 && componentCount >= 3 {
                         if useReversibleWavelet {
                             var rctPlanes = [originalIntTile[0], originalIntTile[1], originalIntTile[2]]
                             try AcceleratedCodec.forwardRCT(planes: &rctPlanes, backend: backend)
@@ -1143,8 +1445,13 @@ enum Part1Pipeline {
 
                     // Quantise each subband by its step size from `expandedQCD`:
                     for c in 0..<componentCount {
-                        let rctAdjust = (componentTransform == 1 && useReversibleWavelet && (c == 1 || c == 2)) ? 1 : 0
-                        let compRangePrecision = precision + rctAdjust
+                        let compRangePrecision: Int
+                        if let pkg = part2Package {
+                            compRangePrecision = pkg.wireComponentFormats[c].precision
+                        } else {
+                            let rctAdjust = (componentTransform == 1 && useReversibleWavelet && (c == 1 || c == 2)) ? 1 : 0
+                            compRangePrecision = precision + rctAdjust
+                        }
                         for resolution in geometry.resolutions {
                             for band in resolution.bands {
                                 let qIdx = band.quantizationIndex
@@ -1206,14 +1513,28 @@ enum Part1Pipeline {
                     || !opts.layerBitrates.isEmpty
                     || (configuration.mode == .lossy && useReversibleWavelet && opts.quality != nil)
 
+                struct HTCandidateSet {
+                    let topBit: Int
+                    let codedPerK: [[UInt8]]
+                    let distReductionPerK: [Double]
+                }
+
                 // Encode all code-blocks of all components in this tile:
                 var encodings: [[[[[CodeBlockEncoding]]]]] = []
                 encodings.reserveCapacity(componentCount)
-                var flatCoords: [(c: Int, r: Int, p: Int, b: Int, k: Int, coeffs: [Int64], width: Int, height: Int, orientation: BandOrientation, mb: Int)] = []
+                var flatCoords: [(c: Int, r: Int, p: Int, b: Int, k: Int, coeffs: [Int64], width: Int, height: Int, orientation: BandOrientation, mb: Int, htCandidates: HTCandidateSet?)] = []
 
                 for c in 0..<componentCount {
-                    let rctAdjust = (componentTransform == 1 && useReversibleWavelet && (c == 1 || c == 2)) ? 1 : 0
-                    let compRangePrecision = precision + rctAdjust
+                    let compRangePrecision: Int
+                    let mctColWeight: Double
+                    if let pkg = part2Package {
+                        compRangePrecision = pkg.wireComponentFormats[c].precision
+                        mctColWeight = pkg.irreversibleColumnNorms[c]
+                    } else {
+                        let rctAdjust = (componentTransform == 1 && useReversibleWavelet && (c == 1 || c == 2)) ? 1 : 0
+                        compRangePrecision = precision + rctAdjust
+                        mctColWeight = 1.0
+                    }
                     var compEncodings: [[[[CodeBlockEncoding]]]] = []
                     compEncodings.reserveCapacity(geometry.resolutions.count)
 
@@ -1233,9 +1554,10 @@ enum Part1Pipeline {
                                 let step = expandedQCD.style == .none
                                     ? 1.0
                                     : Quantization.stepSize(exponent: eps, mantissa: mu, precision: compRangePrecision, gain: band.gain)
-                                let weight = nb == 0 ? 1.0 : Quantization.synthesisWeight(
+                                let baseWeight = nb == 0 ? 1.0 : Quantization.synthesisWeight(
                                     orientation: band.orientation, decompositionLevel: nb, reversible: useReversibleWavelet
                                 )
+                                let weight = baseWeight * mctColWeight
                                 var bandEncodings: [CodeBlockEncoding] = []
                                 bandEncodings.reserveCapacity(precinctBand.blocks.count)
 
@@ -1249,20 +1571,91 @@ enum Part1Pipeline {
                                     }
 
                                     var enc: CodeBlockEncoding
+                                    var htCandidateSet: HTCandidateSet? = nil
                                     if isHT {
                                         let coeffs32 = blockCoeffs.map { Int32(clamping: $0) }
-                                        let coded = try AcceleratedCodec.encodeHTCleanup(
-                                            coefficients: coeffs32,
-                                            width: block.width,
-                                            height: block.height,
-                                            bandShift: 0,
-                                            backend: backend
-                                        )
-                                        enc = CodeBlockEncoding(
-                                            data: coded,
-                                            passCount: coded.isEmpty ? 0 : 1,
-                                            zeroBitPlanes: coded.isEmpty ? mb : (mb - 1)
-                                        )
+                                        let maxMag: Int32 = coeffs32.reduce(0) { acc, v in
+                                            let m = (v == Int32.min) ? Int32.max : abs(v)
+                                            return max(acc, m)
+                                        }
+                                        if maxMag == 0 {
+                                            enc = CodeBlockEncoding(
+                                                data: [],
+                                                passCount: 0,
+                                                zeroBitPlanes: mb
+                                            )
+                                            if needsPCRD {
+                                                htCandidateSet = HTCandidateSet(topBit: 0, codedPerK: [], distReductionPerK: [])
+                                            }
+                                        } else if needsPCRD {
+                                            let topBit = min(mb, 32 - Int(UInt32(maxMag).leadingZeroBitCount))
+                                            let wStep = weight * step
+                                            var fullErrSq = 0.0
+                                            for v in coeffs32 where v != 0 {
+                                                let d = Double(abs(Int64(v))) * wStep
+                                                fullErrSq += d * d
+                                            }
+                                            var codedPerK: [[UInt8]] = []
+                                            var bytesPerK: [Int] = []
+                                            var distPerK: [Double] = []
+                                            codedPerK.reserveCapacity(topBit)
+                                            bytesPerK.reserveCapacity(topBit)
+                                            distPerK.reserveCapacity(topBit)
+                                            for kPlanes in 1...topBit {
+                                                let s = topBit - kPlanes
+                                                let cand = try AcceleratedCodec.encodeHTCleanup(
+                                                    coefficients: coeffs32,
+                                                    width: block.width,
+                                                    height: block.height,
+                                                    bandShift: s,
+                                                    backend: backend
+                                                )
+                                                let addMidpoint = (s > 0) || (expandedQCD.style != .none)
+                                                let midOffset = addMidpoint ? (0.5 * Double(Int64(1) << min(s, 30))) : 0.0
+                                                var errSq = 0.0
+                                                for v in coeffs32 where v != 0 {
+                                                    let a = Int64(v < 0 ? -Int64(v) : Int64(v))
+                                                    let muShift = a >> s
+                                                    let recon: Double
+                                                    if muShift == 0 {
+                                                        recon = 0.0
+                                                    } else {
+                                                        recon = Double(muShift << s) + midOffset
+                                                    }
+                                                    let diff = (Double(a) - recon) * wStep
+                                                    errSq += diff * diff
+                                                }
+                                                codedPerK.append(cand)
+                                                bytesPerK.append(cand.count)
+                                                distPerK.append(max(0.0, fullErrSq - errSq))
+                                            }
+                                            let finest = codedPerK.last ?? []
+                                            enc = CodeBlockEncoding(
+                                                data: finest,
+                                                passCount: finest.isEmpty ? 0 : 1,
+                                                zeroBitPlanes: finest.isEmpty ? mb : max(0, mb - 1),
+                                                passTerminatedBytes: bytesPerK,
+                                                passDistortionReductions: distPerK
+                                            )
+                                            htCandidateSet = HTCandidateSet(
+                                                topBit: topBit,
+                                                codedPerK: codedPerK,
+                                                distReductionPerK: distPerK
+                                            )
+                                        } else {
+                                            let coded = try AcceleratedCodec.encodeHTCleanup(
+                                                coefficients: coeffs32,
+                                                width: block.width,
+                                                height: block.height,
+                                                bandShift: 0,
+                                                backend: backend
+                                            )
+                                            enc = CodeBlockEncoding(
+                                                data: coded,
+                                                passCount: coded.isEmpty ? 0 : 1,
+                                                zeroBitPlanes: coded.isEmpty ? mb : max(0, mb - 1)
+                                            )
+                                        }
                                     } else {
                                         enc = try BitPlaneCoder.encodeRich(
                                             coefficients: blockCoeffs,
@@ -1277,7 +1670,7 @@ enum Part1Pipeline {
                                         )
                                     }
                                     if needsPCRD {
-                                        flatCoords.append((c, rIdx, pIdx, bIdx, kIdx, blockCoeffs, block.width, block.height, band.orientation, mb))
+                                        flatCoords.append((c, rIdx, pIdx, bIdx, kIdx, blockCoeffs, block.width, block.height, band.orientation, mb, htCandidateSet))
                                     }
                                     bandEncodings.append(enc)
                                 }
@@ -1335,37 +1728,89 @@ enum Part1Pipeline {
                         }
                     }
 
-                    let allocatedCumulative = Quantization.allocatePassesPCRD(
-                        blockPassBytes: blockPassBytes,
-                        blockPassDistortionReductions: blockPassDistortions,
-                        layerByteBudgets: layerByteBudgets
-                    )
-
-                    for (idx, coord) in flatCoords.enumerated() {
-                        let cumPasses = allocatedCumulative[idx]
-                        let finalPasses = cumPasses.last ?? 0
-                        var enc = encodings[coord.c][coord.r][coord.p][coord.b][coord.k]
-                        if finalPasses < enc.passCount {
-                            enc = try BitPlaneCoder.encodeRich(
-                                coefficients: coord.coeffs,
-                                width: coord.width,
-                                height: coord.height,
-                                orientation: coord.orientation,
-                                magnitudeBitPlanes: coord.mb,
-                                style: style,
-                                maxPasses: finalPasses
+                    if isHT {
+                        let finalBudget = layerByteBudgets.last ?? Int.max
+                        let finalAlloc = Quantization.allocatePassesPCRD(
+                            blockPassBytes: blockPassBytes,
+                            blockPassDistortionReductions: blockPassDistortions,
+                            layerByteBudgets: [finalBudget]
+                        )
+                        var activeHTBlocks: [(idx: Int, bytes: Int, slope: Double)] = []
+                        for (idx, coord) in flatCoords.enumerated() {
+                            let chosenK = finalAlloc[idx].first ?? 0
+                            guard let candSet = coord.htCandidates, chosenK >= 1, chosenK <= candSet.topBit else {
+                                var emptyEnc = CodeBlockEncoding(data: [], passCount: 0, zeroBitPlanes: coord.mb)
+                                emptyEnc.layerPassCounts = Array(repeating: 0, count: numLayers)
+                                encodings[coord.c][coord.r][coord.p][coord.b][coord.k] = emptyEnc
+                                continue
+                            }
+                            let bandShift = candSet.topBit - chosenK
+                            let data = candSet.codedPerK[chosenK - 1]
+                            let distRed = candSet.distReductionPerK[chosenK - 1]
+                            var enc = CodeBlockEncoding(
+                                data: data,
+                                passCount: data.isEmpty ? 0 : 1,
+                                zeroBitPlanes: data.isEmpty ? coord.mb : max(0, coord.mb - 1 - bandShift)
                             )
+                            if numLayers == 1 || data.isEmpty {
+                                enc.layerPassCounts = Array(repeating: 0, count: numLayers)
+                                if !data.isEmpty { enc.layerPassCounts[0] = 1 }
+                            } else {
+                                enc.layerPassCounts = Array(repeating: 0, count: numLayers)
+                                activeHTBlocks.append((idx: idx, bytes: data.count, slope: distRed / Double(max(1, data.count))))
+                            }
+                            encodings[coord.c][coord.r][coord.p][coord.b][coord.k] = enc
                         }
-                        var incremental: [Int] = []
-                        incremental.reserveCapacity(numLayers)
-                        var prev = 0
-                        for cum in cumPasses {
-                            let clamped = min(enc.passCount, max(prev, cum))
-                            incremental.append(clamped - prev)
-                            prev = clamped
+                        if numLayers > 1 && !activeHTBlocks.isEmpty {
+                            activeHTBlocks.sort { lhs, rhs in
+                                if lhs.slope != rhs.slope { return lhs.slope > rhs.slope }
+                                return lhs.idx < rhs.idx
+                            }
+                            var cumTotalBytes = 0
+                            for item in activeHTBlocks {
+                                let coord = flatCoords[item.idx]
+                                cumTotalBytes += item.bytes
+                                var targetLayer = numLayers - 1
+                                for l in 0..<numLayers where cumTotalBytes <= layerByteBudgets[l] {
+                                    targetLayer = l
+                                    break
+                                }
+                                encodings[coord.c][coord.r][coord.p][coord.b][coord.k].layerPassCounts[targetLayer] = 1
+                            }
                         }
-                        enc.layerPassCounts = incremental
-                        encodings[coord.c][coord.r][coord.p][coord.b][coord.k] = enc
+                    } else {
+                        let allocatedCumulative = Quantization.allocatePassesPCRD(
+                            blockPassBytes: blockPassBytes,
+                            blockPassDistortionReductions: blockPassDistortions,
+                            layerByteBudgets: layerByteBudgets
+                        )
+
+                        for (idx, coord) in flatCoords.enumerated() {
+                            let cumPasses = allocatedCumulative[idx]
+                            let finalPasses = cumPasses.last ?? 0
+                            var enc = encodings[coord.c][coord.r][coord.p][coord.b][coord.k]
+                            if finalPasses < enc.passCount {
+                                enc = try BitPlaneCoder.encodeRich(
+                                    coefficients: coord.coeffs,
+                                    width: coord.width,
+                                    height: coord.height,
+                                    orientation: coord.orientation,
+                                    magnitudeBitPlanes: coord.mb,
+                                    style: style,
+                                    maxPasses: finalPasses
+                                )
+                            }
+                            var incremental: [Int] = []
+                            incremental.reserveCapacity(numLayers)
+                            var prev = 0
+                            for cum in cumPasses {
+                                let clamped = min(enc.passCount, max(prev, cum))
+                                incremental.append(clamped - prev)
+                                prev = clamped
+                            }
+                            enc.layerPassCounts = incremental
+                            encodings[coord.c][coord.r][coord.p][coord.b][coord.k] = enc
+                        }
                     }
                 }
 
@@ -1384,20 +1829,38 @@ enum Part1Pipeline {
 
         // Assemble codestream:
         let totalTileBytes = encodedTilePayloads.reduce(0) { $0 + 14 + $1.count }
-        var out = ByteWriter(capacity: 128 + totalTileBytes)
+        var out = ByteWriter(capacity: 256 + totalTileBytes)
         out.writeUInt16(Marker.soc)
 
-        let compSignallings = [ComponentSignalling](
-            repeating: ComponentSignalling(
-                precision: precision,
-                signed: signed,
-                horizontalSeparation: 1,
-                verticalSeparation: 1
-            ),
-            count: componentCount
-        )
+        let compSignallings: [ComponentSignalling]
+        if let pkg = part2Package {
+            compSignallings = pkg.wireComponentFormats.map {
+                ComponentSignalling(
+                    precision: $0.precision,
+                    signed: $0.signed,
+                    horizontalSeparation: 1,
+                    verticalSeparation: 1
+                )
+            }
+        } else {
+            compSignallings = [ComponentSignalling](
+                repeating: ComponentSignalling(
+                    precision: precision,
+                    signed: signed,
+                    horizontalSeparation: 1,
+                    verticalSeparation: 1
+                ),
+                count: componentCount
+            )
+        }
+        let rsizCapabilities: UInt16
+        if usePart2MCT {
+            rsizCapabilities = isHT ? 0xC100 : 0x8100
+        } else {
+            rsizCapabilities = isHT ? 0x4000 : 0
+        }
         let sizeSeg = ImageSizeSegment(
-            capabilities: isHT ? 0x4000 : 0,
+            capabilities: rsizCapabilities,
             width: width,
             height: height,
             originX: 0,
@@ -1410,11 +1873,29 @@ enum Part1Pipeline {
         )
         try CodestreamSyntax.writeSIZ(sizeSeg, into: &out)
         if isHT {
-            let cap = try ExtendedCapabilitiesSegment.losslessHTOnly(for: mainQCD)
+            let cap = try ExtendedCapabilitiesSegment.htOnly(
+                for: mainQCD,
+                decompositionLevels: levels,
+                irreversible: !useReversibleWavelet
+            )
             try CodestreamSyntax.writeCAP(cap, into: &out)
+            if !useReversibleWavelet {
+                try CodestreamSyntax.writeCPF(
+                    CorrespondingProfileSegment(values: [usePart2MCT ? 0x8002 : 0x0002]),
+                    into: &out
+                )
+            }
         }
         try CodestreamSyntax.writeCOD(cod, into: &out)
         try CodestreamSyntax.writeQCD(mainQCD, into: &out)
+        if let pkg = part2Package {
+            try CodestreamSyntax.writeCBD(pkg.cbd, into: &out)
+            for table in pkg.mctTables {
+                try CodestreamSyntax.writeMCT(table, into: &out)
+            }
+            try CodestreamSyntax.writeMCC(pkg.mccStage, into: &out)
+            try CodestreamSyntax.writeMCO(pkg.mco, into: &out)
+        }
 
         if roiShift > 0 {
             for c in 0..<componentCount {
@@ -1445,5 +1926,513 @@ enum Part1Pipeline {
         }
         out.writeUInt16(Marker.eoc)
         return (out.bytes, workspace)
+    }
+
+    // MARK: - Lossless Multi-Component / Signed Wavelet-Domain Transcoding
+
+    /// Transcodes any lossless reversible 5/3 JPEG 2000 Part 1 or Part 15 (HTJ2K) codestream
+    /// (including signed, multi-component, RCT, Part 2 reversible MCT, and custom progression/precincts)
+    /// directly in the wavelet subband coefficient domain with zero pixel allocations (`pixelAllocationCount == 0`).
+    static func transcodeLosslessCoefficients(
+        bytes: [UInt8],
+        profile: Part1Profile,
+        to target: TranscodeTarget,
+        codecOptions: CodecOptions,
+        metadataPolicy: MetadataPolicy = .preserve,
+        limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
+        progress: (@Sendable (ProgressUpdate) -> Void)?
+    ) throws -> (Data, Int) {
+        let targetIsHT = (target == .htj2k)
+        guard profile.isHTJ2K != targetIsHT else {
+            throw CodecError(
+                .unsupportedFormat,
+                "Transcoding requires converting between JPEG 2000 Part 1 and HTJ2K Part 15 (source is already \(profile.format))."
+            )
+        }
+        guard profile.isReversibleLossless else {
+            throw CodecError(
+                .unsupportedFeature,
+                "Zero-pixel-allocation wavelet transcoding requires a lossless reversible 5/3 codestream."
+            )
+        }
+        guard profile.tiles.allSatisfy({ $0.components.allSatisfy { $0.roiShift == 0 } }) else {
+            throw CodecError(
+                .unsupportedFeature,
+                "Lossless wavelet transcoding does not support RGN region-of-interest codestreams."
+            )
+        }
+        if let requestedLevels = codecOptions.decompositionLevels {
+            for tile in profile.tiles {
+                for comp in tile.components where comp.codingStyle.decompositionLevels != requestedLevels {
+                    throw CodecError(
+                        .unsupportedFeature,
+                        "Changing wavelet decomposition levels (\(comp.codingStyle.decompositionLevels) -> \(requestedLevels)) requires wavelet reconstruction and is not supported on the coefficient transcoding path."
+                    )
+                }
+            }
+        }
+
+        let parsed = try CodestreamSyntax.parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
+        let wireCount = profile.wireComponents.count
+        let workspace = try checkedAdd(
+            try workspaceBytes(
+                planePixels: profile.largestTilePixels,
+                componentCount: wireCount,
+                bytesPerCoeff: 4,
+                joinedBytes: profile.largestTileBytes
+            ),
+            profile.retainedMetadataBytes
+        )
+        guard workspace <= limits.maximumWorkspaceBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoder workspace exceeds the operation limit.")
+        }
+        guard try checkedAdd(bytes.count, workspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input and transcoder workspace exceed the memory budget.")
+        }
+
+        let work = WorkGuard(limits: limits)
+        try work.check()
+
+        let xcb = codecOptions.codeBlockWidth.trailingZeroBitCount
+        let ycb = codecOptions.codeBlockHeight.trailingZeroBitCount
+        let targetStyleBits: UInt8 = targetIsHT ? 0x40 : codecOptions.codeBlockStyleBits
+        let targetStyle = CodeBlockStyle(bits: targetStyleBits)
+
+        func makeTargetCOD(from sourceCOD: CodingStyleSegment) -> CodingStyleSegment {
+            let levels = sourceCOD.decompositionLevels
+            let usesPrecincts: Bool
+            var precinctExponents: [(Int, Int)] = []
+            if !codecOptions.precinctSizes.isEmpty {
+                usesPrecincts = true
+                for r in 0...levels {
+                    let pSize = codecOptions.precinctSizes[min(r, codecOptions.precinctSizes.count - 1)]
+                    precinctExponents.append((pSize.width.trailingZeroBitCount, pSize.height.trailingZeroBitCount))
+                }
+            } else {
+                usesPrecincts = sourceCOD.usesPrecincts
+                precinctExponents = sourceCOD.precinctExponents
+            }
+            let progression: UInt8 = (codecOptions.progressionOrder != .lrcp)
+                ? codecOptions.progressionOrder.rawValue
+                : sourceCOD.progression
+            return CodingStyleSegment(
+                usesPrecincts: usesPrecincts,
+                usesSOP: codecOptions.usesSOP || sourceCOD.usesSOP,
+                usesEPH: codecOptions.usesEPH || sourceCOD.usesEPH,
+                progression: progression,
+                layers: 1,
+                componentTransform: sourceCOD.componentTransform,
+                decompositionLevels: levels,
+                codeBlockWidthExponent: xcb,
+                codeBlockHeightExponent: ycb,
+                codeBlockStyle: targetStyleBits,
+                reversible: true,
+                precinctExponents: precinctExponents
+            )
+        }
+
+        let targetPOCEntries: [ProgressionOrderChangeEntry] = codecOptions.progressionChanges.map {
+            ProgressionOrderChangeEntry(
+                resolutionStart: $0.startResolution,
+                componentStart: $0.startComponent,
+                layerEnd: 1,
+                resolutionEnd: $0.endResolution,
+                componentEnd: $0.endComponent,
+                progression: $0.progressionOrder.rawValue
+            )
+        }
+
+        let mainTargetCOD = makeTargetCOD(from: parsed.baseCodingStyle)
+        var encodedTilePayloads: [[UInt8]] = []
+        encodedTilePayloads.reserveCapacity(profile.tiles.count)
+        let totalUnits = max(1, profile.codeBlockCount)
+        var completedUnits = 0
+        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: totalUnits))
+
+        for tile in profile.tiles {
+            try work.check()
+            let tileBytes: [UInt8]
+            let tileRange: Range<Int>
+            if tile.dataRanges.count == 1 {
+                tileBytes = bytes
+                tileRange = tile.dataRanges[0]
+            } else {
+                let joinedCount = tile.dataRanges.reduce(0) { $0 + $1.count }
+                StorageTelemetry.recordWorkspaceAllocation(bytes: joinedCount)
+                var joined: [UInt8] = []
+                joined.reserveCapacity(joinedCount)
+                for r in tile.dataRanges { joined.append(contentsOf: bytes[r]) }
+                tileBytes = joined
+                tileRange = 0..<joined.count
+            }
+
+            let srcGeometries = tile.components.map(\.geometry)
+            let srcCodingStyles = tile.components.map(\.codingStyle)
+            let contributions = try Tier2.decodePacketsMulti(
+                geometries: srcGeometries,
+                codingStyles: srcCodingStyles,
+                progressionChanges: tile.progressionChanges,
+                maxQualityLayers: nil,
+                bytes: tileBytes,
+                range: tileRange,
+                cancellation: work.check
+            )
+
+            let stride = tile.width
+            let planeCount = tile.width * tile.height
+            var targetGeometries: [TileGeometry] = []
+            var targetCodingStyles: [CodingStyleSegment] = []
+            var encodings: [[[[[CodeBlockEncoding]]]]] = []
+            targetGeometries.reserveCapacity(wireCount)
+            targetCodingStyles.reserveCapacity(wireCount)
+            encodings.reserveCapacity(wireCount)
+
+            for comp in tile.components {
+                let c = comp.componentIndex
+                StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 4)
+                var subbandPlane = [Int32](repeating: 0, count: planeCount)
+                let srcStyle = CodeBlockStyle(bits: comp.codingStyle.codeBlockStyle)
+
+                for resolution in comp.geometry.resolutions {
+                    for (p, precinct) in resolution.precincts.enumerated() {
+                        for (b, precinctBand) in precinct.bands.enumerated() {
+                            let band = resolution.bands[precinctBand.bandIndex]
+                            let mb = comp.magnitudeBitPlanes[band.quantizationIndex]
+                            for (k, block) in precinctBand.blocks.enumerated() {
+                                try work.check()
+                                let contribution = contributions[c][resolution.index][p][b][k]
+                                completedUnits += 1
+                                guard contribution.included, contribution.passes > 0, mb > 0 else { continue }
+                                if contribution.isHT {
+                                    let htPasses = ((contribution.passes - 1) % 3) + 1
+                                    if htPasses == 1 && contribution.segments.count <= 1 && !srcStyle.causal {
+                                        let placeholderSets = (contribution.passes - 1) / 3
+                                        let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
+                                        let rawBlock = contribution.segments.first?.data ?? []
+                                        let coeffs = try AcceleratedCodec.decodeHTCleanup(
+                                            block: rawBlock, width: block.width, height: block.height,
+                                            kMax: mb, missingMSBs: effectiveMissingMSBs,
+                                            backend: backend
+                                        )
+                                        for row in 0..<block.height {
+                                            let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                            for col in 0..<block.width {
+                                                subbandPlane[planeRow + col] = coeffs[row * block.width + col]
+                                            }
+                                        }
+                                    } else {
+                                        let coeffs64 = try HTBlockDecoder.decodeHTCodeBlock(
+                                            segments: contribution.segments.map {
+                                                HTSegmentInput(data: $0.data, passes: $0.passes)
+                                            },
+                                            zeroBitPlanes: contribution.zeroBitPlanes,
+                                            totalPasses: contribution.passes,
+                                            width: block.width,
+                                            height: block.height,
+                                            kMax: mb,
+                                            causal: srcStyle.causal,
+                                            allowMultiHT: false,
+                                            midpointReconstruction: false
+                                        )
+                                        for row in 0..<block.height {
+                                            let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                            for col in 0..<block.width {
+                                                subbandPlane[planeRow + col] = Int32(clamping: coeffs64[row * block.width + col])
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    let (coeffs64, _) = try BitPlaneCoder.decodeRich(
+                                        segments: contribution.segments,
+                                        width: block.width, height: block.height,
+                                        orientation: band.orientation,
+                                        zeroBitPlanes: contribution.zeroBitPlanes,
+                                        passCount: contribution.passes,
+                                        magnitudeBitPlanes: mb,
+                                        style: srcStyle
+                                    )
+                                    for row in 0..<block.height {
+                                        let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                        for col in 0..<block.width {
+                                            subbandPlane[planeRow + col] = Int32(clamping: coeffs64[row * block.width + col])
+                                        }
+                                    }
+                                }
+                                if completedUnits & 7 == 0 {
+                                    progress?(try ProgressUpdate(phase: .processing, completedUnits: min(completedUnits, totalUnits), totalUnits: totalUnits))
+                                    try work.check()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let tgtCOD = makeTargetCOD(from: comp.codingStyle)
+                let tgtGeom = try Tier2.makeTileGeometry(
+                    x0: tile.x0, x1: tile.x1, y0: tile.y0, y1: ty1(tile), codingStyle: tgtCOD
+                )
+                targetCodingStyles.append(tgtCOD)
+                targetGeometries.append(tgtGeom)
+
+                var compEncodings: [[[[CodeBlockEncoding]]]] = []
+                compEncodings.reserveCapacity(tgtGeom.resolutions.count)
+                for resolution in tgtGeom.resolutions {
+                    var resEncodings: [[[CodeBlockEncoding]]] = []
+                    resEncodings.reserveCapacity(resolution.precincts.count)
+                    for precinct in resolution.precincts {
+                        var precEncodings: [[CodeBlockEncoding]] = []
+                        precEncodings.reserveCapacity(precinct.bands.count)
+                        for precinctBand in precinct.bands {
+                            let band = resolution.bands[precinctBand.bandIndex]
+                            let mb = comp.magnitudeBitPlanes[band.quantizationIndex]
+                            var bandEncodings: [CodeBlockEncoding] = []
+                            bandEncodings.reserveCapacity(precinctBand.blocks.count)
+                            for block in precinctBand.blocks {
+                                try work.check()
+                                let enc: CodeBlockEncoding
+                                if targetIsHT {
+                                    var coeffs32: [Int32] = []
+                                    coeffs32.reserveCapacity(block.width * block.height)
+                                    for row in 0..<block.height {
+                                        let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                        coeffs32.append(contentsOf: subbandPlane[planeRow..<(planeRow + block.width)])
+                                    }
+                                    let coded = try AcceleratedCodec.encodeHTCleanup(
+                                        coefficients: coeffs32,
+                                        width: block.width,
+                                        height: block.height,
+                                        bandShift: 0,
+                                        backend: backend
+                                    )
+                                    enc = CodeBlockEncoding(
+                                        data: coded,
+                                        passCount: coded.isEmpty ? 0 : 1,
+                                        zeroBitPlanes: coded.isEmpty ? mb : max(0, mb - 1)
+                                    )
+                                } else {
+                                    var coeffs64: [Int64] = []
+                                    coeffs64.reserveCapacity(block.width * block.height)
+                                    for row in 0..<block.height {
+                                        let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
+                                        for col in 0..<block.width {
+                                            coeffs64.append(Int64(subbandPlane[planeRow + col]))
+                                        }
+                                    }
+                                    enc = try BitPlaneCoder.encodeRich(
+                                        coefficients: coeffs64,
+                                        width: block.width,
+                                        height: block.height,
+                                        orientation: band.orientation,
+                                        magnitudeBitPlanes: mb,
+                                        style: targetStyle
+                                    )
+                                }
+                                bandEncodings.append(enc)
+                            }
+                            precEncodings.append(bandEncodings)
+                        }
+                        resEncodings.append(precEncodings)
+                    }
+                    compEncodings.append(resEncodings)
+                }
+                subbandPlane = []
+                encodings.append(compEncodings)
+            }
+
+            let tilePOC = !targetPOCEntries.isEmpty
+                ? targetPOCEntries
+                : tile.progressionChanges.map {
+                    ProgressionOrderChangeEntry(
+                        resolutionStart: $0.resolutionStart,
+                        componentStart: $0.componentStart,
+                        layerEnd: 1,
+                        resolutionEnd: $0.resolutionEnd,
+                        componentEnd: $0.componentEnd,
+                        progression: $0.progression
+                    )
+                }
+            var tileWriter = ByteWriter(capacity: max(64, planeCount / 2))
+            try Tier2.encodePacketsMulti(
+                geometries: targetGeometries,
+                codingStyles: targetCodingStyles,
+                progressionChanges: tilePOC,
+                encodings: encodings,
+                into: &tileWriter,
+                cancellation: work.check
+            )
+            encodedTilePayloads.append(tileWriter.bytes)
+        }
+
+        let totalTileBytes = encodedTilePayloads.reduce(0) { $0 + 32 + $1.count }
+        var out = ByteWriter(capacity: 256 + totalTileBytes)
+        out.writeUInt16(Marker.soc)
+
+        let targetCapabilities = (parsed.size.capabilities & ~0x4000) | (targetIsHT ? 0x4000 : 0)
+        let targetSIZ = ImageSizeSegment(
+            capabilities: targetCapabilities,
+            width: parsed.size.width,
+            height: parsed.size.height,
+            originX: parsed.size.originX,
+            originY: parsed.size.originY,
+            tileWidth: parsed.size.tileWidth,
+            tileHeight: parsed.size.tileHeight,
+            tileOriginX: parsed.size.tileOriginX,
+            tileOriginY: parsed.size.tileOriginY,
+            components: parsed.size.components
+        )
+        try CodestreamSyntax.writeSIZ(targetSIZ, into: &out)
+
+        if targetIsHT {
+            let cap = try ExtendedCapabilitiesSegment.htOnly(
+                for: parsed.baseQuantization,
+                componentQCDs: parsed.componentQuantizations,
+                decompositionLevels: mainTargetCOD.decompositionLevels,
+                irreversible: false
+            )
+            try CodestreamSyntax.writeCAP(cap, into: &out)
+        }
+        try CodestreamSyntax.writeCOD(mainTargetCOD, into: &out)
+        try CodestreamSyntax.writeQCD(parsed.baseQuantization, into: &out)
+        for compIdx in parsed.componentQuantizations.keys.sorted() {
+            if let qcc = parsed.componentQuantizations[compIdx] {
+                try CodestreamSyntax.writeQCC(
+                    component: compIdx,
+                    componentCount: wireCount,
+                    qcc: qcc,
+                    into: &out
+                )
+            }
+        }
+        if let cbd = parsed.componentBitDepth {
+            try CodestreamSyntax.writeCBD(cbd, into: &out)
+        }
+        let sortedMCTKeys = parsed.mctTables.keys.sorted {
+            if $0.arrayType.rawValue != $1.arrayType.rawValue {
+                return $0.arrayType.rawValue < $1.arrayType.rawValue
+            }
+            return $0.tableIndex < $1.tableIndex
+        }
+        for key in sortedMCTKeys {
+            if let table = parsed.mctTables[key] {
+                try CodestreamSyntax.writeMCT(table, into: &out)
+            }
+        }
+        for stageIdx in parsed.mccStages.keys.sorted() {
+            if let stage = parsed.mccStages[stageIdx] {
+                try CodestreamSyntax.writeMCC(stage, into: &out)
+            }
+        }
+        if let mco = parsed.mco {
+            try CodestreamSyntax.writeMCO(mco, into: &out)
+        }
+        if !targetPOCEntries.isEmpty {
+            try CodestreamSyntax.writePOC(targetPOCEntries, componentCount: wireCount, into: &out)
+        } else if !parsed.progressionChanges.isEmpty {
+            let mainPOC = parsed.progressionChanges.map {
+                ProgressionOrderChangeEntry(
+                    resolutionStart: $0.resolutionStart,
+                    componentStart: $0.componentStart,
+                    layerEnd: 1,
+                    resolutionEnd: $0.resolutionEnd,
+                    componentEnd: $0.componentEnd,
+                    progression: $0.progression
+                )
+            }
+            try CodestreamSyntax.writePOC(mainPOC, componentCount: wireCount, into: &out)
+        }
+        if metadataPolicy == .preserve {
+            if let crg = parsed.componentRegistration {
+                try out.writeSegment(marker: Marker.crg, payload: crg)
+            }
+            for comment in parsed.mainHeaderComments {
+                var comPayload = [UInt8]()
+                comPayload.reserveCapacity(2 + comment.count)
+                comPayload.append(0x00)
+                comPayload.append(0x01)
+                comPayload.append(contentsOf: comment)
+                try out.writeSegment(marker: Marker.com, payload: comPayload)
+            }
+        }
+
+        for (pos, tile) in profile.tiles.enumerated() {
+            let payload = encodedTilePayloads[pos]
+            var tileHeader = ByteWriter(capacity: 64)
+            let tileDefaultCOD = makeTargetCOD(from: tile.defaultCodingStyle)
+            if tileDefaultCOD != mainTargetCOD {
+                try CodestreamSyntax.writeCOD(tileDefaultCOD, into: &tileHeader)
+            }
+            if let overrides = parsed.tileOverrides[tile.index] {
+                if let tileQCD = overrides.quantization {
+                    try CodestreamSyntax.writeQCD(tileQCD, into: &tileHeader)
+                }
+                for compIdx in overrides.componentQuantizations.keys.sorted() {
+                    if let qcc = overrides.componentQuantizations[compIdx] {
+                        try CodestreamSyntax.writeQCC(
+                            component: compIdx,
+                            componentCount: wireCount,
+                            qcc: qcc,
+                            into: &tileHeader
+                        )
+                    }
+                }
+                for frag in overrides.mctFragments {
+                    try tileHeader.writeSegment(marker: Marker.mct, payload: try frag.serialiseBody())
+                }
+                for frag in overrides.mccFragments {
+                    try tileHeader.writeSegment(marker: Marker.mcc, payload: try frag.serialiseBody())
+                }
+                if let tileMCO = overrides.mco {
+                    try CodestreamSyntax.writeMCO(tileMCO, into: &tileHeader)
+                }
+                if targetPOCEntries.isEmpty && !overrides.progressionChanges.isEmpty {
+                    let tPOC = overrides.progressionChanges.map {
+                        ProgressionOrderChangeEntry(
+                            resolutionStart: $0.resolutionStart,
+                            componentStart: $0.componentStart,
+                            layerEnd: 1,
+                            resolutionEnd: $0.resolutionEnd,
+                            componentEnd: $0.componentEnd,
+                            progression: $0.progression
+                        )
+                    }
+                    try CodestreamSyntax.writePOC(tPOC, componentCount: wireCount, into: &tileHeader)
+                }
+            }
+            if metadataPolicy == .preserve {
+                for comment in tile.comments {
+                    var comPayload = [UInt8]()
+                    comPayload.reserveCapacity(2 + comment.count)
+                    comPayload.append(0x00)
+                    comPayload.append(0x01)
+                    comPayload.append(contentsOf: comment)
+                    try tileHeader.writeSegment(marker: Marker.com, payload: comPayload)
+                }
+            }
+
+            let psot = 12 + tileHeader.bytes.count + 2 + payload.count
+            guard psot <= Int(UInt32.max) else {
+                throw CodecError(.resourceLimitExceeded, "Tile-part exceeds the Psot field.")
+            }
+            out.writeUInt16(Marker.sot)
+            out.writeUInt16(10)
+            out.writeUInt16(UInt16(tile.index))
+            out.writeUInt32(UInt32(psot))
+            out.writeUInt8(0)
+            out.writeUInt8(1)
+            out.writeBytes(tileHeader.bytes)
+            out.writeUInt16(Marker.sod)
+            out.writeBytes(payload)
+        }
+        out.writeUInt16(Marker.eoc)
+        guard out.bytes.count <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded codestream exceeds the compressed-size limit.")
+        }
+        return (Data(out.bytes), workspace)
+    }
+
+    @inline(__always)
+    private static func ty1(_ tile: Part1TileProfile) -> Int {
+        tile.y1
     }
 }

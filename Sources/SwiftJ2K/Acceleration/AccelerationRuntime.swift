@@ -18,6 +18,8 @@ package enum AccelerationRuntime {
     /// Metal and SIMD/NEON acceleration are present, without leaking across
     /// concurrent test tasks.
     @TaskLocal package static var forceUnavailable: Bool = false
+    /// Task-local override used by tests to simulate Metal GPU unavailability while leaving CPU SIMD active.
+    @TaskLocal package static var forceMetalUnavailable: Bool = false
 
     /// Cached check whether a Metal GPU device is available on this host.
     /// Adapted from `J2KMetalDevice.isAvailable` (Raster-Lab/J2KSwift 7acc9ae4).
@@ -41,7 +43,7 @@ package enum AccelerationRuntime {
 
     /// Whether Metal hardware is present and not simulated as unavailable.
     package static var isMetalDevicePermitted: Bool {
-        guard !isSimulatedUnavailable else { return false }
+        guard !isSimulatedUnavailable && !forceMetalUnavailable else { return false }
         return hasHardwareMetalDevice
     }
 
@@ -59,8 +61,7 @@ package enum AccelerationRuntime {
 
     /// Whether the `.accelerated` backend is available on the current runtime.
     package static var isAvailable: Bool {
-        guard !isSimulatedUnavailable else { return false }
-        return hasHardwareSIMD || hasHardwareMetalDevice
+        isSIMDAvailable || isMetalAvailable
     }
 
     private static var isSimulatedUnavailable: Bool {
@@ -72,42 +73,126 @@ package enum AccelerationRuntime {
         isAvailable ? [.scalarCPU, .accelerated] : [.scalarCPU]
     }
 
-    /// Result of resolving an `ExecutionPolicy` for an operation.
+    /// Concrete engine routing mode resolved for an operation.
+    package enum EngineMode: Sendable, Equatable {
+        case none
+        case automatic
+        case cpuSIMD
+        case metalGPU
+    }
+
+    /// Result of resolving an `ExecutionPolicy` and `AcceleratedEnginePreference` for an operation.
     package struct ResolvedExecution: Sendable, Equatable {
         package let backend: Backend
+        package let engineMode: EngineMode
         package let fallbackReason: String?
 
-        package init(backend: Backend, fallbackReason: String?) {
+        package init(backend: Backend, engineMode: EngineMode = .none, fallbackReason: String?) {
             self.backend = backend
+            self.engineMode = engineMode
             self.fallbackReason = fallbackReason
         }
     }
 
-    /// Resolves `policy` against current runtime availability per `API-07` and `PLAT-05`.
+    /// Resolves `policy` and `enginePreference` against current runtime availability per `API-07` and `PLAT-05`.
     /// - Throws: `CodecError(.backendUnavailable, ...)` when `.required(.accelerated)`
-    ///   is requested and no accelerated backend is available.
-    package static func resolve(_ policy: ExecutionPolicy) throws -> ResolvedExecution {
+    ///   (or a required concrete accelerated engine) is requested and unavailable.
+    package static func resolve(
+        _ policy: ExecutionPolicy,
+        enginePreference: AcceleratedEnginePreference = .automatic
+    ) throws -> ResolvedExecution {
         switch policy {
         case .scalarCPU, .preferred(.scalarCPU), .required(.scalarCPU):
-            return ResolvedExecution(backend: .scalarCPU, fallbackReason: nil)
+            return ResolvedExecution(backend: .scalarCPU, engineMode: .none, fallbackReason: nil)
+
         case .automatic:
-            if isAvailable {
-                return ResolvedExecution(backend: .accelerated, fallbackReason: nil)
+            switch enginePreference {
+            case .automatic:
+                if isAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .automatic, fallbackReason: nil)
+                }
+                return ResolvedExecution(backend: .scalarCPU, engineMode: .none, fallbackReason: nil)
+            case .cpuSIMD:
+                if isSIMDAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .cpuSIMD, fallbackReason: nil)
+                }
+                if isMetalAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .metalGPU, fallbackReason: nil)
+                }
+                return ResolvedExecution(backend: .scalarCPU, engineMode: .none, fallbackReason: nil)
+            case .metalGPU:
+                if isMetalAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .metalGPU, fallbackReason: nil)
+                }
+                if isSIMDAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .cpuSIMD, fallbackReason: nil)
+                }
+                return ResolvedExecution(backend: .scalarCPU, engineMode: .none, fallbackReason: nil)
             }
-            return ResolvedExecution(backend: .scalarCPU, fallbackReason: nil)
+
         case .preferred(.accelerated):
-            if isAvailable {
-                return ResolvedExecution(backend: .accelerated, fallbackReason: nil)
+            switch enginePreference {
+            case .automatic:
+                if isAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .automatic, fallbackReason: nil)
+                }
+                return ResolvedExecution(
+                    backend: .scalarCPU,
+                    engineMode: .none,
+                    fallbackReason: "Accelerated backend is unavailable on this runtime; fell back to scalarCPU."
+                )
+            case .cpuSIMD:
+                if isSIMDAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .cpuSIMD, fallbackReason: nil)
+                }
+                if isMetalAvailable {
+                    return ResolvedExecution(
+                        backend: .accelerated,
+                        engineMode: .metalGPU,
+                        fallbackReason: "CPU SIMD engine is unavailable on this runtime; fell back to Metal GPU."
+                    )
+                }
+                return ResolvedExecution(
+                    backend: .scalarCPU,
+                    engineMode: .none,
+                    fallbackReason: "Accelerated backend is unavailable on this runtime; fell back to scalarCPU."
+                )
+            case .metalGPU:
+                if isMetalAvailable {
+                    return ResolvedExecution(backend: .accelerated, engineMode: .metalGPU, fallbackReason: nil)
+                }
+                if isSIMDAvailable {
+                    return ResolvedExecution(
+                        backend: .accelerated,
+                        engineMode: .cpuSIMD,
+                        fallbackReason: "Metal GPU engine is unavailable on this runtime; fell back to CPU SIMD."
+                    )
+                }
+                return ResolvedExecution(
+                    backend: .scalarCPU,
+                    engineMode: .none,
+                    fallbackReason: "Accelerated backend is unavailable on this runtime; fell back to scalarCPU."
+                )
             }
-            return ResolvedExecution(
-                backend: .scalarCPU,
-                fallbackReason: "Accelerated backend is unavailable on this runtime; fell back to scalarCPU."
-            )
+
         case .required(.accelerated):
-            guard isAvailable else {
-                throw CodecError(.backendUnavailable, "No accelerated backend is available on this platform or device.")
+            switch enginePreference {
+            case .automatic:
+                guard isAvailable else {
+                    throw CodecError(.backendUnavailable, "No accelerated backend is available on this platform or device.")
+                }
+                return ResolvedExecution(backend: .accelerated, engineMode: .automatic, fallbackReason: nil)
+            case .cpuSIMD:
+                guard isSIMDAvailable else {
+                    throw CodecError(.backendUnavailable, "CPU SIMD acceleration engine is unavailable on this platform or device.")
+                }
+                return ResolvedExecution(backend: .accelerated, engineMode: .cpuSIMD, fallbackReason: nil)
+            case .metalGPU:
+                guard isMetalAvailable else {
+                    throw CodecError(.backendUnavailable, "Metal GPU acceleration engine is unavailable on this platform or device.")
+                }
+                return ResolvedExecution(backend: .accelerated, engineMode: .metalGPU, fallbackReason: nil)
             }
-            return ResolvedExecution(backend: .accelerated, fallbackReason: nil)
         }
     }
 
@@ -119,6 +204,18 @@ package enum AccelerationRuntime {
     /// Runs async `body` with hardware acceleration simulated as unavailable on the current task.
     package static func withSimulatedUnavailable<R>(_ body: () async throws -> R) async rethrows -> R {
         try await $forceUnavailable.withValue(true) {
+            try await body()
+        }
+    }
+
+    /// Runs `body` with Metal GPU simulated as unavailable while CPU SIMD remains available.
+    package static func withSimulatedMetalUnavailable<R>(_ body: () throws -> R) rethrows -> R {
+        try $forceMetalUnavailable.withValue(true, operation: body)
+    }
+
+    /// Runs async `body` with Metal GPU simulated as unavailable while CPU SIMD remains available.
+    package static func withSimulatedMetalUnavailable<R>(_ body: () async throws -> R) async rethrows -> R {
+        try await $forceMetalUnavailable.withValue(true) {
             try await body()
         }
     }

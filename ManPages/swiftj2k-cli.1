@@ -30,7 +30,7 @@ codestream or JP2 (jp2), JPH (jph) or JPX (jpx) container. Supported codec
 options include \-\-container codestream|jp2|jph|jpx, \-\-mode
 lossless|near-lossless|lossy (\-\-lossy shorthand), \-\-max-error E
 (\-\-near-lossless E), \-\-quality Q (0.0..1.0), \-\-bpp RATE, \-\-layers N
-(1..255), \-\-wavelet auto|53|97, \-\-mct auto|none|rct|ict, \-\-progression
+(1..255), \-\-wavelet auto|53|97, \-\-mct auto|none|rct|ict|part2, \-\-progression
 lrcp|rlcp|rpcl|pcrl|cprl, \-\-tile-size WxH, \-\-precincts WxH, \-\-roi
 X,Y,W,H[,SHIFT], \-\-guard-bits N (1..7), \-\-qstyle
 auto|none|derived|expounded, \-\-sop, \-\-eph, \-\-levels N (0..32),
@@ -133,6 +133,9 @@ lossless only; near-lossless or lossy on those verbs returns 4.
 .TP
 .B \-\-backend auto|scalar|accelerated
 Selects the execution backend (default auto). Unavailable or unknown backends return 4.
+.TP
+.B \-\-engine auto|simd|metal
+Selects the concrete hardware acceleration engine preference when accelerated execution is active (default auto).
 .TP
 .B \-\-copy-policy require-sharing|allow-copy
 Controls zero-copy storage sharing vs copying when importing/exporting buffers.
