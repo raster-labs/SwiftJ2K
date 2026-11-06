@@ -1,6 +1,6 @@
 # Release procedure for SwiftJ2K 12.1.0
 
-Prepared in Milestone 5 (22 September 2026, contract 0.9.0) and reconciled in Milestone 13 (5 November 2026, contract 0.10.0; see [MILESTONE13.md](MILESTONE13.md) for the complete current gate-by-gate mapping, reused unchanged-source receipts, owner-held JPIP/3D boundaries, and Milestone 12 `DICOMKit` OS 26 integration evidence). This is the procedure the owner's explicit release task follows; nothing here cuts a tag during release preparation, and no stable tag exists yet. IMPLEMENTATION.md: "stable tag only after explicit release task". TESTING.md TEST-07: "No new stable version tag until required correctness, interoperability, platform, security and performance gates are complete."
+Prepared in Milestone 5 (22 September 2026, contract 0.9.0), reconciled in Milestone 13 (5 November 2026, contract 0.10.0; see [MILESTONE13.md](MILESTONE13.md)), and **executed on 6 November 2026 for `SwiftJ2K v12.1.0` (`12.1.0`)** per the owner's explicit release directive ([RELEASE-v12.1.0.md](RELEASE-v12.1.0.md): shipping the qualified 2D `SwiftJ2K` library and 2D `swiftj2k-cli` surface as stable while scheduling `SwiftJ2K3D` and `SwiftJ2KJPIP` full qualification and enhancement work for `12.2.0`). IMPLEMENTATION.md: "stable tag only after explicit release task". TESTING.md TEST-07: "No new stable version tag until required correctness, interoperability, platform, security and performance gates are complete."
 
 ## Preconditions the release task must verify first
 
