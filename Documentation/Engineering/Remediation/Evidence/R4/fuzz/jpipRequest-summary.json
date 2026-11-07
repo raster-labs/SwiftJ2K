@@ -1,0 +1,42 @@
+{
+  "corpus": [
+    "req:2d_jpp_window",
+    "req:2d_jpt_cnew_ws",
+    "req:cache_model_csn_implicit",
+    "req:3d_jp3d_volume_window",
+    "req:3d_zslice_cclose",
+    "req:raw_cache_model"
+  ],
+  "elapsedSeconds": 120.000131292,
+  "entry": "jpipRequest",
+  "final": true,
+  "iterations": 769846,
+  "limits": {
+    "deadlineSeconds": 5,
+    "maximumDecodedBytes": 67108864,
+    "maximumFrames": 512,
+    "maximumPixels": 8000000,
+    "maximumWorkspaceBytes": 268435456
+  },
+  "mutations": {
+    "bitFlip": 192728,
+    "byteSet": 192527,
+    "deleteChunk": 192629,
+    "duplicateChunk": 192256,
+    "headerField": 192340,
+    "insertChunk": 192404,
+    "markerLength": 192072,
+    "splice": 191723,
+    "truncate": 192394,
+    "zeroRun": 193439
+  },
+  "outcomes": {
+    "j2k:invalidArgument": 373553,
+    "success": 396293
+  },
+  "peakResidentBytes": 10993664,
+  "seed": 20261107,
+  "slowInputsKept": 0,
+  "slowestMilliseconds": 9.310917,
+  "unexpectedErrors": 0
+}

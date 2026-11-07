@@ -1,0 +1,9 @@
+{
+  "gate": "cli-staged-install",
+  "head_commit": "6e1007a1581cd8295dfed273998b1dca14c6fcd3",
+  "binary_sha256": "41f3cb2cee43fcfb32c00fdf9a382425c9222dd52edac471394cee9022bb694b",
+  "installed_version_output": "swiftj2k-cli 12.2.0",
+  "manpage_sha256": "4c4edf35c7f4c86fd9a40639eac98b338afe213ebe5ec2a5eec7c8233cd0318e",
+  "manpage_rendered_header": "SWIFTJ2K-CLI(1) \t Swift Image Compression Suite\t       SWIFTJ2K-CLI(1)",
+  "manpage_rendered_footer": "12.2.0\t\t\t       November 7, 2026 \t       SWIFTJ2K-CLI(1)"
+}

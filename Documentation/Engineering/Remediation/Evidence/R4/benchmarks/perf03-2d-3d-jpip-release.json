@@ -1,0 +1,863 @@
+{
+  "gate_ids": [
+    "PERF-02",
+    "PERF-03"
+  ],
+  "generated_utc": "2026-11-07T11:55:13Z",
+  "source_commit": "6e1007a1581cd8295dfed273998b1dca14c6fcd3",
+  "baseline_commit": "3059a3c87d471028f3524241ec4f881f97cac264",
+  "binary_sha256": {
+    "v12.1.0": "4700e83913152faa2075aa841b1eb4fb9be5eb6a441a2635eb577d4f559dcc84",
+    "12.2.0": "41f3cb2cee43fcfb32c00fdf9a382425c9222dd52edac471394cee9022bb694b"
+  },
+  "host": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "machine": "arm64",
+    "cpu_brand": "Apple M4",
+    "logical_cpus": 10,
+    "memory_bytes": 17179869184,
+    "swift_version": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0",
+    "xcode_version": "Xcode 27.0\nBuild version 27A266a"
+  },
+  "warmups": 5,
+  "iterations": 20,
+  "in_process_2d_compare_all": {
+    "v12.1.0": {
+      "command": "benchmark",
+      "components": 1,
+      "elapsedSeconds": 1.390224458,
+      "height": 256,
+      "meaningfulBits": 16,
+      "presets": [
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 64328,
+          "compressionRatio": 2.0375575177216763,
+          "decode": {
+            "maxMs": 12.047583000000001,
+            "meanMs": 11.458925,
+            "medianMs": 11.4131045,
+            "minMs": 11.152125,
+            "p95Ms": 11.906583,
+            "throughputMPps": 5.742171203286538
+          },
+          "encode": {
+            "maxMs": 18.8705,
+            "meanMs": 11.956314550000002,
+            "medianMs": 11.425833,
+            "minMs": 10.957625,
+            "p95Ms": 13.061875,
+            "throughputMPps": 5.73577436323461
+          },
+          "preset": "j2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 72777,
+          "compressionRatio": 1.8010085603968287,
+          "decode": {
+            "maxMs": 1.9494580000000001,
+            "meanMs": 1.5634978499999999,
+            "medianMs": 1.4465,
+            "minMs": 1.329583,
+            "p95Ms": 1.917375,
+            "throughputMPps": 45.306602143104044
+          },
+          "encode": {
+            "maxMs": 2.054083,
+            "meanMs": 1.5607084,
+            "medianMs": 1.5816664999999999,
+            "minMs": 1.1520000000000001,
+            "p95Ms": 1.839791,
+            "throughputMPps": 41.434777811883855
+          },
+          "preset": "htj2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 61484,
+          "compressionRatio": 2.1318066488842624,
+          "decode": {
+            "maxMs": 16.387792,
+            "meanMs": 13.214110449999998,
+            "medianMs": 12.809542,
+            "minMs": 12.539292,
+            "p95Ms": 14.507666,
+            "throughputMPps": 5.1161860431856185
+          },
+          "encode": {
+            "maxMs": 15.354208,
+            "meanMs": 14.385358400000001,
+            "medianMs": 14.3669375,
+            "minMs": 13.803292,
+            "p95Ms": 14.684083000000001,
+            "throughputMPps": 4.561584540894675
+          },
+          "preset": "j2k-lossy"
+        }
+      ],
+      "results": [
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 64328,
+          "compressionRatio": 2.0375575177216763,
+          "decode": {
+            "maxMs": 12.047583000000001,
+            "meanMs": 11.458925,
+            "medianMs": 11.4131045,
+            "minMs": 11.152125,
+            "p95Ms": 11.906583,
+            "throughputMPps": 5.742171203286538
+          },
+          "encode": {
+            "maxMs": 18.8705,
+            "meanMs": 11.956314550000002,
+            "medianMs": 11.425833,
+            "minMs": 10.957625,
+            "p95Ms": 13.061875,
+            "throughputMPps": 5.73577436323461
+          },
+          "preset": "j2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 72777,
+          "compressionRatio": 1.8010085603968287,
+          "decode": {
+            "maxMs": 1.9494580000000001,
+            "meanMs": 1.5634978499999999,
+            "medianMs": 1.4465,
+            "minMs": 1.329583,
+            "p95Ms": 1.917375,
+            "throughputMPps": 45.306602143104044
+          },
+          "encode": {
+            "maxMs": 2.054083,
+            "meanMs": 1.5607084,
+            "medianMs": 1.5816664999999999,
+            "minMs": 1.1520000000000001,
+            "p95Ms": 1.839791,
+            "throughputMPps": 41.434777811883855
+          },
+          "preset": "htj2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 61484,
+          "compressionRatio": 2.1318066488842624,
+          "decode": {
+            "maxMs": 16.387792,
+            "meanMs": 13.214110449999998,
+            "medianMs": 12.809542,
+            "minMs": 12.539292,
+            "p95Ms": 14.507666,
+            "throughputMPps": 5.1161860431856185
+          },
+          "encode": {
+            "maxMs": 15.354208,
+            "meanMs": 14.385358400000001,
+            "medianMs": 14.3669375,
+            "minMs": 13.803292,
+            "p95Ms": 14.684083000000001,
+            "throughputMPps": 4.561584540894675
+          },
+          "preset": "j2k-lossy"
+        }
+      ],
+      "runs": 20,
+      "warmup": 5,
+      "width": 256
+    },
+    "12.2.0": {
+      "command": "benchmark",
+      "components": 1,
+      "elapsedSeconds": 1.356898958,
+      "height": 256,
+      "meaningfulBits": 16,
+      "presets": [
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 64328,
+          "compressionRatio": 2.0375575177216763,
+          "decode": {
+            "maxMs": 12.020042,
+            "meanMs": 11.48732695,
+            "medianMs": 11.447312499999999,
+            "minMs": 11.198375,
+            "p95Ms": 11.817458,
+            "throughputMPps": 5.72501187505801
+          },
+          "encode": {
+            "maxMs": 11.389667,
+            "meanMs": 11.2370563,
+            "medianMs": 11.2519585,
+            "minMs": 11.017792,
+            "p95Ms": 11.356125,
+            "throughputMPps": 5.824408257460245
+          },
+          "preset": "j2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 72777,
+          "compressionRatio": 1.8010085603968287,
+          "decode": {
+            "maxMs": 1.861291,
+            "meanMs": 1.5080082000000001,
+            "medianMs": 1.3726875,
+            "minMs": 1.335917,
+            "p95Ms": 1.857375,
+            "throughputMPps": 47.74284023129809
+          },
+          "encode": {
+            "maxMs": 1.658917,
+            "meanMs": 1.4360624499999999,
+            "medianMs": 1.5110415000000001,
+            "minMs": 1.051625,
+            "p95Ms": 1.6235410000000001,
+            "throughputMPps": 43.3714097197198
+          },
+          "preset": "htj2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 61484,
+          "compressionRatio": 2.1318066488842624,
+          "decode": {
+            "maxMs": 13.370125,
+            "meanMs": 12.737606399999999,
+            "medianMs": 12.749042,
+            "minMs": 12.401,
+            "p95Ms": 12.881542,
+            "throughputMPps": 5.140464671776908
+          },
+          "encode": {
+            "maxMs": 16.009834,
+            "meanMs": 14.637804250000002,
+            "medianMs": 14.403938,
+            "minMs": 14.017042,
+            "p95Ms": 15.754792,
+            "throughputMPps": 4.5498668489131235
+          },
+          "preset": "j2k-lossy"
+        }
+      ],
+      "results": [
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 64328,
+          "compressionRatio": 2.0375575177216763,
+          "decode": {
+            "maxMs": 12.020042,
+            "meanMs": 11.48732695,
+            "medianMs": 11.447312499999999,
+            "minMs": 11.198375,
+            "p95Ms": 11.817458,
+            "throughputMPps": 5.72501187505801
+          },
+          "encode": {
+            "maxMs": 11.389667,
+            "meanMs": 11.2370563,
+            "medianMs": 11.2519585,
+            "minMs": 11.017792,
+            "p95Ms": 11.356125,
+            "throughputMPps": 5.824408257460245
+          },
+          "preset": "j2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 72777,
+          "compressionRatio": 1.8010085603968287,
+          "decode": {
+            "maxMs": 1.861291,
+            "meanMs": 1.5080082000000001,
+            "medianMs": 1.3726875,
+            "minMs": 1.335917,
+            "p95Ms": 1.857375,
+            "throughputMPps": 47.74284023129809
+          },
+          "encode": {
+            "maxMs": 1.658917,
+            "meanMs": 1.4360624499999999,
+            "medianMs": 1.5110415000000001,
+            "minMs": 1.051625,
+            "p95Ms": 1.6235410000000001,
+            "throughputMPps": 43.3714097197198
+          },
+          "preset": "htj2k-lossless"
+        },
+        {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "compressedBytes": 61484,
+          "compressionRatio": 2.1318066488842624,
+          "decode": {
+            "maxMs": 13.370125,
+            "meanMs": 12.737606399999999,
+            "medianMs": 12.749042,
+            "minMs": 12.401,
+            "p95Ms": 12.881542,
+            "throughputMPps": 5.140464671776908
+          },
+          "encode": {
+            "maxMs": 16.009834,
+            "meanMs": 14.637804250000002,
+            "medianMs": 14.403938,
+            "minMs": 14.017042,
+            "p95Ms": 15.754792,
+            "throughputMPps": 4.5498668489131235
+          },
+          "preset": "j2k-lossy"
+        }
+      ],
+      "runs": 20,
+      "warmup": 5,
+      "width": 256
+    }
+  },
+  "volumetric_3d_jp3d": {
+    "dimensions": {
+      "width": 32,
+      "height": 32,
+      "depth": 16,
+      "bit_depth": 12,
+      "voxels": 16384,
+      "raw_bytes": 32768
+    },
+    "raw_input_sha256": "1170d67c9cc6a5b8e85205b42014d7c2101598bd7949b4d796f549fe948e10db",
+    "results": [
+      {
+        "operation": "decode3d-full",
+        "codec": "j2k-lossless",
+        "voxels_decoded": 16384,
+        "codestream_bytes": 25261,
+        "scalar": {
+          "wall_ms": {
+            "median": 11.181146,
+            "p95": 11.812,
+            "min": 10.677041,
+            "max": 11.870375
+          },
+          "api_ms": {
+            "median": 5.311854,
+            "p95": 5.506375,
+            "min": 4.711917,
+            "max": 5.508958
+          },
+          "megavoxels_per_s_api": 3.0844
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 11.049417,
+            "p95": 11.907166,
+            "min": 10.742125,
+            "max": 12.124833
+          },
+          "api_ms": {
+            "median": 5.148229,
+            "p95": 5.530417,
+            "min": 4.769333,
+            "max": 5.708292
+          },
+          "megavoxels_per_s_api": 3.1825
+        }
+      },
+      {
+        "operation": "decode3d-roi-16x16x8",
+        "codec": "j2k-lossless",
+        "voxels_decoded": 2048,
+        "codestream_bytes": 25261,
+        "scalar": {
+          "wall_ms": {
+            "median": 22.522291,
+            "p95": 23.752709,
+            "min": 21.751833,
+            "max": 23.97325
+          },
+          "api_ms": {
+            "median": 16.073167,
+            "p95": 17.0815,
+            "min": 15.869084,
+            "max": 17.299125
+          },
+          "megavoxels_per_s_api": 0.1274
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 22.254729,
+            "p95": 22.615833,
+            "min": 21.648459,
+            "max": 24.062416
+          },
+          "api_ms": {
+            "median": 15.704041,
+            "p95": 16.376792,
+            "min": 15.330875,
+            "max": 17.416583
+          },
+          "megavoxels_per_s_api": 0.1304
+        }
+      },
+      {
+        "operation": "encode3d",
+        "codec": "j2k-lossless",
+        "voxels_encoded": 16384,
+        "lossless_raw_roundtrip_exact": true,
+        "scalar_vs_accelerated_byte_identical_codestream": true,
+        "codestream_bytes": 25261,
+        "scalar": {
+          "wall_ms": {
+            "median": 11.90275,
+            "p95": 12.603125,
+            "min": 11.180708,
+            "max": 13.592541
+          },
+          "api_ms": {
+            "median": 5.912042,
+            "p95": 6.288709,
+            "min": 5.060875,
+            "max": 6.411167
+          },
+          "megavoxels_per_s_api": 2.7713
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 10.747041,
+            "p95": 11.216833,
+            "min": 10.229417,
+            "max": 11.236917
+          },
+          "api_ms": {
+            "median": 4.658313,
+            "p95": 4.932666,
+            "min": 4.133334,
+            "max": 4.933375
+          },
+          "megavoxels_per_s_api": 3.5172
+        }
+      },
+      {
+        "operation": "decode3d-full",
+        "codec": "j2k-lossy",
+        "voxels_decoded": 16384,
+        "codestream_bytes": 9579,
+        "scalar": {
+          "wall_ms": {
+            "median": 9.736209,
+            "p95": 10.097125,
+            "min": 9.216208,
+            "max": 10.305958
+          },
+          "api_ms": {
+            "median": 3.681479,
+            "p95": 3.889291,
+            "min": 3.367958,
+            "max": 4.447625
+          },
+          "megavoxels_per_s_api": 4.4504
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 9.555146,
+            "p95": 9.944542,
+            "min": 8.997917,
+            "max": 9.995541
+          },
+          "api_ms": {
+            "median": 3.492354,
+            "p95": 3.680042,
+            "min": 3.036,
+            "max": 3.691542
+          },
+          "megavoxels_per_s_api": 4.6914
+        }
+      },
+      {
+        "operation": "decode3d-roi-16x16x8",
+        "codec": "j2k-lossy",
+        "voxels_decoded": 2048,
+        "codestream_bytes": 9579,
+        "scalar": {
+          "wall_ms": {
+            "median": 14.40725,
+            "p95": 15.086208,
+            "min": 14.091459,
+            "max": 15.256084
+          },
+          "api_ms": {
+            "median": 8.107501,
+            "p95": 8.600208,
+            "min": 7.877834,
+            "max": 8.755542
+          },
+          "megavoxels_per_s_api": 0.2526
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 13.872104,
+            "p95": 16.082375,
+            "min": 13.309708,
+            "max": 16.484958
+          },
+          "api_ms": {
+            "median": 7.567104,
+            "p95": 8.037,
+            "min": 7.341584,
+            "max": 8.05875
+          },
+          "megavoxels_per_s_api": 0.2706
+        }
+      },
+      {
+        "operation": "encode3d",
+        "codec": "j2k-lossy",
+        "voxels_encoded": 16384,
+        "lossless_raw_roundtrip_exact": null,
+        "scalar_vs_accelerated_byte_identical_codestream": true,
+        "codestream_bytes": 9579,
+        "scalar": {
+          "wall_ms": {
+            "median": 10.45125,
+            "p95": 10.942459,
+            "min": 9.574583,
+            "max": 11.008083
+          },
+          "api_ms": {
+            "median": 4.685604,
+            "p95": 4.882291,
+            "min": 3.683958,
+            "max": 4.882583
+          },
+          "megavoxels_per_s_api": 3.4967
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 8.842542,
+            "p95": 9.811333,
+            "min": 8.455958,
+            "max": 10.561208
+          },
+          "api_ms": {
+            "median": 3.193875,
+            "p95": 3.454208,
+            "min": 2.858416,
+            "max": 3.608833
+          },
+          "megavoxels_per_s_api": 5.1298
+        }
+      },
+      {
+        "operation": "decode3d-full",
+        "codec": "htj2k-lossless",
+        "voxels_decoded": 16384,
+        "codestream_bytes": 27950,
+        "scalar": {
+          "wall_ms": {
+            "median": 11.118646,
+            "p95": 11.666417,
+            "min": 10.436625,
+            "max": 12.282583
+          },
+          "api_ms": {
+            "median": 4.919771,
+            "p95": 5.386583,
+            "min": 4.09125,
+            "max": 5.43975
+          },
+          "megavoxels_per_s_api": 3.3302
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 10.762709,
+            "p95": 11.310083,
+            "min": 9.738875,
+            "max": 11.320958
+          },
+          "api_ms": {
+            "median": 4.504396,
+            "p95": 4.986042,
+            "min": 3.309125,
+            "max": 4.997584
+          },
+          "megavoxels_per_s_api": 3.6373
+        }
+      },
+      {
+        "operation": "decode3d-roi-16x16x8",
+        "codec": "htj2k-lossless",
+        "voxels_decoded": 2048,
+        "codestream_bytes": 27950,
+        "scalar": {
+          "wall_ms": {
+            "median": 10.118916,
+            "p95": 10.343375,
+            "min": 9.811708,
+            "max": 10.347375
+          },
+          "api_ms": {
+            "median": 4.123021,
+            "p95": 4.236416,
+            "min": 3.921,
+            "max": 4.285083
+          },
+          "megavoxels_per_s_api": 0.4967
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 9.899959,
+            "p95": 10.092667,
+            "min": 9.500458,
+            "max": 10.330833
+          },
+          "api_ms": {
+            "median": 3.846812,
+            "p95": 3.990542,
+            "min": 3.594084,
+            "max": 4.004375
+          },
+          "megavoxels_per_s_api": 0.5324
+        }
+      },
+      {
+        "operation": "encode3d",
+        "codec": "htj2k-lossless",
+        "voxels_encoded": 16384,
+        "lossless_raw_roundtrip_exact": true,
+        "scalar_vs_accelerated_byte_identical_codestream": true,
+        "codestream_bytes": 27950,
+        "scalar": {
+          "wall_ms": {
+            "median": 11.282875,
+            "p95": 11.76475,
+            "min": 9.924292,
+            "max": 11.89575
+          },
+          "api_ms": {
+            "median": 5.496583,
+            "p95": 5.850917,
+            "min": 4.2835,
+            "max": 5.880167
+          },
+          "megavoxels_per_s_api": 2.9808
+        },
+        "accelerated": {
+          "wall_ms": {
+            "median": 9.822042,
+            "p95": 10.338625,
+            "min": 9.07125,
+            "max": 10.49
+          },
+          "api_ms": {
+            "median": 4.041666,
+            "p95": 4.372458,
+            "min": 3.351334,
+            "max": 4.539625
+          },
+          "megavoxels_per_s_api": 4.0538
+        }
+      }
+    ]
+  },
+  "jpip_loopback_separate_process": {
+    "transport_topology": "separate-process swiftj2k-cli jpip server <-> swiftj2k-cli jpip client over 127.0.0.1 ephemeral TCP port",
+    "targets": {
+      "img2d.j2k": "g16_256x256_smooth.opj.j2k (256x256 16-bit lossless)",
+      "vol3d.jp3d": "32x32x16 12-bit Part 10 lossless JP3D (tile 16x16x8, levels 2,2,1)"
+    },
+    "results": [
+      {
+        "case": "2d_http_jpp_accelerated",
+        "wall_ms": {
+          "median": 54.638896,
+          "p95": 62.136958,
+          "min": 45.886208,
+          "max": 71.941625
+        },
+        "client_elapsed_ms": {
+          "median": 48.463625,
+          "p95": 56.138041,
+          "min": 40.073666,
+          "max": 65.10225
+        },
+        "report_fields": {
+          "acceleratedEngine": "metalGPU",
+          "backend": "accelerated",
+          "cachedBytes": 64351,
+          "cachedDataBins": 9,
+          "command": "jpip",
+          "components": 1,
+          "fidelity": "exactSamples",
+          "height": 256,
+          "meaningfulBits": 16,
+          "outputBytes": 131275,
+          "role": "client",
+          "target": "img2d.j2k",
+          "width": 256
+        }
+      },
+      {
+        "case": "2d_http_jpp_scalar",
+        "wall_ms": {
+          "median": 24.18477,
+          "p95": 25.037625,
+          "min": 23.619208,
+          "max": 25.113084
+        },
+        "client_elapsed_ms": {
+          "median": 18.361167,
+          "p95": 18.912541,
+          "min": 17.975916,
+          "max": 19.285041
+        },
+        "report_fields": {
+          "acceleratedEngine": "none",
+          "backend": "scalar",
+          "cachedBytes": 64351,
+          "cachedDataBins": 9,
+          "command": "jpip",
+          "components": 1,
+          "fidelity": "exactSamples",
+          "height": 256,
+          "meaningfulBits": 16,
+          "outputBytes": 131275,
+          "role": "client",
+          "target": "img2d.j2k",
+          "width": 256
+        }
+      },
+      {
+        "case": "2d_http_jpt",
+        "wall_ms": {
+          "median": 53.164938,
+          "p95": 62.616334,
+          "min": 45.211208,
+          "max": 65.893541
+        },
+        "client_elapsed_ms": {
+          "median": 47.257458,
+          "p95": 56.423542,
+          "min": 39.279333,
+          "max": 59.412583
+        },
+        "report_fields": {
+          "cachedBytes": 64365,
+          "cachedDataBins": 3,
+          "command": "jpip",
+          "components": 1,
+          "height": 256,
+          "meaningfulBits": 16,
+          "outputBytes": 131275,
+          "role": "client",
+          "rounds": 1,
+          "streamType": "jpt-stream",
+          "target": "img2d.j2k",
+          "transport": "http",
+          "width": 256
+        }
+      },
+      {
+        "case": "2d_websocket_jpp",
+        "wall_ms": {
+          "median": 49.788979,
+          "p95": 61.616208,
+          "min": 45.199542,
+          "max": 68.430625
+        },
+        "client_elapsed_ms": {
+          "median": 43.992854,
+          "p95": 55.755792,
+          "min": 39.224916,
+          "max": 62.238792
+        },
+        "report_fields": {
+          "cachedBytes": 64351,
+          "cachedDataBins": 9,
+          "command": "jpip",
+          "components": 1,
+          "height": 256,
+          "meaningfulBits": 16,
+          "outputBytes": 131275,
+          "role": "client",
+          "rounds": 1,
+          "streamType": "jpp-stream",
+          "target": "img2d.j2k",
+          "transport": "websocket",
+          "width": 256
+        }
+      },
+      {
+        "case": "3d_http_jp3d_roi",
+        "wall_ms": {
+          "median": 25.080063,
+          "p95": 25.577833,
+          "min": 23.971167,
+          "max": 25.715084
+        },
+        "client_elapsed_ms": {
+          "median": 19.35723,
+          "p95": 19.723917,
+          "min": 18.692625,
+          "max": 19.809666
+        },
+        "report_fields": {
+          "bitDepth": 12,
+          "cachedBytes": 25147,
+          "cachedDataBins": 34,
+          "command": "jpip",
+          "components": 1,
+          "deliveredBins": 23,
+          "depth": 8,
+          "height": 16,
+          "outputBytes": 4299,
+          "role": "client",
+          "target": "vol3d.jp3d",
+          "transport": "http",
+          "width": 16
+        }
+      },
+      {
+        "case": "3d_websocket_jp3d_roi",
+        "wall_ms": {
+          "median": 24.490542,
+          "p95": 25.344167,
+          "min": 23.802291,
+          "max": 36.444708
+        },
+        "client_elapsed_ms": {
+          "median": 17.139229,
+          "p95": 17.439958,
+          "min": 16.817375,
+          "max": 28.722083
+        },
+        "report_fields": {
+          "bitDepth": 12,
+          "cachedBytes": 25147,
+          "cachedDataBins": 34,
+          "command": "jpip",
+          "components": 1,
+          "deliveredBins": 23,
+          "depth": 8,
+          "height": 16,
+          "outputBytes": 4299,
+          "role": "client",
+          "target": "vol3d.jp3d",
+          "transport": "websocket",
+          "width": 16
+        }
+      }
+    ]
+  }
+}

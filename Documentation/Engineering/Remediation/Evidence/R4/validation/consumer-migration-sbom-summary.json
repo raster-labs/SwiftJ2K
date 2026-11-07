@@ -1,0 +1,97 @@
+{
+  "gate_ids": [
+    "API-09",
+    "PKG-01",
+    "PKG-04",
+    "TEST-04"
+  ],
+  "source_commit": "6e1007a1581cd8295dfed273998b1dca14c6fcd3",
+  "target_version": "12.2.0",
+  "validate_sh_consumer_sbom": {
+    "status": "passed_requested_checks",
+    "selected_checks": [
+      "consumer",
+      "sbom"
+    ],
+    "open_gates": [
+      "Fresh URL-based consumer resolution is separate from this local consumer check",
+      "spdx: installed SwiftPM schema bundle unavailable; SBOM emitted but schema validation skipped",
+      "cyclonedx: installed SwiftPM schema bundle unavailable; SBOM emitted but schema validation skipped"
+    ],
+    "report_file": "Documentation/Engineering/Remediation/Evidence/R4/validation/validate-consumer-sbom-report.json"
+  },
+  "independent_consumers": {
+    "Examples/Consumer": {
+      "configuration": "release",
+      "exit_code": 0,
+      "stdout": "Independent SwiftJ2K/SwiftJ2K3D/SwiftJ2KJPIP consumer passed; 106-byte Part 1, 126-byte HTJ2K, 163-byte JP3D codestreams and JPIP session round-tripped."
+    },
+    "Examples/MigrationExample": {
+      "configuration": "release",
+      "exit_code": 0,
+      "stdout": "Migration example passed: 115-byte lossless codestream; decode into caller storage with 0 pixel allocations and 0 copy events."
+    },
+    "FreshAllProductsConsumer": {
+      "products_imported": [
+        "SwiftJ2K",
+        "SwiftJ2K3D",
+        "SwiftJ2KJPIP"
+      ],
+      "configuration": "release",
+      "exit_code": 0,
+      "stdout": "FreshAllProductsConsumer passed: 2D=139B 3D-HT=430B JPIP-engine=cpuSIMD"
+    },
+    "Integration/ContractHarness": {
+      "status": "UNEXECUTED",
+      "reason": "Sibling suite checkouts (../SwiftJXL, ../SwiftJLS, ../SwiftJP2) are not present in this single-repository workspace; repository independence requires zero cross-codec dependency."
+    }
+  },
+  "sbom_artifacts": [
+    {
+      "product": "SwiftJ2K",
+      "relative_artifact": "sboms/spdx/spdx3-3.0.1-SwiftJ2K-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_32_11Z.json",
+      "format": "spdx",
+      "sha256": "02c594d8710cc313a65cb65a3d580c46d37168a6ac78590d798543ae2b6ee0f4",
+      "build_associated": true
+    },
+    {
+      "product": "SwiftJ2K",
+      "relative_artifact": "sboms/cyclonedx/cyclonedx1-1.7-SwiftJ2K-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_32_11Z.json",
+      "format": "cyclonedx",
+      "sha256": "f893428272187f0f3ba9e85b4e92e82ffa9f7020c145a989ec2f55f24d054b66",
+      "build_associated": true
+    },
+    {
+      "product": "SwiftJ2K3D",
+      "relative_artifact": "extra-sboms/SwiftJ2K3D/cyclonedx/cyclonedx1-1.7-SwiftJ2K3D-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_32_51Z.json",
+      "format": "cyclonedx",
+      "bytes": 2504,
+      "sha256": "4323a0fb95917fefb6afc041c83e8dd6748381ab04208f9d53b7d2daf61d1ec5",
+      "build_associated": true
+    },
+    {
+      "product": "SwiftJ2K3D",
+      "relative_artifact": "extra-sboms/SwiftJ2K3D/spdx/spdx3-3.0.1-SwiftJ2K3D-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_32_50Z.json",
+      "format": "spdx",
+      "bytes": 3637,
+      "sha256": "6d672f40b4b59bc54217f868022753de132034afceba1d78a282eeadf3da205c",
+      "build_associated": true
+    },
+    {
+      "product": "SwiftJ2KJPIP",
+      "relative_artifact": "extra-sboms/SwiftJ2KJPIP/cyclonedx/cyclonedx1-1.7-SwiftJ2KJPIP-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_33_10Z.json",
+      "format": "cyclonedx",
+      "bytes": 2518,
+      "sha256": "ff435a22cd2173f0c7bf5f585db21a687144db40bf023b493bf22c784eeb0348",
+      "build_associated": true
+    },
+    {
+      "product": "SwiftJ2KJPIP",
+      "relative_artifact": "extra-sboms/SwiftJ2KJPIP/spdx/spdx3-3.0.1-SwiftJ2KJPIP-6e1007a1581cd8295dfed273998b1dca14c6fcd3-modified-all-2026-11-07T11_33_10Z.json",
+      "format": "spdx",
+      "bytes": 3651,
+      "sha256": "8c18ea6449adae4fdec37d02aca7924e218a142cec040790dd98bd1ba5416f47",
+      "build_associated": true
+    }
+  ]
+}

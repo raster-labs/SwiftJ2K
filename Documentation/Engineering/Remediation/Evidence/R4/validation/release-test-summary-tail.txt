@@ -1,0 +1,40 @@
+✔ Test sharedHTTPSPathPreservesRequestHeadersBodyAndNegotiatedChannel() passed after 0.708 seconds.
+✔ Test admissionPeerStopRejectsLateAcceptedSocketAndObservesCompletion() passed after 0.697 seconds.
+✔ Suite "R3 independent-review allocation admission regressions" passed after 0.733 seconds.
+✔ Test descriptorHeavyHandshakePeakBelongsOnlyToConnectingRequest() passed after 0.732 seconds.
+✔ Test oldHTTPSSuccessAndOldCloseCannotOverwriteReplacementPath() passed after 0.704 seconds.
+✔ Test taskCancellationJoinsAndAllowsFollowingRequest() passed after 0.705 seconds.
+✔ Test repeatedCloseAndReopenReleasesRetiredWebSocketOwnersAndQueuedData() passed after 0.734 seconds.
+✔ Test "T5: Deterministic descriptor-number reuse model test proves retired owner never touches recycled slot" passed after 0.734 seconds.
+✔ Test "T6: Connection operations release operation locks before physical close and support concurrent read/write borrowers" passed after 0.755 seconds.
+✔ Test acceleratedHTJ2KAndTranscodeAreByteIdenticalAcrossAllFixtures() passed after 0.759 seconds.
+✔ Test closeBeforeHTTPWorkerStartupCannotReconnectAfterJoining() passed after 0.777 seconds.
+✔ Test publicClientCloseCancelsInitialChannelCreationWithoutTaskCancellation() passed after 0.778 seconds.
+✔ Test staleHTTPResponseAndOldCloseCannotReplaceFreshSocketOrChannel() passed after 0.780 seconds.
+✔ Test repeatedCloseCancelsAndJoinsHeldHTTPWorker(mode:) with 3 test cases passed after 0.781 seconds.
+✔ Suite "R3 captured HTTP request close lifecycle" passed after 0.783 seconds.
+✔ Test workerErrorAndCancellationDoNotPublishAReusableConnection() passed after 0.760 seconds.
+✔ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) with 2 test cases passed after 0.786 seconds.
+✔ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() passed after 0.771 seconds.
+✔ Suite "R3 blocking-worker result publication" passed after 0.796 seconds.
+✔ Test "M12-CX-01, M12-CX-02, CLI F02/F03/F05, and M12-CI: CLI subprocess regressions" passed after 0.771 seconds.
+✔ Suite "Phase R1 — Core & CLI Audit Remediation Regressions" passed after 0.831 seconds.
+✔ Test rejectedConcurrentRequestAndConfigurePreserveActivePolicyAndSharedConnection() passed after 0.832 seconds.
+✔ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" passed after 0.836 seconds.
+✔ Test overlappingFirstSendsAndCloseWithTracingShareSingleTransportAndJoinAllReaders() passed after 0.843 seconds.
+✔ Test cliAndBidirectionalExternalOracleVerification() passed after 0.829 seconds.
+✔ Suite "Phase A Part 2 MCT, HTIRV, Acceleration, and Transcoding" passed after 0.871 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 0.842 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 0.948 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 0.978 seconds.
+✔ Test acceleratedDecodeAndEncodeAreByteIdenticalAcrossAllLosslessFixtures() passed after 0.991 seconds.
+✔ Test followerWaitersExpireOrCancelIndependentlyWithoutCancellingSlowLeaderHandshake() passed after 1.054 seconds.
+✔ Suite "R3 transport pre-allocation budgets" passed after 1.056 seconds.
+✔ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" passed after 1.226 seconds.
+✔ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" passed after 1.285 seconds.
+✔ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" passed after 1.287 seconds.
+✔ Test staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases passed after 1.292 seconds.
+✔ Suite "R3 WebSocket connection-generation barriers" passed after 1.294 seconds.
+✔ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" passed after 1.296 seconds.
+✔ Suite "Codex R3 Socket Lifetime & Server Generation Tests" passed after 1.299 seconds.
+✔ Test run with 346 tests in 43 suites passed after 1.299 seconds.

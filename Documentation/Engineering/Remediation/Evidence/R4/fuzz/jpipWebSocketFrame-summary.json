@@ -1,0 +1,43 @@
+{
+  "corpus": [
+    "synthetic:ws_request_frame",
+    "synthetic:ws_response_jpp3d_frame",
+    "synthetic:ws_extended_databin_frame",
+    "synthetic:ws_control_frame"
+  ],
+  "elapsedSeconds": 120.000127792,
+  "entry": "jpipWebSocketFrame",
+  "final": true,
+  "iterations": 803409,
+  "limits": {
+    "deadlineSeconds": 5,
+    "maximumDecodedBytes": 67108864,
+    "maximumFrames": 512,
+    "maximumPixels": 8000000,
+    "maximumWorkspaceBytes": 268435456
+  },
+  "mutations": {
+    "bitFlip": 200193,
+    "byteSet": 201398,
+    "deleteChunk": 200793,
+    "duplicateChunk": 200590,
+    "headerField": 200579,
+    "insertChunk": 201694,
+    "markerLength": 200869,
+    "splice": 200652,
+    "truncate": 200951,
+    "zeroRun": 201303
+  },
+  "outcomes": {
+    "j2k:invalidArgument": 17795,
+    "j2k:malformedInput": 69913,
+    "resourceLimitExceeded": 6429,
+    "success": 707093,
+    "unsupportedFormat": 2179
+  },
+  "peakResidentBytes": 821526528,
+  "seed": 20261107,
+  "slowInputsKept": 0,
+  "slowestMilliseconds": 10.276458,
+  "unexpectedErrors": 0
+}

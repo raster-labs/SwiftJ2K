@@ -1,0 +1,42 @@
+{
+  "corpus": [
+    "synthetic:jp3d_8x8x4_u12_ebcot_lossless",
+    "synthetic:jp3d_8x8x4_s12_htj2k_lossless",
+    "synthetic:jp3d_8x8x4_u8_ebcot_lossy97",
+    "synthetic:jp3d_8x8x4_u8_htj2k_lossy",
+    "synthetic:jp3d_4x4x2_u24_part2_bitsplit"
+  ],
+  "elapsedSeconds": 120.000048916,
+  "entry": "decode3d",
+  "final": true,
+  "iterations": 832245,
+  "limits": {
+    "deadlineSeconds": 5,
+    "maximumDecodedBytes": 67108864,
+    "maximumFrames": 512,
+    "maximumPixels": 8000000,
+    "maximumWorkspaceBytes": 268435456
+  },
+  "mutations": {
+    "bitFlip": 207428,
+    "byteSet": 207631,
+    "deleteChunk": 208727,
+    "duplicateChunk": 207848,
+    "headerField": 208105,
+    "insertChunk": 207983,
+    "markerLength": 207291,
+    "splice": 208727,
+    "truncate": 208269,
+    "zeroRun": 208125
+  },
+  "outcomes": {
+    "malformedInput": 781335,
+    "resourceLimitExceeded": 24987,
+    "success": 25923
+  },
+  "peakResidentBytes": 36814848,
+  "seed": 20261107,
+  "slowInputsKept": 0,
+  "slowestMilliseconds": 4.462583,
+  "unexpectedErrors": 0
+}

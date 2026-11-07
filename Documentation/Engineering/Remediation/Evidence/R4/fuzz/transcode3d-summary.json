@@ -1,0 +1,44 @@
+{
+  "corpus": [
+    "synthetic:jp3d_8x8x4_u12_ebcot_lossless",
+    "synthetic:jp3d_8x8x4_s12_htj2k_lossless",
+    "synthetic:jp3d_8x8x4_u8_ebcot_lossy97",
+    "synthetic:jp3d_8x8x4_u8_htj2k_lossy",
+    "synthetic:jp3d_4x4x2_u24_part2_bitsplit"
+  ],
+  "elapsedSeconds": 120.000461292,
+  "entry": "transcode3d",
+  "final": true,
+  "iterations": 812109,
+  "limits": {
+    "deadlineSeconds": 5,
+    "maximumDecodedBytes": 67108864,
+    "maximumFrames": 512,
+    "maximumPixels": 8000000,
+    "maximumWorkspaceBytes": 268435456
+  },
+  "mutations": {
+    "bitFlip": 202285,
+    "byteSet": 202625,
+    "deleteChunk": 203683,
+    "duplicateChunk": 202727,
+    "headerField": 203049,
+    "insertChunk": 202936,
+    "markerLength": 202259,
+    "splice": 203657,
+    "truncate": 203223,
+    "zeroRun": 203243
+  },
+  "outcomes": {
+    "incompatibleImageLayout": 16837,
+    "malformedInput": 756355,
+    "resourceLimitExceeded": 24332,
+    "success": 14505,
+    "unsupportedFeature": 80
+  },
+  "peakResidentBytes": 24887296,
+  "seed": 20261107,
+  "slowInputsKept": 0,
+  "slowestMilliseconds": 4.391334,
+  "unexpectedErrors": 0
+}
