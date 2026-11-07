@@ -4,16 +4,15 @@ Volumetric JPEG 2000 Part 10 (JP3D, ISO/IEC 15444-10) encoding, decoding, ROI ex
 
 ## Overview
 
-`SwiftJ2K3D` is the retained 3D volumetric library product of `SwiftJ2K` (Decision M2). It provides both the contract-aligned volume codec surface (`VolumeEncoder`, `VolumeDecoder`, `VolumeTranscoder`) and the full `JP3D*` type hierarchy for seamless consumer migration (such as `DICOMKit`).
+`SwiftJ2K3D` is the retained 3D volumetric library product of `SwiftJ2K` (Decision M2). It provides both the contract-aligned volume codec surface (`VolumeEncoder`, `VolumeDecoder`, `VolumeTranscoder`) and the full `JP3D*` type hierarchy for volumetric JPEG 2000 consumers.
 
 ### Key Capabilities
 
-- **3D Discrete Wavelet Transform (`JP3DWaveletTransform`, `JP3DMetalDWT`)**: Separable 3D Le Gall 5/3 reversible and CDF 9/7 irreversible wavelet transforms with symmetric, periodic, and zero-padding boundary extensions, plus Metal GPU acceleration on Apple Silicon.
-- **Slice-Stack Volumetric Codec (`JP3DSliceStackCodec`)**: High-throughput `J3DS` v2 slice-stack payload format delegating per-slice 2D encoding, decoding, and lossless transcoding to `SwiftJ2K`'s Part 1 and Part 15 (HTJ2K) pipelines with optional lossless Z-axis first-order delta prediction (`JP3DZDeltaMode`).
-- **Volumetric Encoder & Decoder (`JP3DEncoder`, `JP3DDecoder`, `VolumeEncoder`, `VolumeDecoder`)**: Lossless, lossy PSNR, target bitrate, visually lossless, lossless HTJ2K, and lossy HTJ2K modes with signed and unsigned voxel precision (`1...38` bits).
-- **Region-of-Interest & Progressive Decoding (`JP3DROIDecoder`, `JP3DProgressiveDecoder`)**: Sub-volume decoding skipping unneeded tiles and Z-slices, multi-resolution thumbnail decoding, and quality-layer progressive refinement.
-- **HTJ2K in JP3D & Lossless Transcoding (`JP3DHTJ2KCodec`, `JP3DTranscoder`, `VolumeTranscoder`)**: CAP (`0xFF50`) / CPF (`0xFF59`) marker signalling and wavelet-domain slice-by-slice transcoding between standard JP3D and HTJ2K without inverse/forward wavelet transforms.
-- **Multi-Spectral Volumetric Processing (`JP3DMultiSpectralEncoder`, `JP3DMultiSpectralDecoder`, `JP3DSpectralAnalyser`)**: Spectral Karhunen-Loève decorrelation, inter-band prediction, normalized difference spectral indices (NDVI, NDWI, NDSI), and automated voxel classification.
+- **3D Discrete Wavelet Transform (`JP3DWaveletTransform`, `JP3DMetalDWT`)**: Separable 3D Le Gall 5/3 reversible and CDF 9/7 irreversible wavelet transforms with symmetric, periodic, and zero-padding boundary extensions, CPU `SIMD4` vectorisation, and standalone Metal GPU DWT kernels on Apple Silicon.
+- **Normative ISO/IEC 15444-10 JP3D Codestreams (`JP3DEncoder`, `JP3DDecoder`, `VolumeEncoder`, `VolumeDecoder`)**: Normative Part 10 volumetric codestreams (`SOC`/`SIZ` + 3D `COD`/`QCD` + 3D EBCOT/packet coding) across lossless, lossy PSNR, target bitrate, visually lossless, lossless HTJ2K, and lossy HTJ2K modes with signed and unsigned voxel precision (`1...38` bits, using Part 2 component bit-split above 33 bits). Legacy `J3DS`/`J3DI` payloads remain supported internally for backwards-compatible decode and transcode only.
+- **Region-of-Interest & Progressive Decoding (`JP3DROIDecoder`, `JP3DProgressiveDecoder`)**: Sub-volume decoding skipping unneeded 3D tiles and precincts, multi-resolution thumbnail decoding, and quality-layer progressive refinement.
+- **HTJ2K in JP3D & Wavelet-Domain Transcoding (`JP3DHTJ2KCodec`, `JP3DTranscoder`, `VolumeTranscoder`)**: CAP (`0xFF50`) / CPF (`0xFF59`) marker signalling, multi-pass HT block coding (`Cleanup`, `SigProp`, `MagRef`, `MULTIHT`, and leading placeholder passes), and wavelet-domain transcoding between standard JP3D and HTJ2K without inverse/forward wavelet transforms.
+- **Multi-Spectral Volumetric Processing (`JP3DMultiSpectralEncoder`, `JP3DMultiSpectralDecoder`, `JP3DSpectralAnalyser`)**: Spectral Karhunen-Loève decorrelation, inter-band prediction, normalised difference spectral indices (NDVI, NDWI, NDSI), and automated voxel classification.
 
 ## Topics
 

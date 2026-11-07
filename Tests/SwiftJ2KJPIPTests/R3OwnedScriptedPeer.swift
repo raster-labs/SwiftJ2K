@@ -180,6 +180,121 @@ struct R3ScriptedPeerFailure: Error, CustomStringConvertible {
 /// called between overlapping child tasks within a test, and never alters any deadline or assertion.
 enum JPIPTestCooperativeQuiescence {
     private static let activeHeavyCodecWork = Mutex<Int>(0)
+    private enum CFNetworkWarmupState {
+        case idle
+        case warming([CheckedContinuation<Void, Never>])
+        case warm
+    }
+    private static let warmupState = Mutex<CFNetworkWarmupState>(.idle)
+    private static let warmupQueue = DispatchQueue(
+        label: "com.rasterlab.swiftj2k.jpip.test-cfnetwork-warmup",
+        qos: .userInitiated
+    )
+
+    private final class WarmupProtocol: URLProtocol {
+        override class func canInit(with request: URLRequest) -> Bool {
+            request.url?.host == "jpip-warmup.invalid"
+        }
+        override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+        override func startLoading() {
+            if let url = request.url,
+               let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil) {
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            }
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        override func stopLoading() {}
+    }
+
+    private final class WarmupDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+        // SAFETY: finished is mutated at most once under lock before resuming waiters.
+        private let lock = NSLock()
+        private var finished = false
+        private let onFinish: @Sendable () -> Void
+
+        init(onFinish: @escaping @Sendable () -> Void) {
+            self.onFinish = onFinish
+            super.init()
+        }
+
+        func completeOnce() {
+            lock.lock()
+            guard !finished else { lock.unlock(); return }
+            finished = true
+            lock.unlock()
+            onFinish()
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+            session.finishTasksAndInvalidate()
+        }
+
+        func urlSession(_ session: URLSession, didBecomeInvalidWithError error: (any Error)?) {
+            completeOnce()
+        }
+    }
+
+    /// Pre-warms CFNetwork's ephemeral `URLSession` XPC/TLS subsystem off the Swift Concurrency
+    /// cooperative pool once per test process so cold iOS Simulator `URLSession.init` (~2.4s)
+    /// completes before any test stamps its operation deadline clock.
+    private static func warmUpCFNetworkOnce() async {
+        let alreadyWarm = warmupState.withLock { state -> Bool in
+            if case .warm = state { return true }
+            return false
+        }
+        if alreadyWarm { return }
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let shouldStart = warmupState.withLock { state -> Bool in
+                switch state {
+                case .idle:
+                    state = .warming([continuation])
+                    return true
+                case .warming(var waiters):
+                    waiters.append(continuation)
+                    state = .warming(waiters)
+                    return false
+                case .warm:
+                    continuation.resume()
+                    return false
+                }
+            }
+            guard shouldStart else { return }
+
+            warmupQueue.async {
+                let delegate = WarmupDelegate {
+                    let waiters = warmupState.withLock { state -> [CheckedContinuation<Void, Never>] in
+                        let pending: [CheckedContinuation<Void, Never>]
+                        if case .warming(let list) = state {
+                            pending = list
+                        } else {
+                            pending = []
+                        }
+                        state = .warm
+                        return pending
+                    }
+                    for waiter in waiters {
+                        waiter.resume()
+                    }
+                }
+                let queue = OperationQueue()
+                queue.maxConcurrentOperationCount = 1
+                queue.qualityOfService = .userInitiated
+                let config = URLSessionConfiguration.ephemeral
+                config.protocolClasses = [WarmupProtocol.self]
+                config.timeoutIntervalForRequest = 5
+                let session = URLSession(configuration: config, delegate: delegate, delegateQueue: queue)
+                if let url = URL(string: "https://jpip-warmup.invalid/warmup") {
+                    session.dataTask(with: url).resume()
+                } else {
+                    session.finishTasksAndInvalidate()
+                }
+                warmupQueue.asyncAfter(deadline: .now() + .seconds(10)) {
+                    delegate.completeOnce()
+                }
+            }
+        }
+    }
 
     static func beginHeavyCodecWork() {
         activeHeavyCodecWork.withLock { $0 += 1 }
@@ -190,6 +305,7 @@ enum JPIPTestCooperativeQuiescence {
     }
 
     static func settle() async {
+        await warmUpCFNetworkOnce()
         let maxWait = ContinuousClock.now.advanced(by: .seconds(50))
         var fastRounds = 0
         while fastRounds < 6 && ContinuousClock.now < maxWait {

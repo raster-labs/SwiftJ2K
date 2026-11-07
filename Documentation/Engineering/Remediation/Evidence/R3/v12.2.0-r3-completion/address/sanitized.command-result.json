@@ -1,0 +1,14 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "list",
+    "--scratch-path",
+    ".build/asan",
+    "--sanitize",
+    "address"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "8adf6bfd896272ca466f076aa1aa5d0178fff7cf929e7828f6dbe48bdf9b3844",
+  "stderr_sha256": "2fd5e7b7bf35e08ec17cae1ed2354aa29a8386645e3aa09d6b502ece922a5e28"
+}

@@ -1,0 +1,525 @@
+{
+  "version": "12.2.0",
+  "binaries": {
+    "swiftj2k_cli": {
+      "relpath": ".build/release/swiftj2k-cli",
+      "sha256": "41f3cb2cee43fcfb32c00fdf9a382425c9222dd52edac471394cee9022bb694b"
+    },
+    "opj_jp3d_compress_v2_4_0": {
+      "sha256": "61849804cbd5af928cbbf7b805657fb84681c9b1083c89945bab84148052371a"
+    },
+    "opj_jpip_transcode_v2_4_0": {
+      "sha256": "bb98366ef30de3d9c5b439928d4856a844387a3375e57ee437d59f61ffdf3445"
+    },
+    "opj_decompress_v2_5_4": {
+      "path": "/opt/homebrew/bin/opj_decompress",
+      "sha256": "29f46b837c299a9001d73ec07ec39f157d80c3fa482c3b91121189302ce0282a"
+    },
+    "ojph_expand_v0_30_1": {
+      "path": "/opt/homebrew/bin/ojph_expand",
+      "sha256": "c6831b19f29824edfa36acb8110bdd4d3cdfecb4acc98f08842d8ea620bbdf3f"
+    },
+    "kdu_server_v8_4_1": {
+      "path": "/usr/local/bin/kdu_server",
+      "sha256": "dc0cc8ad8637076258131ea83f3be3f829ff4439e36a4c23a484c07de78ec539"
+    },
+    "kdu_compress_v8_4_1": {
+      "path": "/usr/local/bin/kdu_compress",
+      "sha256": "6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06"
+    },
+    "kdu_expand_v8_4_1": {
+      "path": "/usr/local/bin/kdu_expand",
+      "sha256": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"
+    }
+  },
+  "checks_passed": 22,
+  "checks": [
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_arb3d_u8_nlz0_lrcp",
+      "dimensions": [
+        17,
+        11,
+        5
+      ],
+      "bit_depth": 8,
+      "codestream_bytes": 814,
+      "codestream_sha256": "bc4569a9ff57932adbbe3e4ea2e408328cbf4c2a487812a1769e7ad628b0ab6d",
+      "decode3d_report": {
+        "bitDepth": 8,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 5,
+        "elapsedSeconds": 0.002449458,
+        "height": 11,
+        "inputBytes": 814,
+        "outputBytes": 1026,
+        "tilesDecoded": 1,
+        "width": 17
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_arb3d_u12_nlz0_rlcp",
+      "dimensions": [
+        24,
+        20,
+        6
+      ],
+      "bit_depth": 12,
+      "codestream_bytes": 2528,
+      "codestream_sha256": "20fb29f92f27eef10a45a6b71cc0bbecd32c3b264797e2125d0a4e5064d35682",
+      "decode3d_report": {
+        "bitDepth": 12,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 6,
+        "elapsedSeconds": 0.003927625,
+        "height": 20,
+        "inputBytes": 2528,
+        "outputBytes": 5868,
+        "tilesDecoded": 1,
+        "width": 24
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_zext_u8_odd_111_lrcp",
+      "dimensions": [
+        17,
+        11,
+        5
+      ],
+      "bit_depth": 8,
+      "codestream_bytes": 552,
+      "codestream_sha256": "a353e07d4fea372b929ba83524f5b7256d26f192b633a54aede00d30f21fa549",
+      "decode3d_report": {
+        "bitDepth": 8,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 5,
+        "elapsedSeconds": 0.002134834,
+        "height": 11,
+        "inputBytes": 552,
+        "outputBytes": 1026,
+        "tilesDecoded": 1,
+        "width": 17
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_zext_u8_aniso_221_rlcp",
+      "dimensions": [
+        16,
+        16,
+        8
+      ],
+      "bit_depth": 8,
+      "codestream_bytes": 984,
+      "codestream_sha256": "05404f952c3ae49f05fe730c37a138ad15369213965d972f647072f22e3b9fbc",
+      "decode3d_report": {
+        "bitDepth": 8,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 8,
+        "elapsedSeconds": 0.002256834,
+        "height": 16,
+        "inputBytes": 984,
+        "outputBytes": 2139,
+        "tilesDecoded": 1,
+        "width": 16
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_zext_u12_aniso_331_lrcp",
+      "dimensions": [
+        24,
+        20,
+        8
+      ],
+      "bit_depth": 12,
+      "codestream_bytes": 1734,
+      "codestream_sha256": "eb08efd986e362471cc1f781683f381add75a79e7c611ca25c4216283567fa0b",
+      "decode3d_report": {
+        "bitDepth": 12,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 8,
+        "elapsedSeconds": 0.003569375,
+        "height": 20,
+        "inputBytes": 1734,
+        "outputBytes": 7788,
+        "tilesDecoded": 1,
+        "width": 24
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F01-OpenJP3D-2.4.0-encode-to-SwiftJ2K-decode3d",
+      "case": "unmod_zext_u12_iso_111_rpcl",
+      "dimensions": [
+        16,
+        16,
+        8
+      ],
+      "bit_depth": 12,
+      "codestream_bytes": 1138,
+      "codestream_sha256": "a70a74fcb0304756fb4001fbab842983ea8d9c93e2f1fd77b2e4c85404c12e7d",
+      "decode3d_report": {
+        "bitDepth": 12,
+        "command": "decode3d",
+        "components": 1,
+        "depth": 8,
+        "elapsedSeconds": 0.002737541,
+        "height": 16,
+        "inputBytes": 1138,
+        "outputBytes": 4204,
+        "tilesDecoded": 1,
+        "width": 16
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_stateful_j2c",
+      "report": {
+        "acceleratedEngine": "cpuSIMD",
+        "backend": "accelerated",
+        "cachedBytes": 874,
+        "cachedDataBins": 6,
+        "channelID": "JPH_C8D7FCD85527AD3F",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.163545291,
+        "fidelity": "exactSamples",
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "target": "swift_target.j2c",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_stateful_jp2",
+      "report": {
+        "acceleratedEngine": "cpuSIMD",
+        "backend": "accelerated",
+        "cachedBytes": 1023,
+        "cachedDataBins": 7,
+        "channelID": "JPH_2E487EDAF1005B1A",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.194998917,
+        "fidelity": "exactSamples",
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "target": "swift_target.jp2",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_stateful_kdu_jp2",
+      "report": {
+        "acceleratedEngine": "cpuSIMD",
+        "backend": "accelerated",
+        "cachedBytes": 1012,
+        "cachedDataBins": 7,
+        "channelID": "JPH_D0F7309B3D4F03DB",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.188370125,
+        "fidelity": "exactSamples",
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "target": "kdu_target.jp2",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_progressive_len200",
+      "report": {
+        "cachedBytes": 1012,
+        "cachedDataBins": 7,
+        "channelID": "JPH_0C8602883D4F03DB",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.256877209,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 6,
+        "streamType": "jpp-stream",
+        "target": "kdu_target.jp2",
+        "transport": "http",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_stateless_j2c",
+      "report": {
+        "cachedBytes": 874,
+        "cachedDataBins": 6,
+        "channelID": "stateless",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.14616325,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 1,
+        "streamType": "jpp-stream",
+        "target": "swift_target.j2c",
+        "transport": "http",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-Kakadu-kdu_server-8.4.1",
+      "case": "kdu_roi_8_4_16_12",
+      "report": {
+        "acceleratedEngine": "cpuSIMD",
+        "backend": "accelerated",
+        "cachedBytes": 1012,
+        "cachedDataBins": 7,
+        "channelID": "JPH_B7E6B1113D4F03DB",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.200653291,
+        "fidelity": "exactSamples",
+        "height": 12,
+        "meaningfulBits": 8,
+        "outputBytes": 205,
+        "role": "client",
+        "target": "kdu_target.jp2",
+        "width": 16
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-OpenJPIP-2.4.0-and-curl",
+      "case": "jpt_stream_dedup_wildcard400_cclose410_and_opj_jpip_transcode",
+      "jpt_body_bytes": 902,
+      "dup_body_hex": "000100",
+      "bit_exact_opj_and_kdu": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp2d_http_jpp",
+      "report": {
+        "cachedBytes": 871,
+        "cachedDataBins": 6,
+        "channelID": "cid-790ADFC4-A59C-4A85-823A-8A7F2B840870",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.028752917,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 1,
+        "streamType": "jpp-stream",
+        "target": "swift_target.j2c",
+        "transport": "http",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp2d_http_jpt",
+      "report": {
+        "cachedBytes": 990,
+        "cachedDataBins": 3,
+        "channelID": "cid-0B619264-BE3B-4665-9F8C-59A8CE07D7C2",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.025512417,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 1,
+        "streamType": "jpt-stream",
+        "target": "swift_target.jp2",
+        "transport": "http",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp2d_http_jph_len180",
+      "report": {
+        "cachedBytes": 1538,
+        "cachedDataBins": 6,
+        "channelID": "cid-6379D362-6BFC-4764-BEAC-3C8E7DEC5815",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.027772833,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 9,
+        "streamType": "jpp-stream",
+        "target": "swift_ht.jph",
+        "transport": "http",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp2d_ws_jpp",
+      "report": {
+        "cachedBytes": 871,
+        "cachedDataBins": 6,
+        "channelID": "cid-E38D5E1F-866F-4B12-8932-21139E9ED43F",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.041234417,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 1,
+        "streamType": "jpp-stream",
+        "target": "swift_target.j2c",
+        "transport": "websocket",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp2d_ws_jph_len180",
+      "report": {
+        "cachedBytes": 1538,
+        "cachedDataBins": 6,
+        "channelID": "cid-FCEA9B5A-8A69-4844-91D2-6C944E3AEBD2",
+        "command": "jpip",
+        "components": 1,
+        "elapsedSeconds": 0.032813875,
+        "height": 32,
+        "meaningfulBits": 8,
+        "outputBytes": 1549,
+        "role": "client",
+        "rounds": 9,
+        "streamType": "jpp-stream",
+        "target": "swift_ht.jph",
+        "transport": "websocket",
+        "width": 48
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp3d_http_ebcot_full",
+      "report": {
+        "bitDepth": 8,
+        "cachedBytes": 851,
+        "cachedDataBins": 6,
+        "channelID": "cid-F349C41E-A485-408D-BEA1-1D74558D82E2",
+        "command": "jpip",
+        "components": 1,
+        "deliveredBins": 1,
+        "depth": 6,
+        "elapsedSeconds": 0.005541666,
+        "height": 12,
+        "outputBytes": 1243,
+        "role": "client",
+        "target": "vol_ebcot.jp3d",
+        "transport": "http",
+        "width": 16
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp3d_http_ht_box",
+      "report": {
+        "bitDepth": 8,
+        "cachedBytes": 1176,
+        "cachedDataBins": 6,
+        "channelID": "cid-646F1CB2-0AB8-4B83-845F-A69B0C582C89",
+        "command": "jpip",
+        "components": 1,
+        "deliveredBins": 1,
+        "depth": 3,
+        "elapsedSeconds": 0.005117542,
+        "height": 6,
+        "outputBytes": 233,
+        "role": "client",
+        "target": "vol_ht.jp3d",
+        "transport": "http",
+        "width": 8
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp3d_ws_ebcot_full",
+      "report": {
+        "bitDepth": 8,
+        "cachedBytes": 851,
+        "cachedDataBins": 6,
+        "channelID": "cid-B8737793-F820-4A5D-A8A7-CD98EC096DB4",
+        "command": "jpip",
+        "components": 1,
+        "deliveredBins": 1,
+        "depth": 6,
+        "elapsedSeconds": 0.002680375,
+        "height": 12,
+        "outputBytes": 1243,
+        "role": "client",
+        "target": "vol_ebcot.jp3d",
+        "transport": "websocket",
+        "width": 16
+      },
+      "bit_exact": true
+    },
+    {
+      "section": "F04-MultiProcess-Loopback-2D-3D",
+      "case": "mp3d_ws_ht_box",
+      "report": {
+        "bitDepth": 8,
+        "cachedBytes": 1176,
+        "cachedDataBins": 6,
+        "channelID": "cid-BEC14567-65EF-406B-BBD9-C6EE275932A0",
+        "command": "jpip",
+        "components": 1,
+        "deliveredBins": 1,
+        "depth": 3,
+        "elapsedSeconds": 0.002957083,
+        "height": 6,
+        "outputBytes": 233,
+        "role": "client",
+        "target": "vol_ht.jp3d",
+        "transport": "websocket",
+        "width": 8
+      },
+      "bit_exact": true
+    }
+  ]
+}

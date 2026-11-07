@@ -1,0 +1,30 @@
+​​✔ Test "Lossy reduced tiles select the same spatial samples as full reconstruction" with 2 test cases passed after 0.583 seconds.
+✔ Test "F06: OperationReport.fidelity is .lossy for partial/corrupt 3D decodes, reduced resolution/layers, and lossy codestreams" passed after 0.596 seconds.
+✔ Test "F11: Volume spacing and physical origin round-trip across encode, inspect, decode, ROI, reduced resolution, transcode, and discardAncillary" passed after 0.644 seconds.
+✔ Suite "Phase R2 — SwiftJ2K3D Semantics Remediation Regressions" passed after 0.681 seconds.
+​✔ Test "RA2-04: Pre-allocation Tier-1/Tier-2 entropy budget rejects incompressible tiled 3D encode before allocating rejected output buffer" passed after 0.709 seconds.
+​✔ Test "Odd dimensions and odd tile origins select one volume-wide grid" with 2 test cases passed after 0.691 seconds.
+✔ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" passed after 0.725 seconds.
+✔ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" passed after 0.747 seconds.
+✔ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" passed after 0.817 seconds.
+✔ Test "Volume transcode reports coefficient workspace even for tiny compressed inputs" passed after 0.846 seconds.
+✔ Suite "Codex R2 volume grid and coefficient workspace regressions" passed after 0.867 seconds.
+✔ Test "RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis" passed after 0.962 seconds.
+✔ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" passed after 1.210 seconds.
+✔ Test "3D reconstruction admits output growth while the complete tile buffer remains live" passed after 1.225 seconds.
+✔ Suite "Codex R3 packet layer budget (RA2-02)" passed after 1.226 seconds.
+✔ Test "RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap" passed after 2.032 seconds.
+✔ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" passed after 2.034 seconds.
+✔ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" passed after 2.889 seconds.
+✔ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" passed after 2.898 seconds.
+✔ Test run with 56 tests in 10 suites passed after 2.898 seconds.
+2026-11-07 16:34:48.090 xcodebuild[67596:5978917] [MT] IDETestOperationsObserverDebug: 120.378 elapsed -- Testing started completed.
+2026-11-07 16:34:48.090 xcodebuild[67596:5978917] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-07 16:34:48.090 xcodebuild[67596:5978917] [MT] IDETestOperationsObserverDebug: 120.378 sec, +120.378 sec -- end
+
+Test session results, code coverage, and logs:
+	<repo>/.build/ios-evidence/ios-tests.xcresult
+
+** TEST EXECUTE SUCCEEDED **
+
+Testing started

@@ -965,10 +965,14 @@ private final class HTTPSHarnessScenario: Sendable {
     var stopDiagnostics: String {
         state.withLock { state in
             guard state.stopCalled else { return "protocol.stop.notCalled" }
+            var parts = ["protocol.stop.called"]
             if let timerActive = state.stopTimerActive {
-                return "protocol.stop.called; protocol.stop.done(timerActive=\(timerActive))"
+                parts.append("protocol.stop.done(timerActive=\(timerActive))")
             }
-            return "protocol.stop.called"
+            if state.stoppedWhileSilentWatchdogActive {
+                parts.append("protocol.silent.stoppedWhileActive(true)")
+            }
+            return parts.joined(separator: "; ")
         }
     }
     func begin(_ request: URLRequest) {
@@ -1152,7 +1156,11 @@ private final class HTTPSHarnessProtocol: URLProtocol {
         config.timeoutIntervalForRequest = 5
         return (URL(string: "https://\(host)/jpip")!, config)
     }
-    static func remove(_ url: URL) { scenarios.withLock { _ = $0.removeValue(forKey: url.host ?? "") } }
+    static func remove(_ url: URL) {
+        let host = url.host
+        scenarios.withLock { _ = $0.removeValue(forKey: host ?? "") }
+        JPIPHTTPSPhaseLog.unbindHost(host)
+    }
     static func replace(_ url: URL, with scenario: HTTPSHarnessScenario) {
         scenarios.withLock { $0[url.host ?? ""] = scenario }
     }

@@ -1720,6 +1720,7 @@ private func runJPIPClient(_ context: CodecContext, started: ContinuousClock.Ins
 
         let elapsed = ContinuousClock.now - started
         let reportPayload: [String: Any] = [
+            "acceleratedEngine": acceleratedEngineString(delivered.report.acceleratedEngine),
             "backend": backendString(delivered.report.backend),
             "cachedBytes": delivered.cachedBytes,
             "cachedDataBins": delivered.cachedDataBins,

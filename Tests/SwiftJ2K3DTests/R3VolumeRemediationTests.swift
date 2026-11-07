@@ -1462,6 +1462,86 @@ struct R3VolumeRemediationTests {
         }
         #expect(!transPhases.withLock { $0 }.contains(.completed))
     }
+
+    @Test("F01-13: VolumeEncoder, VolumeDecoder, and VolumeTranscoder report truthful AcceleratedEngine")
+    func volumeCodecReportsTruthfulAcceleratedEngine() async throws {
+        await VolumeTestCooperativeQuiescence.settle()
+        let width = 8, height = 8, depth = 4
+        var samples = Data(count: width * height * depth)
+        for idx in 0..<(width * height * depth) {
+            samples[idx] = UInt8((idx * 19 + 7) & 0xFF)
+        }
+        let volume = J2KVolume(
+            width: width,
+            height: height,
+            depth: depth,
+            components: [
+                J2KVolumeComponent(
+                    index: 0,
+                    bitDepth: 8,
+                    signed: false,
+                    width: width,
+                    height: height,
+                    depth: depth,
+                    data: samples
+                )
+            ]
+        )
+
+        let scalarEnc = try await VolumeEncoder(
+            configuration: VolumeEncoderConfiguration(
+                compressionMode: .lossless,
+                levelsX: 1,
+                levelsY: 1,
+                levelsZ: 0
+            )
+        ).encode(volume, options: VolumeEncodeOptions(executionPolicy: .scalarCPU))
+        #expect(scalarEnc.report.backend == .scalarCPU)
+        #expect(scalarEnc.report.acceleratedEngine == .none)
+
+        let scalarDec = try await VolumeDecoder().decode(
+            scalarEnc.data,
+            options: VolumeDecodeOptions(executionPolicy: .scalarCPU)
+        )
+        #expect(scalarDec.report.backend == .scalarCPU)
+        #expect(scalarDec.report.acceleratedEngine == .none)
+
+        let scalarTrans = try await VolumeTranscoder().transcode(
+            scalarEnc.data,
+            to: .htj2k,
+            options: TranscodeOptions(executionPolicy: .scalarCPU)
+        )
+        #expect(scalarTrans.report.backend == .scalarCPU)
+        #expect(scalarTrans.report.acceleratedEngine == .none)
+
+        if AccelerationRuntime.hasHardwareSIMD || AccelerationRuntime.hasHardwareMetalDevice {
+            let accelEnc = try await VolumeEncoder(
+                configuration: VolumeEncoderConfiguration(
+                    compressionMode: .lossless,
+                    levelsX: 1,
+                    levelsY: 1,
+                    levelsZ: 0
+                )
+            ).encode(volume, options: VolumeEncodeOptions(executionPolicy: .required(.accelerated)))
+            #expect(accelEnc.report.backend == .accelerated)
+            #expect(accelEnc.report.acceleratedEngine == .cpuSIMD)
+
+            let accelDec = try await VolumeDecoder().decode(
+                accelEnc.data,
+                options: VolumeDecodeOptions(executionPolicy: .required(.accelerated))
+            )
+            #expect(accelDec.report.backend == .accelerated)
+            #expect(accelDec.report.acceleratedEngine == .cpuSIMD)
+
+            let accelTrans = try await VolumeTranscoder().transcode(
+                accelEnc.data,
+                to: .htj2k,
+                options: TranscodeOptions(executionPolicy: .required(.accelerated))
+            )
+            #expect(accelTrans.report.backend == .accelerated)
+            #expect(accelTrans.report.acceleratedEngine == .cpuSIMD)
+        }
+    }
 }
 
 /// Waits for the initial full-workspace Swift Testing startup burst of synchronous CPU-bound

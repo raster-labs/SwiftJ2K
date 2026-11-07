@@ -1,0 +1,69 @@
+{
+  "schema": "swiftj2k-r3-owner-scope-inventory-v2",
+  "sanitizer": "ordinary",
+  "ledger_path": "Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json",
+  "ledger_sha256": "317c27a54c6749bcb0e650bb2318deb242558206a0667c875d2eab09d2f2b6ae",
+  "authority": {
+    "decision_date": "2026-11-07",
+    "human_quote": "in this library, R3, R4, 3D and JPIP were held. Need to complete those work.",
+    "prior_hold_decision_date": "2026-11-03",
+    "prior_hold_quote": "Lets hold the JPIP and 3D related validations now and mark the enhancement as for future release. Just complete the R3 to proceed to R4.",
+    "prior_source_receipt": "human-jpip-3d-deferral-20261103.json",
+    "target_version": "12.2.0",
+    "status": "UNHELD_AND_QUALIFIED_FOR_12_2_0",
+    "governance_notes": [
+      "Lifts the 3 November 2026 temporary v12.1.0 owner hold across SwiftJ2K3DTests, SwiftJ2KJPIPTests, and the 8 cross-target 3D/JPIP CLI and JPP declarations in SwiftJ2KTests for target version 12.2.0.",
+      "Resolves R3-C49-01 and R3-C49-02 in Sources/SwiftJ2KJPIP/JPIPHTTPSRequest.swift and executes all 1,380 macOS declarations and all 1,370 compiled iOS Simulator declarations with 0 held declarations.",
+      "Preserves all historical pre-deferral and deferral receipts untouched under Documentation/Engineering/Remediation/Evidence/R3/.",
+      "Keeps the 5 direct external interoperability holds (EXT-INTEROP-01..05, Owner Update 15, 2026-11-02) explicitly recorded as ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED where no public third-party peer implements those combined capabilities, separate from the 5 @Test(.enabled(if: ...)) external-oracle skips when OpenJPEG/OpenJPH/Kakadu binaries are absent on hosted runners."
+    ]
+  },
+  "reference": {
+    "command": [
+      "swift",
+      "test",
+      "list",
+      "--skip-build",
+      "--scratch-path",
+      ".build"
+    ],
+    "exit_code": 0,
+    "stdout_sha256": "8adf6bfd896272ca466f076aa1aa5d0178fff7cf929e7828f6dbe48bdf9b3844",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "sanitized": {
+    "command": [
+      "swift",
+      "test",
+      "list",
+      "--skip-build",
+      "--scratch-path",
+      ".build"
+    ],
+    "exit_code": 0,
+    "stdout_sha256": "8adf6bfd896272ca466f076aa1aa5d0178fff7cf929e7828f6dbe48bdf9b3844",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "selection_arguments": {
+    "ordinary_arguments": [],
+    "sanitizer_jpip_filter_regex": "^SwiftJ2KJPIPTests[./]",
+    "sanitizer_complement_skip_regex": "^SwiftJ2KJPIPTests[./]"
+  },
+  "counts": {
+    "all_declarations": 1380,
+    "selected_macos_declarations": 1380,
+    "jpip_partition_declarations": 660,
+    "complement_partition_declarations": 720,
+    "held_declarations": 0,
+    "inapplicable_ios_declarations_total": 13,
+    "ios_only_declarations_total": 3,
+    "selected_ios_simulator_declarations": 1370,
+    "ordinary_external_oracle_skips": 5,
+    "direct_external_interoperability_holds": 5
+  },
+  "equal_to_ordinary": true,
+  "zero_held_declarations": true,
+  "disjoint_jpip_and_complement": true,
+  "union_equals_full_discovered": true,
+  "scope": "12.2.0 un-held full R3 scope (7 Nov 2026): executes all 1,380 discovered macOS declarations across SwiftJ2KTests, SwiftJ2K3DTests, and SwiftJ2KJPIPTests (and all 1,370 compiled iOS Simulator declarations) with 0 held declarations."
+}

@@ -1154,6 +1154,7 @@ public struct J2KDecoder: Sendable {
         package let totalQualityLayers: Int
         package let totalComponents: Int
         package let backend: Backend
+        package let acceleratedEngine: AcceleratedEngine
         package let fallbackReason: String?
         package private(set) var peakWorkspaceBytes: Int
         package let pixelAccounting: LegacyPixelAccounting
@@ -1253,6 +1254,7 @@ public struct J2KDecoder: Sendable {
             let discardedCount: Int
             let discardedBytes: Int
             let discardedKinds: [String]
+            let execEngine: AcceleratedEngine
 
             if JP2Container.isContainer(rawBytes) {
                 let reconciled = try JP2Container.inspectReconciled(
@@ -1295,6 +1297,7 @@ public struct J2KDecoder: Sendable {
                 discardedCount = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataCount : 0
                 discardedBytes = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataBytes : 0
                 discardedKinds = (metadataPolicy == .discardAncillary) ? reconciled.discardedMetadataKinds : []
+                execEngine = decoded.report.acceleratedEngine
             } else {
                 guard let socOffset = findSOCOffset(in: rawBytes) else {
                     throw J2KError.decodingError("No JPEG 2000 SOC marker (0xFF4F) found in input data")
@@ -1325,17 +1328,21 @@ public struct J2KDecoder: Sendable {
 
                 let destination = try ImageDestination.allocate(descriptor: descriptor, limits: rawLimits)
                 do {
-                    let decoded = try Part1Pipeline.decode(
-                        bytes: codestreamBytes,
-                        profile: profile,
-                        into: destination,
-                        limits: rawLimits,
-                        backend: resolvedBackend.backend,
-                        progress: nil,
-                        maxQualityLayers: effectiveLayers
-                    )
-                    contractImage = decoded.0
-                    workspace = try checkedAdd(outerWorkspace, checkedAdd(codestreamCopyBytes, decoded.1))
+                    let ((decodedImage, decodedPeak), part1Engine): ((Image, Int), AcceleratedEngine) =
+                        try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) {
+                            try Part1Pipeline.decode(
+                                bytes: codestreamBytes,
+                                profile: profile,
+                                into: destination,
+                                limits: rawLimits,
+                                backend: resolvedBackend.backend,
+                                progress: nil,
+                                maxQualityLayers: effectiveLayers
+                            )
+                        }
+                    contractImage = decodedImage
+                    workspace = try checkedAdd(outerWorkspace, checkedAdd(codestreamCopyBytes, decodedPeak))
+                    execEngine = part1Engine
                 } catch {
                     destination.invalidateAfterFailure()
                     throw error
@@ -1525,6 +1532,7 @@ public struct J2KDecoder: Sendable {
                 totalQualityLayers: totalLayers,
                 totalComponents: totalComponents,
                 backend: resolvedBackend.backend,
+                acceleratedEngine: execEngine,
                 fallbackReason: resolvedBackend.fallbackReason,
                 peakWorkspaceBytes: workspace,
                 pixelAccounting: pixelAccounting

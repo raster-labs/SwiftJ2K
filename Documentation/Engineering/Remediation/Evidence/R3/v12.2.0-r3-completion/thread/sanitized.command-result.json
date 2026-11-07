@@ -1,0 +1,14 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "list",
+    "--scratch-path",
+    ".build/tsan",
+    "--sanitize",
+    "thread"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "8adf6bfd896272ca466f076aa1aa5d0178fff7cf929e7828f6dbe48bdf9b3844",
+  "stderr_sha256": "90b20468a8592e40d3e177c9b00499ee4172b98009d34851f3144a7034272cff"
+}

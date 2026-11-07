@@ -1,0 +1,43 @@
+{
+  "schema": "swiftj2k-r3-macos-execution-reconciliation-v2",
+  "sanitizer": "ordinary",
+  "ledger_sha256": "317c27a54c6749bcb0e650bb2318deb242558206a0667c875d2eab09d2f2b6ae",
+  "xml_files": [
+    {
+      "path": "<scratch>/r3-ordinary/full-swift-testing.xml",
+      "sha256": "385b0c8e85aeeeadc8dae058c743c3bfc12906dfaefd83dec0d505ad1f964d41"
+    }
+  ],
+  "log_files": [
+    {
+      "path": "<scratch>/r3-ordinary/test.stdout",
+      "sha256": "59739596c46fac52e3dbb8d813c8c05d84d7f896952a8ff43e2ba1b37a676746"
+    }
+  ],
+  "counts": {
+    "expected_selected_declarations": 1380,
+    "observed_declarations": 1380,
+    "observed_xctest_declarations": 1034,
+    "observed_swift_testing_declarations": 346,
+    "passed_declarations": 1380,
+    "skipped_oracle_declarations": 0,
+    "failed_declarations": 0,
+    "unterminated_xctest_declarations": 0,
+    "held_declarations_executed": 0,
+    "parameterised_non_oracle_declarations_verified": 35,
+    "parameterised_non_oracle_total_cases_expected": 382,
+    "parameterised_non_oracle_total_cases_observed": 382
+  },
+  "skipped_oracle_ids": [],
+  "missing_selected_ids": [],
+  "extra_observed_ids": [],
+  "framework_overlap_ids": [],
+  "unterminated_xctest_ids": [],
+  "held_executed_ids": [],
+  "unexpected_skipped_ids": [],
+  "failed_ids": [],
+  "xct_nonzero_failure_summaries": [],
+  "sanitizer_banners": [],
+  "parameterised_case_mismatches": {},
+  "exact_selected_match": true
+}

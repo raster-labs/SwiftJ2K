@@ -1,4 +1,4 @@
-.TH SWIFTJ2K-CLI 1 "November 6, 2026" "12.1.0" "Swift Image Compression Suite"
+.TH SWIFTJ2K-CLI 1 "November 7, 2026" "12.2.0" "Swift Image Compression Suite"
 .SH NAME
 swiftj2k-cli \- JPEG 2000 Part 1, HTJ2K Part 15, JP3D Part 10 and JPIP Part 9 CLI for SwiftJ2K
 .SH SYNOPSIS
@@ -21,10 +21,10 @@ concurrency; encodes and decodes 3D volumetric datasets (JP3D Part 10);
 streams images over JPIP (Part 9 client and server); runs in-process
 performance benchmarks; generates shell completion scripts; and reports the
 library's capabilities. Build with Swift 6.2 or later (6.4 qualified) in
-Swift 6 language mode. Apple OS minimum is 26.0. In release 12.1.0, the 2D
-SwiftJ2K codec and 2D CLI commands are stable; SwiftJ2K3D (encode3d, decode3d)
-and SwiftJ2KJPIP (jpip) are experimental preview surfaces scheduled for full
-qualification in 12.2.0.
+Swift 6 language mode. Apple OS minimum is 26.0. In release 12.2.0, the 2D
+SwiftJ2K codec, 3D volumetric SwiftJ2K3D codec (encode3d, decode3d), and JPIP
+streaming SwiftJ2KJPIP surface (jpip) are qualified across macOS 26 and iOS
+Simulator 26.
 .SH COMMANDS
 .TP
 .B encode \-i IMAGE \-o OUT.j2k [\-\-input-format nrrd|pgm|ppm|pnm|png|tiff|raw] [\-\-output-format j2k|htj2k|jp2|jph|jpx] [\-\-container codestream|jp2|jph|jpx] [CODEC OPTIONS]

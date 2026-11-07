@@ -793,6 +793,7 @@ struct CodexR3WebSocketBudgetTests {
     }
 
     @Test func rejectedConcurrentRequestAndConfigurePreserveActivePolicyAndSharedConnection() async throws {
+        await JPIPTestCooperativeQuiescence.settle()
         // Part 1: Direct unit verification of transactional admission in JPIPWebSocketReadBudget.
         do {
             let budget = JPIPWebSocketReadBudget()

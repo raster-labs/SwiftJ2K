@@ -1,0 +1,51 @@
+{
+  "schema": "swiftj2k-r3-macos-execution-reconciliation-v2",
+  "sanitizer": "thread",
+  "ledger_sha256": "317c27a54c6749bcb0e650bb2318deb242558206a0667c875d2eab09d2f2b6ae",
+  "xml_files": [
+    {
+      "path": "<scratch>/r3-thread/jpip-swift-testing.xml",
+      "sha256": "d555598bfd96e08998ccb4b48c56ba8f60c44fc548ce5b9a4deac1bc4ba8ffee"
+    },
+    {
+      "path": "<scratch>/r3-thread/complement-swift-testing.xml",
+      "sha256": "3608be9fb9d3ec20e12d6d3f7f924c3c432d76a23f275d9078283cbf6474ec9b"
+    }
+  ],
+  "log_files": [
+    {
+      "path": "<scratch>/r3-thread/jpip.stdout",
+      "sha256": "1126061590f82743ac903722fc7feed68795195d1eae2338a9449a1e31d0e856"
+    },
+    {
+      "path": "<scratch>/r3-thread/complement.stdout",
+      "sha256": "7753c1a1959de416ee6f5c77c5defd3cba89800d17df67c693b8f547fd4f7354"
+    }
+  ],
+  "counts": {
+    "expected_selected_declarations": 1380,
+    "observed_declarations": 1380,
+    "observed_xctest_declarations": 1034,
+    "observed_swift_testing_declarations": 346,
+    "passed_declarations": 1380,
+    "skipped_oracle_declarations": 0,
+    "failed_declarations": 0,
+    "unterminated_xctest_declarations": 0,
+    "held_declarations_executed": 0,
+    "parameterised_non_oracle_declarations_verified": 35,
+    "parameterised_non_oracle_total_cases_expected": 382,
+    "parameterised_non_oracle_total_cases_observed": 382
+  },
+  "skipped_oracle_ids": [],
+  "missing_selected_ids": [],
+  "extra_observed_ids": [],
+  "framework_overlap_ids": [],
+  "unterminated_xctest_ids": [],
+  "held_executed_ids": [],
+  "unexpected_skipped_ids": [],
+  "failed_ids": [],
+  "xct_nonzero_failure_summaries": [],
+  "sanitizer_banners": [],
+  "parameterised_case_mismatches": {},
+  "exact_selected_match": true
+}

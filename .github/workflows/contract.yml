@@ -7,23 +7,22 @@ name: Milestone 1 contract
 # macOS and iOS ONLY. Linux is OUT_OF_CURRENT_SCOPE_BY_OWNER (preserving prior
 # failed Linux receipts as historical evidence; no new Linux gates are run here).
 #
-# Owner R3 scope update (3 November 2026):
-# "Lets hold the JPIP and 3D related validations now and mark the enhancement as
-# for future release. Just complete the R3 to proceed to R4."
-# Under this directive, SwiftJ2K3DTests, SwiftJ2KJPIPTests, and the 8 cross-target
-# JPIP/3D declarations in SwiftJ2KTests are recorded in
-# Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json as
-# ON_HOLD_BY_OWNER / DEFERRED_TO_FUTURE_RELEASE (never marked passed).
-# Unrelated 2D assertions in formerly mixed CLI tests are preserved and executed
-# via explicit 2D declarations in SwiftJ2KTests.
+# Owner 12.2.0 un-hold directive (7 November 2026):
+# Lifts the temporary 3 November 2026 v12.1.0 hold across SwiftJ2K3DTests,
+# SwiftJ2KJPIPTests, and cross-target 3D/JPIP CLI and JPP declarations in
+# SwiftJ2KTests. Executes all 1,385 discovered macOS declarations across
+# ordinary, AddressSanitizer, and ThreadSanitizer builds and all 1,375 compiled
+# iOS Simulator declarations across SwiftJ2KTests, SwiftJ2K3DTests, and
+# SwiftJ2KJPIPTests with 0 held declarations (verified against
+# Documentation/Engineering/Remediation/R3_HELD_VALIDATION_LEDGER.json).
 #
-# Five direct external interoperability checks (combined Part 10+15; native 3D
-# JPIP; exact repository WebSocket extension; direct full-38-bit Part 2
-# synthesis/output; multiple transmitted nonempty HT sets) remain ON_HOLD_BY_OWNER /
-# DEFERRED / UNEXECUTED per Owner Update 15 (2 November 2026); the five separate
-# `@Test(.enabled(if: ...))` external-oracle declarations (`ojph_expand`,
-# `kdu_expand`, `opj_decompress`) remain UNEXECUTED when external CLI binaries
-# are absent on hosted runners.
+# Five direct external interoperability checks (EXT-INTEROP-01..05: combined
+# Part 10+15; native 3D JPIP; exact repository WebSocket extension; direct
+# full-38-bit Part 2 synthesis/output; multiple transmitted nonempty HT sets)
+# remain ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED per Owner Update 15
+# (2 November 2026); the five separate `@Test(.enabled(if: ...))` external-oracle
+# declarations (`ojph_expand`, `kdu_expand`, `opj_decompress`) remain UNEXECUTED
+# when external CLI binaries are absent on hosted runners.
 
 on:
   pull_request:
@@ -56,13 +55,14 @@ jobs:
 
   macos:
     # GitHub's `macos-26` image ships Xcode 26.6 (`Apple Swift version 6.3.3`).
-    # Executes the 171 selected non-held core/2D-CLI declarations in SwiftJ2KTests
-    # across ordinary, AddressSanitizer, and ThreadSanitizer builds, verifying
-    # strict compiled-inventory parity (1,384 total = 171 selected + 1,213 held)
-    # and exact executed declaration/parameter-case reconciliation in each mode.
+    # Executes all 1,385 discovered declarations across SwiftJ2KTests,
+    # SwiftJ2K3DTests, and SwiftJ2KJPIPTests (0 held declarations) across
+    # ordinary, AddressSanitizer (exact disjoint 660 JPIP + 725 complement
+    # partition), and ThreadSanitizer (exact disjoint 660 JPIP + 725 complement
+    # partition), reconciling XCTest + Swift Testing + parameterised cases.
     name: macOS 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -80,16 +80,14 @@ jobs:
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/ordinary
           swift test --skip-build \
-            --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
-            --xunit-output .build/sanitizer-evidence/ordinary/selected.xml \
+            --xunit-output .build/sanitizer-evidence/ordinary/full.xml \
             2>&1 | tee .build/sanitizer-evidence/ordinary/test.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
             --sanitizer ordinary \
             --scratch-path .build \
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/ordinary \
-            --verify-executed-xml .build/sanitizer-evidence/ordinary/selected.xml \
+            --verify-executed-xml .build/sanitizer-evidence/ordinary/full.xml \
             --verify-executed-log .build/sanitizer-evidence/ordinary/test.stdout
       - name: Address sanitizer
         id: address_tests
@@ -101,17 +99,23 @@ jobs:
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/address
           swift test --scratch-path .build/asan --sanitize address --skip-build \
-            --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
-            --xunit-output .build/sanitizer-evidence/address/selected.xml \
-            2>&1 | tee .build/sanitizer-evidence/address/test.stdout
+            --filter '^SwiftJ2KJPIPTests[./]' \
+            --xunit-output .build/sanitizer-evidence/address/jpip.xml \
+            2>&1 | tee .build/sanitizer-evidence/address/jpip.stdout
+          swift test --scratch-path .build/asan --sanitize address --skip-build \
+            --skip '^SwiftJ2KJPIPTests[./]' \
+            --xunit-output .build/sanitizer-evidence/address/complement.xml \
+            2>&1 | tee .build/sanitizer-evidence/address/complement.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
             --sanitizer address \
             --scratch-path .build/asan \
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/address \
-            --verify-executed-xml .build/sanitizer-evidence/address/selected.xml \
-            --verify-executed-log .build/sanitizer-evidence/address/test.stdout
+            --verify-executed-xml .build/sanitizer-evidence/address/jpip.xml \
+            --verify-executed-xml .build/sanitizer-evidence/address/complement.xml \
+            --verify-executed-log .build/sanitizer-evidence/address/jpip.stdout \
+            --verify-executed-log .build/sanitizer-evidence/address/complement.stdout
+          rm -rf .build/asan
       - name: Thread sanitizer
         id: thread_tests
         run: |
@@ -122,17 +126,23 @@ jobs:
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/thread
           swift test --scratch-path .build/tsan --sanitize thread --skip-build \
-            --filter '^SwiftJ2KTests\.' \
-            --skip '^SwiftJ2KTests\.(CLIBreadthAndConsumerTests/cliBatch3DJPIPBenchmarkAndCompletions\(\)(?:/.*)?|CodexR3CLIHostTests/.+|CodexR3JPPReassemblyResourceTests/.+|R1RemediationTests/cliRemediationSubprocessRegressions\(\)(?:/.*)?|R2RemediationTests/cliVolumeGeometryCopyPolicyAndJPIPValidation\(\)(?:/.*)?)$' \
-            --xunit-output .build/sanitizer-evidence/thread/selected.xml \
-            2>&1 | tee .build/sanitizer-evidence/thread/test.stdout
+            --filter '^SwiftJ2KJPIPTests[./]' \
+            --xunit-output .build/sanitizer-evidence/thread/jpip.xml \
+            2>&1 | tee .build/sanitizer-evidence/thread/jpip.stdout
+          swift test --scratch-path .build/tsan --sanitize thread --skip-build \
+            --skip '^SwiftJ2KJPIPTests[./]' \
+            --xunit-output .build/sanitizer-evidence/thread/complement.xml \
+            2>&1 | tee .build/sanitizer-evidence/thread/complement.stdout
           python3 Scripts/verify-sanitizer-inventory.py \
             --sanitizer thread \
             --scratch-path .build/tsan \
             --reference-scratch-path .build \
             --output .build/sanitizer-evidence/thread \
-            --verify-executed-xml .build/sanitizer-evidence/thread/selected.xml \
-            --verify-executed-log .build/sanitizer-evidence/thread/test.stdout
+            --verify-executed-xml .build/sanitizer-evidence/thread/jpip.xml \
+            --verify-executed-xml .build/sanitizer-evidence/thread/complement.xml \
+            --verify-executed-log .build/sanitizer-evidence/thread/jpip.stdout \
+            --verify-executed-log .build/sanitizer-evidence/thread/complement.stdout
+          rm -rf .build/tsan
 
       - name: Retain exact test evidence in downloadable logs
         if: always()
@@ -148,10 +158,10 @@ jobs:
           import hashlib, json, os, stat, subprocess
           from pathlib import Path
 
-          FORMAT = "swiftj2k-ci-evidence-v1"
+          FORMAT = "swiftj2k-ci-evidence-v2"
           ROOT = Path(".build/sanitizer-evidence")
-          MAX_FILE = 8 * 1024 * 1024
-          MAX_TOTAL = 16 * 1024 * 1024
+          MAX_FILE = 16 * 1024 * 1024
+          MAX_TOTAL = 32 * 1024 * 1024
           CHARS_PER_CHUNK = 4096
           problems = []
           retained = set()
@@ -183,16 +193,18 @@ jobs:
               "reference.stdout", "reference.stderr", "reference.command-result.json",
               "sanitized.stdout", "sanitized.stderr", "sanitized.command-result.json",
               "inventory.json", "execution-reconciliation.json",
-              "all.ids", "selected.ids", "held.ids", "inapplicable-ios.ids", "oracle-skips.ids",
-              "test.stdout",
+              "all.ids", "selected.ids", "held.ids", "jpip.ids", "complement.ids",
+              "inapplicable-ios.ids", "ios-only.ids", "oracle-skips.ids",
           ]
-          xml_groups = []
-          required = []
-          optional = []
-          for mode in ("ordinary", "address", "thread"):
+          xml_groups = [["ordinary/full.xml", "ordinary/full-swift-testing.xml"]]
+          required = [f"ordinary/{name}" for name in inventory_names] + ["ordinary/test.stdout"]
+          optional = ["ordinary/inventory-mismatch.json"]
+          for mode in ("address", "thread"):
               required += [f"{mode}/{name}" for name in inventory_names]
+              required += [f"{mode}/jpip.stdout", f"{mode}/complement.stdout"]
               optional.append(f"{mode}/inventory-mismatch.json")
-              xml_groups.append([f"{mode}/selected.xml", f"{mode}/selected-swift-testing.xml"])
+              for part in ("jpip", "complement"):
+                  xml_groups.append([f"{mode}/{part}.xml", f"{mode}/{part}-swift-testing.xml"])
           paths = sorted(set(required + optional + [path for group in xml_groups for path in group]))
           for relative in paths:
               path = ROOT / relative
@@ -230,16 +242,17 @@ jobs:
                   problems.append("No XML retained for invocation: " + group[0])
           emit("end", files=len(retained), bytes=total, problems=problems,
                retention_complete=not problems,
-               scope="Owner-revised R3 scope: retains full/selected/held/inapplicable/oracle-skip inventories, raw logs, XML, and execution-reconciliation across ordinary, ASan, and TSan")
+               scope="12.2.0 un-held full R3 scope: retains full/selected/partition inventories, raw logs, XML, and execution-reconciliation across ordinary, ASan, and TSan")
           raise SystemExit(1 if problems else 0)
           PY_EVIDENCE
 
   ios-simulator:
-    # Actual iOS Simulator build and test execution for selected non-held core
-    # declarations in `SwiftJ2KTests` (163 declarations = 171 selected macOS core
-    # minus 8 macOS-only `Foundation.Process` CLI declarations; excludes the 3 held
-    # `CodexR3JPPReassemblyResourceTests` declarations and does not execute held
-    # `SwiftJ2K3DTests` or `SwiftJ2KJPIPTests` runtime bundles).
+    # Actual iOS Simulator build and test execution across all three supported
+    # library products (`SwiftJ2K`, `SwiftJ2K3D`, `SwiftJ2KJPIP`) and test
+    # bundles (`SwiftJ2KTests`, `SwiftJ2K3DTests`, `SwiftJ2KJPIPTests`):
+    # 1,375 declarations = 1,385 macOS declarations minus 13 macOS-only
+    # `Foundation.Process` CLI subprocess declarations plus 3 iOS-only
+    # `JPIPBackgroundTransferService` declarations, with 0 held declarations.
     name: iOS Simulator 26 / Xcode 26.6 (Swift 6.3.3)
     runs-on: macos-26
     timeout-minutes: 30
@@ -313,8 +326,9 @@ jobs:
           ledger_sha = hashlib.sha256(ledger_bytes).hexdigest()
           ledger = json.loads(ledger_bytes.decode("utf-8"))
 
-          selected_ios_expected = set(ledger["selected_ios_simulator_core_ids"])
+          selected_ios_expected = set(ledger["selected_ios_simulator_ids"])
           held_all_set = set(ledger["held_ids_all"])
+          ios_only_expected = set(ledger["ios_only_declarations"]["all"])
           inapplicable_ios_all = set(
               ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["all"]
           )
@@ -334,10 +348,8 @@ jobs:
 
           candidate_filter_args = [
               "-only-testing:SwiftJ2KTests",
-              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests",
-              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/invalidTileHeaderIdentifier()",
-              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/layerProductRejectedBeforeAllocation()",
-              "-skip-testing:SwiftJ2KTests/CodexR3JPPReassemblyResourceTests/reconstructionBoundary()",
+              "-only-testing:SwiftJ2K3DTests",
+              "-only-testing:SwiftJ2KJPIPTests",
           ]
 
           TEST_ID_RE = re.compile(
@@ -355,7 +367,10 @@ jobs:
               for target in ("SwiftJ2KTests", "SwiftJ2K3DTests", "SwiftJ2KJPIPTests"):
                   prefix = target + "/"
                   if s.startswith(prefix):
-                      return target + "." + s[len(prefix):]
+                      s = target + "." + s[len(prefix):]
+                      break
+              if s not in selected_ios_expected and s.endswith("()") and s[:-2] in selected_ios_expected:
+                  s = s[:-2]
               return s
 
           def parse_enumeration_details(json_path: Path) -> dict[str, object]:
@@ -454,14 +469,6 @@ jobs:
                   "canonical_disabled": canonical_disabled,
               }
 
-          def parse_enumeration_json(json_path: Path) -> tuple[list[str], list[str], dict[str, str]]:
-              details = parse_enumeration_details(json_path)
-              return (
-                  details["raw_enabled"],
-                  details["canonical_enabled"],
-                  details["raw_by_canonical"],
-              )
-
           def run_enumeration(out_json: Path, log_path: Path, filter_args: list[str]) -> None:
               if out_json.exists():
                   out_json.unlink()
@@ -474,49 +481,14 @@ jobs:
               if proc.returncode != 0 or not out_json.exists():
                   raise RuntimeError(f"xcodebuild -enumerate-tests failed (exit {proc.returncode}) for {out_json}")
 
-          cand_json = ROOT / "ios-enumeration-candidate-filter.json"
-          cand_log = ROOT / "xcodebuild-enumerate-candidate.log"
           verified_json = ROOT / "ios-enumeration-verified.json"
           verified_log = ROOT / "xcodebuild-enumerate-verified.log"
-          resp_file = ROOT / "ios-selected-only-testing.txt"
           filter_args_file = ROOT / "ios-verified-filter.args"
 
-          run_enumeration(cand_json, cand_log, candidate_filter_args)
-          cand_details = parse_enumeration_details(cand_json)
-          cand_raw, cand_canonical, cand_raw_map = parse_enumeration_json(cand_json)
-          cand_disabled = cand_details["canonical_disabled"]
-          cand_set = set(cand_canonical)
-          cand_held = sorted(cand_set & held_all_set)
-          cand_missing = sorted(selected_ios_expected - cand_set)
-          cand_extra = sorted(cand_set - selected_ios_expected)
-
-          if (
-              len(cand_canonical) == len(cand_set)
-              and cand_set == selected_ios_expected
-              and not cand_held
-          ):
-              filter_mode = "only_target_plus_skip_suite"
-              shutil.copy2(cand_json, verified_json)
-              shutil.copy2(cand_log, verified_log)
-              verified_filter_args = candidate_filter_args
-              verified_raw, verified_canonical = cand_raw, cand_canonical
-              verified_disabled = cand_disabled
-          else:
-              if cand_missing:
-                  raise RuntimeError(
-                      f"Candidate iOS enumeration missing expected selected declarations: {cand_missing}"
-                  )
-              selected_raw_lines = [
-                  cand_raw_map.get(cid, cid.replace("SwiftJ2KTests.", "SwiftJ2KTests/", 1))
-                  for cid in sorted(selected_ios_expected)
-              ]
-              resp_file.write_text("\n".join(selected_raw_lines) + "\n", encoding="utf-8")
-              filter_mode = "positive_response_file_only_testing"
-              verified_filter_args = [f"-only-testing:@{resp_file.as_posix()}"]
-              run_enumeration(verified_json, verified_log, verified_filter_args)
-              verified_details = parse_enumeration_details(verified_json)
-              verified_raw, verified_canonical, _ = parse_enumeration_json(verified_json)
-              verified_disabled = verified_details["canonical_disabled"]
+          run_enumeration(verified_json, verified_log, candidate_filter_args)
+          verified_details = parse_enumeration_details(verified_json)
+          verified_canonical = verified_details["canonical_enabled"]
+          verified_disabled = verified_details["canonical_disabled"]
 
           verified_set = set(verified_canonical)
           verified_held = sorted(verified_set & held_all_set)
@@ -524,33 +496,19 @@ jobs:
           verified_missing = sorted(selected_ios_expected - verified_set)
           verified_extra = sorted(verified_set - selected_ios_expected)
           verified_duplicates = len(verified_canonical) - len(verified_set)
+          missing_ios_only = sorted(ios_only_expected - verified_set)
 
-          filter_args_file.write_text("\n".join(verified_filter_args) + "\n", encoding="utf-8")
+          filter_args_file.write_text("\n".join(candidate_filter_args) + "\n", encoding="utf-8")
 
           preflight = {
-              "schema": "swiftj2k-r3-ios-selection-preflight-v1",
+              "schema": "swiftj2k-r3-ios-selection-preflight-v2",
               "ledger_sha256": ledger_sha,
-              "filter_mode_used": filter_mode,
-              "verified_filter_args": verified_filter_args,
-              "candidate_filter_enumeration": {
-                  "path": cand_json.name,
-                  "sha256": hashlib.sha256(cand_json.read_bytes()).hexdigest(),
-                  "log_sha256": hashlib.sha256(cand_log.read_bytes()).hexdigest(),
-                  "enabled_count": len(cand_canonical),
-                  "unique_count": len(cand_set),
-                  "disabled_count": len(cand_disabled),
-                  "disabled_unique_count": len(set(cand_disabled)),
-                  "held_selected_ids": cand_held,
-                  "missing_selected_ids": cand_missing,
-                  "extra_ids": cand_extra,
-              },
+              "filter_mode_used": "all_three_test_bundles_unheld",
+              "verified_filter_args": candidate_filter_args,
               "verified_filter_enumeration": {
                   "path": verified_json.name,
                   "sha256": hashlib.sha256(verified_json.read_bytes()).hexdigest(),
                   "log_sha256": hashlib.sha256(verified_log.read_bytes()).hexdigest(),
-                  "response_file_sha256": (
-                      hashlib.sha256(resp_file.read_bytes()).hexdigest() if resp_file.exists() else None
-                  ),
                   "expected_selected_ios_count": len(selected_ios_expected),
                   "enabled_count": len(verified_canonical),
                   "unique_count": len(verified_set),
@@ -559,26 +517,29 @@ jobs:
                   "duplicate_count": verified_duplicates,
                   "held_selected_count": len(verified_held),
                   "inapplicable_macos_selected_count": len(verified_inapplicable),
+                  "ios_only_present_count": len(ios_only_expected - set(missing_ios_only)),
                   "held_selected_ids": verified_held,
                   "inapplicable_macos_selected_ids": verified_inapplicable,
+                  "missing_ios_only_ids": missing_ios_only,
                   "missing_selected_ids": verified_missing,
                   "extra_ids": verified_extra,
               },
-              "verified_exact_163_selected": (
+              "verified_exact_full_ios_inventory": (
                   verified_duplicates == 0
                   and len(verified_set) == len(selected_ios_expected)
                   and verified_set == selected_ios_expected
                   and not verified_held
                   and not verified_inapplicable
+                  and not missing_ios_only
               ),
           }
           (ROOT / "ios-selection-preflight.json").write_text(json.dumps(preflight, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(preflight, indent=2), flush=True)
-          if not preflight["verified_exact_163_selected"]:
-              raise RuntimeError("iOS pre-runtime enumeration failed exact 163 selected core declaration check")
+          if not preflight["verified_exact_full_ios_inventory"]:
+              raise RuntimeError("iOS pre-runtime enumeration failed exact 1,375 full declaration check")
           PY_IOS_PREFLIGHT
           rm -rf .swiftpm
-      - name: Execute selected non-held core iOS Simulator tests
+      - name: Execute full iOS Simulator test suite
         id: ios_tests
         run: |
           set -euo pipefail
@@ -612,7 +573,7 @@ jobs:
           import hashlib, json, os, re, subprocess
           from pathlib import Path
 
-          FORMAT = "swiftj2k-ios-ci-evidence-v1"
+          FORMAT = "swiftj2k-ios-ci-evidence-v2"
           ROOT = Path(".build/ios-evidence")
           XCRES = ROOT / "ios-tests.xcresult"
           LOG = ROOT / "xcodebuild-test.log"
@@ -630,23 +591,18 @@ jobs:
           ledger_sha = hashlib.sha256(ledger_bytes).hexdigest()
           ledger = json.loads(ledger_bytes.decode("utf-8"))
 
-          selected_macos_set = set(ledger["selected_macos_core_ids"])
-          selected_ios_expected = set(ledger["selected_ios_simulator_core_ids"])
+          selected_ios_expected = set(ledger["selected_ios_simulator_ids"])
           held_all_set = set(ledger["held_ids_all"])
-          inapplicable_ios_selected = set(
-              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["in_selected_macos_core"]
-          )
-          inapplicable_ios_held = set(
-              ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["in_held_cross_target"]
-          )
+          ios_only_expected = set(ledger["ios_only_declarations"]["all"])
           inapplicable_ios_all = set(
               ledger["inapplicable_macos_only_cli_process_declarations_on_ios"]["all"]
           )
           oracle_skips_expected = set(ledger["five_ordinary_external_oracle_skips"])
-          param_expected = ledger["selected_parameterised_case_counts"]
+          param_expected = ledger["selected_parameterised_case_counts_common"]
 
           (ROOT / "selected-ios.ids").write_text("\n".join(sorted(selected_ios_expected)) + "\n")
-          (ROOT / "held.ids").write_text("\n".join(sorted(held_all_set)) + "\n")
+          (ROOT / "held.ids").write_text(("\n".join(sorted(held_all_set)) + "\n") if held_all_set else "")
+          (ROOT / "ios-only.ids").write_text("\n".join(sorted(ios_only_expected)) + "\n")
           (ROOT / "inapplicable-ios.ids").write_text("\n".join(sorted(inapplicable_ios_all)) + "\n")
           (ROOT / "oracle-skips.ids").write_text("\n".join(sorted(oracle_skips_expected)) + "\n")
 
@@ -672,8 +628,8 @@ jobs:
               problems.append("Missing ios-selection-preflight.json")
           else:
               preflight_data = json.loads(PREFLIGHT_JSON.read_text(encoding="utf-8"))
-              if not preflight_data.get("verified_exact_163_selected"):
-                  problems.append("ios-selection-preflight.json did not verify exact 163 selected core declarations")
+              if not preflight_data.get("verified_exact_full_ios_inventory"):
+                  problems.append("ios-selection-preflight.json did not verify exact 1,375 iOS Simulator declarations")
 
           if not XCRES.exists() or not LOG.exists():
               problems.append("Missing ios-tests.xcresult or xcodebuild-test.log")
@@ -708,6 +664,8 @@ jobs:
                           if node.get("nodeType") == "Test Case":
                               nid = node.get("nodeIdentifier", "")
                               cid = f"{bname}.{nid}" if "/" in nid or not nid.startswith(f"{bname}.") else nid
+                              if cid not in selected_ios_expected and cid.endswith("()") and cid[:-2] in selected_ios_expected:
+                                  cid = cid[:-2]
                               xc_declarations.append(cid)
                               res = node.get("result")
                               if res == "Passed":
@@ -732,12 +690,16 @@ jobs:
               xctest_started = re.findall(r"Test Case '-\[([^\]]+)\]' started\.", log_text)
               xctest_passed = re.findall(r"Test Case '-\[([^\]]+)\]' passed \([0-9.]+ seconds\)\.", log_text)
               xctest_failed = re.findall(r"Test Case '-\[([^\]]+)\]' failed", log_text)
+              xct_passed_canonical = {
+                  f"{raw.split(' ', 1)[0]}/{raw.split(' ', 1)[1]}" for raw in xctest_passed
+              }
 
               xc_decl_set = set(xc_declarations)
               missing_selected_ios = sorted(selected_ios_expected - xc_decl_set)
               extra_observed_ios = sorted(xc_decl_set - selected_ios_expected)
               held_executed_ios = sorted(xc_decl_set & held_all_set)
               inapplicable_executed_ios = sorted(xc_decl_set & inapplicable_ios_all)
+              missing_ios_only_passed = sorted(ios_only_expected - xct_passed_canonical)
               unexpected_skipped_ios = sorted(set(xc_skipped) ^ oracle_skips_expected)
               expected_passed_ios = selected_ios_expected - oracle_skips_expected
               unexpected_passed_diff = sorted(set(xc_passed) ^ expected_passed_ios)
@@ -749,20 +711,21 @@ jobs:
                       param_mismatches[cid] = {"expected_cases": exp_count, "observed_xcresult_cases": obs_count}
 
               reconciliation = {
-                  "schema": "swiftj2k-r3-ios-execution-reconciliation-v1",
+                  "schema": "swiftj2k-r3-ios-execution-reconciliation-v2",
                   "ledger_sha256": ledger_sha,
                   "xcresult_result": summary.get("result"),
                   "xcresult_total_test_count": summary.get("totalTestCount"),
                   "xcresult_passed_tests": summary.get("passedTests"),
                   "xcresult_skipped_tests": summary.get("skippedTests"),
                   "xcresult_failed_tests": summary.get("failedTests"),
-                  "executed_unit_test_bundles": bundle_names,
+                  "executed_unit_test_bundles": sorted(bundle_names),
                   "xctest": {
                       "started": len(xctest_started),
-                      "passed": len(set(xctest_passed)),
+                      "passed": len(xct_passed_canonical),
                       "failed": len(xctest_failed),
+                      "ios_only_background_transfer_passed": sorted(ios_only_expected & xct_passed_canonical),
                   },
-                  "swift_testing_xcresult": {
+                  "xcresult_declarations": {
                       "expected_selected_ios_declarations": len(selected_ios_expected),
                       "observed_declarations": len(xc_decl_set),
                       "duplicate_declarations": len(xc_declarations) - len(xc_decl_set),
@@ -781,6 +744,7 @@ jobs:
                       "extra_observed_ios_ids": extra_observed_ios,
                       "held_executed_ios_ids": held_executed_ios,
                       "inapplicable_executed_ios_ids": inapplicable_executed_ios,
+                      "missing_ios_only_passed_ids": missing_ios_only_passed,
                       "unexpected_skipped_ios_ids": unexpected_skipped_ios,
                       "unexpected_passed_diff_ids": unexpected_passed_diff,
                       "failed_ids": sorted(xc_failed),
@@ -789,15 +753,12 @@ jobs:
                   },
                   "inapplicable_macos_only_cli_process_declarations": {
                       "total_count": len(inapplicable_ios_all),
-                      "in_selected_macos_core_count": len(inapplicable_ios_selected),
-                      "in_held_cross_target_count": len(inapplicable_ios_held),
                       "counted_as_ios_pass": False,
                       "counted_as_ios_skip": False,
                       "reason": "Requires macOS Foundation.Process and swiftj2k-cli child process execution; guarded by #if os(macOS) || os(Linux)",
-                      "in_selected_macos_core": sorted(inapplicable_ios_selected),
-                      "in_held_cross_target": sorted(inapplicable_ios_held),
+                      "declarations": sorted(inapplicable_ios_all),
                   },
-                  "held_jpip_3d_validations_state": "ON_HOLD_BY_OWNER / DEFERRED_TO_FUTURE_RELEASE",
+                  "held_jpip_3d_validations_state": "UNHELD_AND_QUALIFIED_FOR_12_2_0",
                   "five_external_feature_gates_state": "ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED",
               }
               (ROOT / "ios-reconciliation.json").write_text(json.dumps(reconciliation, indent=2) + "\n")
@@ -805,10 +766,12 @@ jobs:
 
               if summary.get("result") != "Passed" or summary.get("failedTests") != 0:
                   problems.append("xcresult summary did not pass with 0 failures")
-              if bundle_names != ["SwiftJ2KTests"]:
-                  problems.append(f"Expected only SwiftJ2KTests bundle to execute on iOS Simulator, got {bundle_names}")
-              if len(xctest_started) != 0 or len(xctest_passed) != 0 or len(xctest_failed) != 0:
-                  problems.append(f"Expected 0 XCTest executions in reduced core iOS scope, got started={len(xctest_started)}")
+              if sorted(bundle_names) != ["SwiftJ2K3DTests", "SwiftJ2KJPIPTests", "SwiftJ2KTests"]:
+                  problems.append(f"Expected all three unit test bundles to execute on iOS Simulator, got {bundle_names}")
+              if len(xct_passed_canonical) != 1037 or len(xctest_failed) != 0 or missing_ios_only_passed:
+                  problems.append(
+                      f"Expected 1,037 XCTest passes (including 3 iOS-only tests) and 0 failures, got passed={len(xct_passed_canonical)}, failed={len(xctest_failed)}, missing_ios_only={missing_ios_only_passed}"
+                  )
               if len(xc_declarations) != len(xc_decl_set):
                   problems.append("Duplicate declaration identifiers found in xcresult")
               if missing_selected_ios or extra_observed_ios or held_executed_ios or inapplicable_executed_ios:
@@ -824,12 +787,11 @@ jobs:
                   )
 
           for fname in (
-              "simulator.json", "selected-ios.ids", "held.ids",
+              "simulator.json", "selected-ios.ids", "held.ids", "ios-only.ids",
               "inapplicable-ios.ids", "oracle-skips.ids",
-              "ios-selection-preflight.json", "ios-enumeration-candidate-filter.json",
-              "ios-enumeration-verified.json", "ios-verified-filter.args",
-              "ios-selected-only-testing.txt",
-              "xcresult-summary.json", "xcresult-tests.json", "ios-reconciliation.json"
+              "ios-selection-preflight.json", "ios-enumeration-verified.json",
+              "ios-verified-filter.args",
+              "xcresult-summary.json", "ios-reconciliation.json"
           ):
               p = ROOT / fname
               if p.exists():
@@ -851,11 +813,9 @@ jobs:
           persist-credentials: false
           path: SwiftJ2K
       # POL-01/POL-02: a consumer must build against this package alone, with no
-      # sibling checkout and no suite dependency, on the declared manifest floor.
-      # Under the 3 November 2026 owner scope update holding JPIP and 3D validations
-      # for future release, the independent consumer targets the non-held core
-      # SwiftJ2K product on macOS and iOS Simulator.
-      - name: Build a fresh core consumer against the checkout (macOS and iOS Simulator)
+      # sibling checkout and no suite dependency, on the declared manifest floor,
+      # importing all three library products (`SwiftJ2K`, `SwiftJ2K3D`, `SwiftJ2KJPIP`).
+      - name: Build a fresh consumer against all three library products (macOS and iOS Simulator)
         run: |
           set -eux
           NAME="$(grep -m1 -oE 'name: "Swift[A-Z0-9]+"' "$GITHUB_WORKSPACE/SwiftJ2K/Package.swift" \
@@ -870,10 +830,12 @@ jobs:
             echo '    platforms: [.macOS(.v26), .iOS(.v26)],'
             echo "    dependencies: [.package(path: \"$GITHUB_WORKSPACE/$NAME\")],"
             echo '    targets: [.executableTarget(name: "Consumer", dependencies: ['
-            echo "        .product(name: \"$NAME\", package: \"$NAME\")])]"
+            echo "        .product(name: \"$NAME\", package: \"$NAME\"),"
+            echo "        .product(name: \"${NAME}3D\", package: \"$NAME\"),"
+            echo "        .product(name: \"${NAME}JPIP\", package: \"$NAME\")])]"
             echo ')'
           } > Package.swift
-          printf 'import %s\nprint("consumer built")\n' "$NAME" > Sources/Consumer/main.swift
+          printf 'import %s\nimport %s3D\nimport %sJPIP\nprint("consumer built")\n' "$NAME" "$NAME" "$NAME" > Sources/Consumer/main.swift
           swift build
           swift run Consumer
           xcodebuild build \

@@ -1,0 +1,20 @@
+✔ Test workerErrorAndCancellationDoNotPublishAReusableConnection() passed after 2.972 seconds.
+✔ Test obsoleteHandshakeCannotPublishOrFailReplacementConnection(rejected:) with 2 test cases passed after 2.980 seconds.
+✔ Test workerCreatedConnectionsPublishBeforeCloseAndReuse() passed after 2.994 seconds.
+✔ Suite "R3 blocking-worker result publication" passed after 3.000 seconds.
+✔ Test rejectedConcurrentRequestAndConfigurePreserveActivePolicyAndSharedConnection() passed after 3.021 seconds.
+✔ Test "F04-09: Stalled TCP HTTP and WebSocket requests respond promptly to task cancellation and request timeout" passed after 3.026 seconds.
+✔ Test overlappingFirstSendsAndCloseWithTracingShareSingleTransportAndJoinAllReaders() passed after 3.034 seconds.
+✔ Test sharedWatchdogInterruptsAnAlreadyActiveTrickle() passed after 2.664 seconds.
+✔ Test absoluteDeadlineCancelsSilentResponse() passed after 2.768 seconds.
+✔ Suite "R3 portable HTTPS streaming transport harness" passed after 3.172 seconds.
+✔ Test followerWaitersExpireOrCancelIndependentlyWithoutCancellingSlowLeaderHandshake() passed after 3.252 seconds.
+✔ Suite "R3 transport pre-allocation budgets" passed after 3.257 seconds.
+✔ Test "T7: Real loopback sockets restore blocking mode on accepted fds, preserve timeouts, and unblock recv/send on cancellation" passed after 3.432 seconds.
+✔ Test "RA2-07: ResourceLimits.deadlineSeconds aborts silent HTTP and WebSocket peers promptly without external Task.cancel and cleans up pending WS requests" passed after 3.474 seconds.
+✔ Suite "Codex R3 independent JPIP cache semantics and F04 rework verification" passed after 3.477 seconds.
+✔ Test staleCleanupCannotCloseReplacementHandshake(_:) with 3 test cases passed after 3.483 seconds.
+✔ Suite "R3 WebSocket connection-generation barriers" passed after 3.488 seconds.
+✔ Test "T8: JPIPServer and JPIPWebSocketServer prevent start/stop and start/start races, reject stale generation callbacks, and rebind cleanly" passed after 3.538 seconds.
+✔ Suite "Codex R3 Socket Lifetime & Server Generation Tests" passed after 3.545 seconds.
+✔ Test run with 116 tests in 19 suites passed after 3.546 seconds.

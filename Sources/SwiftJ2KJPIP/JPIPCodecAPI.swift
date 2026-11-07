@@ -400,7 +400,8 @@ public actor JPIPStreamingSession {
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataCount : nil,
             discardedMetadataBytes: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataBytes : nil,
-            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataKinds : []
+            discardedMetadataKinds: options.metadataPolicy == .discardAncillary ? decodedInfo.discardedMetadataKinds : [],
+            acceleratedEngine: decodedInfo.acceleratedEngine
         )
 
         try checkWork()
@@ -641,7 +642,8 @@ public actor JPIPStreamingSession {
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: verifyDecoded.report.discardedMetadataCount,
             discardedMetadataBytes: verifyDecoded.report.discardedMetadataBytes,
-            discardedMetadataKinds: verifyDecoded.report.discardedMetadataKinds
+            discardedMetadataKinds: verifyDecoded.report.discardedMetadataKinds,
+            acceleratedEngine: verifyDecoded.report.acceleratedEngine
         )
 
         try checkWork()
