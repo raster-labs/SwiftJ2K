@@ -47,6 +47,8 @@ All 42 acceleration files (31,922 lines total) in `Raster-Lab/J2KSwift` at `7acc
 
 #### A. `Sources/J2KCodecNEON` and `Sources/J2KCodec/ARM` (10 files, 3,127 lines)
 
+> **Provenance update (10 November 2026, `feat/clean-room-htj2k-t814`):** All OpenJPH-derived `BSD-2-Clause` HT bitstream/MEL/VLC encoder logic in `SIMDAcceleration.swift` (`SIMDHTBlockCoder`), `HTTables.swift`, and `HTBlockCoder.swift` was deleted and replaced with a clean-room ITU-T Rec. T.814 implementation; `SIMDHTBlockCoder` retains only in-house `SIMD4` 2×2 quad classification feeding `HTBlockEncoder.encodePreclassifiedCleanup`. The Milestone 9 table below is preserved as historical provenance (`POL-08`).
+
 | Predecessor file (`7acc9ae4`) | Lines | Git blob SHA | Disposition | Successor mapping & notes |
 | --- | ---: | --- | --- | --- |
 | `Sources/J2KCodecNEON/include/j2k_neon_entropy.h` | 128 | `17410cf803a70d08a4aa2b4942ac134b5c1c97b8` | Adapted | Folded into internal `SIMDHTBlockCoder` in `Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift` (pure Swift `SIMD4` without separate C target) |

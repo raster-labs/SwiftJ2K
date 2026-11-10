@@ -112,7 +112,8 @@ def main() -> int:
 
     def discover(label: str, config: str, extra: list[str]) -> list[str]:
         text = run(label + "-discovery", swift("test", label) + ["-c", config] + extra + ["list"] + frameworks)
-        names = [line.strip() for line in text.splitlines() if line.startswith(name + "Tests.")]
+        pattern = re.compile(rf"^{name}[A-Za-z0-9_]*Tests\..+\)$")
+        names = [line.strip() for line in text.splitlines() if pattern.match(line.strip())]
         if not names:
             raise RuntimeError(f"{label}: zero discovered tests")
         inventory[label] = names
@@ -127,6 +128,7 @@ def main() -> int:
             if not names:
                 raise RuntimeError("Repetition filter selected zero discovered tests")
         xml = output / f"{label}-tests.xml"
+        resolved_xml = xml
         argv = swift("test", label) + ["-c", config] + extra + frameworks + ["--skip-build", "--xunit-output", str(xml)]
         repetitions = args.repetitions if repeat else 1
         if repeat:
@@ -135,17 +137,21 @@ def main() -> int:
         try:
             text = run(label + "-tests", argv)
         finally:
-            if xml.exists():
-                document = ET.parse(xml)
+            if not resolved_xml.exists():
+                candidate = xml.with_name(xml.stem + "-swift-testing.xml")
+                if candidate.exists():
+                    resolved_xml = candidate
+            if resolved_xml.exists():
+                document = ET.parse(resolved_xml)
                 cases = document.findall(".//testcase")
                 counts = {"executed_declarations": len(cases),
                           "failed_declarations": sum(c.find("failure") is not None or c.find("error") is not None for c in cases),
                           "skipped_declarations": sum(c.find("skipped") is not None for c in cases)}
                 counts["passed_declarations"] = counts["executed_declarations"] - counts["failed_declarations"] - counts["skipped_declarations"]
                 report["test_runs"].append({"label": label, "discovered_declarations": len(names),
-                    "repetitions": repetitions, "xml": xml.name, **counts})
+                    "repetitions": repetitions, "xml": resolved_xml.name, **counts})
                 save()
-        if not xml.exists() or counts["executed_declarations"] == 0:
+        if not resolved_xml.exists() or counts["executed_declarations"] == 0:
             raise RuntimeError(f"{label}: no executed tests in xUnit evidence")
         if counts["executed_declarations"] != len(names):
             raise RuntimeError(f"{label}: discovered/executed declaration counts differ")

@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Raster Images Private Limited
+
 import Foundation
 
 // MARK: - SIMD / NEON Acceleration Subsystem (Milestone 9)
 //
-// Migrates and unifies the predecessor's ARM NEON and SIMD acceleration paths:
-// - `Sources/J2KCodecNEON/*` (`j2knhd.h`, `j2knhe.h`, `j2knhd_decode_block_ht.c`,
-//   `j2knhd_magsgn.c`, `j2knhd_mel.c`, `j2knhd_vlc.c`, `j2knhe_encode_block_ht.c`,
-//   `j2knhe_tables.c`)
+// Migrates and unifies the in-house ARM NEON and SIMD acceleration paths:
 // - `Sources/J2KCodec/ARM/J2KNeonEntropyCoding.swift`
 // - `Sources/J2KCodec/J2KAcceleratedEncoder.swift` (CPU SIMD wavelet, colour, quantizer, ROI)
+// - Vectorised 2×2 HTJ2K quad classification (`SIMDHTBlockCoder.classifyQuads`) feeding the
+//   clean-room ITU-T Rec. T.814 block coder (`HTBlockEncoder` / `HTBlockDecoder`).
 //
 // All routines use portable Swift `SIMD4` vector types (compiling to ARM64 NEON `int32x4_t` /
 // `int64x2_t` / `float64x2_t` instructions on Apple Silicon and SSE/AVX on x86_64) and preserve
@@ -1139,9 +1141,8 @@ internal enum SIMDQuantizationAndROI {
 // MARK: - 5. SIMD HTJ2K FBCOT Cleanup Pass Coder (ISO/IEC 15444-15 Clause 7.3)
 
 package enum SIMDHTBlockCoder {
-    /// Pre-classified 2×2 quad information produced by vectorised `SIMD4<Int32>` / Metal GPU quad
-    /// classification (adapting predecessor `j2knhe_encode_block_ht.c`, `J2KNeonEntropyCoding.swift`,
-    /// and `J2KMetalHTForwardClassifier.swift` with `M9-AUD-001` fixed).
+    /// Pre-classified 2×2 quad information produced by vectorised `SIMD4<Int32>` or Metal GPU quad
+    /// classification per ITU-T Rec. T.814 Clauses 7.2 and 7.3.2.
     package struct PreclassifiedQuad: Sendable, Equatable {
         package let rho: Int
         package let eQMax: Int
@@ -1322,315 +1323,16 @@ package enum SIMDHTBlockCoder {
             )
         }
 
-        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes, budget: budget)
-        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
-        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
-        defer {
-            magsgnEnc.releaseScratch()
-            melEnc.releaseScratch()
-            vlcEnc.releaseScratch()
-        }
-
-        encodeClassifiedQuads(
+        return try HTBlockEncoder.encodePreclassifiedCleanup(
             quads: quads,
             width: width,
             height: height,
-            magsgnEnc: &magsgnEnc,
-            melEnc: &melEnc,
-            vlcEnc: &vlcEnc
-        )
-
-        let magsgnBytes = magsgnEnc.finish()
-        guard !magsgnEnc.overflowed else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K MagSgn stream exceeds the remaining block admission budget.")
-        }
-        return try HTBlockLayout.assemble(
-            magsgn: magsgnBytes,
-            mel: &melEnc,
-            vlc: vlcEnc,
             maximumOutputBytes: maximumOutputBytes,
             budget: budget
         )
     }
 
-    private static func encodeClassifiedQuads(
-        quads: [PreclassifiedQuad],
-        width: Int,
-        height: Int,
-        magsgnEnc: inout HTMagSgnEncoder,
-        melEnc: inout HTMELEncoder,
-        vlcEnc: inout HTReverseBitEmitter
-    ) {
-        magsgnEnc.reset()
-        melEnc.reset()
-        vlcEnc.reset()
-
-        let qw = (width + 1) / 2
-        let guardedWidth = ((width + 3) / 4) * 2 + 2
-        var eVal = [UInt8](repeating: 0, count: guardedWidth)
-        var cxVal = [UInt8](repeating: 0, count: guardedWidth)
-
-        @inline(__always)
-        func emitQuadMagSgn(
-            rho: Int,
-            tuple: Int,
-            Uq: Int,
-            s0: UInt32,
-            s1: UInt32,
-            s2: UInt32,
-            s3: UInt32
-        ) {
-            if rho == 0 { return }
-            if Uq <= 16 {
-                var combined: UInt64 = 0
-                var totalBits: Int = 0
-                if (rho & 1) != 0 {
-                    let m = Uq - (tuple & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s0 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 2) != 0 {
-                    let m = Uq - ((tuple >> 1) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s1 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 4) != 0 {
-                    let m = Uq - ((tuple >> 2) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s2 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 8) != 0 {
-                    let m = Uq - ((tuple >> 3) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s3 & mask) << totalBits
-                    totalBits &+= m
-                }
-                magsgnEnc.encode64(codeword: combined, count: totalBits)
-                return
-            }
-            @inline(__always)
-            func emit(sample: UInt32, eBit: Int) {
-                let m = Uq - eBit
-                let mask: UInt32 = (m >= 32) ? ~UInt32(0) : ((UInt32(1) << m) - 1)
-                magsgnEnc.encode(codeword: sample & mask, count: m)
-            }
-            if (rho & 1) != 0 { emit(sample: s0, eBit: tuple & 1) }
-            if (rho & 2) != 0 { emit(sample: s1, eBit: (tuple >> 1) & 1) }
-            if (rho & 4) != 0 { emit(sample: s2, eBit: (tuple >> 2) & 1) }
-            if (rho & 8) != 0 { emit(sample: s3, eBit: (tuple >> 3) & 1) }
-        }
-
-        // Initial row of quads (y = 0, 1)
-        var c_q0 = 0
-        var lep = 0
-        var lcxp = 0
-        eVal[lep] = 0
-        cxVal[lcxp] = 0
-
-        if height > 0 {
-            var spX = 0
-            while spX < width {
-                let qx0 = spX / 2
-                let q0 = quads[qx0]
-                let rho0 = q0.rho
-                let eQMax0 = q0.eQMax
-                let Uq0 = max(eQMax0, 1)
-                let u_q0 = Uq0 - 1
-
-                var eps0 = 0
-                if u_q0 > 0 {
-                    if q0.eQ0 == eQMax0 { eps0 |= 1 }
-                    if q0.eQ1 == eQMax0 { eps0 |= 2 }
-                    if q0.eQ2 == eQMax0 { eps0 |= 4 }
-                    if q0.eQ3 == eQMax0 { eps0 |= 8 }
-                }
-
-                eVal[lep] = max(eVal[lep], UInt8(q0.eQ1)); lep += 1
-                eVal[lep] = UInt8(q0.eQ3)
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-                cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-
-                let tuple0 = Int(vlcTable0Conformant[(c_q0 << 8) | (rho0 << 4) | eps0])
-                vlcEnc.encode(codeword: tuple0 >> 8, count: (tuple0 >> 4) & 0x7)
-
-                if c_q0 == 0 {
-                    melEnc.encode(eventIsOne: rho0 != 0)
-                }
-
-                emitQuadMagSgn(
-                    rho: rho0, tuple: tuple0, Uq: Uq0,
-                    s0: q0.s0, s1: q0.s1, s2: q0.s2, s3: q0.s3
-                )
-
-                var rho1 = 0
-                var u_q1 = 0
-                if spX + 2 < width {
-                    let q1 = quads[qx0 + 1]
-                    let eQMax1 = q1.eQMax
-                    rho1 = q1.rho
-                    let c_q1 = (rho0 >> 1) | (rho0 & 1)
-                    let Uq1 = max(eQMax1, 1)
-                    u_q1 = Uq1 - 1
-                    var eps1 = 0
-                    if u_q1 > 0 {
-                        if q1.eQ0 == eQMax1 { eps1 |= 1 }
-                        if q1.eQ1 == eQMax1 { eps1 |= 2 }
-                        if q1.eQ2 == eQMax1 { eps1 |= 4 }
-                        if q1.eQ3 == eQMax1 { eps1 |= 8 }
-                    }
-                    eVal[lep] = max(eVal[lep], UInt8(q1.eQ1)); lep += 1
-                    eVal[lep] = UInt8(q1.eQ3)
-                    cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                    cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-
-                    let tuple1 = Int(vlcTable0Conformant[(c_q1 << 8) | (rho1 << 4) | eps1])
-                    vlcEnc.encode(codeword: tuple1 >> 8, count: (tuple1 >> 4) & 0x7)
-
-                    if c_q1 == 0 {
-                        melEnc.encode(eventIsOne: rho1 != 0)
-                    }
-
-                    emitQuadMagSgn(
-                        rho: rho1, tuple: tuple1, Uq: Uq1,
-                        s0: q1.s0, s1: q1.s1, s2: q1.s2, s3: q1.s3
-                    )
-                }
-
-                if u_q0 > 0 && u_q1 > 0 {
-                    melEnc.encode(eventIsOne: min(u_q0, u_q1) > 2)
-                }
-                if u_q0 > 2 && u_q1 > 2 {
-                    let e0 = uvlcTableConformant[u_q0 - 2]
-                    let e1 = uvlcTableConformant[u_q1 - 2]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                    vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-                } else if u_q0 > 2 && u_q1 > 0 {
-                    let e0 = uvlcTableConformant[u_q0]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: u_q1 - 1, count: 1)
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                } else {
-                    let e0 = uvlcTableConformant[u_q0]
-                    let e1 = uvlcTableConformant[u_q1]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                    vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-                }
-
-                c_q0 = (rho1 >> 1) | (rho1 & 1)
-                spX += 4
-            }
-        }
-        if lep + 1 < guardedWidth { eVal[lep + 1] = 0 }
-
-        // Subsequent quad rows (y = 2, 4, ...)
-        var y = 2
-        while y < height {
-            let qy = y / 2
-            let rowQuadBase = qy * qw
-            lep = 0
-            var maxE = max(Int(eVal[0]), Int(eVal[1])) - 1
-            eVal[0] = 0
-            lcxp = 0
-            c_q0 = Int(cxVal[0]) + (Int(cxVal[1]) << 2)
-            cxVal[0] = 0
-
-            var spX = 0
-            while spX < width {
-                let qx0 = spX / 2
-                let q0 = quads[rowQuadBase + qx0]
-                let rho0 = q0.rho
-                let eQMax0 = q0.eQMax
-                let kappaA = ((rho0 & (rho0 - 1)) != 0) ? max(1, maxE) : 1
-                let Uq0 = max(eQMax0, kappaA)
-                let u_q0 = Uq0 - kappaA
-                var eps0 = 0
-                if u_q0 > 0 {
-                    if q0.eQ0 == eQMax0 { eps0 |= 1 }
-                    if q0.eQ1 == eQMax0 { eps0 |= 2 }
-                    if q0.eQ2 == eQMax0 { eps0 |= 4 }
-                    if q0.eQ3 == eQMax0 { eps0 |= 8 }
-                }
-                eVal[lep] = max(eVal[lep], UInt8(q0.eQ1)); lep += 1
-                maxE = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-                eVal[lep] = UInt8(q0.eQ3)
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-                var c_q1 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-                cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-
-                let tuple0 = Int(vlcTable1Conformant[(c_q0 << 8) | (rho0 << 4) | eps0])
-                vlcEnc.encode(codeword: tuple0 >> 8, count: (tuple0 >> 4) & 0x7)
-                if c_q0 == 0 {
-                    melEnc.encode(eventIsOne: rho0 != 0)
-                }
-                emitQuadMagSgn(
-                    rho: rho0, tuple: tuple0, Uq: Uq0,
-                    s0: q0.s0, s1: q0.s1, s2: q0.s2, s3: q0.s3
-                )
-
-                var rho1 = 0
-                var u_q1 = 0
-                if spX + 2 < width {
-                    let q1 = quads[rowQuadBase + qx0 + 1]
-                    let eQMax1 = q1.eQMax
-                    rho1 = q1.rho
-                    let kappaB = ((rho1 & (rho1 - 1)) != 0) ? max(1, maxE) : 1
-                    c_q1 |= ((rho0 & 4) >> 1) | ((rho0 & 8) >> 2)
-                    let Uq1 = max(eQMax1, kappaB)
-                    u_q1 = Uq1 - kappaB
-                    var eps1 = 0
-                    if u_q1 > 0 {
-                        if q1.eQ0 == eQMax1 { eps1 |= 1 }
-                        if q1.eQ1 == eQMax1 { eps1 |= 2 }
-                        if q1.eQ2 == eQMax1 { eps1 |= 4 }
-                        if q1.eQ3 == eQMax1 { eps1 |= 8 }
-                    }
-                    eVal[lep] = max(eVal[lep], UInt8(q1.eQ1)); lep += 1
-                    maxE = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-                    eVal[lep] = UInt8(q1.eQ3)
-                    cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                    c_q0 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-                    cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-
-                    let tuple1 = Int(vlcTable1Conformant[(c_q1 << 8) | (rho1 << 4) | eps1])
-                    vlcEnc.encode(codeword: tuple1 >> 8, count: (tuple1 >> 4) & 0x7)
-                    if c_q1 == 0 {
-                        melEnc.encode(eventIsOne: rho1 != 0)
-                    }
-                    emitQuadMagSgn(
-                        rho: rho1, tuple: tuple1, Uq: Uq1,
-                        s0: q1.s0, s1: q1.s1, s2: q1.s2, s3: q1.s3
-                    )
-                }
-
-                let e0 = uvlcTableConformant[u_q0]
-                let e1 = uvlcTableConformant[u_q1]
-                vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-
-                c_q0 |= ((rho1 & 4) >> 1) | ((rho1 & 8) >> 2)
-                spX += 4
-            }
-            y += 2
-        }
-    }
-
-    /// Decode a Part 15 HTJ2K cleanup segment (adapting `j2knhd_decode_block_ht.c` with `M9-AUD-002` fixed).
+    /// Decode an ITU-T Rec. T.814 HTJ2K cleanup segment.
     ///
     /// Bit-for-bit identical to `HTBlockDecoder.decodeCleanup`.
     internal static func decodeCleanup(
