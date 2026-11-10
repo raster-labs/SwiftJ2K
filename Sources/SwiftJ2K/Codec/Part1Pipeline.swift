@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // General JPEG 2000 Part 1 (ISO/IEC 15444-1) and Part 15 (HTJ2K lossless)
 // pipeline supporting:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 import Foundation
 
 public enum SampleType: Sendable { case unsignedInteger, signedInteger, floatingPoint }

@@ -2322,7 +2322,7 @@
   }
  ],
  "generator": "generate-htj2k-fixtures.py (deterministic; same images and seeds as the Part 1 set)",
- "licence": "Apache-2.0 (synthetic, in-house)",
+ "licence": "MIT (synthetic, in-house)",
  "standard": "ISO/IEC 15444-15 (HTJ2K)",
  "tools": {
   "kakadu": "Compiled against the Kakadu core system, version v8.4.1 (kdu_compress/kdu_expand, proprietary; test oracle only)",

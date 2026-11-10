@@ -11,7 +11,7 @@ The owner chose four fresh repositories under Raster-Lab, with independent codec
 | Inspected source snapshot | [768f6b53499b806fd0304962056e1fc7833f12e5](https://github.com/Raster-Lab/J2KSwift/commit/768f6b53499b806fd0304962056e1fc7833f12e5) |
 | Highest stable-shaped tag observed | [v11.0.3](https://github.com/Raster-Lab/J2KSwift/tree/v11.0.3) |
 | Source-tree licence observed | MIT |
-| Successor licence | Apache-2.0, for owner-authorised in-house material (contract 0.8.0) |
+| Successor licence | MIT, for owner-authorised in-house material (contract 0.11.0; Apache-2.0 under contracts 0.8.0–0.10.0) |
 | Inspection date | 2026-09-17 |
 
 The tag and the inspected branch snapshot are separate references; this record does not assert they resolve to the same commit. Before migrating a tagged baseline, resolve annotated tags to commits and record the exact chosen SHA. The pinned snapshot above was read for documentation preparation; it was not independently built or regression-tested in this task.
@@ -20,7 +20,7 @@ The tag and the inspected branch snapshot are separate references; this record d
 
 The coding agent must record source repository, commit, original path and successor path for each migrated subsystem, and distinguish copied/adapted in-house material from new implementation. Record retained tests, fixture licences and explicit product/feature dispositions. Keep predecessor bug history accessible through links. Do not import old tags, rewrite predecessor history or imply all historical commits have been relicensed.
 
-The owner states the implementation is in-house and has authorised Apache-2.0 relicensing (contract 0.8.0; the foundation recorded this as MIT). Preserve accurate original copyright years and ownership. Audit any third-party dependencies, tools or fixtures separately. The root licence is not authority to remove another party's notices.
+The owner states the implementation is in-house and has authorised MIT licensing across the suite (contract 0.11.0, restoring the foundation MIT baseline after the contract 0.8.0 Apache-2.0 period). Preserve accurate original copyright years and ownership. Audit any third-party dependencies, tools or fixtures separately. The root licence is not authority to remove another party's notices.
 
 The originals are intended to become maintenance projects while new development moves here. No predecessor settings, README, branch, release, licence or archive flag was changed during this documentation preparation. Maintenance announcements and downstream DICOMKit/Voxelia migration are separate work.
 
@@ -242,7 +242,11 @@ Assigned by the owner on branch `feat/clean-room-htj2k-t814` from `main` (`3059a
 
 | Successor file | Current disposition | Provenance |
 | --- | --- | --- |
-| `Sources/SwiftJ2K/Codec/HTTables.swift` | New clean-room (`Apache-2.0`) | Deleted the Milestone 6 OpenJPH-adapted file prior to authoring; derived all MEL Table 2 exponents, Annex C `CxtVLC_table_0` / `CxtVLC_table_1` specification tuples and O(1) lookup builders, and Clause 7.3.6 Table 3 U-VLC decomposition from first principles directly from ITU-T Rec. T.814 (06/2019) \| ISO/IEC 15444-15:2019 |
-| `Sources/SwiftJ2K/Codec/HTBlockCoder.swift` | New clean-room (`Apache-2.0`) | Deleted the Milestone 6 OpenJPH-adapted file prior to authoring; implemented `HTBlockEncoder`, `HTBlockDecoder`, and `HTSegmentInput` (`MagSgn`, `MEL`, `VLC`, `SigProp`, and `MagRef` bit-stuffing packers/readers, `Lcup`/`Scup`/`Lref` segment framing, quad-pair interleaved cleanup coding, `SigProp`/`MagRef` stripe refinement, `3 * P0` placeholders, `SINGLEHT`/`MULTIHT`, `midpointReconstruction`, and `EntropyOutputBudget` accounting) from first principles per ITU-T Rec. T.814 (06/2019) |
-| `Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift` | In-house (`Apache-2.0`) | Stripped the OpenJPH-derived quad-row bitstream loop from `SIMDHTBlockCoder`; retains in-house `SIMD4` 2×2 quad classification (`classifyQuads`) feeding `HTBlockEncoder.encodePreclassifiedCleanup` with bit-for-bit scalar/SIMD/Metal parity |
+| `Sources/SwiftJ2K/Codec/HTTables.swift` | New clean-room (`MIT`) | Deleted the Milestone 6 OpenJPH-adapted file prior to authoring; derived all MEL Table 2 exponents, Annex C `CxtVLC_table_0` / `CxtVLC_table_1` specification tuples and O(1) lookup builders, and Clause 7.3.6 Table 3 U-VLC decomposition from first principles directly from ITU-T Rec. T.814 (06/2019) \| ISO/IEC 15444-15:2019 |
+| `Sources/SwiftJ2K/Codec/HTBlockCoder.swift` | New clean-room (`MIT`) | Deleted the Milestone 6 OpenJPH-adapted file prior to authoring; implemented `HTBlockEncoder`, `HTBlockDecoder`, and `HTSegmentInput` (`MagSgn`, `MEL`, `VLC`, `SigProp`, and `MagRef` bit-stuffing packers/readers, `Lcup`/`Scup`/`Lref` segment framing, quad-pair interleaved cleanup coding, `SigProp`/`MagRef` stripe refinement, `3 * P0` placeholders, `SINGLEHT`/`MULTIHT`, `midpointReconstruction`, and `EntropyOutputBudget` accounting) from first principles per ITU-T Rec. T.814 (06/2019) |
+| `Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift` | In-house (`MIT`) | Stripped the OpenJPH-derived quad-row bitstream loop from `SIMDHTBlockCoder`; retains in-house `SIMD4` 2×2 quad classification (`classifyQuads`) feeding `HTBlockEncoder.encodePreclassifiedCleanup` with bit-for-bit scalar/SIMD/Metal parity |
 | `THIRD_PARTY_NOTICES.md` | Updated | Removed the shipped BSD-2-Clause adapted-code notice (zero BSD-2-Clause source files remain in `Sources/`); retained `OpenJPH` (`ojph_compress`, `ojph_expand`) in the non-shipped development oracle table (`POL-01`) |
+
+### Suite-wide MIT relicensing — contract 0.11.0, 10 November 2026
+
+By owner decision of 10 November 2026 (contract revision `0.11.0`, amending `POL-07` in `Documentation/SUITE_POLICY.md`), `SwiftJ2K` and its in-house source, synthetic fixtures, and documentation return to the **MIT License** (`Copyright (c) 2026 Raster Images Private Limited`), superseding the `Apache-2.0` decision of contract `0.8.0`. Replaced `LICENSE` with the MIT License, removed the Apache-2.0 `NOTICE` file, updated active `SPDX-License-Identifier` headers and documentation from `Apache-2.0` to `MIT`, and advanced `Documentation/COMMON_CONTRACT_SHA256.txt`. Historical evidence under `Documentation/Engineering/` remains unmodified per `POL-08`.

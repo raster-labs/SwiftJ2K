@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 import Foundation
 
 /// JPEG 2000 controls with explicit names and units (API-04).

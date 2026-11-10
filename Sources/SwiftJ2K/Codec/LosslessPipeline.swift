@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Scalar lossless JPEG 2000 Part 1 and Part 15 (HTJ2K) pipeline for the shared
 // greyscale profile: one unsigned component of 1–16 bits, reversible 5/3

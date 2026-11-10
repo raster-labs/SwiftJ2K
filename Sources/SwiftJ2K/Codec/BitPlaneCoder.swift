@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // EBCOT tier-1 block coder (ISO/IEC 15444-1 Annex D): three coding passes per
 // bit-plane. The encoder emits the default code-block style; the decoder
@@ -10,7 +10,7 @@
 //
 // Provenance: adapted from Raster-Lab/J2KSwift at commit
 // 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca,
-// Sources/J2KCodec/J2KBitPlaneCoder.swift (MIT; relicensed Apache-2.0 under
+// Sources/J2KCodec/J2KBitPlaneCoder.swift (MIT under
 // POL-07). Retained: the stripe-oriented scan, the significance-propagation,
 // magnitude-refinement and cleanup pass rules including run-length coding
 // with the two uniform-context position bits, the sign XOR prediction and

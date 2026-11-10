@@ -1,6 +1,6 @@
 {
   "generator": "generate.py (deterministic; XorShift32 seeds recorded)",
-  "licence": "Apache-2.0 (synthetic, in-house)",
+  "licence": "MIT (synthetic, in-house)",
   "tools": {
     "openjpeg": "OpenJPEG 2.5.4 (opj_compress/opj_decompress, BSD-2-Clause)",
     "kakadu": "Compiled against the Kakadu core system, version v8.4.1 (kdu_compress/kdu_expand, proprietary; used as a test oracle only)"

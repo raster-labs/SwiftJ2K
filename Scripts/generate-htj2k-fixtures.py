@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Generate the HTJ2K (ISO/IEC 15444-15) fixture set from the same deterministic synthetic
 images as generate-lossless-fixtures.py, encoded by two independent Part 15 encoders
 (OpenJPH ojph_compress, Kakadu kdu_compress Cmodes=HT) and cross-decoded by three
@@ -70,7 +70,7 @@ def decode_exact(codestream, px, w, h, bits):
 
 os.makedirs(OUT, exist_ok=True)
 manifest = {"generator": "generate-htj2k-fixtures.py (deterministic; same images and seeds as the Part 1 set)",
-            "licence": "Apache-2.0 (synthetic, in-house)", "standard": "ISO/IEC 15444-15 (HTJ2K)", "tools": {}, "fixtures": []}
+            "licence": "MIT (synthetic, in-house)", "standard": "ISO/IEC 15444-15 (HTJ2K)", "tools": {}, "fixtures": []}
 manifest["tools"]["openjph"] = "OpenJPH " + run(["brew", "list", "--versions", "openjph"]).stdout.split()[-1] + " (ojph_compress/ojph_expand, BSD-2-Clause)"
 manifest["tools"]["kakadu"] = [l.strip() for l in run([KDU, "-version"]).stdout.splitlines() if "version" in l][0] + " (kdu_compress/kdu_expand, proprietary; test oracle only)"
 manifest["tools"]["openjpeg"] = "OpenJPEG " + run(["brew", "list", "--versions", "openjpeg"]).stdout.split()[-1] + " (opj_decompress, BSD-2-Clause; Part 15 decode oracle)"

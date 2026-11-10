@@ -1,5 +1,5 @@
 // swift-tools-version: 6.2
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Executable companion of MIGRATION.md. Depends on the repository by path; an
 // application uses the URL form shown in the guide instead.
 import PackageDescription

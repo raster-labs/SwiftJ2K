@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Generate bounded independent zero-DWT HT fixtures with installed Kakadu.
 
 No production library invokes this tool. Use a new output directory; retained
@@ -101,7 +101,7 @@ def main():
             if not record["independent_part1_ht_decodes_equal"]:
                 raise RuntimeError("Independent transcode sample mismatch")
             records.append(record)
-    manifest = {"kind": args.kind, "input_license": "Apache-2.0 synthetic fixtures",
+    manifest = {"kind": args.kind, "input_license": "MIT synthetic fixtures",
         "tools": {name: {"path": str(path), "sha256": sha(path)} for name, path in tools.items()},
         "records": records, "scope": "Independent 2D HT evidence only; inspect actual segments before claiming refinement. No direct Part10+15 peer or MULTIHT qualification."}
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

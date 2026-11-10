@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Development-only experiment. No codec algorithms or compressed inputs.
 import Foundation
 import Synchronization

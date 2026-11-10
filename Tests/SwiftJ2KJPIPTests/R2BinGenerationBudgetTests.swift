@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // In-house structural JPEG 2000 fixture: SOC, short SIZ, one SOT/SOD, four data
 // bytes and EOC. It tests framing/admission, not full image conformance.
 // Raw bytes and malformed mutations are deterministic and independent of the writer.

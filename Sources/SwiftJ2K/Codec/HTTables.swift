@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Raster Images Private Limited
 //
 // Normative High-Throughput JPEG 2000 (HTJ2K) block-coding tables derived from

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Executable companion of MIGRATION.md: an application adapter that holds its
 // own padded 16-bit plane, encodes it losslessly, inspects the codestream and
 // decodes it straight back into caller-owned storage. The body of this file is

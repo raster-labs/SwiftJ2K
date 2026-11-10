@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Normative ITU-T T.808 (12/2022) | ISO/IEC 15444-9 Annex A data-bin indexer
 // and codestream reconstructor for 2D JPEG 2000 Part 1 / Part 15 codestreams

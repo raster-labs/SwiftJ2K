@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Copyright 2026 Raster-Lab
 //
 // Contract API-13 Volumetric Extension Surface for SwiftJ2K3D

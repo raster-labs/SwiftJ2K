@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Scalar quantisation, dequantisation, L2 synthesis norms, and PCRD-opt
 // rate-distortion layer formation (ISO/IEC 15444-1 Annex E and Annex J).

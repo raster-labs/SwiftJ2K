@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Milestone 3: shared-storage evidence for the scalar lossless path
 // (MEMORY_CONTRACT MEM-10, MEM-12, MEM-13 and TESTING TEST-09). Each test

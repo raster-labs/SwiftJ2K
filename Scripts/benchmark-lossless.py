@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Controlled release benchmark of the swiftj2k-cli CLI against reference tools
 (PERFORMANCE.md PERF-02): cold command-line invocations, 5 warm-ups and 20
 interleaved timed iterations per case, medians, p95, spread and pixels/s, plus

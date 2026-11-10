@@ -1,5 +1,5 @@
 // swift-tools-version: 6.2
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Development-only mutation fuzz harness (TESTING.md TEST-05). Depends on the
 // repository by path and is never part of the shipped dependency graph.
 import PackageDescription

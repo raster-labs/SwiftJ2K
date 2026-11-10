@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Byte and bit readers/writers for JPEG 2000 codestream syntax.
 //

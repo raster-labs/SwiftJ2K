@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 import Synchronization
 
 /// Counters of the allocations this module makes for pixels and algorithm

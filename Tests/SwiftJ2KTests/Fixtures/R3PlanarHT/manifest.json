@@ -1,6 +1,6 @@
 {
   "purpose": "Independent zero-DWT HT cleanup/placeholder fixtures; actual observed segment data does not establish refinement. Dimensional adaptation does not assume Part1/10 DWT axis-order equivalence. Not a direct combined Part10+15 peer.",
-  "license": "Apache-2.0 synthetic input",
+  "license": "MIT synthetic input",
   "tool_hashes": {
     "/usr/local/bin/kdu_compress": "6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06",
     "/usr/local/bin/kdu_expand": "a4decaab09d7291c2dff925bb9766bdeb82a3f51b90d3358aaf17cd3b9a490a8"

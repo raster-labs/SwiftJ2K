@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Mutation-based fuzz campaign for the SwiftJ2K decode entry points
 // (TESTING.md TEST-05). Deterministic: the seed corpus is the repository's
 // conformant fixtures and every mutation derives from a SplitMix64 stream

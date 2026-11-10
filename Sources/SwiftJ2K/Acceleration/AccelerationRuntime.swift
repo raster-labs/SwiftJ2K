@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Internal runtime capability detection and ExecutionPolicy resolution for
 // hardware-accelerated JPEG 2000 Part 1 and HTJ2K Part 15 paths (COMMON_API

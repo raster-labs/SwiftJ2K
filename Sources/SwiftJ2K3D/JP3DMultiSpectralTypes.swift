@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Copyright 2026 Raster-Lab
 //
 // Migrated from J2KSwift Sources/J2K3D/JP3DMultiSpectralTypes.swift

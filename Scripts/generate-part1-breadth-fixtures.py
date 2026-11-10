@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Deterministic synthetic Part 1 breadth fixtures for SwiftJ2K Milestone 7.
 Generates reference codestreams from OpenJPEG 2.5.4 and Kakadu 8.4.1 covering:
   - 3-component RGB (8-bit and 12-bit) with RCT (5/3 lossless), ICT (9/7 lossy), and no-MCT
@@ -232,7 +232,7 @@ def compute_psnr(ref_planes, dec_planes, bits, signed):
 
 manifest = {
     "generator": "Scripts/generate-part1-breadth-fixtures.py",
-    "licence": "Apache-2.0 (synthetic, in-house)",
+    "licence": "MIT (synthetic, in-house)",
     "tools": {
         "openjpeg": "OpenJPEG " + subprocess.run(["brew", "list", "--versions", "openjpeg"], capture_output=True, text=True).stdout.split()[-1],
         "kakadu": [l.strip() for l in subprocess.run([KDU, "-version"], capture_output=True, text=True).stdout.splitlines() if "version" in l][0]
