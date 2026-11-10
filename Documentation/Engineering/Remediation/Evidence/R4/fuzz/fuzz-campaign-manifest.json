@@ -1,0 +1,190 @@
+{
+  "campaignType": "bounded_r4_release_qualification",
+  "disclosureNote": "Bounded 120s/entry reproducible release fuzz qualification across all 3 products (SwiftJ2K, SwiftJ2K3D, SwiftJ2KJPIP; 1,080 CPU-seconds total). Full 3,600s/entry tag-time release fuzz campaigns per RELEASE.md remain a separate explicit release-tag gate.",
+  "entries": [
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "decode",
+      "iterations": 249293,
+      "outcomes": {
+        "malformedInput": 210471,
+        "resourceLimitExceeded": 4467,
+        "success": 28050,
+        "unsupportedFeature": 2699,
+        "unsupportedFormat": 3606
+      },
+      "peakResidentBytes": 141361152,
+      "product": "SwiftJ2K",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 39.65,
+      "summaryFile": "decode-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "decodeInto",
+      "iterations": 251997,
+      "outcomes": {
+        "malformedInput": 212763,
+        "resourceLimitExceeded": 4519,
+        "success": 28349,
+        "unsupportedFeature": 2727,
+        "unsupportedFormat": 3639
+      },
+      "peakResidentBytes": 137150464,
+      "product": "SwiftJ2K",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 76.692,
+      "summaryFile": "decodeInto-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "transcodeToHT",
+      "iterations": 245514,
+      "outcomes": {
+        "malformedInput": 207094,
+        "resourceLimitExceeded": 4384,
+        "success": 27077,
+        "unsupportedFeature": 3081,
+        "unsupportedFormat": 3878
+      },
+      "peakResidentBytes": 120946688,
+      "product": "SwiftJ2K",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 37.348,
+      "summaryFile": "transcodeToHT-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "transcodeToJ2K",
+      "iterations": 308976,
+      "outcomes": {
+        "malformedInput": 275999,
+        "resourceLimitExceeded": 6344,
+        "success": 14356,
+        "unsupportedFeature": 4943,
+        "unsupportedFormat": 7334
+      },
+      "peakResidentBytes": 442580992,
+      "product": "SwiftJ2K",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 37.386,
+      "summaryFile": "transcodeToJ2K-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "decode3d",
+      "iterations": 832245,
+      "outcomes": {
+        "malformedInput": 781335,
+        "resourceLimitExceeded": 24987,
+        "success": 25923
+      },
+      "peakResidentBytes": 36814848,
+      "product": "SwiftJ2K3D",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 4.463,
+      "summaryFile": "decode3d-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "transcode3d",
+      "iterations": 812109,
+      "outcomes": {
+        "incompatibleImageLayout": 16837,
+        "malformedInput": 756355,
+        "resourceLimitExceeded": 24332,
+        "success": 14505,
+        "unsupportedFeature": 80
+      },
+      "peakResidentBytes": 24887296,
+      "product": "SwiftJ2K3D",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 4.391,
+      "summaryFile": "transcode3d-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "jpipStream",
+      "iterations": 752091,
+      "outcomes": {
+        "j2k:malformedInput": 638059,
+        "malformedInput": 29463,
+        "resourceLimitExceeded": 4554,
+        "success": 77487,
+        "unsupportedFeature": 1018,
+        "unsupportedFormat": 1510
+      },
+      "peakResidentBytes": 283836416,
+      "product": "SwiftJ2KJPIP",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 189.716,
+      "summaryFile": "jpipStream-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "jpipRequest",
+      "iterations": 769846,
+      "outcomes": {
+        "j2k:invalidArgument": 373553,
+        "success": 396293
+      },
+      "peakResidentBytes": 10993664,
+      "product": "SwiftJ2KJPIP",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 9.311,
+      "summaryFile": "jpipRequest-summary.json",
+      "unexpectedErrors": 0
+    },
+    {
+      "elapsedSeconds": 120.0,
+      "entry": "jpipWebSocketFrame",
+      "iterations": 803409,
+      "outcomes": {
+        "j2k:invalidArgument": 17795,
+        "j2k:malformedInput": 69913,
+        "resourceLimitExceeded": 6429,
+        "success": 707093,
+        "unsupportedFormat": 2179
+      },
+      "peakResidentBytes": 821526528,
+      "product": "SwiftJ2KJPIP",
+      "seed": 20261107,
+      "slowInputsKept": 0,
+      "slowestMilliseconds": 10.276,
+      "summaryFile": "jpipWebSocketFrame-summary.json",
+      "unexpectedErrors": 0
+    }
+  ],
+  "entryCount": 9,
+  "fuzzHarnessPackage": "Integration/FuzzHarness",
+  "fuzzHarnessReleaseBinarySHA256": "373ea341e0ad6dafdbd298aa5d18c2232099433783ed4a3f7d366ef44d006310",
+  "gate": "TEST-05",
+  "globalPeakResidentBytes": 821526528,
+  "globalSlowestMilliseconds": 189.716,
+  "hostArchitecture": "arm64 (Apple M4, 10 cores)",
+  "perEntryTargetSeconds": 120,
+  "phase": "R4",
+  "seed": 20261107,
+  "slowThresholdMilliseconds": 2000,
+  "targetVersion": "12.2.0",
+  "timestampUTC": "2026-11-07T12:09:45Z",
+  "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) / Xcode 27.0 (27A266a)",
+  "totalIterations": 5025480,
+  "totalSlowInputsKept": 0,
+  "totalUnexpectedErrors": 0
+}

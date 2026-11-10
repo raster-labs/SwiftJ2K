@@ -1,0 +1,45 @@
+{
+  "corpus": [
+    "synthetic:jpip_2d_jpp_stream",
+    "synthetic:jpip_2d_jpt_stream",
+    "synthetic:jpip_2d_jp2_container_stream",
+    "synthetic:jpip_3d_jp3d_jpp_stream",
+    "synthetic:jpip_3d_jp3d_jpt_stream"
+  ],
+  "elapsedSeconds": 120.000027208,
+  "entry": "jpipStream",
+  "final": true,
+  "iterations": 752091,
+  "limits": {
+    "deadlineSeconds": 5,
+    "maximumDecodedBytes": 67108864,
+    "maximumFrames": 512,
+    "maximumPixels": 8000000,
+    "maximumWorkspaceBytes": 268435456
+  },
+  "mutations": {
+    "bitFlip": 187548,
+    "byteSet": 187325,
+    "deleteChunk": 188656,
+    "duplicateChunk": 187446,
+    "headerField": 187561,
+    "insertChunk": 187657,
+    "markerLength": 187729,
+    "splice": 188517,
+    "truncate": 187980,
+    "zeroRun": 188360
+  },
+  "outcomes": {
+    "j2k:malformedInput": 638059,
+    "malformedInput": 29463,
+    "resourceLimitExceeded": 4554,
+    "success": 77487,
+    "unsupportedFeature": 1018,
+    "unsupportedFormat": 1510
+  },
+  "peakResidentBytes": 283836416,
+  "seed": 20261107,
+  "slowInputsKept": 0,
+  "slowestMilliseconds": 189.716333,
+  "unexpectedErrors": 0
+}

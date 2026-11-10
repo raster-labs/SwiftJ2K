@@ -8,6 +8,15 @@ let package = Package(
     name: "FuzzHarness",
     platforms: [.macOS(.v26)],
     dependencies: [.package(path: "../..")],
-    targets: [.executableTarget(name: "FuzzHarness", dependencies: [.product(name: "SwiftJ2K", package: "SwiftJ2K")])],
+    targets: [
+        .executableTarget(
+            name: "FuzzHarness",
+            dependencies: [
+                .product(name: "SwiftJ2K", package: "SwiftJ2K"),
+                .product(name: "SwiftJ2K3D", package: "SwiftJ2K"),
+                .product(name: "SwiftJ2KJPIP", package: "SwiftJ2K"),
+            ]
+        )
+    ],
     swiftLanguageModes: [.v6]
 )
