@@ -510,7 +510,8 @@ public struct VolumeEncoder: Sendable {
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedGeometry ? 1 : 0,
             discardedMetadataBytes: discardedGeometry ? JP3DVolumeGeometry.payloadByteCount : 0,
-            discardedMetadataKinds: discardedGeometry ? ["volumeGeometry"] : []
+            discardedMetadataKinds: discardedGeometry ? ["volumeGeometry"] : [],
+            acceleratedEngine: actualBackend == .accelerated ? .cpuSIMD : .none
         )
 
         try work.check()
@@ -851,7 +852,8 @@ public struct VolumeDecoder: Sendable {
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedCount,
             discardedMetadataBytes: discardedBytes,
-            discardedMetadataKinds: discardedKinds
+            discardedMetadataKinds: discardedKinds,
+            acceleratedEngine: actualBackend == .accelerated ? .cpuSIMD : .none
         )
 
         try work.check()
@@ -1011,7 +1013,8 @@ public struct VolumeTranscoder: Sendable {
             elapsedSeconds: elapsedSeconds,
             discardedMetadataCount: discardedCount,
             discardedMetadataBytes: discardedBytes,
-            discardedMetadataKinds: discardedKinds
+            discardedMetadataKinds: discardedKinds,
+            acceleratedEngine: actualTranscodeBackend == .accelerated ? .cpuSIMD : .none
         )
 
         try work.check()

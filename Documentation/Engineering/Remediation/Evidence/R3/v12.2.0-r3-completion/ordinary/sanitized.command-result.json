@@ -1,0 +1,13 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "list",
+    "--skip-build",
+    "--scratch-path",
+    ".build"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "8adf6bfd896272ca466f076aa1aa5d0178fff7cf929e7828f6dbe48bdf9b3844",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

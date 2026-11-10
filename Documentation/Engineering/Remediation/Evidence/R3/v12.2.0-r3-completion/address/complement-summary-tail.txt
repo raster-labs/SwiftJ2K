@@ -1,0 +1,20 @@
+✔ Test "F01: All 5 normative Part 10 progressions (LRCP, RLCP, RPCL, PCRL, CPRL) emit distinct packet orders and round-trip bit-exactly" passed after 3.722 seconds.
+✔ Test "F11: Volume spacing and physical origin round-trip across encode, inspect, decode, ROI, reduced resolution, transcode, and discardAncillary" passed after 3.830 seconds.
+✔ Suite "Phase R2 — SwiftJ2K3D Semantics Remediation Regressions" passed after 3.874 seconds.
+✔ Test "Odd dimensions and odd tile origins select one volume-wide grid" with 2 test cases passed after 3.941 seconds.
+✔ Test "F02: 32-bit and 38-bit unsigned/signed lossless volumes preserve exact integer voxels (including 2^24 + 1 = 16,777,217)" passed after 4.049 seconds.
+✔ Test "F01: 3-component RCT, heterogeneous Ssiz^i (8-bit unsigned + 16-bit signed), non-cubic 17x11x5, and anisotropic levelsZ=0/levelsZ=2 round-trip bit-exactly" passed after 4.066 seconds.
+✔ Test "RA2-03: Signed and unsigned 38-bit Part 2 bit-split fallback uses signed wire limbs with zero DC offset across decode, ROI decode, transcode, and stripped-Part-2 limb synthesis" passed after 4.632 seconds.
+✔ Test "F05 + follow-up residual: simultaneous runtime worker + retained-tile admission, cleanup on failure, bounded-copy inspect, deadlineSeconds, and deterministic maximumWorkers overlap" passed after 4.703 seconds.
+✔ Test independentlyTruncatedRefinementPayloads(rate:) with 3 test cases passed after 5.935 seconds.
+✔ Suite "R3 independently generated HT payloads" passed after 5.937 seconds.
+✔ Test "Volume transcode reports coefficient workspace even for tiny compressed inputs" passed after 6.495 seconds.
+✔ Suite "Codex R2 volume grid and coefficient workspace regressions" passed after 6.496 seconds.
+✔ Test "3D reconstruction admits output growth while the complete tile buffer remains live" passed after 6.596 seconds.
+✔ Test "RA2-02a: Lazy streaming packet sequencer decodes 65,535-layer JP3D across all 5 progression orders under 128 KiB workspace with zero O(numLayers) allocation" passed after 7.169 seconds.
+✔ Suite "Codex R3 packet layer budget (RA2-02)" passed after 7.169 seconds.
+✔ Test "RA2-05: Part 2 whole/ROI decode stays within the geometry floor plus bounded packet workspace without a logical-plane overlap" passed after 9.395 seconds.
+✔ Suite "Phase R3 — F01 Normative JP3D and Reconciled HT-in-JP3D" passed after 9.398 seconds.
+✔ Test "F05 rework: completed unconsumed child tile outputs retain reservation until parent collection across J3DI, J3DS slice-stack, and lossy 3D paths" passed after 11.255 seconds.
+✔ Suite "Phase R1 — SwiftJ2K3D Audit Remediation Regressions" passed after 11.258 seconds.
+✔ Test run with 56 tests in 10 suites passed after 11.259 seconds.

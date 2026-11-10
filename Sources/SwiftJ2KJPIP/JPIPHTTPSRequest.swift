@@ -200,6 +200,13 @@ package final class JPIPHTTPSPhaseLog: Sendable {
         }
     }
 
+    package static func unbindHost(_ host: String?) {
+        guard let host, !host.isEmpty else { return }
+        hostLogs.withLock {
+            _ = $0.removeValue(forKey: host)
+        }
+    }
+
     package static func record(forHost host: String?, _ phase: String) {
         guard let host, !host.isEmpty else { return }
         let log = hostLogs.withLock { $0[host] }
@@ -228,12 +235,22 @@ package final class JPIPHTTPSPhaseLog: Sendable {
 /// creation is pending. Task completion precedes finishTasksAndInvalidate;
 /// only the invalidation acknowledgement releases owners and wakes the caller.
 package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTransportRequestOwner, @unchecked Sendable {
-    // SAFETY: all mutable state, buffer access and result publication use lock.
-    // Cancellation/invalidation calls, harness callbacks and continuation resumes
-    // happen outside it. Only creation/publication of the suspended task holds the
-    // lock. The serial delegate queue orders body callbacks before task completion.
+    // SAFETY: all mutable state, buffer access, startup configuration handoff,
+    // and result publication use lock. Startup URLSession creation runs off the
+    // Swift Concurrency cooperative pool on startupQueue after continuation and
+    // copied configuration are published under lock. Cancellation/invalidation
+    // calls, harness callbacks and continuation resumes happen outside lock.
+    // Only creation/publication of the suspended task holds the lock. The serial
+    // delegate queue orders body callbacks before task completion.
+    private static let startupQueue = DispatchQueue(
+        label: "com.rasterlab.swiftj2k.jpip.https.startup",
+        qos: .userInitiated,
+        attributes: .concurrent
+    )
     private let lock = NSLock()
     private var buffer: JPIPHTTPSResponseBuffer?
+    private var pendingStartupConfiguration: URLSessionConfiguration?
+    private var boundHarnessHost: String?
     private var session: URLSession?
     private var task: URLSessionDataTask?
     private var continuation: CheckedContinuation<Void, Never>?
@@ -262,11 +279,16 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         super.init()
     }
 
-    deinit { deinitObserver?() }
+    deinit {
+        if let host = boundHarnessHost {
+            JPIPHTTPSPhaseLog.unbind(phaseLog, forHost: host)
+        }
+        deinitObserver?()
+    }
 
     package var hasActiveOwners: Bool {
         lock.lock(); defer { lock.unlock() }
-        return session != nil || task != nil || continuation != nil || buffer != nil
+        return session != nil || task != nil || continuation != nil || buffer != nil || pendingStartupConfiguration != nil
     }
 
     package var receivedBodyBytes: Int {
@@ -279,10 +301,11 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         deadline: ContinuousClock.Instant?, beforeTaskPublication: (@Sendable () -> Void)? = nil,
         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)? = nil
     ) async throws -> JPIPHTTPSResult {
-        try claimStart()
         let harnessHost = request.url?.host.flatMap { $0.hasSuffix(".invalid") ? $0 : nil }
-        JPIPHTTPSPhaseLog.bind(phaseLog, forHost: harnessHost)
-        defer { JPIPHTTPSPhaseLog.unbind(phaseLog, forHost: harnessHost) }
+        try claimStart(harnessHost: harnessHost)
+        if let harnessHost {
+            JPIPHTTPSPhaseLog.bind(phaseLog, forHost: harnessHost)
+        }
         phaseLog.record("read.start")
         let watchdog: JPIPDeadlineWatchdog?
         let phaseLog = self.phaseLog
@@ -301,10 +324,30 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             throw error
         }
         defer { watchdog?.cancel() }
+        let ownedConfiguration = (configuration.copy() as? URLSessionConfiguration) ?? configuration
         await withTaskCancellationHandler {
             await withCheckedContinuation { signal in
-                start(request, configuration: configuration, signal: signal,
-                      beforeTaskPublication: beforeTaskPublication, afterTaskPublication: afterTaskPublication)
+                prepareStartup(signal: signal, configuration: ownedConfiguration)
+                // Run URLSession initialisation off Swift Concurrency's cooperative
+                // thread pool so cold CFNetwork XPC/TLS startup on iOS Simulator
+                // never blocks cooperative worker threads.
+                Self.startupQueue.async { [self] in
+                    #if canImport(ObjectiveC)
+                    autoreleasepool {
+                        self.start(
+                            request,
+                            beforeTaskPublication: beforeTaskPublication,
+                            afterTaskPublication: afterTaskPublication
+                        )
+                    }
+                    #else
+                    self.start(
+                        request,
+                        beforeTaskPublication: beforeTaskPublication,
+                        afterTaskPublication: afterTaskPublication
+                    )
+                    #endif
+                }
             }
         } onCancel: {
             self.phaseLog.record("task.onCancel")
@@ -331,12 +374,13 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
     }
 
     private func start(
-        _ request: URLRequest, configuration: URLSessionConfiguration,
-        signal: CheckedContinuation<Void, Never>, beforeTaskPublication: (@Sendable () -> Void)?,
+        _ request: URLRequest,
+        beforeTaskPublication: (@Sendable () -> Void)?,
         afterTaskPublication: (@Sendable (URLSession, URLSessionDataTask) -> Void)?
     ) {
         lock.lock()
-        continuation = signal
+        let configuration = pendingStartupConfiguration ?? URLSessionConfiguration.ephemeral
+        pendingStartupConfiguration = nil
         lock.unlock()
 
         let queue = OperationQueue()
@@ -386,7 +430,14 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         phaseLog.record("task.resumed")
     }
 
-    private func claimStart() throws {
+    private func prepareStartup(signal: CheckedContinuation<Void, Never>, configuration: URLSessionConfiguration) {
+        lock.lock()
+        continuation = signal
+        pendingStartupConfiguration = configuration
+        lock.unlock()
+    }
+
+    private func claimStart(harnessHost: String?) throws {
         lock.lock(); defer { lock.unlock() }
         guard !started else {
             throw CodecError(.internalFailure, "HTTPS request objects are single-use.")
@@ -395,6 +446,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
         // Transport close may have cancelled and joined this owner before the
         // sender was scheduled. Such a late read must not create a new session.
         if taskCompleted, let failure { throw failure }
+        boundHarnessHost = harnessHost
     }
 
     private func discardBeforeSessionCreation() {

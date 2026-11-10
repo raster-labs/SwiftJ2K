@@ -363,6 +363,8 @@ struct CodexR3IndependentTests {
         #expect(reparsed.rvsiz == [4, 4, 2])
 
         // 2. Substantiated 3D fidelity: reversible full -> .exactSamples; lossy -> .lossy; reduced layer -> .lossy; non-JP3D -> malformedInput
+        JPIPTestCooperativeQuiescence.beginHeavyCodecWork()
+        defer { JPIPTestCooperativeQuiescence.endHeavyCodecWork() }
         let vol = makeGreyVolume(width: 16, height: 16, depth: 4)
         let losslessTwoLayer = try await JP3DEncoder(
             configuration: JP3DEncoderConfiguration(
@@ -396,6 +398,11 @@ struct CodexR3IndependentTests {
         let exactDelivered = try await session.deliverVolumeRegion(volumeID: "rev2.jp3d", region: fullRegion)
         #expect(exactDelivered.report.fidelity == .exactSamples)
         #expect((exactDelivered.report.peakWorkspaceBytes ?? 0) > losslessTwoLayer.data.count)
+        if exactDelivered.report.backend == .accelerated {
+            #expect(exactDelivered.report.acceleratedEngine == .cpuSIMD)
+        } else {
+            #expect(exactDelivered.report.acceleratedEngine == .none)
+        }
 
         let layer1Region = JP3DStreamingRegion(xRange: 0..<16, yRange: 0..<16, zRange: 0..<4, qualityLayer: 1, resolutionLevel: 0)
         let partialLayerDelivered = try await session.deliverVolumeRegion(volumeID: "rev2.jp3d", region: layer1Region)

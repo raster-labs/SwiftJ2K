@@ -1,0 +1,30 @@
+{
+  "schema": "swiftj2k-r3-ios-selection-preflight-v2",
+  "ledger_sha256": "317c27a54c6749bcb0e650bb2318deb242558206a0667c875d2eab09d2f2b6ae",
+  "filter_mode_used": "all_three_test_bundles_unheld",
+  "verified_filter_args": [
+    "-only-testing:SwiftJ2KTests",
+    "-only-testing:SwiftJ2K3DTests",
+    "-only-testing:SwiftJ2KJPIPTests"
+  ],
+  "verified_filter_enumeration": {
+    "path": "ios-enumeration-verified.json",
+    "sha256": "dc34dfd57b6570a9d95ffc7293345bfdb380f301336590d10fbc718e2ea8f904",
+    "log_sha256": "ca3002d372087d036740fdf751c0306d2a2029c96f2b34174605da70ea237a55",
+    "expected_selected_ios_count": 1370,
+    "enabled_count": 1370,
+    "unique_count": 1370,
+    "disabled_count": 0,
+    "disabled_unique_count": 0,
+    "duplicate_count": 0,
+    "held_selected_count": 0,
+    "inapplicable_macos_selected_count": 0,
+    "ios_only_present_count": 3,
+    "held_selected_ids": [],
+    "inapplicable_macos_selected_ids": [],
+    "missing_ios_only_ids": [],
+    "missing_selected_ids": [],
+    "extra_ids": []
+  },
+  "verified_exact_full_ios_inventory": true
+}

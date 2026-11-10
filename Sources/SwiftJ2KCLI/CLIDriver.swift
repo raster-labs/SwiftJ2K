@@ -19,7 +19,7 @@ import Glibc
 #endif
 
 let tool = "swiftj2k-cli"
-let version = "12.1.0"
+let version = "12.2.0"
 private let codecCommands = [
     "encode", "decode", "inspect", "validate", "transcode",
     "convert", "compare", "batch", "encode3d", "decode3d",

@@ -1,0 +1,56 @@
+{
+  "schema": "swiftj2k-r3-ios-execution-reconciliation-v2",
+  "ledger_sha256": "317c27a54c6749bcb0e650bb2318deb242558206a0667c875d2eab09d2f2b6ae",
+  "xcresult_result": "Passed",
+  "xcresult_total_test_count": 1370,
+  "xcresult_passed_tests": 1365,
+  "xcresult_skipped_tests": 5,
+  "xcresult_failed_tests": 0,
+  "executed_unit_test_bundles": [
+    "SwiftJ2K3DTests",
+    "SwiftJ2KJPIPTests",
+    "SwiftJ2KTests"
+  ],
+  "xctest": {
+    "started": 1037,
+    "passed": 1037,
+    "failed": 0,
+    "ios_only_background_transfer_passed": [
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests/testBackgroundTransferServiceInitialization",
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests/testBackgroundTransferServiceTransferStatus",
+      "SwiftJ2KJPIPTests.JPIPNetworkFrameworkTests/testBackgroundTransferServiceTransferTask"
+    ]
+  },
+  "xcresult_declarations": {
+    "expected_selected_ios_declarations": 1370,
+    "observed_declarations": 1370,
+    "duplicate_declarations": 0,
+    "passed_declarations": 1365,
+    "skipped_oracle_declarations": 5,
+    "failed_declarations": 0,
+    "held_declarations_executed": 0,
+    "inapplicable_macos_declarations_executed": 0,
+    "parameterised_non_oracle_declarations_verified": 34,
+    "parameterised_non_oracle_total_cases_expected": 377,
+    "parameterised_non_oracle_total_cases_observed": 377,
+    "skipped_oracle_ids": [
+      "SwiftJ2KTests.independentDecodersReadSuccessorCodestreams(name:)",
+      "SwiftJ2KTests.independentHTDecodersReadSuccessorHTJ2KCodestreams(name:)",
+      "SwiftJ2KTests.independentOraclesCrossDecodePart1BreadthEncodings()",
+      "SwiftJ2KTests.independentOraclesDecodeSuccessorJP2JPHAndJPXContainers()",
+      "SwiftJ2KTests.independentOraclesVerifyTranscodedOutputsInBothDirections(name:)"
+    ],
+    "missing_selected_ios_ids": [],
+    "extra_observed_ios_ids": [],
+    "held_executed_ios_ids": [],
+    "inapplicable_executed_ios_ids": [],
+    "missing_ios_only_passed_ids": [],
+    "unexpected_skipped_ios_ids": [],
+    "unexpected_passed_diff_ids": [],
+    "failed_ids": [],
+    "failed_parameterised_children": [],
+    "parameterised_case_mismatches": {}
+  },
+  "held_jpip_3d_validations_state": "UNHELD_AND_QUALIFIED_FOR_12_2_0",
+  "five_external_feature_gates_state": "ON_HOLD_BY_OWNER / DEFERRED / UNEXECUTED"
+}

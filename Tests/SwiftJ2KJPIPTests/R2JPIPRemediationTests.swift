@@ -378,7 +378,17 @@ struct R2JPIPRemediationTests {
                 options: JPIPStreamingOptions(executionPolicy: .preferred(.accelerated))
             )
             #expect(fallbackDelivered.report.backend == .scalarCPU)
+            #expect(fallbackDelivered.report.acceleratedEngine == .none)
             #expect(fallbackDelivered.report.fallbackReason != nil)
+        }
+
+        if AccelerationRuntime.hasHardwareSIMD || AccelerationRuntime.hasHardwareMetalDevice {
+            let accelDelivered = try await session.deliverImage(
+                imageID: "clean.jp2",
+                options: JPIPStreamingOptions(executionPolicy: .required(.accelerated))
+            )
+            #expect(accelDelivered.report.backend == .accelerated)
+            #expect(accelDelivered.report.acceleratedEngine != .none)
         }
 
         try await session.close()
