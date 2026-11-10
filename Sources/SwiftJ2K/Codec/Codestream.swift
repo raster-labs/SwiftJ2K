@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // JPEG 2000 Part 1 codestream syntax (ISO/IEC 15444-1 Annex A): marker
 // segment parsing and writing for the main header and tile-part headers.

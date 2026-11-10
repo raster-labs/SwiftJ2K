@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // JPIPTCPSocket.swift
 // SwiftJ2KJPIP

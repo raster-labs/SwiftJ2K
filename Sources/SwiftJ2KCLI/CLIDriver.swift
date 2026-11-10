@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // swiftj2k-cli: the standalone executable of the SwiftJ2K library (CLI_CONTRACT
 // CLI-01..CLI-04, CLI-06..CLI-09). Milestone 4 wired encode, decode, inspect

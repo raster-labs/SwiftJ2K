@@ -2,7 +2,7 @@
   "purpose": "T.803 (2024) C.1.10 candidate generation: reversible transform with lossy Part1 truncation then HT transcode. Actual refinement coverage must be inspected separately.",
   "source": "/Users/raster/Documents/Codex/2026-10-31/swiftj2k-r3-codex-takeover/work/diagnostic-source-03/Tests/SwiftJ2KTests/Fixtures/Lossless/g16_64x64_random.pgm",
   "source_sha256": "5f29ff877a8d2fbd493f609e4f276672fb038d545d15271bf0ca99139146f29a",
-  "license": "Synthetic Apache-2.0 input; Kakadu output.",
+  "license": "Synthetic MIT input; Kakadu output.",
   "tools": {
     "kdu_compress": "6479d74cb94ed2ba872b11733231748ea42c2ff6939a4e25d6daaad68d5bbb06",
     "kdu_transcode": "cb6b98182325b8c4ab8fddbd82e79097b69129827bbe932be8ae3b72f73c29b0",

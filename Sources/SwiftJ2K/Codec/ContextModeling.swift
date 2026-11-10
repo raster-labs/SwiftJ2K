@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // EBCOT context formation (ISO/IEC 15444-1 Annex D, Tables D.1–D.4).
 //
 // Provenance: adapted from Raster-Lab/J2KSwift at commit
 // 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca,
-// Sources/J2KCodec/J2KContextModeling.swift (MIT; relicensed Apache-2.0 under
+// Sources/J2KCodec/J2KContextModeling.swift (MIT under
 // POL-07). Retained: the 19-label numbering, the three 45-entry significance
 // look-up tables, the packed sign-context table with its XOR bit, the
 // magnitude-refinement label rule and the initial context states (label 0 →

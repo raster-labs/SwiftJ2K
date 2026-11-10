@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Tile geometry (ISO/IEC 15444-1 Annex B: tiles, resolutions, subbands,
 // precincts and code-blocks on the reference grid), the five progression

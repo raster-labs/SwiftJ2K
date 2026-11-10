@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Multiple component transformations (ISO/IEC 15444-1 Annex G):
 // - Annex G.2: Reversible Colour Transformation (RCT) for 5/3 wavelet coding;

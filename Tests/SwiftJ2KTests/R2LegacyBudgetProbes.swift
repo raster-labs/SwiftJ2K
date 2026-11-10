@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Independent OpenJPEG 2.5.4 fixture and expected samples come from
 // Fixtures/Containers/manifest.json: unsigned 12-bit grey, 16×12, sample
 // (17 + 131*x + 197*y) modulo 4096. Source fixture SHA-256:

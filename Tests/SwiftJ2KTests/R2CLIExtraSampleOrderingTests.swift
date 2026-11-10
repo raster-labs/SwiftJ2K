@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // In-house, deterministic synthetic fixtures; no external image assets.
 // TIFF 6.0 pp. 31–32: https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf
 // PNG ordering: https://www.w3.org/TR/2025/REC-png-3-20250624/#5ChunkOrdering

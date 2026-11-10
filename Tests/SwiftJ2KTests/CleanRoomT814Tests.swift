@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Raster Images Private Limited
 //
 // Dedicated unit tests for the clean-room ITU-T Rec. T.814 (06/2019) | ISO/IEC 15444-15:2019

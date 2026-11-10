@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Tag tree coder for packet headers (ISO/IEC 15444-1 B.10.2).
 //
 // Provenance: adapted from Raster-Lab/J2KSwift at commit
 // 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca, Sources/J2KCodec/J2KTagTree.swift
-// (MIT; relicensed Apache-2.0 under POL-07). The quad-tree layout, the
+// (MIT under POL-07). The quad-tree layout, the
 // root-to-leaf "low"/"known" traversal and the threshold semantics are kept.
 // Changes: the reader/writer types are the successor's packet bit coders,
 // silently ignored out-of-range leaves now throw, and the decoder bounds its

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // R2JPIPRemediationTests.swift
 // SwiftJ2KJPIPTests

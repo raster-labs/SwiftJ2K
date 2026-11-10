@@ -1,5 +1,5 @@
 // swift-tools-version: 6.2
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 import PackageDescription
 
 // The manifest floor stays at the 6.2 minimum that SUITE_POLICY.md PLAT-01

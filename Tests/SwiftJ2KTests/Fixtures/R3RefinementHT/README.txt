@@ -1,6 +1,6 @@
 R3 independent HT refinement fixtures
 
-These Apache-2.0 synthetic-input fixtures were generated with installed,
+These MIT synthetic-input fixtures were generated with installed,
 unmodified Kakadu 8.4.1. The retained manifest records full commands, binary
 hashes, source hash, codestream hashes, outputs and logs.
 

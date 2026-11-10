@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Irreversible 9/7 CDF wavelet transform (ISO/IEC 15444-1 Annex F.3.8.2 and F.4.8.2,
 // Table F.4) on an arbitrary reference-grid rectangle (x0..<x1, y0..<y1).

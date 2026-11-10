@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Regression cases derived from ITU-T T.808 (12/2022), clauses 5.1 and C.8.1.
 // These are implementation regressions; they do not replace independent peer qualification.
 import Foundation

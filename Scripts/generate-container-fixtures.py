@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Generate deterministic Milestone 8 JP2, JPH, and JPX container fixtures
 using OpenJPEG 2.5.4 (opj_compress) and Kakadu v8.4.1 (kdu_compress)."""
 

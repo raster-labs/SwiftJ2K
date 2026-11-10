@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Reversible 5/3 discrete wavelet transform (ISO/IEC 15444-1 Annex F, F.3.8.2
 // and F.4.8.2, lifting form with periodic symmetric extension) over signals
@@ -8,7 +8,7 @@
 //
 // Provenance: the one-dimensional lifting kernels were adapted in Milestone 2
 // from Raster-Lab/J2KSwift at commit 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca,
-// Sources/J2KCodec/J2KDWT1D.swift (MIT, relicensed Apache-2.0 under POL-07),
+// Sources/J2KCodec/J2KDWT1D.swift (MIT under POL-07),
 // for the origin-0 case; the general-origin form below follows the standard's
 // equations F-5, F-6, F-7 and F-8 directly. The two-dimensional driver works
 // in place on the nested subband layout, applying VER_SD then HOR_SD on

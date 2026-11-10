@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // MQ arithmetic coder (ISO/IEC 15444-1 Annex C).
 //
 // Provenance: adapted from Raster-Lab/J2KSwift at commit
 // 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca, Sources/J2KCodec/J2KMQCoder.swift
-// (MIT, Raster-Lab / Raster Images Private Limited; relicensed Apache-2.0
+// (MIT, Raster-Lab / Raster Images Private Limited
 // under SUITE_POLICY POL-07). Retained: the 47-entry probability table, the
 // CODEMPS/CODELPS/BYTEOUT/FLUSH encoder procedures and the software-conventions
 // decoder (INITDEC/DECODE/BYTEIN). Removed: the raw-pointer output buffer and the

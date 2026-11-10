@@ -1,5 +1,10 @@
 # Change log
 
+## Unreleased — contract 0.11.0, 2026-11-10
+
+- **Clean-room ITU-T Rec. T.814 HTJ2K block coder (`SwiftJ2K` PR #35, `feat/clean-room-htj2k-t814` @ `67712b6c7f3a629f94200fe0d571732751a9defd` → merged into `SwiftJ2K` `main` at `b762126`).** Replaced all OpenJPH-adapted `BSD-2-Clause` HTJ2K block-coding code (`Sources/SwiftJ2K/Codec/HTTables.swift`, `Sources/SwiftJ2K/Codec/HTBlockCoder.swift`, and the quad-row bitstream loop in `Sources/SwiftJ2K/Acceleration/SIMDAcceleration.swift`) with a 100% clean-room, first-principles Swift implementation of ITU-T Rec. T.814 (06/2019) | ISO/IEC 15444-15:2019, eliminating all shipped `BSD-2-Clause` source dependencies while preserving 100% scalar/SIMD/Metal parity, external oracle checks, and ASan/TSan gates (`CleanRoomT814Tests.swift`).
+- **Suite-wide MIT relicensing (`POL-07`, contract `0.11.0`, `chore/relicense-mit`).** Replaced the `Apache-2.0` `LICENSE` with the MIT License (`Copyright (c) 2026 Raster Images Private Limited`), removed the `Apache-2.0` `NOTICE` file while retaining `THIRD_PARTY_NOTICES.md`, updated active `SPDX-License-Identifier` headers and documentation from `Apache-2.0` to `MIT`, and advanced `Documentation/SUITE_POLICY.md` and `Documentation/COMMON_CONTRACT_SHA256.txt` to contract `0.11.0`.
+
 ## 12.1.0 — 2026-11-06
 
 First stable release of `SwiftJ2K` (`v12.1.0`), the standalone successor to `J2KSwift` for the **Swift Image Compression Suite** (shared contract `0.10.0`, Apple OS `26.0` deployment floor, Swift `6.2` tools minimum / Swift `6.4` qualified in Swift `6` language mode).

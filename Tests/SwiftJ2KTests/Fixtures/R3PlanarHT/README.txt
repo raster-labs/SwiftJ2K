@@ -1,6 +1,6 @@
 R3 independent planar HT fixtures
 
-Synthetic Apache-2.0 source PGM files are in ../Lossless. Unmodified Kakadu8.4.1
+Synthetic MIT source PGM files are in ../Lossless. Unmodified Kakadu8.4.1
 encoded these with Clevels0, Clayers3, CorderLRCP, Creversibleyes and CmodesHT.
 Commands, independent decoded outputs, source/tool/output hashes and logs are
 retained in manifest.json. CodexR3IndependentHTTests verifies exact lossless

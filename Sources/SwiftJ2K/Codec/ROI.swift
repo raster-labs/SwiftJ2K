@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Region of Interest (ROI) MaxShift coding (ISO/IEC 15444-1 Annex H.1,
 // RGN marker segment 0xFF5E with Srgn = 0).

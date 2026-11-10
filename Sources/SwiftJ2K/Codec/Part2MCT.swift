@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Conformant ISO/IEC 15444-2 (ITU-T T.801) Annex A.3.7–A.3.10, Annex I, and Annex J
 // 2D multi-component transform syntax and execution for SwiftJ2K.

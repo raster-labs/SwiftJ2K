@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Deterministic synthetic greyscale fixtures for SwiftJ2K Milestone 2.
 Writes PGM (P5, big-endian 16-bit when maxval > 255) plus independent
 lossless JPEG 2000 codestreams from OpenJPEG and Kakadu, and a manifest with
@@ -99,7 +99,7 @@ def read_pgm(path):
 def sha(path): return hashlib.sha256(open(path, "rb").read()).hexdigest()
 def sample_digest(px): return hashlib.sha256(b"".join(struct.pack("<H", v) for v in px)).hexdigest()
 
-manifest = {"generator": "generate.py (deterministic; XorShift32 seeds recorded)", "licence": "Apache-2.0 (synthetic, in-house)",
+manifest = {"generator": "generate.py (deterministic; XorShift32 seeds recorded)", "licence": "MIT (synthetic, in-house)",
             "tools": {}, "fixtures": []}
 manifest["tools"]["openjpeg"] = "OpenJPEG " + subprocess.run(["brew","list","--versions","openjpeg"], capture_output=True, text=True).stdout.split()[-1] + " (opj_compress/opj_decompress, BSD-2-Clause)"
 manifest["tools"]["kakadu"] = [l.strip() for l in subprocess.run([KDU, "-version"], capture_output=True, text=True).stdout.splitlines() if "version" in l][0] + " (kdu_compress/kdu_expand, proprietary; used as a test oracle only)"

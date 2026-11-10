@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 import Foundation
 
 /// Native compressed endpoints for JPEG 2000 Part 1 and Part 15 (HTJ2K).

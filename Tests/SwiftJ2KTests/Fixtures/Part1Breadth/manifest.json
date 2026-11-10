@@ -1,6 +1,6 @@
 {
   "generator": "Scripts/generate-part1-breadth-fixtures.py",
-  "licence": "Apache-2.0 (synthetic, in-house)",
+  "licence": "MIT (synthetic, in-house)",
   "tools": {
     "openjpeg": "OpenJPEG 2.5.4",
     "kakadu": "Compiled against the Kakadu core system, version v8.4.1"

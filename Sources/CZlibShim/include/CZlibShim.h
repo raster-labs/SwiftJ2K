@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 #ifndef SWIFTJ2K_CZLIB_SHIM_H
 #define SWIFTJ2K_CZLIB_SHIM_H
 

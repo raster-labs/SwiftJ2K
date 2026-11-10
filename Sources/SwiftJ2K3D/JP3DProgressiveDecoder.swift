@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // JP3DProgressiveDecoder.swift
 // SwiftJ2K3D
