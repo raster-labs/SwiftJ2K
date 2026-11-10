@@ -1,1283 +1,11 @@
-// SPDX-License-Identifier: Apache-2.0 AND BSD-2-Clause
-// Provenance: Adapted from Raster-Lab/J2KSwift at commit
-// 7acc9ae415e7d0bc7d441e0f0277d5e150bd19ca
-// (Sources/J2KCodec/J2KHTConformantBitStream.swift,
-// J2KHTConformantMELCoder.swift, J2KHTConformantVLCCoder.swift,
-// J2KHTConformantMagSgnCoder.swift, J2KHTConformantBlockLayout.swift,
-// J2KHTConformantBlockEncoder.swift, J2KHTConformantBlockDecoder.swift),
-// which is a Swift translation of OpenJPH 0.26 (`ojph_block_encoder.cpp`,
-// `ojph_block_decoder32.cpp`, `ojph_block_common.cpp`).
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Raster Images Private Limited
 //
-// Copyright (c) 2019-2024, Aous Naman
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import Foundation
-
-// MARK: - MEL Coder (ISO/IEC 15444-15 Clause 7.3.3)
-
-internal struct HTMELEncoder: Sendable {
-    private static let melExp: [Int] = [
-        0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5
-    ]
-
-    private var buffer: [UInt8] = []
-    private var tmp: UInt8 = 0
-    private var rem: Int = 8
-    private var run: Int = 0
-    private var k: Int = 0
-    private var threshold: Int = 1
-    private let maximumBytes: Int
-    private let budget: EntropyOutputBudget?
-    internal private(set) var reservedScratchBytes = 0
-    internal private(set) var overflowed = false
-
-    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
-        self.maximumBytes = maximumBytes
-        self.budget = budget
-        if budget == nil {
-            let reserved = min(192, max(0, maximumBytes))
-            if reserved > 0 {
-                buffer.reserveCapacity(reserved)
-            }
-        }
-    }
-
-    internal mutating func releaseScratch() {
-        buffer = []
-        if let budget, reservedScratchBytes > 0 {
-            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-scratch")
-            reservedScratchBytes = 0
-        }
-    }
-
-    internal mutating func reset() {
-        buffer.removeAll(keepingCapacity: true)
-        tmp = 0
-        rem = 8
-        run = 0
-        k = 0
-        threshold = 1
-        overflowed = false
-    }
-
-    private mutating func emitBit(_ bit: Bool) {
-        tmp = (tmp << 1) | (bit ? 1 : 0)
-        rem -= 1
-        if rem == 0 {
-            if !overflowed && buffer.count < maximumBytes {
-                if let budget, buffer.count >= reservedScratchBytes {
-                    let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
-                    do {
-                        let previous = reservedScratchBytes
-                        let next = previous + chunk
-                        try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-mel-chunk")
-                        budget.recordActualAllocation(next, site: "ht-mel-chunk")
-                        buffer.reserveCapacity(next)
-                        budget.release(previous, countsTowardCompressedOutput: false, site: "ht-mel-replaced")
-                        reservedScratchBytes = next
-                    } catch {
-                        overflowed = true
-                        rem = 8
-                        tmp = 0
-                        return
-                    }
-                }
-                buffer.append(tmp)
-            } else {
-                overflowed = true
-            }
-            rem = (tmp == 0xFF) ? 7 : 8
-            tmp = 0
-        }
-    }
-
-    internal mutating func encode(eventIsOne: Bool) {
-        if !eventIsOne {
-            run += 1
-            if run >= threshold {
-                emitBit(true)
-                run = 0
-                k = min(12, k + 1)
-                threshold = 1 << Self.melExp[k]
-            }
-        } else {
-            emitBit(false)
-            var t = Self.melExp[k]
-            while t > 0 {
-                t -= 1
-                emitBit(((run >> t) & 1) != 0)
-            }
-            run = 0
-            k = max(0, k - 1)
-            threshold = 1 << Self.melExp[k]
-        }
-    }
-
-    internal func snapshotForFuse() -> (bytes: [UInt8], tmp: UInt8, rem: Int) {
-        var copy = self
-        if copy.run > 0 {
-            copy.emitBit(true)
-        }
-        return (copy.buffer, copy.tmp, copy.rem)
-    }
-
-    internal var emittedByteCount: Int { buffer.count }
-
-    internal mutating func flushWithoutTrailingSeal() -> (tmp: UInt8, rem: Int) {
-        if run > 0 {
-            emitBit(true)
-            run = 0
-        }
-        return (tmp, rem)
-    }
-
-    internal var bufferSlice: [UInt8] { buffer }
-}
-
-internal struct HTMELDecoder: Sendable {
-    private static let melExp: [Int] = [
-        0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5
-    ]
-
-    private let bytes: ArraySlice<UInt8>
-    private let bytesCount: Int
-    private var pos: Int
-    private var tmp: UInt64 = 0
-    private var bits: Int = 0
-    private var unstuff: Bool = false
-    private var k: Int = 0
-    private var numRuns: Int = 0
-    private var runs: UInt64 = 0
-
-    internal init(bytes: ArraySlice<UInt8>) {
-        self.bytes = bytes
-        self.bytesCount = bytes.count
-        self.pos = bytes.startIndex
-    }
-
-    internal init(bytes: [UInt8]) {
-        self.init(bytes: bytes[...])
-    }
-
-    private mutating func read() {
-        guard bits <= 32 else { return }
-        let endIdx = bytes.startIndex + bytesCount
-        let remaining = endIdx - pos
-
-        var val: UInt32 = 0xFFFF_FFFF
-        if remaining >= 4 {
-            let b0 = UInt32(bytes[pos])
-            let b1 = UInt32(bytes[pos + 1])
-            let b2 = UInt32(bytes[pos + 2])
-            let b3 = UInt32(bytes[pos + 3])
-            val = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
-            pos += 4
-        } else if remaining > 0 {
-            var i = 0
-            while pos < endIdx {
-                let b = UInt32(bytes[pos])
-                let m = ~(UInt32(0xFF) << i)
-                val = (val & m) | (b << i)
-                pos += 1
-                i += 8
-            }
-        }
-
-        var bitsRead = 32 - (unstuff ? 1 : 0)
-        var t: UInt32 = val & (unstuff ? 0x7F : 0xFF)
-        var unstuffFlag = ((val & 0xFF) == 0xFF)
-
-        t = (t << (8 - (unstuffFlag ? 1 : 0)))
-            | ((val >> 8) & (0xFF >> (unstuffFlag ? 1 : 0)))
-        bitsRead -= unstuffFlag ? 1 : 0
-        unstuffFlag = (((val >> 8) & 0xFF) == 0xFF)
-
-        t = (t << (8 - (unstuffFlag ? 1 : 0)))
-            | ((val >> 16) & (0xFF >> (unstuffFlag ? 1 : 0)))
-        bitsRead -= unstuffFlag ? 1 : 0
-        unstuffFlag = (((val >> 16) & 0xFF) == 0xFF)
-
-        t = (t << (8 - (unstuffFlag ? 1 : 0)))
-            | ((val >> 24) & (0xFF >> (unstuffFlag ? 1 : 0)))
-        bitsRead -= unstuffFlag ? 1 : 0
-        unstuff = (((val >> 24) & 0xFF) == 0xFF)
-
-        tmp |= UInt64(t) << (64 - bitsRead - bits)
-        bits += bitsRead
-    }
-
-    private mutating func decodeMoreRuns() {
-        if bits < 6 { read() }
-        while bits >= 6 && numRuns < 8 {
-            let eval = Self.melExp[k]
-            var run = 0
-            if (tmp & (UInt64(1) << 63)) != 0 {
-                run = (1 << eval) - 1
-                k = min(12, k + 1)
-                tmp <<= 1
-                bits -= 1
-                run = run << 1
-            } else {
-                run = Int(tmp >> (63 - eval)) & ((1 << eval) - 1)
-                k = max(0, k - 1)
-                tmp <<= eval + 1
-                bits -= eval + 1
-                run = (run << 1) + 1
-            }
-            let shift = numRuns * 7
-            runs &= ~(UInt64(0x3F) << shift)
-            runs |= UInt64(run) << shift
-            numRuns += 1
-        }
-    }
-
-    internal mutating func nextRun() -> Int {
-        if numRuns == 0 { decodeMoreRuns() }
-        let t = Int(runs & 0x7F)
-        runs >>= 7
-        numRuns -= 1
-        return t
-    }
-}
-
-// MARK: - VLC Reverse Bit Emitter (ISO/IEC 15444-15 Clause 7.3.5)
-
-internal struct HTReverseBitEmitter: Sendable {
-    private var bytes: [UInt8] = []
-    private var tmp: UInt64 = 0xF
-    private var usedBits: Int = 4
-    private var lastGreaterThan8F: Bool = true
-    private let maximumBytes: Int
-    private let budget: EntropyOutputBudget?
-    internal private(set) var reservedScratchBytes = 0
-    internal private(set) var overflowed: Bool = false
-
-    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
-        self.maximumBytes = max(1, maximumBytes)
-        self.budget = budget
-        if budget == nil {
-            bytes = [0xFF]
-            bytes.reserveCapacity(min(512, max(1, maximumBytes)))
-        }
-    }
-
-    internal mutating func releaseScratch() {
-        bytes = []
-        if let budget, reservedScratchBytes > 0 {
-            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-vlc-scratch")
-            reservedScratchBytes = 0
-        }
-    }
-
-    @inline(__always)
-    private mutating func appendAdmitted(_ byte: UInt8) -> Bool {
-        guard !overflowed, bytes.count < maximumBytes else {
-            overflowed = true
-            return false
-        }
-        if let budget, bytes.count >= reservedScratchBytes {
-            let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
-            do {
-                let previous = reservedScratchBytes
-                let next = previous + chunk
-                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-vlc-chunk")
-                budget.recordActualAllocation(next, site: "ht-vlc-chunk")
-                bytes.reserveCapacity(next)
-                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-vlc-replaced")
-                reservedScratchBytes = next
-            } catch {
-                overflowed = true
-                return false
-            }
-        }
-        bytes.append(byte)
-        return true
-    }
-
-    internal mutating func reset() {
-        bytes.removeAll(keepingCapacity: true)
-        overflowed = false
-        _ = appendAdmitted(0xFF)
-        tmp = 0xF
-        usedBits = 4
-        lastGreaterThan8F = true
-    }
-
-    internal mutating func encode(codeword: Int, count: Int) {
-        guard count > 0, !overflowed else { return }
-        let mask = (UInt64(1) << count) - 1
-        let cw = UInt64(codeword) & mask
-        tmp |= cw << usedBits
-        usedBits += count
-
-        while usedBits >= 8 {
-            var byte = UInt8(tmp & 0xFF)
-            if lastGreaterThan8F && (byte & 0x7F) == 0x7F {
-                byte &= 0x7F
-                guard appendAdmitted(byte) else { return }
-                lastGreaterThan8F = false
-                tmp >>= 7
-                usedBits -= 7
-            } else {
-                guard appendAdmitted(byte) else { return }
-                lastGreaterThan8F = byte > 0x8F
-                tmp >>= 8
-                usedBits -= 8
-            }
-        }
-    }
-
-    internal func snapshotForFuse() -> (
-        forwardTailBytes: [UInt8],
-        tmp: UInt8,
-        usedBits: Int,
-        lastGreaterThan8F: Bool
-    ) {
-        return (
-            forwardTailBytes: Array(bytes.reversed()),
-            tmp: UInt8(tmp & 0xFF),
-            usedBits: usedBits,
-            lastGreaterThan8F: lastGreaterThan8F
-        )
-    }
-
-    internal var rawBytesInEmitOrder: [UInt8] { bytes }
-    internal var pendingTmp: UInt8 { UInt8(tmp & 0xFF) }
-    internal var pendingUsedBits: Int { usedBits }
-    internal var pendingLastGreaterThan8F: Bool { lastGreaterThan8F }
-}
-
-// MARK: - MagSgn Coder (ISO/IEC 15444-15 Clause 7.3.4)
-
-internal struct HTMagSgnEncoder: Sendable {
-    private var bytes: [UInt8] = []
-    private var tmp: UInt64 = 0
-    private var usedBits: Int = 0
-    private var maxBits: Int = 8
-    private let maximumBytes: Int
-    private let budget: EntropyOutputBudget?
-    internal private(set) var reservedScratchBytes = 0
-    internal private(set) var overflowed: Bool = false
-
-    internal init(maximumBytes: Int = Int.max, budget: EntropyOutputBudget? = nil) {
-        self.maximumBytes = max(0, maximumBytes)
-        self.budget = budget
-        if budget == nil {
-            bytes.reserveCapacity(min(1024, max(0, maximumBytes)))
-        }
-    }
-
-    internal mutating func releaseScratch() {
-        bytes = []
-        if let budget, reservedScratchBytes > 0 {
-            budget.release(reservedScratchBytes, countsTowardCompressedOutput: false, site: "ht-magsgn-scratch")
-            reservedScratchBytes = 0
-        }
-    }
-
-    @inline(__always)
-    private mutating func appendAdmitted(_ byte: UInt8) -> Bool {
-        guard !overflowed, bytes.count < maximumBytes else {
-            overflowed = true
-            return false
-        }
-        if let budget, bytes.count >= reservedScratchBytes {
-            let chunk = min(64, max(1, maximumBytes - reservedScratchBytes))
-            do {
-                let previous = reservedScratchBytes
-                let next = previous + chunk
-                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-magsgn-chunk")
-                budget.recordActualAllocation(next, site: "ht-magsgn-chunk")
-                bytes.reserveCapacity(next)
-                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-magsgn-replaced")
-                reservedScratchBytes = next
-            } catch {
-                overflowed = true
-                return false
-            }
-        }
-        bytes.append(byte)
-        return true
-    }
-
-    internal mutating func reset() {
-        bytes.removeAll(keepingCapacity: true)
-        tmp = 0
-        usedBits = 0
-        maxBits = 8
-        overflowed = false
-    }
-
-    internal mutating func encode(codeword: UInt32, count: Int) {
-        guard count > 0, !overflowed else { return }
-        let mask: UInt64 = (count >= 32) ? 0xFFFF_FFFF : ((UInt64(1) << count) - 1)
-        let cw = UInt64(codeword) & mask
-        tmp |= cw << usedBits
-        usedBits += count
-
-        while usedBits >= maxBits {
-            let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
-            let byte = UInt8(tmp & pageMask)
-            guard appendAdmitted(byte) else { return }
-            tmp >>= maxBits
-            usedBits -= maxBits
-            maxBits = (byte == 0xFF) ? 7 : 8
-        }
-    }
-
-    internal mutating func encode64(codeword: UInt64, count: Int) {
-        guard count > 0, !overflowed else { return }
-        if usedBits &+ count <= 64 {
-            let mask: UInt64 = (count >= 64) ? ~UInt64(0) : ((UInt64(1) << count) - 1)
-            let cw = codeword & mask
-            tmp |= cw << usedBits
-            usedBits &+= count
-            while usedBits >= maxBits {
-                let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
-                let byte = UInt8(tmp & pageMask)
-                guard appendAdmitted(byte) else { return }
-                tmp >>= maxBits
-                usedBits &-= maxBits
-                maxBits = (byte == 0xFF) ? 7 : 8
-            }
-        } else {
-            let lowCount = 32
-            let highCount = count - 32
-            encode(codeword: UInt32(truncatingIfNeeded: codeword), count: lowCount)
-            encode(codeword: UInt32(truncatingIfNeeded: codeword >> 32), count: highCount)
-        }
-    }
-
-    internal mutating func terminate() {
-        guard !overflowed else { return }
-        if usedBits > 0 {
-            let unused = maxBits - usedBits
-            let padMask: UInt64 = (UInt64(1) << unused) - 1
-            tmp |= padMask << usedBits
-            let pageMask: UInt64 = (maxBits == 8) ? 0xFF : 0x7F
-            let byte = UInt8(tmp & pageMask)
-            guard appendAdmitted(byte) else { return }
-            tmp = 0
-            usedBits = 0
-            maxBits = (byte == 0xFF) ? 7 : 8
-        }
-        if bytes.last == 0xFF {
-            bytes.removeLast()
-        }
-    }
-
-    internal mutating func finish() -> [UInt8] {
-        terminate()
-        return bytes
-    }
-
-    internal var currentBytes: [UInt8] { bytes }
-}
-
-internal struct HTMagSgnDecoder: Sendable {
-    private let bytes: ArraySlice<UInt8>
-    private let bytesCount: Int
-    private var pos: Int
-    private var tmp: UInt64 = 0
-    private var bits: Int = 0
-    private var unstuff: Bool = false
-
-    internal init(bytes: ArraySlice<UInt8>) {
-        self.bytes = bytes
-        self.bytesCount = bytes.count
-        self.pos = bytes.startIndex
-    }
-
-    internal init(bytes: [UInt8]) {
-        self.init(bytes: bytes[...])
-    }
-
-    private mutating func refillScalar() {
-        let endIdx = bytes.startIndex + bytesCount
-        while bits <= 32 {
-            let byte: UInt8
-            if pos < endIdx {
-                byte = bytes[pos]
-                pos += 1
-            } else {
-                byte = 0xFF
-            }
-            let maxBits = unstuff ? 7 : 8
-            let mask: UInt8 = unstuff ? 0x7F : 0xFF
-            let value = UInt64(byte & mask)
-            tmp |= value << bits
-            bits += maxBits
-            unstuff = (byte == 0xFF)
-        }
-    }
-
-    internal mutating func read(count: Int) -> UInt32 {
-        if count <= 0 { return 0 }
-        let clampedCount = min(count, 32)
-        if bits < clampedCount { refillScalar() }
-        let mask: UInt64 = (clampedCount == 32) ? 0xFFFF_FFFF : ((UInt64(1) << clampedCount) - 1)
-        let result = UInt32(tmp & mask)
-        tmp >>= clampedCount
-        bits -= clampedCount
-        return result
-    }
-}
-
-// MARK: - Block Layout Assembly & Parsing (ISO/IEC 15444-15 Clause 7.3.2)
-
-internal enum HTBlockLayout {
-    internal static func fuseMELAndVLC(
-        mel: inout HTMELEncoder,
-        vlc: HTReverseBitEmitter
-    ) -> [UInt8] {
-        // Finish the pending run in the owning encoder. A copied encoder would
-        // otherwise allocate and alter the shared budget without transferring its lease.
-        _ = mel.flushWithoutTrailingSeal()
-        var melSnap = mel.snapshotForFuse()
-        let vlcSnap = vlc.snapshotForFuse()
-
-        let melTmp = melSnap.tmp
-        let melRem = melSnap.rem
-        let melUsed = 8 - melRem
-        let vlcTmp = vlcSnap.tmp
-        let vlcUsed = vlcSnap.usedBits
-        let vlcLastGT8F = vlcSnap.lastGreaterThan8F
-
-        let melAligned = melTmp << melRem
-        let vlcMask: UInt8 = (vlcUsed == 0) ? 0 : UInt8((1 << vlcUsed) - 1)
-        let vlcLow = vlcTmp & vlcMask
-        let fused = melAligned | vlcLow
-
-        let fusePossible: Bool = {
-            guard (melUsed + vlcUsed) <= 8 else { return false }
-            if melUsed == 0 && vlcUsed == 0 { return false }
-            if vlcLastGT8F && (fused & 0x7F) == 0x7F && (fused & 0x80) != 0 {
-                return false
-            }
-            return true
-        }()
-
-        if fusePossible {
-            melSnap.bytes.append(fused)
-        } else {
-            if melUsed > 0 {
-                melSnap.bytes.append(melAligned)
-            }
-            if vlcUsed > 0 {
-                melSnap.bytes.append(vlcLow)
-            }
-        }
-
-        melSnap.bytes.append(contentsOf: vlcSnap.forwardTailBytes)
-        return melSnap.bytes
-    }
-
-    internal static func assemble(
-        magsgn: [UInt8],
-        mel: inout HTMELEncoder,
-        vlc: HTReverseBitEmitter,
-        maximumOutputBytes: Int = Int.max,
-        budget: EntropyOutputBudget? = nil
-    ) throws -> [UInt8] {
-        guard !mel.overflowed, !vlc.overflowed else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K MEL/VLC stream exceeds the remaining block admission budget.")
-        }
-        _ = mel.flushWithoutTrailingSeal()
-        guard !mel.overflowed else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K MEL termination exceeds its allocation budget.")
-        }
-        // Fusion retains the original streams, a reversed VLC copy, and the
-        // growing fused stream. Admit all three temporary payloads before snapshots.
-        let fusionScratchBytes = 3 * (mel.emittedByteCount + vlc.rawBytesInEmitOrder.count + 4) + 64
-        try budget?.reserve(fusionScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-vlc-fusion")
-        defer { budget?.release(fusionScratchBytes, countsTowardCompressedOutput: false, site: "ht-mel-vlc-fusion") }
-        budget?.recordActualAllocation(fusionScratchBytes, site: "ht-mel-vlc-fusion")
-        var melVlc = fuseMELAndVLC(mel: &mel, vlc: vlc)
-        let scup = melVlc.count
-        guard scup >= 2 else {
-            throw CodecError(.internalFailure, "HTJ2K Scup (\(scup)) must be at least 2 bytes.")
-        }
-        guard scup <= 4079 else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K Scup (\(scup)) exceeds 4079-byte Part 15 limit.")
-        }
-        let lcup = magsgn.count + scup
-        guard lcup <= 65535 else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K Lcup (\(lcup)) exceeds 65535-byte Part 15 limit.")
-        }
-        guard lcup <= maximumOutputBytes else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment (\(lcup) bytes) exceeds the remaining block admission budget.")
-        }
-        melVlc[scup - 1] = UInt8((scup >> 4) & 0xFF)
-        melVlc[scup - 2] = (melVlc[scup - 2] & 0xF0) | UInt8(scup & 0x0F)
-
-        if let budget {
-            try budget.reserve(lcup, countsTowardCompressedOutput: true, site: "ht-cleanup-segment")
-            budget.recordActualAllocation(lcup, site: "ht-cleanup-segment")
-        }
-        var out: [UInt8] = []
-        out.reserveCapacity(lcup)
-        out.append(contentsOf: magsgn)
-        out.append(contentsOf: melVlc)
-        return out
-    }
-
-    internal static func parse(
-        block: [UInt8]
-    ) -> (magsgn: ArraySlice<UInt8>, melVlc: ArraySlice<UInt8>, scup: Int)? {
-        let n = block.count
-        guard n >= 2, n <= 65535 else { return nil }
-        let last = Int(block[n - 1])
-        let prev = Int(block[n - 2])
-        let scup = (last << 4) | (prev & 0x0F)
-        guard scup >= 2, scup <= 4079, scup <= n else { return nil }
-        // ISO/IEC 15444-15 Clause 7.3.2: the high nibble of byte[Lcup - 2]
-        // must not have all 4 bits set when combined with 0x0F (cannot be 0xFF).
-        let magsgnLen = n - scup
-        return (block[0..<magsgnLen], block[magsgnLen..<n], scup)
-    }
-}
-
-// MARK: - HT Block Encoder (ISO/IEC 15444-15 Clause 7.3)
-
-package enum HTBlockEncoder {
-    /// Reversible 5-3 subband log2 gain `G_b` per ISO/IEC 15444-1 Annex E:
-    /// LL = 0, HL = 1, LH = 1, HH = 2.
-    package static func reversibleGain(subband: BandOrientation) -> Int {
-        switch subband {
-        case .ll: return 0
-        case .hl, .lh: return 1
-        case .hh: return 2
-        }
-    }
-
-    /// Encode a code-block's cleanup pass from signed integer wavelet coefficients.
-    ///
-    /// - Parameters:
-    ///   - coefficients: `width * height` signed integer coefficients in row-major order.
-    ///   - width: Code-block width in samples (`1...64`).
-    ///   - height: Code-block height in samples (`1...64`).
-    ///   - bandShift: Bit-plane index of the cleanup pass (`0` for lossless full-precision coding).
-    ///   - maximumOutputBytes: Upper bound on retained cleanup segment bytes (`Int.max` when unbounded).
-    /// - Returns: Assembled Part 15 cleanup-pass segment bytes (`Lcup` bytes), or empty array if all coefficients are zero at `bandShift`.
-    package static func encodeCleanup(
-        coefficients: [Int32],
-        width: Int,
-        height: Int,
-        bandShift: Int = 0,
-        maximumOutputBytes: Int = Int.max,
-        budget: EntropyOutputBudget? = nil
-    ) throws -> [UInt8] {
-        guard width >= 1, height >= 1, coefficients.count == width * height else {
-            throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
-        }
-        guard bandShift >= 0, bandShift < 31 else {
-            throw CodecError(.invalidArgument, "HTJ2K cleanup bit-plane shift (\(bandShift)) is out of range.")
-        }
-
-        // Convert to OpenJPH sign-magnitude words placed at p = 1 (`missingMSBs = 29`)
-        // or inspect magnitudes directly so no bit-plane is ever truncated or overflowed.
-        var hasNonZero = false
-        for c in coefficients {
-            if (c.magnitude >> bandShift) != 0 {
-                hasNonZero = true
-                break
-            }
-        }
-        if !hasNonZero {
-            return []
-        }
-
-        guard maximumOutputBytes >= 2 else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment exceeds the remaining block admission budget.")
-        }
-
-        var magsgnEnc = HTMagSgnEncoder(maximumBytes: maximumOutputBytes, budget: budget)
-        var melEnc = HTMELEncoder(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
-        var vlcEnc = HTReverseBitEmitter(maximumBytes: min(4079, maximumOutputBytes), budget: budget)
-        defer {
-            magsgnEnc.releaseScratch()
-            melEnc.releaseScratch()
-            vlcEnc.releaseScratch()
-        }
-
-        try encodeLoop(
-            coefficients: coefficients,
-            width: width,
-            height: height,
-            bandShift: bandShift,
-            magsgnEnc: &magsgnEnc,
-            melEnc: &melEnc,
-            vlcEnc: &vlcEnc
-        )
-
-        let magsgnBytes = magsgnEnc.finish()
-        guard !magsgnEnc.overflowed else {
-            throw CodecError(.resourceLimitExceeded, "HTJ2K MagSgn stream exceeds the remaining block admission budget.")
-        }
-        return try HTBlockLayout.assemble(
-            magsgn: magsgnBytes,
-            mel: &melEnc,
-            vlc: vlcEnc,
-            maximumOutputBytes: maximumOutputBytes,
-            budget: budget
-        )
-    }
-
-    private static func encodeLoop(
-        coefficients: [Int32],
-        width: Int,
-        height: Int,
-        bandShift: Int,
-        magsgnEnc: inout HTMagSgnEncoder,
-        melEnc: inout HTMELEncoder,
-        vlcEnc: inout HTReverseBitEmitter
-    ) throws {
-        magsgnEnc.reset()
-        melEnc.reset()
-        vlcEnc.reset()
-
-        let guardedWidth = ((width + 3) / 4) * 2 + 2
-        var eVal = [UInt8](repeating: 0, count: guardedWidth)
-        var cxVal = [UInt8](repeating: 0, count: guardedWidth)
-
-        @inline(__always)
-        func sampleInfo(_ c: Int32) throws -> (Bool, Int, UInt32) {
-            let mu = UInt64(c.magnitude) >> bandShift
-            if mu == 0 { return (false, 0, 0) }
-            guard mu <= 0x3FFF_FFFF else {
-                throw CodecError(.invalidArgument, "HTJ2K coefficient magnitude exceeds 30-bit reversible range.")
-            }
-            let twoMuMinus1 = UInt32((mu << 1) - 1)
-            let lz = twoMuMinus1.leadingZeroBitCount
-            let eQ = 32 - lz
-            let sign: UInt32 = c < 0 ? 1 : 0
-            let payload = (twoMuMinus1 &- 1) &+ sign
-            return (true, eQ, payload)
-        }
-
-        @inline(__always)
-        func fetch(_ x: Int, _ y: Int) -> Int32 {
-            guard x < width, y < height else { return 0 }
-            return coefficients[y * width + x]
-        }
-
-        @inline(__always)
-        func processQuad(baseX: Int, baseY: Int) throws -> (
-            rho: Int, eQMax: Int,
-            eQ0: Int, eQ1: Int, eQ2: Int, eQ3: Int,
-            s0: UInt32, s1: UInt32, s2: UInt32, s3: UInt32
-        ) {
-            var rho = 0
-            var eQMax = 0
-            var eQ0 = 0, eQ1 = 0, eQ2 = 0, eQ3 = 0
-            var s0: UInt32 = 0, s1: UInt32 = 0, s2: UInt32 = 0, s3: UInt32 = 0
-
-            let (sig0, e0, p0) = try sampleInfo(fetch(baseX, baseY))
-            if sig0 { rho |= 1; eQ0 = e0; s0 = p0; if e0 > eQMax { eQMax = e0 } }
-
-            let (sig1, e1, p1) = try sampleInfo(fetch(baseX, baseY + 1))
-            if sig1 { rho |= 2; eQ1 = e1; s1 = p1; if e1 > eQMax { eQMax = e1 } }
-
-            let (sig2, e2, p2) = try sampleInfo(fetch(baseX + 1, baseY))
-            if sig2 { rho |= 4; eQ2 = e2; s2 = p2; if e2 > eQMax { eQMax = e2 } }
-
-            let (sig3, e3, p3) = try sampleInfo(fetch(baseX + 1, baseY + 1))
-            if sig3 { rho |= 8; eQ3 = e3; s3 = p3; if e3 > eQMax { eQMax = e3 } }
-
-            return (rho, eQMax, eQ0, eQ1, eQ2, eQ3, s0, s1, s2, s3)
-        }
-
-        @inline(__always)
-        func emitQuadMagSgn(
-            rho: Int, tuple: Int, Uq: Int,
-            s0: UInt32, s1: UInt32, s2: UInt32, s3: UInt32
-        ) {
-            if rho == 0 { return }
-            if Uq <= 16 {
-                var combined: UInt64 = 0
-                var totalBits: Int = 0
-                if (rho & 1) != 0 {
-                    let m = Uq - (tuple & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s0 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 2) != 0 {
-                    let m = Uq - ((tuple >> 1) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s1 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 4) != 0 {
-                    let m = Uq - ((tuple >> 2) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s2 & mask) << totalBits
-                    totalBits &+= m
-                }
-                if (rho & 8) != 0 {
-                    let m = Uq - ((tuple >> 3) & 1)
-                    let mask: UInt32 = (UInt32(1) << m) - 1
-                    combined |= UInt64(s3 & mask) << totalBits
-                    totalBits &+= m
-                }
-                magsgnEnc.encode64(codeword: combined, count: totalBits)
-                return
-            }
-            @inline(__always)
-            func emit(sample: UInt32, eBit: Int) {
-                let m = Uq - eBit
-                let mask: UInt32 = (m >= 32) ? ~UInt32(0) : ((UInt32(1) << m) - 1)
-                magsgnEnc.encode(codeword: sample & mask, count: m)
-            }
-            if (rho & 1) != 0 { emit(sample: s0, eBit: tuple & 1) }
-            if (rho & 2) != 0 { emit(sample: s1, eBit: (tuple >> 1) & 1) }
-            if (rho & 4) != 0 { emit(sample: s2, eBit: (tuple >> 2) & 1) }
-            if (rho & 8) != 0 { emit(sample: s3, eBit: (tuple >> 3) & 1) }
-        }
-
-        // Initial row of quads (y = 0, 1)
-        var c_q0 = 0
-        var lep = 0
-        var lcxp = 0
-        eVal[lep] = 0
-        cxVal[lcxp] = 0
-
-        if height > 0 {
-            var spX = 0
-            while spX < width {
-                let q0 = try processQuad(baseX: spX, baseY: 0)
-                let rho0 = q0.rho
-                let eQMax0 = q0.eQMax
-                let Uq0 = max(eQMax0, 1)
-                let u_q0 = Uq0 - 1
-
-                var eps0 = 0
-                if u_q0 > 0 {
-                    if q0.eQ0 == eQMax0 { eps0 |= 1 }
-                    if q0.eQ1 == eQMax0 { eps0 |= 2 }
-                    if q0.eQ2 == eQMax0 { eps0 |= 4 }
-                    if q0.eQ3 == eQMax0 { eps0 |= 8 }
-                }
-
-                eVal[lep] = max(eVal[lep], UInt8(q0.eQ1)); lep += 1
-                eVal[lep] = UInt8(q0.eQ3)
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-                cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-
-                let tuple0 = Int(vlcTable0Conformant[(c_q0 << 8) | (rho0 << 4) | eps0])
-                vlcEnc.encode(codeword: tuple0 >> 8, count: (tuple0 >> 4) & 0x7)
-
-                if c_q0 == 0 {
-                    melEnc.encode(eventIsOne: rho0 != 0)
-                }
-
-                emitQuadMagSgn(
-                    rho: rho0, tuple: tuple0, Uq: Uq0,
-                    s0: q0.s0, s1: q0.s1, s2: q0.s2, s3: q0.s3
-                )
-
-                var rho1 = 0
-                var u_q1 = 0
-                if spX + 2 < width {
-                    let q1 = try processQuad(baseX: spX + 2, baseY: 0)
-                    let eQMax1 = q1.eQMax
-                    rho1 = q1.rho
-                    let c_q1 = (rho0 >> 1) | (rho0 & 1)
-                    let Uq1 = max(eQMax1, 1)
-                    u_q1 = Uq1 - 1
-                    var eps1 = 0
-                    if u_q1 > 0 {
-                        if q1.eQ0 == eQMax1 { eps1 |= 1 }
-                        if q1.eQ1 == eQMax1 { eps1 |= 2 }
-                        if q1.eQ2 == eQMax1 { eps1 |= 4 }
-                        if q1.eQ3 == eQMax1 { eps1 |= 8 }
-                    }
-                    eVal[lep] = max(eVal[lep], UInt8(q1.eQ1)); lep += 1
-                    eVal[lep] = UInt8(q1.eQ3)
-                    cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                    cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-
-                    let tuple1 = Int(vlcTable0Conformant[(c_q1 << 8) | (rho1 << 4) | eps1])
-                    vlcEnc.encode(codeword: tuple1 >> 8, count: (tuple1 >> 4) & 0x7)
-
-                    if c_q1 == 0 {
-                        melEnc.encode(eventIsOne: rho1 != 0)
-                    }
-
-                    emitQuadMagSgn(
-                        rho: rho1, tuple: tuple1, Uq: Uq1,
-                        s0: q1.s0, s1: q1.s1, s2: q1.s2, s3: q1.s3
-                    )
-                }
-
-                if u_q0 > 0 && u_q1 > 0 {
-                    melEnc.encode(eventIsOne: min(u_q0, u_q1) > 2)
-                }
-                if u_q0 > 2 && u_q1 > 2 {
-                    let e0 = uvlcTableConformant[u_q0 - 2]
-                    let e1 = uvlcTableConformant[u_q1 - 2]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                    vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-                } else if u_q0 > 2 && u_q1 > 0 {
-                    let e0 = uvlcTableConformant[u_q0]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: u_q1 - 1, count: 1)
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                } else {
-                    let e0 = uvlcTableConformant[u_q0]
-                    let e1 = uvlcTableConformant[u_q1]
-                    vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                    vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                    vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                    vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                    vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                    vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-                }
-
-                c_q0 = (rho1 >> 1) | (rho1 & 1)
-                spX += 4
-            }
-        }
-        if lep + 1 < guardedWidth { eVal[lep + 1] = 0 }
-
-        // Subsequent quad rows (y = 2, 4, ...)
-        var y = 2
-        while y < height {
-            lep = 0
-            var maxE = max(Int(eVal[0]), Int(eVal[1])) - 1
-            eVal[0] = 0
-            lcxp = 0
-            c_q0 = Int(cxVal[0]) + (Int(cxVal[1]) << 2)
-            cxVal[0] = 0
-
-            var spX = 0
-            while spX < width {
-                let q0 = try processQuad(baseX: spX, baseY: y)
-                let rho0 = q0.rho
-                let eQMax0 = q0.eQMax
-                let kappaA = ((rho0 & (rho0 - 1)) != 0) ? max(1, maxE) : 1
-                let Uq0 = max(eQMax0, kappaA)
-                let u_q0 = Uq0 - kappaA
-                var eps0 = 0
-                if u_q0 > 0 {
-                    if q0.eQ0 == eQMax0 { eps0 |= 1 }
-                    if q0.eQ1 == eQMax0 { eps0 |= 2 }
-                    if q0.eQ2 == eQMax0 { eps0 |= 4 }
-                    if q0.eQ3 == eQMax0 { eps0 |= 8 }
-                }
-                eVal[lep] = max(eVal[lep], UInt8(q0.eQ1)); lep += 1
-                maxE = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-                eVal[lep] = UInt8(q0.eQ3)
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-                var c_q1 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-                cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-
-                let tuple0 = Int(vlcTable1Conformant[(c_q0 << 8) | (rho0 << 4) | eps0])
-                vlcEnc.encode(codeword: tuple0 >> 8, count: (tuple0 >> 4) & 0x7)
-                if c_q0 == 0 {
-                    melEnc.encode(eventIsOne: rho0 != 0)
-                }
-                emitQuadMagSgn(
-                    rho: rho0, tuple: tuple0, Uq: Uq0,
-                    s0: q0.s0, s1: q0.s1, s2: q0.s2, s3: q0.s3
-                )
-
-                var rho1 = 0
-                var u_q1 = 0
-                if spX + 2 < width {
-                    let q1 = try processQuad(baseX: spX + 2, baseY: y)
-                    let eQMax1 = q1.eQMax
-                    rho1 = q1.rho
-                    let kappaB = ((rho1 & (rho1 - 1)) != 0) ? max(1, maxE) : 1
-                    c_q1 |= ((rho0 & 4) >> 1) | ((rho0 & 8) >> 2)
-                    let Uq1 = max(eQMax1, kappaB)
-                    u_q1 = Uq1 - kappaB
-                    var eps1 = 0
-                    if u_q1 > 0 {
-                        if q1.eQ0 == eQMax1 { eps1 |= 1 }
-                        if q1.eQ1 == eQMax1 { eps1 |= 2 }
-                        if q1.eQ2 == eQMax1 { eps1 |= 4 }
-                        if q1.eQ3 == eQMax1 { eps1 |= 8 }
-                    }
-                    eVal[lep] = max(eVal[lep], UInt8(q1.eQ1)); lep += 1
-                    maxE = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-                    eVal[lep] = UInt8(q1.eQ3)
-                    cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                    c_q0 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-                    cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-
-                    let tuple1 = Int(vlcTable1Conformant[(c_q1 << 8) | (rho1 << 4) | eps1])
-                    vlcEnc.encode(codeword: tuple1 >> 8, count: (tuple1 >> 4) & 0x7)
-                    if c_q1 == 0 {
-                        melEnc.encode(eventIsOne: rho1 != 0)
-                    }
-                    emitQuadMagSgn(
-                        rho: rho1, tuple: tuple1, Uq: Uq1,
-                        s0: q1.s0, s1: q1.s1, s2: q1.s2, s3: q1.s3
-                    )
-                }
-
-                let e0 = uvlcTableConformant[u_q0]
-                let e1 = uvlcTableConformant[u_q1]
-                vlcEnc.encode(codeword: Int(e0.pre), count: Int(e0.preLen))
-                vlcEnc.encode(codeword: Int(e1.pre), count: Int(e1.preLen))
-                vlcEnc.encode(codeword: Int(e0.suf), count: Int(e0.sufLen))
-                vlcEnc.encode(codeword: Int(e1.suf), count: Int(e1.sufLen))
-                vlcEnc.encode(codeword: Int(e0.ext), count: Int(e0.extLen))
-                vlcEnc.encode(codeword: Int(e1.ext), count: Int(e1.extLen))
-
-                c_q0 |= ((rho1 & 4) >> 1) | ((rho1 & 8) >> 2)
-                spX += 4
-            }
-            y += 2
-        }
-    }
-
-    /// Encodes an ITU-T T.814 refinement segment (`HT SigProp` + optional `HT MagRef`, Clauses 7.1.5–7.1.6 & 7.4–7.5)
-    /// for bit-plane `bandShift - 1` (`bandShift >= 1`), given the original signed `Int64` block coefficients.
-    package static func encodeRefinement(
-        coefficients: [Int64],
-        width: Int,
-        height: Int,
-        cleanupBandShift: Int,
-        includeMagRef: Bool,
-        causal: Bool = false,
-        maximumOutputBytes: Int = 2046,
-        budget: EntropyOutputBudget? = nil
-    ) throws -> [UInt8] {
-        guard width >= 1, height >= 1, coefficients.count == width * height else {
-            throw CodecError(.invalidArgument, "HTJ2K refinement block dimensions do not match coefficient count.")
-        }
-        guard cleanupBandShift >= 1, cleanupBandShift < 63 else {
-            throw CodecError(.invalidArgument, "HTJ2K refinement cleanupBandShift (\(cleanupBandShift)) must be in 1..<63.")
-        }
-        let sampleCount = width * height
-        let refBitMask = UInt64(1) << UInt64(cleanupBandShift - 1)
-
-        var sigma = [Bool](repeating: false, count: sampleCount)
-        var mags = [UInt64](repeating: 0, count: sampleCount)
-        var signs = [Bool](repeating: false, count: sampleCount)
-        for i in 0..<sampleCount {
-            let v = coefficients[i]
-            if v == 0 { continue }
-            let mag = v.magnitude
-            mags[i] = mag
-            signs[i] = (v < 0)
-            if (mag >> UInt64(cleanupBandShift)) != 0 {
-                sigma[i] = true
-            }
-        }
-
-        // Forward SigProp bit-stream writer (ITU-T T.814 Clause 7.1.5 & 7.4)
-        var spBytes: [UInt8] = []
-        var spReserved = 0
-        var mrReserved = 0
-        defer {
-            if let budget {
-                if spReserved > 0 {
-                    budget.release(spReserved, countsTowardCompressedOutput: false, site: "ht-sigprop-scratch")
-                }
-                if mrReserved > 0 {
-                    budget.release(mrReserved, countsTowardCompressedOutput: false, site: "ht-magref-scratch")
-                }
-            }
-        }
-        var spCur: UInt8 = 0
-        var spUsed = 0
-        var spMaxBits = 8
-        let hardLimit = min(2046, maximumOutputBytes)
-
-        func appendSigPropByte(_ byte: UInt8) throws {
-            guard spBytes.count < hardLimit else {
-                throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds segment budget.")
-            }
-            if let budget, spBytes.count >= spReserved {
-                let chunk = min(64, max(1, hardLimit - spReserved))
-                let previous = spReserved
-                let next = previous + chunk
-                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-sigprop-chunk")
-                budget.recordActualAllocation(next, site: "ht-sigprop-chunk")
-                spBytes.reserveCapacity(next)
-                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-sigprop-replaced")
-                spReserved = next
-            }
-            spBytes.append(byte)
-        }
-
-        func emitSigPropBit(_ bit: Int) throws {
-            spCur |= UInt8(bit & 1) << UInt8(spUsed)
-            spUsed += 1
-            if spUsed == spMaxBits {
-                try appendSigPropByte(spCur)
-                spMaxBits = (spCur == 0xFF) ? 7 : 8
-                spCur = 0
-                spUsed = 0
-            }
-        }
-
-        var sigPropSig = [Bool](repeating: false, count: sampleCount)
-        for stripeY in stride(from: 0, to: height, by: 4) {
-            let stripeEnd = min(stripeY + 4, height)
-            for colGroup in stride(from: 0, to: width, by: 4) {
-                let colEnd = min(colGroup + 4, width)
-                for x in colGroup..<colEnd {
-                    for y in stripeY..<stripeEnd {
-                        let idx = y * width + x
-                        if sigma[idx] { continue }
-                        let nyMin = max(0, y - 1)
-                        let nyMax = (causal && y == stripeEnd - 1) ? y : min(height - 1, y + 1)
-                        let nxMin = max(0, x - 1)
-                        let nxMax = min(width - 1, x + 1)
-                        var mbr = false
-                        outerNbr: for ny in nyMin...nyMax {
-                            let rowOff = ny * width
-                            for nx in nxMin...nxMax {
-                                if nx == x && ny == y { continue }
-                                let nIdx = rowOff + nx
-                                if sigma[nIdx] || sigPropSig[nIdx] {
-                                    mbr = true
-                                    break outerNbr
-                                }
-                            }
-                        }
-                        if mbr {
-                            let rBit = (mags[idx] & refBitMask) != 0 ? 1 : 0
-                            try emitSigPropBit(rBit)
-                            if rBit == 1 {
-                                sigPropSig[idx] = true
-                            }
-                        }
-                    }
-                }
-                for x in colGroup..<colEnd {
-                    for y in stripeY..<stripeEnd {
-                        let idx = y * width + x
-                        if sigPropSig[idx] {
-                            try emitSigPropBit(signs[idx] ? 1 : 0)
-                        }
-                    }
-                }
-            }
-        }
-        if spUsed > 0 {
-            try appendSigPropByte(spCur)
-        }
-        if spBytes.last == 0xFF {
-            try appendSigPropByte(0x00)
-        }
-
-        if !includeMagRef {
-            // Trim trailing zero bytes if there are no MagRef bytes (importSigPropBit synthesizes 0 past Lref),
-            // except preserve a stuff 0x00 byte immediately following 0xFF!
-            while spBytes.count >= 2 && spBytes[spBytes.count - 1] == 0x00 && spBytes[spBytes.count - 2] != 0xFF {
-                spBytes.removeLast()
-            }
-            if spBytes.count == 1 && spBytes[0] == 0x00 {
-                spBytes.removeAll()
-            }
-            if let budget, !spBytes.isEmpty {
-                try budget.reserve(spBytes.count, countsTowardCompressedOutput: true, site: "ht-refinement-segment")
-                budget.recordActualAllocation(spBytes.count, site: "ht-refinement-segment")
-            }
-            return spBytes
-        }
-
-        // Backward MagRef bit-stream writer (ITU-T T.814 Clause 7.1.6 & 7.5)
-        var mrRev: [UInt8] = []
-        var mrCur: UInt8 = 0
-        var mrUsed = 0
-        var mrPrev: UInt8 = 0xFF
-
-        func appendMagRefByte(_ byte: UInt8) throws {
-            guard spBytes.count + mrRev.count < hardLimit else {
-                throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds budget.")
-            }
-            if let budget, mrRev.count >= mrReserved {
-                let chunk = min(64, max(1, hardLimit - spBytes.count - mrReserved))
-                let previous = mrReserved
-                let next = previous + chunk
-                try budget.reserve(next, countsTowardCompressedOutput: false, site: "ht-magref-chunk")
-                budget.recordActualAllocation(next, site: "ht-magref-chunk")
-                mrRev.reserveCapacity(next)
-                budget.release(previous, countsTowardCompressedOutput: false, site: "ht-magref-replaced")
-                mrReserved = next
-            }
-            mrRev.append(byte)
-        }
-
-        func emitMagRefBit(_ bit: Int) throws {
-            mrCur |= UInt8(bit & 1) << UInt8(mrUsed)
-            mrUsed += 1
-            if mrUsed == 7 && mrPrev > 0x8F && mrCur == 0x7F {
-                try appendMagRefByte(mrCur)
-                mrPrev = mrCur
-                mrCur = 0
-                mrUsed = 0
-            } else if mrUsed == 8 {
-                try appendMagRefByte(mrCur)
-                mrPrev = mrCur
-                mrCur = 0
-                mrUsed = 0
-            }
-        }
-
-        for stripeY in stride(from: 0, to: height, by: 4) {
-            let stripeEnd = min(stripeY + 4, height)
-            for x in 0..<width {
-                for y in stripeY..<stripeEnd {
-                    let idx = y * width + x
-                    if sigma[idx] {
-                        let rBit = (mags[idx] & refBitMask) != 0 ? 1 : 0
-                        try emitMagRefBit(rBit)
-                    }
-                }
-            }
-        }
-        if mrUsed > 0 {
-            try appendMagRefByte(mrCur)
-        }
-
-        let totalRefLen = spBytes.count + mrRev.count
-        if let budget, totalRefLen > 0 {
-            try budget.reserve(totalRefLen, countsTowardCompressedOutput: true, site: "ht-refinement-segment")
-            budget.recordActualAllocation(totalRefLen, site: "ht-refinement-segment")
-        }
-        var dref: [UInt8] = []
-        dref.reserveCapacity(totalRefLen)
-        dref.append(contentsOf: spBytes)
-        dref.append(contentsOf: mrRev.reversed())
-        return dref
-    }
-}
-
-/// One terminated HT codeword segment (either a 1-pass cleanup segment, a 1..2-pass refinement segment,
-/// or a leading zero-length placeholder segment) passed to `HTBlockDecoder.decodeHTCodeBlock`.
+// High-Throughput JPEG 2000 (HTJ2K) block encoder and decoder implemented from
+// first principles per ITU-T Rec. T.814 (06/2019) | ISO/IEC 15444-15:2019
+// (Clauses 7.1–7.6, Annex B, Annex C, and Annex F).
+
+/// Input codeword segment descriptor for multi-pass / multi-set HTJ2K code-block decoding (Annex B.2–B.3).
 package struct HTSegmentInput: Sendable, Equatable {
     package let data: [UInt8]
     package let passes: Int
@@ -1288,20 +16,1324 @@ package struct HTSegmentInput: Sendable, Equatable {
     }
 }
 
-// MARK: - HT Block Decoder (ISO/IEC 15444-15 Clauses 7.1–7.6 & Annex B)
+// MARK: - Budget-Admitted Byte Stream Buffer
+
+/// Growable byte stream that enforces both `maximumBytes` and pre-allocation `EntropyOutputBudget`
+/// reservations before growing storage.
+private struct AdmittedByteStream {
+    var bytes: [UInt8] = []
+    let maximumBytes: Int
+    let budget: EntropyOutputBudget?
+    let site: String
+    var reservedBytes: Int = 0
+    var overflowed: Bool = false
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?, site: String, capacityHint: Int = 64) {
+        self.maximumBytes = max(0, maximumBytes)
+        self.budget = budget
+        self.site = site
+        if budget == nil {
+            let initial = min(capacityHint, self.maximumBytes)
+            if initial > 0 {
+                bytes.reserveCapacity(initial)
+            }
+        }
+    }
+
+    @inline(__always)
+    mutating func append(_ byte: UInt8) {
+        guard !overflowed, bytes.count < maximumBytes else {
+            overflowed = true
+            return
+        }
+        if let budget, bytes.count >= reservedBytes {
+            let chunk = min(64, max(1, maximumBytes - reservedBytes))
+            let overlapSite = "\(site)-overlap"
+            do {
+                if reservedBytes > 0 {
+                    try budget.reserve(reservedBytes, countsTowardCompressedOutput: false, site: overlapSite)
+                }
+                defer {
+                    if reservedBytes > 0 {
+                        budget.release(reservedBytes, countsTowardCompressedOutput: false, site: overlapSite)
+                    }
+                }
+                try budget.reserve(chunk, countsTowardCompressedOutput: true, site: site)
+                budget.recordActualAllocation(chunk, site: site)
+                bytes.reserveCapacity(reservedBytes + chunk)
+            } catch {
+                overflowed = true
+                return
+            }
+            reservedBytes += chunk
+        }
+        bytes.append(byte)
+    }
+
+    @inline(__always)
+    mutating func popLast() {
+        _ = bytes.popLast()
+    }
+
+    mutating func releaseAll() {
+        if let budget, reservedBytes > 0 {
+            budget.release(reservedBytes, countsTowardCompressedOutput: true, site: "\(site)-rollback")
+            reservedBytes = 0
+        }
+        bytes = []
+    }
+
+    mutating func detachAfterTransfer() {
+        reservedBytes = 0
+        bytes = []
+    }
+}
+
+// MARK: - Encoder Bit-Stream Packers (ITU-T Rec. T.814 Annex F.3–F.4)
+
+/// Forward little-endian bit-stuffed MagSgn byte-stream packer (`initMSPacker` / `emitMagSgnBits` / `termMSPacker`, Annex F.4).
+private struct MagSgnForwardPacker {
+    var stream: AdmittedByteStream
+    private var partialBits: UInt64 = 0
+    private var bitCount: Int = 0
+    private var maxBitsInByte: Int = 8
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?) {
+        self.stream = AdmittedByteStream(
+            maximumBytes: maximumBytes,
+            budget: budget,
+            site: "ht-magsgn-chunk",
+            capacityHint: 128
+        )
+    }
+
+    @inline(__always)
+    mutating func emitBits(value: UInt32, count: Int) {
+        guard count > 0 else { return }
+        let mask = (UInt64(1) << count) - 1
+        partialBits |= (UInt64(value) & mask) << bitCount
+        bitCount += count
+        while bitCount >= maxBitsInByte {
+            let byteMask = (UInt64(1) << maxBitsInByte) - 1
+            let outByte = UInt8(partialBits & byteMask)
+            stream.append(outByte)
+            partialBits >>= maxBitsInByte
+            bitCount -= maxBitsInByte
+            maxBitsInByte = (outByte == 0xFF) ? 7 : 8
+        }
+    }
+
+    /// Terminates the MagSgn byte-stream per `termMSPacker` (Annex F.4, p. 66), ensuring no trailing `0xFF` remains.
+    mutating func terminate() {
+        if bitCount > 0 {
+            let padCount = maxBitsInByte - bitCount
+            let padOnes = ((UInt64(1) << padCount) - 1) << bitCount
+            let finalByte = UInt8(partialBits | padOnes)
+            if finalByte != 0xFF {
+                stream.append(finalByte)
+            }
+            partialBits = 0
+            bitCount = 0
+            maxBitsInByte = 8
+        } else if maxBitsInByte == 7 {
+            // Discard trailing 0xFF; decoder's importMagSgnBit synthesizes 0xFF at Pcup (Clause 7.1.2 Note 3).
+            stream.popLast()
+            maxBitsInByte = 8
+        }
+    }
+}
+
+/// Adaptive MEL run-length encoder and forward big-endian bit-stuffed byte-stream packer
+/// (`initMELEncoder` / `encodeMEL` / `termMEL` & `initMELPacker` / `emitMELBit`, Annex F.3–F.4).
+private struct MELForwardPacker {
+    var stream: AdmittedByteStream
+    private var stateIndex: Int = 0
+    private var runCount: Int = 0
+    private var runThreshold: Int = 1 // 1 << melExponents[0]
+    fileprivate var partialByte: UInt8 = 0
+    fileprivate var remainingBits: Int = 8
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?) {
+        self.stream = AdmittedByteStream(
+            maximumBytes: maximumBytes,
+            budget: budget,
+            site: "ht-mel-chunk",
+            capacityHint: 32
+        )
+    }
+
+    @inline(__always)
+    private mutating func emitBit(_ bit: Int) {
+        partialByte = (partialByte << 1) | UInt8(bit & 1)
+        remainingBits -= 1
+        if remainingBits == 0 {
+            stream.append(partialByte)
+            remainingBits = (partialByte == 0xFF) ? 7 : 8
+            partialByte = 0
+        }
+    }
+
+    @inline(__always)
+    mutating func encodeSymbol(_ symbol: Int) {
+        if symbol == 0 {
+            runCount += 1
+            if runCount >= runThreshold {
+                emitBit(1)
+                runCount = 0
+                if stateIndex < 12 {
+                    stateIndex += 1
+                }
+                runThreshold = 1 << HTTables.melExponents[stateIndex]
+            }
+        } else {
+            emitBit(0)
+            var exponent = HTTables.melExponents[stateIndex]
+            while exponent > 0 {
+                exponent -= 1
+                emitBit((runCount >> exponent) & 1)
+            }
+            runCount = 0
+            if stateIndex > 0 {
+                stateIndex -= 1
+            }
+            runThreshold = 1 << HTTables.melExponents[stateIndex]
+        }
+    }
+
+    mutating func terminateSymbols() {
+        if runCount > 0 {
+            emitBit(1)
+            runCount = 0
+        }
+    }
+}
+
+/// Backward-growing little-endian bit-stuffed VLC byte-stream packer (`initVLCPacker` / `emitVLCBits`, Annex F.4).
+/// Bytes are appended in emission order and reversed into the suffix of `Dcup` during segment assembly.
+private struct VLCBackwardPacker {
+    var stream: AdmittedByteStream
+    fileprivate var usedBits: Int = 4
+    fileprivate var partialByte: UInt8 = 0x0F
+    private var lastByte: UInt8 = 0xFF
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?) {
+        self.stream = AdmittedByteStream(
+            maximumBytes: maximumBytes,
+            budget: budget,
+            site: "ht-vlc-chunk",
+            capacityHint: 64
+        )
+        // Reserved slot for Dcup[Lcup - 1] = Scup >> 4 (`initVLCPacker`: VLC_buf[0] = 255).
+        self.stream.append(0xFF)
+    }
+
+    @inline(__always)
+    mutating func emitBits(_ codeword: UInt8, count: Int) {
+        var cwd = codeword
+        var rem = count
+        while rem > 0 {
+            let bit = cwd & 1
+            cwd >>= 1
+            rem -= 1
+            partialByte |= (bit << usedBits)
+            usedBits += 1
+            if lastByte > 0x8F && partialByte == 0x7F {
+                usedBits += 1
+            }
+            if usedBits == 8 {
+                stream.append(partialByte)
+                lastByte = partialByte
+                partialByte = 0
+                usedBits = 0
+            }
+        }
+    }
+}
+
+/// Forward little-endian bit-stuffed SigProp packer (`initSPPacker` / `emitSPBit` / `termSPPacker`, Annex F.4).
+private struct SigPropForwardPacker {
+    var stream: AdmittedByteStream
+    fileprivate var partialByte: UInt8 = 0
+    fileprivate var usedBits: Int = 0
+    fileprivate var maxBitsInByte: Int = 8
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?) {
+        self.stream = AdmittedByteStream(
+            maximumBytes: maximumBytes,
+            budget: budget,
+            site: "ht-sigprop-chunk",
+            capacityHint: 32
+        )
+    }
+
+    @inline(__always)
+    mutating func emitBit(_ bit: Int) {
+        partialByte |= UInt8(bit & 1) << usedBits
+        usedBits += 1
+        if usedBits == maxBitsInByte {
+            stream.append(partialByte)
+            maxBitsInByte = (partialByte == 0xFF) ? 7 : 8
+            partialByte = 0
+            usedBits = 0
+        }
+    }
+
+    /// Terminates a SigProp-only refinement segment per `termSPPacker` (Annex F.4, p. 70).
+    mutating func terminateStandalone() {
+        if partialByte != 0 {
+            stream.append(partialByte)
+            maxBitsInByte = (partialByte == 0xFF) ? 7 : 8
+            partialByte = 0
+            usedBits = 0
+        }
+        if maxBitsInByte == 7 {
+            // Prevent terminal 0xFF byte (Clause 7.1.1).
+            stream.append(0x00)
+            maxBitsInByte = 8
+        }
+    }
+}
+
+/// Backward-growing little-endian bit-stuffed MagRef packer (`initMRPacker` / `emitMRBit`, Annex F.4).
+private struct MagRefBackwardPacker {
+    var stream: AdmittedByteStream
+    fileprivate var partialByte: UInt8 = 0
+    fileprivate var usedBits: Int = 0
+    private var lastByte: UInt8 = 0xFF
+
+    init(maximumBytes: Int, budget: EntropyOutputBudget?) {
+        self.stream = AdmittedByteStream(
+            maximumBytes: maximumBytes,
+            budget: budget,
+            site: "ht-magref-chunk",
+            capacityHint: 32
+        )
+    }
+
+    @inline(__always)
+    mutating func emitBit(_ bit: Int) {
+        partialByte |= UInt8(bit & 1) << usedBits
+        usedBits += 1
+        if lastByte > 0x8F && partialByte == 0x7F {
+            usedBits += 1
+        }
+        if usedBits == 8 {
+            stream.append(partialByte)
+            lastByte = partialByte
+            partialByte = 0
+            usedBits = 0
+        }
+    }
+}
+
+// MARK: - Geometry Validation Helper
+
+@inline(__always)
+private func validateBlockGeometry(width: Int, height: Int, caller: String) throws -> Int {
+    guard width >= 1, height >= 1, width <= 4096, height <= 4096 else {
+        throw CodecError(.invalidArgument, "\(caller): invalid HTJ2K block dimensions (\(width)x\(height)).")
+    }
+    let (sampleCount, overflow) = width.multipliedReportingOverflow(by: height)
+    guard !overflow, sampleCount <= 4096 * 4096 else {
+        throw CodecError(.invalidArgument, "\(caller): HTJ2K block sample count overflows bounds.")
+    }
+    return sampleCount
+}
+
+// MARK: - HTBlockEncoder
+
+package enum HTBlockEncoder {
+
+    /// Returns the ISO/IEC 15444-1 Annex E Table E.1 reversible subband log2 gain.
+    package static func reversibleGain(subband: BandOrientation) -> Int {
+        switch subband {
+        case .ll: return 0
+        case .hl, .lh: return 1
+        case .hh: return 2
+        }
+    }
+
+    /// Encodes a single HT Cleanup coding pass per ITU-T Rec. T.814 Clauses 7.1–7.3 and Annex F.
+    package static func encodeCleanup(
+        coefficients: [Int32],
+        width: Int,
+        height: Int,
+        bandShift: Int = 0,
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
+    ) throws -> [UInt8] {
+        let sampleCount = try validateBlockGeometry(width: width, height: height, caller: "HTBlockEncoder.encodeCleanup")
+        guard coefficients.count == sampleCount else {
+            throw CodecError(.invalidArgument, "HTJ2K block dimensions do not match coefficient count.")
+        }
+        guard bandShift >= 0, bandShift < 31 else {
+            throw CodecError(.invalidArgument, "HTJ2K cleanup bit-plane shift (\(bandShift)) is out of range.")
+        }
+
+        var anySignificant = false
+        for coeff in coefficients {
+            if coeff != 0 {
+                let mu = UInt64(coeff.magnitude) >> bandShift
+                if mu != 0 {
+                    guard mu <= 0x3FFF_FFFF else {
+                        throw CodecError(.invalidArgument, "HTJ2K coefficient magnitude exceeds 30-bit reversible range.")
+                    }
+                    anySignificant = true
+                }
+            }
+        }
+        if !anySignificant {
+            return []
+        }
+
+        guard maximumOutputBytes >= 2 else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment exceeds the remaining block admission budget.")
+        }
+
+        let qw = (width + 1) / 2
+        let qh = (height + 1) / 2
+        var quads = [SIMDHTBlockCoder.PreclassifiedQuad]()
+        quads.reserveCapacity(qw * qh)
+
+        for qy in 0..<qh {
+            let y0 = qy * 2
+            let hasY1 = (y0 + 1) < height
+            let row0 = y0 * width
+            let row1 = hasY1 ? (y0 + 1) * width : row0
+
+            for qx in 0..<qw {
+                let x0 = qx * 2
+                let hasX1 = (x0 + 1) < width
+
+                let c0 = coefficients[row0 + x0]
+                let c1: Int32 = hasY1 ? coefficients[row1 + x0] : 0
+                let c2: Int32 = hasX1 ? coefficients[row0 + x0 + 1] : 0
+                let c3: Int32 = (hasX1 && hasY1) ? coefficients[row1 + x0 + 1] : 0
+
+                if (c0 | c1 | c2 | c3) == 0 {
+                    quads.append(SIMDHTBlockCoder.PreclassifiedQuad(
+                        rho: 0, eQMax: 0,
+                        eQ0: 0, eQ1: 0, eQ2: 0, eQ3: 0,
+                        s0: 0, s1: 0, s2: 0, s3: 0
+                    ))
+                    continue
+                }
+
+                @inline(__always)
+                func classifySample(_ c: Int32) -> (active: Bool, exponent: Int, magSgn: UInt32) {
+                    guard c != 0 else { return (false, 0, 0) }
+                    let mu = UInt32(UInt64(c.magnitude) >> bandShift)
+                    guard mu != 0 else { return (false, 0, 0) }
+                    let twoMuMinusOne = (mu << 1) - 1
+                    let exponent = 32 - twoMuMinusOne.leadingZeroBitCount
+                    let sign: UInt32 = c < 0 ? 1 : 0
+                    let magSgn = (twoMuMinusOne - 1) + sign
+                    return (true, exponent, magSgn)
+                }
+
+                let q0 = classifySample(c0)
+                let q1 = classifySample(c1)
+                let q2 = classifySample(c2)
+                let q3 = classifySample(c3)
+
+                let rho = (q0.active ? 1 : 0)
+                    | (q1.active ? 2 : 0)
+                    | (q2.active ? 4 : 0)
+                    | (q3.active ? 8 : 0)
+
+                if rho == 0 {
+                    quads.append(SIMDHTBlockCoder.PreclassifiedQuad(
+                        rho: 0, eQMax: 0,
+                        eQ0: 0, eQ1: 0, eQ2: 0, eQ3: 0,
+                        s0: 0, s1: 0, s2: 0, s3: 0
+                    ))
+                } else {
+                    let eMax = max(max(q0.exponent, q1.exponent), max(q2.exponent, q3.exponent))
+                    quads.append(SIMDHTBlockCoder.PreclassifiedQuad(
+                        rho: rho,
+                        eQMax: eMax,
+                        eQ0: q0.exponent,
+                        eQ1: q1.exponent,
+                        eQ2: q2.exponent,
+                        eQ3: q3.exponent,
+                        s0: q0.magSgn,
+                        s1: q1.magSgn,
+                        s2: q2.magSgn,
+                        s3: q3.magSgn
+                    ))
+                }
+            }
+        }
+
+        return try encodePreclassifiedCleanup(
+            quads: quads,
+            width: width,
+            height: height,
+            maximumOutputBytes: maximumOutputBytes,
+            budget: budget
+        )
+    }
+
+    /// Shared T.814 cleanup bitstream encoder invoked by both `HTBlockEncoder.encodeCleanup` and
+    /// `SIMDHTBlockCoder.encodeCleanup` to guarantee exact bit-for-bit output parity.
+    internal static func encodePreclassifiedCleanup(
+        quads: [SIMDHTBlockCoder.PreclassifiedQuad],
+        width: Int,
+        height: Int,
+        maximumOutputBytes: Int,
+        budget: EntropyOutputBudget?
+    ) throws -> [UInt8] {
+        let qw = (width + 1) / 2
+        let qh = (height + 1) / 2
+        guard quads.count == qw * qh else {
+            throw CodecError(.invalidArgument, "Preclassified HTJ2K quad count (\(quads.count)) does not match \(qw)x\(qh) quad grid.")
+        }
+        guard maximumOutputBytes >= 2 else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment exceeds the remaining block admission budget.")
+        }
+
+        let suffixCap = min(4079, maximumOutputBytes)
+        let segmentCap = min(65534, maximumOutputBytes)
+
+        var magSgnPacker = MagSgnForwardPacker(maximumBytes: segmentCap, budget: budget)
+        var melPacker = MELForwardPacker(maximumBytes: suffixCap, budget: budget)
+        var vlcPacker = VLCBackwardPacker(maximumBytes: suffixCap, budget: budget)
+        var extraAssemblyReserved = 0
+        var transferredOwnership = false
+        defer {
+            if !transferredOwnership {
+                magSgnPacker.stream.releaseAll()
+                melPacker.stream.releaseAll()
+                vlcPacker.stream.releaseAll()
+                if let budget, extraAssemblyReserved > 0 {
+                    budget.release(extraAssemblyReserved, countsTowardCompressedOutput: true, site: "ht-cleanup-assemble-rollback")
+                }
+            }
+        }
+
+        var prevRowRho = [Int](repeating: 0, count: qw)
+        var prevRowE1 = [Int](repeating: 0, count: qw)
+        var prevRowE3 = [Int](repeating: 0, count: qw)
+        var currRowRho = [Int](repeating: 0, count: qw)
+        var currRowE1 = [Int](repeating: 0, count: qw)
+        var currRowE3 = [Int](repeating: 0, count: qw)
+
+        @inline(__always)
+        func emitUVLCPair(_ first: HTTables.UVLCComponents, _ second: HTTables.UVLCComponents) {
+            if first.prefixLength > 0 {
+                vlcPacker.emitBits(first.prefixBits, count: Int(first.prefixLength))
+            }
+            if second.prefixLength > 0 {
+                vlcPacker.emitBits(second.prefixBits, count: Int(second.prefixLength))
+            }
+            if first.suffixLength > 0 {
+                vlcPacker.emitBits(first.suffixBits, count: Int(first.suffixLength))
+            }
+            if second.suffixLength > 0 {
+                vlcPacker.emitBits(second.suffixBits, count: Int(second.suffixLength))
+            }
+            if first.extensionLength > 0 {
+                vlcPacker.emitBits(first.extensionBits, count: Int(first.extensionLength))
+            }
+            if second.extensionLength > 0 {
+                vlcPacker.emitBits(second.extensionBits, count: Int(second.extensionLength))
+            }
+        }
+
+        @inline(__always)
+        func emitQuadMagSgn(_ quad: SIMDHTBlockCoder.PreclassifiedQuad, upperU: Int, embKnown: UInt8) {
+            let rho = quad.rho
+            guard rho != 0 else { return }
+            let known = Int(embKnown)
+            if (rho & 1) != 0 {
+                magSgnPacker.emitBits(value: quad.s0, count: upperU - (known & 1))
+            }
+            if (rho & 2) != 0 {
+                magSgnPacker.emitBits(value: quad.s1, count: upperU - ((known >> 1) & 1))
+            }
+            if (rho & 4) != 0 {
+                magSgnPacker.emitBits(value: quad.s2, count: upperU - ((known >> 2) & 1))
+            }
+            if (rho & 8) != 0 {
+                magSgnPacker.emitBits(value: quad.s3, count: upperU - ((known >> 3) & 1))
+            }
+        }
+
+        @inline(__always)
+        func prepareQuad(
+            quad: SIMDHTBlockCoder.PreclassifiedQuad,
+            qy: Int,
+            qx: Int,
+            leftRho: Int
+        ) -> (u: Int, uOff: Int, upperU: Int, cxtEntry: HTTables.CxtVLCEncodeEntry) {
+            let context: Int
+            let kappa: Int
+            if qy == 0 {
+                if qx == 0 {
+                    context = 0
+                } else {
+                    let fOrSf = (leftRho & 0x03) != 0 ? 1 : 0
+                    let wAndSw = (leftRho >> 1) & 0x06
+                    context = fOrSf | wAndSw
+                }
+                kappa = 1
+            } else {
+                let nw = qx > 0 ? ((prevRowRho[qx - 1] >> 3) & 1) : 0
+                let n = (prevRowRho[qx] >> 1) & 1
+                let ne = (prevRowRho[qx] >> 3) & 1
+                let nf = (qx + 1 < qw) ? ((prevRowRho[qx + 1] >> 1) & 1) : 0
+                let wOrSw = qx > 0 ? (((leftRho & 0x0C) != 0) ? 1 : 0) : 0
+                context = (nw | n) | (wOrSw << 1) | ((ne | nf) << 2)
+
+                let eNW = qx > 0 ? prevRowE3[qx - 1] : 0
+                let eN = prevRowE1[qx]
+                let eNE = prevRowE3[qx]
+                let eNF = (qx + 1 < qw) ? prevRowE1[qx + 1] : 0
+                let maxNeighborE = max(max(eNW, eN), max(eNE, eNF))
+                let gamma = quad.rho.nonzeroBitCount > 1 ? 1 : 0
+                kappa = max(1, gamma * (maxNeighborE - 1))
+            }
+
+            if quad.rho == 0 {
+                if context == 0 {
+                    melPacker.encodeSymbol(0)
+                    return (0, 0, 0, HTTables.CxtVLCEncodeEntry(codeword: 0, bitLength: 0, embKnown: 0))
+                }
+                let entry = qy == 0
+                    ? HTTables.cxtVLCEncodeTable0[context << 8]
+                    : HTTables.cxtVLCEncodeTable1[context << 8]
+                return (0, 0, 0, entry)
+            }
+
+            let upperU = max(quad.eQMax, kappa)
+            let u = upperU - kappa
+            let uOff = u > 0 ? 1 : 0
+            var emb = 0
+            if uOff == 1 {
+                if quad.eQ0 == quad.eQMax { emb |= 1 }
+                if quad.eQ1 == quad.eQMax { emb |= 2 }
+                if quad.eQ2 == quad.eQMax { emb |= 4 }
+                if quad.eQ3 == quad.eQMax { emb |= 8 }
+            }
+            if context == 0 {
+                melPacker.encodeSymbol(1)
+            }
+            let tableIndex = (context << 8) | (quad.rho << 4) | emb
+            let entry = qy == 0
+                ? HTTables.cxtVLCEncodeTable0[tableIndex]
+                : HTTables.cxtVLCEncodeTable1[tableIndex]
+            return (u, uOff, upperU, entry)
+        }
+
+        for qy in 0..<qh {
+            let rowBase = qy * qw
+            var leftRho = 0
+            var qx = 0
+            while qx < qw {
+                let quad1 = quads[rowBase + qx]
+                let prep1 = prepareQuad(quad: quad1, qy: qy, qx: qx, leftRho: leftRho)
+                emitQuadMagSgn(quad1, upperU: prep1.upperU, embKnown: prep1.cxtEntry.embKnown)
+                if prep1.cxtEntry.bitLength > 0 {
+                    vlcPacker.emitBits(prep1.cxtEntry.codeword, count: Int(prep1.cxtEntry.bitLength))
+                }
+                leftRho = quad1.rho
+                currRowRho[qx] = quad1.rho
+                currRowE1[qx] = quad1.eQ1
+                currRowE3[qx] = quad1.eQ3
+
+                if qx + 1 < qw {
+                    let quad2 = quads[rowBase + qx + 1]
+                    let prep2 = prepareQuad(quad: quad2, qy: qy, qx: qx + 1, leftRho: leftRho)
+                    emitQuadMagSgn(quad2, upperU: prep2.upperU, embKnown: prep2.cxtEntry.embKnown)
+                    if prep2.cxtEntry.bitLength > 0 {
+                        vlcPacker.emitBits(prep2.cxtEntry.codeword, count: Int(prep2.cxtEntry.bitLength))
+                    }
+                    leftRho = quad2.rho
+                    currRowRho[qx + 1] = quad2.rho
+                    currRowE1[qx + 1] = quad2.eQ1
+                    currRowE3[qx + 1] = quad2.eQ3
+
+                    if qy == 0 && prep1.uOff == 1 && prep2.uOff == 1 {
+                        let jointMel = (prep1.u > 2 && prep2.u > 2) ? 1 : 0
+                        melPacker.encodeSymbol(jointMel)
+                        if jointMel == 1 {
+                            let c1 = HTTables.encodeUVLC(prep1.u - 2)
+                            let c2 = HTTables.encodeUVLC(prep2.u - 2)
+                            emitUVLCPair(c1, c2)
+                        } else if prep1.u > 2 {
+                            let c1 = HTTables.encodeUVLC(prep1.u)
+                            let c2 = HTTables.UVLCComponents(
+                                prefixBits: UInt8(prep2.u - 1),
+                                prefixLength: 1,
+                                suffixBits: 0,
+                                suffixLength: 0,
+                                extensionBits: 0,
+                                extensionLength: 0
+                            )
+                            emitUVLCPair(c1, c2)
+                        } else {
+                            let c1 = HTTables.encodeUVLC(prep1.u)
+                            let c2 = HTTables.encodeUVLC(prep2.u)
+                            emitUVLCPair(c1, c2)
+                        }
+                    } else {
+                        let c1 = prep1.uOff == 1 ? HTTables.encodeUVLC(prep1.u) : .empty
+                        let c2 = prep2.uOff == 1 ? HTTables.encodeUVLC(prep2.u) : .empty
+                        emitUVLCPair(c1, c2)
+                    }
+                    qx += 2
+                } else {
+                    if prep1.uOff == 1 {
+                        let c1 = HTTables.encodeUVLC(prep1.u)
+                        emitUVLCPair(c1, .empty)
+                    }
+                    qx += 1
+                }
+
+                if magSgnPacker.stream.overflowed || melPacker.stream.overflowed || vlcPacker.stream.overflowed {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup stream exceeds the remaining block admission budget.")
+                }
+            }
+            swap(&prevRowRho, &currRowRho)
+            swap(&prevRowE1, &currRowE1)
+            swap(&prevRowE3, &currRowE3)
+        }
+
+        magSgnPacker.terminate()
+        melPacker.terminateSymbols()
+
+        // Joint MEL + VLC termination per `termMELandVLCPackers` (Annex F.4, p. 68):
+        let shiftedMEL: UInt8 = melPacker.remainingBits == 8
+            ? 0
+            : UInt8((Int(melPacker.partialByte) << melPacker.remainingBits) & 0xFF)
+        let melMask: UInt8 = melPacker.remainingBits == 8
+            ? 0
+            : UInt8((0xFF << melPacker.remainingBits) & 0xFF)
+        let vlcMask: UInt8 = vlcPacker.usedBits == 0
+            ? 0
+            : UInt8(0xFF >> (8 - vlcPacker.usedBits))
+        if (melMask | vlcMask) != 0 {
+            let fuse = shiftedMEL | vlcPacker.partialByte
+            if (((fuse ^ shiftedMEL) & melMask) | ((fuse ^ vlcPacker.partialByte) & vlcMask)) == 0
+                && fuse != 0xFF
+            {
+                melPacker.stream.append(fuse)
+            } else {
+                melPacker.stream.append(shiftedMEL)
+                vlcPacker.stream.append(vlcPacker.partialByte)
+            }
+        }
+
+        guard !magSgnPacker.stream.overflowed, !melPacker.stream.overflowed, !vlcPacker.stream.overflowed else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup stream exceeds the remaining block admission budget.")
+        }
+
+        let magSgnCount = magSgnPacker.stream.bytes.count
+        let melCount = melPacker.stream.bytes.count
+        let vlcCount = vlcPacker.stream.bytes.count
+        let scup = melCount + vlcCount
+        let lcup = magSgnCount + scup
+
+        guard scup >= 2, scup <= 4079, lcup >= 2, lcup < 65535 else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment lengths (Lcup=\(lcup), Scup=\(scup)) exceed T.814 bounds.")
+        }
+        guard lcup <= maximumOutputBytes else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K cleanup segment (\(lcup) bytes) exceeds block output limit (\(maximumOutputBytes) bytes).")
+        }
+
+        var heldCompressed = magSgnPacker.stream.reservedBytes
+            + melPacker.stream.reservedBytes
+            + vlcPacker.stream.reservedBytes
+
+        if let budget {
+            if lcup > heldCompressed {
+                let extra = lcup - heldCompressed
+                try budget.reserve(extra, countsTowardCompressedOutput: true, site: "ht-cleanup-assemble-grow")
+                extraAssemblyReserved = extra
+                heldCompressed += extra
+            }
+            try budget.reserve(lcup, countsTowardCompressedOutput: false, site: "ht-cleanup-assemble-overlap")
+            budget.recordActualAllocation(lcup, site: "ht-cleanup-assemble")
+        }
+        defer {
+            if let budget {
+                budget.release(lcup, countsTowardCompressedOutput: false, site: "ht-cleanup-assemble-overlap")
+            }
+        }
+
+        let segment = [UInt8](unsafeUninitializedCapacity: lcup) { dst, initializedCount in
+            guard let dstBase = dst.baseAddress else {
+                initializedCount = 0
+                return
+            }
+            if magSgnCount > 0 {
+                magSgnPacker.stream.bytes.withUnsafeBufferPointer { src in
+                    if let srcBase = src.baseAddress {
+                        dstBase.initialize(from: srcBase, count: magSgnCount)
+                    }
+                }
+            }
+            if melCount > 0 {
+                melPacker.stream.bytes.withUnsafeBufferPointer { src in
+                    if let srcBase = src.baseAddress {
+                        (dstBase + magSgnCount).initialize(from: srcBase, count: melCount)
+                    }
+                }
+            }
+            vlcPacker.stream.bytes.withUnsafeBufferPointer { src in
+                if let srcBase = src.baseAddress {
+                    let vlcDst = dstBase + magSgnCount + melCount
+                    for i in 0..<vlcCount {
+                        (vlcDst + i).initialize(to: srcBase[vlcCount - 1 - i])
+                    }
+                }
+            }
+            dstBase[lcup - 1] = UInt8((scup >> 4) & 0xFF)
+            dstBase[lcup - 2] = (dstBase[lcup - 2] & 0xF0) | UInt8(scup & 0x0F)
+            initializedCount = lcup
+        }
+
+        magSgnPacker.stream.detachAfterTransfer()
+        melPacker.stream.detachAfterTransfer()
+        vlcPacker.stream.detachAfterTransfer()
+        extraAssemblyReserved = 0
+        if let budget, heldCompressed > lcup {
+            budget.release(heldCompressed - lcup, countsTowardCompressedOutput: true, site: "ht-cleanup-assemble-trim")
+        }
+        transferredOwnership = true
+        return segment
+    }
+
+    /// Encodes an HT Refinement segment (`HT SigProp` + optional `HT MagRef`) per ITU-T Rec. T.814
+    /// Clauses 7.4–7.5 and Annex F.4.
+    package static func encodeRefinement(
+        coefficients: [Int64],
+        width: Int,
+        height: Int,
+        cleanupBandShift: Int,
+        includeMagRef: Bool,
+        causal: Bool = false,
+        maximumOutputBytes: Int = Int.max,
+        budget: EntropyOutputBudget? = nil
+    ) throws -> [UInt8] {
+        let sampleCount = try validateBlockGeometry(width: width, height: height, caller: "HTBlockEncoder.encodeRefinement")
+        guard coefficients.count == sampleCount else {
+            throw CodecError(.invalidArgument, "HTJ2K refinement block dimensions do not match coefficient count.")
+        }
+        guard cleanupBandShift >= 1, cleanupBandShift < 63 else {
+            throw CodecError(.invalidArgument, "HTJ2K refinement cleanupBandShift (\(cleanupBandShift)) is out of range.")
+        }
+        guard maximumOutputBytes >= 0 else {
+            throw CodecError(.resourceLimitExceeded, "Negative maximumOutputBytes for HTJ2K refinement segment.")
+        }
+
+        let refinementCap = min(2046, maximumOutputBytes)
+        var spPacker = SigPropForwardPacker(maximumBytes: refinementCap, budget: budget)
+        var mrPacker = MagRefBackwardPacker(maximumBytes: refinementCap, budget: budget)
+        var extraAssemblyReserved = 0
+        var transferredOwnership = false
+        defer {
+            if !transferredOwnership {
+                spPacker.stream.releaseAll()
+                mrPacker.stream.releaseAll()
+                if let budget, extraAssemblyReserved > 0 {
+                    budget.release(extraAssemblyReserved, countsTowardCompressedOutput: true, site: "ht-refinement-assemble-rollback")
+                }
+            }
+        }
+
+        let refPlane = cleanupBandShift - 1
+        var cleanupSig = [UInt8](repeating: 0, count: sampleCount)
+        for i in 0..<sampleCount {
+            if (coefficients[i].magnitude >> cleanupBandShift) != 0 {
+                cleanupSig[i] = 1
+            }
+        }
+        var sigPropMag = [UInt8](repeating: 0, count: sampleCount)
+
+        // 1. HT SigProp pass (Clause 7.4): 4-line stripes, 4-column groups, magnitude pass then sign pass.
+        var stripeY = 0
+        while stripeY < height {
+            let stripeEndY = min(stripeY + 4, height)
+            var groupX = 0
+            while groupX < width {
+                let groupEndX = min(groupX + 4, width)
+
+                // Magnitude step across the column-group:
+                for col in groupX..<groupEndX {
+                    for row in stripeY..<stripeEndY {
+                        let idx = row * width + col
+                        guard cleanupSig[idx] == 0 else { continue }
+
+                        let minNY = max(0, row - 1)
+                        let maxNY = causal ? min(stripeEndY - 1, row + 1) : min(height - 1, row + 1)
+                        let minNX = max(0, col - 1)
+                        let maxNX = min(width - 1, col + 1)
+
+                        var hasActiveNeighbour = false
+                        neighbourScan: for ny in minNY...maxNY {
+                            let nRowBase = ny * width
+                            for nx in minNX...maxNX {
+                                if nx == col && ny == row { continue }
+                                let nIdx = nRowBase + nx
+                                if cleanupSig[nIdx] != 0 || sigPropMag[nIdx] != 0 {
+                                    hasActiveNeighbour = true
+                                    break neighbourScan
+                                }
+                            }
+                        }
+
+                        if hasActiveNeighbour {
+                            let magBit = Int((coefficients[idx].magnitude >> refPlane) & 1)
+                            sigPropMag[idx] = UInt8(magBit)
+                            spPacker.emitBit(magBit)
+                        }
+                    }
+                }
+
+                // Sign step across the same column-group:
+                for col in groupX..<groupEndX {
+                    for row in stripeY..<stripeEndY {
+                        let idx = row * width + col
+                        if sigPropMag[idx] != 0 {
+                            let signBit = coefficients[idx] < 0 ? 1 : 0
+                            spPacker.emitBit(signBit)
+                        }
+                    }
+                }
+
+                if spPacker.stream.overflowed {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K SigProp stream exceeds block output budget.")
+                }
+                groupX += 4
+            }
+            stripeY += 4
+        }
+
+        // 2. Optional HT MagRef pass (Clause 7.5): 4-line stripe scan over samples significant in Cleanup.
+        if includeMagRef {
+            var mrStripeY = 0
+            while mrStripeY < height {
+                let mrStripeEndY = min(mrStripeY + 4, height)
+                for col in 0..<width {
+                    for row in mrStripeY..<mrStripeEndY {
+                        let idx = row * width + col
+                        if cleanupSig[idx] != 0 {
+                            let magBit = Int((coefficients[idx].magnitude >> refPlane) & 1)
+                            mrPacker.emitBit(magBit)
+                        }
+                    }
+                }
+                if mrPacker.stream.overflowed {
+                    throw CodecError(.resourceLimitExceeded, "HTJ2K MagRef stream exceeds block output budget.")
+                }
+                mrStripeY += 4
+            }
+
+            // Joint SigProp + MagRef termination per `termSPandMRPackers` (Annex F.4, p. 71):
+            var spMask: UInt8 = spPacker.usedBits == 0 ? 0 : UInt8(0xFF >> (8 - spPacker.usedBits))
+            if spPacker.maxBitsInByte == 7 {
+                spMask |= 0x80 // Cover mandatory 0-stuff bit following 0xFF
+            }
+            let mrMask: UInt8 = mrPacker.usedBits == 0 ? 0 : UInt8(0xFF >> (8 - mrPacker.usedBits))
+            if (spMask | mrMask) != 0 {
+                let fuse = spPacker.partialByte | mrPacker.partialByte
+                if (((fuse ^ spPacker.partialByte) & spMask) | ((fuse ^ mrPacker.partialByte) & mrMask)) == 0 {
+                    spPacker.stream.append(fuse)
+                } else {
+                    spPacker.stream.append(spPacker.partialByte)
+                    mrPacker.stream.append(mrPacker.partialByte)
+                }
+            }
+        } else {
+            spPacker.terminateStandalone()
+        }
+
+        guard !spPacker.stream.overflowed, !mrPacker.stream.overflowed else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment exceeds block output budget.")
+        }
+
+        let spCount = spPacker.stream.bytes.count
+        let mrCount = mrPacker.stream.bytes.count
+        let lref = spCount + mrCount
+
+        if lref == 0 {
+            return []
+        }
+        guard lref < 2047 else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment length (\(lref)) exceeds T.814 limit of 2046 bytes.")
+        }
+        guard lref <= maximumOutputBytes else {
+            throw CodecError(.resourceLimitExceeded, "HTJ2K refinement segment (\(lref) bytes) exceeds block output limit (\(maximumOutputBytes) bytes).")
+        }
+
+        var heldCompressed = spPacker.stream.reservedBytes + mrPacker.stream.reservedBytes
+        if let budget {
+            if lref > heldCompressed {
+                let extra = lref - heldCompressed
+                try budget.reserve(extra, countsTowardCompressedOutput: true, site: "ht-refinement-assemble-grow")
+                extraAssemblyReserved = extra
+                heldCompressed += extra
+            }
+            try budget.reserve(lref, countsTowardCompressedOutput: false, site: "ht-refinement-assemble-overlap")
+            budget.recordActualAllocation(lref, site: "ht-refinement-assemble")
+        }
+        defer {
+            if let budget {
+                budget.release(lref, countsTowardCompressedOutput: false, site: "ht-refinement-assemble-overlap")
+            }
+        }
+
+        let segment = [UInt8](unsafeUninitializedCapacity: lref) { dst, initializedCount in
+            guard let dstBase = dst.baseAddress else {
+                initializedCount = 0
+                return
+            }
+            if spCount > 0 {
+                spPacker.stream.bytes.withUnsafeBufferPointer { src in
+                    if let srcBase = src.baseAddress {
+                        dstBase.initialize(from: srcBase, count: spCount)
+                    }
+                }
+            }
+            if mrCount > 0 {
+                mrPacker.stream.bytes.withUnsafeBufferPointer { src in
+                    if let srcBase = src.baseAddress {
+                        let mrDst = dstBase + spCount
+                        for i in 0..<mrCount {
+                            (mrDst + i).initialize(to: srcBase[mrCount - 1 - i])
+                        }
+                    }
+                }
+            }
+            initializedCount = lref
+        }
+
+        spPacker.stream.detachAfterTransfer()
+        mrPacker.stream.detachAfterTransfer()
+        extraAssemblyReserved = 0
+        if let budget, heldCompressed > lref {
+            budget.release(heldCompressed - lref, countsTowardCompressedOutput: true, site: "ht-refinement-assemble-trim")
+        }
+        transferredOwnership = true
+        return segment
+    }
+}
+
+// MARK: - Decoder Bit-Stream Readers (ITU-T Rec. T.814 Clauses 7.1.1–7.1.6)
+
+/// Validates `Dcup` framing and extracts `(lcup, scup, pcup)` per Clause 7.1.1.
+@inline(__always)
+private func parseCleanupSegmentBounds(_ block: [UInt8]) throws -> (lcup: Int, scup: Int, pcup: Int) {
+    let lcup = block.count
+    guard lcup >= 2, lcup < 65535 else {
+        throw CodecError(.malformedInput, "Invalid HT cleanup segment length Lcup=\(lcup).")
+    }
+    guard block[lcup - 1] != 0xFF else {
+        throw CodecError(.malformedInput, "HT cleanup segment terminates with prohibited 0xFF byte.")
+    }
+    let scup = (Int(block[lcup - 1]) << 4) | Int(block[lcup - 2] & 0x0F)
+    guard scup >= 2, scup <= lcup, scup <= 4079 else {
+        throw CodecError(.malformedInput, "Invalid HT cleanup suffix length Scup=\(scup) for Lcup=\(lcup).")
+    }
+    let pcup = lcup - scup
+    if pcup > 0, block[pcup - 1] == 0xFF {
+        throw CodecError(.malformedInput, "HT cleanup prefix terminates with prohibited 0xFF byte at Pcup-1.")
+    }
+    for i in 0..<(lcup - 1) where block[i] == 0xFF {
+        guard block[i + 1] <= 0x8F else {
+            throw CodecError(.malformedInput, "Prohibited marker code > 0xFF8F inside HT cleanup segment.")
+        }
+    }
+    return (lcup, scup, pcup)
+}
+
+/// Forward little-endian MagSgn bit-stream reader (`initMS` / `importMagSgnBit`, Clause 7.1.2).
+/// Loads bytes strictly on demand so unconsumed prefix padding (`0xFF80...0xFF8F`) is untouched.
+private struct MagSgnBitReader {
+    let block: [UInt8]
+    let pcup: Int
+    private var pos: Int = 0
+    private var lastByte: UInt8 = 0
+    private var bitBuffer: UInt64 = 0
+    private var bitCount: Int = 0
+
+    init(block: [UInt8], pcup: Int) {
+        self.block = block
+        self.pcup = pcup
+    }
+
+    @inline(__always)
+    private mutating func readUpTo32Bits(_ count: Int) throws -> UInt64 {
+        while bitCount < count {
+            let loadBits = (lastByte == 0xFF) ? 7 : 8
+            let byte: UInt8
+            if pos < pcup {
+                byte = block[pos]
+                if loadBits == 7 && (byte & 0x80) != 0 {
+                    throw CodecError(.malformedInput, "Non-zero stuff bit in HT MagSgn byte following 0xFF.")
+                }
+            } else if pos == pcup {
+                byte = 0xFF
+            } else {
+                throw CodecError(.malformedInput, "HT MagSgn bit-stream overrun past Pcup.")
+            }
+            lastByte = byte
+            pos += 1
+            let masked: UInt8 = loadBits == 7 ? (byte & 0x7F) : byte
+            bitBuffer |= UInt64(masked) << bitCount
+            bitCount += loadBits
+        }
+        let mask = (UInt64(1) << count) - 1
+        let value = bitBuffer & mask
+        bitBuffer >>= count
+        bitCount -= count
+        return value
+    }
+
+    @inline(__always)
+    mutating func readBits(_ count: Int) throws -> UInt64 {
+        if count <= 32 {
+            return try readUpTo32Bits(count)
+        }
+        let low = try readUpTo32Bits(32)
+        let high = try readUpTo32Bits(count - 32)
+        return low | (high << 32)
+    }
+}
+
+/// Forward big-endian MEL bit-stream and adaptive run-length symbol decoder (`initMEL` / `importMELBit` &
+/// `initMELDecoder` / `decodeMELSym`, Clauses 7.1.3 & 7.3.3).
+private struct MELSymbolDecoder {
+    let block: [UInt8]
+    let lcup: Int
+    private var melPos: Int
+    private var melBits: Int = 0
+    private var melTmp: UInt8 = 0
+    private var stateIndex: Int = 0
+    private var runCount: Int = 0
+    private var pendingOne: Bool = false
+
+    init(block: [UInt8], lcup: Int, pcup: Int) {
+        self.block = block
+        self.lcup = lcup
+        self.melPos = pcup
+    }
+
+    @inline(__always)
+    private func modDcup(_ index: Int) -> UInt8 {
+        if index == lcup - 1 { return 0xFF }
+        if index == lcup - 2 { return block[index] | 0x0F }
+        return block[index]
+    }
+
+    @inline(__always)
+    private mutating func importBit() -> Int {
+        if melBits == 0 {
+            melBits = (melTmp == 0xFF) ? 7 : 8
+            if melPos < lcup {
+                melTmp = modDcup(melPos)
+                melPos += 1
+            } else {
+                melTmp = 0xFF
+            }
+        }
+        melBits -= 1
+        return Int((melTmp >> melBits) & 1)
+    }
+
+    @inline(__always)
+    mutating func decodeSymbol() -> Int {
+        if runCount == 0 && !pendingOne {
+            var exponent = HTTables.melExponents[stateIndex]
+            let bit = importBit()
+            if bit == 1 {
+                runCount = 1 << exponent
+                if stateIndex < 12 {
+                    stateIndex += 1
+                }
+            } else {
+                runCount = 0
+                while exponent > 0 {
+                    runCount = (runCount << 1) | importBit()
+                    exponent -= 1
+                }
+                if stateIndex > 0 {
+                    stateIndex -= 1
+                }
+                pendingOne = true
+            }
+        }
+        if runCount > 0 {
+            runCount -= 1
+            return 0
+        }
+        pendingOne = false
+        return 1
+    }
+}
+
+/// Backward little-endian VLC bit-stream reader (`initVLC` / `importVLCBit`, Clause 7.1.4).
+private struct VLCBitReader {
+    let block: [UInt8]
+    let pcup: Int
+    private var vlcPos: Int
+    private var vlcLast: UInt8
+    private var bitBuffer: UInt64
+    private var bitCount: Int
+
+    init(block: [UInt8], lcup: Int, pcup: Int) {
+        self.block = block
+        self.pcup = pcup
+        self.vlcPos = lcup - 3
+        let modSecondLast = block[lcup - 2] | 0x0F
+        self.vlcLast = modSecondLast
+        let initialTmp = modSecondLast >> 4
+        let initialBits = ((initialTmp & 0x07) < 7) ? 4 : 3
+        self.bitBuffer = UInt64(initialTmp & ((1 << initialBits) - 1))
+        self.bitCount = initialBits
+    }
+
+    @inline(__always)
+    private mutating func fill(minBits: Int) {
+        while bitCount < minBits && vlcPos >= pcup {
+            let rawByte = block[vlcPos]
+            vlcPos -= 1
+            let usableBits = (vlcLast > 0x8F && (rawByte & 0x7F) == 0x7F) ? 7 : 8
+            vlcLast = rawByte
+            let masked: UInt8 = usableBits == 7 ? 0x7F : rawByte
+            bitBuffer |= UInt64(masked) << bitCount
+            bitCount += usableBits
+        }
+    }
+
+    @inline(__always)
+    mutating func decodeCxtVLC(context: Int, isInitialRow: Bool) throws -> HTTables.CxtVLCDecodeEntry {
+        fill(minBits: 7)
+        let peek7 = Int(bitBuffer & 0x7F)
+        let tableIndex = (context << 7) | peek7
+        let entry = isInitialRow
+            ? HTTables.cxtVLCDecodeTable0[tableIndex]
+            : HTTables.cxtVLCDecodeTable1[tableIndex]
+        let len = Int(entry.bitLength)
+        guard bitCount >= len else {
+            throw CodecError(.malformedInput, "HT VLC bit-stream overrun past Pcup during CxtVLC decode.")
+        }
+        bitBuffer >>= len
+        bitCount -= len
+        return entry
+    }
+
+    @inline(__always)
+    mutating func readBits(_ count: Int) throws -> Int {
+        guard count > 0 else { return 0 }
+        fill(minBits: count)
+        guard bitCount >= count else {
+            throw CodecError(.malformedInput, "HT VLC bit-stream overrun past Pcup during U-VLC decode.")
+        }
+        let value = Int(bitBuffer & ((UInt64(1) << count) - 1))
+        bitBuffer >>= count
+        bitCount -= count
+        return value
+    }
+
+    @inline(__always)
+    mutating func decodeUPrefix() throws -> Int {
+        if try readBits(1) == 1 { return 1 }
+        if try readBits(1) == 1 { return 2 }
+        return (try readBits(1) == 1) ? 3 : 5
+    }
+
+    @inline(__always)
+    mutating func decodeUSuffix(prefix: Int) throws -> Int {
+        if prefix < 3 { return 0 }
+        if prefix == 3 { return try readBits(1) }
+        return try readBits(5)
+    }
+
+    @inline(__always)
+    mutating func decodeUExtension(suffix: Int) throws -> Int {
+        if suffix < 28 { return 0 }
+        return try readBits(4)
+    }
+}
+
+/// Forward little-endian SigProp bit-stream reader (`initSP` / `importSigPropBit`, Clause 7.1.5).
+private struct SigPropBitReader {
+    let bytes: [UInt8]
+    private var spPos: Int = 0
+    private var spBits: Int = 0
+    private var spTmp: UInt8 = 0
+    private var spLast: UInt8 = 0
+
+    init(bytes: [UInt8]) {
+        self.bytes = bytes
+    }
+
+    @inline(__always)
+    mutating func readBit() throws -> Int {
+        if spBits == 0 {
+            let maxBits = (spLast == 0xFF) ? 7 : 8
+            if spPos < bytes.count {
+                spTmp = bytes[spPos]
+                spPos += 1
+                if maxBits == 7 && (spTmp & 0x80) != 0 {
+                    throw CodecError(.malformedInput, "Non-zero stuff bit in HT SigProp byte following 0xFF.")
+                }
+            } else {
+                spTmp = 0
+            }
+            spLast = spTmp
+            spBits = maxBits
+        }
+        let bit = Int(spTmp & 1)
+        spTmp >>= 1
+        spBits -= 1
+        return bit
+    }
+}
+
+/// Backward little-endian MagRef bit-stream reader (`initMR` / `importMagRefBit`, Clause 7.1.6).
+private struct MagRefBitReader {
+    let bytes: [UInt8]
+    private var mrPos: Int
+    private var mrBits: Int = 0
+    private var mrLast: UInt8 = 0xFF
+    private var mrTmp: UInt8 = 0
+
+    init(bytes: [UInt8]) {
+        self.bytes = bytes
+        self.mrPos = bytes.count - 1
+    }
+
+    @inline(__always)
+    mutating func readBit() -> Int {
+        if mrBits == 0 {
+            if mrPos >= 0 {
+                mrTmp = bytes[mrPos]
+                mrPos -= 1
+            } else {
+                mrTmp = 0
+            }
+            mrBits = (mrLast > 0x8F && (mrTmp & 0x7F) == 0x7F) ? 7 : 8
+            mrLast = mrTmp
+        }
+        let bit = Int(mrTmp & 1)
+        mrTmp >>= 1
+        mrBits -= 1
+        return bit
+    }
+}
+
+// MARK: - HTBlockDecoder
 
 package enum HTBlockDecoder {
-    /// Maximum subband bit-plane count supported by 64-bit HT reconstruction (`ITU-T T.814` Clause 8.7.3).
-    package static let maximumExtendedKMax = 62
 
-    /// Decode a Part 15 code-block cleanup pass into signed `Int32` wavelet coefficients.
-    ///
-    /// - Parameters:
-    ///   - block: Raw cleanup segment bytes (`Lcup` bytes). If empty, returns all zeros.
-    ///   - width: Code-block width in samples (`1...64`).
-    ///   - height: Code-block height in samples (`1...64`).
-    ///   - kMax: Subband bit-plane count $K_{\max} = M_b = \text{guardBits} + \varepsilon_b - 1$.
-    ///   - missingMSBs: Effective missing MSBs $K_{\text{msbs}} = \text{zeroBitPlanes} + \lfloor (\text{totalPasses} - 1) / 3 \rfloor$.
+    /// Maximum extended subband bit-plane count supported in `Int64` HT decoding paths.
+    package static let maximumExtendedKMax: Int = 62
+
+    /// Decodes a single HT Cleanup pass into signed 32-bit wavelet coefficients per ITU-T Rec. T.814
+    /// Clauses 7.1–7.3 and 7.6.
     package static func decodeCleanup(
         block: [UInt8],
         width: Int,
@@ -1309,34 +1341,230 @@ package enum HTBlockDecoder {
         kMax: Int,
         missingMSBs: Int
     ) throws -> [Int32] {
-        guard kMax >= 1, kMax <= BitPlaneCoder.maximumMagnitudeBitPlanes else {
-            throw CodecError(.malformedInput, "HTJ2K subband K_max (\(kMax)) is out of range.")
+        let sampleCount = try validateBlockGeometry(width: width, height: height, caller: "HTBlockDecoder.decodeCleanup")
+        guard kMax >= 1, kMax <= 31, missingMSBs >= 0 else {
+            throw CodecError(.malformedInput, "Invalid HT cleanup kMax (\(kMax)) or missingMSBs (\(missingMSBs)).")
         }
-        let dec64 = try decodeHTCodeBlock(
-            segments: [HTSegmentInput(data: block, passes: 1)],
-            zeroBitPlanes: missingMSBs,
-            totalPasses: 1,
-            width: width,
-            height: height,
-            kMax: kMax,
-            causal: false,
-            allowMultiHT: false,
-            midpointReconstruction: false
-        )
-        var out = [Int32](repeating: 0, count: dec64.count)
-        for i in 0..<dec64.count {
-            let v = dec64[i]
-            guard v >= Int64(Int32.min), v <= Int64(Int32.max) else {
-                throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
+
+        if block.isEmpty {
+            return [Int32](repeating: 0, count: sampleCount)
+        }
+
+        guard missingMSBs <= kMax - 1 else {
+            throw CodecError(.malformedInput, "HT cleanup missingMSBs (\(missingMSBs)) exceeds kMax - 1 (\(kMax - 1)).")
+        }
+        let bandShift = (kMax - 1) - missingMSBs
+        let allowedCleanupPlanes = missingMSBs + 1 // S_blk + 1 (Clause 7.6)
+        let maxMuExclusive = UInt64(1) << allowedCleanupPlanes
+
+        let (lcup, _, pcup) = try parseCleanupSegmentBounds(block)
+        var magSgnReader = MagSgnBitReader(block: block, pcup: pcup)
+        var melDecoder = MELSymbolDecoder(block: block, lcup: lcup, pcup: pcup)
+        var vlcReader = VLCBitReader(block: block, lcup: lcup, pcup: pcup)
+
+        let qw = (width + 1) / 2
+        let qh = (height + 1) / 2
+        var output = [Int32](repeating: 0, count: sampleCount)
+
+        var prevRowRho = [Int](repeating: 0, count: qw)
+        var prevRowE1 = [Int](repeating: 0, count: qw)
+        var prevRowE3 = [Int](repeating: 0, count: qw)
+        var currRowRho = [Int](repeating: 0, count: qw)
+        var currRowE1 = [Int](repeating: 0, count: qw)
+        var currRowE3 = [Int](repeating: 0, count: qw)
+
+        @inline(__always)
+        func decodeSigEMB(qy: Int, qx: Int, leftRho: Int) throws -> (entry: HTTables.CxtVLCDecodeEntry, maxNeighborE: Int) {
+            if qy == 0 {
+                let context: Int
+                if qx == 0 {
+                    context = 0
+                } else {
+                    let fOrSf = (leftRho & 0x03) != 0 ? 1 : 0
+                    let wAndSw = (leftRho >> 1) & 0x06
+                    context = fOrSf | wAndSw
+                }
+                if context == 0 {
+                    if melDecoder.decodeSymbol() == 0 {
+                        return (HTTables.CxtVLCDecodeEntry(rho: 0, uOff: 0, embKnown: 0, embOne: 0, bitLength: 0), 0)
+                    }
+                }
+                let entry = try vlcReader.decodeCxtVLC(context: context, isInitialRow: true)
+                return (entry, 0)
+            } else {
+                let nw = qx > 0 ? ((prevRowRho[qx - 1] >> 3) & 1) : 0
+                let n = (prevRowRho[qx] >> 1) & 1
+                let ne = (prevRowRho[qx] >> 3) & 1
+                let nf = (qx + 1 < qw) ? ((prevRowRho[qx + 1] >> 1) & 1) : 0
+                let wOrSw = qx > 0 ? (((leftRho & 0x0C) != 0) ? 1 : 0) : 0
+                let context = (nw | n) | (wOrSw << 1) | ((ne | nf) << 2)
+
+                let eNW = qx > 0 ? prevRowE3[qx - 1] : 0
+                let eN = prevRowE1[qx]
+                let eNE = prevRowE3[qx]
+                let eNF = (qx + 1 < qw) ? prevRowE1[qx + 1] : 0
+                let maxNeighborE = max(max(eNW, eN), max(eNE, eNF))
+
+                if context == 0 {
+                    if melDecoder.decodeSymbol() == 0 {
+                        return (HTTables.CxtVLCDecodeEntry(rho: 0, uOff: 0, embKnown: 0, embOne: 0, bitLength: 0), maxNeighborE)
+                    }
+                }
+                let entry = try vlcReader.decodeCxtVLC(context: context, isInitialRow: false)
+                return (entry, maxNeighborE)
             }
-            out[i] = Int32(v)
         }
-        return out
+
+        @inline(__always)
+        func unpackQuadSamples(
+            entry: HTTables.CxtVLCDecodeEntry,
+            u: Int,
+            maxNeighborE: Int,
+            qy: Int,
+            qx: Int
+        ) throws -> (e1: Int, e3: Int) {
+            let rho = Int(entry.rho)
+            guard rho != 0 else { return (0, 0) }
+
+            let x0 = qx * 2
+            let y0 = qy * 2
+            var invalidMask = 0
+            if x0 + 1 >= width { invalidMask |= 0b1100 }
+            if y0 + 1 >= height { invalidMask |= 0b1010 }
+            guard (rho & invalidMask) == 0 else {
+                throw CodecError(.malformedInput, "Non-zero significance decoded in padded HT quad sample.")
+            }
+
+            let kappa: Int
+            if qy == 0 {
+                kappa = 1
+            } else {
+                let gamma = entry.rho.nonzeroBitCount > 1 ? 1 : 0
+                kappa = max(1, gamma * (maxNeighborE - 1))
+            }
+            let upperU = kappa + u
+            guard upperU <= 31 else {
+                throw CodecError(.malformedInput, "HT quad exponent bound U_q (\(upperU)) exceeds 32-bit cleanup range.")
+            }
+
+            let known = Int(entry.embKnown)
+            let knownOne = Int(entry.embOne)
+            var e1 = 0
+            var e3 = 0
+
+            for j in 0..<4 where (rho & (1 << j)) != 0 {
+                let m = upperU - ((known >> j) & 1)
+                guard m >= 1, m <= 31 else {
+                    throw CodecError(.malformedInput, "Invalid HT MagSgn bit count m_n=\(m).")
+                }
+                let iFlag = UInt64((knownOne >> j) & 1)
+                let v = (try magSgnReader.readBits(m)) + (iFlag << m)
+                let mu = (v >> 1) + 1
+                guard mu < maxMuExclusive else {
+                    throw CodecError(.malformedInput, "Decoded HT cleanup magnitude exceeds subband bit-plane bound.")
+                }
+                let scaled = mu << bandShift
+                guard scaled <= UInt64(Int32.max) else {
+                    throw CodecError(.malformedInput, "Scaled HT cleanup coefficient overflows Int32 range.")
+                }
+                let sign = v & 1
+                let signedVal = sign == 1 ? -Int32(scaled) : Int32(scaled)
+                let dstX = x0 + (j >> 1)
+                let dstY = y0 + (j & 1)
+                output[dstY * width + dstX] = signedVal
+
+                if j == 1 || j == 3 {
+                    let twoMuMinusOne = (mu << 1) - 1
+                    let exp = 64 - twoMuMinusOne.leadingZeroBitCount
+                    if j == 1 { e1 = exp } else { e3 = exp }
+                }
+            }
+            return (e1, e3)
+        }
+
+        for qy in 0..<qh {
+            var leftRho = 0
+            var qx = 0
+            while qx < qw {
+                let (entry1, maxNE1) = try decodeSigEMB(qy: qy, qx: qx, leftRho: leftRho)
+                leftRho = Int(entry1.rho)
+                currRowRho[qx] = leftRho
+
+                if qx + 1 < qw {
+                    let (entry2, maxNE2) = try decodeSigEMB(qy: qy, qx: qx + 1, leftRho: leftRho)
+                    leftRho = Int(entry2.rho)
+                    currRowRho[qx + 1] = leftRho
+
+                    var u1 = 0
+                    var u2 = 0
+                    if qy == 0 && entry1.uOff == 1 && entry2.uOff == 1 {
+                        let jointMel = melDecoder.decodeSymbol()
+                        if jointMel == 1 {
+                            let pfx1 = try vlcReader.decodeUPrefix()
+                            let pfx2 = try vlcReader.decodeUPrefix()
+                            let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                            let sfx2 = try vlcReader.decodeUSuffix(prefix: pfx2)
+                            let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                            let ext2 = try vlcReader.decodeUExtension(suffix: sfx2)
+                            u1 = 2 + pfx1 + sfx1 + 4 * ext1
+                            u2 = 2 + pfx2 + sfx2 + 4 * ext2
+                        } else {
+                            let pfx1 = try vlcReader.decodeUPrefix()
+                            let pfx2: Int
+                            if pfx1 > 2 {
+                                pfx2 = (try vlcReader.readBits(1)) + 1
+                            } else {
+                                pfx2 = try vlcReader.decodeUPrefix()
+                            }
+                            let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                            let sfx2 = try vlcReader.decodeUSuffix(prefix: pfx2)
+                            let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                            let ext2 = try vlcReader.decodeUExtension(suffix: sfx2)
+                            u1 = pfx1 + sfx1 + 4 * ext1
+                            u2 = pfx2 + sfx2 + 4 * ext2
+                        }
+                    } else {
+                        let pfx1 = entry1.uOff == 1 ? (try vlcReader.decodeUPrefix()) : 0
+                        let pfx2 = entry2.uOff == 1 ? (try vlcReader.decodeUPrefix()) : 0
+                        let sfx1 = entry1.uOff == 1 ? (try vlcReader.decodeUSuffix(prefix: pfx1)) : 0
+                        let sfx2 = entry2.uOff == 1 ? (try vlcReader.decodeUSuffix(prefix: pfx2)) : 0
+                        let ext1 = entry1.uOff == 1 ? (try vlcReader.decodeUExtension(suffix: sfx1)) : 0
+                        let ext2 = entry2.uOff == 1 ? (try vlcReader.decodeUExtension(suffix: sfx2)) : 0
+                        u1 = pfx1 + sfx1 + 4 * ext1
+                        u2 = pfx2 + sfx2 + 4 * ext2
+                    }
+
+                    let exps1 = try unpackQuadSamples(entry: entry1, u: u1, maxNeighborE: maxNE1, qy: qy, qx: qx)
+                    let exps2 = try unpackQuadSamples(entry: entry2, u: u2, maxNeighborE: maxNE2, qy: qy, qx: qx + 1)
+                    currRowE1[qx] = exps1.e1
+                    currRowE3[qx] = exps1.e3
+                    currRowE1[qx + 1] = exps2.e1
+                    currRowE3[qx + 1] = exps2.e3
+                    qx += 2
+                } else {
+                    var u1 = 0
+                    if entry1.uOff == 1 {
+                        let pfx1 = try vlcReader.decodeUPrefix()
+                        let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                        let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                        u1 = pfx1 + sfx1 + 4 * ext1
+                    }
+                    let exps1 = try unpackQuadSamples(entry: entry1, u: u1, maxNeighborE: maxNE1, qy: qy, qx: qx)
+                    currRowE1[qx] = exps1.e1
+                    currRowE3[qx] = exps1.e3
+                    qx += 1
+                }
+            }
+            swap(&prevRowRho, &currRowRho)
+            swap(&prevRowE1, &currRowE1)
+            swap(&prevRowE3, &currRowE3)
+        }
+
+        return output
     }
 
-    /// Decodes a complete Part 15 HT code-block contribution conforming to `ITU-T T.814` Clauses 7.1–7.6 and Annex B,
-    /// including `3 * P0` leading placeholder passes, `SINGLEHT`/`MULTIHT` set selection, `HT Cleanup` (7.3),
-    /// `HT SigProp` (7.4), `HT MagRef` (7.5), and `Sample output values` (7.6) into signed `Int64` coefficients.
+    /// Decodes an HT code-block across leading placeholder passes, single or multiple HT sets
+    /// (`Cleanup` + optional `SigProp` + optional `MagRef`), causal mode, and optional midpoint reconstruction.
     package static func decodeHTCodeBlock(
         segments: [HTSegmentInput],
         zeroBitPlanes: Int,
@@ -1345,10 +1573,10 @@ package enum HTBlockDecoder {
         height: Int,
         kMax: Int,
         causal: Bool = false,
-        allowMultiHT: Bool = true,
+        allowMultiHT: Bool = false,
         midpointReconstruction: Bool = false
     ) throws -> [Int64] {
-        try decodeHTCodeBlockWithPlanes(
+        return try decodeHTCodeBlockWithPlanes(
             segments: segments,
             zeroBitPlanes: zeroBitPlanes,
             totalPasses: totalPasses,
@@ -1358,9 +1586,11 @@ package enum HTBlockDecoder {
             causal: causal,
             allowMultiHT: allowMultiHT,
             midpointReconstruction: midpointReconstruction
-        ).coefficients
+        ).0
     }
 
+    /// Decodes an HT code-block and also returns each sample's last decoded bit-plane index (`-1` for zero samples)
+    /// for floating-point midpoint inverse quantisation.
     package static func decodeHTCodeBlockWithPlanes(
         segments: [HTSegmentInput],
         zeroBitPlanes: Int,
@@ -1369,770 +1599,499 @@ package enum HTBlockDecoder {
         height: Int,
         kMax: Int,
         causal: Bool = false,
-        allowMultiHT: Bool = true,
+        allowMultiHT: Bool = false,
         midpointReconstruction: Bool = false
-    ) throws -> (coefficients: [Int64], lastUpdatedPlanes: [Int8]) {
-        guard width >= 1, height >= 1 else {
-            throw CodecError(.invalidArgument, "Invalid HTJ2K code-block dimensions \(width)x\(height).")
+    ) throws -> ([Int64], [Int8]) {
+        let sampleCount = try validateBlockGeometry(width: width, height: height, caller: "HTBlockDecoder.decodeHTCodeBlock")
+        if totalPasses == 0 {
+            return (
+                [Int64](repeating: 0, count: sampleCount),
+                [Int8](repeating: -1, count: sampleCount)
+            )
         }
-        let sampleCount = try checkedMultiply(width, height)
-        guard kMax >= 1, kMax <= maximumExtendedKMax else {
-            throw CodecError(.malformedInput, "HTJ2K subband K_max (\(kMax)) is out of range.")
+        guard totalPasses > 0, !segments.isEmpty else {
+            throw CodecError(.malformedInput, "HT code-block signals \(totalPasses) passes with no codeword segments.")
         }
-        guard zeroBitPlanes >= 0 else {
-            throw CodecError(.malformedInput, "Negative HTJ2K zeroBitPlanes (\(zeroBitPlanes)).")
-        }
-        if segments.isEmpty || totalPasses <= 0 {
-            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
-        }
-
-        // Partition segments into leading placeholder passes (`3 * P0`) followed by HT sets `(cleanup, refinement?)`
-        // per ITU-T T.814 Annex B.1–B.3.
-        struct HTSetRecord {
-            let cleanupData: [UInt8]
-            let refinementData: [UInt8]
-            let passCountInSet: Int // 1..3
-            let sSkip: Int          // number of HT sets preceding this HT set (after P0)
+        guard kMax >= 1, kMax <= maximumExtendedKMax, zeroBitPlanes >= 0 else {
+            throw CodecError(.malformedInput, "Invalid HT code-block kMax (\(kMax)) or zeroBitPlanes (\(zeroBitPlanes)).")
         }
 
-        var idx = 0
-        var placeholderPasses = 0
-
-        // Any strictly zero-length segments preceding the first non-zero cleanup segment contribute placeholder passes.
-        while idx < segments.count && segments[idx].data.isEmpty {
-            guard segments[idx].passes > 0 else {
-                throw CodecError(.malformedInput, "HTJ2K segment carries non-positive pass count.")
+        var passSum = 0
+        for seg in segments {
+            guard seg.passes >= 1 else {
+                throw CodecError(.malformedInput, "HT codeword segment has non-positive pass count (\(seg.passes)).")
             }
-            placeholderPasses += segments[idx].passes
-            idx += 1
-        }
-
-        // All segments empty => pure placeholder-pass contribution (`Z_blk = 0`, all zeros).
-        if idx >= segments.count {
-            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
-        }
-
-        // Note: per Annex B.2–B.3, if a single packet included both trailing placeholder passes of the `3 * P0`
-        // prefix and the first HT cleanup coding pass, that first non-empty cleanup segment carries
-        // `(trailingPlaceholderPasses + 1)` passes where `(placeholderPasses + trailingPlaceholderPasses) % 3 == 0`!
-        let firstCleanupSeg = segments[idx]
-        guard firstCleanupSeg.passes >= 1 else {
-            throw CodecError(.malformedInput, "HTJ2K first cleanup segment carries non-positive pass count.")
-        }
-        let totalBeforeAfterFirstCleanup = placeholderPasses + (firstCleanupSeg.passes - 1)
-        guard totalBeforeAfterFirstCleanup % 3 == 0 else {
-            throw CodecError(.malformedInput, "HTJ2K leading placeholder pass count (\(totalBeforeAfterFirstCleanup)) is not a multiple of 3 (Annex B.1).")
-        }
-        let p0 = totalBeforeAfterFirstCleanup / 3
-        guard firstCleanupSeg.data.count > 1 else {
-            throw CodecError(.malformedInput, "HTJ2K first cleanup segment length (\(firstCleanupSeg.data.count)) must exceed 1 byte (Annex B.3).")
-        }
-
-        var htSets: [HTSetRecord] = []
-        var sSkipCounter = 0
-
-        while idx < segments.count {
-            let cupSeg = segments[idx]
-            idx += 1
-            let cupPasses = (sSkipCounter == 0) ? 1 : cupSeg.passes
-            guard cupPasses == 1 else {
-                throw CodecError(.malformedInput, "HTJ2K cleanup segment carries \(cupPasses) passes instead of 1 (Annex B.2).")
+            let (nextSum, ov) = passSum.addingReportingOverflow(seg.passes)
+            guard !ov else {
+                throw CodecError(.malformedInput, "HT codeword segment pass count overflows.")
             }
-            if sSkipCounter > 0 && !cupSeg.data.isEmpty && cupSeg.data.count <= 1 {
-                throw CodecError(.malformedInput, "HTJ2K cleanup segment length (\(cupSeg.data.count)) must be 0 or > 1 (Annex B.3).")
-            }
-
-            var refData: [UInt8] = []
-            var refPasses = 0
-            if idx < segments.count {
-                // Next segment in the same HT set is the refinement segment (1 or 2 passes).
-                // Note: if the previous HT set stopped after cleanup (1 pass), there are no further HT sets!
-                let nextSeg = segments[idx]
-                guard nextSeg.passes >= 1, nextSeg.passes <= 2 else {
-                    throw CodecError(.malformedInput, "HTJ2K refinement segment carries \(nextSeg.passes) passes (expected 1 or 2).")
-                }
-                if cupSeg.data.isEmpty && !nextSeg.data.isEmpty {
-                    throw CodecError(.malformedInput, "HTJ2K empty cleanup segment followed by non-empty refinement segment (Annex B.3).")
-                }
-                guard nextSeg.data.count <= 2046 else {
-                    throw CodecError(.malformedInput, "HTJ2K refinement segment length (\(nextSeg.data.count)) exceeds 2046-byte limit.")
-                }
-                refData = nextSeg.data
-                refPasses = nextSeg.passes
-                idx += 1
-                // An HT set with only 2 total passes (Cleanup + SigProp, no MagRef) must be the final HT set per B.1!
-                if refPasses < 2 && idx < segments.count {
-                    throw CodecError(.malformedInput, "Non-final HTJ2K set has fewer than 3 coding passes (Annex B.1).")
-                }
-            }
-
-            htSets.append(HTSetRecord(
-                cleanupData: cupSeg.data,
-                refinementData: refData,
-                passCountInSet: 1 + refPasses,
-                sSkip: sSkipCounter
-            ))
-            sSkipCounter += 1
+            passSum = nextSum
+        }
+        guard passSum == totalPasses else {
+            throw CodecError(.malformedInput, "HT codeword segment pass counts (\(passSum)) do not match totalPasses (\(totalPasses)).")
         }
 
-        if htSets.count > 1 && !allowMultiHT {
-            throw CodecError(.malformedInput, "Codestream contains \(htSets.count) HT sets for a code-block while CAP Ccap15 signals SINGLEHT.")
+        // Locate the first non-empty segment to determine placeholder sets `P0` (Annex B.1–B.3):
+        guard let firstNonEmptyIdx = segments.firstIndex(where: { !$0.data.isEmpty }) else {
+            // All segments have zero length (Z_blk == 0 across placeholder / empty passes):
+            return (
+                [Int64](repeating: 0, count: sampleCount),
+                [Int8](repeating: -1, count: sampleCount)
+            )
         }
 
-        // Validate every non-empty HT set's S_blk and trailer, and select the last non-empty HT set (`Z_blk > 0`)
-        // for highest-fidelity sample reconstruction (ITU-T T.814 Clause 8.3 & Annex B.3).
-        var activeSet: HTSetRecord?
-        for set in htSets where !set.cleanupData.isEmpty {
-            let sBlk = zeroBitPlanes + p0 + set.sSkip
-            guard sBlk >= 0, sBlk < kMax else {
-                throw CodecError(.malformedInput, "HTJ2K S_blk (\(sBlk)) exceeds subband K_max - 1 (\(kMax - 1)).")
-            }
-            guard HTBlockLayout.parse(block: set.cleanupData) != nil else {
-                throw CodecError(.malformedInput, "Malformed HTJ2K cleanup segment trailer (Scup/Lcup).")
-            }
-            activeSet = set
+        var passesUpToFirstCleanup = 0
+        for idx in 0...firstNonEmptyIdx {
+            passesUpToFirstCleanup += segments[idx].passes
+        }
+        guard passesUpToFirstCleanup >= 1, (passesUpToFirstCleanup - 1) % 3 == 0 else {
+            throw CodecError(
+                .malformedInput,
+                "First non-empty HT cleanup segment ends at pass \(passesUpToFirstCleanup), violating 3*P0 + 1 alignment."
+            )
+        }
+        let p0 = (passesUpToFirstCleanup - 1) / 3
+
+        struct ParsedHTSet {
+            let sSkip: Int
+            var passCount: Int
+            var cleanupBytes: [UInt8]
+            var refinementBytes: [UInt8]
         }
 
-        guard let chosen = activeSet, let parsed = HTBlockLayout.parse(block: chosen.cleanupData) else {
-            return ([Int64](repeating: 0, count: sampleCount), [Int8](repeating: -1, count: sampleCount))
-        }
-
-        let sBlk = zeroBitPlanes + p0 + chosen.sSkip
-        let zBlk: Int
-        if chosen.cleanupData.isEmpty {
-            zBlk = 0
-        } else if chosen.refinementData.isEmpty {
-            zBlk = 1
-        } else {
-            zBlk = chosen.passCountInSet // 2 (Cleanup + SigProp) or 3 (Cleanup + SigProp + MagRef)
-        }
-
-        var state = DecodeState(
-            melVlcBytes: parsed.melVlc,
-            scup: parsed.scup,
-            magsgnBytes: parsed.magsgn,
-            width: width,
-            height: height
+        var htSets: [ParsedHTSet] = []
+        var activeSet = ParsedHTSet(
+            sSkip: 0,
+            passCount: 1,
+            cleanupBytes: segments[firstNonEmptyIdx].data,
+            refinementBytes: []
         )
-        try state.decodeInitialRow()
-        var y = 2
-        while y < height {
-            try state.decodeSubsequentRow(y: y)
-            y += 2
-        }
 
-        var sigma = [Bool](repeating: false, count: sampleCount)
-        var sign = [Bool](repeating: false, count: sampleCount)
-        var muArr = [UInt64](repeating: 0, count: sampleCount)
-        for i in 0..<sampleCount {
-            let word = state.coefs[i]
-            if word != 0 {
-                sigma[i] = true
-                sign[i] = (word & 0x8000_0000) != 0
-                muArr[i] = UInt64(word & 0x7FFF_FFFF)
+        for seg in segments[(firstNonEmptyIdx + 1)...] {
+            if seg.data.isEmpty {
+                var rem = seg.passes
+                while rem > 0 {
+                    if activeSet.passCount == 3 {
+                        htSets.append(activeSet)
+                        activeSet = ParsedHTSet(
+                            sSkip: htSets.count,
+                            passCount: 0,
+                            cleanupBytes: [],
+                            refinementBytes: []
+                        )
+                    }
+                    let step = min(rem, 3 - activeSet.passCount)
+                    activeSet.passCount += step
+                    rem -= step
+                }
+            } else {
+                if activeSet.passCount == 3 {
+                    htSets.append(activeSet)
+                    activeSet = ParsedHTSet(
+                        sSkip: htSets.count,
+                        passCount: 0,
+                        cleanupBytes: [],
+                        refinementBytes: []
+                    )
+                }
+                if activeSet.passCount == 0 {
+                    guard seg.passes == 1 else {
+                        throw CodecError(.malformedInput, "Non-empty HT cleanup segment spans \(seg.passes) passes (expected 1).")
+                    }
+                    activeSet.cleanupBytes = seg.data
+                    activeSet.passCount = 1
+                } else if activeSet.passCount == 1 {
+                    guard seg.passes == 1 || seg.passes == 2 else {
+                        throw CodecError(.malformedInput, "Non-empty HT refinement segment spans \(seg.passes) passes (expected 1 or 2).")
+                    }
+                    activeSet.refinementBytes.append(contentsOf: seg.data)
+                    activeSet.passCount += seg.passes
+                } else {
+                    // activeSet.passCount == 2 (MagRef continuation segment)
+                    guard seg.passes == 1 else {
+                        throw CodecError(.malformedInput, "Non-empty HT MagRef segment spans \(seg.passes) passes (expected 1).")
+                    }
+                    activeSet.refinementBytes.append(contentsOf: seg.data)
+                    activeSet.passCount = 3
+                }
             }
         }
+        htSets.append(activeSet)
 
-        var zN = [UInt8](repeating: 0, count: sampleCount)
-        var rN = [UInt8](repeating: 0, count: sampleCount)
+        if !allowMultiHT && htSets.count > 1 {
+            throw CodecError(.malformedInput, "Multiple HT sets (\(htSets.count)) are prohibited when SINGLEHT is active.")
+        }
 
-        // Clause 7.4: HT SigProp decoding procedure (`Z_blk > 1`)
-        if zBlk >= 2 {
-            var spReader = HTSigPropReader(bytes: chosen.refinementData)
-            var sigPropSig = [Bool](repeating: false, count: sampleCount)
+        var latestCoefficients = [Int64](repeating: 0, count: sampleCount)
+        var latestPlanes = [Int8](repeating: -1, count: sampleCount)
 
-            for stripeY in stride(from: 0, to: height, by: 4) {
-                let stripeEnd = min(stripeY + 4, height)
-                for colGroup in stride(from: 0, to: width, by: 4) {
-                    let colEnd = min(colGroup + 4, width)
-                    // Step 1: decodeSigPropMag across 4-column group
-                    for x in colGroup..<colEnd {
-                        for sy in stripeY..<stripeEnd {
-                            let sampleIdx = sy * width + x
-                            if sigma[sampleIdx] { continue }
-                            let nyMin = max(0, sy - 1)
-                            let nyMax = (causal && sy == stripeEnd - 1) ? sy : min(height - 1, sy + 1)
-                            let nxMin = max(0, x - 1)
-                            let nxMax = min(width - 1, x + 1)
-                            var mbr = false
-                            outerNbr: for ny in nyMin...nyMax {
-                                let rowOff = ny * width
-                                for nx in nxMin...nxMax {
-                                    if nx == x && ny == sy { continue }
-                                    let nIdx = rowOff + nx
-                                    if sigma[nIdx] || sigPropSig[nIdx] {
-                                        mbr = true
-                                        break outerNbr
+        for htSet in htSets {
+            if htSet.cleanupBytes.isEmpty {
+                // Annex B.3: if Lcup == 0, Lref shall also be 0 and Z_blk = 0.
+                guard htSet.refinementBytes.isEmpty else {
+                    throw CodecError(.malformedInput, "HT set has non-empty refinement segment with empty cleanup segment.")
+                }
+                continue
+            }
+
+            let zBlk: Int
+            if htSet.refinementBytes.isEmpty {
+                zBlk = 1
+            } else {
+                zBlk = htSet.passCount // 2 or 3 (Annex B.3)
+            }
+
+            let sBlk = zeroBitPlanes + p0 + htSet.sSkip
+            guard sBlk <= kMax - 1 else {
+                throw CodecError(.malformedInput, "HT set S_blk (\(sBlk)) exceeds kMax - 1 (\(kMax - 1)).")
+            }
+            let cleanupShift = (kMax - 1) - sBlk
+            if zBlk >= 2 {
+                guard cleanupShift >= 1 else {
+                    throw CodecError(.malformedInput, "HT refinement pass present when cleanup already reached bit-plane 0.")
+                }
+            }
+
+            let (cleanupMag, signs) = try decodeCleanup64(
+                block: htSet.cleanupBytes,
+                width: width,
+                height: height,
+                allowedPlanes: sBlk + 1
+            )
+
+            var refinedFlag = [UInt8](repeating: 0, count: sampleCount)
+            var refinedBit = [UInt8](repeating: 0, count: sampleCount)
+            var finalSigns = signs
+
+            if zBlk >= 2 {
+                let dref = htSet.refinementBytes
+                let lref = dref.count
+                guard lref < 2047 else {
+                    throw CodecError(.malformedInput, "HT refinement segment length Lref=\(lref) exceeds 2046.")
+                }
+                if lref > 0 {
+                    guard dref[lref - 1] != 0xFF else {
+                        throw CodecError(.malformedInput, "HT refinement segment terminates with prohibited 0xFF byte.")
+                    }
+                    for i in 0..<(lref - 1) where dref[i] == 0xFF {
+                        guard dref[i + 1] <= 0x8F else {
+                            throw CodecError(.malformedInput, "Prohibited marker code > 0xFF8F inside HT refinement segment.")
+                        }
+                    }
+                }
+
+                // HT SigProp pass (Clause 7.4):
+                var spReader = SigPropBitReader(bytes: dref)
+                var stripeY = 0
+                while stripeY < height {
+                    let stripeEndY = min(stripeY + 4, height)
+                    var groupX = 0
+                    while groupX < width {
+                        let groupEndX = min(groupX + 4, width)
+
+                        for col in groupX..<groupEndX {
+                            for row in stripeY..<stripeEndY {
+                                let idx = row * width + col
+                                guard cleanupMag[idx] == 0 else { continue }
+
+                                let minNY = max(0, row - 1)
+                                let maxNY = causal ? min(stripeEndY - 1, row + 1) : min(height - 1, row + 1)
+                                let minNX = max(0, col - 1)
+                                let maxNX = min(width - 1, col + 1)
+
+                                var mbr = false
+                                neighbourCheck: for ny in minNY...maxNY {
+                                    let nRowBase = ny * width
+                                    for nx in minNX...maxNX {
+                                        if nx == col && ny == row { continue }
+                                        let nIdx = nRowBase + nx
+                                        if cleanupMag[nIdx] != 0 || refinedBit[nIdx] != 0 {
+                                            mbr = true
+                                            break neighbourCheck
+                                        }
                                     }
                                 }
-                            }
-                            if mbr {
-                                zN[sampleIdx] = 1
-                                let rBit = try spReader.importSigPropBit()
-                                rN[sampleIdx] = UInt8(rBit)
-                                if rBit == 1 {
-                                    sigPropSig[sampleIdx] = true
+
+                                if mbr {
+                                    refinedFlag[idx] = 1
+                                    refinedBit[idx] = UInt8(try spReader.readBit())
                                 }
                             }
                         }
-                    }
-                    // Step 2: decodeSigPropSign across the same 4-column group
-                    for x in colGroup..<colEnd {
-                        for sy in stripeY..<stripeEnd {
-                            let sampleIdx = sy * width + x
-                            if sigPropSig[sampleIdx] {
-                                let sBit = try spReader.importSigPropBit()
-                                sign[sampleIdx] = (sBit != 0)
+
+                        for col in groupX..<groupEndX {
+                            for row in stripeY..<stripeEndY {
+                                let idx = row * width + col
+                                if cleanupMag[idx] == 0 && refinedBit[idx] != 0 {
+                                    finalSigns[idx] = UInt8(try spReader.readBit())
+                                }
                             }
                         }
+                        groupX += 4
                     }
+                    stripeY += 4
                 }
-            }
-        }
 
-        // Clause 7.5: HT MagRef decoding procedure (`Z_blk == 3`)
-        if zBlk == 3 {
-            var mrReader = HTMagRefReader(bytes: chosen.refinementData)
-            for stripeY in stride(from: 0, to: height, by: 4) {
-                let stripeEnd = min(stripeY + 4, height)
-                for x in 0..<width {
-                    for sy in stripeY..<stripeEnd {
-                        let sampleIdx = sy * width + x
-                        if sigma[sampleIdx] {
-                            zN[sampleIdx] = 1
-                            rN[sampleIdx] = UInt8(mrReader.importMagRefBit())
+                // HT MagRef pass (Clause 7.5):
+                if zBlk == 3 {
+                    var mrReader = MagRefBitReader(bytes: dref)
+                    var mrStripeY = 0
+                    while mrStripeY < height {
+                        let mrStripeEndY = min(mrStripeY + 4, height)
+                        for col in 0..<width {
+                            for row in mrStripeY..<mrStripeEndY {
+                                let idx = row * width + col
+                                if cleanupMag[idx] != 0 {
+                                    refinedFlag[idx] = 1
+                                    refinedBit[idx] = UInt8(mrReader.readBit())
+                                }
+                            }
                         }
+                        mrStripeY += 4
                     }
                 }
             }
-        }
 
-        // Clause 7.6: Sample output values
-        let p = kMax - 1 - sBlk
-        let maxMagnitudeBound: UInt64 = (kMax >= 64) ? UInt64.max : (UInt64(1) << UInt64(kMax))
-        var output = [Int64](repeating: 0, count: sampleCount)
-        var lastPlanes = [Int8](repeating: -1, count: sampleCount)
-        for i in 0..<sampleCount {
-            let mu = muArr[i]
-            let z = Int(zN[i])
-            let r = UInt64(rN[i])
-            if mu == 0 && r == 0 { continue }
-
-            // Guard against shift overflow on untrusted `mu` + `p`
-            if mu != 0 && p > 0 {
-                let leadZeros = mu.leadingZeroBitCount
-                if p >= leadZeros {
-                    throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
+            // Reconstruct sample output values & last decoded bit-planes (Clause 7.6):
+            var setCoeffs = [Int64](repeating: 0, count: sampleCount)
+            var setPlanes = [Int8](repeating: -1, count: sampleCount)
+            for i in 0..<sampleCount {
+                var mag = cleanupMag[i] << cleanupShift
+                let z = Int(refinedFlag[i])
+                if z != 0 && cleanupShift >= 1 {
+                    mag |= UInt64(refinedBit[i]) << (cleanupShift - 1)
                 }
-            }
-            var mag: UInt64 = mu << UInt64(p)
-            if z != 0 && r != 0 {
-                if p >= 1 {
-                    mag |= r << UInt64(p - 1)
+                guard mag != 0 else { continue }
+                let lastPlane = cleanupShift - z
+                setPlanes[i] = Int8(clamping: lastPlane)
+                if midpointReconstruction && lastPlane > 0 {
+                    mag |= UInt64(1) << (lastPlane - 1)
                 }
+                let signedMag = Int64(bitPattern: mag)
+                setCoeffs[i] = finalSigns[i] != 0 ? -signedMag : signedMag
             }
-            let lastDecodedPlane = max(0, p - z)
-            lastPlanes[i] = Int8(clamping: lastDecodedPlane)
-            if midpointReconstruction && mag > 0 && lastDecodedPlane > 0 {
-                mag |= UInt64(1) << UInt64(lastDecodedPlane - 1)
-            }
-            guard mag < maxMagnitudeBound, mag <= UInt64(Int64.max) else {
-                throw CodecError(.malformedInput, "HTJ2K decoded coefficient magnitude exceeds subband K_max (\(kMax)) bound.")
-            }
-            let signedVal = Int64(bitPattern: mag)
-            output[i] = sign[i] ? -signedVal : signedVal
+
+            latestCoefficients = setCoeffs
+            latestPlanes = setPlanes
         }
-        return (output, lastPlanes)
-    }
-}
 
-private struct HTSigPropReader {
-    private let dref: [UInt8]
-    private let lref: Int
-    private var pos: Int = 0
-    private var bits: Int = 0
-    private var tmp: UInt8 = 0
-    private var last: UInt8 = 0
-
-    init(bytes: [UInt8]) {
-        self.dref = bytes
-        self.lref = bytes.count
+        return (latestCoefficients, latestPlanes)
     }
 
-    @inline(__always)
-    mutating func importSigPropBit() throws -> Int {
-        if bits == 0 {
-            bits = (last == 0xFF) ? 7 : 8
-            if pos < lref {
-                tmp = dref[pos]
-                pos += 1
-                if bits == 7 && (tmp & 0x80) != 0 {
-                    throw CodecError(.malformedInput, "Malformed HTJ2K SigProp stuffed bit after 0xFF (Clause 7.1.5).")
-                }
-            } else {
-                tmp = 0
-            }
-            last = tmp
-        }
-        let bit = Int(tmp & 1)
-        tmp >>= 1
-        bits -= 1
-        return bit
-    }
-}
+    // MARK: - 64-Bit Extended Cleanup Unpacker
 
-private struct HTMagRefReader {
-    private let dref: [UInt8]
-    private var pos: Int
-    private var bits: Int = 0
-    private var last: UInt8 = 0xFF
-    private var tmp: UInt8 = 0
-
-    init(bytes: [UInt8]) {
-        self.dref = bytes
-        self.pos = bytes.count - 1
-    }
-
-    @inline(__always)
-    mutating func importMagRefBit() -> Int {
-        if bits == 0 {
-            if pos >= 0 {
-                tmp = dref[pos]
-                pos -= 1
-            } else {
-                tmp = 0
-            }
-            bits = 8
-            if last > 0x8F && (tmp & 0x7F) == 0x7F {
-                bits = 7
-            }
-            last = tmp
-        }
-        let bit = Int(tmp & 1)
-        tmp >>= 1
-        bits -= 1
-        return bit
-    }
-}
-
-private struct DecodeState {
-    var melDec: HTMELDecoder
-    var vlcReader: VLCReverseReader
-    var magsgnDec: HTMagSgnDecoder
-    let width: Int
-    let height: Int
-    var eVal: [UInt8]
-    var cxVal: [UInt8]
-    /// Stores `(mu_p & 0x7FFF_FFFF) | (sign << 31)` for each sample.
-    var coefs: [UInt32]
-    var melRun: Int
-
-    init(
-        melVlcBytes: ArraySlice<UInt8>,
-        scup: Int,
-        magsgnBytes: ArraySlice<UInt8>,
+    private static func decodeCleanup64(
+        block: [UInt8],
         width: Int,
-        height: Int
-    ) {
-        self.melDec = HTMELDecoder(bytes: melVlcBytes)
-        self.vlcReader = VLCReverseReader(melVlcBytes: melVlcBytes, scup: scup)
-        self.magsgnDec = HTMagSgnDecoder(bytes: magsgnBytes)
-        self.width = width
-        self.height = height
-        let guarded = ((width + 3) / 4) * 2 + 2
-        self.eVal = [UInt8](repeating: 0, count: guarded)
-        self.cxVal = [UInt8](repeating: 0, count: guarded)
-        self.coefs = [UInt32](repeating: 0, count: width * height)
-        self.melRun = self.melDec.nextRun()
-    }
-
-    mutating func nextMELEvent() -> Bool {
-        melRun -= 2
-        let isOne = (melRun == -1)
-        if melRun < 0 {
-            melRun = melDec.nextRun()
+        height: Int,
+        allowedPlanes: Int
+    ) throws -> (magnitudes: [UInt64], signs: [UInt8]) {
+        let sampleCount = width * height
+        guard allowedPlanes >= 1, allowedPlanes <= maximumExtendedKMax else {
+            throw CodecError(.malformedInput, "HT cleanup allowed bit-plane count (\(allowedPlanes)) is out of bounds.")
         }
-        return isOne
-    }
+        let maxMuExclusive = UInt64(1) << allowedPlanes
 
-    @inline(__always)
-    func lookupVLC(
-        c_q: Int,
-        bits: Int,
-        initialLine: Bool
-    ) -> (rho: Int, u_off: Int, cwd_len: Int, e_k: Int, e_1: Int) {
-        let tbl = initialLine ? vlcDecoderTable0Conformant : vlcDecoderTable1Conformant
-        let idx = (c_q << 7) | (bits & 0x7F)
-        let entry = Int(tbl[idx])
-        let cwd_len = entry & 0x7
-        let u_off   = (entry >> 3) & 0x1
-        let rho     = (entry >> 4) & 0xF
-        let e_1     = (entry >> 8) & 0xF
-        let e_k     = (entry >> 12) & 0xF
-        return (rho: rho, u_off: u_off, cwd_len: cwd_len, e_k: e_k, e_1: e_1)
-    }
+        let (lcup, _, pcup) = try parseCleanupSegmentBounds(block)
+        var magSgnReader = MagSgnBitReader(block: block, pcup: pcup)
+        var melDecoder = MELSymbolDecoder(block: block, lcup: lcup, pcup: pcup)
+        var vlcReader = VLCBitReader(block: block, lcup: lcup, pcup: pcup)
 
-    mutating func readPrefix() -> Int {
-        let b0 = Int(vlcReader.read(count: 1))
-        if b0 == 1 { return 1 }
-        let b1 = Int(vlcReader.read(count: 1))
-        if b1 == 1 { return 2 }
-        let b2 = Int(vlcReader.read(count: 1))
-        if b2 == 1 { return 3 }
-        return 4
-    }
+        let qw = (width + 1) / 2
+        let qh = (height + 1) / 2
+        var magnitudes = [UInt64](repeating: 0, count: sampleCount)
+        var signs = [UInt8](repeating: 0, count: sampleCount)
 
-    mutating func decodeFromPrefix(_ len: Int) -> Int {
-        if len == 3 {
-            let suf = Int(vlcReader.read(count: 1))
-            return 3 + suf
-        }
-        if len == 4 {
-            let suf = Int(vlcReader.read(count: 5))
-            if suf < 28 { return 5 + suf }
-            let ext = Int(vlcReader.read(count: 4))
-            return 33 + (suf - 28) + 4 * ext
-        }
-        return len
-    }
+        var prevRowRho = [Int](repeating: 0, count: qw)
+        var prevRowE1 = [Int](repeating: 0, count: qw)
+        var prevRowE3 = [Int](repeating: 0, count: qw)
+        var currRowRho = [Int](repeating: 0, count: qw)
+        var currRowE1 = [Int](repeating: 0, count: qw)
+        var currRowE3 = [Int](repeating: 0, count: qw)
 
-    mutating func decodeUVLCPairInitial(u_off0: Int, u_off1: Int) -> (Int, Int) {
-        if u_off0 == 0 && u_off1 == 0 { return (0, 0) }
-        if u_off0 == 1 && u_off1 == 1 {
-            let melEvent = nextMELEvent()
-            if melEvent {
-                let p0 = readPrefix()
-                let p1 = readPrefix()
-                let s0 = decodeFromPrefix(p0)
-                let s1 = decodeFromPrefix(p1)
-                return (s0 + 2, s1 + 2)
-            }
-            let p0 = readPrefix()
-            if p0 >= 3 {
-                let bit = Int(vlcReader.read(count: 1))
-                let u0 = decodeFromPrefix(p0)
-                return (u0, bit + 1)
-            }
-            let p1 = readPrefix()
-            let u0 = decodeFromPrefix(p0)
-            let u1 = decodeFromPrefix(p1)
-            return (u0, u1)
-        }
-        let u0 = (u_off0 != 0) ? decodeFromPrefix(readPrefix()) : 0
-        let u1 = (u_off1 != 0) ? decodeFromPrefix(readPrefix()) : 0
-        return (u0, u1)
-    }
-
-    mutating func decodeUVLCPairSubsequent(u_off0: Int, u_off1: Int) -> (Int, Int) {
-        let len0 = (u_off0 != 0) ? readPrefix() : 0
-        let len1 = (u_off1 != 0) ? readPrefix() : 0
-        let u0 = (u_off0 != 0) ? decodeFromPrefix(len0) : 0
-        let u1 = (u_off1 != 0) ? decodeFromPrefix(len1) : 0
-        return (u0, u1)
-    }
-
-    mutating func decodeInitialRow() throws {
-        var lep = 0
-        var lcxp = 0
-        var c_q0 = 0
-        var x = 0
-        while x < width {
-            var rho0 = 0
-            var look0: (rho: Int, u_off: Int, cwd_len: Int, e_k: Int, e_1: Int) = (0, 0, 0, 0, 0)
-            if c_q0 == 0 {
-                if nextMELEvent() {
-                    let head = Int(vlcReader.peek(maxBits: 7))
-                    look0 = lookupVLC(c_q: c_q0, bits: head, initialLine: true)
-                    vlcReader.consume(count: look0.cwd_len)
-                    rho0 = look0.rho
-                }
-            } else {
-                let head = Int(vlcReader.peek(maxBits: 7))
-                look0 = lookupVLC(c_q: c_q0, bits: head, initialLine: true)
-                vlcReader.consume(count: look0.cwd_len)
-                rho0 = look0.rho
-            }
-
-            var rho1 = 0
-            var look1: (rho: Int, u_off: Int, cwd_len: Int, e_k: Int, e_1: Int) = (0, 0, 0, 0, 0)
-            if x + 2 < width {
-                let c_q1 = (rho0 >> 1) | (rho0 & 1)
-                if c_q1 == 0 {
-                    if nextMELEvent() {
-                        let head1 = Int(vlcReader.peek(maxBits: 7))
-                        look1 = lookupVLC(c_q: c_q1, bits: head1, initialLine: true)
-                        vlcReader.consume(count: look1.cwd_len)
-                        rho1 = look1.rho
-                    }
+        @inline(__always)
+        func decodeSigEMB(qy: Int, qx: Int, leftRho: Int) throws -> (entry: HTTables.CxtVLCDecodeEntry, maxNeighborE: Int) {
+            if qy == 0 {
+                let context: Int
+                if qx == 0 {
+                    context = 0
                 } else {
-                    let head1 = Int(vlcReader.peek(maxBits: 7))
-                    look1 = lookupVLC(c_q: c_q1, bits: head1, initialLine: true)
-                    vlcReader.consume(count: look1.cwd_len)
-                    rho1 = look1.rho
+                    let fOrSf = (leftRho & 0x03) != 0 ? 1 : 0
+                    let wAndSw = (leftRho >> 1) & 0x06
+                    context = fOrSf | wAndSw
                 }
-            }
-
-            let (u_q0, u_q1) = decodeUVLCPairInitial(
-                u_off0: rho0 != 0 ? look0.u_off : 0,
-                u_off1: rho1 != 0 ? look1.u_off : 0
-            )
-            let Uq0 = u_q0 + 1
-            let Uq1 = u_q1 + 1
-
-            try readQuadSamples(
-                baseX: x, baseY: 0,
-                rho: rho0, Uq: Uq0,
-                e_k: look0.e_k, e_1: look0.e_1
-            )
-            if x + 2 < width {
-                try readQuadSamples(
-                    baseX: x + 2, baseY: 0,
-                    rho: rho1, Uq: Uq1,
-                    e_k: look1.e_k, e_1: look1.e_1
-                )
-            }
-
-            let eQ0 = recoverEQBottomRow(rho: rho0, baseX: x, baseY: 0)
-            eVal[lep] = max(eVal[lep], UInt8(eQ0.0)); lep += 1
-            eVal[lep] = UInt8(eQ0.1)
-            cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-            cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-            if x + 2 < width {
-                let eQ1 = recoverEQBottomRow(rho: rho1, baseX: x + 2, baseY: 0)
-                eVal[lep] = max(eVal[lep], UInt8(eQ1.0)); lep += 1
-                eVal[lep] = UInt8(eQ1.1)
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-            }
-
-            c_q0 = (rho1 >> 1) | (rho1 & 1)
-            x += 4
-        }
-        if lep + 1 < eVal.count { eVal[lep + 1] = 0 }
-    }
-
-    mutating func decodeSubsequentRow(y: Int) throws {
-        var lep = 0
-        var lcxp = 0
-        var maxE = max(Int(eVal[0]), Int(eVal[1])) - 1
-        eVal[0] = 0
-        var c_q0 = Int(cxVal[0]) + (Int(cxVal[1]) << 2)
-        cxVal[0] = 0
-
-        var x = 0
-        while x < width {
-            var rho0 = 0
-            var look0: (rho: Int, u_off: Int, cwd_len: Int, e_k: Int, e_1: Int) = (0, 0, 0, 0, 0)
-            if c_q0 == 0 {
-                if nextMELEvent() {
-                    let head = Int(vlcReader.peek(maxBits: 7))
-                    look0 = lookupVLC(c_q: c_q0, bits: head, initialLine: false)
-                    vlcReader.consume(count: look0.cwd_len)
-                    rho0 = look0.rho
-                }
-            } else {
-                let head = Int(vlcReader.peek(maxBits: 7))
-                look0 = lookupVLC(c_q: c_q0, bits: head, initialLine: false)
-                vlcReader.consume(count: look0.cwd_len)
-                rho0 = look0.rho
-            }
-            let kappaA = ((rho0 & (rho0 - 1)) != 0) ? max(1, maxE) : 1
-
-            cxVal[lcxp] = cxVal[lcxp] | UInt8((rho0 & 2) >> 1); lcxp += 1
-            var c_q1 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-            cxVal[lcxp] = UInt8((rho0 & 8) >> 3)
-
-            var rho1 = 0
-            var look1: (rho: Int, u_off: Int, cwd_len: Int, e_k: Int, e_1: Int) = (0, 0, 0, 0, 0)
-            if x + 2 < width {
-                c_q1 |= ((rho0 & 4) >> 1) | ((rho0 & 8) >> 2)
-                if c_q1 == 0 {
-                    if nextMELEvent() {
-                        let head1 = Int(vlcReader.peek(maxBits: 7))
-                        look1 = lookupVLC(c_q: c_q1, bits: head1, initialLine: false)
-                        vlcReader.consume(count: look1.cwd_len)
-                        rho1 = look1.rho
+                if context == 0 {
+                    if melDecoder.decodeSymbol() == 0 {
+                        return (HTTables.CxtVLCDecodeEntry(rho: 0, uOff: 0, embKnown: 0, embOne: 0, bitLength: 0), 0)
                     }
-                } else {
-                    let head1 = Int(vlcReader.peek(maxBits: 7))
-                    look1 = lookupVLC(c_q: c_q1, bits: head1, initialLine: false)
-                    vlcReader.consume(count: look1.cwd_len)
-                    rho1 = look1.rho
                 }
-                cxVal[lcxp] = cxVal[lcxp] | UInt8((rho1 & 2) >> 1); lcxp += 1
-                c_q0 = Int(cxVal[lcxp]) + (Int(cxVal[lcxp + 1]) << 2)
-                cxVal[lcxp] = UInt8((rho1 & 8) >> 3)
-            }
-
-            let (u_q0, u_q1) = decodeUVLCPairSubsequent(
-                u_off0: rho0 != 0 ? look0.u_off : 0,
-                u_off1: rho1 != 0 ? look1.u_off : 0
-            )
-
-            let Uq0 = u_q0 + kappaA
-            try readQuadSamples(
-                baseX: x, baseY: y,
-                rho: rho0, Uq: Uq0,
-                e_k: look0.e_k, e_1: look0.e_1
-            )
-
-            let eQ0pair = recoverEQBottomRow(rho: rho0, baseX: x, baseY: y)
-            eVal[lep] = max(eVal[lep], UInt8(eQ0pair.0)); lep += 1
-            let maxEAfterQ0 = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-            eVal[lep] = UInt8(eQ0pair.1)
-
-            if x + 2 < width {
-                let kappaB = ((rho1 & (rho1 - 1)) != 0) ? max(1, maxEAfterQ0) : 1
-                let Uq1 = u_q1 + kappaB
-                try readQuadSamples(
-                    baseX: x + 2, baseY: y,
-                    rho: rho1, Uq: Uq1,
-                    e_k: look1.e_k, e_1: look1.e_1
-                )
-
-                let eQ1pair = recoverEQBottomRow(rho: rho1, baseX: x + 2, baseY: y)
-                eVal[lep] = max(eVal[lep], UInt8(eQ1pair.0)); lep += 1
-                maxE = max(Int(eVal[lep]), Int(eVal[lep + 1])) - 1
-                eVal[lep] = UInt8(eQ1pair.1)
+                let entry = try vlcReader.decodeCxtVLC(context: context, isInitialRow: true)
+                return (entry, 0)
             } else {
-                maxE = maxEAfterQ0
-            }
+                let nw = qx > 0 ? ((prevRowRho[qx - 1] >> 3) & 1) : 0
+                let n = (prevRowRho[qx] >> 1) & 1
+                let ne = (prevRowRho[qx] >> 3) & 1
+                let nf = (qx + 1 < qw) ? ((prevRowRho[qx + 1] >> 1) & 1) : 0
+                let wOrSw = qx > 0 ? (((leftRho & 0x0C) != 0) ? 1 : 0) : 0
+                let context = (nw | n) | (wOrSw << 1) | ((ne | nf) << 2)
 
-            c_q0 |= ((rho1 & 4) >> 1) | ((rho1 & 8) >> 2)
-            x += 4
-        }
-    }
+                let eNW = qx > 0 ? prevRowE3[qx - 1] : 0
+                let eN = prevRowE1[qx]
+                let eNE = prevRowE3[qx]
+                let eNF = (qx + 1 < qw) ? prevRowE1[qx + 1] : 0
+                let maxNeighborE = max(max(eNW, eN), max(eNE, eNF))
 
-    @inline(__always)
-    mutating func readQuadSamples(
-        baseX: Int,
-        baseY: Int,
-        rho: Int,
-        Uq: Int,
-        e_k: Int,
-        e_1: Int
-    ) throws {
-        if rho == 0 { return }
-        for i in 0..<4 {
-            let bit = (rho >> i) & 1
-            if bit == 0 { continue }
-            let eBit = (e_k >> i) & 1
-            let e1Bit = (e_1 >> i) & 1
-            let m = Uq - eBit
-            guard m >= 1, m <= 31 else {
-                throw CodecError(.malformedInput, "HTJ2K magnitude bit count (\(m)) is out of range.")
-            }
-            let payload = magsgnDec.read(count: m)
-            let sign = UInt32(payload & 1)
-            let mask: UInt64 = (UInt64(1) << m) - 1
-            var v_n: UInt64 = UInt64(payload) & mask
-            v_n |= UInt64(e1Bit) << m
-            v_n |= 1
-            let mu = (v_n + 2) >> 1
-            guard mu <= 0x7FFF_FFFF else {
-                throw CodecError(.malformedInput, "HTJ2K cleanup magnitude overflows 31-bit representation.")
-            }
-            let dx = i >> 1
-            let dy = i & 1
-            let xi = baseX + dx
-            let yi = baseY + dy
-            if xi >= width || yi >= height { continue }
-            var word = UInt32(mu)
-            if sign != 0 { word |= 0x8000_0000 }
-            coefs[yi * width + xi] = word
-        }
-    }
-
-    @inline(__always)
-    func recoverEQBottomRow(rho: Int, baseX: Int, baseY: Int) -> (Int, Int) {
-        if rho == 0 { return (0, 0) }
-        var eQ1 = 0
-        if (rho >> 1) & 1 != 0 {
-            let yi = baseY + 1
-            if baseX < width && yi < height {
-                let mu = coefs[yi * width + baseX] & 0x7FFF_FFFF
-                let twoMuMinusOne = (mu &<< 1) &- 1
-                eQ1 = 32 - twoMuMinusOne.leadingZeroBitCount
+                if context == 0 {
+                    if melDecoder.decodeSymbol() == 0 {
+                        return (HTTables.CxtVLCDecodeEntry(rho: 0, uOff: 0, embKnown: 0, embOne: 0, bitLength: 0), maxNeighborE)
+                    }
+                }
+                let entry = try vlcReader.decodeCxtVLC(context: context, isInitialRow: false)
+                return (entry, maxNeighborE)
             }
         }
-        var eQ3 = 0
-        if (rho >> 3) & 1 != 0 {
-            let xi = baseX + 1
-            let yi = baseY + 1
-            if xi < width && yi < height {
-                let mu = coefs[yi * width + xi] & 0x7FFF_FFFF
-                let twoMuMinusOne = (mu &<< 1) &- 1
-                eQ3 = 32 - twoMuMinusOne.leadingZeroBitCount
+
+        @inline(__always)
+        func unpackQuadSamples(
+            entry: HTTables.CxtVLCDecodeEntry,
+            u: Int,
+            maxNeighborE: Int,
+            qy: Int,
+            qx: Int
+        ) throws -> (e1: Int, e3: Int) {
+            let rho = Int(entry.rho)
+            guard rho != 0 else { return (0, 0) }
+
+            let x0 = qx * 2
+            let y0 = qy * 2
+            var invalidMask = 0
+            if x0 + 1 >= width { invalidMask |= 0b1100 }
+            if y0 + 1 >= height { invalidMask |= 0b1010 }
+            guard (rho & invalidMask) == 0 else {
+                throw CodecError(.malformedInput, "Non-zero significance decoded in padded HT quad sample.")
             }
-        }
-        return (eQ1, eQ3)
-    }
-}
 
-private struct VLCReverseReader {
-    private let melVlcBytes: ArraySlice<UInt8>
-    private let bytesStart: Int
-    private var byteIdx: Int
-    private var tmp: UInt64 = 0
-    private var bits: Int = 0
-    private var unstuff: Bool = false
-
-    init(melVlcBytes: ArraySlice<UInt8>, scup: Int) {
-        self.melVlcBytes = melVlcBytes
-        self.bytesStart = melVlcBytes.startIndex
-        self.byteIdx = scup - 2
-        if byteIdx >= 0 {
-            let b = melVlcBytes[bytesStart + byteIdx]
-            let highNibble = UInt64(b >> 4)
-            let t = ((highNibble & 0x7) == 0x7) ? UInt64(1) : UInt64(0)
-            let val = highNibble & (0xF >> t)
-            tmp = val
-            bits = Int(4 - t)
-            unstuff = val > 0x8
-            byteIdx -= 1
-        }
-    }
-
-    @inline(__always)
-    mutating func refillScalar() {
-        while bits <= 32 {
-            let byte: UInt8
-            if byteIdx >= 0 {
-                byte = melVlcBytes[bytesStart + byteIdx]
-                byteIdx -= 1
+            let kappa: Int
+            if qy == 0 {
+                kappa = 1
             } else {
-                byte = 0
+                let gamma = entry.rho.nonzeroBitCount > 1 ? 1 : 0
+                kappa = max(1, gamma * (maxNeighborE - 1))
             }
-            let t: Int = (unstuff && (Int(byte) & 0x7F) == 0x7F) ? 1 : 0
-            let dBits = 8 - t
-            let mask: UInt8 = (t == 1) ? 0x7F : 0xFF
-            let value = UInt64(byte & mask)
-            tmp |= value << bits
-            bits += dBits
-            unstuff = (byte > 0x8F)
+            let upperU = kappa + u
+            guard upperU <= maximumExtendedKMax else {
+                throw CodecError(.malformedInput, "HT quad exponent bound U_q (\(upperU)) exceeds 62-bit extended range.")
+            }
+
+            let known = Int(entry.embKnown)
+            let knownOne = Int(entry.embOne)
+            var e1 = 0
+            var e3 = 0
+
+            for j in 0..<4 where (rho & (1 << j)) != 0 {
+                let m = upperU - ((known >> j) & 1)
+                guard m >= 1, m <= maximumExtendedKMax else {
+                    throw CodecError(.malformedInput, "Invalid HT MagSgn bit count m_n=\(m).")
+                }
+                let iFlag = UInt64((knownOne >> j) & 1)
+                let v = (try magSgnReader.readBits(m)) + (iFlag << m)
+                let mu = (v >> 1) + 1
+                guard mu < maxMuExclusive else {
+                    throw CodecError(.malformedInput, "Decoded HT cleanup magnitude exceeds subband bit-plane bound.")
+                }
+                let dstX = x0 + (j >> 1)
+                let dstY = y0 + (j & 1)
+                let dstIdx = dstY * width + dstX
+                magnitudes[dstIdx] = mu
+                signs[dstIdx] = UInt8(v & 1)
+
+                if j == 1 || j == 3 {
+                    let twoMuMinusOne = (mu << 1) - 1
+                    let exp = 64 - twoMuMinusOne.leadingZeroBitCount
+                    if j == 1 { e1 = exp } else { e3 = exp }
+                }
+            }
+            return (e1, e3)
         }
-    }
 
-    @inline(__always)
-    mutating func peek(maxBits: Int) -> UInt64 {
-        if bits < maxBits { refillScalar() }
-        let m: UInt64 = (maxBits >= 64) ? ~UInt64(0) : ((UInt64(1) << maxBits) - 1)
-        return tmp & m
-    }
+        for qy in 0..<qh {
+            var leftRho = 0
+            var qx = 0
+            while qx < qw {
+                let (entry1, maxNE1) = try decodeSigEMB(qy: qy, qx: qx, leftRho: leftRho)
+                leftRho = Int(entry1.rho)
+                currRowRho[qx] = leftRho
 
-    @inline(__always)
-    mutating func read(count: Int) -> UInt64 {
-        if bits < count { refillScalar() }
-        let m: UInt64 = (count >= 64) ? ~UInt64(0) : ((UInt64(1) << count) - 1)
-        let v = tmp & m
-        tmp >>= count
-        bits -= count
-        return v
-    }
+                if qx + 1 < qw {
+                    let (entry2, maxNE2) = try decodeSigEMB(qy: qy, qx: qx + 1, leftRho: leftRho)
+                    leftRho = Int(entry2.rho)
+                    currRowRho[qx + 1] = leftRho
 
-    @inline(__always)
-    mutating func consume(count: Int) {
-        tmp >>= count
-        bits -= count
+                    var u1 = 0
+                    var u2 = 0
+                    if qy == 0 && entry1.uOff == 1 && entry2.uOff == 1 {
+                        let jointMel = melDecoder.decodeSymbol()
+                        if jointMel == 1 {
+                            let pfx1 = try vlcReader.decodeUPrefix()
+                            let pfx2 = try vlcReader.decodeUPrefix()
+                            let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                            let sfx2 = try vlcReader.decodeUSuffix(prefix: pfx2)
+                            let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                            let ext2 = try vlcReader.decodeUExtension(suffix: sfx2)
+                            u1 = 2 + pfx1 + sfx1 + 4 * ext1
+                            u2 = 2 + pfx2 + sfx2 + 4 * ext2
+                        } else {
+                            let pfx1 = try vlcReader.decodeUPrefix()
+                            let pfx2: Int
+                            if pfx1 > 2 {
+                                pfx2 = (try vlcReader.readBits(1)) + 1
+                            } else {
+                                pfx2 = try vlcReader.decodeUPrefix()
+                            }
+                            let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                            let sfx2 = try vlcReader.decodeUSuffix(prefix: pfx2)
+                            let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                            let ext2 = try vlcReader.decodeUExtension(suffix: sfx2)
+                            u1 = pfx1 + sfx1 + 4 * ext1
+                            u2 = pfx2 + sfx2 + 4 * ext2
+                        }
+                    } else {
+                        let pfx1 = entry1.uOff == 1 ? (try vlcReader.decodeUPrefix()) : 0
+                        let pfx2 = entry2.uOff == 1 ? (try vlcReader.decodeUPrefix()) : 0
+                        let sfx1 = entry1.uOff == 1 ? (try vlcReader.decodeUSuffix(prefix: pfx1)) : 0
+                        let sfx2 = entry2.uOff == 1 ? (try vlcReader.decodeUSuffix(prefix: pfx2)) : 0
+                        let ext1 = entry1.uOff == 1 ? (try vlcReader.decodeUExtension(suffix: sfx1)) : 0
+                        let ext2 = entry2.uOff == 1 ? (try vlcReader.decodeUExtension(suffix: sfx2)) : 0
+                        u1 = pfx1 + sfx1 + 4 * ext1
+                        u2 = pfx2 + sfx2 + 4 * ext2
+                    }
+
+                    let exps1 = try unpackQuadSamples(entry: entry1, u: u1, maxNeighborE: maxNE1, qy: qy, qx: qx)
+                    let exps2 = try unpackQuadSamples(entry: entry2, u: u2, maxNeighborE: maxNE2, qy: qy, qx: qx + 1)
+                    currRowE1[qx] = exps1.e1
+                    currRowE3[qx] = exps1.e3
+                    currRowE1[qx + 1] = exps2.e1
+                    currRowE3[qx + 1] = exps2.e3
+                    qx += 2
+                } else {
+                    var u1 = 0
+                    if entry1.uOff == 1 {
+                        let pfx1 = try vlcReader.decodeUPrefix()
+                        let sfx1 = try vlcReader.decodeUSuffix(prefix: pfx1)
+                        let ext1 = try vlcReader.decodeUExtension(suffix: sfx1)
+                        u1 = pfx1 + sfx1 + 4 * ext1
+                    }
+                    let exps1 = try unpackQuadSamples(entry: entry1, u: u1, maxNeighborE: maxNE1, qy: qy, qx: qx)
+                    currRowE1[qx] = exps1.e1
+                    currRowE3[qx] = exps1.e3
+                    qx += 1
+                }
+            }
+            swap(&prevRowRho, &currRowRho)
+            swap(&prevRowE1, &currRowE1)
+            swap(&prevRowE3, &currRowE3)
+        }
+
+        return (magnitudes, signs)
     }
 }
