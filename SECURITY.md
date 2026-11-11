@@ -1,6 +1,6 @@
 # Security policy and implementation requirements
 
-Status: active (`SwiftJ2K v12.1.0` released 6 November 2026; see [Documentation/RELEASE-v12.1.0.md](Documentation/RELEASE-v12.1.0.md)). No vulnerability response-time SLA is promised here. The supported-version policy below applies to the `12.1.x` stable line.
+Status: active (`SwiftJ2K v12.2.0` released 11 November 2026, following `v12.1.0` on 6 November 2026; see [Documentation/RELEASE-v12.2.0.md](Documentation/RELEASE-v12.2.0.md) and [Documentation/RELEASE-v12.1.0.md](Documentation/RELEASE-v12.1.0.md)). No vulnerability response-time SLA is promised here. The supported-version policy below applies to the `12.2.x` stable line.
 
 ## Reporting
 
@@ -14,9 +14,10 @@ Checked on **6 November 2026** through the GitHub API (`gh api repos/raster-labs
 
 | Version | Status |
 | --- | --- |
-| `12.1.x` (`v12.1.0`, active stable line) | Receives correctness and security fixes on `main`, released as patch versions, for the stable 2D `SwiftJ2K` codec and 2D `swiftj2k-cli` scope (`SwiftJ2K3D` and `SwiftJ2KJPIP` are experimental preview products in `12.1.0`, scheduled for full qualification in `12.2.0`) |
-| `12.1.0-dev.*` development identifiers | No support; superseded by `v12.1.0` |
-| Predecessor J2KSwift | Maintenance window under contract revision 0.8.0 item 6: security and correctness fixes only, in the predecessor repository, until its last in-house consumer (including JP3D/JPIP consumers awaiting `SwiftJ2K 12.2.0` and pre-OS 26 targets) has moved |
+| `12.2.x` (`v12.2.0`, active stable line) | Receives correctness and security fixes on `main`, released as patch versions, across `SwiftJ2K`, `SwiftJ2K3D`, `SwiftJ2KJPIP`, and `swiftj2k-cli` ([Documentation/RELEASE-v12.2.0.md](Documentation/RELEASE-v12.2.0.md)) |
+| `12.1.x` (`v12.1.0`, superseded by `v12.2.0`) | Superseded by `v12.2.0`; upgrade to `from: "12.2.0"` |
+| `12.1.0-dev.*` development identifiers | No support; superseded by `v12.1.0` and `v12.2.0` |
+| Predecessor J2KSwift | Maintenance window under contract revision 0.8.0 item 6: security and correctness fixes only, in the predecessor repository, until its last in-house consumer (including pre-OS 26 targets) has moved |
 
 A report against an unsupported version is still welcome; it will be reproduced on `main` first.
 
