@@ -260,6 +260,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
     private var taskCompleted = false
     private var invalidated = false
     private var receivedChunkCount = 0
+    private var activeCancelCount = 0
     private let completion = JPIPRequestCompletion()
     private let phaseLog: JPIPHTTPSPhaseLog
     private let deinitObserver: (@Sendable () -> Void)?
@@ -288,7 +289,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
 
     package var hasActiveOwners: Bool {
         lock.lock(); defer { lock.unlock() }
-        return session != nil || task != nil || continuation != nil || buffer != nil || pendingStartupConfiguration != nil
+        return session != nil || task != nil || continuation != nil || buffer != nil || pendingStartupConfiguration != nil || activeCancelCount > 0
     }
 
     package var receivedBodyBytes: Int {
@@ -476,10 +477,23 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
             taskCompleted = true
             invalidated = true
         }
+        activeCancelCount += 1
         lock.unlock()
         phaseLog.record("cancel(latched=\(latched),hasTask=\(capturedTask != nil),neverStarted=\(neverStarted),error=\(type(of: error)))")
         capturedTask?.cancel()
         phaseLog.record("cancel.returned(hasTask=\(capturedTask != nil))")
+        lock.lock()
+        activeCancelCount -= 1
+        let currentSession = session
+        let signal = releaseIfFinishedLocked()
+        lock.unlock()
+        if let currentSession {
+            resume(signal, afterCallbacksOn: currentSession)
+        } else if let signal {
+            phaseLog.record("queue.tail")
+            completion.finish()
+            signal.resume()
+        }
         if neverStarted { completion.finish() }
     }
 
@@ -578,7 +592,7 @@ package final class JPIPHTTPSRequest: NSObject, URLSessionDataDelegate, JPIPTran
     }
 
     private func releaseIfFinishedLocked() -> CheckedContinuation<Void, Never>? {
-        guard taskCompleted, invalidated else { return nil }
+        guard taskCompleted, invalidated, activeCancelCount == 0 else { return nil }
         let signal = continuation
         continuation = nil
         session = nil
