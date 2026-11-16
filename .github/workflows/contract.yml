@@ -310,6 +310,11 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build/ios-evidence/xcodebuild-build.log
           rm -rf .swiftpm
+      - name: Boot iOS Simulator and wait for readiness
+        run: |
+          set -euo pipefail
+          xcrun simctl boot "${{ steps.select_simulator.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.select_simulator.outputs.udid }}" -b
       - name: Preflight and verify iOS Simulator test selection without executing tests
         id: ios_preflight
         run: |
@@ -470,16 +475,35 @@ jobs:
               }
 
           def run_enumeration(out_json: Path, log_path: Path, filter_args: list[str]) -> None:
-              if out_json.exists():
-                  out_json.unlink()
-              cmd = base_cmd + ["-test-enumeration-output-path", str(out_json)] + filter_args
-              print("+ " + " ".join(cmd), flush=True)
-              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
-              log_path.write_text(proc.stdout, encoding="utf-8")
-              sys.stdout.write(proc.stdout)
-              sys.stdout.flush()
-              if proc.returncode != 0 or not out_json.exists():
-                  raise RuntimeError(f"xcodebuild -enumerate-tests failed (exit {proc.returncode}) for {out_json}")
+              last_error = ""
+              for attempt in range(1, 4):
+                  if out_json.exists():
+                      out_json.unlink()
+                  subprocess.run(["xcrun", "simctl", "boot", udid], check=False)
+                  subprocess.run(["xcrun", "simctl", "bootstatus", udid, "-b"], check=True)
+                  cmd = base_cmd + ["-test-enumeration-output-path", str(out_json)] + filter_args
+                  print(f"+ [attempt {attempt}/3] " + " ".join(cmd), flush=True)
+                  proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
+                  log_path.write_text(proc.stdout, encoding="utf-8")
+                  sys.stdout.write(proc.stdout)
+                  sys.stdout.flush()
+                  if proc.returncode != 0 or not out_json.exists():
+                      last_error = f"xcodebuild -enumerate-tests failed (exit {proc.returncode}) for {out_json}"
+                  else:
+                      try:
+                          payload = json.loads(out_json.read_text(encoding="utf-8"))
+                      except Exception as exc:
+                          last_error = f"Enumeration JSON malformed on attempt {attempt}: {exc}"
+                      else:
+                          errs = payload.get("errors") if isinstance(payload, dict) else None
+                          if errs:
+                              last_error = f"Enumeration JSON reported errors on attempt {attempt}: {errs!r}"
+                          else:
+                              return
+                  print(f"Retrying enumeration after transient simulator bootstrap error: {last_error}", flush=True)
+                  if attempt < 3:
+                      subprocess.run(["xcrun", "simctl", "shutdown", udid], check=False)
+              raise RuntimeError(last_error)
 
           verified_json = ROOT / "ios-enumeration-verified.json"
           verified_log = ROOT / "xcodebuild-enumerate-verified.log"
