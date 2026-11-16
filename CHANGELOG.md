@@ -1,5 +1,11 @@
 # Change log
 
+## 12.3.1 — 2026-11-16
+
+Patch release of `SwiftJ2K` (`v12.3.1`, `VERSION` `12.3.1`, shared contract `0.11.0`, MIT licence), restoring Swift `6.2` / `6.3.3` (`Xcode 26.6`) strict `sending` closure compatibility in `BoundedParallelPool.forEachAsync` while keeping published tag `v12.3.0` immutable ([Documentation/RELEASE-v12.3.1.md](Documentation/RELEASE-v12.3.1.md)):
+
+- **Swift `6.2` / `6.3.3` (`Xcode 26.6`) `sending` closure compatibility (`Sources/SwiftJ2K/Codec/BoundedParallelPool.swift`).** Encapsulate `forEachAsync`'s `~Copyable` `Atomic<Int>` cursor and `Atomic<Bool>` abort flag inside a `Sendable` reference box (`AsyncWorkState`), eliminating `#SendingClosureRisksDataRace` on pre-6.4 Swift 6 compilers (`Xcode 26.6` / Swift `6.3.3` hosted CI and `swift-tools-version: 6.2` consumers).
+
 ## 12.3.0 — 2026-11-16
 
 Feature and performance release of `SwiftJ2K` (`v12.3.0`, `VERSION` `12.3.0`, shared contract `0.11.0`, MIT licence, Apple OS `26.0` deployment floor, Swift `6.2` tools minimum / Swift `6.4` qualified in Swift `6` language mode), delivering bounded intra-tile / multi-tile code-block parallelism, zero-task-spawn synchronous fast paths, reduced-resolution subband decode, multi-candidate HTJ2K PCRD rate allocation, and vectorised SIMD/Accelerate (`vDSP`) + allocation-free Tier-1 EBCOT / MQ / HTJ2K / DWT / RCT / ICT hot paths ([Documentation/RELEASE-v12.3.0.md](Documentation/RELEASE-v12.3.0.md)):

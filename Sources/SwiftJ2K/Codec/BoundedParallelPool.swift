@@ -288,6 +288,11 @@ internal enum BoundedParallelPool {
         try Task.checkCancellation()
     }
 
+    private final class AsyncWorkState: Sendable {
+        let cursor = Atomic<Int>(0)
+        let abortFlag = Atomic<Bool>(false)
+    }
+
     /// Executes `0..<jobCount` across at most `maxWorkers` child tasks using Swift Structured
     /// Concurrency (`withThrowingTaskGroup`), automatically propagating `@TaskLocal` values and
     /// cooperative task cancellation.
@@ -307,21 +312,20 @@ internal enum BoundedParallelPool {
         }
 
         try Task.checkCancellation()
-        let cursor = Atomic<Int>(0)
-        let abortFlag = Atomic<Bool>(false)
+        let state = AsyncWorkState()
 
         try await $isInsideParallelRegion.withValue(true) {
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for workerIndex in 0..<workers {
-                    group.addTask {
-                        while !abortFlag.load(ordering: .relaxed) {
+                    group.addTask { [state] in
+                        while !state.abortFlag.load(ordering: .relaxed) {
                             try Task.checkCancellation()
-                            let job = cursor.wrappingAdd(1, ordering: .relaxed).oldValue
+                            let job = state.cursor.wrappingAdd(1, ordering: .relaxed).oldValue
                             if job >= jobCount { break }
                             do {
                                 try body(job, workerIndex)
                             } catch {
-                                abortFlag.store(true, ordering: .releasing)
+                                state.abortFlag.store(true, ordering: .releasing)
                                 throw error
                             }
                         }
@@ -330,7 +334,7 @@ internal enum BoundedParallelPool {
                 do {
                     try await group.waitForAll()
                 } catch {
-                    abortFlag.store(true, ordering: .releasing)
+                    state.abortFlag.store(true, ordering: .releasing)
                     group.cancelAll()
                     throw error
                 }
