@@ -245,7 +245,8 @@ enum JP2Container {
     static func inspectReconciled(
         _ bytes: [UInt8],
         limits: ResourceLimits,
-        metadataPolicy: MetadataPolicy
+        metadataPolicy: MetadataPolicy,
+        resolutionReductionLevels: Int = 0
     ) throws -> ReconciledContainerProfile {
         let container = try parse(bytes, limits: limits, metadataPolicy: metadataPolicy)
         if let rreq = container.readerRequirements {
@@ -478,10 +479,11 @@ enum JP2Container {
         let roles = permutation.map { sourceRoles[$0] }
         let channelPermutation: [Int]? = permutation == Array(0..<outputComponentCount) ? nil : permutation
 
+        let (outWidth, outHeight) = part1.reducedDimensions(reductionLevels: resolutionReductionLevels)
         let storageBits = (outputPrecision <= 8 && !(outputComponentCount == 1 && !outputSigned)) ? 8 : 16
         let sampleBytes = storageBits / 8
-        let rowBytes = try checkedMultiply(part1.width, sampleBytes)
-        let planeBytes = try checkedMultiply(rowBytes, part1.height)
+        let rowBytes = try checkedMultiply(outWidth, sampleBytes)
+        let planeBytes = try checkedMultiply(rowBytes, outHeight)
         var planes: [PlaneDescriptor] = []
         planes.reserveCapacity(outputComponentCount)
         for index in 0..<outputComponentCount {
@@ -489,8 +491,8 @@ enum JP2Container {
             let planeEnd = try checkedAdd(planeOffset, planeBytes)
             planes.append(
                 try PlaneDescriptor(
-                    width: part1.width,
-                    height: part1.height,
+                    width: outWidth,
+                    height: outHeight,
                     components: [index],
                     offset: planeOffset,
                     sampleStride: sampleBytes,
@@ -502,8 +504,8 @@ enum JP2Container {
         }
 
         let descriptor = try ImageDescriptor(
-            width: part1.width,
-            height: part1.height,
+            width: outWidth,
+            height: outHeight,
             sampleType: outputSigned ? .signedInteger : .unsignedInteger,
             storageBits: storageBits,
             meaningfulBits: outputPrecision,
@@ -621,7 +623,8 @@ enum JP2Container {
         into destination: ImageDestination,
         options: DecodeOptions,
         allocations: Int,
-        maxQualityLayers: Int? = nil
+        maxQualityLayers: Int? = nil,
+        resolutionReductionLevels: Int = 0
     ) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
@@ -649,7 +652,10 @@ enum JP2Container {
         let codecLimits = try containerCodecLimits(reconciled: reconciled, limits: options.resourceLimits)
         let sealedImage: Image
 
-        let ((rawImage, peakWorkspace), execEngine) = try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) { () throws -> (Image, Int) in
+        let ((rawImage, peakWorkspace), execEngine) = try AcceleratedCodec.withExecutionScope(
+            resolved: resolvedBackend,
+            workers: options.resourceLimits.maximumWorkers
+        ) { () throws -> (Image, Int) in
             if let losslessProfile = scalarDecodeProfile(
                 reconciled: reconciled, descriptor: destDesc, codecLimits: codecLimits,
                 metadataPolicy: options.metadataPolicy, maxQualityLayers: maxQualityLayers
@@ -660,7 +666,8 @@ enum JP2Container {
                     into: destination,
                     limits: codecLimits,
                     backend: resolvedBackend.backend,
-                    progress: options.progress
+                    progress: options.progress,
+                    resolutionReductionLevels: resolutionReductionLevels
                 )
             } else {
                 return try Part1Pipeline.decode(
@@ -672,7 +679,8 @@ enum JP2Container {
                     progress: options.progress,
                     paletteMapping: reconciled.paletteMapping,
                     channelPermutation: reconciled.channelPermutation,
-                    maxQualityLayers: maxQualityLayers
+                    maxQualityLayers: maxQualityLayers,
+                    resolutionReductionLevels: resolutionReductionLevels
                 )
             }
         }
@@ -692,7 +700,8 @@ enum JP2Container {
         } else {
             hasReducedLayers = false
         }
-        let fidelity: Fidelity = (reconciled.part1Profile.isReversibleLossless && !hasReducedLayers) ? .exactSamples : .lossy
+        let effectiveReduction = reconciled.part1Profile.effectiveReductionLevels(reductionLevels: resolutionReductionLevels)
+        let fidelity: Fidelity = (reconciled.part1Profile.isReversibleLossless && !hasReducedLayers && effectiveReduction == 0) ? .exactSamples : .lossy
         let report = OperationReport(
             backend: resolvedBackend.backend,
             fallbackReason: resolvedBackend.fallbackReason,

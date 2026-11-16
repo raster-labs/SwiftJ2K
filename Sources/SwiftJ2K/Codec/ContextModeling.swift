@@ -24,6 +24,7 @@ package enum CoefficientFlag {
     package static let visited: UInt8 = 1 << 1      // coded in the current bit-plane
     package static let negative: UInt8 = 1 << 2     // sign of a significant coefficient
     package static let refined: UInt8 = 1 << 3      // has had a magnitude-refinement bit
+    package static let hasSigNeighbor: UInt8 = 1 << 4 // at least one 8-neighbour is significant
 }
 
 /// Context labels. Only the grouping matters to the bitstream; the numbers

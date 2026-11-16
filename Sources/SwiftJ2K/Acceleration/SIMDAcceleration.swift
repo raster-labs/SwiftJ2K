@@ -20,133 +20,225 @@ import Foundation
 internal enum SIMDWavelet53 {
     @inline(__always)
     private static func extendedIndex(i0: Int, n: Int, at i: Int) -> Int {
-        var k = i - i0
+        let k = i - i0
+        if k >= 0 && k < n { return k }
         if n == 1 { return 0 }
+        if k == -1 { return 1 }
+        if k == n { return n - 2 }
         let period = 2 * (n - 1)
-        k = ((k % period) + period) % period
-        if k >= n { k = period - k }
-        return k
+        var m = ((k % period) + period) % period
+        if m >= n { m = period - m }
+        return m
     }
 
-    /// 4-lane `SIMD4<Int32>` 1D analysis over `[i0, i0 + n)`.
-    internal static func analyse4(
-        _ x: [SIMD4<Int32>],
+    /// 4-lane `SIMD4<Int32>` 1D analysis over `[i0, i0 + n)` using raw scratch pointers.
+    @inline(__always)
+    private static func analyse4Ptr(
+        xp: UnsafePointer<SIMD4<Int32>>,
         i0: Int,
         count n: Int,
-        into low: inout [SIMD4<Int32>],
-        _ high: inout [SIMD4<Int32>],
-        oddScratch: inout [SIMD4<Int32>]
+        lp: UnsafeMutablePointer<SIMD4<Int32>>,
+        hp: UnsafeMutablePointer<SIMD4<Int32>>,
+        op: UnsafeMutablePointer<SIMD4<Int32>>
     ) {
         let i1 = i0 + n
         if n == 1 {
             if i0 & 1 == 0 {
-                low[0] = x[0]
+                lp[0] = xp[0]
             } else {
-                high[0] = x[0] &* 2
+                hp[0] = xp[0] &* 2
             }
             return
         }
+
         let firstOdd = (i0 - 1) | 1
         let lastOdd = ((i1 + 1) & ~1) - 1
         var oddIdx = 0
         var i = firstOdd
+        while i <= lastOdd && i - 1 < i0 {
+            let left = xp[extendedIndex(i0: i0, n: n, at: i - 1)]
+            let right = xp[extendedIndex(i0: i0, n: n, at: i + 1)]
+            let center = xp[extendedIndex(i0: i0, n: n, at: i)]
+            op[oddIdx] = center &- ((left & right) &+ ((left ^ right) &>> 1))
+            oddIdx &+= 1
+            i &+= 2
+        }
+        let interiorEnd = min(lastOdd, i1 - 2)
+        while i <= interiorEnd {
+            let rel = i - i0
+            let left = xp[rel - 1]
+            let center = xp[rel]
+            let right = xp[rel + 1]
+            op[oddIdx] = center &- ((left & right) &+ ((left ^ right) &>> 1))
+            oddIdx &+= 1
+            i &+= 2
+        }
         while i <= lastOdd {
-            let left = x[extendedIndex(i0: i0, n: n, at: i - 1)]
-            let right = x[extendedIndex(i0: i0, n: n, at: i + 1)]
-            let center = x[extendedIndex(i0: i0, n: n, at: i)]
-            let sum64 = SIMD4<Int64>(truncatingIfNeeded: left) &+ SIMD4<Int64>(truncatingIfNeeded: right)
-            let half = SIMD4<Int32>(truncatingIfNeeded: sum64 &>> 1)
-            oddScratch[oddIdx] = center &- half
-            oddIdx += 1
-            i += 2
+            let left = xp[extendedIndex(i0: i0, n: n, at: i - 1)]
+            let right = xp[extendedIndex(i0: i0, n: n, at: i + 1)]
+            let center = xp[extendedIndex(i0: i0, n: n, at: i)]
+            op[oddIdx] = center &- ((left & right) &+ ((left ^ right) &>> 1))
+            oddIdx &+= 1
+            i &+= 2
         }
 
-        @inline(__always)
-        func oddY(_ coordinate: Int) -> SIMD4<Int32> {
-            oddScratch[(coordinate - firstOdd) / 2]
-        }
-
-        let two64 = SIMD4<Int64>(repeating: 2)
-        var lowIndex = 0
-        var highIndex = 0
-        for coordinate in i0..<i1 {
-            if coordinate & 1 == 0 {
-                let oL = SIMD4<Int64>(truncatingIfNeeded: oddY(coordinate - 1))
-                let oR = SIMD4<Int64>(truncatingIfNeeded: oddY(coordinate + 1))
-                let quarter = SIMD4<Int32>(truncatingIfNeeded: (oL &+ oR &+ two64) &>> 2)
-                low[lowIndex] = x[coordinate - i0] &+ quarter
-                lowIndex += 1
-            } else {
-                high[highIndex] = oddY(coordinate)
-                highIndex += 1
+        let two32 = SIMD4<Int32>(repeating: 2)
+        let pairs = n >> 1
+        if i0 & 1 == 0 {
+            let lowCount = (n + 1) >> 1
+            for k in 0..<lowCount {
+                lp[k] = xp[2 * k] &+ ((op[k] &+ op[k + 1] &+ two32) &>> 2)
+            }
+            if pairs > 0 {
+                hp.update(from: op.advanced(by: 1), count: pairs)
+            }
+        } else {
+            let highCount = (n + 1) >> 1
+            if highCount > 0 {
+                hp.update(from: op, count: highCount)
+            }
+            for k in 0..<pairs {
+                lp[k] = xp[2 * k + 1] &+ ((op[k] &+ op[k + 1] &+ two32) &>> 2)
             }
         }
     }
 
-    /// 4-lane `SIMD4<Int32>` 1D synthesis over `[i0, i0 + n)` with 64-bit overflow checking.
-    internal static func synthesise4(
-        low: [SIMD4<Int32>],
-        high: [SIMD4<Int32>],
+    /// 4-lane `SIMD4<Int32>` 1D synthesis over `[i0, i0 + n)` with exact 64-bit overflow checking.
+    @inline(__always)
+    private static func synthesise4Ptr(
+        lp: UnsafePointer<SIMD4<Int32>>,
+        hp: UnsafePointer<SIMD4<Int32>>,
         i0: Int,
         count n: Int,
-        into x: inout [SIMD4<Int32>],
-        yScratch: inout [SIMD4<Int32>],
-        evenScratch: inout [SIMD4<Int32>]
+        xp: UnsafeMutablePointer<SIMD4<Int32>>,
+        yp: UnsafeMutablePointer<SIMD4<Int32>>,
+        ep: UnsafeMutablePointer<SIMD4<Int32>>
     ) throws {
         let i1 = i0 + n
         if n == 1 {
             if i0 & 1 == 0 {
-                x[0] = low[0]
+                xp[0] = lp[0]
             } else {
-                let v = high[0]
-                x[0] = SIMD4<Int32>(v[0] / 2, v[1] / 2, v[2] / 2, v[3] / 2)
+                let v = hp[0]
+                xp[0] = SIMD4<Int32>(v[0] / 2, v[1] / 2, v[2] / 2, v[3] / 2)
             }
             return
         }
 
-        var lowIndex = 0
-        var highIndex = 0
-        for coordinate in i0..<i1 {
-            if coordinate & 1 == 0 {
-                yScratch[coordinate - i0] = low[lowIndex]
-                lowIndex += 1
-            } else {
-                yScratch[coordinate - i0] = high[highIndex]
-                highIndex += 1
+        let pairs = n >> 1
+        var magOr = SIMD4<Int32>.zero
+        if i0 & 1 == 0 {
+            for k in 0..<pairs {
+                let v0 = lp[k]
+                let v1 = hp[k]
+                yp[2 * k] = v0
+                yp[2 * k + 1] = v1
+                magOr |= (v0 ^ (v0 &>> 31)) | (v1 ^ (v1 &>> 31))
+            }
+            if (n & 1) != 0 {
+                let v0 = lp[pairs]
+                yp[n - 1] = v0
+                magOr |= (v0 ^ (v0 &>> 31))
+            }
+        } else {
+            for k in 0..<pairs {
+                let v0 = hp[k]
+                let v1 = lp[k]
+                yp[2 * k] = v0
+                yp[2 * k + 1] = v1
+                magOr |= (v0 ^ (v0 &>> 31)) | (v1 ^ (v1 &>> 31))
+            }
+            if (n & 1) != 0 {
+                let v0 = hp[pairs]
+                yp[n - 1] = v0
+                magOr |= (v0 ^ (v0 &>> 31))
             }
         }
 
         let firstEven = (i0 - 1) & ~1
         let lastEven = i1 & ~1
+
+        // Fast pure-Int32 NEON path when all input lanes are within `[-2^28, 2^28 - 1]`,
+        // which guarantees zero intermediate or output 32-bit overflow.
+        let combinedOr = magOr[0] | magOr[1] | magOr[2] | magOr[3]
+        if combinedOr < 0x1000_0000 {
+            let two32 = SIMD4<Int32>(repeating: 2)
+            var evenIdx = 0
+            var i = firstEven
+            while i <= lastEven && i - 1 < i0 {
+                let left = yp[extendedIndex(i0: i0, n: n, at: i - 1)]
+                let right = yp[extendedIndex(i0: i0, n: n, at: i + 1)]
+                let center = yp[extendedIndex(i0: i0, n: n, at: i)]
+                ep[evenIdx] = center &- ((left &+ right &+ two32) &>> 2)
+                evenIdx &+= 1
+                i &+= 2
+            }
+            let interiorEnd = min(lastEven, i1 - 2)
+            while i <= interiorEnd {
+                let rel = i - i0
+                ep[evenIdx] = yp[rel] &- ((yp[rel - 1] &+ yp[rel + 1] &+ two32) &>> 2)
+                evenIdx &+= 1
+                i &+= 2
+            }
+            while i <= lastEven {
+                let left = yp[extendedIndex(i0: i0, n: n, at: i - 1)]
+                let right = yp[extendedIndex(i0: i0, n: n, at: i + 1)]
+                let center = yp[extendedIndex(i0: i0, n: n, at: i)]
+                ep[evenIdx] = center &- ((left &+ right &+ two32) &>> 2)
+                evenIdx &+= 1
+                i &+= 2
+            }
+
+            if i0 & 1 == 0 {
+                for k in 0..<pairs {
+                    let e0 = ep[k + 1]
+                    let e1 = ep[k + 2]
+                    xp[2 * k] = e0
+                    xp[2 * k + 1] = yp[2 * k + 1] &+ ((e0 &+ e1) &>> 1)
+                }
+                if (n & 1) != 0 {
+                    xp[n - 1] = ep[pairs + 1]
+                }
+            } else {
+                for k in 0..<pairs {
+                    let e0 = ep[k]
+                    let e1 = ep[k + 1]
+                    xp[2 * k] = yp[2 * k] &+ ((e0 &+ e1) &>> 1)
+                    xp[2 * k + 1] = e1
+                }
+                if (n & 1) != 0 {
+                    xp[n - 1] = yp[n - 1] &+ ((ep[pairs] &+ ep[pairs + 1]) &>> 1)
+                }
+            }
+            return
+        }
+
+        // Exact 64-bit checked fallback for extreme >= 29-bit coefficients:
         let two64 = SIMD4<Int64>(repeating: 2)
         var evenIdx = 0
         var i = firstEven
         while i <= lastEven {
-            let left = SIMD4<Int64>(truncatingIfNeeded: yScratch[extendedIndex(i0: i0, n: n, at: i - 1)])
-            let right = SIMD4<Int64>(truncatingIfNeeded: yScratch[extendedIndex(i0: i0, n: n, at: i + 1)])
-            let center = SIMD4<Int64>(truncatingIfNeeded: yScratch[extendedIndex(i0: i0, n: n, at: i)])
+            let left = SIMD4<Int64>(truncatingIfNeeded: yp[extendedIndex(i0: i0, n: n, at: i - 1)])
+            let right = SIMD4<Int64>(truncatingIfNeeded: yp[extendedIndex(i0: i0, n: n, at: i + 1)])
+            let center = SIMD4<Int64>(truncatingIfNeeded: yp[extendedIndex(i0: i0, n: n, at: i)])
             let even = center &- ((left &+ right &+ two64) &>> 2)
             try validateInt32Range(even)
-            evenScratch[evenIdx] = SIMD4<Int32>(truncatingIfNeeded: even)
+            ep[evenIdx] = SIMD4<Int32>(truncatingIfNeeded: even)
             evenIdx += 1
             i += 2
         }
 
-        @inline(__always)
-        func evenX(_ coordinate: Int) -> SIMD4<Int32> {
-            evenScratch[(coordinate - firstEven) / 2]
-        }
-
         for coordinate in i0..<i1 {
             if coordinate & 1 == 0 {
-                x[coordinate - i0] = evenX(coordinate)
+                xp[coordinate - i0] = ep[(coordinate - firstEven) >> 1]
             } else {
-                let c64 = SIMD4<Int64>(truncatingIfNeeded: yScratch[coordinate - i0])
-                let eL = SIMD4<Int64>(truncatingIfNeeded: evenX(coordinate - 1))
-                let eR = SIMD4<Int64>(truncatingIfNeeded: evenX(coordinate + 1))
+                let idxL = (coordinate - 1 - firstEven) >> 1
+                let c64 = SIMD4<Int64>(truncatingIfNeeded: yp[coordinate - i0])
+                let eL = SIMD4<Int64>(truncatingIfNeeded: ep[idxL])
+                let eR = SIMD4<Int64>(truncatingIfNeeded: ep[idxL + 1])
                 let odd = c64 &+ ((eL &+ eR) &>> 1)
                 try validateInt32Range(odd)
-                x[coordinate - i0] = SIMD4<Int32>(truncatingIfNeeded: odd)
+                xp[coordinate - i0] = SIMD4<Int32>(truncatingIfNeeded: odd)
             }
         }
     }
@@ -161,6 +253,97 @@ internal enum SIMDWavelet53 {
             || v[3] < minVal || v[3] > maxVal
         {
             throw CodecError(.malformedInput, "Wavelet synthesis overflowed the 32-bit coefficient range.")
+        }
+    }
+
+    private final class ForwardScratch53 {
+        var l4: [SIMD4<Int32>]
+        var lo4: [SIMD4<Int32>]
+        var hi4: [SIMD4<Int32>]
+        var odd4: [SIMD4<Int32>]
+        var l1: [Int32]
+        var lo1: [Int32]
+        var hi1: [Int32]
+
+        init(maxDim: Int) {
+            self.l4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
+            self.lo4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
+            self.hi4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
+            self.odd4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 4)
+            self.l1 = [Int32](repeating: 0, count: maxDim)
+            self.lo1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+            self.hi1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+        }
+
+        @inline(__always)
+        func withSIMD4Pointers(
+            _ body: (
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>
+            ) throws -> Void
+        ) rethrows {
+            try l4.withUnsafeMutableBufferPointer { l4b in
+                try lo4.withUnsafeMutableBufferPointer { lo4b in
+                    try hi4.withUnsafeMutableBufferPointer { hi4b in
+                        try odd4.withUnsafeMutableBufferPointer { odd4b in
+                            try body(l4b.baseAddress!, lo4b.baseAddress!, hi4b.baseAddress!, odd4b.baseAddress!)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private final class InverseScratch53 {
+        var l4: [SIMD4<Int32>]
+        var lo4: [SIMD4<Int32>]
+        var hi4: [SIMD4<Int32>]
+        var ys4: [SIMD4<Int32>]
+        var es4: [SIMD4<Int32>]
+        var l1: [Int32]
+        var lo1: [Int32]
+        var hi1: [Int32]
+
+        init(maxDim: Int) {
+            self.l4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
+            self.lo4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
+            self.hi4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
+            self.ys4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
+            self.es4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 4)
+            self.l1 = [Int32](repeating: 0, count: maxDim)
+            self.lo1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+            self.hi1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+        }
+
+        @inline(__always)
+        func withSIMD4Pointers(
+            _ body: (
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>,
+                UnsafeMutablePointer<SIMD4<Int32>>
+            ) throws -> Void
+        ) rethrows {
+            try l4.withUnsafeMutableBufferPointer { l4b in
+                try lo4.withUnsafeMutableBufferPointer { lo4b in
+                    try hi4.withUnsafeMutableBufferPointer { hi4b in
+                        try ys4.withUnsafeMutableBufferPointer { ysb in
+                            try es4.withUnsafeMutableBufferPointer { esb in
+                                try body(
+                                    l4b.baseAddress!,
+                                    lo4b.baseAddress!,
+                                    hi4b.baseAddress!,
+                                    ysb.baseAddress!,
+                                    esb.baseAddress!
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -181,87 +364,175 @@ internal enum SIMDWavelet53 {
         let maxDim = max(x1 - x0, y1 - y0)
         guard maxDim > 0 else { return }
 
-        var line4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
-        var low4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
-        var high4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
-        var oddScratch4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 4)
+        let workers = AcceleratedCodec.activeWorkerLimit
+        let canParallel = workers > 1 && !BoundedParallelPool.isInsideParallelRegion && ((x1 - x0) * (y1 - y0) >= 16_384)
+        let scratchCount = canParallel ? min(workers, max(1, (maxDim + 15) / 16)) : 1
+        var scratches = (0..<scratchCount).map { _ in ForwardScratch53(maxDim: maxDim) }
 
-        var line1 = [Int32](repeating: 0, count: maxDim)
-        var low1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
-        var high1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+        try plane.withUnsafeMutableBufferPointer { planeBuf in
+            guard let pBase = planeBuf.baseAddress else { return }
+            let sharedPlane = UnsafeSendableMutableBuffer(planeBuf)
+            try scratches.withUnsafeMutableBufferPointer { scratchBuf in
+                let sharedScratches = UnsafeSendableMutableBuffer(scratchBuf)
 
-        for level in 1...levels {
-            let rx0 = Wavelet53.ceilDivPowerOfTwo(x0, level - 1)
-            let rx1 = Wavelet53.ceilDivPowerOfTwo(x1, level - 1)
-            let ry0 = Wavelet53.ceilDivPowerOfTwo(y0, level - 1)
-            let ry1 = Wavelet53.ceilDivPowerOfTwo(y1, level - 1)
-            let w = rx1 - rx0
-            let h = ry1 - ry0
-            guard w > 0, h > 0 else { continue }
+                for level in 1...levels {
+                    let rx0 = Wavelet53.ceilDivPowerOfTwo(x0, level - 1)
+                    let rx1 = Wavelet53.ceilDivPowerOfTwo(x1, level - 1)
+                    let ry0 = Wavelet53.ceilDivPowerOfTwo(y0, level - 1)
+                    let ry1 = Wavelet53.ceilDivPowerOfTwo(y1, level - 1)
+                    let w = rx1 - rx0
+                    let h = ry1 - ry0
+                    guard w > 0, h > 0 else { continue }
 
-            let lowH = Wavelet53.lowCount(ry0, ry1)
-            let lowW = Wavelet53.lowCount(rx0, rx1)
+                    let lowH = Wavelet53.lowCount(ry0, ry1)
+                    let lowW = Wavelet53.lowCount(rx0, rx1)
+                    let useParallel = canParallel && (w * h >= 16_384)
 
-            // VER_SD across 4 columns at a time
-            var x = 0
-            while x + 4 <= w {
-                for y in 0..<h {
-                    let base = y * stride + x
-                    line4[y] = SIMD4<Int32>(plane[base], plane[base + 1], plane[base + 2], plane[base + 3])
+                    // VER_SD
+                    let colStrips = (w + 15) / 16
+                    if useParallel && colStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: colStrips)
+                        try BoundedParallelPool.forEach(jobCount: colStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            let sc = sharedScratches.baseAddress[workerIdx]
+                            let startX = stripIdx * 16
+                            let endX = min(w, startX + 16)
+                            var x = startX
+                            sc.withSIMD4Pointers { l4p, lo4p, hi4p, odd4p in
+                                while x + 4 <= endX {
+                                    for y in 0..<h {
+                                        let base = y * stride + x
+                                        l4p[y] = SIMD4<Int32>(pb[base], pb[base + 1], pb[base + 2], pb[base + 3])
+                                    }
+                                    analyse4Ptr(xp: l4p, i0: ry0, count: h, lp: lo4p, hp: hi4p, op: odd4p)
+                                    for i in 0..<lowH {
+                                        let base = i * stride + x
+                                        let v = lo4p[i]
+                                        pb[base] = v[0]; pb[base + 1] = v[1]; pb[base + 2] = v[2]; pb[base + 3] = v[3]
+                                    }
+                                    for i in 0..<(h - lowH) {
+                                        let base = (lowH + i) * stride + x
+                                        let v = hi4p[i]
+                                        pb[base] = v[0]; pb[base + 1] = v[1]; pb[base + 2] = v[2]; pb[base + 3] = v[3]
+                                    }
+                                    x += 4
+                                }
+                            }
+                            while x < endX {
+                                for y in 0..<h { sc.l1[y] = pb[y * stride + x] }
+                                Wavelet53.analyse(sc.l1, i0: ry0, count: h, into: &sc.lo1, &sc.hi1)
+                                for i in 0..<lowH { pb[i * stride + x] = sc.lo1[i] }
+                                for i in 0..<(h - lowH) { pb[(lowH + i) * stride + x] = sc.hi1[i] }
+                                x += 1
+                            }
+                        }
+                    } else {
+                        let sc = sharedScratches.baseAddress[0]
+                        var x = 0
+                        try sc.withSIMD4Pointers { l4p, lo4p, hi4p, odd4p in
+                            while x + 4 <= w {
+                                for y in 0..<h {
+                                    let base = y * stride + x
+                                    l4p[y] = SIMD4<Int32>(pBase[base], pBase[base + 1], pBase[base + 2], pBase[base + 3])
+                                }
+                                analyse4Ptr(xp: l4p, i0: ry0, count: h, lp: lo4p, hp: hi4p, op: odd4p)
+                                for i in 0..<lowH {
+                                    let base = i * stride + x
+                                    let v = lo4p[i]
+                                    pBase[base] = v[0]; pBase[base + 1] = v[1]; pBase[base + 2] = v[2]; pBase[base + 3] = v[3]
+                                }
+                                for i in 0..<(h - lowH) {
+                                    let base = (lowH + i) * stride + x
+                                    let v = hi4p[i]
+                                    pBase[base] = v[0]; pBase[base + 1] = v[1]; pBase[base + 2] = v[2]; pBase[base + 3] = v[3]
+                                }
+                                if (x & 63) == 60 { try cancellation() }
+                                x += 4
+                            }
+                        }
+                        while x < w {
+                            for y in 0..<h { sc.l1[y] = pBase[y * stride + x] }
+                            Wavelet53.analyse(sc.l1, i0: ry0, count: h, into: &sc.lo1, &sc.hi1)
+                            for i in 0..<lowH { pBase[i * stride + x] = sc.lo1[i] }
+                            for i in 0..<(h - lowH) { pBase[(lowH + i) * stride + x] = sc.hi1[i] }
+                            x += 1
+                        }
+                    }
+
+                    // HOR_SD
+                    let rowStrips = (h + 15) / 16
+                    if useParallel && rowStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: rowStrips)
+                        try BoundedParallelPool.forEach(jobCount: rowStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            let sc = sharedScratches.baseAddress[workerIdx]
+                            let startY = stripIdx * 16
+                            let endY = min(h, startY + 16)
+                            var y = startY
+                            sc.withSIMD4Pointers { l4p, lo4p, hi4p, odd4p in
+                                while y + 4 <= endY {
+                                    let r0 = y * stride, r1 = (y + 1) * stride, r2 = (y + 2) * stride, r3 = (y + 3) * stride
+                                    for col in 0..<w {
+                                        l4p[col] = SIMD4<Int32>(pb[r0 + col], pb[r1 + col], pb[r2 + col], pb[r3 + col])
+                                    }
+                                    analyse4Ptr(xp: l4p, i0: rx0, count: w, lp: lo4p, hp: hi4p, op: odd4p)
+                                    for i in 0..<lowW {
+                                        let v = lo4p[i]
+                                        pb[r0 + i] = v[0]; pb[r1 + i] = v[1]; pb[r2 + i] = v[2]; pb[r3 + i] = v[3]
+                                    }
+                                    for i in 0..<(w - lowW) {
+                                        let col = lowW + i
+                                        let v = hi4p[i]
+                                        pb[r0 + col] = v[0]; pb[r1 + col] = v[1]; pb[r2 + col] = v[2]; pb[r3 + col] = v[3]
+                                    }
+                                    y += 4
+                                }
+                            }
+                            while y < endY {
+                                for col in 0..<w { sc.l1[col] = pb[y * stride + col] }
+                                Wavelet53.analyse(sc.l1, i0: rx0, count: w, into: &sc.lo1, &sc.hi1)
+                                for i in 0..<lowW { pb[y * stride + i] = sc.lo1[i] }
+                                for i in 0..<(w - lowW) { pb[y * stride + lowW + i] = sc.hi1[i] }
+                                y += 1
+                            }
+                        }
+                    } else {
+                        let sc = sharedScratches.baseAddress[0]
+                        var y = 0
+                        try sc.withSIMD4Pointers { l4p, lo4p, hi4p, odd4p in
+                            while y + 4 <= h {
+                                let r0 = y * stride
+                                let r1 = (y + 1) * stride
+                                let r2 = (y + 2) * stride
+                                let r3 = (y + 3) * stride
+                                for col in 0..<w {
+                                    l4p[col] = SIMD4<Int32>(pBase[r0 + col], pBase[r1 + col], pBase[r2 + col], pBase[r3 + col])
+                                }
+                                analyse4Ptr(xp: l4p, i0: rx0, count: w, lp: lo4p, hp: hi4p, op: odd4p)
+                                for i in 0..<lowW {
+                                    let v = lo4p[i]
+                                    pBase[r0 + i] = v[0]; pBase[r1 + i] = v[1]; pBase[r2 + i] = v[2]; pBase[r3 + i] = v[3]
+                                }
+                                for i in 0..<(w - lowW) {
+                                    let col = lowW + i
+                                    let v = hi4p[i]
+                                    pBase[r0 + col] = v[0]; pBase[r1 + col] = v[1]; pBase[r2 + col] = v[2]; pBase[r3 + col] = v[3]
+                                }
+                                if (y & 63) == 60 { try cancellation() }
+                                y += 4
+                            }
+                        }
+                        while y < h {
+                            for col in 0..<w { sc.l1[col] = pBase[y * stride + col] }
+                            Wavelet53.analyse(sc.l1, i0: rx0, count: w, into: &sc.lo1, &sc.hi1)
+                            for i in 0..<lowW { pBase[y * stride + i] = sc.lo1[i] }
+                            for i in 0..<(w - lowW) { pBase[y * stride + lowW + i] = sc.hi1[i] }
+                            y += 1
+                        }
+                    }
+                    try cancellation()
                 }
-                analyse4(line4, i0: ry0, count: h, into: &low4, &high4, oddScratch: &oddScratch4)
-                for i in 0..<lowH {
-                    let base = i * stride + x
-                    let v = low4[i]
-                    plane[base] = v[0]; plane[base + 1] = v[1]; plane[base + 2] = v[2]; plane[base + 3] = v[3]
-                }
-                for i in 0..<(h - lowH) {
-                    let base = (lowH + i) * stride + x
-                    let v = high4[i]
-                    plane[base] = v[0]; plane[base + 1] = v[1]; plane[base + 2] = v[2]; plane[base + 3] = v[3]
-                }
-                if (x & 63) == 60 { try cancellation() }
-                x += 4
             }
-            while x < w {
-                for y in 0..<h { line1[y] = plane[y * stride + x] }
-                Wavelet53.analyse(line1, i0: ry0, count: h, into: &low1, &high1)
-                for i in 0..<lowH { plane[i * stride + x] = low1[i] }
-                for i in 0..<(h - lowH) { plane[(lowH + i) * stride + x] = high1[i] }
-                x += 1
-            }
-
-            // HOR_SD across 4 rows at a time
-            var y = 0
-            while y + 4 <= h {
-                let r0 = y * stride
-                let r1 = (y + 1) * stride
-                let r2 = (y + 2) * stride
-                let r3 = (y + 3) * stride
-                for col in 0..<w {
-                    line4[col] = SIMD4<Int32>(plane[r0 + col], plane[r1 + col], plane[r2 + col], plane[r3 + col])
-                }
-                analyse4(line4, i0: rx0, count: w, into: &low4, &high4, oddScratch: &oddScratch4)
-                for i in 0..<lowW {
-                    let v = low4[i]
-                    plane[r0 + i] = v[0]; plane[r1 + i] = v[1]; plane[r2 + i] = v[2]; plane[r3 + i] = v[3]
-                }
-                for i in 0..<(w - lowW) {
-                    let col = lowW + i
-                    let v = high4[i]
-                    plane[r0 + col] = v[0]; plane[r1 + col] = v[1]; plane[r2 + col] = v[2]; plane[r3 + col] = v[3]
-                }
-                if (y & 63) == 60 { try cancellation() }
-                y += 4
-            }
-            while y < h {
-                for col in 0..<w { line1[col] = plane[y * stride + col] }
-                Wavelet53.analyse(line1, i0: rx0, count: w, into: &low1, &high1)
-                for i in 0..<lowW { plane[y * stride + i] = low1[i] }
-                for i in 0..<(w - lowW) { plane[y * stride + lowW + i] = high1[i] }
-                y += 1
-            }
-            try cancellation()
         }
     }
 
@@ -282,92 +553,183 @@ internal enum SIMDWavelet53 {
         let maxDim = max(x1 - x0, y1 - y0)
         guard maxDim > 0 else { return }
 
-        var line4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
-        var low4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
-        var high4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 2)
-        var yScratch4 = [SIMD4<Int32>](repeating: .zero, count: maxDim)
-        var evenScratch4 = [SIMD4<Int32>](repeating: .zero, count: maxDim / 2 + 4)
+        let workers = AcceleratedCodec.activeWorkerLimit
+        let canParallel = workers > 1 && !BoundedParallelPool.isInsideParallelRegion && ((x1 - x0) * (y1 - y0) >= 16_384)
+        let scratchCount = canParallel ? min(workers, max(1, (maxDim + 15) / 16)) : 1
+        var scratches = (0..<scratchCount).map { _ in InverseScratch53(maxDim: maxDim) }
 
-        var line1 = [Int32](repeating: 0, count: maxDim)
-        var low1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
-        var high1 = [Int32](repeating: 0, count: maxDim / 2 + 1)
+        try plane.withUnsafeMutableBufferPointer { planeBuf in
+            guard let pBase = planeBuf.baseAddress else { return }
+            let sharedPlane = UnsafeSendableMutableBuffer(planeBuf)
+            try scratches.withUnsafeMutableBufferPointer { scratchBuf in
+                let sharedScratches = UnsafeSendableMutableBuffer(scratchBuf)
 
-        for level in Swift.stride(from: levels, through: 1, by: -1) {
-            let rx0 = Wavelet53.ceilDivPowerOfTwo(x0, level - 1)
-            let rx1 = Wavelet53.ceilDivPowerOfTwo(x1, level - 1)
-            let ry0 = Wavelet53.ceilDivPowerOfTwo(y0, level - 1)
-            let ry1 = Wavelet53.ceilDivPowerOfTwo(y1, level - 1)
-            let w = rx1 - rx0
-            let h = ry1 - ry0
-            guard w > 0, h > 0 else { continue }
+                for level in Swift.stride(from: levels, through: 1, by: -1) {
+                    let rx0 = Wavelet53.ceilDivPowerOfTwo(x0, level - 1)
+                    let rx1 = Wavelet53.ceilDivPowerOfTwo(x1, level - 1)
+                    let ry0 = Wavelet53.ceilDivPowerOfTwo(y0, level - 1)
+                    let ry1 = Wavelet53.ceilDivPowerOfTwo(y1, level - 1)
+                    let w = rx1 - rx0
+                    let h = ry1 - ry0
+                    guard w > 0, h > 0 else { continue }
 
-            let lowW = Wavelet53.lowCount(rx0, rx1)
-            let lowH = Wavelet53.lowCount(ry0, ry1)
+                    let lowW = Wavelet53.lowCount(rx0, rx1)
+                    let lowH = Wavelet53.lowCount(ry0, ry1)
+                    let useParallel = canParallel && (w * h >= 16_384)
 
-            // HOR_SR across 4 rows at a time
-            var y = 0
-            while y + 4 <= h {
-                let r0 = y * stride
-                let r1 = (y + 1) * stride
-                let r2 = (y + 2) * stride
-                let r3 = (y + 3) * stride
-                for i in 0..<lowW {
-                    low4[i] = SIMD4<Int32>(plane[r0 + i], plane[r1 + i], plane[r2 + i], plane[r3 + i])
+                    // HOR_SR
+                    let rowStrips = (h + 15) / 16
+                    if useParallel && rowStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: rowStrips)
+                        try BoundedParallelPool.forEach(jobCount: rowStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            let sc = sharedScratches.baseAddress[workerIdx]
+                            let startY = stripIdx * 16
+                            let endY = min(h, startY + 16)
+                            var y = startY
+                            try sc.withSIMD4Pointers { l4p, lo4p, hi4p, ysp, esp in
+                                while y + 4 <= endY {
+                                    let r0 = y * stride, r1 = (y + 1) * stride, r2 = (y + 2) * stride, r3 = (y + 3) * stride
+                                    for i in 0..<lowW {
+                                        lo4p[i] = SIMD4<Int32>(pb[r0 + i], pb[r1 + i], pb[r2 + i], pb[r3 + i])
+                                    }
+                                    for i in 0..<(w - lowW) {
+                                        let col = lowW + i
+                                        hi4p[i] = SIMD4<Int32>(pb[r0 + col], pb[r1 + col], pb[r2 + col], pb[r3 + col])
+                                    }
+                                    try synthesise4Ptr(
+                                        lp: lo4p, hp: hi4p, i0: rx0, count: w,
+                                        xp: l4p, yp: ysp, ep: esp
+                                    )
+                                    for col in 0..<w {
+                                        let v = l4p[col]
+                                        pb[r0 + col] = v[0]; pb[r1 + col] = v[1]; pb[r2 + col] = v[2]; pb[r3 + col] = v[3]
+                                    }
+                                    y += 4
+                                }
+                            }
+                            while y < endY {
+                                for i in 0..<lowW { sc.lo1[i] = pb[y * stride + i] }
+                                for i in 0..<(w - lowW) { sc.hi1[i] = pb[y * stride + lowW + i] }
+                                try Wavelet53.synthesise(low: sc.lo1, high: sc.hi1, i0: rx0, count: w, into: &sc.l1)
+                                for col in 0..<w { pb[y * stride + col] = sc.l1[col] }
+                                y += 1
+                            }
+                        }
+                    } else {
+                        let sc = sharedScratches.baseAddress[0]
+                        var y = 0
+                        try sc.withSIMD4Pointers { l4p, lo4p, hi4p, ysp, esp in
+                            while y + 4 <= h {
+                                let r0 = y * stride
+                                let r1 = (y + 1) * stride
+                                let r2 = (y + 2) * stride
+                                let r3 = (y + 3) * stride
+                                for i in 0..<lowW {
+                                    lo4p[i] = SIMD4<Int32>(pBase[r0 + i], pBase[r1 + i], pBase[r2 + i], pBase[r3 + i])
+                                }
+                                for i in 0..<(w - lowW) {
+                                    let col = lowW + i
+                                    hi4p[i] = SIMD4<Int32>(pBase[r0 + col], pBase[r1 + col], pBase[r2 + col], pBase[r3 + col])
+                                }
+                                try synthesise4Ptr(
+                                    lp: lo4p, hp: hi4p, i0: rx0, count: w,
+                                    xp: l4p, yp: ysp, ep: esp
+                                )
+                                for col in 0..<w {
+                                    let v = l4p[col]
+                                    pBase[r0 + col] = v[0]; pBase[r1 + col] = v[1]; pBase[r2 + col] = v[2]; pBase[r3 + col] = v[3]
+                                }
+                                if (y & 63) == 60 { try cancellation() }
+                                y += 4
+                            }
+                        }
+                        while y < h {
+                            for i in 0..<lowW { sc.lo1[i] = pBase[y * stride + i] }
+                            for i in 0..<(w - lowW) { sc.hi1[i] = pBase[y * stride + lowW + i] }
+                            try Wavelet53.synthesise(low: sc.lo1, high: sc.hi1, i0: rx0, count: w, into: &sc.l1)
+                            for col in 0..<w { pBase[y * stride + col] = sc.l1[col] }
+                            y += 1
+                        }
+                    }
+
+                    // VER_SR
+                    let colStrips = (w + 15) / 16
+                    if useParallel && colStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: colStrips)
+                        try BoundedParallelPool.forEach(jobCount: colStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            let sc = sharedScratches.baseAddress[workerIdx]
+                            let startX = stripIdx * 16
+                            let endX = min(w, startX + 16)
+                            var x = startX
+                            try sc.withSIMD4Pointers { l4p, lo4p, hi4p, ysp, esp in
+                                while x + 4 <= endX {
+                                    for i in 0..<lowH {
+                                        let base = i * stride + x
+                                        lo4p[i] = SIMD4<Int32>(pb[base], pb[base + 1], pb[base + 2], pb[base + 3])
+                                    }
+                                    for i in 0..<(h - lowH) {
+                                        let base = (lowH + i) * stride + x
+                                        hi4p[i] = SIMD4<Int32>(pb[base], pb[base + 1], pb[base + 2], pb[base + 3])
+                                    }
+                                    try synthesise4Ptr(
+                                        lp: lo4p, hp: hi4p, i0: ry0, count: h,
+                                        xp: l4p, yp: ysp, ep: esp
+                                    )
+                                    for row in 0..<h {
+                                        let base = row * stride + x
+                                        let v = l4p[row]
+                                        pb[base] = v[0]; pb[base + 1] = v[1]; pb[base + 2] = v[2]; pb[base + 3] = v[3]
+                                    }
+                                    x += 4
+                                }
+                            }
+                            while x < endX {
+                                for i in 0..<lowH { sc.lo1[i] = pb[i * stride + x] }
+                                for i in 0..<(h - lowH) { sc.hi1[i] = pb[(lowH + i) * stride + x] }
+                                try Wavelet53.synthesise(low: sc.lo1, high: sc.hi1, i0: ry0, count: h, into: &sc.l1)
+                                for row in 0..<h { pb[row * stride + x] = sc.l1[row] }
+                                x += 1
+                            }
+                        }
+                    } else {
+                        let sc = sharedScratches.baseAddress[0]
+                        var x = 0
+                        try sc.withSIMD4Pointers { l4p, lo4p, hi4p, ysp, esp in
+                            while x + 4 <= w {
+                                for i in 0..<lowH {
+                                    let base = i * stride + x
+                                    lo4p[i] = SIMD4<Int32>(pBase[base], pBase[base + 1], pBase[base + 2], pBase[base + 3])
+                                }
+                                for i in 0..<(h - lowH) {
+                                    let base = (lowH + i) * stride + x
+                                    hi4p[i] = SIMD4<Int32>(pBase[base], pBase[base + 1], pBase[base + 2], pBase[base + 3])
+                                }
+                                try synthesise4Ptr(
+                                    lp: lo4p, hp: hi4p, i0: ry0, count: h,
+                                    xp: l4p, yp: ysp, ep: esp
+                                )
+                                for row in 0..<h {
+                                    let base = row * stride + x
+                                    let v = l4p[row]
+                                    pBase[base] = v[0]; pBase[base + 1] = v[1]; pBase[base + 2] = v[2]; pBase[base + 3] = v[3]
+                                }
+                                if (x & 63) == 60 { try cancellation() }
+                                x += 4
+                            }
+                        }
+                        while x < w {
+                            for i in 0..<lowH { sc.lo1[i] = pBase[i * stride + x] }
+                            for i in 0..<(h - lowH) { sc.hi1[i] = pBase[(lowH + i) * stride + x] }
+                            try Wavelet53.synthesise(low: sc.lo1, high: sc.hi1, i0: ry0, count: h, into: &sc.l1)
+                            for row in 0..<h { pBase[row * stride + x] = sc.l1[row] }
+                            x += 1
+                        }
+                    }
+                    try cancellation()
                 }
-                for i in 0..<(w - lowW) {
-                    let col = lowW + i
-                    high4[i] = SIMD4<Int32>(plane[r0 + col], plane[r1 + col], plane[r2 + col], plane[r3 + col])
-                }
-                try synthesise4(
-                    low: low4, high: high4, i0: rx0, count: w,
-                    into: &line4, yScratch: &yScratch4, evenScratch: &evenScratch4
-                )
-                for col in 0..<w {
-                    let v = line4[col]
-                    plane[r0 + col] = v[0]; plane[r1 + col] = v[1]; plane[r2 + col] = v[2]; plane[r3 + col] = v[3]
-                }
-                if (y & 63) == 60 { try cancellation() }
-                y += 4
             }
-            while y < h {
-                for i in 0..<lowW { low1[i] = plane[y * stride + i] }
-                for i in 0..<(w - lowW) { high1[i] = plane[y * stride + lowW + i] }
-                try Wavelet53.synthesise(low: low1, high: high1, i0: rx0, count: w, into: &line1)
-                for col in 0..<w { plane[y * stride + col] = line1[col] }
-                y += 1
-            }
-
-            // VER_SR across 4 columns at a time
-            var x = 0
-            while x + 4 <= w {
-                for i in 0..<lowH {
-                    let base = i * stride + x
-                    low4[i] = SIMD4<Int32>(plane[base], plane[base + 1], plane[base + 2], plane[base + 3])
-                }
-                for i in 0..<(h - lowH) {
-                    let base = (lowH + i) * stride + x
-                    high4[i] = SIMD4<Int32>(plane[base], plane[base + 1], plane[base + 2], plane[base + 3])
-                }
-                try synthesise4(
-                    low: low4, high: high4, i0: ry0, count: h,
-                    into: &line4, yScratch: &yScratch4, evenScratch: &evenScratch4
-                )
-                for row in 0..<h {
-                    let base = row * stride + x
-                    let v = line4[row]
-                    plane[base] = v[0]; plane[base + 1] = v[1]; plane[base + 2] = v[2]; plane[base + 3] = v[3]
-                }
-                if (x & 63) == 60 { try cancellation() }
-                x += 4
-            }
-            while x < w {
-                for i in 0..<lowH { low1[i] = plane[i * stride + x] }
-                for i in 0..<(h - lowH) { high1[i] = plane[(lowH + i) * stride + x] }
-                try Wavelet53.synthesise(low: low1, high: high1, i0: ry0, count: h, into: &line1)
-                for row in 0..<h { plane[row * stride + x] = line1[row] }
-                x += 1
-            }
-            try cancellation()
         }
     }
 }
@@ -377,10 +739,142 @@ internal enum SIMDWavelet53 {
 internal enum SIMDWavelet97 {
     @inline(__always)
     private static func pse(_ i: Int, _ i0: Int, _ i1: Int) -> Int {
+        if i >= i0 && i < i1 { return i }
+        if i == i0 - 1 { return i0 + 1 }
+        if i == i1 { return i1 - 2 }
         let span = 2 * (i1 - i0 - 1)
         var m = (i - i0) % span
         if m < 0 { m += span }
         return i0 + min(m, span - m)
+    }
+
+    private final class Scratch97 {
+        var l4: [SIMD4<Double>]
+        var s4: [SIMD4<Double>]
+        var l1: [Double]
+        var s1: [Double]
+
+        init(maxLine: Int) {
+            self.l4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
+            self.s4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
+            self.l1 = [Double](repeating: 0.0, count: maxLine)
+            self.s1 = [Double](repeating: 0.0, count: maxLine)
+        }
+
+        @inline(__always)
+        func withPointers<R>(
+            _ body: (
+                UnsafeMutablePointer<SIMD4<Double>>,
+                UnsafeMutablePointer<SIMD4<Double>>,
+                UnsafeMutableBufferPointer<Double>,
+                UnsafeMutableBufferPointer<Double>
+            ) throws -> R
+        ) rethrows -> R {
+            try l4.withUnsafeMutableBufferPointer { l4b in
+                try s4.withUnsafeMutableBufferPointer { s4b in
+                    try l1.withUnsafeMutableBufferPointer { l1b in
+                        try s1.withUnsafeMutableBufferPointer { s1b in
+                            try body(l4b.baseAddress!, s4b.baseAddress!, l1b, s1b)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @inline(__always)
+    private static func liftAddStep4(
+        _ xp: UnsafeMutablePointer<SIMD4<Double>>,
+        count: Int,
+        i0: Int,
+        i1: Int,
+        parity: Int,
+        coeff: SIMD4<Double>
+    ) {
+        @inline(__always)
+        func x(_ i: Int) -> SIMD4<Double> { xp[pse(i, i0, i1) - i0] }
+
+        if (i0 & 1) == parity {
+            xp[0] += coeff * (x(i0 - 1) + x(i0 + 1))
+        }
+        var k = ((i0 & 1) == parity) ? 2 : 1
+        let interiorLimit = count - 1
+        while k < interiorLimit {
+            xp[k] += coeff * (xp[k - 1] + xp[k + 1])
+            k += 2
+        }
+        if count > 1 && ((i1 - 1) & 1) == parity {
+            xp[count - 1] += coeff * (x(i1 - 2) + x(i1))
+        }
+    }
+
+    @inline(__always)
+    private static func liftSubStep4(
+        _ xp: UnsafeMutablePointer<SIMD4<Double>>,
+        count: Int,
+        i0: Int,
+        i1: Int,
+        parity: Int,
+        coeff: SIMD4<Double>
+    ) {
+        @inline(__always)
+        func y(_ i: Int) -> SIMD4<Double> { xp[pse(i, i0, i1) - i0] }
+
+        if (i0 & 1) == parity {
+            xp[0] -= coeff * (y(i0 - 1) + y(i0 + 1))
+        }
+        var k = ((i0 & 1) == parity) ? 2 : 1
+        let interiorLimit = count - 1
+        while k < interiorLimit {
+            xp[k] -= coeff * (xp[k - 1] + xp[k + 1])
+            k += 2
+        }
+        if count > 1 && ((i1 - 1) & 1) == parity {
+            xp[count - 1] -= coeff * (y(i1 - 2) + y(i1))
+        }
+    }
+
+    @inline(__always)
+    private static func forward1D4Ptr(
+        _ sp: UnsafeMutablePointer<SIMD4<Double>>,
+        i0: Int,
+        i1: Int,
+        scratch xp: UnsafeMutablePointer<SIMD4<Double>>
+    ) {
+        let count = i1 - i0
+        guard count > 0 else { return }
+        if count == 1 {
+            if i0 & 1 != 0 {
+                sp[0] *= SIMD4<Double>(repeating: 2.0)
+            }
+            return
+        }
+        xp.update(from: sp, count: count)
+
+        let alphaVec = SIMD4<Double>(repeating: Wavelet97.alpha)
+        let betaVec  = SIMD4<Double>(repeating: Wavelet97.beta)
+        let gammaVec = SIMD4<Double>(repeating: Wavelet97.gamma)
+        let deltaVec = SIMD4<Double>(repeating: Wavelet97.delta)
+        let kVec     = SIMD4<Double>(repeating: Wavelet97.k)
+        let invKVec  = SIMD4<Double>(repeating: Wavelet97.invK)
+
+        liftAddStep4(xp, count: count, i0: i0, i1: i1, parity: 1, coeff: alphaVec)
+        liftAddStep4(xp, count: count, i0: i0, i1: i1, parity: 0, coeff: betaVec)
+        liftAddStep4(xp, count: count, i0: i0, i1: i1, parity: 1, coeff: gammaVec)
+        liftAddStep4(xp, count: count, i0: i0, i1: i1, parity: 0, coeff: deltaVec)
+
+        let lows = Wavelet53.lowCount(i0, i1)
+        var l = 0
+        var h = lows
+        for i in i0..<i1 {
+            if i & 1 == 0 {
+                sp[l] = xp[i - i0] * invKVec
+                l += 1
+            } else {
+                sp[h] = xp[i - i0] * kVec
+                h += 1
+            }
+        }
     }
 
     internal static func forward1D4(
@@ -389,17 +883,29 @@ internal enum SIMDWavelet97 {
         i1: Int,
         scratch: inout [SIMD4<Double>]
     ) {
+        guard i1 > i0 else { return }
+        signal.withUnsafeMutableBufferPointer { sigBuf in
+            scratch.withUnsafeMutableBufferPointer { scrBuf in
+                forward1D4Ptr(sigBuf.baseAddress!, i0: i0, i1: i1, scratch: scrBuf.baseAddress!)
+            }
+        }
+    }
+
+    @inline(__always)
+    private static func inverse1D4Ptr(
+        _ sp: UnsafeMutablePointer<SIMD4<Double>>,
+        i0: Int,
+        i1: Int,
+        scratch xp: UnsafeMutablePointer<SIMD4<Double>>
+    ) {
         let count = i1 - i0
         guard count > 0 else { return }
         if count == 1 {
             if i0 & 1 != 0 {
-                signal[0] *= SIMD4<Double>(repeating: 2.0)
+                sp[0] *= SIMD4<Double>(repeating: 0.5)
             }
             return
         }
-        for k in 0..<count { scratch[k] = signal[k] }
-        @inline(__always)
-        func x(_ i: Int) -> SIMD4<Double> { scratch[pse(i, i0, i1) - i0] }
 
         let alphaVec = SIMD4<Double>(repeating: Wavelet97.alpha)
         let betaVec  = SIMD4<Double>(repeating: Wavelet97.beta)
@@ -408,31 +914,25 @@ internal enum SIMDWavelet97 {
         let kVec     = SIMD4<Double>(repeating: Wavelet97.k)
         let invKVec  = SIMD4<Double>(repeating: Wavelet97.invK)
 
-        for i in i0..<i1 where i & 1 != 0 {
-            scratch[i - i0] += alphaVec * (x(i - 1) + x(i + 1))
-        }
-        for i in i0..<i1 where i & 1 == 0 {
-            scratch[i - i0] += betaVec * (x(i - 1) + x(i + 1))
-        }
-        for i in i0..<i1 where i & 1 != 0 {
-            scratch[i - i0] += gammaVec * (x(i - 1) + x(i + 1))
-        }
-        for i in i0..<i1 where i & 1 == 0 {
-            scratch[i - i0] += deltaVec * (x(i - 1) + x(i + 1))
-        }
-
         let lows = Wavelet53.lowCount(i0, i1)
         var l = 0
         var h = lows
         for i in i0..<i1 {
             if i & 1 == 0 {
-                signal[l] = scratch[i - i0] * invKVec
+                xp[i - i0] = sp[l] * kVec
                 l += 1
             } else {
-                signal[h] = scratch[i - i0] * kVec
+                xp[i - i0] = sp[h] * invKVec
                 h += 1
             }
         }
+
+        liftSubStep4(xp, count: count, i0: i0, i1: i1, parity: 0, coeff: deltaVec)
+        liftSubStep4(xp, count: count, i0: i0, i1: i1, parity: 1, coeff: gammaVec)
+        liftSubStep4(xp, count: count, i0: i0, i1: i1, parity: 0, coeff: betaVec)
+        liftSubStep4(xp, count: count, i0: i0, i1: i1, parity: 1, coeff: alphaVec)
+
+        sp.update(from: xp, count: count)
     }
 
     internal static func inverse1D4(
@@ -441,50 +941,12 @@ internal enum SIMDWavelet97 {
         i1: Int,
         scratch: inout [SIMD4<Double>]
     ) {
-        let count = i1 - i0
-        guard count > 0 else { return }
-        if count == 1 {
-            if i0 & 1 != 0 {
-                signal[0] *= SIMD4<Double>(repeating: 0.5)
-            }
-            return
-        }
-
-        let alphaVec = SIMD4<Double>(repeating: Wavelet97.alpha)
-        let betaVec  = SIMD4<Double>(repeating: Wavelet97.beta)
-        let gammaVec = SIMD4<Double>(repeating: Wavelet97.gamma)
-        let deltaVec = SIMD4<Double>(repeating: Wavelet97.delta)
-        let kVec     = SIMD4<Double>(repeating: Wavelet97.k)
-        let invKVec  = SIMD4<Double>(repeating: Wavelet97.invK)
-
-        let lows = Wavelet53.lowCount(i0, i1)
-        var l = 0
-        var h = lows
-        for i in i0..<i1 {
-            if i & 1 == 0 {
-                scratch[i - i0] = signal[l] * kVec
-                l += 1
-            } else {
-                scratch[i - i0] = signal[h] * invKVec
-                h += 1
+        guard i1 > i0 else { return }
+        signal.withUnsafeMutableBufferPointer { sigBuf in
+            scratch.withUnsafeMutableBufferPointer { scrBuf in
+                inverse1D4Ptr(sigBuf.baseAddress!, i0: i0, i1: i1, scratch: scrBuf.baseAddress!)
             }
         }
-        @inline(__always)
-        func y(_ i: Int) -> SIMD4<Double> { scratch[pse(i, i0, i1) - i0] }
-
-        for i in i0..<i1 where i & 1 == 0 {
-            scratch[i - i0] -= deltaVec * (y(i - 1) + y(i + 1))
-        }
-        for i in i0..<i1 where i & 1 != 0 {
-            scratch[i - i0] -= gammaVec * (y(i - 1) + y(i + 1))
-        }
-        for i in i0..<i1 where i & 1 == 0 {
-            scratch[i - i0] -= betaVec * (y(i - 1) + y(i + 1))
-        }
-        for i in i0..<i1 where i & 1 != 0 {
-            scratch[i - i0] -= alphaVec * (y(i - 1) + y(i + 1))
-        }
-        for idx in 0..<count { signal[idx] = scratch[idx] }
     }
 
     /// Forward 2D 9/7 wavelet decomposition in-place using 4-lane `SIMD4<Double>` lifting.
@@ -505,75 +967,144 @@ internal enum SIMDWavelet97 {
         let maxLine = max(x1 - x0, y1 - y0)
         guard maxLine > 0 else { return }
 
-        var line4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
-        var scratch4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
-        var line1 = [Double](repeating: 0.0, count: maxLine)
-        var scratch1 = [Double](repeating: 0.0, count: maxLine)
+        let workers = AcceleratedCodec.activeWorkerLimit
+        let canParallel = workers > 1 && !BoundedParallelPool.isInsideParallelRegion && ((x1 - x0) * (y1 - y0) >= 16_384)
+        let scratchCount = canParallel ? min(workers, max(1, (maxLine + 7) / 8)) : 1
+        var scratches = (0..<scratchCount).map { _ in Scratch97(maxLine: maxLine) }
 
-        for level in 0..<levels {
-            try cancellation()
-            let lx0 = Wavelet53.ceilDivPowerOfTwo(x0, level)
-            let lx1 = Wavelet53.ceilDivPowerOfTwo(x1, level)
-            let ly0 = Wavelet53.ceilDivPowerOfTwo(y0, level)
-            let ly1 = Wavelet53.ceilDivPowerOfTwo(y1, level)
-            let w = lx1 - lx0
-            let h = ly1 - ly0
-            guard w > 0, h > 0 else { continue }
+        try plane.withUnsafeMutableBufferPointer { planeBuf in
+            guard let pBase = planeBuf.baseAddress else { return }
+            let sharedPlane = UnsafeSendableMutableBuffer(planeBuf)
+            try scratches.withUnsafeMutableBufferPointer { scratchBuf in
+                let sharedScratches = UnsafeSendableMutableBuffer(scratchBuf)
 
-            // Horizontal pass across 4 rows at a time
-            var y = 0
-            while y + 4 <= h {
-                let r0 = y * stride
-                let r1 = (y + 1) * stride
-                let r2 = (y + 2) * stride
-                let r3 = (y + 3) * stride
-                for x in 0..<w {
-                    line4[x] = SIMD4<Double>(plane[r0 + x], plane[r1 + x], plane[r2 + x], plane[r3 + x])
-                }
-                forward1D4(&line4, i0: lx0, i1: lx1, scratch: &scratch4)
-                for x in 0..<w {
-                    let v = line4[x]
-                    plane[r0 + x] = v[0]; plane[r1 + x] = v[1]; plane[r2 + x] = v[2]; plane[r3 + x] = v[3]
-                }
-                y += 4
-            }
-            if y < h {
-                line1.withUnsafeMutableBufferPointer { lineBuf in
-                    scratch1.withUnsafeMutableBufferPointer { scratchBuf in
-                        while y < h {
-                            let base = y * stride
-                            for x in 0..<w { lineBuf[x] = plane[base + x] }
-                            Wavelet97.forward1D(lineBuf, i0: lx0, i1: lx1, scratch: scratchBuf)
-                            for x in 0..<w { plane[base + x] = lineBuf[x] }
-                            y += 1
+                for level in 0..<levels {
+                    try cancellation()
+                    let lx0 = Wavelet53.ceilDivPowerOfTwo(x0, level)
+                    let lx1 = Wavelet53.ceilDivPowerOfTwo(x1, level)
+                    let ly0 = Wavelet53.ceilDivPowerOfTwo(y0, level)
+                    let ly1 = Wavelet53.ceilDivPowerOfTwo(y1, level)
+                    let w = lx1 - lx0
+                    let h = ly1 - ly0
+                    guard w > 0, h > 0 else { continue }
+                    let useParallel = canParallel && (w * h >= 16_384)
+
+                    // Horizontal pass
+                    let rowStrips = (h + 15) / 16
+                    if useParallel && rowStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: rowStrips)
+                        try BoundedParallelPool.forEach(jobCount: rowStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            sharedScratches.baseAddress[workerIdx].withPointers { l4p, s4p, lineBuf, sBuf in
+                                let startY = stripIdx * 16
+                                let endY = min(h, startY + 16)
+                                var y = startY
+                                while y + 4 <= endY {
+                                    let r0 = y * stride, r1 = (y + 1) * stride, r2 = (y + 2) * stride, r3 = (y + 3) * stride
+                                    for x in 0..<w {
+                                        l4p[x] = SIMD4<Double>(pb[r0 + x], pb[r1 + x], pb[r2 + x], pb[r3 + x])
+                                    }
+                                    forward1D4Ptr(l4p, i0: lx0, i1: lx1, scratch: s4p)
+                                    for x in 0..<w {
+                                        let v = l4p[x]
+                                        pb[r0 + x] = v[0]; pb[r1 + x] = v[1]; pb[r2 + x] = v[2]; pb[r3 + x] = v[3]
+                                    }
+                                    y += 4
+                                }
+                                let l1p = lineBuf.baseAddress!
+                                while y < endY {
+                                    let base = y * stride
+                                    for x in 0..<w { l1p[x] = pb[base + x] }
+                                    Wavelet97.forward1D(lineBuf, i0: lx0, i1: lx1, scratch: sBuf)
+                                    for x in 0..<w { pb[base + x] = l1p[x] }
+                                    y += 1
+                                }
+                            }
+                        }
+                    } else {
+                        sharedScratches.baseAddress[0].withPointers { l4p, s4p, lineBuf, sBuf in
+                            var y = 0
+                            while y + 4 <= h {
+                                let r0 = y * stride
+                                let r1 = (y + 1) * stride
+                                let r2 = (y + 2) * stride
+                                let r3 = (y + 3) * stride
+                                for x in 0..<w {
+                                    l4p[x] = SIMD4<Double>(pBase[r0 + x], pBase[r1 + x], pBase[r2 + x], pBase[r3 + x])
+                                }
+                                forward1D4Ptr(l4p, i0: lx0, i1: lx1, scratch: s4p)
+                                for x in 0..<w {
+                                    let v = l4p[x]
+                                    pBase[r0 + x] = v[0]; pBase[r1 + x] = v[1]; pBase[r2 + x] = v[2]; pBase[r3 + x] = v[3]
+                                }
+                                y += 4
+                            }
+                            let l1p = lineBuf.baseAddress!
+                            while y < h {
+                                let base = y * stride
+                                for x in 0..<w { l1p[x] = pBase[base + x] }
+                                Wavelet97.forward1D(lineBuf, i0: lx0, i1: lx1, scratch: sBuf)
+                                for x in 0..<w { pBase[base + x] = l1p[x] }
+                                y += 1
+                            }
                         }
                     }
-                }
-            }
 
-            // Vertical pass across 4 columns at a time
-            var x = 0
-            while x + 4 <= w {
-                for row in 0..<h {
-                    let base = row * stride + x
-                    line4[row] = SIMD4<Double>(plane[base], plane[base + 1], plane[base + 2], plane[base + 3])
-                }
-                forward1D4(&line4, i0: ly0, i1: ly1, scratch: &scratch4)
-                for row in 0..<h {
-                    let base = row * stride + x
-                    let v = line4[row]
-                    plane[base] = v[0]; plane[base + 1] = v[1]; plane[base + 2] = v[2]; plane[base + 3] = v[3]
-                }
-                x += 4
-            }
-            if x < w {
-                line1.withUnsafeMutableBufferPointer { lineBuf in
-                    scratch1.withUnsafeMutableBufferPointer { scratchBuf in
-                        while x < w {
-                            for row in 0..<h { lineBuf[row] = plane[row * stride + x] }
-                            Wavelet97.forward1D(lineBuf, i0: ly0, i1: ly1, scratch: scratchBuf)
-                            for row in 0..<h { plane[row * stride + x] = lineBuf[row] }
-                            x += 1
+                    // Vertical pass (16-column strips = 128-byte cache-line alignment)
+                    let colStrips = (w + 15) / 16
+                    if useParallel && colStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: colStrips)
+                        try BoundedParallelPool.forEach(jobCount: colStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            sharedScratches.baseAddress[workerIdx].withPointers { l4p, s4p, lineBuf, sBuf in
+                                let startX = stripIdx * 16
+                                let endX = min(w, startX + 16)
+                                var x = startX
+                                while x + 4 <= endX {
+                                    for row in 0..<h {
+                                        let base = row * stride + x
+                                        l4p[row] = SIMD4<Double>(pb[base], pb[base + 1], pb[base + 2], pb[base + 3])
+                                    }
+                                    forward1D4Ptr(l4p, i0: ly0, i1: ly1, scratch: s4p)
+                                    for row in 0..<h {
+                                        let base = row * stride + x
+                                        let v = l4p[row]
+                                        pb[base] = v[0]; pb[base + 1] = v[1]; pb[base + 2] = v[2]; pb[base + 3] = v[3]
+                                    }
+                                    x += 4
+                                }
+                                let l1p = lineBuf.baseAddress!
+                                while x < endX {
+                                    for row in 0..<h { l1p[row] = pb[row * stride + x] }
+                                    Wavelet97.forward1D(lineBuf, i0: ly0, i1: ly1, scratch: sBuf)
+                                    for row in 0..<h { pb[row * stride + x] = l1p[row] }
+                                    x += 1
+                                }
+                            }
+                        }
+                    } else {
+                        sharedScratches.baseAddress[0].withPointers { l4p, s4p, lineBuf, sBuf in
+                            var x = 0
+                            while x + 4 <= w {
+                                for row in 0..<h {
+                                    let base = row * stride + x
+                                    l4p[row] = SIMD4<Double>(pBase[base], pBase[base + 1], pBase[base + 2], pBase[base + 3])
+                                }
+                                forward1D4Ptr(l4p, i0: ly0, i1: ly1, scratch: s4p)
+                                for row in 0..<h {
+                                    let base = row * stride + x
+                                    let v = l4p[row]
+                                    pBase[base] = v[0]; pBase[base + 1] = v[1]; pBase[base + 2] = v[2]; pBase[base + 3] = v[3]
+                                }
+                                x += 4
+                            }
+                            let l1p = lineBuf.baseAddress!
+                            while x < w {
+                                for row in 0..<h { l1p[row] = pBase[row * stride + x] }
+                                Wavelet97.forward1D(lineBuf, i0: ly0, i1: ly1, scratch: sBuf)
+                                for row in 0..<h { pBase[row * stride + x] = l1p[row] }
+                                x += 1
+                            }
                         }
                     }
                 }
@@ -598,75 +1129,144 @@ internal enum SIMDWavelet97 {
         let maxLine = max(x1 - x0, y1 - y0)
         guard maxLine > 0 else { return }
 
-        var line4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
-        var scratch4 = [SIMD4<Double>](repeating: .zero, count: maxLine)
-        var line1 = [Double](repeating: 0.0, count: maxLine)
-        var scratch1 = [Double](repeating: 0.0, count: maxLine)
+        let workers = AcceleratedCodec.activeWorkerLimit
+        let canParallel = workers > 1 && !BoundedParallelPool.isInsideParallelRegion && ((x1 - x0) * (y1 - y0) >= 16_384)
+        let scratchCount = canParallel ? min(workers, max(1, (maxLine + 7) / 8)) : 1
+        var scratches = (0..<scratchCount).map { _ in Scratch97(maxLine: maxLine) }
 
-        for level in (0..<levels).reversed() {
-            try cancellation()
-            let lx0 = Wavelet53.ceilDivPowerOfTwo(x0, level)
-            let lx1 = Wavelet53.ceilDivPowerOfTwo(x1, level)
-            let ly0 = Wavelet53.ceilDivPowerOfTwo(y0, level)
-            let ly1 = Wavelet53.ceilDivPowerOfTwo(y1, level)
-            let w = lx1 - lx0
-            let h = ly1 - ly0
-            guard w > 0, h > 0 else { continue }
+        try plane.withUnsafeMutableBufferPointer { planeBuf in
+            guard let pBase = planeBuf.baseAddress else { return }
+            let sharedPlane = UnsafeSendableMutableBuffer(planeBuf)
+            try scratches.withUnsafeMutableBufferPointer { scratchBuf in
+                let sharedScratches = UnsafeSendableMutableBuffer(scratchBuf)
 
-            // Vertical inverse pass across 4 columns at a time
-            var x = 0
-            while x + 4 <= w {
-                for row in 0..<h {
-                    let base = row * stride + x
-                    line4[row] = SIMD4<Double>(plane[base], plane[base + 1], plane[base + 2], plane[base + 3])
-                }
-                inverse1D4(&line4, i0: ly0, i1: ly1, scratch: &scratch4)
-                for row in 0..<h {
-                    let base = row * stride + x
-                    let v = line4[row]
-                    plane[base] = v[0]; plane[base + 1] = v[1]; plane[base + 2] = v[2]; plane[base + 3] = v[3]
-                }
-                x += 4
-            }
-            if x < w {
-                line1.withUnsafeMutableBufferPointer { lineBuf in
-                    scratch1.withUnsafeMutableBufferPointer { scratchBuf in
-                        while x < w {
-                            for row in 0..<h { lineBuf[row] = plane[row * stride + x] }
-                            Wavelet97.inverse1D(lineBuf, i0: ly0, i1: ly1, scratch: scratchBuf)
-                            for row in 0..<h { plane[row * stride + x] = lineBuf[row] }
-                            x += 1
+                for level in (0..<levels).reversed() {
+                    try cancellation()
+                    let lx0 = Wavelet53.ceilDivPowerOfTwo(x0, level)
+                    let lx1 = Wavelet53.ceilDivPowerOfTwo(x1, level)
+                    let ly0 = Wavelet53.ceilDivPowerOfTwo(y0, level)
+                    let ly1 = Wavelet53.ceilDivPowerOfTwo(y1, level)
+                    let w = lx1 - lx0
+                    let h = ly1 - ly0
+                    guard w > 0, h > 0 else { continue }
+                    let useParallel = canParallel && (w * h >= 16_384)
+
+                    // Vertical inverse pass (16-column strips = 128-byte cache-line alignment)
+                    let colStrips = (w + 15) / 16
+                    if useParallel && colStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: colStrips)
+                        try BoundedParallelPool.forEach(jobCount: colStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            sharedScratches.baseAddress[workerIdx].withPointers { l4p, s4p, lineBuf, sBuf in
+                                let startX = stripIdx * 16
+                                let endX = min(w, startX + 16)
+                                var x = startX
+                                while x + 4 <= endX {
+                                    for row in 0..<h {
+                                        let base = row * stride + x
+                                        l4p[row] = SIMD4<Double>(pb[base], pb[base + 1], pb[base + 2], pb[base + 3])
+                                    }
+                                    inverse1D4Ptr(l4p, i0: ly0, i1: ly1, scratch: s4p)
+                                    for row in 0..<h {
+                                        let base = row * stride + x
+                                        let v = l4p[row]
+                                        pb[base] = v[0]; pb[base + 1] = v[1]; pb[base + 2] = v[2]; pb[base + 3] = v[3]
+                                    }
+                                    x += 4
+                                }
+                                let l1p = lineBuf.baseAddress!
+                                while x < endX {
+                                    for row in 0..<h { l1p[row] = pb[row * stride + x] }
+                                    Wavelet97.inverse1D(lineBuf, i0: ly0, i1: ly1, scratch: sBuf)
+                                    for row in 0..<h { pb[row * stride + x] = l1p[row] }
+                                    x += 1
+                                }
+                            }
+                        }
+                    } else {
+                        sharedScratches.baseAddress[0].withPointers { l4p, s4p, lineBuf, sBuf in
+                            var x = 0
+                            while x + 4 <= w {
+                                for row in 0..<h {
+                                    let base = row * stride + x
+                                    l4p[row] = SIMD4<Double>(pBase[base], pBase[base + 1], pBase[base + 2], pBase[base + 3])
+                                }
+                                inverse1D4Ptr(l4p, i0: ly0, i1: ly1, scratch: s4p)
+                                for row in 0..<h {
+                                    let base = row * stride + x
+                                    let v = l4p[row]
+                                    pBase[base] = v[0]; pBase[base + 1] = v[1]; pBase[base + 2] = v[2]; pBase[base + 3] = v[3]
+                                }
+                                x += 4
+                            }
+                            let l1p = lineBuf.baseAddress!
+                            while x < w {
+                                for row in 0..<h { l1p[row] = pBase[row * stride + x] }
+                                Wavelet97.inverse1D(lineBuf, i0: ly0, i1: ly1, scratch: sBuf)
+                                for row in 0..<h { pBase[row * stride + x] = l1p[row] }
+                                x += 1
+                            }
                         }
                     }
-                }
-            }
 
-            // Horizontal inverse pass across 4 rows at a time
-            var y = 0
-            while y + 4 <= h {
-                let r0 = y * stride
-                let r1 = (y + 1) * stride
-                let r2 = (y + 2) * stride
-                let r3 = (y + 3) * stride
-                for col in 0..<w {
-                    line4[col] = SIMD4<Double>(plane[r0 + col], plane[r1 + col], plane[r2 + col], plane[r3 + col])
-                }
-                inverse1D4(&line4, i0: lx0, i1: lx1, scratch: &scratch4)
-                for col in 0..<w {
-                    let v = line4[col]
-                    plane[r0 + col] = v[0]; plane[r1 + col] = v[1]; plane[r2 + col] = v[2]; plane[r3 + col] = v[3]
-                }
-                y += 4
-            }
-            if y < h {
-                line1.withUnsafeMutableBufferPointer { lineBuf in
-                    scratch1.withUnsafeMutableBufferPointer { scratchBuf in
-                        while y < h {
-                            let base = y * stride
-                            for col in 0..<w { lineBuf[col] = plane[base + col] }
-                            Wavelet97.inverse1D(lineBuf, i0: lx0, i1: lx1, scratch: scratchBuf)
-                            for col in 0..<w { plane[base + col] = lineBuf[col] }
-                            y += 1
+                    // Horizontal inverse pass
+                    let rowStrips = (h + 15) / 16
+                    if useParallel && rowStrips >= 2 {
+                        let wCount = BoundedParallelPool.effectiveWorkers(requested: scratchCount, jobCount: rowStrips)
+                        try BoundedParallelPool.forEach(jobCount: rowStrips, maxWorkers: wCount) { (stripIdx: Int, workerIdx: Int) in
+                            let pb = sharedPlane.baseAddress
+                            sharedScratches.baseAddress[workerIdx].withPointers { l4p, s4p, lineBuf, sBuf in
+                                let startY = stripIdx * 16
+                                let endY = min(h, startY + 16)
+                                var y = startY
+                                while y + 4 <= endY {
+                                    let r0 = y * stride, r1 = (y + 1) * stride, r2 = (y + 2) * stride, r3 = (y + 3) * stride
+                                    for col in 0..<w {
+                                        l4p[col] = SIMD4<Double>(pb[r0 + col], pb[r1 + col], pb[r2 + col], pb[r3 + col])
+                                    }
+                                    inverse1D4Ptr(l4p, i0: lx0, i1: lx1, scratch: s4p)
+                                    for col in 0..<w {
+                                        let v = l4p[col]
+                                        pb[r0 + col] = v[0]; pb[r1 + col] = v[1]; pb[r2 + col] = v[2]; pb[r3 + col] = v[3]
+                                    }
+                                    y += 4
+                                }
+                                let l1p = lineBuf.baseAddress!
+                                while y < endY {
+                                    let base = y * stride
+                                    for col in 0..<w { l1p[col] = pb[base + col] }
+                                    Wavelet97.inverse1D(lineBuf, i0: lx0, i1: lx1, scratch: sBuf)
+                                    for col in 0..<w { pb[base + col] = l1p[col] }
+                                    y += 1
+                                }
+                            }
+                        }
+                    } else {
+                        sharedScratches.baseAddress[0].withPointers { l4p, s4p, lineBuf, sBuf in
+                            var y = 0
+                            while y + 4 <= h {
+                                let r0 = y * stride
+                                let r1 = (y + 1) * stride
+                                let r2 = (y + 2) * stride
+                                let r3 = (y + 3) * stride
+                                for col in 0..<w {
+                                    l4p[col] = SIMD4<Double>(pBase[r0 + col], pBase[r1 + col], pBase[r2 + col], pBase[r3 + col])
+                                }
+                                inverse1D4Ptr(l4p, i0: lx0, i1: lx1, scratch: s4p)
+                                for col in 0..<w {
+                                    let v = l4p[col]
+                                    pBase[r0 + col] = v[0]; pBase[r1 + col] = v[1]; pBase[r2 + col] = v[2]; pBase[r3 + col] = v[3]
+                                }
+                                y += 4
+                            }
+                            let l1p = lineBuf.baseAddress!
+                            while y < h {
+                                let base = y * stride
+                                for col in 0..<w { l1p[col] = pBase[base + col] }
+                                Wavelet97.inverse1D(lineBuf, i0: lx0, i1: lx1, scratch: sBuf)
+                                for col in 0..<w { pBase[base + col] = l1p[col] }
+                                y += 1
+                            }
                         }
                     }
                 }
@@ -685,44 +1285,87 @@ internal enum SIMDColourTransform {
     internal static func forwardRCT(planes: inout [[Int32]]) {
         guard planes.count >= 3 else { return }
         let count = min(planes[0].count, min(planes[1].count, planes[2].count))
-        var rPlane = planes[0]
-        var gPlane = planes[1]
-        var bPlane = planes[2]
+        guard count > 0 else { return }
 
-        let two = SIMD4<Int64>(repeating: 2)
-        var i = 0
-        while i + 4 <= count {
-            let r = SIMD4<Int64>(
-                Int64(rPlane[i]), Int64(rPlane[i + 1]), Int64(rPlane[i + 2]), Int64(rPlane[i + 3])
-            )
-            let g = SIMD4<Int64>(
-                Int64(gPlane[i]), Int64(gPlane[i + 1]), Int64(gPlane[i + 2]), Int64(gPlane[i + 3])
-            )
-            let b = SIMD4<Int64>(
-                Int64(bPlane[i]), Int64(bPlane[i + 1]), Int64(bPlane[i + 2]), Int64(bPlane[i + 3])
-            )
-
-            let y  = SIMD4<Int32>(truncatingIfNeeded: (r &+ (two &* g) &+ b) &>> 2)
-            let cb = SIMD4<Int32>(truncatingIfNeeded: b &- g)
-            let cr = SIMD4<Int32>(truncatingIfNeeded: r &- g)
-
-            rPlane[i] = y[0];  rPlane[i + 1] = y[1];  rPlane[i + 2] = y[2];  rPlane[i + 3] = y[3]
-            gPlane[i] = cb[0]; gPlane[i + 1] = cb[1]; gPlane[i + 2] = cb[2]; gPlane[i + 3] = cb[3]
-            bPlane[i] = cr[0]; bPlane[i + 1] = cr[1]; bPlane[i + 2] = cr[2]; bPlane[i + 3] = cr[3]
-            i += 4
+        var rPlane = planes[0]; planes[0] = []
+        var gPlane = planes[1]; planes[1] = []
+        var bPlane = planes[2]; planes[2] = []
+        defer {
+            planes[0] = rPlane
+            planes[1] = gPlane
+            planes[2] = bPlane
         }
-        while i < count {
-            let r = Int64(rPlane[i])
-            let g = Int64(gPlane[i])
-            let b = Int64(bPlane[i])
-            rPlane[i] = Int32(truncatingIfNeeded: (r + 2 * g + b) >> 2)
-            gPlane[i] = Int32(truncatingIfNeeded: b - g)
-            bPlane[i] = Int32(truncatingIfNeeded: r - g)
-            i += 1
+
+        rPlane.withUnsafeMutableBufferPointer { rBuf in
+            gPlane.withUnsafeMutableBufferPointer { gBuf in
+                bPlane.withUnsafeMutableBufferPointer { bBuf in
+                    let rp = rBuf.baseAddress!
+                    let gp = gBuf.baseAddress!
+                    let bp = bBuf.baseAddress!
+                    let two = SIMD4<Int64>(repeating: 2)
+
+                    @inline(__always)
+                    func runRange(_ start: Int, _ end: Int) {
+                        var i = start
+                        while i + 4 <= end {
+                            let r = SIMD4<Int64>(Int64(rp[i]), Int64(rp[i + 1]), Int64(rp[i + 2]), Int64(rp[i + 3]))
+                            let g = SIMD4<Int64>(Int64(gp[i]), Int64(gp[i + 1]), Int64(gp[i + 2]), Int64(gp[i + 3]))
+                            let b = SIMD4<Int64>(Int64(bp[i]), Int64(bp[i + 1]), Int64(bp[i + 2]), Int64(bp[i + 3]))
+                            let y  = SIMD4<Int32>(truncatingIfNeeded: (r &+ (two &* g) &+ b) &>> 2)
+                            let cb = SIMD4<Int32>(truncatingIfNeeded: b &- g)
+                            let cr = SIMD4<Int32>(truncatingIfNeeded: r &- g)
+                            rp[i] = y[0];  rp[i + 1] = y[1];  rp[i + 2] = y[2];  rp[i + 3] = y[3]
+                            gp[i] = cb[0]; gp[i + 1] = cb[1]; gp[i + 2] = cb[2]; gp[i + 3] = cb[3]
+                            bp[i] = cr[0]; bp[i + 1] = cr[1]; bp[i + 2] = cr[2]; bp[i + 3] = cr[3]
+                            i += 4
+                        }
+                        while i < end {
+                            let r = Int64(rp[i]), g = Int64(gp[i]), b = Int64(bp[i])
+                            rp[i] = Int32(truncatingIfNeeded: (r + 2 * g + b) >> 2)
+                            gp[i] = Int32(truncatingIfNeeded: b - g)
+                            bp[i] = Int32(truncatingIfNeeded: r - g)
+                            i += 1
+                        }
+                    }
+
+                    let workers = AcceleratedCodec.activeWorkerLimit
+                    let chunkSize = 8192
+                    let chunks = (count + chunkSize - 1) / chunkSize
+                    if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && chunks >= 2 && count >= 32_768 {
+                        let sr = UnsafeSendableMutableBuffer(rBuf)
+                        let sg = UnsafeSendableMutableBuffer(gBuf)
+                        let sb = UnsafeSendableMutableBuffer(bBuf)
+                        BoundedParallelPool.forEachNonThrowing(jobCount: chunks, maxWorkers: workers) { cIdx in
+                            let s = cIdx * chunkSize
+                            let e = min(count, s + chunkSize)
+                            let p0 = sr.baseAddress, p1 = sg.baseAddress, p2 = sb.baseAddress
+                            var i = s
+                            while i + 4 <= e {
+                                let r = SIMD4<Int64>(Int64(p0[i]), Int64(p0[i + 1]), Int64(p0[i + 2]), Int64(p0[i + 3]))
+                                let g = SIMD4<Int64>(Int64(p1[i]), Int64(p1[i + 1]), Int64(p1[i + 2]), Int64(p1[i + 3]))
+                                let b = SIMD4<Int64>(Int64(p2[i]), Int64(p2[i + 1]), Int64(p2[i + 2]), Int64(p2[i + 3]))
+                                let y  = SIMD4<Int32>(truncatingIfNeeded: (r &+ (two &* g) &+ b) &>> 2)
+                                let cb = SIMD4<Int32>(truncatingIfNeeded: b &- g)
+                                let cr = SIMD4<Int32>(truncatingIfNeeded: r &- g)
+                                p0[i] = y[0];  p0[i + 1] = y[1];  p0[i + 2] = y[2];  p0[i + 3] = y[3]
+                                p1[i] = cb[0]; p1[i + 1] = cb[1]; p1[i + 2] = cb[2]; p1[i + 3] = cb[3]
+                                p2[i] = cr[0]; p2[i + 1] = cr[1]; p2[i + 2] = cr[2]; p2[i + 3] = cr[3]
+                                i += 4
+                            }
+                            while i < e {
+                                let r = Int64(p0[i]), g = Int64(p1[i]), b = Int64(p2[i])
+                                p0[i] = Int32(truncatingIfNeeded: (r + 2 * g + b) >> 2)
+                                p1[i] = Int32(truncatingIfNeeded: b - g)
+                                p2[i] = Int32(truncatingIfNeeded: r - g)
+                                i += 1
+                            }
+                        }
+                    } else {
+                        runRange(0, count)
+                    }
+                }
+            }
         }
-        planes[0] = rPlane
-        planes[1] = gPlane
-        planes[2] = bPlane
     }
 
     /// Inverse Reversible Colour Transform (RCT) in-place on 3 component planes using `SIMD4<Int64>`.
@@ -731,45 +1374,85 @@ internal enum SIMDColourTransform {
     internal static func inverseRCT(planes: inout [[Int32]]) {
         guard planes.count >= 3 else { return }
         let count = min(planes[0].count, min(planes[1].count, planes[2].count))
-        var yPlane = planes[0]
-        var cbPlane = planes[1]
-        var crPlane = planes[2]
+        guard count > 0 else { return }
 
-        var i = 0
-        while i + 4 <= count {
-            let yv = SIMD4<Int64>(
-                Int64(yPlane[i]), Int64(yPlane[i + 1]), Int64(yPlane[i + 2]), Int64(yPlane[i + 3])
-            )
-            let cbv = SIMD4<Int64>(
-                Int64(cbPlane[i]), Int64(cbPlane[i + 1]), Int64(cbPlane[i + 2]), Int64(cbPlane[i + 3])
-            )
-            let crv = SIMD4<Int64>(
-                Int64(crPlane[i]), Int64(crPlane[i + 1]), Int64(crPlane[i + 2]), Int64(crPlane[i + 3])
-            )
-
-            let g = yv &- ((cbv &+ crv) &>> 2)
-            let r = SIMD4<Int32>(truncatingIfNeeded: crv &+ g)
-            let g32 = SIMD4<Int32>(truncatingIfNeeded: g)
-            let b = SIMD4<Int32>(truncatingIfNeeded: cbv &+ g)
-
-            yPlane[i]  = r[0];   yPlane[i + 1]  = r[1];   yPlane[i + 2]  = r[2];   yPlane[i + 3]  = r[3]
-            cbPlane[i] = g32[0]; cbPlane[i + 1] = g32[1]; cbPlane[i + 2] = g32[2]; cbPlane[i + 3] = g32[3]
-            crPlane[i] = b[0];   crPlane[i + 1] = b[1];   crPlane[i + 2] = b[2];   crPlane[i + 3] = b[3]
-            i += 4
+        var yPlane = planes[0]; planes[0] = []
+        var cbPlane = planes[1]; planes[1] = []
+        var crPlane = planes[2]; planes[2] = []
+        defer {
+            planes[0] = yPlane
+            planes[1] = cbPlane
+            planes[2] = crPlane
         }
-        while i < count {
-            let yv  = Int64(yPlane[i])
-            let cbv = Int64(cbPlane[i])
-            let crv = Int64(crPlane[i])
-            let g = yv - ((cbv + crv) >> 2)
-            yPlane[i]  = Int32(truncatingIfNeeded: crv + g)
-            cbPlane[i] = Int32(truncatingIfNeeded: g)
-            crPlane[i] = Int32(truncatingIfNeeded: cbv + g)
-            i += 1
+
+        yPlane.withUnsafeMutableBufferPointer { yBuf in
+            cbPlane.withUnsafeMutableBufferPointer { cbBuf in
+                crPlane.withUnsafeMutableBufferPointer { crBuf in
+                    let yp = yBuf.baseAddress!
+                    let cbp = cbBuf.baseAddress!
+                    let crp = crBuf.baseAddress!
+
+                    let workers = AcceleratedCodec.activeWorkerLimit
+                    let chunkSize = 8192
+                    let chunks = (count + chunkSize - 1) / chunkSize
+                    if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && chunks >= 2 && count >= 32_768 {
+                        let sy = UnsafeSendableMutableBuffer(yBuf)
+                        let scb = UnsafeSendableMutableBuffer(cbBuf)
+                        let scr = UnsafeSendableMutableBuffer(crBuf)
+                        BoundedParallelPool.forEachNonThrowing(jobCount: chunks, maxWorkers: workers) { cIdx in
+                            let s = cIdx * chunkSize
+                            let e = min(count, s + chunkSize)
+                            let p0 = sy.baseAddress, p1 = scb.baseAddress, p2 = scr.baseAddress
+                            var i = s
+                            while i + 4 <= e {
+                                let yv  = SIMD4<Int64>(Int64(p0[i]), Int64(p0[i + 1]), Int64(p0[i + 2]), Int64(p0[i + 3]))
+                                let cbv = SIMD4<Int64>(Int64(p1[i]), Int64(p1[i + 1]), Int64(p1[i + 2]), Int64(p1[i + 3]))
+                                let crv = SIMD4<Int64>(Int64(p2[i]), Int64(p2[i + 1]), Int64(p2[i + 2]), Int64(p2[i + 3]))
+                                let g = yv &- ((cbv &+ crv) &>> 2)
+                                let r = SIMD4<Int32>(truncatingIfNeeded: crv &+ g)
+                                let g32 = SIMD4<Int32>(truncatingIfNeeded: g)
+                                let b = SIMD4<Int32>(truncatingIfNeeded: cbv &+ g)
+                                p0[i] = r[0];   p0[i + 1] = r[1];   p0[i + 2] = r[2];   p0[i + 3] = r[3]
+                                p1[i] = g32[0]; p1[i + 1] = g32[1]; p1[i + 2] = g32[2]; p1[i + 3] = g32[3]
+                                p2[i] = b[0];   p2[i + 1] = b[1];   p2[i + 2] = b[2];   p2[i + 3] = b[3]
+                                i += 4
+                            }
+                            while i < e {
+                                let yv = Int64(p0[i]), cbv = Int64(p1[i]), crv = Int64(p2[i])
+                                let g = yv - ((cbv + crv) >> 2)
+                                p0[i] = Int32(truncatingIfNeeded: crv + g)
+                                p1[i] = Int32(truncatingIfNeeded: g)
+                                p2[i] = Int32(truncatingIfNeeded: cbv + g)
+                                i += 1
+                            }
+                        }
+                    } else {
+                        var i = 0
+                        while i + 4 <= count {
+                            let yv  = SIMD4<Int64>(Int64(yp[i]), Int64(yp[i + 1]), Int64(yp[i + 2]), Int64(yp[i + 3]))
+                            let cbv = SIMD4<Int64>(Int64(cbp[i]), Int64(cbp[i + 1]), Int64(cbp[i + 2]), Int64(cbp[i + 3]))
+                            let crv = SIMD4<Int64>(Int64(crp[i]), Int64(crp[i + 1]), Int64(crp[i + 2]), Int64(crp[i + 3]))
+                            let g = yv &- ((cbv &+ crv) &>> 2)
+                            let r = SIMD4<Int32>(truncatingIfNeeded: crv &+ g)
+                            let g32 = SIMD4<Int32>(truncatingIfNeeded: g)
+                            let b = SIMD4<Int32>(truncatingIfNeeded: cbv &+ g)
+                            yp[i]  = r[0];   yp[i + 1]  = r[1];   yp[i + 2]  = r[2];   yp[i + 3]  = r[3]
+                            cbp[i] = g32[0]; cbp[i + 1] = g32[1]; cbp[i + 2] = g32[2]; cbp[i + 3] = g32[3]
+                            crp[i] = b[0];   crp[i + 1] = b[1];   crp[i + 2] = b[2];   crp[i + 3] = b[3]
+                            i += 4
+                        }
+                        while i < count {
+                            let yv = Int64(yp[i]), cbv = Int64(cbp[i]), crv = Int64(crp[i])
+                            let g = yv - ((cbv + crv) >> 2)
+                            yp[i]  = Int32(truncatingIfNeeded: crv + g)
+                            cbp[i] = Int32(truncatingIfNeeded: g)
+                            crp[i] = Int32(truncatingIfNeeded: cbv + g)
+                            i += 1
+                        }
+                    }
+                }
+            }
         }
-        planes[0] = yPlane
-        planes[1] = cbPlane
-        planes[2] = crPlane
     }
 
     /// Forward Irreversible Colour Transform (ICT) in-place on 3 component planes using `SIMD4<Double>`.
@@ -778,9 +1461,16 @@ internal enum SIMDColourTransform {
     internal static func forwardICT(planes: inout [[Double]]) {
         guard planes.count >= 3 else { return }
         let count = min(planes[0].count, min(planes[1].count, planes[2].count))
-        var rPlane = planes[0]
-        var gPlane = planes[1]
-        var bPlane = planes[2]
+        guard count > 0 else { return }
+
+        var rPlane = planes[0]; planes[0] = []
+        var gPlane = planes[1]; planes[1] = []
+        var bPlane = planes[2]; planes[2] = []
+        defer {
+            planes[0] = rPlane
+            planes[1] = gPlane
+            planes[2] = bPlane
+        }
 
         let c0R = SIMD4<Double>(repeating:  0.299)
         let c0G = SIMD4<Double>(repeating:  0.587)
@@ -792,33 +1482,70 @@ internal enum SIMDColourTransform {
         let c2G = SIMD4<Double>(repeating: -0.418688)
         let c2B = SIMD4<Double>(repeating: -0.081312)
 
-        var i = 0
-        while i + 4 <= count {
-            let r = SIMD4<Double>(rPlane[i], rPlane[i + 1], rPlane[i + 2], rPlane[i + 3])
-            let g = SIMD4<Double>(gPlane[i], gPlane[i + 1], gPlane[i + 2], gPlane[i + 3])
-            let b = SIMD4<Double>(bPlane[i], bPlane[i + 1], bPlane[i + 2], bPlane[i + 3])
+        rPlane.withUnsafeMutableBufferPointer { rBuf in
+            gPlane.withUnsafeMutableBufferPointer { gBuf in
+                bPlane.withUnsafeMutableBufferPointer { bBuf in
+                    let rp = rBuf.baseAddress!
+                    let gp = gBuf.baseAddress!
+                    let bp = bBuf.baseAddress!
 
-            let y  = c0R * r + c0G * g + c0B * b
-            let cb = c1R * r + c1G * g + c1B * b
-            let cr = c2R * r + c2G * g + c2B * b
-
-            rPlane[i] = y[0];  rPlane[i + 1] = y[1];  rPlane[i + 2] = y[2];  rPlane[i + 3] = y[3]
-            gPlane[i] = cb[0]; gPlane[i + 1] = cb[1]; gPlane[i + 2] = cb[2]; gPlane[i + 3] = cb[3]
-            bPlane[i] = cr[0]; bPlane[i + 1] = cr[1]; bPlane[i + 2] = cr[2]; bPlane[i + 3] = cr[3]
-            i += 4
+                    let workers = AcceleratedCodec.activeWorkerLimit
+                    let chunkSize = 8192
+                    let chunks = (count + chunkSize - 1) / chunkSize
+                    if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && chunks >= 2 && count >= 32_768 {
+                        let sr = UnsafeSendableMutableBuffer(rBuf)
+                        let sg = UnsafeSendableMutableBuffer(gBuf)
+                        let sb = UnsafeSendableMutableBuffer(bBuf)
+                        BoundedParallelPool.forEachNonThrowing(jobCount: chunks, maxWorkers: workers) { cIdx in
+                            let s = cIdx * chunkSize
+                            let e = min(count, s + chunkSize)
+                            let p0 = sr.baseAddress, p1 = sg.baseAddress, p2 = sb.baseAddress
+                            var i = s
+                            while i + 4 <= e {
+                                let r = SIMD4<Double>(p0[i], p0[i + 1], p0[i + 2], p0[i + 3])
+                                let g = SIMD4<Double>(p1[i], p1[i + 1], p1[i + 2], p1[i + 3])
+                                let b = SIMD4<Double>(p2[i], p2[i + 1], p2[i + 2], p2[i + 3])
+                                let y  = c0R * r + c0G * g + c0B * b
+                                let cb = c1R * r + c1G * g + c1B * b
+                                let cr = c2R * r + c2G * g + c2B * b
+                                p0[i] = y[0];  p0[i + 1] = y[1];  p0[i + 2] = y[2];  p0[i + 3] = y[3]
+                                p1[i] = cb[0]; p1[i + 1] = cb[1]; p1[i + 2] = cb[2]; p1[i + 3] = cb[3]
+                                p2[i] = cr[0]; p2[i + 1] = cr[1]; p2[i + 2] = cr[2]; p2[i + 3] = cr[3]
+                                i += 4
+                            }
+                            while i < e {
+                                let r = p0[i], g = p1[i], b = p2[i]
+                                p0[i] =  0.299    * r + 0.587    * g + 0.114    * b
+                                p1[i] = -0.168736 * r - 0.331264 * g + 0.5      * b
+                                p2[i] =  0.5      * r - 0.418688 * g - 0.081312 * b
+                                i += 1
+                            }
+                        }
+                    } else {
+                        var i = 0
+                        while i + 4 <= count {
+                            let r = SIMD4<Double>(rp[i], rp[i + 1], rp[i + 2], rp[i + 3])
+                            let g = SIMD4<Double>(gp[i], gp[i + 1], gp[i + 2], gp[i + 3])
+                            let b = SIMD4<Double>(bp[i], bp[i + 1], bp[i + 2], bp[i + 3])
+                            let y  = c0R * r + c0G * g + c0B * b
+                            let cb = c1R * r + c1G * g + c1B * b
+                            let cr = c2R * r + c2G * g + c2B * b
+                            rp[i] = y[0];  rp[i + 1] = y[1];  rp[i + 2] = y[2];  rp[i + 3] = y[3]
+                            gp[i] = cb[0]; gp[i + 1] = cb[1]; gp[i + 2] = cb[2]; gp[i + 3] = cb[3]
+                            bp[i] = cr[0]; bp[i + 1] = cr[1]; bp[i + 2] = cr[2]; bp[i + 3] = cr[3]
+                            i += 4
+                        }
+                        while i < count {
+                            let r = rp[i], g = gp[i], b = bp[i]
+                            rp[i] =  0.299    * r + 0.587    * g + 0.114    * b
+                            gp[i] = -0.168736 * r - 0.331264 * g + 0.5      * b
+                            bp[i] =  0.5      * r - 0.418688 * g - 0.081312 * b
+                            i += 1
+                        }
+                    }
+                }
+            }
         }
-        while i < count {
-            let r = rPlane[i]
-            let g = gPlane[i]
-            let b = bPlane[i]
-            rPlane[i] =  0.299    * r + 0.587    * g + 0.114    * b
-            gPlane[i] = -0.168736 * r - 0.331264 * g + 0.5      * b
-            bPlane[i] =  0.5      * r - 0.418688 * g - 0.081312 * b
-            i += 1
-        }
-        planes[0] = rPlane
-        planes[1] = gPlane
-        planes[2] = bPlane
     }
 
     /// Inverse Irreversible Colour Transform (ICT) in-place on 3 component planes using `SIMD4<Double>`.
@@ -827,42 +1554,86 @@ internal enum SIMDColourTransform {
     internal static func inverseICT(planes: inout [[Double]]) {
         guard planes.count >= 3 else { return }
         let count = min(planes[0].count, min(planes[1].count, planes[2].count))
-        var yPlane = planes[0]
-        var cbPlane = planes[1]
-        var crPlane = planes[2]
+        guard count > 0 else { return }
+
+        var yPlane = planes[0]; planes[0] = []
+        var cbPlane = planes[1]; planes[1] = []
+        var crPlane = planes[2]; planes[2] = []
+        defer {
+            planes[0] = yPlane
+            planes[1] = cbPlane
+            planes[2] = crPlane
+        }
 
         let crToR = SIMD4<Double>(repeating: 1.402)
         let cbToG = SIMD4<Double>(repeating: 0.344136)
         let crToG = SIMD4<Double>(repeating: 0.714136)
         let cbToB = SIMD4<Double>(repeating: 1.772)
 
-        var i = 0
-        while i + 4 <= count {
-            let yv  = SIMD4<Double>(yPlane[i],  yPlane[i + 1],  yPlane[i + 2],  yPlane[i + 3])
-            let cbv = SIMD4<Double>(cbPlane[i], cbPlane[i + 1], cbPlane[i + 2], cbPlane[i + 3])
-            let crv = SIMD4<Double>(crPlane[i], crPlane[i + 1], crPlane[i + 2], crPlane[i + 3])
+        yPlane.withUnsafeMutableBufferPointer { yBuf in
+            cbPlane.withUnsafeMutableBufferPointer { cbBuf in
+                crPlane.withUnsafeMutableBufferPointer { crBuf in
+                    let yp = yBuf.baseAddress!
+                    let cbp = cbBuf.baseAddress!
+                    let crp = crBuf.baseAddress!
 
-            let r = yv + crToR * crv
-            let g = yv - cbToG * cbv - crToG * crv
-            let b = yv + cbToB * cbv
-
-            yPlane[i]  = r[0]; yPlane[i + 1]  = r[1]; yPlane[i + 2]  = r[2]; yPlane[i + 3]  = r[3]
-            cbPlane[i] = g[0]; cbPlane[i + 1] = g[1]; cbPlane[i + 2] = g[2]; cbPlane[i + 3] = g[3]
-            crPlane[i] = b[0]; crPlane[i + 1] = b[1]; crPlane[i + 2] = b[2]; crPlane[i + 3] = b[3]
-            i += 4
+                    let workers = AcceleratedCodec.activeWorkerLimit
+                    let chunkSize = 8192
+                    let chunks = (count + chunkSize - 1) / chunkSize
+                    if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && chunks >= 2 && count >= 32_768 {
+                        let sy = UnsafeSendableMutableBuffer(yBuf)
+                        let scb = UnsafeSendableMutableBuffer(cbBuf)
+                        let scr = UnsafeSendableMutableBuffer(crBuf)
+                        BoundedParallelPool.forEachNonThrowing(jobCount: chunks, maxWorkers: workers) { cIdx in
+                            let s = cIdx * chunkSize
+                            let e = min(count, s + chunkSize)
+                            let p0 = sy.baseAddress, p1 = scb.baseAddress, p2 = scr.baseAddress
+                            var i = s
+                            while i + 4 <= e {
+                                let yv  = SIMD4<Double>(p0[i], p0[i + 1], p0[i + 2], p0[i + 3])
+                                let cbv = SIMD4<Double>(p1[i], p1[i + 1], p1[i + 2], p1[i + 3])
+                                let crv = SIMD4<Double>(p2[i], p2[i + 1], p2[i + 2], p2[i + 3])
+                                let r = yv + crToR * crv
+                                let g = yv - cbToG * cbv - crToG * crv
+                                let b = yv + cbToB * cbv
+                                p0[i] = r[0]; p0[i + 1] = r[1]; p0[i + 2] = r[2]; p0[i + 3] = r[3]
+                                p1[i] = g[0]; p1[i + 1] = g[1]; p1[i + 2] = g[2]; p1[i + 3] = g[3]
+                                p2[i] = b[0]; p2[i + 1] = b[1]; p2[i + 2] = b[2]; p2[i + 3] = b[3]
+                                i += 4
+                            }
+                            while i < e {
+                                let yv = p0[i], cbv = p1[i], crv = p2[i]
+                                p0[i] = yv + 1.402 * crv
+                                p1[i] = yv - 0.344136 * cbv - 0.714136 * crv
+                                p2[i] = yv + 1.772 * cbv
+                                i += 1
+                            }
+                        }
+                    } else {
+                        var i = 0
+                        while i + 4 <= count {
+                            let yv  = SIMD4<Double>(yp[i],  yp[i + 1],  yp[i + 2],  yp[i + 3])
+                            let cbv = SIMD4<Double>(cbp[i], cbp[i + 1], cbp[i + 2], cbp[i + 3])
+                            let crv = SIMD4<Double>(crp[i], crp[i + 1], crp[i + 2], crp[i + 3])
+                            let r = yv + crToR * crv
+                            let g = yv - cbToG * cbv - crToG * crv
+                            let b = yv + cbToB * cbv
+                            yp[i]  = r[0]; yp[i + 1]  = r[1]; yp[i + 2]  = r[2]; yp[i + 3]  = r[3]
+                            cbp[i] = g[0]; cbp[i + 1] = g[1]; cbp[i + 2] = g[2]; cbp[i + 3] = g[3]
+                            crp[i] = b[0]; crp[i + 1] = b[1]; crp[i + 2] = b[2]; crp[i + 3] = b[3]
+                            i += 4
+                        }
+                        while i < count {
+                            let yv = yp[i], cbv = cbp[i], crv = crp[i]
+                            yp[i]  = yv + 1.402 * crv
+                            cbp[i] = yv - 0.344136 * cbv - 0.714136 * crv
+                            crp[i] = yv + 1.772 * cbv
+                            i += 1
+                        }
+                    }
+                }
+            }
         }
-        while i < count {
-            let yv  = yPlane[i]
-            let cbv = cbPlane[i]
-            let crv = crPlane[i]
-            yPlane[i]  = yv + 1.402 * crv
-            cbPlane[i] = yv - 0.344136 * cbv - 0.714136 * crv
-            crPlane[i] = yv + 1.772 * cbv
-            i += 1
-        }
-        planes[0] = yPlane
-        planes[1] = cbPlane
-        planes[2] = crPlane
     }
 
     /// Vectorised general 3×3 linear transform (`out = M * in + offsets`) using `SIMD4<Double>`.
@@ -1010,36 +1781,157 @@ internal enum SIMDQuantizationAndROI {
         step: Double,
         mb: Int
     ) {
+        guard band.width > 0, band.height > 0 else { return }
         let invStep = 1.0 / step
         let maxMag = (Int64(1) << mb) - 1
         let invStepVec = SIMD4<Double>(repeating: invStep)
 
-        for row in 0..<band.height {
-            let rBase = (band.planeY + row) * stride + band.planeX
-            var col = 0
-            while col + 4 <= band.width {
-                let idx = rBase + col
-                let v = SIMD4<Double>(
-                    doublePlane[idx],
-                    doublePlane[idx + 1],
-                    doublePlane[idx + 2],
-                    doublePlane[idx + 3]
-                )
-                let absV = pointwiseMax(v, -v)
-                let scaled = (absV * invStepVec).rounded(.down)
-                for lane in 0..<4 {
-                    let val = v[lane]
-                    let qMag = min(maxMag, Int64(scaled[lane]))
-                    quantisedPlane[idx + lane] = val < 0 ? -qMag : qMag
+        doublePlane.withUnsafeBufferPointer { srcBuf in
+            quantisedPlane.withUnsafeMutableBufferPointer { dstBuf in
+                let sp = srcBuf.baseAddress!
+                let dp = dstBuf.baseAddress!
+                let workers = AcceleratedCodec.activeWorkerLimit
+                let rowStrips = (band.height + 15) / 16
+                if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && rowStrips >= 2 && (band.width * band.height >= 16_384) {
+                    let sSrc = UnsafeSendableBuffer(srcBuf)
+                    let sDst = UnsafeSendableMutableBuffer(dstBuf)
+                    BoundedParallelPool.forEachNonThrowing(jobCount: rowStrips, maxWorkers: workers) { stripIdx in
+                        let rStart = stripIdx * 16
+                        let rEnd = min(band.height, rStart + 16)
+                        let srcP = sSrc.baseAddress
+                        let dstP = sDst.baseAddress
+                        for row in rStart..<rEnd {
+                            let rBase = (band.planeY + row) * stride + band.planeX
+                            var col = 0
+                            while col + 4 <= band.width {
+                                let idx = rBase + col
+                                let v = SIMD4<Double>(srcP[idx], srcP[idx + 1], srcP[idx + 2], srcP[idx + 3])
+                                let absV = pointwiseMax(v, -v)
+                                let scaled = (absV * invStepVec).rounded(.down)
+                                for lane in 0..<4 {
+                                    let val = v[lane]
+                                    let qMag = min(maxMag, Int64(scaled[lane]))
+                                    dstP[idx + lane] = val < 0 ? -qMag : qMag
+                                }
+                                col += 4
+                            }
+                            while col < band.width {
+                                let idx = rBase + col
+                                let val = srcP[idx]
+                                let qMag = min(maxMag, Int64(floor(abs(val) * invStep)))
+                                dstP[idx] = val < 0 ? -qMag : qMag
+                                col += 1
+                            }
+                        }
+                    }
+                } else {
+                    for row in 0..<band.height {
+                        let rBase = (band.planeY + row) * stride + band.planeX
+                        var col = 0
+                        while col + 4 <= band.width {
+                            let idx = rBase + col
+                            let v = SIMD4<Double>(sp[idx], sp[idx + 1], sp[idx + 2], sp[idx + 3])
+                            let absV = pointwiseMax(v, -v)
+                            let scaled = (absV * invStepVec).rounded(.down)
+                            for lane in 0..<4 {
+                                let val = v[lane]
+                                let qMag = min(maxMag, Int64(scaled[lane]))
+                                dp[idx + lane] = val < 0 ? -qMag : qMag
+                            }
+                            col += 4
+                        }
+                        while col < band.width {
+                            let idx = rBase + col
+                            let val = sp[idx]
+                            let qMag = min(maxMag, Int64(floor(abs(val) * invStep)))
+                            dp[idx] = val < 0 ? -qMag : qMag
+                            col += 1
+                        }
+                    }
                 }
-                col += 4
             }
-            while col < band.width {
-                let idx = rBase + col
-                let val = doublePlane[idx]
-                let qMag = min(maxMag, Int64(floor(abs(val) * invStep)))
-                quantisedPlane[idx] = val < 0 ? -qMag : qMag
-                col += 1
+        }
+    }
+
+    /// Vectorised dead-zone quantization of a subband rectangle in `doublePlane` directly into a 32-bit `quantisedPlane`.
+    internal static func quantizeSubband32(
+        doublePlane: [Double],
+        quantisedPlane: inout [Int32],
+        stride: Int,
+        band: BandGeometry,
+        step: Double,
+        mb: Int
+    ) {
+        guard band.width > 0, band.height > 0 else { return }
+        let invStep = 1.0 / step
+        let maxMag = (Int64(1) << min(30, mb)) - 1
+        let maxMagD = Double(maxMag)
+        let invStepVec = SIMD4<Double>(repeating: invStep)
+        let maxMagVec = SIMD4<Double>(repeating: maxMagD)
+
+        doublePlane.withUnsafeBufferPointer { srcBuf in
+            quantisedPlane.withUnsafeMutableBufferPointer { dstBuf in
+                let sp = srcBuf.baseAddress!
+                let dp = dstBuf.baseAddress!
+                let workers = AcceleratedCodec.activeWorkerLimit
+                let rowStrips = (band.height + 15) / 16
+                if workers > 1 && !BoundedParallelPool.isInsideParallelRegion && rowStrips >= 2 && (band.width * band.height >= 16_384) {
+                    let sSrc = UnsafeSendableBuffer(srcBuf)
+                    let sDst = UnsafeSendableMutableBuffer(dstBuf)
+                    BoundedParallelPool.forEachNonThrowing(jobCount: rowStrips, maxWorkers: workers) { stripIdx in
+                        let rStart = stripIdx * 16
+                        let rEnd = min(band.height, rStart + 16)
+                        let srcP = sSrc.baseAddress
+                        let dstP = sDst.baseAddress
+                        for row in rStart..<rEnd {
+                            let rBase = (band.planeY + row) * stride + band.planeX
+                            var col = 0
+                            while col + 4 <= band.width {
+                                let idx = rBase + col
+                                let v = SIMD4<Double>(srcP[idx], srcP[idx + 1], srcP[idx + 2], srcP[idx + 3])
+                                let absV = pointwiseMax(v, -v)
+                                let scaled = pointwiseMin(maxMagVec, (absV * invStepVec).rounded(.down))
+                                for lane in 0..<4 {
+                                    let val = v[lane]
+                                    let qMag = Int32(scaled[lane])
+                                    dstP[idx + lane] = val < 0 ? -qMag : qMag
+                                }
+                                col += 4
+                            }
+                            while col < band.width {
+                                let idx = rBase + col
+                                let val = srcP[idx]
+                                let qMag = Int32(min(maxMagD, floor(abs(val) * invStep)))
+                                dstP[idx] = val < 0 ? -qMag : qMag
+                                col += 1
+                            }
+                        }
+                    }
+                } else {
+                    for row in 0..<band.height {
+                        let rBase = (band.planeY + row) * stride + band.planeX
+                        var col = 0
+                        while col + 4 <= band.width {
+                            let idx = rBase + col
+                            let v = SIMD4<Double>(sp[idx], sp[idx + 1], sp[idx + 2], sp[idx + 3])
+                            let absV = pointwiseMax(v, -v)
+                            let scaled = pointwiseMin(maxMagVec, (absV * invStepVec).rounded(.down))
+                            for lane in 0..<4 {
+                                let val = v[lane]
+                                let qMag = Int32(scaled[lane])
+                                dp[idx + lane] = val < 0 ? -qMag : qMag
+                            }
+                            col += 4
+                        }
+                        while col < band.width {
+                            let idx = rBase + col
+                            let val = sp[idx]
+                            let qMag = Int32(min(maxMagD, floor(abs(val) * invStep)))
+                            dp[idx] = val < 0 ? -qMag : qMag
+                            col += 1
+                        }
+                    }
+                }
             }
         }
     }
@@ -1156,6 +2048,118 @@ package enum SIMDHTBlockCoder {
         package let s3: UInt32
     }
 
+    /// Vectorised 2×2 quad classification directly from a strided `Int32` plane into `workspace.quads`.
+    /// Returns `true` iff at least one quad in the block has `rho != 0`.
+    internal static func classifyQuadsStrided(
+        planeBase: UnsafePointer<Int32>,
+        planeOrigin: Int,
+        stride: Int,
+        width: Int,
+        height: Int,
+        bandShift: Int,
+        into quads: inout [PreclassifiedQuad]
+    ) throws -> Bool {
+        let qw = (width + 1) / 2
+        let qh = (height + 1) / 2
+        let quadCount = qw * qh
+        guard quadCount > 0 else {
+            quads.removeAll(keepingCapacity: true)
+            return false
+        }
+
+        let oneVec = SIMD4<UInt32>(repeating: 1)
+        let zeroQuad = PreclassifiedQuad(
+            rho: 0, eQMax: 0,
+            eQ0: 0, eQ1: 0, eQ2: 0, eQ3: 0,
+            s0: 0, s1: 0, s2: 0, s3: 0
+        )
+        if quads.count != quadCount {
+            quads = [PreclassifiedQuad](repeating: zeroQuad, count: quadCount)
+        }
+
+        return try quads.withUnsafeMutableBufferPointer { quadBuf -> Bool in
+            guard let qPtr = quadBuf.baseAddress else { return false }
+            var anyActive = false
+            var qIdx = 0
+
+            for qy in 0..<qh {
+                let baseY = qy * 2
+                let y1Valid = (baseY + 1) < height
+                let r0 = planeOrigin + baseY * stride
+                let r1 = y1Valid ? (r0 + stride) : r0
+
+                for qx in 0..<qw {
+                    let baseX = qx * 2
+                    let x1Valid = (baseX + 1) < width
+
+                    let raw = SIMD4<Int32>(
+                        planeBase[r0 + baseX],
+                        y1Valid ? planeBase[r1 + baseX] : 0,
+                        x1Valid ? planeBase[r0 + baseX + 1] : 0,
+                        (x1Valid && y1Valid) ? planeBase[r1 + baseX + 1] : 0
+                    )
+
+                    if raw == .zero {
+                        qPtr[qIdx] = zeroQuad
+                        qIdx += 1
+                        continue
+                    }
+
+                    var muVec = SIMD4<UInt32>.zero
+                    var signVec = SIMD4<UInt32>.zero
+                    for lane in 0..<4 {
+                        let c = raw[lane]
+                        if c == 0 { continue }
+                        let mu = UInt64(c.magnitude) >> bandShift
+                        if mu == 0 { continue }
+                        guard mu <= 0x3FFF_FFFF else {
+                            throw CodecError(.invalidArgument, "HTJ2K coefficient magnitude exceeds 30-bit reversible range.")
+                        }
+                        muVec[lane] = UInt32(mu)
+                        signVec[lane] = (c < 0) ? 1 : 0
+                    }
+
+                    var rho = 0
+                    if muVec[0] != 0 { rho |= 1 }
+                    if muVec[1] != 0 { rho |= 2 }
+                    if muVec[2] != 0 { rho |= 4 }
+                    if muVec[3] != 0 { rho |= 8 }
+
+                    if rho == 0 {
+                        qPtr[qIdx] = zeroQuad
+                        qIdx += 1
+                        continue
+                    }
+
+                    anyActive = true
+                    let twoMuMinusOne = (muVec &<< oneVec) &- oneVec
+                    let payloadVec = (twoMuMinusOne &- oneVec) &+ signVec
+
+                    let eQ0 = (rho & 1) != 0 ? (32 - twoMuMinusOne[0].leadingZeroBitCount) : 0
+                    let eQ1 = (rho & 2) != 0 ? (32 - twoMuMinusOne[1].leadingZeroBitCount) : 0
+                    let eQ2 = (rho & 4) != 0 ? (32 - twoMuMinusOne[2].leadingZeroBitCount) : 0
+                    let eQ3 = (rho & 8) != 0 ? (32 - twoMuMinusOne[3].leadingZeroBitCount) : 0
+                    let eQMax = max(max(eQ0, eQ1), max(eQ2, eQ3))
+
+                    qPtr[qIdx] = PreclassifiedQuad(
+                        rho: rho,
+                        eQMax: eQMax,
+                        eQ0: eQ0,
+                        eQ1: eQ1,
+                        eQ2: eQ2,
+                        eQ3: eQ3,
+                        s0: (rho & 1) != 0 ? payloadVec[0] : 0,
+                        s1: (rho & 2) != 0 ? payloadVec[1] : 0,
+                        s2: (rho & 4) != 0 ? payloadVec[2] : 0,
+                        s3: (rho & 8) != 0 ? payloadVec[3] : 0
+                    )
+                    qIdx += 1
+                }
+            }
+            return anyActive
+        }
+    }
+
     /// Vectorised 2×2 quad classification across an entire code-block using `SIMD4<Int32>` and
     /// `SIMD4<UInt32>` lane operations.
     internal static func classifyQuads(
@@ -1164,94 +2168,58 @@ package enum SIMDHTBlockCoder {
         height: Int,
         bandShift: Int
     ) throws -> [PreclassifiedQuad] {
-        let qw = (width + 1) / 2
-        let qh = (height + 1) / 2
-        var quads = [PreclassifiedQuad]()
-        quads.reserveCapacity(qw * qh)
-
-        let oneVec = SIMD4<UInt32>(repeating: 1)
-
-        for qy in 0..<qh {
-            let baseY = qy * 2
-            let y1Valid = (baseY + 1) < height
-            let r0 = baseY * width
-            let r1 = y1Valid ? (baseY + 1) * width : r0
-
-            for qx in 0..<qw {
-                let baseX = qx * 2
-                let x0Valid = baseX < width
-                let x1Valid = (baseX + 1) < width
-
-                // Gather the 4 quad samples in (dx=0,dy=0), (dx=0,dy=1), (dx=1,dy=0), (dx=1,dy=1) order
-                let raw = SIMD4<Int32>(
-                    x0Valid ? coefficients[r0 + baseX] : 0,
-                    (x0Valid && y1Valid) ? coefficients[r1 + baseX] : 0,
-                    x1Valid ? coefficients[r0 + baseX + 1] : 0,
-                    (x1Valid && y1Valid) ? coefficients[r1 + baseX + 1] : 0
-                )
-
-                if raw == .zero {
-                    quads.append(PreclassifiedQuad(
-                        rho: 0, eQMax: 0,
-                        eQ0: 0, eQ1: 0, eQ2: 0, eQ3: 0,
-                        s0: 0, s1: 0, s2: 0, s3: 0
-                    ))
-                    continue
-                }
-
-                var muVec = SIMD4<UInt32>.zero
-                var signVec = SIMD4<UInt32>.zero
-                for lane in 0..<4 {
-                    let c = raw[lane]
-                    if c == 0 { continue }
-                    let mu = UInt64(c.magnitude) >> bandShift
-                    if mu == 0 { continue }
-                    guard mu <= 0x3FFF_FFFF else {
-                        throw CodecError(.invalidArgument, "HTJ2K coefficient magnitude exceeds 30-bit reversible range.")
-                    }
-                    muVec[lane] = UInt32(mu)
-                    signVec[lane] = (c < 0) ? 1 : 0
-                }
-
-                var rho = 0
-                if muVec[0] != 0 { rho |= 1 }
-                if muVec[1] != 0 { rho |= 2 }
-                if muVec[2] != 0 { rho |= 4 }
-                if muVec[3] != 0 { rho |= 8 }
-
-                if rho == 0 {
-                    quads.append(PreclassifiedQuad(
-                        rho: 0, eQMax: 0,
-                        eQ0: 0, eQ1: 0, eQ2: 0, eQ3: 0,
-                        s0: 0, s1: 0, s2: 0, s3: 0
-                    ))
-                    continue
-                }
-
-                let twoMuMinusOne = (muVec &<< oneVec) &- oneVec
-                let payloadVec = (twoMuMinusOne &- oneVec) &+ signVec
-
-                let eQ0 = (rho & 1) != 0 ? (32 - twoMuMinusOne[0].leadingZeroBitCount) : 0
-                let eQ1 = (rho & 2) != 0 ? (32 - twoMuMinusOne[1].leadingZeroBitCount) : 0
-                let eQ2 = (rho & 4) != 0 ? (32 - twoMuMinusOne[2].leadingZeroBitCount) : 0
-                let eQ3 = (rho & 8) != 0 ? (32 - twoMuMinusOne[3].leadingZeroBitCount) : 0
-                let eQMax = max(max(eQ0, eQ1), max(eQ2, eQ3))
-
-                quads.append(PreclassifiedQuad(
-                    rho: rho,
-                    eQMax: eQMax,
-                    eQ0: eQ0,
-                    eQ1: eQ1,
-                    eQ2: eQ2,
-                    eQ3: eQ3,
-                    s0: (rho & 1) != 0 ? payloadVec[0] : 0,
-                    s1: (rho & 2) != 0 ? payloadVec[1] : 0,
-                    s2: (rho & 4) != 0 ? payloadVec[2] : 0,
-                    s3: (rho & 8) != 0 ? payloadVec[3] : 0
-                ))
-            }
+        var quads: [PreclassifiedQuad] = []
+        try coefficients.withUnsafeBufferPointer { buf in
+            guard let base = buf.baseAddress else { return }
+            _ = try classifyQuadsStrided(
+                planeBase: base,
+                planeOrigin: 0,
+                stride: width,
+                width: width,
+                height: height,
+                bandShift: bandShift,
+                into: &quads
+            )
         }
         return quads
+    }
+
+    /// Zero-intermediate-allocation strided SIMD HTJ2K cleanup encoder.
+    internal static func encodeCleanupStrided(
+        planeBase: UnsafePointer<Int32>,
+        planeOrigin: Int,
+        stride: Int,
+        width: Int,
+        height: Int,
+        bandShift: Int = 0,
+        maximumOutputBytes: Int = Int.max,
+        workspace: HTBlockEncoder.Workspace
+    ) throws -> [UInt8] {
+        guard width >= 1, height >= 1 else {
+            throw CodecError(.invalidArgument, "HTJ2K block dimensions must be positive.")
+        }
+        guard bandShift >= 0, bandShift < 31 else {
+            throw CodecError(.invalidArgument, "HTJ2K cleanup bit-plane shift (\(bandShift)) is out of range.")
+        }
+        let anyActive = try classifyQuadsStrided(
+            planeBase: planeBase,
+            planeOrigin: planeOrigin,
+            stride: stride,
+            width: width,
+            height: height,
+            bandShift: bandShift,
+            into: &workspace.quads
+        )
+        if !anyActive {
+            return []
+        }
+        return try HTBlockEncoder.encodePreclassifiedCleanupWithWorkspace(
+            quads: workspace.quads,
+            width: width,
+            height: height,
+            maximumOutputBytes: maximumOutputBytes,
+            workspace: workspace
+        )
     }
 
     /// Encode a code-block's cleanup pass using SIMD quad classification (or pre-classified quads
@@ -1274,7 +2242,23 @@ package enum SIMDHTBlockCoder {
             throw CodecError(.invalidArgument, "HTJ2K cleanup bit-plane shift (\(bandShift)) is out of range.")
         }
 
-        // Vectorised non-zero scan across the code-block using SIMD4<Int32>
+        if budget == nil && preclassifiedQuads == nil {
+            let ws = HTBlockEncoder.Workspace(maxQuads: ((width + 1) / 2) * ((height + 1) / 2), maxWidth: max(width, height))
+            return try coefficients.withUnsafeBufferPointer { buf in
+                guard let base = buf.baseAddress else { return [] }
+                return try encodeCleanupStrided(
+                    planeBase: base,
+                    planeOrigin: 0,
+                    stride: width,
+                    width: width,
+                    height: height,
+                    bandShift: bandShift,
+                    maximumOutputBytes: maximumOutputBytes,
+                    workspace: ws
+                )
+            }
+        }
+
         var hasNonZero = false
         let count = coefficients.count
         var i = 0

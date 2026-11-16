@@ -1,6 +1,10 @@
 # SwiftJ2K Milestones 1–13 Audit Remediation Status
 
-This document is the single canonical tracker for remediation of the independent audit findings across `SwiftJ2K` Milestones 1–13, including the Milestone 12 consumer integration, Milestone 13 release preparation, Phase A/B completion, Release `v12.1.0`, Phase R3 `12.2.0` `SwiftJ2K3D` / `SwiftJ2KJPIP` un-hold completion, Phase R4 `12.2.0` end-to-end local qualification, historical Milestone 6 audit lineage, and Phase R1–R4 review items.
+This document is the single canonical tracker for remediation of the independent audit findings across `SwiftJ2K` Milestones 1–13, including the Milestone 12 consumer integration, Milestone 13 release preparation, Phase A/B completion, Release `v12.1.0`, Phase R3 `12.2.0` `SwiftJ2K3D` / `SwiftJ2KJPIP` un-hold completion, Phase R4 `12.2.0` end-to-end local qualification, Release `v12.2.0`, Release `v12.3.0` (`12.3.0` parallel pool, synchronous zero-hop API, reduced-resolution decode, and EBCOT/HTJ2K/SIMD acceleration), historical Milestone 6 audit lineage, and Phase R1–R4 review items.
+
+## Release `v12.3.0` (`12.3.0` bounded parallel pool, synchronous fast paths, reduced-resolution decode, & EBCOT/HTJ2K/SIMD acceleration) — 16 November 2026
+
+- **Scope:** Promotes `VERSION`, `swiftj2k-cli`, and `ManPages/swiftj2k-cli.1` to `12.3.0` (`v12.3.0`, [RELEASE-v12.3.0.md](../../RELEASE-v12.3.0.md)), adding `BoundedParallelPool` intra-tile / multi-tile code-block parallelism bounded by `ResourceLimits.maximumWorkers`, synchronous zero-task-spawn codec entry points (`encodeSynchronously`, `decodeSynchronously`, `transcodeSynchronously`), reduced-resolution wavelet subband decode (`CodecOptions.resolutionReductionLevels`), L2-weighted PCRD-opt & multi-candidate HTJ2K cleanup-plane rate allocation, and SIMD/Accelerate (`vDSP`) + allocation-free Tier-1 EBCOT, MQ, HTJ2K (ITU-T Rec. T.814), DWT 5/3 & 9/7, and RCT/ICT hot paths. Expands [R3_HELD_VALIDATION_LEDGER.json](R3_HELD_VALIDATION_LEDGER.json) from `1,385` to **`1,395` macOS declarations** (`[660, 735]` sanitizer partitions) and **`1,385` iOS Simulator declarations** (`0` held declarations) via `ParallelSyncAndReducedDecodeTests.swift`.
 
 ## Phase R4 end-to-end qualification & Release `v12.2.0` (`12.2.0` qualification, post-MIT rebase, and release) — 7–11 November 2026
 

@@ -14,6 +14,9 @@ enum Wavelet97 {
     /// Periodic symmetric extension (ISO/IEC 15444-1 F.3.7).
     @inline(__always)
     private static func pse(_ i: Int, _ i0: Int, _ i1: Int) -> Int {
+        if i >= i0 && i < i1 { return i }
+        if i == i0 - 1 { return i0 + 1 }
+        if i == i1 { return i1 - 2 }
         let span = 2 * (i1 - i0 - 1)
         var m = (i - i0) % span
         if m < 0 { m += span }

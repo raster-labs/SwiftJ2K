@@ -20,19 +20,25 @@ import Synchronization
 internal enum AcceleratedCodec {
     internal final class ExecutionTracker: Sendable {
         let engineMode: AccelerationRuntime.EngineMode
+        let isMetalForcedAtEntry: Bool
         private let metalCount = Atomic<Int>(0)
         private let simdCount = Atomic<Int>(0)
 
-        init(engineMode: AccelerationRuntime.EngineMode) {
+        init(engineMode: AccelerationRuntime.EngineMode, isMetalForcedAtEntry: Bool = false) {
             self.engineMode = engineMode
+            self.isMetalForcedAtEntry = isMetalForcedAtEntry
         }
 
         func recordMetal() {
-            _ = metalCount.wrappingAdd(1, ordering: .relaxed)
+            if metalCount.load(ordering: .relaxed) == 0 {
+                metalCount.store(1, ordering: .relaxed)
+            }
         }
 
         func recordSIMD() {
-            _ = simdCount.wrappingAdd(1, ordering: .relaxed)
+            if simdCount.load(ordering: .relaxed) == 0 {
+                simdCount.store(1, ordering: .relaxed)
+            }
         }
 
         func resolvedEngine(for backend: Backend) -> AcceleratedEngine {
@@ -47,8 +53,9 @@ internal enum AcceleratedCodec {
         }
     }
 
-    @TaskLocal private static var forceMetalDispatchTaskLocal: Bool = false
-    @TaskLocal private static var activeTracker: ExecutionTracker? = nil
+    @TaskLocal internal static var forceMetalDispatchTaskLocal: Bool = false
+    @TaskLocal internal static var activeTracker: ExecutionTracker? = nil
+    @TaskLocal internal static var activeWorkerLimit: Int = 1
 
     internal static func recordMetalDispatch() {
         activeTracker?.recordMetal()
@@ -60,20 +67,30 @@ internal enum AcceleratedCodec {
 
     internal static func withExecutionScope<R>(
         resolved: AccelerationRuntime.ResolvedExecution,
+        workers: Int = 1,
         _ body: () throws -> R
     ) rethrows -> (result: R, engine: AcceleratedEngine) {
-        let tracker = ExecutionTracker(engineMode: resolved.engineMode)
-        let result = try $activeTracker.withValue(tracker, operation: body)
+        let forced = resolved.engineMode == .metalGPU || forceMetalDispatchTaskLocal
+        let tracker = ExecutionTracker(engineMode: resolved.engineMode, isMetalForcedAtEntry: forced)
+        let boundedWorkers = max(1, workers)
+        let result = try $activeTracker.withValue(tracker) {
+            try $activeWorkerLimit.withValue(boundedWorkers, operation: body)
+        }
         return (result, tracker.resolvedEngine(for: resolved.backend))
     }
 
     internal static func withExecutionScope<R>(
         resolved: AccelerationRuntime.ResolvedExecution,
+        workers: Int = 1,
         _ body: () async throws -> R
     ) async rethrows -> (result: R, engine: AcceleratedEngine) {
-        let tracker = ExecutionTracker(engineMode: resolved.engineMode)
+        let forced = resolved.engineMode == .metalGPU || forceMetalDispatchTaskLocal
+        let tracker = ExecutionTracker(engineMode: resolved.engineMode, isMetalForcedAtEntry: forced)
+        let boundedWorkers = max(1, workers)
         let result = try await $activeTracker.withValue(tracker) {
-            try await body()
+            try await $activeWorkerLimit.withValue(boundedWorkers) {
+                try await body()
+            }
         }
         return (result, tracker.resolvedEngine(for: resolved.backend))
     }
@@ -99,16 +116,39 @@ internal enum AcceleratedCodec {
     }
 
     internal static var isMetalDispatchForced: Bool {
-        forceMetalDispatchTaskLocal || activeTracker?.engineMode == .metalGPU
+        if let tracker = activeTracker {
+            return tracker.isMetalForcedAtEntry || forceMetalDispatchTaskLocal
+        }
+        return forceMetalDispatchTaskLocal
+    }
+
+    /// Evaluates once per tile whether HTJ2K quad classification should run on Metal GPU,
+    /// avoiding repeated `@TaskLocal` and `MetalAccelerationEngine.stateMutex` checks per block.
+    @inline(__always)
+    internal static func shouldClassifyHTQuadsOnMetal(backend: Backend) -> Bool {
+        guard backend == .accelerated else { return false }
+        if let tracker = activeTracker {
+            if tracker.engineMode == .cpuSIMD { return false }
+            let forced = tracker.isMetalForcedAtEntry || forceMetalDispatchTaskLocal
+            return forced && MetalAccelerationEngine.shared.isAvailable
+        }
+        return forceMetalDispatchTaskLocal && MetalAccelerationEngine.shared.isAvailable
     }
 
     @inline(__always)
     internal static func shouldUseMetal(sampleCount: Int) -> Bool {
         guard sampleCount > 0 else { return false }
+        if sampleCount < MetalAccelerationEngine.defaultGPUDispatchSampleThreshold {
+            if let tracker = activeTracker {
+                if tracker.engineMode == .cpuSIMD { return false }
+                guard tracker.isMetalForcedAtEntry || forceMetalDispatchTaskLocal else { return false }
+            } else {
+                guard forceMetalDispatchTaskLocal else { return false }
+            }
+            return MetalAccelerationEngine.shared.isAvailable
+        }
         if activeTracker?.engineMode == .cpuSIMD { return false }
-        guard MetalAccelerationEngine.shared.isAvailable else { return false }
-        if isMetalDispatchForced { return true }
-        return sampleCount >= MetalAccelerationEngine.defaultGPUDispatchSampleThreshold
+        return MetalAccelerationEngine.shared.isAvailable
     }
 
     // MARK: - 5/3 Reversible Wavelet Transform
@@ -483,6 +523,39 @@ internal enum AcceleratedCodec {
         )
     }
 
+    internal static func quantizeSubband32(
+        doublePlane: [Double],
+        quantisedPlane: inout [Int32],
+        stride: Int,
+        band: BandGeometry,
+        step: Double,
+        mb: Int,
+        backend: Backend = .scalarCPU
+    ) {
+        guard backend == .accelerated else {
+            let invStep = 1.0 / step
+            let maxMag = Double((Int64(1) << min(30, mb)) - 1)
+            for row in 0..<band.height {
+                let rBase = (band.planeY + row) * stride + band.planeX
+                for col in 0..<band.width {
+                    let val = doublePlane[rBase + col]
+                    let qMag = Int32(min(maxMag, floor(abs(val) * invStep)))
+                    quantisedPlane[rBase + col] = val < 0 ? -qMag : qMag
+                }
+            }
+            return
+        }
+        recordSIMDDispatch()
+        SIMDQuantizationAndROI.quantizeSubband32(
+            doublePlane: doublePlane,
+            quantisedPlane: &quantisedPlane,
+            stride: stride,
+            band: band,
+            step: step,
+            mb: mb
+        )
+    }
+
     internal static func scaleROISubband(
         quantisedPlane: inout [Int64],
         stride: Int,
@@ -610,6 +683,176 @@ internal enum AcceleratedCodec {
         recordSIMDDispatch()
         return try SIMDHTBlockCoder.decodeCleanup(
             block: block,
+            width: width,
+            height: height,
+            kMax: kMax,
+            missingMSBs: missingMSBs
+        )
+    }
+
+    @inline(__always)
+    internal static func encodeHTCleanupStrided(
+        source: UnsafePointer<Int32>,
+        stride: Int,
+        width: Int,
+        height: Int,
+        bandShift: Int = 0,
+        maximumOutputBytes: Int = Int.max,
+        backend: Backend = .scalarCPU,
+        workspace: inout HTBlockEncoder.Workspace,
+        useMetalHTOverride: Bool? = nil,
+        recordTelemetry: Bool = true
+    ) throws -> [UInt8] {
+        try encodeHTCleanupStrided(
+            planeBase: source,
+            planeOrigin: 0,
+            stride: stride,
+            width: width,
+            height: height,
+            bandShift: bandShift,
+            maximumOutputBytes: maximumOutputBytes,
+            backend: backend,
+            workspace: workspace,
+            useMetalHTOverride: useMetalHTOverride,
+            recordTelemetry: recordTelemetry
+        )
+    }
+
+    internal static func encodeHTCleanupStrided(
+        planeBase: UnsafePointer<Int32>,
+        planeOrigin: Int,
+        stride: Int,
+        width: Int,
+        height: Int,
+        bandShift: Int = 0,
+        maximumOutputBytes: Int = Int.max,
+        backend: Backend = .scalarCPU,
+        workspace: HTBlockEncoder.Workspace,
+        useMetalHTOverride: Bool? = nil,
+        recordTelemetry: Bool = true
+    ) throws -> [UInt8] {
+        guard backend == .accelerated else {
+            return try HTBlockEncoder.encodeCleanupStrided(
+                planeBase: planeBase,
+                planeOrigin: planeOrigin,
+                stride: stride,
+                width: width,
+                height: height,
+                bandShift: bandShift,
+                maximumOutputBytes: maximumOutputBytes,
+                workspace: workspace
+            )
+        }
+        let useMetal = useMetalHTOverride ?? shouldClassifyHTQuadsOnMetal(backend: backend)
+        if useMetal && width > 0 && height > 0 {
+            var coeffs = [Int32](repeating: 0, count: width * height)
+            for row in 0..<height {
+                let srcRow = planeOrigin + row * stride
+                let dstRow = row * width
+                for col in 0..<width {
+                    coeffs[dstRow + col] = planeBase[srcRow + col]
+                }
+            }
+            let quads = try MetalAccelerationEngine.shared.classifyHTQuads(
+                coefficients: coeffs,
+                width: width,
+                height: height,
+                bandShift: bandShift
+            )
+            if recordTelemetry { recordSIMDDispatch() }
+            return try SIMDHTBlockCoder.encodeCleanup(
+                coefficients: coeffs,
+                width: width,
+                height: height,
+                bandShift: bandShift,
+                maximumOutputBytes: maximumOutputBytes,
+                preclassifiedQuads: quads
+            )
+        }
+        if recordTelemetry { recordSIMDDispatch() }
+        return try SIMDHTBlockCoder.encodeCleanupStrided(
+            planeBase: planeBase,
+            planeOrigin: planeOrigin,
+            stride: stride,
+            width: width,
+            height: height,
+            bandShift: bandShift,
+            maximumOutputBytes: maximumOutputBytes,
+            workspace: workspace
+        )
+    }
+
+    @inline(__always)
+    internal static func decodeHTCleanupStrided(
+        block: ArraySlice<UInt8>,
+        width: Int,
+        height: Int,
+        kMax: Int,
+        missingMSBs: Int,
+        destination: UnsafeMutablePointer<Int32>,
+        stride: Int,
+        backend: Backend = .scalarCPU,
+        recordTelemetry: Bool = true
+    ) throws {
+        if block.isEmpty {
+            var dummy: UInt8 = 0
+            try withUnsafePointer(to: &dummy) { ptr in
+                try decodeHTCleanupStrided(
+                    blockBase: ptr,
+                    blockCount: 0,
+                    planeBase: destination,
+                    planeOrigin: 0,
+                    stride: stride,
+                    width: width,
+                    height: height,
+                    kMax: kMax,
+                    missingMSBs: missingMSBs,
+                    backend: backend,
+                    recordTelemetry: recordTelemetry
+                )
+            }
+            return
+        }
+        try block.withUnsafeBufferPointer { buf in
+            guard let base = buf.baseAddress else { return }
+            try decodeHTCleanupStrided(
+                blockBase: base,
+                blockCount: buf.count,
+                planeBase: destination,
+                planeOrigin: 0,
+                stride: stride,
+                width: width,
+                height: height,
+                kMax: kMax,
+                missingMSBs: missingMSBs,
+                backend: backend,
+                recordTelemetry: recordTelemetry
+            )
+        }
+    }
+
+    internal static func decodeHTCleanupStrided(
+        blockBase: UnsafePointer<UInt8>,
+        blockCount: Int,
+        planeBase: UnsafeMutablePointer<Int32>,
+        planeOrigin: Int,
+        stride: Int,
+        width: Int,
+        height: Int,
+        kMax: Int,
+        missingMSBs: Int,
+        backend: Backend = .scalarCPU,
+        recordTelemetry: Bool = true
+    ) throws {
+        if recordTelemetry && backend == .accelerated {
+            recordSIMDDispatch()
+        }
+        try HTBlockDecoder.decodeCleanupStrided(
+            blockBase: blockBase,
+            blockCount: blockCount,
+            planeBase: planeBase,
+            planeOrigin: planeOrigin,
+            stride: stride,
             width: width,
             height: height,
             kMax: kMax,

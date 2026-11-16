@@ -37,12 +37,15 @@ enum Wavelet53 {
     /// `y[0..<n]` for coordinates [i0, i0+n): value at absolute coordinate `i`.
     @inline(__always)
     private static func extended(_ y: [Int32], i0: Int, n: Int, at i: Int) -> Int32 {
-        var k = i - i0
+        let k = i - i0
+        if k >= 0 && k < n { return y[k] }
         if n == 1 { return y[0] }
+        if k == -1 { return y[1] }
+        if k == n { return y[n - 2] }
         let period = 2 * (n - 1)
-        k = ((k % period) + period) % period
-        if k >= n { k = period - k }
-        return y[k]
+        var m = ((k % period) + period) % period
+        if m >= n { m = period - m }
+        return y[m]
     }
 
     /// 1D_SD: analyses `x` (coordinates [i0, i0+n)) into `low`/`high`.

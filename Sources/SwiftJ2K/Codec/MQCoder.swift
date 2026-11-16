@@ -14,14 +14,14 @@
 // access bounds checked and both coders plainly `Sendable`.
 
 /// One row of the MQ probability estimation table (Table C.2).
-struct MQState: Sendable {
-    let qe: UInt32
-    let nextMPS: UInt8
-    let nextLPS: UInt8
-    let switchMPS: Bool
+package struct MQState: Sendable {
+    package let qe: UInt32
+    package let nextMPS: UInt8
+    package let nextLPS: UInt8
+    package let switchMPS: Bool
 }
 
-let mqStateTable: [MQState] = [
+package let mqStateTable: [MQState] = [
     MQState(qe: 0x5601, nextMPS: 1, nextLPS: 1, switchMPS: true),
     MQState(qe: 0x3401, nextMPS: 2, nextLPS: 6, switchMPS: false),
     MQState(qe: 0x1801, nextMPS: 3, nextLPS: 9, switchMPS: false),
@@ -71,10 +71,42 @@ let mqStateTable: [MQState] = [
     MQState(qe: 0x5601, nextMPS: 46, nextLPS: 46, switchMPS: false)
 ]
 
+/// Zero-allocation snapshot of the bytes `MQEncoder.finish()` or `RawEncoder.finish()` would emit
+/// at the end of a coding pass, enabling O(1) post-compression pass truncation.
+package struct MQTerminationTail: Sendable {
+    package let totalCount: Int
+    package let baseCount: Int
+    package let tail0: UInt8
+    package let tail1: UInt8
+    package let tail2: UInt8
+    package let tail3: UInt8
+    package let tailCount: UInt8
+
+    @inline(__always)
+    package init(
+        totalCount: Int,
+        baseCount: Int,
+        tail0: UInt8 = 0,
+        tail1: UInt8 = 0,
+        tail2: UInt8 = 0,
+        tail3: UInt8 = 0,
+        tailCount: UInt8 = 0
+    ) {
+        self.totalCount = totalCount
+        self.baseCount = baseCount
+        self.tail0 = tail0
+        self.tail1 = tail1
+        self.tail2 = tail2
+        self.tail3 = tail3
+        self.tailCount = tailCount
+    }
+}
+
 /// Adaptive context: a state-table index and the current more probable symbol.
 package struct MQContext: Sendable {
     package var stateIndex: UInt8
     package var mps: Bool
+    @inline(__always)
     package init(stateIndex: UInt8 = 0, mps: Bool = false) {
         self.stateIndex = stateIndex; self.mps = mps
     }
@@ -169,6 +201,31 @@ package struct MQEncoder: Sendable {
     }
 
     @inline(__always)
+    package mutating func encode(
+        _ symbol: Bool,
+        context: UnsafeMutablePointer<MQContext>,
+        stateTbl: UnsafePointer<MQState>
+    ) {
+        let state = stateTbl[Int(context.pointee.stateIndex)]
+        let qe = state.qe
+        a &-= qe
+        if symbol == context.pointee.mps {
+            if a & 0x8000 == 0 {
+                if a < qe { a = qe } else { c &+= qe }
+                context.pointee.stateIndex = state.nextMPS
+                renormalise()
+            } else {
+                c &+= qe
+            }
+        } else {
+            if a < qe { c &+= qe } else { a = qe }
+            if state.switchMPS { context.pointee.mps.toggle() }
+            context.pointee.stateIndex = state.nextLPS
+            renormalise()
+        }
+    }
+
+    @inline(__always)
     private mutating func renormalise() {
         repeat {
             a <<= 1; c <<= 1; ct -= 1
@@ -230,27 +287,43 @@ package struct MQEncoder: Sendable {
     /// Number of bytes already committed to `output` before termination.
     package var emittedByteCount: Int { output.count }
 
-    /// Exact byte length that `finish()` would produce at the current state,
-    /// computed in scalar registers without mutating `self` or copying `output`.
-    package func terminatedByteCount() -> Int {
+    /// Exact termination snapshot (`baseCount` + up to 4 flush bytes) computed in scalar registers
+    /// with zero heap allocations.
+    @inline(__always)
+    package func terminatedSnapshot(prefixOffset: Int = 0) -> MQTerminationTail {
         var cSim = c
         let aSim = a
         var ctSim = ct
         var bufSim = buffer
-        var tail: [UInt8] = []
-        tail.reserveCapacity(4)
+        var t0: UInt8 = 0
+        var t1: UInt8 = 0
+        var t2: UInt8 = 0
+        var t3: UInt8 = 0
+        var tCount: Int = 0
 
+        @inline(__always)
+        func pushTail(_ b: UInt8) {
+            switch tCount {
+            case 0: t0 = b
+            case 1: t1 = b
+            case 2: t2 = b
+            default: t3 = b
+            }
+            tCount += 1
+        }
+
+        @inline(__always)
         func byteOutSim() {
             if bufSim >= 0 {
                 if bufSim == 0xFF {
-                    tail.append(0xFF)
+                    pushTail(0xFF)
                     bufSim = Int((cSim >> 20) & 0xFF)
                     cSim &= 0x000F_FFFF
                     ctSim = 7
                 } else {
                     bufSim += Int(cSim >> 27)
                     cSim &= 0x07FF_FFFF
-                    tail.append(UInt8(bufSim & 0xFF))
+                    pushTail(UInt8(bufSim & 0xFF))
                     if bufSim == 0xFF {
                         bufSim = Int((cSim >> 20) & 0xFF)
                         cSim &= 0x000F_FFFF
@@ -274,14 +347,148 @@ package struct MQEncoder: Sendable {
         if cSim >= limit { cSim &-= 0x8000 }
         cSim <<= UInt32(ctSim); byteOutSim()
         cSim <<= UInt32(ctSim); byteOutSim()
-        if bufSim >= 0 && bufSim != 0xFF { tail.append(UInt8(bufSim & 0xFF)) }
-        while let last = tail.last, last == 0xFF { tail.removeLast() }
-        if tail.isEmpty {
+        if bufSim >= 0 && bufSim != 0xFF { pushTail(UInt8(bufSim & 0xFF)) }
+
+        while tCount > 0 {
+            let last: UInt8
+            switch tCount - 1 {
+            case 0: last = t0
+            case 1: last = t1
+            case 2: last = t2
+            default: last = t3
+            }
+            if last == 0xFF {
+                tCount -= 1
+            } else {
+                break
+            }
+        }
+
+        if tCount == 0 {
             var count = output.count
             while count > 0 && output[count - 1] == 0xFF { count -= 1 }
-            return count
+            let total = prefixOffset + count
+            return MQTerminationTail(totalCount: total, baseCount: total)
         }
-        return output.count + tail.count
+        let base = prefixOffset + output.count
+        return MQTerminationTail(
+            totalCount: base + tCount,
+            baseCount: base,
+            tail0: t0,
+            tail1: t1,
+            tail2: t2,
+            tail3: t3,
+            tailCount: UInt8(tCount)
+        )
+    }
+
+    /// Exact byte length that `finish()` would produce at the current state,
+    /// computed in scalar registers without mutating `self` or copying `output`.
+    @inline(__always)
+    package func terminatedByteCount() -> Int {
+        terminatedSnapshot(prefixOffset: 0).totalCount
+    }
+}
+
+/// Fast pointer-backed MQ decoder for scoped zero-ARC EBCOT decoding.
+package struct MQPtrDecoder {
+    private let base: UnsafePointer<UInt8>?
+    private let end: Int
+    private let stateTbl: UnsafePointer<MQState>
+    private var position: Int
+    private var c: UInt32 = 0
+    private var a: UInt32 = 0x8000
+    private var ct: Int = 0
+    private var buffer: UInt8 = 0
+
+    @inline(__always)
+    package init(base: UnsafePointer<UInt8>?, count: Int, stateTbl: UnsafePointer<MQState>) {
+        self.base = base
+        self.end = count
+        self.stateTbl = stateTbl
+        self.position = 0
+        self.buffer = 0
+        self.buffer = readByte()
+        self.c = UInt32(buffer) << 16
+        byteIn()
+        self.c <<= 7
+        self.ct -= 7
+        self.a = 0x8000
+    }
+
+    @inline(__always)
+    private mutating func readByte() -> UInt8 {
+        guard position < end, let base else { return 0xFF }
+        let value = base[position]
+        position += 1
+        return value
+    }
+
+    @inline(__always)
+    private mutating func byteIn() {
+        if buffer == 0xFF {
+            let next: UInt8 = (position < end && base != nil) ? base![position] : 0xFF
+            if next > 0x8F {
+                c &+= 0xFF00
+                ct = 8
+            } else {
+                position += 1
+                buffer = next
+                c &+= UInt32(next) << 9
+                ct = 7
+            }
+        } else {
+            buffer = readByte()
+            c &+= UInt32(buffer) << 8
+            ct = 8
+        }
+    }
+
+    @inline(__always)
+    package mutating func decode(context: UnsafeMutablePointer<MQContext>) -> Bool {
+        let idx = Int(context.pointee.stateIndex)
+        let state = stateTbl[idx]
+        let qe = state.qe
+        a &-= qe
+        if (c >> 16) >= qe {
+            c &-= qe << 16
+            if (a & 0x8000) != 0 {
+                return context.pointee.mps
+            }
+            let symbol: Bool
+            if a < qe {
+                symbol = !context.pointee.mps
+                if state.switchMPS { context.pointee.mps.toggle() }
+                context.pointee.stateIndex = state.nextLPS
+            } else {
+                symbol = context.pointee.mps
+                context.pointee.stateIndex = state.nextMPS
+            }
+            renormalise()
+            return symbol
+        } else {
+            let symbol: Bool
+            if a < qe {
+                a = qe
+                symbol = context.pointee.mps
+                context.pointee.stateIndex = state.nextMPS
+            } else {
+                a = qe
+                symbol = !context.pointee.mps
+                if state.switchMPS { context.pointee.mps.toggle() }
+                context.pointee.stateIndex = state.nextLPS
+            }
+            renormalise()
+            return symbol
+        }
+    }
+
+    @inline(__always)
+    private mutating func renormalise() {
+        repeat {
+            if ct == 0 { byteIn() }
+            a <<= 1; c <<= 1; ct -= 1
+        } while (a & 0x8000) == 0
     }
 }
 

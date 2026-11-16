@@ -192,6 +192,8 @@ public struct CodecOptions: Sendable, Equatable {
     public let displayResolution: JP2GridResolution?
     /// Multi-component transform family selection (`.automatic` Part 1 default or `.part2` Annex I/J).
     public let multiComponentTransform: MultiComponentTransform
+    /// Number of highest wavelet decomposition levels to skip during decoding (`0...32`, default `0`).
+    public let resolutionReductionLevels: Int
 
     public init() {
         decompositionLevels = nil
@@ -220,6 +222,7 @@ public struct CodecOptions: Sendable, Equatable {
         captureResolution = nil
         displayResolution = nil
         multiComponentTransform = .automatic
+        resolutionReductionLevels = 0
     }
 
     public init(
@@ -248,8 +251,12 @@ public struct CodecOptions: Sendable, Equatable {
         containerFormat: ContainerFormat = .codestream,
         captureResolution: JP2GridResolution? = nil,
         displayResolution: JP2GridResolution? = nil,
-        multiComponentTransform: MultiComponentTransform = .automatic
+        multiComponentTransform: MultiComponentTransform = .automatic,
+        resolutionReductionLevels: Int = 0
     ) throws {
+        guard resolutionReductionLevels >= 0, resolutionReductionLevels <= 32 else {
+            throw CodecError(.invalidArgument, "Resolution reduction levels must lie in 0...32.")
+        }
         if let levels = decompositionLevels {
             guard levels >= 0, levels <= 32 else {
                 throw CodecError(.invalidArgument, "Decomposition levels must lie in 0...32.")
@@ -359,13 +366,13 @@ public struct CodecOptions: Sendable, Equatable {
         self.captureResolution = captureResolution
         self.displayResolution = displayResolution
         self.multiComponentTransform = multiComponentTransform
+        self.resolutionReductionLevels = resolutionReductionLevels
     }
 
     internal var usesDefaultLosslessProfile: Bool {
         multiComponentTransform == .automatic &&
         (wavelet == .automatic || wavelet == .reversible53) &&
         (colourTransform == .automatic || colourTransform == .none) &&
-        progressionOrder == .lrcp &&
         progressionChanges.isEmpty &&
         quality == nil &&
         targetBitsPerPixel == nil &&
@@ -380,7 +387,8 @@ public struct CodecOptions: Sendable, Equatable {
         codeBlockStyleBits == 0 &&
         !usesSOP &&
         !usesEPH &&
-        regionOfInterest == nil
+        regionOfInterest == nil &&
+        resolutionReductionLevels == 0
     }
 }
 
@@ -554,6 +562,85 @@ public struct Encoder: Sendable {
         let clock = ContinuousClock()
         let started = clock.now
         try Task.checkCancellation()
+        let (resolvedBackend, descriptor, isDefaultGreyscale16) = try preflightEncode(image, options: options)
+        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        try Task.checkCancellation()
+        let ((codestreamBytes, workspace), execEngine): (([UInt8], Int), AcceleratedEngine) =
+            try await AcceleratedCodec.withExecutionScope(
+                resolved: resolvedBackend,
+                workers: options.resourceLimits.maximumWorkers
+            ) {
+                if configuration.mode == .lossless && isDefaultGreyscale16 && configuration.codecOptions.usesDefaultLosslessProfile {
+                    let parameters = try defaultLosslessEncodeParameters(descriptor: descriptor, backend: resolvedBackend.backend)
+                    return try await ScalarLosslessCodec.encodeAsync(
+                        image: image, parameters: parameters,
+                        limits: options.resourceLimits, progress: options.progress
+                    )
+                } else {
+                    return try Part1Pipeline.encode(
+                        image: image, configuration: configuration,
+                        limits: options.resourceLimits, backend: resolvedBackend.backend,
+                        progress: options.progress
+                    )
+                }
+            }
+        return try finalizeEncode(
+            image: image,
+            descriptor: descriptor,
+            codestreamBytes: codestreamBytes,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            options: options,
+            started: started,
+            clock: clock
+        )
+    }
+
+    /// Synchronous zero-actor-hop encode entry point for non-async callers.
+    public func encodeSynchronously(_ image: Image, options: EncodeOptions = .init()) throws -> EncodedImage {
+        let clock = ContinuousClock()
+        let started = clock.now
+        try Task.checkCancellation()
+        let (resolvedBackend, descriptor, isDefaultGreyscale16) = try preflightEncode(image, options: options)
+        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        try Task.checkCancellation()
+        let ((codestreamBytes, workspace), execEngine): (([UInt8], Int), AcceleratedEngine) =
+            try AcceleratedCodec.withExecutionScope(
+                resolved: resolvedBackend,
+                workers: options.resourceLimits.maximumWorkers
+            ) {
+                if configuration.mode == .lossless && isDefaultGreyscale16 && configuration.codecOptions.usesDefaultLosslessProfile {
+                    let parameters = try defaultLosslessEncodeParameters(descriptor: descriptor, backend: resolvedBackend.backend)
+                    return try ScalarLosslessCodec.encode(
+                        image: image, parameters: parameters,
+                        limits: options.resourceLimits, progress: options.progress
+                    )
+                } else {
+                    return try Part1Pipeline.encode(
+                        image: image, configuration: configuration,
+                        limits: options.resourceLimits, backend: resolvedBackend.backend,
+                        progress: options.progress
+                    )
+                }
+            }
+        return try finalizeEncode(
+            image: image,
+            descriptor: descriptor,
+            codestreamBytes: codestreamBytes,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            options: options,
+            started: started,
+            clock: clock
+        )
+    }
+
+    private func preflightEncode(
+        _ image: Image,
+        options: EncodeOptions
+    ) throws -> (AccelerationRuntime.ResolvedExecution, ImageDescriptor, Bool) {
         let resolvedBackend = try AccelerationRuntime.resolve(
             options.executionPolicy,
             enginePreference: options.acceleratedEnginePreference
@@ -577,42 +664,45 @@ public struct Encoder: Sendable {
             descriptor.components == [.grey] &&
             descriptor.planes.count == 1 &&
             descriptor.alpha == .absent
+        return (resolvedBackend, descriptor, isDefaultGreyscale16)
+    }
 
-        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
-        try Task.checkCancellation()
-        let ((codestreamBytes, workspace), execEngine): (([UInt8], Int), AcceleratedEngine) =
-            try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) {
-                if configuration.mode == .lossless && isDefaultGreyscale16 && configuration.codecOptions.usesDefaultLosslessProfile {
-                    let smallest = min(descriptor.width, descriptor.height)
-                    let deepest = Int.bitWidth - 1 - smallest.leadingZeroBitCount
-                    let levels: Int
-                    if let requested = configuration.codecOptions.decompositionLevels {
-                        guard requested <= deepest else {
-                            throw CodecError(.invalidArgument, "Decomposition levels exceed floor(log2(min(width, height))) = \(deepest) for this image.")
-                        }
-                        levels = requested
-                    } else {
-                        levels = min(5, deepest)
-                    }
-                    let parameters = ScalarLosslessCodec.EncodeParameters(
-                        decompositionLevels: levels,
-                        codeBlockWidthExponent: configuration.codecOptions.codeBlockWidth.trailingZeroBitCount,
-                        codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount,
-                        blockCoding: configuration.codecOptions.blockCoding,
-                        backend: resolvedBackend.backend)
-                    return try ScalarLosslessCodec.encode(
-                        image: image, parameters: parameters,
-                        limits: options.resourceLimits, progress: options.progress
-                    )
-                } else {
-                    return try Part1Pipeline.encode(
-                        image: image, configuration: configuration,
-                        limits: options.resourceLimits, backend: resolvedBackend.backend,
-                        progress: options.progress
-                    )
-                }
+    private func defaultLosslessEncodeParameters(
+        descriptor: ImageDescriptor,
+        backend: Backend
+    ) throws -> ScalarLosslessCodec.EncodeParameters {
+        let smallest = min(descriptor.width, descriptor.height)
+        let deepest = Int.bitWidth - 1 - smallest.leadingZeroBitCount
+        let levels: Int
+        if let requested = configuration.codecOptions.decompositionLevels {
+            guard requested <= deepest else {
+                throw CodecError(.invalidArgument, "Decomposition levels exceed floor(log2(min(width, height))) = \(deepest) for this image.")
             }
+            levels = requested
+        } else {
+            levels = min(5, deepest)
+        }
+        return ScalarLosslessCodec.EncodeParameters(
+            decompositionLevels: levels,
+            codeBlockWidthExponent: configuration.codecOptions.codeBlockWidth.trailingZeroBitCount,
+            codeBlockHeightExponent: configuration.codecOptions.codeBlockHeight.trailingZeroBitCount,
+            blockCoding: configuration.codecOptions.blockCoding,
+            progressionOrder: configuration.codecOptions.progressionOrder,
+            backend: backend
+        )
+    }
 
+    private func finalizeEncode(
+        image: Image,
+        descriptor: ImageDescriptor,
+        codestreamBytes: [UInt8],
+        workspace: Int,
+        execEngine: AcceleratedEngine,
+        resolvedBackend: AccelerationRuntime.ResolvedExecution,
+        options: EncodeOptions,
+        started: ContinuousClock.Instant,
+        clock: ContinuousClock
+    ) throws -> EncodedImage {
         let finalBytes: [UInt8]
         let outputFormat: String
         var discardedCount: Int?
@@ -717,12 +807,14 @@ public struct Decoder: Sendable {
     /// Bounded structural inspection: parses the container boxes and main/tile-part headers only.
     public func inspect(_ data: Data, options: DecodeOptions = .init()) throws -> ImageInfo {
         try validateInput(data, options)
+        let reduction = configuration.codecOptions.resolutionReductionLevels
         let bytes = [UInt8](data)
         if JP2Container.isContainer(bytes) {
             let reconciled = try JP2Container.inspectReconciled(
                 bytes,
                 limits: options.resourceLimits,
-                metadataPolicy: options.metadataPolicy
+                metadataPolicy: options.metadataPolicy,
+                resolutionReductionLevels: reduction
             )
             return ImageInfo(
                 format: reconciled.container.format,
@@ -734,14 +826,15 @@ public struct Decoder: Sendable {
         do {
             let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
                                                           metadataPolicy: options.metadataPolicy)
-            let descriptor = try ImageDescriptor.greyscale16(width: profile.width, height: profile.height,
+            let (outW, outH) = profile.reducedDimensions(reductionLevels: reduction)
+            let descriptor = try ImageDescriptor.greyscale16(width: outW, height: outH,
                                                              meaningfulBits: profile.precision,
                                                              limits: options.resourceLimits)
             return ImageInfo(format: profile.format, descriptor: descriptor, frameCount: 1, metadata: .empty)
         } catch let error as CodecError where error.category == .unsupportedFeature {
             let part1 = try Part1Pipeline.inspect(bytes, limits: options.resourceLimits,
                                                   metadataPolicy: options.metadataPolicy)
-            let descriptor = try part1.defaultDescriptor(limits: options.resourceLimits)
+            let descriptor = try part1.defaultDescriptor(limits: options.resourceLimits, reductionLevels: reduction)
             return ImageInfo(format: part1.format, descriptor: descriptor, frameCount: 1, metadata: .empty)
         }
     }
@@ -751,12 +844,14 @@ public struct Decoder: Sendable {
     @concurrent public func decode(_ data: Data, options: DecodeOptions = .init()) async throws -> DecodedImage {
         try Task.checkCancellation()
         try validateInput(data, options)
+        let reduction = configuration.codecOptions.resolutionReductionLevels
         let bytes = [UInt8](data)
         if JP2Container.isContainer(bytes) {
             let reconciled = try JP2Container.inspectReconciled(
                 bytes,
                 limits: options.resourceLimits,
-                metadataPolicy: options.metadataPolicy
+                metadataPolicy: options.metadataPolicy,
+                resolutionReductionLevels: reduction
             )
             let destination = try ImageDestination.allocate(
                 descriptor: reconciled.outputDescriptor,
@@ -766,21 +861,23 @@ public struct Decoder: Sendable {
                 reconciled: reconciled,
                 into: destination,
                 options: options,
-                allocations: 1
+                allocations: 1,
+                resolutionReductionLevels: reduction
             )
         }
         do {
             let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
                                                           metadataPolicy: options.metadataPolicy)
-            let descriptor = try ImageDescriptor.greyscale16(width: profile.width, height: profile.height,
+            let (outW, outH) = profile.reducedDimensions(reductionLevels: reduction)
+            let descriptor = try ImageDescriptor.greyscale16(width: outW, height: outH,
                                                              meaningfulBits: profile.precision,
                                                              limits: options.resourceLimits)
             let destination = try ImageDestination.allocate(descriptor: descriptor, limits: options.resourceLimits)
-            return try run(bytes: bytes, profile: profile, into: destination, options: options, allocations: 1)
+            return try await runAsync(bytes: bytes, profile: profile, into: destination, options: options, allocations: 1)
         } catch let error as CodecError where error.category == .unsupportedFeature {
             let part1 = try Part1Pipeline.inspect(bytes, limits: options.resourceLimits,
                                                   metadataPolicy: options.metadataPolicy)
-            let descriptor = try part1.defaultDescriptor(limits: options.resourceLimits)
+            let descriptor = try part1.defaultDescriptor(limits: options.resourceLimits, reductionLevels: reduction)
             let destination = try ImageDestination.allocate(descriptor: descriptor, limits: options.resourceLimits)
             return try runPart1(bytes: bytes, profile: part1, into: destination, options: options, allocations: 1)
         }
@@ -792,18 +889,108 @@ public struct Decoder: Sendable {
                                   options: DecodeOptions = .init()) async throws -> DecodedImage {
         try Task.checkCancellation()
         try validateInput(data, options)
+        let reduction = configuration.codecOptions.resolutionReductionLevels
         let bytes = [UInt8](data)
         if JP2Container.isContainer(bytes) {
             let reconciled = try JP2Container.inspectReconciled(
                 bytes,
                 limits: options.resourceLimits,
-                metadataPolicy: options.metadataPolicy
+                metadataPolicy: options.metadataPolicy,
+                resolutionReductionLevels: reduction
             )
             return try JP2Container.decode(
                 reconciled: reconciled,
                 into: destination,
                 options: options,
-                allocations: 0
+                allocations: 0,
+                resolutionReductionLevels: reduction
+            )
+        }
+        let destDesc = destination.descriptor
+        let isDefaultGreyscale16 = destDesc.sampleType == .unsignedInteger &&
+            destDesc.storageBits == 16 &&
+            destDesc.components == [.grey] &&
+            destDesc.planes.count == 1
+        if isDefaultGreyscale16 {
+            do {
+                let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
+                                                              metadataPolicy: options.metadataPolicy)
+                return try await runAsync(bytes: bytes, profile: profile, into: destination, options: options, allocations: 0)
+            } catch let error as CodecError where error.category == .unsupportedFeature {
+                let part1 = try Part1Pipeline.inspect(bytes, limits: options.resourceLimits,
+                                                      metadataPolicy: options.metadataPolicy)
+                return try runPart1(bytes: bytes, profile: part1, into: destination, options: options, allocations: 0)
+            }
+        } else {
+            let part1 = try Part1Pipeline.inspect(bytes, limits: options.resourceLimits,
+                                                  metadataPolicy: options.metadataPolicy)
+            return try runPart1(bytes: bytes, profile: part1, into: destination, options: options, allocations: 0)
+        }
+    }
+
+    /// Synchronous zero-actor-hop decode entry point allocating one destination.
+    public func decodeSynchronously(_ data: Data, options: DecodeOptions = .init()) throws -> DecodedImage {
+        try Task.checkCancellation()
+        try validateInput(data, options)
+        let reduction = configuration.codecOptions.resolutionReductionLevels
+        let bytes = [UInt8](data)
+        if JP2Container.isContainer(bytes) {
+            let reconciled = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy,
+                resolutionReductionLevels: reduction
+            )
+            let destination = try ImageDestination.allocate(
+                descriptor: reconciled.outputDescriptor,
+                limits: options.resourceLimits
+            )
+            return try JP2Container.decode(
+                reconciled: reconciled,
+                into: destination,
+                options: options,
+                allocations: 1,
+                resolutionReductionLevels: reduction
+            )
+        }
+        do {
+            let profile = try ScalarLosslessCodec.inspect(bytes, limits: options.resourceLimits,
+                                                          metadataPolicy: options.metadataPolicy)
+            let (outW, outH) = profile.reducedDimensions(reductionLevels: reduction)
+            let descriptor = try ImageDescriptor.greyscale16(width: outW, height: outH,
+                                                             meaningfulBits: profile.precision,
+                                                             limits: options.resourceLimits)
+            let destination = try ImageDestination.allocate(descriptor: descriptor, limits: options.resourceLimits)
+            return try run(bytes: bytes, profile: profile, into: destination, options: options, allocations: 1)
+        } catch let error as CodecError where error.category == .unsupportedFeature {
+            let part1 = try Part1Pipeline.inspect(bytes, limits: options.resourceLimits,
+                                                  metadataPolicy: options.resourceLimits == .default ? options.metadataPolicy : options.metadataPolicy)
+            let descriptor = try part1.defaultDescriptor(limits: options.resourceLimits, reductionLevels: reduction)
+            let destination = try ImageDestination.allocate(descriptor: descriptor, limits: options.resourceLimits)
+            return try runPart1(bytes: bytes, profile: part1, into: destination, options: options, allocations: 1)
+        }
+    }
+
+    /// Synchronous zero-actor-hop decode entry point into caller-supplied `destination`.
+    public func decodeSynchronously(_ data: Data, into destination: ImageDestination,
+                                    options: DecodeOptions = .init()) throws -> DecodedImage {
+        try Task.checkCancellation()
+        try validateInput(data, options)
+        let reduction = configuration.codecOptions.resolutionReductionLevels
+        let bytes = [UInt8](data)
+        if JP2Container.isContainer(bytes) {
+            let reconciled = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy,
+                resolutionReductionLevels: reduction
+            )
+            return try JP2Container.decode(
+                reconciled: reconciled,
+                into: destination,
+                options: options,
+                allocations: 0,
+                resolutionReductionLevels: reduction
             )
         }
         let destDesc = destination.descriptor
@@ -828,10 +1015,11 @@ public struct Decoder: Sendable {
         }
     }
 
-    private func run(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
-                     options: DecodeOptions, allocations: Int) throws -> DecodedImage {
+    private func runAsync(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
+                          options: DecodeOptions, allocations: Int) async throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
+        let reduction = configuration.codecOptions.resolutionReductionLevels
         let resolvedBackend = try AccelerationRuntime.resolve(
             options.executionPolicy,
             enginePreference: options.acceleratedEnginePreference
@@ -844,21 +1032,95 @@ public struct Decoder: Sendable {
             throw error
         }
         let ((image, workspace), execEngine): ((Image, Int), AcceleratedEngine) =
-            try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) {
+            try await AcceleratedCodec.withExecutionScope(
+                resolved: resolvedBackend,
+                workers: options.resourceLimits.maximumWorkers
+            ) {
+                try await ScalarLosslessCodec.decodeAsync(
+                    bytes: bytes, profile: profile, into: destination,
+                    limits: options.resourceLimits, backend: resolvedBackend.backend,
+                    progress: options.progress,
+                    resolutionReductionLevels: reduction
+                )
+            }
+        return try finalizeLosslessRun(
+            image: image,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            profile: profile,
+            options: options,
+            allocations: allocations,
+            reduction: reduction,
+            started: started,
+            clock: clock
+        )
+    }
+
+    private func run(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
+                     options: DecodeOptions, allocations: Int) throws -> DecodedImage {
+        let clock = ContinuousClock()
+        let started = clock.now
+        let reduction = configuration.codecOptions.resolutionReductionLevels
+        let resolvedBackend = try AccelerationRuntime.resolve(
+            options.executionPolicy,
+            enginePreference: options.acceleratedEnginePreference
+        )
+        do {
+            options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+            try Task.checkCancellation()
+        } catch {
+            destination.invalidateAfterFailure()
+            throw error
+        }
+        let ((image, workspace), execEngine): ((Image, Int), AcceleratedEngine) =
+            try AcceleratedCodec.withExecutionScope(
+                resolved: resolvedBackend,
+                workers: options.resourceLimits.maximumWorkers
+            ) {
                 try ScalarLosslessCodec.decode(
                     bytes: bytes, profile: profile, into: destination,
                     limits: options.resourceLimits, backend: resolvedBackend.backend,
-                    progress: options.progress
+                    progress: options.progress,
+                    resolutionReductionLevels: reduction
                 )
             }
+        return try finalizeLosslessRun(
+            image: image,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            profile: profile,
+            options: options,
+            allocations: allocations,
+            reduction: reduction,
+            started: started,
+            clock: clock
+        )
+    }
+
+    private func finalizeLosslessRun(
+        image: Image,
+        workspace: Int,
+        execEngine: AcceleratedEngine,
+        resolvedBackend: AccelerationRuntime.ResolvedExecution,
+        profile: LosslessProfile,
+        options: DecodeOptions,
+        allocations: Int,
+        reduction: Int,
+        started: ContinuousClock.Instant,
+        clock: ContinuousClock
+    ) throws -> DecodedImage {
         try Task.checkCancellation()
         let elapsed = clock.now - started
         let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
         let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
         let discardedKinds = (discardedCount > 0) ? ["COM"] : []
+        let effectiveReduction = profile.effectiveReductionLevels(reductionLevels: reduction)
+        let fidelity: Fidelity = effectiveReduction == 0 ? .exactSamples : .lossy
         let report = OperationReport(backend: resolvedBackend.backend,
                                      fallbackReason: resolvedBackend.fallbackReason,
-                                     fidelity: .exactSamples, copyEvents: [],
+                                     fidelity: fidelity, copyEvents: [],
                                      pixelAllocationCount: allocations, peakPixelBytes: image.storage.byteCount,
                                      peakWorkspaceBytes: workspace,
                                      elapsedSeconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
@@ -875,6 +1137,7 @@ public struct Decoder: Sendable {
                           options: DecodeOptions, allocations: Int) throws -> DecodedImage {
         let clock = ContinuousClock()
         let started = clock.now
+        let reduction = configuration.codecOptions.resolutionReductionLevels
         let resolvedBackend = try AccelerationRuntime.resolve(
             options.executionPolicy,
             enginePreference: options.acceleratedEnginePreference
@@ -887,11 +1150,15 @@ public struct Decoder: Sendable {
             throw error
         }
         let ((image, workspace), execEngine): ((Image, Int), AcceleratedEngine) =
-            try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) {
+            try AcceleratedCodec.withExecutionScope(
+                resolved: resolvedBackend,
+                workers: options.resourceLimits.maximumWorkers
+            ) {
                 try Part1Pipeline.decode(
                     bytes: bytes, profile: profile, into: destination,
                     limits: options.resourceLimits, backend: resolvedBackend.backend,
-                    progress: options.progress
+                    progress: options.progress,
+                    resolutionReductionLevels: reduction
                 )
             }
         try Task.checkCancellation()
@@ -899,7 +1166,8 @@ public struct Decoder: Sendable {
         let discardedCount = (options.metadataPolicy == .discardAncillary) ? profile.commentCount : 0
         let discardedBytes = (options.metadataPolicy == .discardAncillary) ? profile.commentPayloadBytes : 0
         let discardedKinds = (discardedCount > 0) ? ["COM"] : []
-        let fidelity: Fidelity = profile.isReversibleLossless ? .exactSamples : .lossy
+        let effectiveReduction = profile.effectiveReductionLevels(reductionLevels: reduction)
+        let fidelity: Fidelity = (profile.isReversibleLossless && effectiveReduction == 0) ? .exactSamples : .lossy
         let report = OperationReport(backend: resolvedBackend.backend,
                                      fallbackReason: resolvedBackend.fallbackReason,
                                      fidelity: fidelity, copyEvents: [],

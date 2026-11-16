@@ -31,19 +31,19 @@
     }
   },
   "counts": {
-    "full_discovered_macos_inventory": 1385,
+    "full_discovered_macos_inventory": 1395,
     "macos_by_target": {
-      "SwiftJ2KTests": 179,
+      "SwiftJ2KTests": 189,
       "SwiftJ2K3DTests": 546,
       "SwiftJ2KJPIPTests": 660
     },
     "macos_by_framework": {
       "xctest": 1034,
-      "swift_testing": 351
+      "swift_testing": 361
     },
-    "selected_macos_declarations": 1385,
+    "selected_macos_declarations": 1395,
     "sanitizer_jpip_partition_declarations": 660,
-    "sanitizer_complement_partition_declarations": 725,
+    "sanitizer_complement_partition_declarations": 735,
     "held_declarations_total": 0,
     "held_by_target": {
       "SwiftJ2K3DTests": 0,
@@ -52,20 +52,20 @@
     },
     "inapplicable_macos_only_cli_process_declarations_on_ios": 13,
     "ios_only_declarations_in_swiftj2kjpiptests": 3,
-    "selected_ios_simulator_declarations": 1375,
+    "selected_ios_simulator_declarations": 1385,
     "ios_simulator_by_target": {
-      "SwiftJ2KTests": 166,
+      "SwiftJ2KTests": 176,
       "SwiftJ2K3DTests": 546,
       "SwiftJ2KJPIPTests": 663
     },
     "ios_simulator_by_framework": {
       "xctest": 1037,
-      "swift_testing": 338
+      "swift_testing": 348
     },
     "ordinary_external_oracle_skips": 5,
-    "selected_macos_expected_passes_without_external_oracles": 1380,
-    "selected_macos_expected_passes_with_external_oracles": 1385,
-    "selected_ios_simulator_expected_passes": 1370,
+    "selected_macos_expected_passes_without_external_oracles": 1390,
+    "selected_macos_expected_passes_with_external_oracles": 1395,
+    "selected_ios_simulator_expected_passes": 1380,
     "selected_common_non_oracle_parameterised_declarations": 34,
     "selected_common_non_oracle_parameterised_total_cases": 377,
     "selected_macos_non_oracle_parameterised_declarations": 35,
@@ -1421,6 +1421,16 @@
     "SwiftJ2KTests.DescriptorTests/semanticMetadataMustAgreeWithComponents()",
     "SwiftJ2KTests.IndependentR2AuditTests/premultipliedAlphaMeaningSurvivesLegacyRoundTrip()",
     "SwiftJ2KTests.IndependentR2AuditTests/undefinedDecodeClauseRemainsUnsatisfied()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/cancelledTaskSIMDAndLossyEncodeSafety()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/causalAndMultiSegmentEBCOTStylesAcrossOddDimensions()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/extreme16BitNoiseAndZeroHTJ2KAndPart1RateTargeting()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/lossyRateDistortionMonotonicity()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/multiTileAndNonZeroOriginReducedResolutionDecode()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/multiWorkerDeterminismMatchesSingleWorker()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/negativeResolutionReductionLevelsRejected()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/pcrdConvexHullRejectsNonImprovingZeroBytePasses()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/reducedResolutionDecodeReversibleAndIrreversible()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/synchronousFastPathMatchesAsync()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/cliAndBidirectionalExternalOracleVerification()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/concreteAccelerationEngineProvenanceAndFallbacks()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/losslessTranscoderZeroPixelAllocationMultiComponentSignedAndPart2()",
@@ -2804,6 +2814,16 @@
     "SwiftJ2KTests.DescriptorTests/semanticMetadataMustAgreeWithComponents()",
     "SwiftJ2KTests.IndependentR2AuditTests/premultipliedAlphaMeaningSurvivesLegacyRoundTrip()",
     "SwiftJ2KTests.IndependentR2AuditTests/undefinedDecodeClauseRemainsUnsatisfied()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/cancelledTaskSIMDAndLossyEncodeSafety()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/causalAndMultiSegmentEBCOTStylesAcrossOddDimensions()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/extreme16BitNoiseAndZeroHTJ2KAndPart1RateTargeting()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/lossyRateDistortionMonotonicity()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/multiTileAndNonZeroOriginReducedResolutionDecode()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/multiWorkerDeterminismMatchesSingleWorker()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/negativeResolutionReductionLevelsRejected()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/pcrdConvexHullRejectsNonImprovingZeroBytePasses()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/reducedResolutionDecodeReversibleAndIrreversible()",
+    "SwiftJ2KTests.ParallelSyncAndReducedDecodeTests/synchronousFastPathMatchesAsync()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/concreteAccelerationEngineProvenanceAndFallbacks()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/losslessTranscoderZeroPixelAllocationMultiComponentSignedAndPart2()",
     "SwiftJ2KTests.PhaseAPart2HTIRVAccelerationTests/lossyHTIRVRoundTripQuantizationAndMarkers()",

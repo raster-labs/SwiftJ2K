@@ -55,6 +55,20 @@ def load_and_validate_ledger(ledger_path: Path) -> tuple[dict, str]:
         raise RuntimeError(f"Unexpected ledger schema in {ledger_path}: {ledger.get('schema')!r}")
     if ledger.get("held_ids_all") != [] or ledger.get("counts", {}).get("held_declarations_total") != 0:
         raise RuntimeError(f"Expected 0 held declarations in {ledger_path}")
+    counts = ledger.get("counts", {})
+    n_mac = len(ledger.get("selected_macos_ids", []))
+    n_ios = len(ledger.get("selected_ios_simulator_ids", []))
+    n_skips = len(ledger.get("five_ordinary_external_oracle_skips", []))
+    if (
+        counts.get("full_discovered_macos_inventory") != n_mac
+        or counts.get("selected_macos_declarations") != n_mac
+        or counts.get("selected_ios_simulator_declarations") != n_ios
+        or counts.get("ordinary_external_oracle_skips") != n_skips
+        or counts.get("selected_macos_expected_passes_with_external_oracles") != n_mac
+        or counts.get("selected_macos_expected_passes_without_external_oracles") != n_mac - n_skips
+        or counts.get("selected_ios_simulator_expected_passes") != n_ios - n_skips
+    ):
+        raise RuntimeError(f"Ledger counts arithmetic mismatch in {ledger_path}: {counts}")
     return ledger, ledger_sha
 
 

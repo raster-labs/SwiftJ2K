@@ -492,6 +492,51 @@ package enum Tier2 {
         return chunks
     }
 
+    private struct PacketChunkList {
+        var count: Int = 0
+        var c0: Int = 0
+        var l0: Int = 0
+        var c1: Int = 0
+        var l1: Int = 0
+        var overflow: [(chunk: Int, length: Int)]? = nil
+
+        @inline(__always)
+        mutating func append(chunk: Int, length: Int) {
+            switch count {
+            case 0:
+                c0 = chunk
+                l0 = length
+                count = 1
+            case 1:
+                c1 = chunk
+                l1 = length
+                count = 2
+            default:
+                if overflow == nil {
+                    overflow = [(chunk: chunk, length: length)]
+                } else {
+                    overflow!.append((chunk: chunk, length: length))
+                }
+                count += 1
+            }
+        }
+
+        @inline(__always)
+        func forEach(_ body: (Int, Int) throws -> Void) rethrows {
+            if count >= 1 {
+                try body(c0, l0)
+            }
+            if count >= 2 {
+                try body(c1, l1)
+            }
+            if let overflow {
+                for item in overflow {
+                    try body(item.chunk, item.length)
+                }
+            }
+        }
+    }
+
     /// Reads packet-header codeword segment lengths for one code-block inclusion, implementing
     /// ISO/IEC 15444-15 Clause B.3 (`3 * P0` placeholder awareness, `[Lcup, Lref]` splitting for
     /// `SigProp`/`MagRef` refinement segments, and Clause B.10.6 mixed-mode MSB probing).
@@ -501,7 +546,7 @@ package enum Tier2 {
         firstInclusion: Bool,
         newPasses: Int,
         style: CodeBlockStyle
-    ) throws -> (chunks: [Int], lengths: [Int]) {
+    ) throws -> PacketChunkList {
         var preReadFirstMSB: Int? = nil
         if firstInclusion && style.ht && style.htMixed {
             if state.lblock <= 3 {
@@ -523,8 +568,7 @@ package enum Tier2 {
             return try reader.readBits(w)
         }
 
-        var chunks: [Int] = []
-        var lengths: [Int] = []
+        var list = PacketChunkList()
 
         if state.isHT {
             if !state.headerHasHTCleanup {
@@ -542,8 +586,7 @@ package enum Tier2 {
                         }
                         state.headerHasHTCleanup = true
                     }
-                    chunks = [newPasses]
-                    lengths = [len0]
+                    list.append(chunk: newPasses, length: len0)
                 } else if rem == 2 {
                     let c0 = newPasses - 1
                     let w1 = state.lblock + floorLog2(newPasses)
@@ -556,13 +599,12 @@ package enum Tier2 {
                                 throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
                             }
                         }
-                        chunks = [newPasses]
-                        lengths = [0]
+                        list.append(chunk: newPasses, length: 0)
                     } else {
                         state.headerHasHTCleanup = true
                         let len1 = try reader.readBits(state.lblock)
-                        chunks = [c0, 1]
-                        lengths = [len0, len1]
+                        list.append(chunk: c0, length: len0)
+                        list.append(chunk: 1, length: len1)
                     }
                 } else {
                     let c0 = newPasses - 2
@@ -576,23 +618,26 @@ package enum Tier2 {
                                 throw CodecError(.malformedInput, "Malformed HTJ2K placeholder length field in packet header.")
                             }
                         }
-                        chunks = [newPasses]
-                        lengths = [0]
+                        list.append(chunk: newPasses, length: 0)
                     } else {
                         state.headerHasHTCleanup = true
                         let len1 = try reader.readBits(state.lblock + 1)
-                        chunks = [c0, 2]
-                        lengths = [len0, len1]
+                        list.append(chunk: c0, length: len0)
+                        list.append(chunk: 2, length: len1)
                     }
                 }
             } else {
-                chunks = htSegmentPassCounts(start: state.passes, count: newPasses, firstCleanupPass: 0)
+                let chunks = htSegmentPassCounts(start: state.passes, count: newPasses, firstCleanupPass: 0)
                 for (idx, chunk) in chunks.enumerated() {
                     let bitCount = state.lblock + floorLog2(chunk)
                     let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
-                    lengths.append(len)
+                    list.append(chunk: chunk, length: len)
                 }
             }
+        } else if !style.bypass && !style.terminateAll {
+            let bitCount = state.lblock + floorLog2(newPasses)
+            let len = try readFirstLength(width: bitCount)
+            list.append(chunk: newPasses, length: len)
         } else {
             let ebcotStyle = CodeBlockStyle(bits: (style.bypass ? 0x01 : 0)
                 | (style.reset ? 0x02 : 0)
@@ -600,14 +645,14 @@ package enum Tier2 {
                 | (style.causal ? 0x08 : 0)
                 | (style.predictable ? 0x10 : 0)
                 | (style.segmentationSymbols ? 0x20 : 0))
-            chunks = segmentPassCounts(start: state.passes, count: newPasses, style: ebcotStyle)
+            let chunks = segmentPassCounts(start: state.passes, count: newPasses, style: ebcotStyle)
             for (idx, chunk) in chunks.enumerated() {
                 let bitCount = state.lblock + floorLog2(chunk)
                 let len = idx == 0 ? (try readFirstLength(width: bitCount)) : (try reader.readBits(bitCount))
-                lengths.append(len)
+                list.append(chunk: chunk, length: len)
             }
         }
-        return (chunks, lengths)
+        return list
     }
 
     /// Appends one decoded packet body segment `(chunk, bytes[cursor..<cursor+length])` to `state`.
@@ -666,14 +711,18 @@ package enum Tier2 {
     /// `[resolution][precinct][band][block]` with codeword segments assembled
     /// across layers.
     static func decodePackets(geometry: TileGeometry, codingStyle cod: CodingStyleSegment,
+                              maxResolutionLevel: Int? = nil,
                               bytes: [UInt8], range: Range<Int>,
                               cancellation: () throws -> Void) throws -> [[[[CodeBlockContribution]]]] {
+        let effectiveMaxResolution = maxResolutionLevel ?? Int.max
+        let keepAll = effectiveMaxResolution >= (geometry.resolutions.count - 1)
         let style = CodeBlockStyle(bits: cod.codeBlockStyle)
         var result: [[[[CodeBlockContribution]]]] = geometry.resolutions.map { resolution in
             resolution.precincts.map { precinct in
                 precinct.bands.map { [CodeBlockContribution](repeating: CodeBlockContribution(), count: $0.blocks.count) }
             }
         }
+        var wireState: [[[[CodeBlockContribution]]]] = keepAll ? [] : result
         var trees: [[PrecinctTrees]] = geometry.resolutions.map { resolution in
             resolution.precincts.map { precinct in
                 PrecinctTrees(inclusion: precinct.bands.map { TagTree(width: $0.blocksWide, height: $0.blocksHigh) },
@@ -682,18 +731,28 @@ package enum Tier2 {
         }
         var cursor = range.lowerBound
         let end = range.upperBound
+        var order: [(band: Int, block: Int, chunks: PacketChunkList)] = []
+        order.reserveCapacity(64)
         for address in try packetSequence(geometry: geometry, codingStyle: cod) {
             try cancellation()
+            if !keepAll && address.resolution > effectiveMaxResolution {
+                if cod.progression == 1 || cod.progression == 2 || (cod.progression == 0 && address.layer + 1 >= cod.layers) {
+                    break
+                }
+            }
+            let keepPacket = keepAll || (address.resolution <= effectiveMaxResolution)
             let resolution = geometry.resolutions[address.resolution]
             let precinct = resolution.precincts[address.precinct]
             if cursor >= end { break }   // a truncated tail: remaining packets are absent
             if cod.usesSOP, cursor + 6 <= end, bytes[cursor] == 0xFF, bytes[cursor + 1] == 0x91 { cursor += 6 }
             var reader = PacketBitReader(bytes: bytes, start: cursor, end: end)
-            var order: [(band: Int, block: Int, chunks: [Int], lengths: [Int])] = []
+            order.removeAll(keepingCapacity: true)
             if try reader.readBit() {
                 for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
                     for k in 0..<precinctBand.blocks.count {
-                        var state = result[address.resolution][address.precinct][b][k]
+                        var state = keepAll
+                            ? result[address.resolution][address.precinct][b][k]
+                            : wireState[address.resolution][address.precinct][b][k]
                         let included: Bool
                         if state.included {
                             included = try reader.readBit()
@@ -720,15 +779,30 @@ package enum Tier2 {
                             state.lblock += 1
                             guard state.lblock <= 40 else { throw CodecError(.malformedInput, "Lblock signalling is not representable.") }
                         }
-                        let (chunks, lengths) = try readCodeBlockPacketLengths(
+                        let chunkList = try readCodeBlockPacketLengths(
                             reader: &reader,
                             state: &state,
                             firstInclusion: firstInclusion,
                             newPasses: newPasses,
                             style: style
                         )
-                        order.append((b, k, chunks, lengths))
-                        result[address.resolution][address.precinct][b][k] = state
+                        order.append((b, k, chunkList))
+                        if keepAll {
+                            result[address.resolution][address.precinct][b][k] = state
+                        } else {
+                            wireState[address.resolution][address.precinct][b][k] = state
+                            if keepPacket {
+                                var outState = result[address.resolution][address.precinct][b][k]
+                                if !outState.included {
+                                    outState.included = true
+                                    outState.zeroBitPlanes = state.zeroBitPlanes
+                                    outState.isHT = state.isHT
+                                }
+                                outState.lblock = state.lblock
+                                outState.headerHasHTCleanup = state.headerHasHTCleanup
+                                result[address.resolution][address.precinct][b][k] = outState
+                            }
+                        }
                     }
                 }
             }
@@ -740,77 +814,133 @@ package enum Tier2 {
                 }
                 cursor += 2
             }
-            for entry in order {
-                var state = result[address.resolution][address.precinct][entry.band][entry.block]
-                for (chunk, length) in zip(entry.chunks, entry.lengths) {
-                    guard length >= 0, cursor + length <= end else {
-                        throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+            if keepAll {
+                for entry in order {
+                    var state = result[address.resolution][address.precinct][entry.band][entry.block]
+                    try entry.chunks.forEach { chunk, length in
+                        guard length >= 0, cursor + length <= end else {
+                            throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+                        }
+                        appendCodeBlockPacketSegment(
+                            state: &state,
+                            chunk: chunk,
+                            bytes: bytes,
+                            cursor: cursor,
+                            length: length,
+                            style: style
+                        )
+                        cursor += length
                     }
-                    appendCodeBlockPacketSegment(
-                        state: &state,
-                        chunk: chunk,
-                        bytes: bytes,
-                        cursor: cursor,
-                        length: length,
-                        style: style
-                    )
-                    cursor += length
+                    result[address.resolution][address.precinct][entry.band][entry.block] = state
                 }
-                result[address.resolution][address.precinct][entry.band][entry.block] = state
+            } else {
+                for entry in order {
+                    var wState = wireState[address.resolution][address.precinct][entry.band][entry.block]
+                    var state = result[address.resolution][address.precinct][entry.band][entry.block]
+                    try entry.chunks.forEach { chunk, length in
+                        guard length >= 0, cursor + length <= end else {
+                            throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+                        }
+                        if keepPacket {
+                            appendCodeBlockPacketSegment(
+                                state: &state,
+                                chunk: chunk,
+                                bytes: bytes,
+                                cursor: cursor,
+                                length: length,
+                                style: style
+                            )
+                        }
+                        wState.passes += chunk
+                        cursor += length
+                    }
+                    wireState[address.resolution][address.precinct][entry.band][entry.block] = wState
+                    if keepPacket {
+                        result[address.resolution][address.precinct][entry.band][entry.block] = state
+                    }
+                }
             }
         }
         return result
     }
 
-    // MARK: - Encoding (single layer, LRCP, default style)
+    // MARK: - Encoding (single layer, default style, all progression orders)
 
     /// `encodings` is indexed `[resolution][precinct][band][block]`.
-    static func encodePackets<Output: CodestreamByteSink & ~Copyable>(geometry: TileGeometry, encodings: [[[[CodeBlockEncoding]]]],
-                              into out: inout Output, cancellation: () throws -> Void) throws {
-        for resolution in geometry.resolutions {
-            for (p, precinct) in resolution.precincts.enumerated() {
-                try cancellation()
-                var header = PacketBitWriter()
-                let anyIncluded = precinct.bands.enumerated().contains { b, band in
-                    band.blocks.indices.contains { encodings[resolution.index][p][b][$0].passCount > 0 }
-                }
-                header.writeBit(anyIncluded)
-                if anyIncluded {
-                    for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
-                        var inclusion = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
-                        var msb = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
-                        for k in 0..<precinctBand.blocks.count {
-                            let encoding = encodings[resolution.index][p][b][k]
-                            try inclusion.setValue(leaf: k, value: encoding.passCount > 0 ? 0 : 1)
-                            try msb.setValue(leaf: k, value: Int32(encoding.zeroBitPlanes))
+    static func encodePackets<Output: CodestreamByteSink & ~Copyable>(
+        geometry: TileGeometry,
+        encodings: [[[[CodeBlockEncoding]]]],
+        codingStyle: CodingStyleSegment? = nil,
+        into out: inout Output,
+        cancellation: () throws -> Void
+    ) throws {
+        @inline(__always)
+        func emitSinglePrecinctPacket(resIndex: Int, precinctIndex p: Int, precinct: PrecinctGeometry, into out: inout Output) throws {
+            try cancellation()
+            var header = PacketBitWriter()
+            let anyIncluded = precinct.bands.enumerated().contains { b, band in
+                band.blocks.indices.contains { encodings[resIndex][p][b][$0].passCount > 0 }
+            }
+            header.writeBit(anyIncluded)
+            if anyIncluded {
+                for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                    var inclusion = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                    var msb = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                    for k in 0..<precinctBand.blocks.count {
+                        let encoding = encodings[resIndex][p][b][k]
+                        try inclusion.setValue(leaf: k, value: encoding.passCount > 0 ? 0 : 1)
+                        try msb.setValue(leaf: k, value: Int32(encoding.zeroBitPlanes))
+                    }
+                    for k in 0..<precinctBand.blocks.count {
+                        let encoding = encodings[resIndex][p][b][k]
+                        try inclusion.encode(writer: &header, leaf: k, threshold: 1)
+                        guard encoding.passCount > 0 else { continue }
+                        try msb.encode(writer: &header, leaf: k, threshold: Int32(encoding.zeroBitPlanes) + 1)
+                        try writePassCount(encoding.passCount, &header)
+                        var lblock = 3
+                        let needed = max(1, Int.bitWidth - encoding.data.count.leadingZeroBitCount)
+                        while lblock + floorLog2(encoding.passCount) < needed {
+                            header.writeBit(true)
+                            lblock += 1
                         }
-                        for k in 0..<precinctBand.blocks.count {
-                            let encoding = encodings[resolution.index][p][b][k]
-                            try inclusion.encode(writer: &header, leaf: k, threshold: 1)
-                            guard encoding.passCount > 0 else { continue }
-                            try msb.encode(writer: &header, leaf: k, threshold: Int32(encoding.zeroBitPlanes) + 1)
-                            try writePassCount(encoding.passCount, &header)
-                            var lblock = 3
-                            let needed = max(1, Int.bitWidth - encoding.data.count.leadingZeroBitCount)
-                            while lblock + floorLog2(encoding.passCount) < needed {
-                                header.writeBit(true)
-                                lblock += 1
-                            }
-                            header.writeBit(false)
-                            header.writeBits(encoding.data.count, count: lblock + floorLog2(encoding.passCount))
+                        header.writeBit(false)
+                        header.writeBits(encoding.data.count, count: lblock + floorLog2(encoding.passCount))
+                    }
+                }
+            }
+            try out.writeBytesChecked(header.finish())
+            if anyIncluded {
+                for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                    for k in 0..<precinctBand.blocks.count {
+                        let encoding = encodings[resIndex][p][b][k]
+                        if encoding.passCount > 0 {
+                            try out.writeBytesChecked(encoding.data)
                         }
                     }
                 }
-                try out.writeBytesChecked(header.finish())
-                if anyIncluded {
-                    for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
-                        for k in 0..<precinctBand.blocks.count {
-                            let encoding = encodings[resolution.index][p][b][k]
-                            if encoding.passCount > 0 {
-                                try out.writeBytesChecked(encoding.data)
-                            }
-                        }
-                    }
+            }
+        }
+
+        if let cod = codingStyle, cod.progression != 0 {
+            for address in try packetSequence(geometry: geometry, codingStyle: cod) {
+                let resolution = geometry.resolutions[address.resolution]
+                let precinct = resolution.precincts[address.precinct]
+                try emitSinglePrecinctPacket(
+                    resIndex: address.resolution,
+                    precinctIndex: address.precinct,
+                    precinct: precinct,
+                    into: &out
+                )
+            }
+        } else {
+            for resolution in geometry.resolutions {
+                for (p, precinct) in resolution.precincts.enumerated() {
+                    try emitSinglePrecinctPacket(
+                        resIndex: resolution.index,
+                        precinctIndex: p,
+                        precinct: precinct,
+                        into: &out
+                    )
                 }
             }
         }
@@ -1000,12 +1130,16 @@ package enum Tier2 {
         codingStyles: [CodingStyleSegment],
         progressionChanges: [ProgressionOrderChangeEntry] = [],
         maxQualityLayers: Int? = nil,
+        maxResolutionLevels: [Int]? = nil,
         bytes: [UInt8],
         range: Range<Int>,
         cancellation: () throws -> Void
     ) throws -> [[[[[CodeBlockContribution]]]]] {
         let styles = codingStyles.map { CodeBlockStyle(bits: $0.codeBlockStyle) }
         let baseCOD = codingStyles[0]
+        let effectiveMaxLayers = maxQualityLayers.map { min(baseCOD.layers, max(1, $0)) } ?? baseCOD.layers
+        let maxKeepResAll = maxResolutionLevels?.max() ?? Int.max
+        let keepAll = (maxQualityLayers == nil) && (maxResolutionLevels == nil)
 
         var result: [[[[[CodeBlockContribution]]]]] = geometries.map { geom in
             geom.resolutions.map { resolution in
@@ -1014,7 +1148,7 @@ package enum Tier2 {
                 }
             }
         }
-        var wireState = result
+        var wireState: [[[[[CodeBlockContribution]]]]] = keepAll ? [] : result
         var trees: [[[PrecinctTrees]]] = geometries.map { geom in
             geom.resolutions.map { resolution in
                 resolution.precincts.map { precinct in
@@ -1034,15 +1168,28 @@ package enum Tier2 {
             progressionChanges: progressionChanges
         )
 
+        var order: [(band: Int, block: Int, chunks: PacketChunkList)] = []
+        order.reserveCapacity(64)
+
         for address in sequence {
             try cancellation()
             if cursor >= end { break }
-            let keepLayer = maxQualityLayers.map { address.layer < max(1, $0) } ?? true
+            let keepLayer = keepAll || (maxQualityLayers.map { address.layer < max(1, $0) } ?? true)
             if !keepLayer && baseCOD.progression == 0 && progressionChanges.isEmpty {
                 break
             }
             let c = address.component
             let r = address.resolution
+            if !keepAll && r > maxKeepResAll && progressionChanges.isEmpty {
+                if baseCOD.progression == 1 || baseCOD.progression == 2
+                    || (baseCOD.progression == 0 && address.layer + 1 >= effectiveMaxLayers) {
+                    break
+                }
+            }
+            let maxResForComp = (maxResolutionLevels != nil && c < maxResolutionLevels!.count)
+                ? maxResolutionLevels![c]
+                : Int.max
+            let keepPacket = keepAll || (keepLayer && (r <= maxResForComp))
             let p = address.precinct
             let style = styles[c]
             let resolution = geometries[c].resolutions[r]
@@ -1051,11 +1198,11 @@ package enum Tier2 {
                 cursor += 6
             }
             var reader = PacketBitReader(bytes: bytes, start: cursor, end: end)
-            var order: [(band: Int, block: Int, chunks: [Int], lengths: [Int])] = []
+            order.removeAll(keepingCapacity: true)
             if try reader.readBit() {
                 for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
                     for k in 0..<precinctBand.blocks.count {
-                        var state = wireState[c][r][p][b][k]
+                        var state = keepAll ? result[c][r][p][b][k] : wireState[c][r][p][b][k]
                         let included: Bool
                         if state.included {
                             included = try reader.readBit()
@@ -1086,25 +1233,29 @@ package enum Tier2 {
                                 throw CodecError(.malformedInput, "Lblock signalling is not representable.")
                             }
                         }
-                        let (chunks, lengths) = try readCodeBlockPacketLengths(
+                        let chunkList = try readCodeBlockPacketLengths(
                             reader: &reader,
                             state: &state,
                             firstInclusion: firstInclusion,
                             newPasses: newPasses,
                             style: style
                         )
-                        order.append((b, k, chunks, lengths))
-                        wireState[c][r][p][b][k] = state
-                        if keepLayer {
-                            var outState = result[c][r][p][b][k]
-                            if !outState.included {
-                                outState.included = true
-                                outState.zeroBitPlanes = state.zeroBitPlanes
-                                outState.isHT = state.isHT
+                        order.append((b, k, chunkList))
+                        if keepAll {
+                            result[c][r][p][b][k] = state
+                        } else {
+                            wireState[c][r][p][b][k] = state
+                            if keepPacket {
+                                var outState = result[c][r][p][b][k]
+                                if !outState.included {
+                                    outState.included = true
+                                    outState.zeroBitPlanes = state.zeroBitPlanes
+                                    outState.isHT = state.isHT
+                                }
+                                outState.lblock = state.lblock
+                                outState.headerHasHTCleanup = state.headerHasHTCleanup
+                                result[c][r][p][b][k] = outState
                             }
-                            outState.lblock = state.lblock
-                            outState.headerHasHTCleanup = state.headerHasHTCleanup
-                            result[c][r][p][b][k] = outState
                         }
                     }
                 }
@@ -1117,14 +1268,13 @@ package enum Tier2 {
                 }
                 cursor += 2
             }
-            for entry in order {
-                var wState = wireState[c][r][p][entry.band][entry.block]
-                var state = result[c][r][p][entry.band][entry.block]
-                for (chunk, length) in zip(entry.chunks, entry.lengths) {
-                    guard length >= 0, cursor + length <= end else {
-                        throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
-                    }
-                    if keepLayer {
+            if keepAll {
+                for entry in order {
+                    var state = result[c][r][p][entry.band][entry.block]
+                    try entry.chunks.forEach { chunk, length in
+                        guard length >= 0, cursor + length <= end else {
+                            throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+                        }
                         appendCodeBlockPacketSegment(
                             state: &state,
                             chunk: chunk,
@@ -1133,13 +1283,35 @@ package enum Tier2 {
                             length: length,
                             style: style
                         )
+                        cursor += length
                     }
-                    wState.passes += chunk
-                    cursor += length
-                }
-                wireState[c][r][p][entry.band][entry.block] = wState
-                if keepLayer {
                     result[c][r][p][entry.band][entry.block] = state
+                }
+            } else {
+                for entry in order {
+                    var wState = wireState[c][r][p][entry.band][entry.block]
+                    var state = result[c][r][p][entry.band][entry.block]
+                    try entry.chunks.forEach { chunk, length in
+                        guard length >= 0, cursor + length <= end else {
+                            throw CodecError(.malformedInput, "Code-block data length exceeds the tile-part data.")
+                        }
+                        if keepPacket {
+                            appendCodeBlockPacketSegment(
+                                state: &state,
+                                chunk: chunk,
+                                bytes: bytes,
+                                cursor: cursor,
+                                length: length,
+                                style: style
+                            )
+                        }
+                        wState.passes += chunk
+                        cursor += length
+                    }
+                    wireState[c][r][p][entry.band][entry.block] = wState
+                    if keepPacket {
+                        result[c][r][p][entry.band][entry.block] = state
+                    }
                 }
             }
         }
@@ -1168,6 +1340,113 @@ package enum Tier2 {
         let baseCOD = codingStyles[0]
         let totalLayers = baseCOD.layers
         let styles = codingStyles.map { CodeBlockStyle(bits: $0.codeBlockStyle) }
+
+        let sequence = try multiComponentPacketSequence(
+            geometries: geometries,
+            codingStyle: baseCOD,
+            progressionChanges: progressionChanges
+        )
+        var sopSequenceNumber: UInt16 = 0
+
+        // Fast zero-copy single-layer path when every code-block emits at most one codeword segment
+        // (covers all single-layer Part-1 default-style and lossless/cleanup-only HTJ2K encodes).
+        if totalLayers == 1 && styles.allSatisfy({ !$0.bypass && !$0.terminateAll }) {
+            let canUseSingleSegmentFastPath = geometries.indices.allSatisfy { c in
+                let st = styles[c]
+                guard st.ht && !st.htMixed else { return true }
+                return encodings[c].allSatisfy { res in
+                    res.allSatisfy { prec in
+                        prec.allSatisfy { band in
+                            band.allSatisfy { enc in
+                                let passes = enc.layerPassCounts.isEmpty ? enc.passCount : (enc.layerPassCounts.first ?? 0)
+                                return passes <= 1
+                            }
+                        }
+                    }
+                }
+            }
+            if canUseSingleSegmentFastPath {
+                for address in sequence {
+                    try cancellation()
+                    let c = address.component
+                    let r = address.resolution
+                    let p = address.precinct
+                    let precinct = geometries[c].resolutions[r].precincts[p]
+
+                    if baseCOD.usesSOP {
+                        try out.writeBytesChecked([
+                            0xFF, 0x91, 0x00, 0x04,
+                            UInt8(sopSequenceNumber >> 8), UInt8(sopSequenceNumber & 0xFF)
+                        ])
+                        sopSequenceNumber &+= 1
+                    }
+
+                    let anyIncluded = precinct.bands.enumerated().contains { b, band in
+                        band.blocks.indices.contains { k in
+                            let enc = encodings[c][r][p][b][k]
+                            let passes = enc.layerPassCounts.isEmpty ? enc.passCount : (enc.layerPassCounts.first ?? 0)
+                            return passes > 0
+                        }
+                    }
+
+                    var header = PacketBitWriter()
+                    header.writeBit(anyIncluded)
+                    if anyIncluded {
+                        for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                            var inclusion = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                            var msb = TagTree(width: precinctBand.blocksWide, height: precinctBand.blocksHigh)
+                            for k in 0..<precinctBand.blocks.count {
+                                let enc = encodings[c][r][p][b][k]
+                                let passes = enc.layerPassCounts.isEmpty ? enc.passCount : (enc.layerPassCounts.first ?? 0)
+                                try inclusion.setValue(leaf: k, value: passes > 0 ? 0 : 1)
+                                try msb.setValue(leaf: k, value: Int32(enc.zeroBitPlanes))
+                            }
+                            for k in 0..<precinctBand.blocks.count {
+                                let enc = encodings[c][r][p][b][k]
+                                let passes = enc.layerPassCounts.isEmpty ? enc.passCount : (enc.layerPassCounts.first ?? 0)
+                                try inclusion.encode(writer: &header, leaf: k, threshold: 1)
+                                guard passes > 0 else { continue }
+                                try msb.encode(writer: &header, leaf: k, threshold: Int32(enc.zeroBitPlanes) + 1)
+                                try writePassCount(passes, &header)
+                                var lblock = 3
+                                let byteLen = enc.passByteOffsets.isEmpty
+                                    ? enc.data.count
+                                    : (passes - 1 < enc.passByteOffsets.count ? min(enc.data.count, enc.passByteOffsets[passes - 1]) : enc.data.count)
+                                let needed = max(1, Int.bitWidth - byteLen.leadingZeroBitCount)
+                                while lblock + floorLog2(passes) < needed {
+                                    header.writeBit(true)
+                                    lblock += 1
+                                }
+                                header.writeBit(false)
+                                header.writeBits(byteLen, count: lblock + floorLog2(passes))
+                            }
+                        }
+                    }
+                    try out.writeBytesChecked(header.finish())
+                    if baseCOD.usesEPH {
+                        try out.writeBytesChecked([0xFF, 0x92])
+                    }
+                    if anyIncluded {
+                        for (b, precinctBand) in precinct.bands.enumerated() where !precinctBand.blocks.isEmpty {
+                            for k in 0..<precinctBand.blocks.count {
+                                let enc = encodings[c][r][p][b][k]
+                                let passes = enc.layerPassCounts.isEmpty ? enc.passCount : (enc.layerPassCounts.first ?? 0)
+                                guard passes > 0 else { continue }
+                                if enc.passByteOffsets.isEmpty || passes >= enc.passCount {
+                                    try out.writeBytesChecked(enc.data)
+                                } else {
+                                    let byteLen = min(enc.data.count, enc.passByteOffsets[passes - 1])
+                                    if byteLen > 0 {
+                                        try out.writeBytesChecked(Array(enc.data.prefix(byteLen)))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return
+            }
+        }
 
         var trees: [[[PrecinctTrees]]] = []
         var progressState: [[[[[BlockEncodeProgress]]]]] = []
@@ -1198,7 +1477,9 @@ package enum Tier2 {
                         bandState.reserveCapacity(precinctBand.blocks.count)
                         for k in 0..<precinctBand.blocks.count {
                             let enc = encodings[c][r][p][b][k]
-                            let firstLayer = enc.layerPassCounts.firstIndex(where: { $0 > 0 }) ?? totalLayers
+                            let firstLayer = enc.layerPassCounts.isEmpty
+                                ? (enc.passCount > 0 ? 0 : totalLayers)
+                                : (enc.layerPassCounts.firstIndex(where: { $0 > 0 }) ?? totalLayers)
                             try inc.setValue(leaf: k, value: Int32(firstLayer))
                             try msb.setValue(leaf: k, value: Int32(enc.zeroBitPlanes))
                             bandState.append(BlockEncodeProgress(firstLayer: firstLayer))
@@ -1216,13 +1497,6 @@ package enum Tier2 {
             trees.append(compTrees)
             progressState.append(compState)
         }
-
-        let sequence = try multiComponentPacketSequence(
-            geometries: geometries,
-            codingStyle: baseCOD,
-            progressionChanges: progressionChanges
-        )
-        var sopSequenceNumber: UInt16 = 0
 
         for address in sequence {
             try cancellation()
@@ -1244,7 +1518,9 @@ package enum Tier2 {
             let anyIncludedInPacket = precinct.bands.enumerated().contains { b, band in
                 band.blocks.indices.contains { k in
                     let enc = encodings[c][r][p][b][k]
-                    let layerPasses = l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0
+                    let layerPasses = enc.layerPassCounts.isEmpty
+                        ? (l == 0 ? enc.passCount : 0)
+                        : (l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0)
                     return layerPasses > 0
                 }
             }
@@ -1258,7 +1534,9 @@ package enum Tier2 {
                     for k in 0..<precinctBand.blocks.count {
                         let enc = encodings[c][r][p][b][k]
                         var st = progressState[c][r][p][b][k]
-                        let newPasses = l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0
+                        let newPasses = enc.layerPassCounts.isEmpty
+                            ? (l == 0 ? enc.passCount : 0)
+                            : (l < enc.layerPassCounts.count ? enc.layerPassCounts[l] : 0)
 
                         if !st.included {
                             try trees[c][r][p].inclusion[b].encode(writer: &header, leaf: k, threshold: Int32(l + 1))
@@ -1277,7 +1555,9 @@ package enum Tier2 {
                         }
 
                         try writePassCount(newPasses, &header)
-                        let chunks = segmentPassCounts(start: st.emittedPasses, count: newPasses, style: style)
+                        let chunks = (style.ht && !style.htMixed)
+                            ? htSegmentPassCounts(start: st.emittedPasses, count: newPasses, firstCleanupPass: 0)
+                            : segmentPassCounts(start: st.emittedPasses, count: newPasses, style: style)
                         var chunkRanges: [Range<Int>] = []
                         chunkRanges.reserveCapacity(chunks.count)
                         var passCursor = st.emittedPasses

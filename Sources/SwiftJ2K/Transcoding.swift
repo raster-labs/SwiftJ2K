@@ -139,7 +139,8 @@ public struct Transcoder: Sendable {
                 scalarProfile = try ScalarLosslessCodec.inspect(
                     codestreamInput,
                     limits: options.resourceLimits,
-                    metadataPolicy: options.metadataPolicy
+                    metadataPolicy: options.metadataPolicy,
+                    allowSignedWaveletTranscode: true
                 )
             } catch let error as CodecError where error.category == .unsupportedFeature {
                 scalarProfile = nil
@@ -164,7 +165,134 @@ public struct Transcoder: Sendable {
             commentPayloadBytes = p1.commentPayloadBytes
         }
 
-        let ((transcodedData, workspace), execEngine) = try AcceleratedCodec.withExecutionScope(resolved: resolvedBackend) { () throws -> (Data, Int) in
+        let ((transcodedData, workspace), execEngine) = try await AcceleratedCodec.withExecutionScope(
+            resolved: resolvedBackend,
+            workers: options.resourceLimits.maximumWorkers
+        ) { () async throws -> (Data, Int) in
+            if let profile = scalarProfile {
+                return try await ScalarLosslessCodec.transcodeAsync(
+                    bytes: codestreamInput,
+                    profile: profile,
+                    to: target,
+                    codecOptions: configuration.codecOptions,
+                    metadataPolicy: options.metadataPolicy,
+                    limits: options.resourceLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress
+                )
+            } else if let p1 = part1Profile {
+                return try Part1Pipeline.transcodeLosslessCoefficients(
+                    bytes: codestreamInput,
+                    profile: p1,
+                    to: target,
+                    codecOptions: configuration.codecOptions,
+                    metadataPolicy: options.metadataPolicy,
+                    limits: options.resourceLimits,
+                    backend: resolvedBackend.backend,
+                    progress: options.progress
+                )
+            } else {
+                throw CodecError(.internalFailure, "Missing inspected transcoding profile.")
+            }
+        }
+        bytes = []
+        return try finalizeTranscode(
+            transcodedData: transcodedData,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            target: target,
+            options: options,
+            reconciledContainer: reconciledContainer,
+            scalarProfile: scalarProfile,
+            part1Profile: part1Profile,
+            commentCount: commentCount,
+            commentPayloadBytes: commentPayloadBytes,
+            started: started,
+            clock: clock
+        )
+    }
+
+    /// Synchronous zero-actor-hop lossless compressed-to-compressed `J2K <-> HTJ2K` transcode.
+    public func transcodeSynchronously(
+        _ data: Data,
+        to target: TranscodeTarget,
+        options: TranscodeOptions = .init()
+    ) throws -> EncodedImage {
+        let clock = ContinuousClock()
+        let started = clock.now
+        try Task.checkCancellation()
+        guard data.count <= options.resourceLimits.maximumCompressedBytes,
+              data.count <= options.resourceLimits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input exceeds the admission budget.")
+        }
+        let resolvedBackend = try AccelerationRuntime.resolve(
+            options.executionPolicy,
+            enginePreference: options.acceleratedEnginePreference
+        )
+        let inputCopyBytes = try checkedAdd(32, data.count)
+        let inputResidentBytes = try checkedAdd(data.count, inputCopyBytes)
+        guard data.count <= options.resourceLimits.maximumCompressedBytes,
+              inputCopyBytes <= options.resourceLimits.maximumWorkspaceBytes,
+              inputResidentBytes <= options.resourceLimits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input and working copy exceed the admission budget.")
+        }
+        StorageTelemetry.recordStage("input-copy", bytes: inputCopyBytes)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: data.count)
+        var bytes = [UInt8](data)
+        options.progress?(try ProgressUpdate(phase: .inspecting, completedUnits: 0))
+        try Task.checkCancellation()
+
+        let codestreamInput: [UInt8]
+        var reconciledContainer: JP2Container.ReconciledContainerProfile?
+        if JP2Container.isContainer(bytes) {
+            let rec = try JP2Container.inspectReconciled(
+                bytes,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            reconciledContainer = rec
+            codestreamInput = rec.codestreamBytes
+        } else {
+            codestreamInput = bytes
+        }
+
+        var scalarProfile: LosslessProfile?
+        if configuration.codecOptions.usesDefaultLosslessProfile {
+            do {
+                scalarProfile = try ScalarLosslessCodec.inspect(
+                    codestreamInput,
+                    limits: options.resourceLimits,
+                    metadataPolicy: options.metadataPolicy,
+                    allowSignedWaveletTranscode: true
+                )
+            } catch let error as CodecError where error.category == .unsupportedFeature {
+                scalarProfile = nil
+            }
+        }
+
+        let part1Profile: Part1Profile?
+        let commentCount: Int
+        let commentPayloadBytes: Int
+        if let profile = scalarProfile {
+            part1Profile = nil
+            commentCount = profile.commentCount
+            commentPayloadBytes = profile.commentPayloadBytes
+        } else {
+            let p1 = try Part1Pipeline.inspect(
+                codestreamInput,
+                limits: options.resourceLimits,
+                metadataPolicy: options.metadataPolicy
+            )
+            part1Profile = p1
+            commentCount = p1.commentCount
+            commentPayloadBytes = p1.commentPayloadBytes
+        }
+
+        let ((transcodedData, workspace), execEngine) = try AcceleratedCodec.withExecutionScope(
+            resolved: resolvedBackend,
+            workers: options.resourceLimits.maximumWorkers
+        ) { () throws -> (Data, Int) in
             if let profile = scalarProfile {
                 return try ScalarLosslessCodec.transcode(
                     bytes: codestreamInput,
@@ -192,6 +320,38 @@ public struct Transcoder: Sendable {
             }
         }
         bytes = []
+        return try finalizeTranscode(
+            transcodedData: transcodedData,
+            workspace: workspace,
+            execEngine: execEngine,
+            resolvedBackend: resolvedBackend,
+            target: target,
+            options: options,
+            reconciledContainer: reconciledContainer,
+            scalarProfile: scalarProfile,
+            part1Profile: part1Profile,
+            commentCount: commentCount,
+            commentPayloadBytes: commentPayloadBytes,
+            started: started,
+            clock: clock
+        )
+    }
+
+    private func finalizeTranscode(
+        transcodedData: Data,
+        workspace: Int,
+        execEngine: AcceleratedEngine,
+        resolvedBackend: AccelerationRuntime.ResolvedExecution,
+        target: TranscodeTarget,
+        options: TranscodeOptions,
+        reconciledContainer: JP2Container.ReconciledContainerProfile?,
+        scalarProfile: LosslessProfile?,
+        part1Profile: Part1Profile?,
+        commentCount: Int,
+        commentPayloadBytes: Int,
+        started: ContinuousClock.Instant,
+        clock: ContinuousClock
+    ) throws -> EncodedImage {
 
         var publishedData = transcodedData
         var outputFormat = (target == .htj2k) ? ScalarLosslessCodec.htj2kFormat : ScalarLosslessCodec.format

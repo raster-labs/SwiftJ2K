@@ -9,6 +9,7 @@
 // `Image`/`ImageDestination` contract. It replaces the predecessor's
 // `EncoderPipeline`/`DecoderPipeline` (Raster-Lab/J2KSwift 7acc9ae4).
 import Foundation
+import Synchronization
 
 /// A validated description of one tile of a decodable codestream.
 struct TileProfile: Sendable {
@@ -23,6 +24,7 @@ struct TileProfile: Sendable {
     let comments: [[UInt8]]               // COM payloads in tile-part order
     var width: Int { x1 - x0 }
     var height: Int { y1 - y0 }
+    var isHTOnlyFast: Bool { (codingStyle.codeBlockStyle & 0xC0) == 0x40 }
 }
 
 /// A validated description of a codestream the scalar path can decode or transcode.
@@ -51,18 +53,89 @@ struct LosslessProfile: Sendable {
         mainHeaderComments.reduce(0) { $0 + 4 + $1.count }
             + tiles.reduce(0) { $0 + $1.comments.reduce(0) { $0 + 4 + $1.count } }
     }
+    var decompositionLevels: Int {
+        tiles.map(\.codingStyle.decompositionLevels).min() ?? 0
+    }
+    func effectiveReductionLevels(reductionLevels: Int) -> Int {
+        var effective = min(max(0, reductionLevels), decompositionLevels)
+        while effective > 0 {
+            let rx0 = Wavelet53.ceilDivPowerOfTwo(originX, effective)
+            let rx1 = Wavelet53.ceilDivPowerOfTwo(originX + width, effective)
+            let ry0 = Wavelet53.ceilDivPowerOfTwo(originY, effective)
+            let ry1 = Wavelet53.ceilDivPowerOfTwo(originY + height, effective)
+            if rx1 > rx0 && ry1 > ry0 {
+                break
+            }
+            effective -= 1
+        }
+        return effective
+    }
+    func reducedDimensions(reductionLevels: Int) -> (width: Int, height: Int) {
+        let effective = effectiveReductionLevels(reductionLevels: reductionLevels)
+        guard effective > 0 else { return (width, height) }
+        let rx0 = Wavelet53.ceilDivPowerOfTwo(originX, effective)
+        let rx1 = Wavelet53.ceilDivPowerOfTwo(originX + width, effective)
+        let ry0 = Wavelet53.ceilDivPowerOfTwo(originY, effective)
+        let ry1 = Wavelet53.ceilDivPowerOfTwo(originY + height, effective)
+        return (rx1 - rx0, ry1 - ry0)
+    }
 }
 
 /// Cooperative cancellation plus the operation deadline from `ResourceLimits`.
 struct WorkGuard: Sendable {
     private let deadline: ContinuousClock.Instant
+    private let alwaysCheck: Bool
     init(limits: ResourceLimits) {
         deadline = ContinuousClock.now.advanced(by: .seconds(limits.deadlineSeconds))
+        alwaysCheck = limits.deadlineSeconds <= 0.05
     }
+    @inline(__always)
     func check() throws {
         try Task.checkCancellation()
         guard ContinuousClock.now <= deadline else {
             throw CodecError(.resourceLimitExceeded, "Operation deadline elapsed.")
+        }
+    }
+    @inline(__always)
+    func checkAmortized(_ iter: Int) throws {
+        if alwaysCheck || (iter & 63) == 0 {
+            try check()
+        }
+    }
+}
+
+internal final class AtomicByteAccumulator: Sendable {
+    private let value = Atomic<Int>(0)
+    private let limit: Int
+
+    init(initial: Int = 0, limit: Int) {
+        value.store(initial, ordering: .relaxed)
+        self.limit = limit
+    }
+
+    var current: Int { value.load(ordering: .acquiring) }
+
+    @inline(__always)
+    func remainingBeforeEncode() throws -> Int {
+        let cur = value.load(ordering: .relaxed)
+        guard cur <= limit else {
+            throw CodecError(.resourceLimitExceeded, "Encoded code-block payloads exceed the workspace or memory admission budget.")
+        }
+        return limit == Int.max ? Int.max : max(0, limit - cur - 32)
+    }
+
+    @inline(__always)
+    func tryAdd(_ delta: Int) throws {
+        guard delta > 0 else { return }
+        while true {
+            let cur = value.load(ordering: .relaxed)
+            let (next, overflow) = cur.addingReportingOverflow(delta)
+            if overflow || next > limit {
+                throw CodecError(.resourceLimitExceeded, "Retained code-block encodings exceed the workspace or memory admission budget.")
+            }
+            if value.compareExchange(expected: cur, desired: next, ordering: .acquiringAndReleasing).exchanged {
+                return
+            }
         }
     }
 }
@@ -233,11 +306,39 @@ enum ScalarLosslessCodec {
 
     // MARK: - Shared Tile Tier-2 + Tier-1 Coefficient Decoding
 
+    private struct LosslessDecodeBlockTask: Sendable {
+        let resIdx: Int
+        let precIdx: Int
+        let pbIdx: Int
+        let cbIdx: Int
+        let width: Int
+        let height: Int
+        let planeOffset: Int
+        let orientation: BandOrientation
+        let mb: Int
+    }
+
+    private struct LosslessEncodeBlockTask: Sendable {
+        let resIdx: Int
+        let precIdx: Int
+        let pbIdx: Int
+        let cbIdx: Int
+        let width: Int
+        let height: Int
+        let planeOffset: Int
+        let orientation: BandOrientation
+        let mb: Int
+    }
+
     private static func decodeTileCoefficients(
         bytes: [UInt8],
         tile: TileProfile,
         work: WorkGuard,
         backend: Backend = .scalarCPU,
+        maxResolutionLevel: Int? = nil,
+        planeWidth: Int? = nil,
+        planeHeight: Int? = nil,
+        maxExtraWorkspaceBytes: Int = Int.max,
         completed: inout Int,
         total: Int,
         progress: (@Sendable (ProgressUpdate) -> Void)?
@@ -261,88 +362,368 @@ enum ScalarLosslessCodec {
         let contributions = try Tier2.decodePackets(
             geometry: geometry,
             codingStyle: tile.codingStyle,
+            maxResolutionLevel: maxResolutionLevel,
             bytes: tileBytes,
             range: tileRange,
             cancellation: work.check
         )
-        let stride = tile.width
-        let planeCount = tile.width * tile.height
+        let stride = planeWidth ?? tile.width
+        let height = planeHeight ?? tile.height
+        let planeCount = stride * height
         StorageTelemetry.recordStage("coefficient-plane", bytes: planeCount * 4)
         StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 4)
         var plane = [Int32](repeating: 0, count: planeCount)
-        for resolution in geometry.resolutions {
+        guard planeCount > 0 else { return plane }
+
+        let effectiveMaxRes = min(maxResolutionLevel ?? (geometry.resolutions.count - 1), geometry.resolutions.count - 1)
+        let requestedWorkers: Int
+        if progress != nil {
+            requestedWorkers = 1
+        } else {
+            let budgetWorkers = maxExtraWorkspaceBytes == Int.max ? Int.max : (1 + max(0, maxExtraWorkspaceBytes / 65_536))
+            requestedWorkers = min(AcceleratedCodec.activeWorkerLimit, budgetWorkers)
+        }
+
+        if requestedWorkers <= 1 {
+            let preRecordedHT = backend == .accelerated && tile.isHTOnlyFast
+            if preRecordedHT {
+                AcceleratedCodec.recordSIMDDispatch()
+            }
+            var ebcotWorkspace = EBCOTWorkspace()
+            try plane.withUnsafeMutableBufferPointer { planeBuf in
+                guard let planeBase = planeBuf.baseAddress else { return }
+                for resolution in geometry.resolutions where resolution.index <= effectiveMaxRes {
+                    for (p, precinct) in resolution.precincts.enumerated() {
+                        for (b, precinctBand) in precinct.bands.enumerated() {
+                            let band = resolution.bands[precinctBand.bandIndex]
+                            let mb = tile.magnitudeBitPlanes[band.quantizationIndex]
+                            for (k, block) in precinctBand.blocks.enumerated() {
+                                try work.checkAmortized(completed)
+                                let contribution = contributions[resolution.index][p][b][k]
+                                completed += 1
+                                if contribution.included && contribution.passes > 0 {
+                                    let blockOffset = (band.planeY + block.y0 - band.y0) * stride + band.planeX + block.x0 - band.x0
+                                    try decodeSingleLosslessBlock(
+                                        contribution: contribution,
+                                        width: block.width,
+                                        height: block.height,
+                                        orientation: band.orientation,
+                                        mb: mb,
+                                        style: style,
+                                        backend: backend,
+                                        destination: planeBase.advanced(by: blockOffset),
+                                        stride: stride,
+                                        ebcotWorkspace: &ebcotWorkspace,
+                                        recordTelemetry: !preRecordedHT
+                                    )
+                                }
+                                if progress != nil && (completed & 7 == 0) {
+                                    progress?(try ProgressUpdate(phase: .processing, completedUnits: min(completed, total), totalUnits: total))
+                                    try work.check()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return plane
+        }
+
+        var tasks: [LosslessDecodeBlockTask] = []
+        tasks.reserveCapacity(min(tile.geometry.codeBlockCount, 4096))
+        var scannedBlocks = 0
+        for resolution in geometry.resolutions where resolution.index <= effectiveMaxRes {
             for (p, precinct) in resolution.precincts.enumerated() {
                 for (b, precinctBand) in precinct.bands.enumerated() {
                     let band = resolution.bands[precinctBand.bandIndex]
                     let mb = tile.magnitudeBitPlanes[band.quantizationIndex]
                     for (k, block) in precinctBand.blocks.enumerated() {
-                        try work.check()
+                        scannedBlocks += 1
                         let contribution = contributions[resolution.index][p][b][k]
-                        completed += 1
                         guard contribution.included, contribution.passes > 0 else { continue }
-                        let coefficients: [Int32]
-                        if contribution.isHT {
-                            let htPasses = ((contribution.passes - 1) % 3) + 1
-                            if htPasses == 1 && contribution.segments.count <= 1 && !style.causal {
-                                let placeholderSets = (contribution.passes - 1) / 3
-                                let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
-                                let rawBlock = contribution.segments.first?.data ?? []
-                                coefficients = try AcceleratedCodec.decodeHTCleanup(
-                                    block: rawBlock,
-                                    width: block.width,
-                                    height: block.height,
-                                    kMax: mb,
-                                    missingMSBs: effectiveMissingMSBs,
-                                    backend: backend
-                                )
-                            } else {
-                                let coeffs64 = try HTBlockDecoder.decodeHTCodeBlock(
-                                    segments: contribution.segments.map {
-                                        HTSegmentInput(data: $0.data, passes: $0.passes)
-                                    },
-                                    zeroBitPlanes: contribution.zeroBitPlanes,
-                                    totalPasses: contribution.passes,
-                                    width: block.width,
-                                    height: block.height,
-                                    kMax: mb,
-                                    causal: style.causal,
-                                    allowMultiHT: false,
-                                    midpointReconstruction: false
-                                )
-                                coefficients = coeffs64.map { Int32(clamping: $0) }
-                            }
-                        } else {
-                            coefficients = try BitPlaneCoder.decode(
-                                segments: contribution.segments, width: block.width, height: block.height,
-                                orientation: band.orientation, zeroBitPlanes: contribution.zeroBitPlanes,
-                                passCount: contribution.passes, magnitudeBitPlanes: mb, style: style
-                            )
-                        }
-                        for row in 0..<block.height {
-                            let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
-                            for column in 0..<block.width {
-                                plane[planeRow + column] = coefficients[row * block.width + column]
-                            }
-                        }
-                        if completed & 7 == 0 {
-                            progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
-                            try work.check()
-                        }
+                        let blockOffset = (band.planeY + block.y0 - band.y0) * stride + band.planeX + block.x0 - band.x0
+                        tasks.append(LosslessDecodeBlockTask(
+                            resIdx: resolution.index,
+                            precIdx: p,
+                            pbIdx: b,
+                            cbIdx: k,
+                            width: block.width,
+                            height: block.height,
+                            planeOffset: blockOffset,
+                            orientation: band.orientation,
+                            mb: mb
+                        ))
                     }
                 }
             }
         }
+        completed += scannedBlocks
+        guard !tasks.isEmpty else { return plane }
+
+        let workerCount = BoundedParallelPool.effectiveWorkers(requested: requestedWorkers, jobCount: tasks.count)
+        let preRecordedHT = backend == .accelerated && tile.isHTOnlyFast
+        if preRecordedHT {
+            AcceleratedCodec.recordSIMDDispatch()
+        }
+        var workspaces = (0..<workerCount).map { _ in EBCOTWorkspace() }
+        try plane.withUnsafeMutableBufferPointer { planeBuf in
+            guard planeBuf.baseAddress != nil else { return }
+            let sendablePlane = UnsafeSendableMutableBuffer(planeBuf)
+            try workspaces.withUnsafeMutableBufferPointer { wsBuf in
+                let sendableWS = UnsafeSendableMutableBuffer(wsBuf)
+                try BoundedParallelPool.forEach(jobCount: tasks.count, maxWorkers: workerCount) { [tasks] jobIdx, workerIdx in
+                    try work.checkAmortized(jobIdx)
+                    let task = tasks[jobIdx]
+                    let contribution = contributions[task.resIdx][task.precIdx][task.pbIdx][task.cbIdx]
+                    try decodeSingleLosslessBlock(
+                        contribution: contribution,
+                        width: task.width,
+                        height: task.height,
+                        orientation: task.orientation,
+                        mb: task.mb,
+                        style: style,
+                        backend: backend,
+                        destination: sendablePlane.baseAddress.advanced(by: task.planeOffset),
+                        stride: stride,
+                        ebcotWorkspace: &sendableWS.baseAddress[workerIdx],
+                        recordTelemetry: !preRecordedHT
+                    )
+                }
+            }
+        }
+        _ = plane[0]
         return plane
+    }
+
+    private static func decodeTileCoefficientsAsync(
+        bytes: [UInt8],
+        tile: TileProfile,
+        work: WorkGuard,
+        backend: Backend = .scalarCPU,
+        maxResolutionLevel: Int? = nil,
+        planeWidth: Int? = nil,
+        planeHeight: Int? = nil,
+        maxExtraWorkspaceBytes: Int = Int.max,
+        completed: inout Int
+    ) async throws -> [Int32] {
+        let tileBytes: [UInt8]
+        let tileRange: Range<Int>
+        if tile.dataRanges.count == 1 {
+            tileBytes = bytes; tileRange = tile.dataRanges[0]
+        } else {
+            let joinedCount = tile.dataRanges.reduce(0) { $0 + $1.count }
+            StorageTelemetry.recordStage("joined-tile-parts", bytes: 32 + joinedCount)
+            StorageTelemetry.recordWorkspaceAllocation(bytes: joinedCount)
+            var joined: [UInt8] = []
+            joined.reserveCapacity(joinedCount)
+            for range in tile.dataRanges { joined.append(contentsOf: bytes[range]) }
+            tileBytes = joined; tileRange = 0..<joined.count
+        }
+        let geometry = tile.geometry
+        let style = CodeBlockStyle(bits: tile.codingStyle.codeBlockStyle)
+        StorageTelemetry.recordStage("decode-state", bytes: tile.footprint.decodeStateBytes)
+        let contributions = try Tier2.decodePackets(
+            geometry: geometry,
+            codingStyle: tile.codingStyle,
+            maxResolutionLevel: maxResolutionLevel,
+            bytes: tileBytes,
+            range: tileRange,
+            cancellation: work.check
+        )
+        let stride = planeWidth ?? tile.width
+        let height = planeHeight ?? tile.height
+        let planeCount = stride * height
+        StorageTelemetry.recordStage("coefficient-plane", bytes: planeCount * 4)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: planeCount * 4)
+        guard planeCount > 0 else { return [] }
+
+        let effectiveMaxRes = min(maxResolutionLevel ?? (geometry.resolutions.count - 1), geometry.resolutions.count - 1)
+        let budgetWorkers = maxExtraWorkspaceBytes == Int.max ? Int.max : (1 + max(0, maxExtraWorkspaceBytes / 65_536))
+        let requestedWorkers = min(AcceleratedCodec.activeWorkerLimit, budgetWorkers)
+
+        var tasks: [LosslessDecodeBlockTask] = []
+        tasks.reserveCapacity(min(tile.geometry.codeBlockCount, 4096))
+        var scannedBlocks = 0
+        for resolution in geometry.resolutions where resolution.index <= effectiveMaxRes {
+            for (p, precinct) in resolution.precincts.enumerated() {
+                for (b, precinctBand) in precinct.bands.enumerated() {
+                    let band = resolution.bands[precinctBand.bandIndex]
+                    let mb = tile.magnitudeBitPlanes[band.quantizationIndex]
+                    for (k, block) in precinctBand.blocks.enumerated() {
+                        scannedBlocks += 1
+                        let contribution = contributions[resolution.index][p][b][k]
+                        guard contribution.included, contribution.passes > 0 else { continue }
+                        let blockOffset = (band.planeY + block.y0 - band.y0) * stride + band.planeX + block.x0 - band.x0
+                        tasks.append(LosslessDecodeBlockTask(
+                            resIdx: resolution.index,
+                            precIdx: p,
+                            pbIdx: b,
+                            cbIdx: k,
+                            width: block.width,
+                            height: block.height,
+                            planeOffset: blockOffset,
+                            orientation: band.orientation,
+                            mb: mb
+                        ))
+                    }
+                }
+            }
+        }
+        completed += scannedBlocks
+        guard !tasks.isEmpty else {
+            return [Int32](repeating: 0, count: planeCount)
+        }
+
+        let workerCount = BoundedParallelPool.effectiveWorkers(requested: requestedWorkers, jobCount: tasks.count)
+        let preRecordedHT = backend == .accelerated && tile.isHTOnlyFast
+        if preRecordedHT {
+            AcceleratedCodec.recordSIMDDispatch()
+        }
+
+        final class SendableDecodeScratch: @unchecked Sendable {
+            var plane: [Int32]
+            let planePtr: UnsafeMutablePointer<Int32>
+            let workers: Int
+            let ebcot: UnsafeMutablePointer<EBCOTWorkspace>
+            init(planeCount: Int, workers: Int) {
+                let n = max(1, workers)
+                let safeCount = max(1, planeCount)
+                self.plane = [Int32](repeating: 0, count: safeCount)
+                self.planePtr = self.plane.withUnsafeMutableBufferPointer { $0.baseAddress! }
+                self.workers = n
+                self.ebcot = UnsafeMutablePointer<EBCOTWorkspace>.allocate(capacity: n)
+                for i in 0..<n {
+                    self.ebcot.advanced(by: i).initialize(to: EBCOTWorkspace())
+                }
+            }
+            deinit {
+                ebcot.deinitialize(count: workers)
+                ebcot.deallocate()
+            }
+        }
+        let scratch = SendableDecodeScratch(planeCount: planeCount, workers: workerCount)
+        try await BoundedParallelPool.forEachAsync(jobCount: tasks.count, maxWorkers: workerCount) { [tasks] jobIdx, workerIdx in
+            try work.checkAmortized(jobIdx)
+            let task = tasks[jobIdx]
+            let contribution = contributions[task.resIdx][task.precIdx][task.pbIdx][task.cbIdx]
+            try decodeSingleLosslessBlock(
+                contribution: contribution,
+                width: task.width,
+                height: task.height,
+                orientation: task.orientation,
+                mb: task.mb,
+                style: style,
+                backend: backend,
+                destination: scratch.planePtr.advanced(by: task.planeOffset),
+                stride: stride,
+                ebcotWorkspace: &scratch.ebcot[workerIdx],
+                recordTelemetry: !preRecordedHT
+            )
+        }
+        return withExtendedLifetime(scratch) {
+            let out = scratch.plane
+            scratch.plane = []
+            return out
+        }
+    }
+
+    @inline(__always)
+    private static func decodeSingleLosslessBlock(
+        contribution: CodeBlockContribution,
+        width: Int,
+        height: Int,
+        orientation: BandOrientation,
+        mb: Int,
+        style: CodeBlockStyle,
+        backend: Backend,
+        destination: UnsafeMutablePointer<Int32>,
+        stride: Int,
+        ebcotWorkspace: inout EBCOTWorkspace,
+        recordTelemetry: Bool = true
+    ) throws {
+        if contribution.isHT {
+            let htPasses = ((contribution.passes - 1) % 3) + 1
+            if htPasses == 1 && contribution.segments.count <= 1 && !style.causal {
+                let placeholderSets = (contribution.passes - 1) / 3
+                let effectiveMissingMSBs = contribution.zeroBitPlanes + placeholderSets
+                let rawBlock = contribution.segments.first?.data ?? []
+                try AcceleratedCodec.decodeHTCleanupStrided(
+                    block: rawBlock[...],
+                    width: width,
+                    height: height,
+                    kMax: mb,
+                    missingMSBs: effectiveMissingMSBs,
+                    destination: destination,
+                    stride: stride,
+                    backend: backend,
+                    recordTelemetry: recordTelemetry
+                )
+            } else {
+                let coeffs64 = try HTBlockDecoder.decodeHTCodeBlock(
+                    segments: contribution.segments.map {
+                        HTSegmentInput(data: $0.data, passes: $0.passes)
+                    },
+                    zeroBitPlanes: contribution.zeroBitPlanes,
+                    totalPasses: contribution.passes,
+                    width: width,
+                    height: height,
+                    kMax: mb,
+                    causal: style.causal,
+                    allowMultiHT: false,
+                    midpointReconstruction: false
+                )
+                for row in 0..<height {
+                    let dstRow = destination.advanced(by: row * stride)
+                    let srcBase = row * width
+                    for col in 0..<width {
+                        dstRow[col] = Int32(clamping: coeffs64[srcBase + col])
+                    }
+                }
+            }
+        } else {
+            try BitPlaneCoder.decodeStrided(
+                segments: contribution.segments,
+                destination: destination,
+                destinationStride: stride,
+                width: width,
+                height: height,
+                orientation: orientation,
+                zeroBitPlanes: contribution.zeroBitPlanes,
+                passCount: contribution.passes,
+                magnitudeBitPlanes: mb,
+                style: style,
+                workspace: &ebcotWorkspace
+            )
+        }
     }
 
     // MARK: - Decoding
 
-    static func decode(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
-                       limits: ResourceLimits, backend: Backend = .scalarCPU,
-                       progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
+    static func decodeAsync(
+        bytes: [UInt8],
+        profile: LosslessProfile,
+        into destination: ImageDestination,
+        limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
+        progress: (@Sendable (ProgressUpdate) -> Void)?,
+        resolutionReductionLevels: Int = 0
+    ) async throws -> (Image, Int) {
+        if profile.tiles.count != 1 || progress != nil {
+            return try decode(
+                bytes: bytes,
+                profile: profile,
+                into: destination,
+                limits: limits,
+                backend: backend,
+                progress: progress,
+                resolutionReductionLevels: resolutionReductionLevels
+            )
+        }
         let descriptor = destination.descriptor
+        let effectiveReduction = profile.effectiveReductionLevels(reductionLevels: resolutionReductionLevels)
+        let (expectedW, expectedH) = profile.reducedDimensions(reductionLevels: effectiveReduction)
         guard !profile.signed,
-              descriptor.width == profile.width, descriptor.height == profile.height,
+              descriptor.width == expectedW, descriptor.height == expectedH,
               descriptor.sampleType == .unsignedInteger, descriptor.storageBits == 16,
               descriptor.components == [.grey], descriptor.planes.count == 1,
               descriptor.meaningfulBits == profile.precision else {
@@ -352,13 +733,137 @@ enum ScalarLosslessCodec {
         guard workspace <= limits.maximumWorkspaceBytes else {
             throw CodecError(.resourceLimitExceeded, "Decoder workspace exceeds the operation limit.")
         }
-        guard try checkedAdd(checkedAdd(bytes.count, destination.storage.byteCount), workspace) <= limits.maximumMemoryBytes else {
+        let totalBaseMemory = try checkedAdd(checkedAdd(bytes.count, destination.storage.byteCount), workspace)
+        guard totalBaseMemory <= limits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Compressed input, destination and workspace exceed the memory budget.")
         }
+        let extraWorkspace = min(limits.maximumWorkspaceBytes - workspace, limits.maximumMemoryBytes - totalBaseMemory)
+        let work = WorkGuard(limits: limits)
+        try work.check()
+
+        let tile = profile.tiles[0]
+        let keepLevels = max(0, tile.codingStyle.decompositionLevels - effectiveReduction)
+        let maxRes: Int? = effectiveReduction > 0 ? keepLevels : nil
+        let rOriginX = Wavelet53.ceilDivPowerOfTwo(profile.originX, effectiveReduction)
+        let rOriginY = Wavelet53.ceilDivPowerOfTwo(profile.originY, effectiveReduction)
+        let rtx0 = Wavelet53.ceilDivPowerOfTwo(tile.x0, effectiveReduction)
+        let rtx1 = Wavelet53.ceilDivPowerOfTwo(tile.x1, effectiveReduction)
+        let rty0 = Wavelet53.ceilDivPowerOfTwo(tile.y0, effectiveReduction)
+        let rty1 = Wavelet53.ceilDivPowerOfTwo(tile.y1, effectiveReduction)
+        let stride = rtx1 - rtx0
+        let tileH = rty1 - rty0
+
+        var completed = 0
+        var plane = try await decodeTileCoefficientsAsync(
+            bytes: bytes,
+            tile: tile,
+            work: work,
+            backend: backend,
+            maxResolutionLevel: maxRes,
+            planeWidth: stride,
+            planeHeight: tileH,
+            maxExtraWorkspaceBytes: extraWorkspace,
+            completed: &completed
+        )
+        if keepLevels == 0 && backend == .accelerated {
+            if AcceleratedCodec.shouldUseMetal(sampleCount: plane.count) {
+                try MetalAccelerationEngine.shared.levelShiftSamples32(samples: &plane, dcShift: 0)
+            } else {
+                AcceleratedCodec.recordSIMDDispatch()
+            }
+        } else {
+            try AcceleratedCodec.inverseWavelet53(
+                plane: &plane,
+                stride: stride,
+                x0: rtx0,
+                x1: rtx1,
+                y0: rty0,
+                y1: rty1,
+                levels: keepLevels,
+                backend: backend,
+                cancellation: work.check
+            )
+        }
+        do {
+            let layout = descriptor.planes[0]
+            let mutation = SharedPathMutation.active
+            let rowBytes = mutation == .ignoreRowStride ? expectedW * layout.pixelStride : layout.rowBytes
+            let order = mutation == .wrongByteOrder ? descriptor.byteOrder.opposite : descriptor.byteOrder
+            let shift = Int32(1) << Int32(profile.precision - 1)
+            let maximum = Int32((1 << profile.precision) - 1)
+            let outX0 = rtx0 - rOriginX
+            let outY0 = rty0 - rOriginY
+            let image = try destination.write { output in
+                guard stride > 0, tileH > 0 else { return }
+                let maxWriteEnd = layout.offset + (outY0 + tileH - 1) * rowBytes + (outX0 + stride) * layout.pixelStride
+                if mutation == .none && layout.pixelStride == 2 && order == .littleEndian &&
+                    outX0 >= 0 && outY0 >= 0 && maxWriteEnd <= output.count,
+                   let outBase = output.baseAddress {
+                    try writeClampedGreyscale16LE(
+                        plane: plane,
+                        stride: stride,
+                        tileH: tileH,
+                        outBase: outBase,
+                        outCount: output.count,
+                        layoutOffset: layout.offset,
+                        rowBytes: rowBytes,
+                        outX0: outX0,
+                        outY0: outY0,
+                        shift: shift,
+                        maximum: maximum,
+                        extraWorkspace: extraWorkspace,
+                        allowParallel: true,
+                        work: work
+                    )
+                } else {
+                    for row in 0..<tileH {
+                        try work.checkAmortized(row)
+                        let y = outY0 + row
+                        let rowOffset = layout.offset + y * rowBytes
+                        for column in 0..<stride {
+                            let x = outX0 + column
+                            let value = min(max(plane[row * stride + column] + shift, 0), maximum)
+                            try storeUInt16(UInt16(value), into: output, at: rowOffset + x * layout.pixelStride, order: order)
+                        }
+                    }
+                }
+            }
+            return (image, workspace)
+        } catch {
+            destination.invalidateAfterFailure()
+            throw error
+        }
+    }
+
+    static func decode(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
+                       limits: ResourceLimits, backend: Backend = .scalarCPU,
+                       progress: (@Sendable (ProgressUpdate) -> Void)?,
+                       resolutionReductionLevels: Int = 0) throws -> (Image, Int) {
+        let descriptor = destination.descriptor
+        let effectiveReduction = profile.effectiveReductionLevels(reductionLevels: resolutionReductionLevels)
+        let (expectedW, expectedH) = profile.reducedDimensions(reductionLevels: effectiveReduction)
+        guard !profile.signed,
+              descriptor.width == expectedW, descriptor.height == expectedH,
+              descriptor.sampleType == .unsignedInteger, descriptor.storageBits == 16,
+              descriptor.components == [.grey], descriptor.planes.count == 1,
+              descriptor.meaningfulBits == profile.precision else {
+            throw CodecError(.incompatibleImageLayout, "Destination descriptor does not match the codestream geometry or precision.")
+        }
+        let workspace = try workspaceBytes(profile: profile)
+        guard workspace <= limits.maximumWorkspaceBytes else {
+            throw CodecError(.resourceLimitExceeded, "Decoder workspace exceeds the operation limit.")
+        }
+        let totalBaseMemory = try checkedAdd(checkedAdd(bytes.count, destination.storage.byteCount), workspace)
+        guard totalBaseMemory <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Compressed input, destination and workspace exceed the memory budget.")
+        }
+        let extraWorkspace = min(limits.maximumWorkspaceBytes - workspace, limits.maximumMemoryBytes - totalBaseMemory)
         let work = WorkGuard(limits: limits)
         try work.check()
         do {
             return try decodeAdmitted(bytes: bytes, profile: profile, into: destination, workspace: workspace,
+                                      extraWorkspace: extraWorkspace, effectiveReduction: effectiveReduction,
+                                      expectedWidth: expectedW, expectedHeight: expectedH,
                                       work: work, backend: backend, progress: progress)
         } catch {
             destination.invalidateAfterFailure()
@@ -367,15 +872,19 @@ enum ScalarLosslessCodec {
     }
 
     private static func decodeAdmitted(bytes: [UInt8], profile: LosslessProfile, into destination: ImageDestination,
-                                       workspace: Int, work: WorkGuard, backend: Backend,
+                                       workspace: Int, extraWorkspace: Int, effectiveReduction: Int,
+                                       expectedWidth: Int, expectedHeight: Int,
+                                       work: WorkGuard, backend: Backend,
                                        progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> (Image, Int) {
         let descriptor = destination.descriptor
         let layout = descriptor.planes[0]
         let mutation = SharedPathMutation.active
-        let rowBytes = mutation == .ignoreRowStride ? profile.width * layout.pixelStride : layout.rowBytes
+        let rowBytes = mutation == .ignoreRowStride ? expectedWidth * layout.pixelStride : layout.rowBytes
         let order = mutation == .wrongByteOrder ? descriptor.byteOrder.opposite : descriptor.byteOrder
         let shift = Int32(1) << Int32(profile.precision - 1)
         let maximum = Int32((1 << profile.precision) - 1)
+        let rOriginX = Wavelet53.ceilDivPowerOfTwo(profile.originX, effectiveReduction)
+        let rOriginY = Wavelet53.ceilDivPowerOfTwo(profile.originY, effectiveReduction)
         let total = profile.codeBlockCount
         var completed = 0
         progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
@@ -386,17 +895,30 @@ enum ScalarLosslessCodec {
         let image = try destination.write { output in
             for tile in profile.tiles {
                 try work.check()
-                let stride = tile.width
+                let keepLevels = max(0, tile.codingStyle.decompositionLevels - effectiveReduction)
+                let maxRes: Int? = effectiveReduction > 0 ? keepLevels : nil
+                let rtx0 = Wavelet53.ceilDivPowerOfTwo(tile.x0, effectiveReduction)
+                let rtx1 = Wavelet53.ceilDivPowerOfTwo(tile.x1, effectiveReduction)
+                let rty0 = Wavelet53.ceilDivPowerOfTwo(tile.y0, effectiveReduction)
+                let rty1 = Wavelet53.ceilDivPowerOfTwo(tile.y1, effectiveReduction)
+                let stride = rtx1 - rtx0
+                let tileH = rty1 - rty0
+                guard stride > 0, tileH > 0 else { continue }
+
                 var plane = try decodeTileCoefficients(
                     bytes: bytes,
                     tile: tile,
                     work: work,
                     backend: backend,
+                    maxResolutionLevel: maxRes,
+                    planeWidth: stride,
+                    planeHeight: tileH,
+                    maxExtraWorkspaceBytes: extraWorkspace,
                     completed: &completed,
                     total: total,
                     progress: progress
                 )
-                if tile.codingStyle.decompositionLevels == 0 && backend == .accelerated {
+                if keepLevels == 0 && backend == .accelerated {
                     if AcceleratedCodec.shouldUseMetal(sampleCount: plane.count) {
                         try MetalAccelerationEngine.shared.levelShiftSamples32(samples: &plane, dcShift: 0)
                     } else {
@@ -406,29 +928,134 @@ enum ScalarLosslessCodec {
                     try AcceleratedCodec.inverseWavelet53(
                         plane: &plane,
                         stride: stride,
-                        x0: tile.x0,
-                        x1: tile.x1,
-                        y0: tile.y0,
-                        y1: tile.y1,
-                        levels: tile.codingStyle.decompositionLevels,
+                        x0: rtx0,
+                        x1: rtx1,
+                        y0: rty0,
+                        y1: rty1,
+                        levels: keepLevels,
                         backend: backend,
                         cancellation: work.check
                     )
                 }
                 // Final-output stage: DC shift, clamp, write into the caller's plane.
-                for row in 0..<tile.height {
-                    try work.check()
-                    let y = tile.y0 - profile.originY + row
-                    let rowOffset = layout.offset + y * rowBytes
-                    for column in 0..<tile.width {
-                        let x = tile.x0 - profile.originX + column
-                        let value = min(max(plane[row * stride + column] + shift, 0), maximum)
-                        try storeUInt16(UInt16(value), into: output, at: rowOffset + x * layout.pixelStride, order: order)
+                let outX0 = rtx0 - rOriginX
+                let outY0 = rty0 - rOriginY
+                let maxWriteEnd = layout.offset + (outY0 + tileH - 1) * rowBytes + (outX0 + stride) * layout.pixelStride
+                if mutation == .none && layout.pixelStride == 2 && order == .littleEndian &&
+                    outX0 >= 0 && outY0 >= 0 && maxWriteEnd <= output.count,
+                   let outBase = output.baseAddress {
+                    try writeClampedGreyscale16LE(
+                        plane: plane,
+                        stride: stride,
+                        tileH: tileH,
+                        outBase: outBase,
+                        outCount: output.count,
+                        layoutOffset: layout.offset,
+                        rowBytes: rowBytes,
+                        outX0: outX0,
+                        outY0: outY0,
+                        shift: shift,
+                        maximum: maximum,
+                        extraWorkspace: extraWorkspace,
+                        allowParallel: progress == nil,
+                        work: work
+                    )
+                } else {
+                    for row in 0..<tileH {
+                        try work.checkAmortized(row)
+                        let y = outY0 + row
+                        let rowOffset = layout.offset + y * rowBytes
+                        for column in 0..<stride {
+                            let x = outX0 + column
+                            let value = min(max(plane[row * stride + column] + shift, 0), maximum)
+                            try storeUInt16(UInt16(value), into: output, at: rowOffset + x * layout.pixelStride, order: order)
+                        }
                     }
                 }
             }
         }
         return (image, workspace)
+    }
+
+    private static func writeClampedGreyscale16LE(
+        plane: [Int32],
+        stride: Int,
+        tileH: Int,
+        outBase: UnsafeMutableRawPointer,
+        outCount: Int,
+        layoutOffset: Int,
+        rowBytes: Int,
+        outX0: Int,
+        outY0: Int,
+        shift: Int32,
+        maximum: Int32,
+        extraWorkspace: Int,
+        allowParallel: Bool,
+        work: WorkGuard
+    ) throws {
+        try plane.withUnsafeBufferPointer { planeBuf in
+            guard let pBase = planeBuf.baseAddress else { return }
+            let budgetWorkers = extraWorkspace == Int.max ? Int.max : (1 + max(0, extraWorkspace / 65_536))
+            let rowWorkers = allowParallel ? min(AcceleratedCodec.activeWorkerLimit, budgetWorkers) : 1
+            let simdEnd = stride & ~3
+            if rowWorkers > 1 && !BoundedParallelPool.isInsideParallelRegion && stride * tileH >= 262_144 && rowBytes >= stride * 2 {
+                let chunkRows = 64
+                let chunkCount = (tileH + chunkRows - 1) / chunkRows
+                let sendablePlane = UnsafeSendableBuffer(planeBuf)
+                let sendableOut = UnsafeSendableMutableRawPointer(baseAddress: outBase, count: outCount)
+                try BoundedParallelPool.forEach(jobCount: chunkCount, maxWorkers: rowWorkers) { chunkIdx, _ in
+                    try work.checkAmortized(chunkIdx)
+                    let startRow = chunkIdx * chunkRows
+                    let endRow = min(tileH, startRow + chunkRows)
+                    let srcPtr = sendablePlane.baseAddress
+                    let dstPtr = sendableOut.baseAddress
+                    for row in startRow..<endRow {
+                        let srcRow = srcPtr.advanced(by: row * stride)
+                        var dstByteOffset = layoutOffset + (outY0 + row) * rowBytes + outX0 * 2
+                        var col = 0
+                        while col < simdEnd {
+                            let v0 = UInt16(truncatingIfNeeded: min(max(srcRow[col] + shift, 0), maximum)).littleEndian
+                            let v1 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 1] + shift, 0), maximum)).littleEndian
+                            let v2 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 2] + shift, 0), maximum)).littleEndian
+                            let v3 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 3] + shift, 0), maximum)).littleEndian
+                            let packed = UInt64(v0) | (UInt64(v1) << 16) | (UInt64(v2) << 32) | (UInt64(v3) << 48)
+                            dstPtr.storeBytes(of: packed, toByteOffset: dstByteOffset, as: UInt64.self)
+                            dstByteOffset += 8
+                            col += 4
+                        }
+                        while col < stride {
+                            let v = UInt16(truncatingIfNeeded: min(max(srcRow[col] + shift, 0), maximum)).littleEndian
+                            dstPtr.storeBytes(of: v, toByteOffset: dstByteOffset, as: UInt16.self)
+                            dstByteOffset += 2
+                            col += 1
+                        }
+                    }
+                }
+            } else {
+                for row in 0..<tileH {
+                    try work.checkAmortized(row)
+                    let srcRow = pBase.advanced(by: row * stride)
+                    var dstByteOffset = layoutOffset + (outY0 + row) * rowBytes + outX0 * 2
+                    var col = 0
+                    while col < simdEnd {
+                        let v0 = UInt16(truncatingIfNeeded: min(max(srcRow[col] + shift, 0), maximum)).littleEndian
+                        let v1 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 1] + shift, 0), maximum)).littleEndian
+                        let v2 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 2] + shift, 0), maximum)).littleEndian
+                        let v3 = UInt16(truncatingIfNeeded: min(max(srcRow[col + 3] + shift, 0), maximum)).littleEndian
+                        let packed = UInt64(v0) | (UInt64(v1) << 16) | (UInt64(v2) << 32) | (UInt64(v3) << 48)
+                        outBase.storeBytes(of: packed, toByteOffset: dstByteOffset, as: UInt64.self)
+                        dstByteOffset += 8
+                        col += 4
+                    }
+                    while col < stride {
+                        let v = UInt16(truncatingIfNeeded: min(max(srcRow[col] + shift, 0), maximum)).littleEndian
+                        outBase.storeBytes(of: v, toByteOffset: dstByteOffset, as: UInt16.self)
+                        dstByteOffset += 2
+                        col += 1
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Encoding
@@ -438,6 +1065,7 @@ enum ScalarLosslessCodec {
         let codeBlockWidthExponent: Int
         let codeBlockHeightExponent: Int
         let blockCoding: CodecOptions.BlockCoding
+        let progressionOrder: CodecOptions.ProgressionOrder
         let backend: Backend
 
         init(
@@ -445,14 +1073,111 @@ enum ScalarLosslessCodec {
             codeBlockWidthExponent: Int,
             codeBlockHeightExponent: Int,
             blockCoding: CodecOptions.BlockCoding,
+            progressionOrder: CodecOptions.ProgressionOrder = .lrcp,
             backend: Backend = .scalarCPU
         ) {
             self.decompositionLevels = decompositionLevels
             self.codeBlockWidthExponent = codeBlockWidthExponent
             self.codeBlockHeightExponent = codeBlockHeightExponent
             self.blockCoding = blockCoding
+            self.progressionOrder = progressionOrder
             self.backend = backend
         }
+    }
+
+    @inline(__always)
+    private static func encodeSingleLosslessBlock(
+        planeBase: UnsafePointer<Int32>,
+        planeOffset: Int,
+        stride: Int,
+        width: Int,
+        height: Int,
+        orientation: BandOrientation,
+        mb: Int,
+        blockCoding: CodecOptions.BlockCoding,
+        backend: Backend,
+        blockMaxOutputBytes: Int,
+        ebcotWorkspace: inout EBCOTWorkspace,
+        htWorkspace: inout HTBlockEncoder.Workspace,
+        useMetalHTOverride: Bool? = nil,
+        recordTelemetry: Bool = true
+    ) throws -> CodeBlockEncoding {
+        let srcPtr = planeBase.advanced(by: planeOffset)
+        switch blockCoding {
+        case .part1:
+            return try BitPlaneCoder.encodeStrided(
+                source: srcPtr,
+                sourceStride: stride,
+                width: width,
+                height: height,
+                orientation: orientation,
+                magnitudeBitPlanes: mb,
+                maximumOutputBytes: blockMaxOutputBytes,
+                workspace: &ebcotWorkspace,
+                allocateLayerMetadata: false
+            )
+        case .htj2k:
+            let coded = try AcceleratedCodec.encodeHTCleanupStrided(
+                source: srcPtr,
+                stride: stride,
+                width: width,
+                height: height,
+                bandShift: 0,
+                maximumOutputBytes: blockMaxOutputBytes,
+                backend: backend,
+                workspace: &htWorkspace,
+                useMetalHTOverride: useMetalHTOverride,
+                recordTelemetry: recordTelemetry
+            )
+            return CodeBlockEncoding(
+                losslessSingleLayer: coded,
+                passCount: coded.isEmpty ? 0 : 1,
+                zeroBitPlanes: coded.isEmpty ? mb : (mb - 1)
+            )
+        }
+    }
+
+    private static func buildLosslessEncodeSchedule(
+        geometry: TileGeometry,
+        qcd: QuantizationSegment,
+        stride: Int
+    ) -> (tasks: [LosslessEncodeBlockTask], emptyGrid: [[[[CodeBlockEncoding]]]]) {
+        var tasks: [LosslessEncodeBlockTask] = []
+        tasks.reserveCapacity(geometry.codeBlockCount)
+        let placeholder = CodeBlockEncoding(losslessSingleLayer: [], passCount: 0, zeroBitPlanes: 0)
+        var encodings: [[[[CodeBlockEncoding]]]] = []
+        encodings.reserveCapacity(geometry.resolutions.count)
+        for resolution in geometry.resolutions {
+            var perPrecinct: [[[CodeBlockEncoding]]] = []
+            perPrecinct.reserveCapacity(resolution.precincts.count)
+            for (p, precinct) in resolution.precincts.enumerated() {
+                var perBand: [[CodeBlockEncoding]] = []
+                perBand.reserveCapacity(precinct.bands.count)
+                for (b, precinctBand) in precinct.bands.enumerated() {
+                    let band = resolution.bands[precinctBand.bandIndex]
+                    let mb = qcd.guardBits + qcd.exponents[band.quantizationIndex] - 1
+                    let perBlock = [CodeBlockEncoding](repeating: placeholder, count: precinctBand.blocks.count)
+                    for (k, block) in precinctBand.blocks.enumerated() {
+                        let offset = (band.planeY + block.y0 - band.y0) * stride + band.planeX + block.x0 - band.x0
+                        tasks.append(LosslessEncodeBlockTask(
+                            resIdx: resolution.index,
+                            precIdx: p,
+                            pbIdx: b,
+                            cbIdx: k,
+                            width: block.width,
+                            height: block.height,
+                            planeOffset: offset,
+                            orientation: band.orientation,
+                            mb: mb
+                        ))
+                    }
+                    perBand.append(perBlock)
+                }
+                perPrecinct.append(perBand)
+            }
+            encodings.append(perPrecinct)
+        }
+        return (tasks, encodings)
     }
 
     private static func encodeTileBlocks(
@@ -464,97 +1189,317 @@ enum ScalarLosslessCodec {
         backend: Backend = .scalarCPU,
         work: WorkGuard,
         maxRetainedEncodedBytes: Int = Int.max,
+        maxExtraWorkspaceBytes: Int = Int.max,
         runningEncodedBytes: inout Int,
         recordBlockStages: Bool = false,
         completed: inout Int,
         total: Int,
         progress: (@Sendable (ProgressUpdate) -> Void)?
     ) throws -> [[[[CodeBlockEncoding]]]] {
-        var encodings: [[[[CodeBlockEncoding]]]] = []
-        encodings.reserveCapacity(geometry.resolutions.count)
-        var coefficients: [Int32] = []
-        coefficients.reserveCapacity(BitPlaneCoder.maximumCoefficients)
         let shouldRecordBlockStage = recordBlockStages && StorageTelemetry.recorder != nil
-        for resolution in geometry.resolutions {
-            var perPrecinct: [[[CodeBlockEncoding]]] = []
-            perPrecinct.reserveCapacity(resolution.precincts.count)
-            for precinct in resolution.precincts {
-                var perBand: [[CodeBlockEncoding]] = []
-                perBand.reserveCapacity(precinct.bands.count)
-                for precinctBand in precinct.bands {
-                    let band = resolution.bands[precinctBand.bandIndex]
-                    let mb = qcd.guardBits + qcd.exponents[band.quantizationIndex] - 1
-                    var perBlock: [CodeBlockEncoding] = []
-                    perBlock.reserveCapacity(precinctBand.blocks.count)
-                    for block in precinctBand.blocks {
-                        try work.check()
-                        guard runningEncodedBytes <= maxRetainedEncodedBytes else {
-                            throw CodecError(.resourceLimitExceeded, "Encoded code-block payloads exceed the workspace or memory admission budget.")
+        let requestedWorkers: Int
+        if progress != nil {
+            requestedWorkers = 1
+        } else {
+            let effExtra = min(maxRetainedEncodedBytes, maxExtraWorkspaceBytes)
+            let budgetWorkers = effExtra == Int.max ? Int.max : (1 + max(0, effExtra / 65_536))
+            requestedWorkers = min(AcceleratedCodec.activeWorkerLimit, budgetWorkers)
+        }
+
+        if requestedWorkers <= 1 {
+            var encodings: [[[[CodeBlockEncoding]]]] = []
+            encodings.reserveCapacity(geometry.resolutions.count)
+            let useMetalHT = (blockCoding == .htj2k) && AcceleratedCodec.shouldClassifyHTQuadsOnMetal(backend: backend)
+            let preRecordedHT = (blockCoding == .htj2k) && backend == .accelerated && geometry.codeBlockCount > 0
+            if preRecordedHT {
+                AcceleratedCodec.recordSIMDDispatch()
+            }
+            var ebcotWS = EBCOTWorkspace()
+            var htWS = HTBlockEncoder.Workspace()
+            try plane.withUnsafeBufferPointer { planeBuf in
+                guard let planeBase = planeBuf.baseAddress else { return }
+                for resolution in geometry.resolutions {
+                    var perPrecinct: [[[CodeBlockEncoding]]] = []
+                    perPrecinct.reserveCapacity(resolution.precincts.count)
+                    for precinct in resolution.precincts {
+                        var perBand: [[CodeBlockEncoding]] = []
+                        perBand.reserveCapacity(precinct.bands.count)
+                        for precinctBand in precinct.bands {
+                            let band = resolution.bands[precinctBand.bandIndex]
+                            let mb = qcd.guardBits + qcd.exponents[band.quantizationIndex] - 1
+                            var perBlock: [CodeBlockEncoding] = []
+                            perBlock.reserveCapacity(precinctBand.blocks.count)
+                            for block in precinctBand.blocks {
+                                try work.checkAmortized(completed)
+                                guard runningEncodedBytes <= maxRetainedEncodedBytes else {
+                                    throw CodecError(.resourceLimitExceeded, "Encoded code-block payloads exceed the workspace or memory admission budget.")
+                                }
+                                let blockMaxOutputBytes: Int = maxRetainedEncodedBytes == Int.max
+                                    ? Int.max
+                                    : max(0, maxRetainedEncodedBytes - runningEncodedBytes - 32)
+                                let planeOffset = (band.planeY + block.y0 - band.y0) * stride + band.planeX + block.x0 - band.x0
+                                let encoding = try encodeSingleLosslessBlock(
+                                    planeBase: planeBase,
+                                    planeOffset: planeOffset,
+                                    stride: stride,
+                                    width: block.width,
+                                    height: block.height,
+                                    orientation: band.orientation,
+                                    mb: mb,
+                                    blockCoding: blockCoding,
+                                    backend: backend,
+                                    blockMaxOutputBytes: blockMaxOutputBytes,
+                                    ebcotWorkspace: &ebcotWS,
+                                    htWorkspace: &htWS,
+                                    useMetalHTOverride: useMetalHT,
+                                    recordTelemetry: !preRecordedHT
+                                )
+                                let blockRetainedBytes = encoding.data.isEmpty ? 0 : (32 + max(encoding.data.count, encoding.data.capacity))
+                                let nextEncodedBytes = try checkedAdd(runningEncodedBytes, blockRetainedBytes)
+                                guard nextEncodedBytes <= maxRetainedEncodedBytes else {
+                                    throw CodecError(.resourceLimitExceeded, "Retained code-block encodings exceed the workspace or memory admission budget.")
+                                }
+                                runningEncodedBytes = nextEncodedBytes
+                                if shouldRecordBlockStage && blockRetainedBytes > 0 {
+                                    StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
+                                }
+                                perBlock.append(encoding)
+                                completed += 1
+                                if progress != nil && (completed & 7 == 0) {
+                                    progress?(try ProgressUpdate(phase: .processing, completedUnits: min(completed, total), totalUnits: total))
+                                    try work.check()
+                                }
+                            }
+                            perBand.append(perBlock)
                         }
-                        let blockMaxOutputBytes: Int
-                        if maxRetainedEncodedBytes == Int.max {
-                            blockMaxOutputBytes = Int.max
-                        } else {
-                            blockMaxOutputBytes = max(0, maxRetainedEncodedBytes - runningEncodedBytes - 32)
-                        }
-                        coefficients.removeAll(keepingCapacity: true)
-                        for row in 0..<block.height {
-                            let planeRow = (band.planeY + block.y0 - band.y0 + row) * stride + band.planeX + block.x0 - band.x0
-                            coefficients.append(contentsOf: plane[planeRow..<planeRow + block.width])
-                        }
-                        let encoding: CodeBlockEncoding
-                        switch blockCoding {
-                        case .part1:
-                            encoding = try BitPlaneCoder.encode(
-                                coefficients: coefficients,
-                                width: block.width,
-                                height: block.height,
-                                orientation: band.orientation,
-                                magnitudeBitPlanes: mb,
-                                maximumOutputBytes: blockMaxOutputBytes
+                        perPrecinct.append(perBand)
+                    }
+                    encodings.append(perPrecinct)
+                }
+            }
+            return encodings
+        }
+
+        let (tasks, emptyGrid) = buildLosslessEncodeSchedule(geometry: geometry, qcd: qcd, stride: stride)
+        var encodings = emptyGrid
+        guard !tasks.isEmpty else { return encodings }
+
+        let workerCount = BoundedParallelPool.effectiveWorkers(requested: requestedWorkers, jobCount: tasks.count)
+        let useMetalHT = (blockCoding == .htj2k) && AcceleratedCodec.shouldClassifyHTQuadsOnMetal(backend: backend)
+        let preRecordedHT = (blockCoding == .htj2k) && backend == .accelerated
+        if preRecordedHT {
+            AcceleratedCodec.recordSIMDDispatch()
+        }
+        let accumulator = AtomicByteAccumulator(initial: runningEncodedBytes, limit: maxRetainedEncodedBytes)
+        var flatResults = [CodeBlockEncoding](
+            repeating: CodeBlockEncoding(losslessSingleLayer: [], passCount: 0, zeroBitPlanes: 0),
+            count: tasks.count
+        )
+        var ebcotWorkspaces = (0..<workerCount).map { _ in EBCOTWorkspace() }
+        var htWorkspaces = (0..<workerCount).map { _ in HTBlockEncoder.Workspace() }
+
+        try plane.withUnsafeBufferPointer { planeBuf in
+            guard planeBuf.baseAddress != nil else { return }
+            let sendablePlane = UnsafeSendableBuffer(planeBuf)
+            try flatResults.withUnsafeMutableBufferPointer { resBuf in
+                let sendableRes = UnsafeSendableMutableBuffer(resBuf)
+                try ebcotWorkspaces.withUnsafeMutableBufferPointer { ewsBuf in
+                    let sendableEWS = UnsafeSendableMutableBuffer(ewsBuf)
+                    try htWorkspaces.withUnsafeMutableBufferPointer { hwsBuf in
+                        let sendableHWS = UnsafeSendableMutableBuffer(hwsBuf)
+                        try BoundedParallelPool.forEach(jobCount: tasks.count, maxWorkers: workerCount) { jobIdx, workerIdx in
+                            try work.checkAmortized(jobIdx)
+                            let task = tasks[jobIdx]
+                            let blockMaxOutputBytes = try accumulator.remainingBeforeEncode()
+                            let enc = try encodeSingleLosslessBlock(
+                                planeBase: sendablePlane.baseAddress,
+                                planeOffset: task.planeOffset,
+                                stride: stride,
+                                width: task.width,
+                                height: task.height,
+                                orientation: task.orientation,
+                                mb: task.mb,
+                                blockCoding: blockCoding,
+                                backend: backend,
+                                blockMaxOutputBytes: blockMaxOutputBytes,
+                                ebcotWorkspace: &sendableEWS.baseAddress[workerIdx],
+                                htWorkspace: &sendableHWS.baseAddress[workerIdx],
+                                useMetalHTOverride: useMetalHT,
+                                recordTelemetry: !preRecordedHT
                             )
-                        case .htj2k:
-                            let coded = try AcceleratedCodec.encodeHTCleanup(
-                                coefficients: coefficients,
-                                width: block.width,
-                                height: block.height,
-                                bandShift: 0,
-                                maximumOutputBytes: blockMaxOutputBytes,
-                                backend: backend
-                            )
-                            encoding = CodeBlockEncoding(
-                                data: coded,
-                                passCount: coded.isEmpty ? 0 : 1,
-                                zeroBitPlanes: coded.isEmpty ? mb : (mb - 1)
-                            )
-                        }
-                        let blockRetainedBytes = encoding.data.isEmpty ? 0 : (32 + max(encoding.data.count, encoding.data.capacity))
-                        let nextEncodedBytes = try checkedAdd(runningEncodedBytes, blockRetainedBytes)
-                        guard nextEncodedBytes <= maxRetainedEncodedBytes else {
-                            throw CodecError(.resourceLimitExceeded, "Retained code-block encodings exceed the workspace or memory admission budget.")
-                        }
-                        runningEncodedBytes = nextEncodedBytes
-                        if shouldRecordBlockStage && blockRetainedBytes > 0 {
-                            StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
-                        }
-                        perBlock.append(encoding)
-                        completed += 1
-                        if completed & 7 == 0 {
-                            progress?(try ProgressUpdate(phase: .processing, completedUnits: completed, totalUnits: total))
-                            try work.check()
+                            let blockRetainedBytes = enc.data.isEmpty ? 0 : (32 + max(enc.data.count, enc.data.capacity))
+                            try accumulator.tryAdd(blockRetainedBytes)
+                            if shouldRecordBlockStage && blockRetainedBytes > 0 {
+                                StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
+                            }
+                            sendableRes.baseAddress[jobIdx] = enc
                         }
                     }
-                    perBand.append(perBlock)
                 }
-                perPrecinct.append(perBand)
             }
-            encodings.append(perPrecinct)
+        }
+        runningEncodedBytes = accumulator.current
+        completed += tasks.count
+        for (idx, task) in tasks.enumerated() {
+            encodings[task.resIdx][task.precIdx][task.pbIdx][task.cbIdx] = flatResults[idx]
         }
         return encodings
     }
 
-    static func encode(image: Image, parameters: EncodeParameters, limits: ResourceLimits,
-                       progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> ([UInt8], Int) {
+    private static func encodeTileBlocksAsync(
+        plane: [Int32],
+        stride: Int,
+        geometry: TileGeometry,
+        qcd: QuantizationSegment,
+        blockCoding: CodecOptions.BlockCoding,
+        backend: Backend = .scalarCPU,
+        work: WorkGuard,
+        maxRetainedEncodedBytes: Int = Int.max,
+        maxExtraWorkspaceBytes: Int = Int.max,
+        runningEncodedBytes: inout Int,
+        recordBlockStages: Bool = false,
+        completed: inout Int,
+        total: Int,
+        progress: (@Sendable (ProgressUpdate) -> Void)?
+    ) async throws -> [[[[CodeBlockEncoding]]]] {
+        let shouldRecordBlockStage = recordBlockStages && StorageTelemetry.recorder != nil
+        let requestedWorkers: Int
+        if progress != nil {
+            requestedWorkers = 1
+        } else {
+            let effExtra = min(maxRetainedEncodedBytes, maxExtraWorkspaceBytes)
+            let budgetWorkers = effExtra == Int.max ? Int.max : (1 + max(0, effExtra / 65_536))
+            requestedWorkers = min(AcceleratedCodec.activeWorkerLimit, budgetWorkers)
+        }
+        if requestedWorkers <= 1 {
+            return try encodeTileBlocks(
+                plane: plane,
+                stride: stride,
+                geometry: geometry,
+                qcd: qcd,
+                blockCoding: blockCoding,
+                backend: backend,
+                work: work,
+                maxRetainedEncodedBytes: maxRetainedEncodedBytes,
+                maxExtraWorkspaceBytes: maxExtraWorkspaceBytes,
+                runningEncodedBytes: &runningEncodedBytes,
+                recordBlockStages: recordBlockStages,
+                completed: &completed,
+                total: total,
+                progress: progress
+            )
+        }
+
+        let (tasks, emptyGrid) = buildLosslessEncodeSchedule(geometry: geometry, qcd: qcd, stride: stride)
+        var encodings = emptyGrid
+        guard !tasks.isEmpty else { return encodings }
+
+        let workerCount = BoundedParallelPool.effectiveWorkers(requested: requestedWorkers, jobCount: tasks.count)
+        let accumulator = AtomicByteAccumulator(initial: runningEncodedBytes, limit: maxRetainedEncodedBytes)
+        final class SendableEncodingsCollector: @unchecked Sendable {
+            let count: Int
+            let items: UnsafeMutablePointer<CodeBlockEncoding>
+            init(count: Int) {
+                self.count = count
+                self.items = UnsafeMutablePointer<CodeBlockEncoding>.allocate(capacity: max(1, count))
+                self.items.initialize(
+                    repeating: CodeBlockEncoding(losslessSingleLayer: [], passCount: 0, zeroBitPlanes: 0),
+                    count: max(1, count)
+                )
+            }
+            deinit {
+                items.deinitialize(count: max(1, count))
+                items.deallocate()
+            }
+        }
+        let collector = SendableEncodingsCollector(count: tasks.count)
+        final class SendableWorkerScratch: @unchecked Sendable {
+            let workers: Int
+            let ebcot: UnsafeMutablePointer<EBCOTWorkspace>
+            let ht: UnsafeMutablePointer<HTBlockEncoder.Workspace>
+            init(workers: Int) {
+                let n = max(1, workers)
+                self.workers = n
+                self.ebcot = UnsafeMutablePointer<EBCOTWorkspace>.allocate(capacity: n)
+                self.ht = UnsafeMutablePointer<HTBlockEncoder.Workspace>.allocate(capacity: n)
+                for i in 0..<n {
+                    self.ebcot.advanced(by: i).initialize(to: EBCOTWorkspace())
+                    self.ht.advanced(by: i).initialize(to: HTBlockEncoder.Workspace())
+                }
+            }
+            deinit {
+                ebcot.deinitialize(count: workers)
+                ebcot.deallocate()
+                ht.deinitialize(count: workers)
+                ht.deallocate()
+            }
+        }
+        let scratch = SendableWorkerScratch(workers: workerCount)
+        let useMetalHT = (blockCoding == .htj2k) && AcceleratedCodec.shouldClassifyHTQuadsOnMetal(backend: backend)
+        let preRecordedHT = (blockCoding == .htj2k) && backend == .accelerated
+        if preRecordedHT {
+            AcceleratedCodec.recordSIMDDispatch()
+        }
+
+        try await BoundedParallelPool.forEachAsync(jobCount: tasks.count, maxWorkers: workerCount) { jobIdx, workerIdx in
+            try work.checkAmortized(jobIdx)
+            let task = tasks[jobIdx]
+            let blockMaxOutputBytes = try accumulator.remainingBeforeEncode()
+            let enc = try plane.withUnsafeBufferPointer { planeBuf -> CodeBlockEncoding in
+                guard let planeBase = planeBuf.baseAddress else {
+                    return CodeBlockEncoding(data: [], passCount: 0, zeroBitPlanes: task.mb)
+                }
+                return try encodeSingleLosslessBlock(
+                    planeBase: planeBase,
+                    planeOffset: task.planeOffset,
+                    stride: stride,
+                    width: task.width,
+                    height: task.height,
+                    orientation: task.orientation,
+                    mb: task.mb,
+                    blockCoding: blockCoding,
+                    backend: backend,
+                    blockMaxOutputBytes: blockMaxOutputBytes,
+                    ebcotWorkspace: &scratch.ebcot[workerIdx],
+                    htWorkspace: &scratch.ht[workerIdx],
+                    useMetalHTOverride: useMetalHT,
+                    recordTelemetry: !preRecordedHT
+                )
+            }
+            let blockRetainedBytes = enc.data.isEmpty ? 0 : (32 + max(enc.data.count, enc.data.capacity))
+            try accumulator.tryAdd(blockRetainedBytes)
+            if shouldRecordBlockStage && blockRetainedBytes > 0 {
+                StorageTelemetry.recordStage("block-encoding", bytes: blockRetainedBytes)
+            }
+            collector.items[jobIdx] = enc
+        }
+        runningEncodedBytes = accumulator.current
+        completed += tasks.count
+        for (idx, task) in tasks.enumerated() {
+            encodings[task.resIdx][task.precIdx][task.pbIdx][task.cbIdx] = collector.items[idx]
+        }
+        return encodings
+    }
+
+    private struct PreparedLosslessEncode {
+        let width: Int
+        let height: Int
+        let precision: Int
+        let workspace: Int
+        let extraWorkspace: Int
+        let isHT: Bool
+        let cod: CodingStyleSegment
+        let geometry: TileGeometry
+        let qcd: QuantizationSegment
+        let plane: [Int32]
+        let work: WorkGuard
+    }
+
+    private static func prepareLosslessEncode(
+        image: Image,
+        parameters: EncodeParameters,
+        limits: ResourceLimits
+    ) throws -> PreparedLosslessEncode {
         let descriptor = image.descriptor
         guard descriptor.sampleType == .unsignedInteger, descriptor.storageBits == 16,
               descriptor.components == [.grey], descriptor.planes.count == 1, descriptor.alpha == .absent else {
@@ -565,14 +1510,17 @@ enum ScalarLosslessCodec {
         guard workspace <= limits.maximumWorkspaceBytes else {
             throw CodecError(.resourceLimitExceeded, "Encoder workspace exceeds the operation limit.")
         }
-        guard try checkedAdd(image.storage.byteCount, workspace) <= limits.maximumMemoryBytes else {
+        let baseMem = try checkedAdd(image.storage.byteCount, workspace)
+        guard baseMem <= limits.maximumMemoryBytes else {
             throw CodecError(.resourceLimitExceeded, "Image and workspace exceed the memory budget.")
         }
+        let extraWorkspace = min(limits.maximumWorkspaceBytes - workspace, limits.maximumMemoryBytes - baseMem)
         let work = WorkGuard(limits: limits)
         try work.check()
 
         let isHT = parameters.blockCoding == .htj2k
-        let cod = CodingStyleSegment(usesPrecincts: false, usesSOP: false, usesEPH: false, progression: 0,
+        let cod = CodingStyleSegment(usesPrecincts: false, usesSOP: false, usesEPH: false,
+                                     progression: parameters.progressionOrder.rawValue,
                                      layers: 1, componentTransform: 0,
                                      decompositionLevels: parameters.decompositionLevels,
                                      codeBlockWidthExponent: parameters.codeBlockWidthExponent,
@@ -599,15 +1547,104 @@ enum ScalarLosslessCodec {
             guard bytes.count >= descriptor.requiredByteCount else {
                 throw CodecError(.storageUnavailable, "Provider returned insufficient capacity.")
             }
-            for y in 0..<height {
-                try work.check()
-                let rowOffset = layout.offset + y * rowBytes
-                for x in 0..<width {
-                    let sample = try loadUInt16(bytes, at: rowOffset + x * layout.pixelStride, order: order)
-                    guard sample <= maximum else {
-                        throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+            let maxReadEnd = layout.offset + (height - 1) * rowBytes + width * layout.pixelStride
+            if mutation == .none && layout.pixelStride == 2 && order == .littleEndian &&
+                height > 0 && width > 0 && maxReadEnd <= bytes.count,
+               let rawBase = bytes.baseAddress {
+                try plane.withUnsafeMutableBufferPointer { planeBuf in
+                    guard let dstBase = planeBuf.baseAddress else { return }
+                    let budgetWorkers = extraWorkspace == Int.max ? Int.max : (1 + max(0, extraWorkspace / 65_536))
+                    let rowWorkers = min(AcceleratedCodec.activeWorkerLimit, budgetWorkers)
+                    let fastEnd = width & ~3
+                    if rowWorkers > 1 && !BoundedParallelPool.isInsideParallelRegion && width * height >= 262_144 {
+                        let chunkRows = 64
+                        let chunkCount = (height + chunkRows - 1) / chunkRows
+                        let sendableSrc = UnsafeSendableRawPointer(baseAddress: rawBase, count: bytes.count)
+                        let sendableDst = UnsafeSendableMutableBuffer(planeBuf)
+                        try BoundedParallelPool.forEach(jobCount: chunkCount, maxWorkers: rowWorkers) { chunkIdx, _ in
+                            try work.checkAmortized(chunkIdx)
+                            let startY = chunkIdx * chunkRows
+                            let endY = min(height, startY + chunkRows)
+                            let srcPtr = sendableSrc.baseAddress
+                            let dstPtr = sendableDst.baseAddress
+                            for y in startY..<endY {
+                                let dstRow = dstPtr.advanced(by: y * stride)
+                                var srcOffset = layout.offset + y * rowBytes
+                                var x = 0
+                                while x < fastEnd {
+                                    let packed = srcPtr.loadUnaligned(fromByteOffset: srcOffset, as: UInt64.self)
+                                    let host64 = UInt64(littleEndian: packed)
+                                    let s0 = UInt16(truncatingIfNeeded: host64)
+                                    let s1 = UInt16(truncatingIfNeeded: host64 >> 16)
+                                    let s2 = UInt16(truncatingIfNeeded: host64 >> 32)
+                                    let s3 = UInt16(truncatingIfNeeded: host64 >> 48)
+                                    if (s0 > maximum) || (s1 > maximum) || (s2 > maximum) || (s3 > maximum) {
+                                        throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+                                    }
+                                    dstRow[x] = Int32(s0) - shift
+                                    dstRow[x + 1] = Int32(s1) - shift
+                                    dstRow[x + 2] = Int32(s2) - shift
+                                    dstRow[x + 3] = Int32(s3) - shift
+                                    srcOffset += 8
+                                    x += 4
+                                }
+                                while x < width {
+                                    let s = UInt16(littleEndian: srcPtr.loadUnaligned(fromByteOffset: srcOffset, as: UInt16.self))
+                                    guard s <= maximum else {
+                                        throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+                                    }
+                                    dstRow[x] = Int32(s) - shift
+                                    srcOffset += 2
+                                    x += 1
+                                }
+                            }
+                        }
+                    } else {
+                        for y in 0..<height {
+                            try work.checkAmortized(y)
+                            let dstRow = dstBase.advanced(by: y * stride)
+                            var srcOffset = layout.offset + y * rowBytes
+                            var x = 0
+                            while x < fastEnd {
+                                let packed = rawBase.loadUnaligned(fromByteOffset: srcOffset, as: UInt64.self)
+                                let host64 = UInt64(littleEndian: packed)
+                                let s0 = UInt16(truncatingIfNeeded: host64)
+                                let s1 = UInt16(truncatingIfNeeded: host64 >> 16)
+                                let s2 = UInt16(truncatingIfNeeded: host64 >> 32)
+                                let s3 = UInt16(truncatingIfNeeded: host64 >> 48)
+                                if (s0 > maximum) || (s1 > maximum) || (s2 > maximum) || (s3 > maximum) {
+                                    throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+                                }
+                                dstRow[x] = Int32(s0) - shift
+                                dstRow[x + 1] = Int32(s1) - shift
+                                dstRow[x + 2] = Int32(s2) - shift
+                                dstRow[x + 3] = Int32(s3) - shift
+                                srcOffset += 8
+                                x += 4
+                            }
+                            while x < width {
+                                let s = UInt16(littleEndian: rawBase.loadUnaligned(fromByteOffset: srcOffset, as: UInt16.self))
+                                guard s <= maximum else {
+                                    throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+                                }
+                                dstRow[x] = Int32(s) - shift
+                                srcOffset += 2
+                                x += 1
+                            }
+                        }
                     }
-                    plane[y * stride + x] = Int32(sample) - shift
+                }
+            } else {
+                for y in 0..<height {
+                    try work.checkAmortized(y)
+                    let rowOffset = layout.offset + y * rowBytes
+                    for x in 0..<width {
+                        let sample = try loadUInt16(bytes, at: rowOffset + x * layout.pixelStride, order: order)
+                        guard sample <= maximum else {
+                            throw CodecError(.invalidArgument, "A sample exceeds the declared meaningful precision.")
+                        }
+                        plane[y * stride + x] = Int32(sample) - shift
+                    }
                 }
             }
         }
@@ -630,42 +1667,46 @@ enum ScalarLosslessCodec {
                 cancellation: work.check
             )
         }
-
-        let total = geometry.codeBlockCount
-        var completed = 0
-        var encodeRunningBytes = 0
-        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
-        try work.check()
-        let encodings = try encodeTileBlocks(
-            plane: plane,
-            stride: stride,
+        return PreparedLosslessEncode(
+            width: width,
+            height: height,
+            precision: precision,
+            workspace: workspace,
+            extraWorkspace: extraWorkspace,
+            isHT: isHT,
+            cod: cod,
             geometry: geometry,
             qcd: qcd,
-            blockCoding: parameters.blockCoding,
-            backend: parameters.backend,
-            work: work,
-            runningEncodedBytes: &encodeRunningBytes,
-            completed: &completed,
-            total: total,
-            progress: progress
+            plane: plane,
+            work: work
         )
+    }
 
-        // Codestream assembly.
-        var tile = ByteWriter(capacity: width * height / 2)
-        try Tier2.encodePackets(geometry: geometry, encodings: encodings, into: &tile, cancellation: work.check)
+    private static func assembleLosslessCodestream(
+        prepared: PreparedLosslessEncode,
+        encodings: [[[[CodeBlockEncoding]]]]
+    ) throws -> ([UInt8], Int) {
+        var tile = ByteWriter(capacity: prepared.width * prepared.height / 2)
+        try Tier2.encodePackets(
+            geometry: prepared.geometry,
+            encodings: encodings,
+            codingStyle: prepared.cod,
+            into: &tile,
+            cancellation: prepared.work.check
+        )
         var out = ByteWriter(capacity: tile.count + 64)
         out.writeUInt16(Marker.soc)
-        let size = ImageSizeSegment(capabilities: isHT ? 0x4000 : 0, width: width, height: height, originX: 0, originY: 0,
-                                    tileWidth: width, tileHeight: height, tileOriginX: 0, tileOriginY: 0,
-                                    components: [ComponentSignalling(precision: precision, signed: false,
+        let size = ImageSizeSegment(capabilities: prepared.isHT ? 0x4000 : 0, width: prepared.width, height: prepared.height, originX: 0, originY: 0,
+                                    tileWidth: prepared.width, tileHeight: prepared.height, tileOriginX: 0, tileOriginY: 0,
+                                    components: [ComponentSignalling(precision: prepared.precision, signed: false,
                                                                      horizontalSeparation: 1, verticalSeparation: 1)])
         try CodestreamSyntax.writeSIZ(size, into: &out)
-        if isHT {
-            let cap = try ExtendedCapabilitiesSegment.losslessHTOnly(for: qcd)
+        if prepared.isHT {
+            let cap = try ExtendedCapabilitiesSegment.losslessHTOnly(for: prepared.qcd)
             try CodestreamSyntax.writeCAP(cap, into: &out)
         }
-        try CodestreamSyntax.writeCOD(cod, into: &out)
-        try CodestreamSyntax.writeQCD(qcd, into: &out)
+        try CodestreamSyntax.writeCOD(prepared.cod, into: &out)
+        try CodestreamSyntax.writeQCD(prepared.qcd, into: &out)
         let psot = 12 + 2 + tile.count
         guard psot <= Int(UInt32.max) else { throw CodecError(.resourceLimitExceeded, "Tile-part exceeds the Psot field.") }
         out.writeUInt16(Marker.sot)
@@ -677,7 +1718,57 @@ enum ScalarLosslessCodec {
         out.writeUInt16(Marker.sod)
         out.writeBytes(tile.bytes)
         out.writeUInt16(Marker.eoc)
-        return (out.bytes, workspace)
+        return (out.bytes, prepared.workspace)
+    }
+
+    static func encode(image: Image, parameters: EncodeParameters, limits: ResourceLimits,
+                       progress: (@Sendable (ProgressUpdate) -> Void)?) throws -> ([UInt8], Int) {
+        let prepared = try prepareLosslessEncode(image: image, parameters: parameters, limits: limits)
+        let total = prepared.geometry.codeBlockCount
+        var completed = 0
+        var encodeRunningBytes = 0
+        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try prepared.work.check()
+        let encodings = try encodeTileBlocks(
+            plane: prepared.plane,
+            stride: prepared.width,
+            geometry: prepared.geometry,
+            qcd: prepared.qcd,
+            blockCoding: parameters.blockCoding,
+            backend: parameters.backend,
+            work: prepared.work,
+            maxExtraWorkspaceBytes: prepared.extraWorkspace,
+            runningEncodedBytes: &encodeRunningBytes,
+            completed: &completed,
+            total: total,
+            progress: progress
+        )
+        return try assembleLosslessCodestream(prepared: prepared, encodings: encodings)
+    }
+
+    static func encodeAsync(image: Image, parameters: EncodeParameters, limits: ResourceLimits,
+                            progress: (@Sendable (ProgressUpdate) -> Void)?) async throws -> ([UInt8], Int) {
+        let prepared = try prepareLosslessEncode(image: image, parameters: parameters, limits: limits)
+        let total = prepared.geometry.codeBlockCount
+        var completed = 0
+        var encodeRunningBytes = 0
+        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
+        try prepared.work.check()
+        let encodings = try await encodeTileBlocksAsync(
+            plane: prepared.plane,
+            stride: prepared.width,
+            geometry: prepared.geometry,
+            qcd: prepared.qcd,
+            blockCoding: parameters.blockCoding,
+            backend: parameters.backend,
+            work: prepared.work,
+            maxExtraWorkspaceBytes: prepared.extraWorkspace,
+            runningEncodedBytes: &encodeRunningBytes,
+            completed: &completed,
+            total: total,
+            progress: progress
+        )
+        return try assembleLosslessCodestream(prepared: prepared, encodings: encodings)
     }
 
     /// Extracts the decoded signed wavelet coefficient plane for each tile of `profile`
@@ -704,19 +1795,44 @@ enum ScalarLosslessCodec {
 
     // MARK: - Native Compressed-to-Compressed Transcoding (Coefficient Domain)
 
-    /// Transcodes a lossless JPEG 2000 Part 1 or Part 15 (HTJ2K) codestream to `target`
-    /// in the wavelet coefficient domain without allocating an intermediate `Image`
-    /// or invoking inverse/forward wavelet transforms.
-    static func transcode(
+    private struct PreparedLosslessTranscode: ~Copyable {
+        let work: WorkGuard
+        let isHT: Bool
+        let targetBlockCoding: CodecOptions.BlockCoding
+        let firstTile: TileProfile
+        let xcb: Int
+        let ycb: Int
+        let progression: UInt8
+        let targetFootprints: [Tier2.TileGeometryFootprint]
+        let targetTileGeometries: [TileGeometry]
+        let tileQCDs: [QuantizationSegment]
+        let persistentStructureBytes: Int
+        var peakWorkspace: Int
+        var out: BoundedByteWriter
+        let total: Int
+
+        func makeTargetCOD(levels: Int) -> CodingStyleSegment {
+            CodingStyleSegment(
+                usesPrecincts: false, usesSOP: false, usesEPH: false, progression: progression,
+                layers: 1, componentTransform: 0,
+                decompositionLevels: levels,
+                codeBlockWidthExponent: xcb,
+                codeBlockHeightExponent: ycb,
+                codeBlockStyle: isHT ? 0x40 : 0,
+                reversible: true,
+                precinctExponents: []
+            )
+        }
+    }
+
+    private static func prepareLosslessTranscode(
         bytes: [UInt8],
         profile: LosslessProfile,
         to target: TranscodeTarget,
         codecOptions: CodecOptions,
-        metadataPolicy: MetadataPolicy = .preserve,
-        limits: ResourceLimits,
-        backend: Backend = .scalarCPU,
-        progress: (@Sendable (ProgressUpdate) -> Void)?
-    ) throws -> (Data, Int) {
+        metadataPolicy: MetadataPolicy,
+        limits: ResourceLimits
+    ) throws -> PreparedLosslessTranscode {
         let work = WorkGuard(limits: limits)
         try work.check()
 
@@ -741,10 +1857,11 @@ enum ScalarLosslessCodec {
 
         let xcb = codecOptions.codeBlockWidth.trailingZeroBitCount
         let ycb = codecOptions.codeBlockHeight.trailingZeroBitCount
+        let targetProgression = codecOptions.progressionOrder.rawValue
 
         func makeTargetCOD(levels: Int) -> CodingStyleSegment {
             CodingStyleSegment(
-                usesPrecincts: false, usesSOP: false, usesEPH: false, progression: 0,
+                usesPrecincts: false, usesSOP: false, usesEPH: false, progression: targetProgression,
                 layers: 1, componentTransform: 0,
                 decompositionLevels: levels,
                 codeBlockWidthExponent: xcb,
@@ -770,8 +1887,6 @@ enum ScalarLosslessCodec {
             return QuantizationSegment(style: .none, guardBits: guardBits, exponents: exponents, mantissas: [])
         }
 
-        // 1. Preflight target tile geometry footprints using checked scalar arithmetic
-        // BEFORE allocating any target TileGeometry arrays.
         let targetFootprints: [Tier2.TileGeometryFootprint] = try profile.tiles.map { tile in
             let tileCOD = makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
             return try Tier2.preflightTileGeometry(
@@ -799,7 +1914,6 @@ enum ScalarLosslessCodec {
             throw CodecError(.resourceLimitExceeded, "Compressed input, target geometry and metadata exceed the memory budget.")
         }
 
-        // Now that target geometry has been admitted, allocate targetTileGeometries.
         StorageTelemetry.recordStage("target-geometry", bytes: targetGeometryBytes)
         StorageTelemetry.recordWorkspaceAllocation(bytes: targetGeometryBytes)
         let targetTileGeometries: [TileGeometry] = try profile.tiles.map { tile in
@@ -820,7 +1934,6 @@ enum ScalarLosslessCodec {
                 : makeTargetQCD(for: targetTileGeometries[idx], tiles: [tile])
         }
 
-        // 2. Preflight exact main-header byte count and admit `out` before reserving capacity.
         let mainCommentBytes = (metadataPolicy == .preserve)
             ? profile.mainHeaderComments.reduce(0) { $0 + 4 + $1.count }
             : 0
@@ -876,49 +1989,236 @@ enum ScalarLosslessCodec {
             }
         }
 
-        let total = profile.codeBlockCount + totalTargetBlocks
+        return PreparedLosslessTranscode(
+            work: work,
+            isHT: isHT,
+            targetBlockCoding: targetBlockCoding,
+            firstTile: firstTile,
+            xcb: xcb,
+            ycb: ycb,
+            progression: targetProgression,
+            targetFootprints: targetFootprints,
+            targetTileGeometries: targetTileGeometries,
+            tileQCDs: tileQCDs,
+            persistentStructureBytes: persistentStructureBytes,
+            peakWorkspace: peakWorkspace,
+            out: out,
+            total: profile.codeBlockCount + totalTargetBlocks
+        )
+    }
+
+    private static func assembleTranscodedTile(
+        bytes: [UInt8],
+        tile: TileProfile,
+        tileIndex: Int,
+        encodings: inout [[[[CodeBlockEncoding]]]],
+        tileEncodedRetainedBytes: Int,
+        liveBeforeBlockPayloads: Int,
+        metadataPolicy: MetadataPolicy,
+        limits: ResourceLimits,
+        state: inout PreparedLosslessTranscode
+    ) throws {
+        let tileCOD = state.makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
+        let targetFootprint = state.targetFootprints[tileIndex]
+        let targetTileGeometry = state.targetTileGeometries[tileIndex]
+        let tileQCD = state.tileQCDs[tileIndex]
+
+        var tileEncodedPayloadBytes = 0
+        for res in encodings {
+            for prec in res {
+                for band in prec {
+                    for enc in band {
+                        tileEncodedPayloadBytes = try checkedAdd(tileEncodedPayloadBytes, enc.data.count)
+                    }
+                }
+            }
+        }
+        StorageTelemetry.recordWorkspaceAllocation(bytes: tileEncodedPayloadBytes)
+        let tileEncodeWorkspace = try checkedAdd(liveBeforeBlockPayloads, tileEncodedRetainedBytes)
+        state.peakWorkspace = max(state.peakWorkspace, tileEncodeWorkspace)
+
+        let overrideHeaderBytes = (tile.codingStyle.decompositionLevels != state.firstTile.codingStyle.decompositionLevels)
+            ? (16 + (6 + tileQCD.exponents.count))
+            : 0
+        let tileCommentBytes = (metadataPolicy == .preserve)
+            ? tile.comments.reduce(0) { $0 + 4 + $1.count }
+            : 0
+        let exactTileHeaderBytes = try checkedAdd(overrideHeaderBytes, tileCommentBytes)
+        let estimatedPacketHeaders = try checkedAdd(
+            try checkedMultiply(targetFootprint.precinctCount, 8),
+            try checkedMultiply(targetFootprint.codeBlockCount, 6)
+        )
+        let initialTileWriterCap = try checkedAdd(tileEncodedPayloadBytes, max(32, estimatedPacketHeaders))
+
+        let liveDuringPacketEncode = try checkedAdd(
+            try checkedAdd(state.persistentStructureBytes, state.out.allocatedBytes),
+            try checkedAdd(targetFootprint.encodeStateStructBytes, tileEncodedRetainedBytes)
+        )
+        let headerWriterAlloc = exactTileHeaderBytes
+        let minPacketWriterNeeded = try checkedAdd(headerWriterAlloc, tileEncodedPayloadBytes)
+        guard try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded) <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded)) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Packet assembly workspace exceeds workspace or memory limits.")
+        }
+        let wsAvailForTileWriter = limits.maximumWorkspaceBytes - liveDuringPacketEncode - headerWriterAlloc
+        let memAvailForTileWriter = limits.maximumMemoryBytes - bytes.count - liveDuringPacketEncode - headerWriterAlloc
+        let compAvailForTileWriter = limits.maximumCompressedBytes - state.out.count - 16 - exactTileHeaderBytes
+        let maxTileWriterBytes = min(min(wsAvailForTileWriter, memAvailForTileWriter), compAvailForTileWriter)
+        guard maxTileWriterBytes >= tileEncodedPayloadBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded packet stream exceeds the compressed-size or memory limit.")
+        }
+        let reservedTileWriterCap = min(initialTileWriterCap, maxTileWriterBytes)
+        StorageTelemetry.recordStage("packet-writer", bytes: headerWriterAlloc + reservedTileWriterCap)
+
+        var tileHeaderWriter = try BoundedByteWriter(
+            reserving: exactTileHeaderBytes, maximumBytes: exactTileHeaderBytes,
+            maximumAllocationBytes: headerWriterAlloc
+        )
+        if tile.codingStyle.decompositionLevels != state.firstTile.codingStyle.decompositionLevels {
+            try CodestreamSyntax.writeCOD(tileCOD, into: &tileHeaderWriter)
+            try CodestreamSyntax.writeQCD(tileQCD, into: &tileHeaderWriter)
+        }
+        if metadataPolicy == .preserve {
+            for comment in tile.comments {
+                try tileHeaderWriter.writeSegment(marker: Marker.com, payload: comment)
+            }
+        }
+        var tileWriter = try BoundedByteWriter(
+            reserving: reservedTileWriterCap, maximumBytes: maxTileWriterBytes,
+            maximumAllocationBytes: min(wsAvailForTileWriter, memAvailForTileWriter)
+        )
+        try Tier2.encodePackets(
+            geometry: targetTileGeometry,
+            encodings: encodings,
+            codingStyle: tileCOD,
+            into: &tileWriter,
+            cancellation: state.work.check
+        )
+        encodings = []
+
+        let packetAssemblyBytes = try checkedAdd(tileHeaderWriter.count, tileWriter.count)
+        StorageTelemetry.recordWorkspaceAllocation(bytes: packetAssemblyBytes)
+        let packetAssemblyAlloc = try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.allocatedBytes)
+        let tilePacketWorkspace = try checkedAdd(
+            liveDuringPacketEncode,
+            try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.peakAllocationBytes)
+        )
+        state.peakWorkspace = max(state.peakWorkspace, tilePacketWorkspace)
+        guard state.peakWorkspace <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, tilePacketWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoder packet assembly workspace exceeds the operation limit.")
+        }
+
+        let psot = 12 + tileHeaderWriter.count + 2 + tileWriter.count
+        guard psot <= Int(UInt32.max) else { throw CodecError(.resourceLimitExceeded, "Tile-part exceeds the Psot field.") }
+        let projectedOutputBytes = try checkedAdd(state.out.count, psot + 2)
+        guard projectedOutputBytes <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
+        }
+        let appendOtherWorkspace = try checkedAdd(state.persistentStructureBytes, packetAssemblyAlloc)
+        let appendOtherResident = try checkedAdd(bytes.count, appendOtherWorkspace)
+        guard appendOtherWorkspace <= limits.maximumWorkspaceBytes,
+              appendOtherResident <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Packet workspace exceeds the output admission budget.")
+        }
+        let outputAllocationBudget = min(
+            limits.maximumWorkspaceBytes - appendOtherWorkspace,
+            limits.maximumMemoryBytes - appendOtherResident
+        )
+        try state.out.updateBudget(maximumBytes: projectedOutputBytes, maximumAllocationBytes: outputAllocationBudget)
+        try state.out.reserveCapacity(projectedOutputBytes)
+        state.peakWorkspace = max(state.peakWorkspace, try checkedAdd(appendOtherWorkspace, state.out.peakAllocationBytes))
+        try state.out.writeUInt16Checked(Marker.sot)
+        try state.out.writeUInt16Checked(10)
+        try state.out.writeUInt16Checked(UInt16(tile.index))
+        try state.out.writeUInt32Checked(UInt32(psot))
+        try state.out.writeUInt8Checked(0)
+        try state.out.writeUInt8Checked(1)
+        try state.out.writeBytesChecked(from: tileHeaderWriter)
+        try state.out.writeUInt16Checked(Marker.sod)
+        try state.out.writeBytesChecked(from: tileWriter)
+    }
+
+    private static func finalizeLosslessTranscode(
+        bytes: [UInt8],
+        limits: ResourceLimits,
+        state: inout PreparedLosslessTranscode
+    ) throws -> (Data, Int) {
+        try state.out.writeUInt16Checked(Marker.eoc)
+        guard state.out.count <= limits.maximumCompressedBytes else {
+            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
+        }
+        let publicationWorkspace = try checkedAdd(
+            state.persistentStructureBytes, try checkedAdd(state.out.allocatedBytes, state.out.count)
+        )
+        guard publicationWorkspace <= limits.maximumWorkspaceBytes,
+              try checkedAdd(bytes.count, publicationWorkspace) <= limits.maximumMemoryBytes else {
+            throw CodecError(.resourceLimitExceeded, "Publishing transcoded Data exceeds the admission budget.")
+        }
+        try state.work.check()
+        StorageTelemetry.recordStage("output-data", bytes: state.out.count)
+        let output = try state.out.copyData()
+        state.peakWorkspace = max(state.peakWorkspace, publicationWorkspace)
+        return (output, state.peakWorkspace)
+    }
+
+    /// Transcodes a lossless JPEG 2000 Part 1 or Part 15 (HTJ2K) codestream to `target`
+    /// in the wavelet coefficient domain without allocating an intermediate `Image`
+    /// or invoking inverse/forward wavelet transforms.
+    static func transcode(
+        bytes: [UInt8],
+        profile: LosslessProfile,
+        to target: TranscodeTarget,
+        codecOptions: CodecOptions,
+        metadataPolicy: MetadataPolicy = .preserve,
+        limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
+        progress: (@Sendable (ProgressUpdate) -> Void)?
+    ) throws -> (Data, Int) {
+        var state = try prepareLosslessTranscode(
+            bytes: bytes, profile: profile, to: target, codecOptions: codecOptions,
+            metadataPolicy: metadataPolicy, limits: limits
+        )
         var completed = 0
-        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: total))
-        try work.check()
+        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: state.total))
+        try state.work.check()
         let blockScratch = BitPlaneCoder.maximumCoefficients * (4 + 4 + 1) + 66 * 66 + 4096
 
         for (tileIndex, tile) in profile.tiles.enumerated() {
-            try work.check()
+            try state.work.check()
             let tileDataBytes = tile.dataRanges.reduce(0) { $0 + $1.count }
             let tileJoinedExtra = tile.dataRanges.count > 1 ? (32 + tileDataBytes) : 0
             let planeBytes = try checkedMultiply(tile.width * tile.height, 4)
             let tileDecodeLive = try checkedAdd(
-                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
+                try checkedAdd(state.persistentStructureBytes, state.out.allocatedBytes),
                 try checkedAdd(
                     try checkedAdd(tile.footprint.decodeStateBytes, tileDataBytes + tileJoinedExtra),
                     try checkedAdd(planeBytes, blockScratch)
                 )
             )
-            peakWorkspace = max(peakWorkspace, tileDecodeLive)
-            guard peakWorkspace <= limits.maximumWorkspaceBytes,
+            state.peakWorkspace = max(state.peakWorkspace, tileDecodeLive)
+            guard state.peakWorkspace <= limits.maximumWorkspaceBytes,
                   try checkedAdd(bytes.count, tileDecodeLive) <= limits.maximumMemoryBytes else {
                 throw CodecError(.resourceLimitExceeded, "Tile decode workspace exceeds workspace or memory limits.")
             }
+            let tileDecodeExtra = min(
+                limits.maximumWorkspaceBytes - tileDecodeLive,
+                limits.maximumMemoryBytes - (bytes.count + tileDecodeLive)
+            )
 
             var plane = try decodeTileCoefficients(
                 bytes: bytes,
                 tile: tile,
-                work: work,
+                work: state.work,
                 backend: backend,
+                maxExtraWorkspaceBytes: tileDecodeExtra,
                 completed: &completed,
-                total: total,
+                total: state.total,
                 progress: progress
             )
-            let stride = tile.width
-            let tileCOD = makeTargetCOD(levels: tile.codingStyle.decompositionLevels)
-            let targetFootprint = targetFootprints[tileIndex]
-            let targetTileGeometry = targetTileGeometries[tileIndex]
-            let tileQCD = tileQCDs[tileIndex]
-
-            // 3. Admit target block-encoding struct state before encoding blocks, and compute
-            // the remaining byte budget for retained encoded block payloads.
+            let targetFootprint = state.targetFootprints[tileIndex]
             let liveBeforeBlockPayloads = try checkedAdd(
-                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
+                try checkedAdd(state.persistentStructureBytes, state.out.allocatedBytes),
                 try checkedAdd(
                     targetFootprint.encodeStateStructBytes,
                     try checkedAdd(planeBytes, blockScratch)
@@ -930,8 +2230,7 @@ enum ScalarLosslessCodec {
             }
             let wsRemainingForBlocks = limits.maximumWorkspaceBytes - liveBeforeBlockPayloads
             let memRemainingForBlocks = limits.maximumMemoryBytes - (bytes.count + liveBeforeBlockPayloads)
-            let compRemainingForBlocks = max(0, limits.maximumCompressedBytes - out.count)
-            // Each non-empty block adds a 32-byte array header in `encodings` on top of payload bytes.
+            let compRemainingForBlocks = max(0, limits.maximumCompressedBytes - state.out.count)
             let maxHeaderOverhead = try checkedMultiply(targetFootprint.codeBlockCount, 32)
             let maxRetainedEncodedBytes = min(
                 min(wsRemainingForBlocks, memRemainingForBlocks),
@@ -941,162 +2240,126 @@ enum ScalarLosslessCodec {
             var tileEncodedRetainedBytes = 0
             var encodings = try encodeTileBlocks(
                 plane: plane,
-                stride: stride,
-                geometry: targetTileGeometry,
-                qcd: tileQCD,
-                blockCoding: targetBlockCoding,
+                stride: tile.width,
+                geometry: state.targetTileGeometries[tileIndex],
+                qcd: state.tileQCDs[tileIndex],
+                blockCoding: state.targetBlockCoding,
                 backend: backend,
-                work: work,
+                work: state.work,
                 maxRetainedEncodedBytes: maxRetainedEncodedBytes,
+                maxExtraWorkspaceBytes: min(wsRemainingForBlocks, memRemainingForBlocks),
                 runningEncodedBytes: &tileEncodedRetainedBytes,
                 recordBlockStages: true,
                 completed: &completed,
-                total: total,
+                total: state.total,
                 progress: progress
             )
-            // Release the coefficient plane before packet assembly so `plane` and
-            // `tileWriter` are never simultaneously live.
             plane = []
-
-            var tileEncodedPayloadBytes = 0
-            for res in encodings {
-                for prec in res {
-                    for band in prec {
-                        for enc in band {
-                            tileEncodedPayloadBytes = try checkedAdd(tileEncodedPayloadBytes, enc.data.count)
-                        }
-                    }
-                }
-            }
-            StorageTelemetry.recordWorkspaceAllocation(bytes: tileEncodedPayloadBytes)
-            let tileEncodeWorkspace = try checkedAdd(
-                liveBeforeBlockPayloads,
-                tileEncodedRetainedBytes
+            try assembleTranscodedTile(
+                bytes: bytes, tile: tile, tileIndex: tileIndex, encodings: &encodings,
+                tileEncodedRetainedBytes: tileEncodedRetainedBytes, liveBeforeBlockPayloads: liveBeforeBlockPayloads,
+                metadataPolicy: metadataPolicy, limits: limits, state: &state
             )
-            peakWorkspace = max(peakWorkspace, tileEncodeWorkspace)
-
-            // 4. Preflight exact tileHeaderWriter size and bounded tileWriter capacity
-            // BEFORE allocating tileHeaderWriter or tileWriter.
-            let overrideHeaderBytes = (tile.codingStyle.decompositionLevels != firstTile.codingStyle.decompositionLevels)
-                ? (16 + (6 + tileQCD.exponents.count))
-                : 0
-            let tileCommentBytes = (metadataPolicy == .preserve)
-                ? tile.comments.reduce(0) { $0 + 4 + $1.count }
-                : 0
-            let exactTileHeaderBytes = try checkedAdd(overrideHeaderBytes, tileCommentBytes)
-            let estimatedPacketHeaders = try checkedAdd(
-                try checkedMultiply(targetFootprint.precinctCount, 8),
-                try checkedMultiply(targetFootprint.codeBlockCount, 6)
-            )
-            let initialTileWriterCap = try checkedAdd(tileEncodedPayloadBytes, max(32, estimatedPacketHeaders))
-
-            // While `Tier2.encodePackets` runs, `encodings` (struct + retained payloads) and
-            // `tileHeaderWriter` + `tileWriter` are live alongside `out` (before appending).
-            let liveDuringPacketEncode = try checkedAdd(
-                try checkedAdd(persistentStructureBytes, out.allocatedBytes),
-                try checkedAdd(targetFootprint.encodeStateStructBytes, tileEncodedRetainedBytes)
-            )
-            let headerWriterAlloc = exactTileHeaderBytes
-            let minPacketWriterNeeded = try checkedAdd(headerWriterAlloc, tileEncodedPayloadBytes)
-            guard try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded) <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(bytes.count, try checkedAdd(liveDuringPacketEncode, minPacketWriterNeeded)) <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Packet assembly workspace exceeds workspace or memory limits.")
-            }
-            let wsAvailForTileWriter = limits.maximumWorkspaceBytes - liveDuringPacketEncode - headerWriterAlloc
-            let memAvailForTileWriter = limits.maximumMemoryBytes - bytes.count - liveDuringPacketEncode - headerWriterAlloc
-            // Final codestream adds SOT (12) + tileHeader + SOD (2) + tileWriter + EOC (2) = 16 + tileHeader + tileWriter.
-            let compAvailForTileWriter = limits.maximumCompressedBytes - out.count - 16 - exactTileHeaderBytes
-            let maxTileWriterBytes = min(min(wsAvailForTileWriter, memAvailForTileWriter), compAvailForTileWriter)
-            guard maxTileWriterBytes >= tileEncodedPayloadBytes else {
-                throw CodecError(.resourceLimitExceeded, "Transcoded packet stream exceeds the compressed-size or memory limit.")
-            }
-            let reservedTileWriterCap = min(initialTileWriterCap, maxTileWriterBytes)
-            StorageTelemetry.recordStage("packet-writer", bytes: headerWriterAlloc + reservedTileWriterCap)
-
-            var tileHeaderWriter = try BoundedByteWriter(
-                reserving: exactTileHeaderBytes, maximumBytes: exactTileHeaderBytes,
-                maximumAllocationBytes: headerWriterAlloc
-            )
-            if tile.codingStyle.decompositionLevels != firstTile.codingStyle.decompositionLevels {
-                try CodestreamSyntax.writeCOD(tileCOD, into: &tileHeaderWriter)
-                try CodestreamSyntax.writeQCD(tileQCD, into: &tileHeaderWriter)
-            }
-            if metadataPolicy == .preserve {
-                for comment in tile.comments {
-                    try tileHeaderWriter.writeSegment(marker: Marker.com, payload: comment)
-                }
-            }
-            var tileWriter = try BoundedByteWriter(
-                reserving: reservedTileWriterCap, maximumBytes: maxTileWriterBytes,
-                maximumAllocationBytes: min(wsAvailForTileWriter, memAvailForTileWriter)
-            )
-            try Tier2.encodePackets(geometry: targetTileGeometry, encodings: encodings, into: &tileWriter, cancellation: work.check)
-            // Release retained block encodings before copying assembled packets into `out`.
-            encodings = []
-
-            let packetAssemblyBytes = try checkedAdd(tileHeaderWriter.count, tileWriter.count)
-            StorageTelemetry.recordWorkspaceAllocation(bytes: packetAssemblyBytes)
-            let packetAssemblyAlloc = try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.allocatedBytes)
-            let tilePacketWorkspace = try checkedAdd(
-                liveDuringPacketEncode,
-                try checkedAdd(tileHeaderWriter.allocatedBytes, tileWriter.peakAllocationBytes)
-            )
-            peakWorkspace = max(peakWorkspace, tilePacketWorkspace)
-            guard peakWorkspace <= limits.maximumWorkspaceBytes,
-                  try checkedAdd(bytes.count, tilePacketWorkspace) <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Transcoder packet assembly workspace exceeds the operation limit.")
-            }
-
-            let psot = 12 + tileHeaderWriter.count + 2 + tileWriter.count
-            guard psot <= Int(UInt32.max) else { throw CodecError(.resourceLimitExceeded, "Tile-part exceeds the Psot field.") }
-            let projectedOutputBytes = try checkedAdd(out.count, psot + 2)
-            guard projectedOutputBytes <= limits.maximumCompressedBytes else {
-                throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
-            }
-            // Encodings have been released. Admission includes both the old and
-            // replacement output buffers during growth, before either is allocated.
-            let appendOtherWorkspace = try checkedAdd(persistentStructureBytes, packetAssemblyAlloc)
-            let appendOtherResident = try checkedAdd(bytes.count, appendOtherWorkspace)
-            guard appendOtherWorkspace <= limits.maximumWorkspaceBytes,
-                  appendOtherResident <= limits.maximumMemoryBytes else {
-                throw CodecError(.resourceLimitExceeded, "Packet workspace exceeds the output admission budget.")
-            }
-            let outputAllocationBudget = min(
-                limits.maximumWorkspaceBytes - appendOtherWorkspace,
-                limits.maximumMemoryBytes - appendOtherResident
-            )
-            try out.updateBudget(maximumBytes: projectedOutputBytes, maximumAllocationBytes: outputAllocationBudget)
-            // Include EOC in the one reservation, avoiding a second whole-output
-            // reallocation just to append its last two bytes.
-            try out.reserveCapacity(projectedOutputBytes)
-            peakWorkspace = max(peakWorkspace, try checkedAdd(appendOtherWorkspace, out.peakAllocationBytes))
-            try out.writeUInt16Checked(Marker.sot)
-            try out.writeUInt16Checked(10)
-            try out.writeUInt16Checked(UInt16(tile.index))
-            try out.writeUInt32Checked(UInt32(psot))
-            try out.writeUInt8Checked(0)
-            try out.writeUInt8Checked(1)
-            try out.writeBytesChecked(from: tileHeaderWriter)
-            try out.writeUInt16Checked(Marker.sod)
-            try out.writeBytesChecked(from: tileWriter)
         }
-        try out.writeUInt16Checked(Marker.eoc)
-        guard out.count <= limits.maximumCompressedBytes else {
-            throw CodecError(.resourceLimitExceeded, "Transcoded output exceeds the compressed-size limit.")
-        }
-        // The input/profile and owned output are still live while Data copies the
-        // final bytes. Admit that overlap here, not after returning another Array.
-        let publicationWorkspace = try checkedAdd(
-            persistentStructureBytes, try checkedAdd(out.allocatedBytes, out.count)
+        return try finalizeLosslessTranscode(bytes: bytes, limits: limits, state: &state)
+    }
+
+    static func transcodeAsync(
+        bytes: [UInt8],
+        profile: LosslessProfile,
+        to target: TranscodeTarget,
+        codecOptions: CodecOptions,
+        metadataPolicy: MetadataPolicy = .preserve,
+        limits: ResourceLimits,
+        backend: Backend = .scalarCPU,
+        progress: (@Sendable (ProgressUpdate) -> Void)?
+    ) async throws -> (Data, Int) {
+        var state = try prepareLosslessTranscode(
+            bytes: bytes, profile: profile, to: target, codecOptions: codecOptions,
+            metadataPolicy: metadataPolicy, limits: limits
         )
-        guard publicationWorkspace <= limits.maximumWorkspaceBytes,
-              try checkedAdd(bytes.count, publicationWorkspace) <= limits.maximumMemoryBytes else {
-            throw CodecError(.resourceLimitExceeded, "Publishing transcoded Data exceeds the admission budget.")
+        var completed = 0
+        progress?(try ProgressUpdate(phase: .processing, completedUnits: 0, totalUnits: state.total))
+        try state.work.check()
+        let blockScratch = BitPlaneCoder.maximumCoefficients * (4 + 4 + 1) + 66 * 66 + 4096
+
+        for (tileIndex, tile) in profile.tiles.enumerated() {
+            try state.work.check()
+            let tileDataBytes = tile.dataRanges.reduce(0) { $0 + $1.count }
+            let tileJoinedExtra = tile.dataRanges.count > 1 ? (32 + tileDataBytes) : 0
+            let planeBytes = try checkedMultiply(tile.width * tile.height, 4)
+            let tileDecodeLive = try checkedAdd(
+                try checkedAdd(state.persistentStructureBytes, state.out.allocatedBytes),
+                try checkedAdd(
+                    try checkedAdd(tile.footprint.decodeStateBytes, tileDataBytes + tileJoinedExtra),
+                    try checkedAdd(planeBytes, blockScratch)
+                )
+            )
+            state.peakWorkspace = max(state.peakWorkspace, tileDecodeLive)
+            guard state.peakWorkspace <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, tileDecodeLive) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Tile decode workspace exceeds workspace or memory limits.")
+            }
+            let tileDecodeExtra = min(
+                limits.maximumWorkspaceBytes - tileDecodeLive,
+                limits.maximumMemoryBytes - (bytes.count + tileDecodeLive)
+            )
+
+            var plane = try decodeTileCoefficients(
+                bytes: bytes,
+                tile: tile,
+                work: state.work,
+                backend: backend,
+                maxExtraWorkspaceBytes: tileDecodeExtra,
+                completed: &completed,
+                total: state.total,
+                progress: progress
+            )
+            let targetFootprint = state.targetFootprints[tileIndex]
+            let liveBeforeBlockPayloads = try checkedAdd(
+                try checkedAdd(state.persistentStructureBytes, state.out.allocatedBytes),
+                try checkedAdd(
+                    targetFootprint.encodeStateStructBytes,
+                    try checkedAdd(planeBytes, blockScratch)
+                )
+            )
+            guard liveBeforeBlockPayloads <= limits.maximumWorkspaceBytes,
+                  try checkedAdd(bytes.count, liveBeforeBlockPayloads) <= limits.maximumMemoryBytes else {
+                throw CodecError(.resourceLimitExceeded, "Target block encoding state exceeds workspace or memory limits.")
+            }
+            let wsRemainingForBlocks = limits.maximumWorkspaceBytes - liveBeforeBlockPayloads
+            let memRemainingForBlocks = limits.maximumMemoryBytes - (bytes.count + liveBeforeBlockPayloads)
+            let compRemainingForBlocks = max(0, limits.maximumCompressedBytes - state.out.count)
+            let maxHeaderOverhead = try checkedMultiply(targetFootprint.codeBlockCount, 32)
+            let maxRetainedEncodedBytes = min(
+                min(wsRemainingForBlocks, memRemainingForBlocks),
+                try checkedAdd(compRemainingForBlocks, maxHeaderOverhead)
+            )
+
+            var tileEncodedRetainedBytes = 0
+            var encodings = try await encodeTileBlocksAsync(
+                plane: plane,
+                stride: tile.width,
+                geometry: state.targetTileGeometries[tileIndex],
+                qcd: state.tileQCDs[tileIndex],
+                blockCoding: state.targetBlockCoding,
+                backend: backend,
+                work: state.work,
+                maxRetainedEncodedBytes: maxRetainedEncodedBytes,
+                maxExtraWorkspaceBytes: min(wsRemainingForBlocks, memRemainingForBlocks),
+                runningEncodedBytes: &tileEncodedRetainedBytes,
+                recordBlockStages: true,
+                completed: &completed,
+                total: state.total,
+                progress: progress
+            )
+            plane = []
+            try assembleTranscodedTile(
+                bytes: bytes, tile: tile, tileIndex: tileIndex, encodings: &encodings,
+                tileEncodedRetainedBytes: tileEncodedRetainedBytes, liveBeforeBlockPayloads: liveBeforeBlockPayloads,
+                metadataPolicy: metadataPolicy, limits: limits, state: &state
+            )
         }
-        try work.check()
-        StorageTelemetry.recordStage("output-data", bytes: out.count)
-        let output = try out.copyData()
-        peakWorkspace = max(peakWorkspace, publicationWorkspace)
-        return (output, peakWorkspace)
+        return try finalizeLosslessTranscode(bytes: bytes, limits: limits, state: &state)
     }
 }

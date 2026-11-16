@@ -44,10 +44,11 @@ internal struct MetalTelemetrySnapshot: Sendable, Equatable {
 internal final class MetalAccelerationEngine: @unchecked Sendable {
     internal static let shared = MetalAccelerationEngine()
 
-    /// Minimum sample count (width * height) where GPU dispatch amortises command-buffer launch
-    /// overhead in automatic `.accelerated` mode (`256 * 256 = 65_536` samples).
-    /// Direct calls to `MetalAccelerationEngine` methods in parity tests bypass this threshold.
-    internal static let defaultGPUDispatchSampleThreshold: Int = 65_536
+    /// Minimum sample count (width * height) where GPU dispatch amortises command-buffer launch,
+    /// unified-memory staging copy, and synchronous `waitUntilCompleted()` overhead relative to
+    /// multi-core CPU SIMD in automatic `.accelerated` mode (`8192 * 8192 = 67_108_864` samples).
+    /// Explicit `.metalGPU` preference and `withForcedMetalDispatch` in parity tests bypass this threshold.
+    internal static let defaultGPUDispatchSampleThreshold: Int = 67_108_864
 
     #if canImport(Metal)
     private struct DWT53Params {

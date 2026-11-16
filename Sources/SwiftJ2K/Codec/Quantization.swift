@@ -11,14 +11,15 @@ import Glibc
 #endif
 
 enum Quantization {
-    // 1D synthesis filter L2 norms for the 9/7 irreversible filter (ISO/IEC 15444-1 Table E.1 / OpenJPEG).
+    // 1D synthesis filter L2 norms for the K-scaled 9/7 irreversible filter in `Wavelet97`
+    // (ISO/IEC 15444-1 Annex F.3.8.2 / F.4.8.2 with K = 1.230174104914001).
     private static let low97Norms: [Double] = [
-        1.000000, 1.442108, 2.043878, 2.889184, 4.084699,
-        5.775812, 8.168186, 11.55147, 16.33632, 23.10293, 32.67264
+        1.00000000, 1.40210817, 2.03037186, 2.90116256, 4.11528518,
+        5.82451086, 8.23875993, 11.65195465, 16.47856065, 23.30427764, 32.95725156
     ]
     private static let high97Norms: [Double] = [
-        1.000000, 0.989014, 1.380672, 1.946500, 2.751011,
-        3.890112, 5.501351, 7.780085, 11.00269, 15.56017, 22.00538
+        1.00000000, 0.72126138, 0.98347130, 1.44196240, 2.07376042,
+        2.94732488, 4.17358946, 5.90430233, 8.35063902, 11.80983285, 16.70171276
     ]
 
     // 1D synthesis filter L2 norms for the 5/3 reversible filter.
@@ -31,6 +32,20 @@ enum Quantization {
         2.646166, 3.741668, 5.291290, 7.482924, 10.58250, 14.96581
     ]
 
+    /// Inverse ICT synthesis column L2 norms (`sqrt(1 + 1 + 1)`, `sqrt(1.772^2 + 0.344136^2)`, `sqrt(1.402^2 + 0.714136^2)`).
+    static let ictColumnNorms: [Double] = [
+        1.7320508075688772,
+        1.8051076381468226,
+        1.5734021184986373
+    ]
+
+    /// Inverse RCT synthesis column L2 norms (`sqrt(3)`, `sqrt(11/16)`, `sqrt(11/16)`).
+    static let rctColumnNorms: [Double] = [
+        1.7320508075688772,
+        0.82915619758885,
+        0.82915619758885
+    ]
+
     /// 2D synthesis L2 norm weight for a subband at decomposition level `nb` (`1...levels`).
     static func synthesisWeight(orientation: BandOrientation, decompositionLevel nb: Int, reversible: Bool) -> Double {
         let clamped = max(1, min(nb, 10))
@@ -38,7 +53,7 @@ enum Quantization {
         let highs = reversible ? high53Norms : high97Norms
         switch orientation {
         case .ll: return lows[clamped] * lows[clamped]
-        case .hl, .lh: return lows[clamped - 1] * highs[clamped]
+        case .hl, .lh: return lows[clamped] * highs[clamped]
         case .hh: return highs[clamped] * highs[clamped]
         }
     }
@@ -89,8 +104,12 @@ enum Quantization {
             if clamped >= 0.999 {
                 qScale = 0.5
             } else {
-                // Smooth exponential mapping: Q=0.9 -> ~1.0, Q=0.75 -> ~2.2, Q=0.5 -> ~6.0, Q=0.25 -> ~18.0, Q=0.0 -> ~64.0
-                qScale = pow(64.0, 1.0 - clamped) * 0.5
+                // Bit-depth-proportional perceptual step scaling (ISO/IEC 15444-1 Annex E.1):
+                // at 8-bit: Q=0.90 -> ~2.60, Q=0.75 -> ~8.39, Q=0.50 -> ~20.38, Q=0.0 -> ~49.5;
+                // scales proportionally with sample dynamic range `2^(precision - 8)` for 9..16-bit medical scans.
+                let rangeScale = Double(1 << max(0, min(20, precision - 8)))
+                let base8 = 49.5 * pow(1.0 - clamped, 1.28)
+                qScale = max(0.5, base8 * rangeScale)
             }
         } else {
             // Default lossy baseline when no quality/bitrate is specified: high quality (qScale = 1.0)
@@ -156,13 +175,26 @@ enum Quantization {
             let reduction: Double
             let slope: Double
         }
+        struct HullStep {
+            let slope: Double
+            let block: Int32
+            let hullIdx: Int32
+            let deltaBytes: Int
+        }
+
         var hulls: [[HullPoint]] = []
         hulls.reserveCapacity(blockCount)
+        var steps: [HullStep] = []
+        steps.reserveCapacity(blockCount * 4)
+        var maxBytes = 0
 
         for b in 0..<blockCount {
             let bytes = blockPassBytes[b]
             let reductions = blockPassDistortionReductions[b]
-            var hull: [HullPoint] = [HullPoint(passes: 0, bytes: 0, reduction: 0.0, slope: .infinity)]
+            maxBytes += bytes.last ?? 0
+            var hull: [HullPoint] = []
+            hull.reserveCapacity(bytes.count + 1)
+            hull.append(HullPoint(passes: 0, bytes: 0, reduction: 0.0, slope: .infinity))
             for p in 0..<bytes.count {
                 let passCount = p + 1
                 let r = bytes[p]
@@ -171,8 +203,8 @@ enum Quantization {
                     let last = hull[hull.count - 1]
                     let deltaR = r - last.bytes
                     let deltaD = d - last.reduction
-                    if deltaD <= 0 && deltaR > 0 { break }
-                    let slope = deltaR > 0 ? (deltaD / Double(deltaR)) : (deltaD > 0 ? 1e18 : 0.0)
+                    if deltaD <= 0 { break }
+                    let slope = deltaR > 0 ? (deltaD / Double(deltaR)) : 1e300
                     if hull.count > 1 && slope >= hull[hull.count - 1].slope {
                         hull.removeLast()
                     } else {
@@ -181,99 +213,73 @@ enum Quantization {
                     }
                 }
             }
+            if hull.count > 1 {
+                for idx in 1..<hull.count {
+                    let dBytes = max(0, hull[idx].bytes - hull[idx - 1].bytes)
+                    steps.append(HullStep(
+                        slope: hull[idx].slope,
+                        block: Int32(b),
+                        hullIdx: Int32(idx),
+                        deltaBytes: dBytes
+                    ))
+                }
+            }
             hulls.append(hull)
         }
 
+        steps.sort { lhs, rhs in
+            if lhs.slope != rhs.slope { return lhs.slope > rhs.slope }
+            if lhs.block != rhs.block { return lhs.block < rhs.block }
+            return lhs.hullIdx < rhs.hullIdx
+        }
+
         var result = [[Int]](repeating: [Int](repeating: 0, count: layerCount), count: blockCount)
-        var minPasses = [Int](repeating: 0, count: blockCount)
+        var minHullIdx = [Int32](repeating: 0, count: blockCount)
+        var minBytes = 0
 
         for (layerIdx, budget) in layerByteBudgets.enumerated() {
-            // Check if including all passes of all blocks fits within budget:
-            var maxBytes = 0
-            for b in 0..<blockCount {
-                maxBytes += blockPassBytes[b].last ?? 0
-            }
             if budget >= maxBytes {
                 for b in 0..<blockCount {
                     let all = blockPassBytes[b].count
                     result[b][layerIdx] = all
-                    minPasses[b] = all
+                    minHullIdx[b] = Int32(hulls[b].count - 1)
                 }
+                minBytes = maxBytes
                 continue
             }
 
-            // Bisection over Lagrange threshold lambda >= 0:
-            var lowLambda = 0.0
-            var highLambda = 1e12
-            for _ in 0..<48 {
-                let mid = 0.5 * (lowLambda + highLambda)
-                var totalBytes = 0
-                for b in 0..<blockCount {
-                    let hull = hulls[b]
-                    var chosen = hull[0]
-                    for pt in hull where pt.passes >= minPasses[b] {
-                        if pt.passes == minPasses[b] || pt.slope >= mid {
-                            chosen = pt
+            var selectedHullIdx = minHullIdx
+            var currentBytes = minBytes
+
+            steps.withUnsafeBufferPointer { stepBuf in
+                selectedHullIdx.withUnsafeMutableBufferPointer { selBuf in
+                    guard let sBase = stepBuf.baseAddress, let selBase = selBuf.baseAddress else { return }
+                    let stepCount = stepBuf.count
+                    for i in 0..<stepCount {
+                        let st = sBase[i]
+                        let b = Int(st.block)
+                        if st.hullIdx == selBase[b] &+ 1 {
+                            let nextBytes = currentBytes + st.deltaBytes
+                            if nextBytes <= budget {
+                                selBase[b] = st.hullIdx
+                                currentBytes = nextBytes
+                            }
                         }
                     }
-                    totalBytes += chosen.bytes
-                }
-                if totalBytes > budget {
-                    lowLambda = mid
-                } else {
-                    highLambda = mid
-                }
-            }
-
-            var currentBytes = 0
-            var selectedIdx = [Int](repeating: 0, count: blockCount)
-            for b in 0..<blockCount {
-                let hull = hulls[b]
-                var chosenIdx = 0
-                for (idx, pt) in hull.enumerated() where pt.passes >= minPasses[b] {
-                    if pt.passes == minPasses[b] || pt.slope >= highLambda {
-                        chosenIdx = idx
-                    }
-                }
-                selectedIdx[b] = chosenIdx
-                currentBytes += hull[chosenIdx].bytes
-            }
-
-            // Greedily fill any remaining byte slack with highest-slope next hull steps:
-            while currentBytes < budget {
-                var bestBlock = -1
-                var bestSlope = -1.0
-                for b in 0..<blockCount {
-                    let nextIdx = selectedIdx[b] + 1
-                    if nextIdx < hulls[b].count {
-                        let nextPt = hulls[b][nextIdx]
-                        let curPt = hulls[b][selectedIdx[b]]
-                        if currentBytes + (nextPt.bytes - curPt.bytes) <= budget && nextPt.slope > bestSlope {
-                            bestSlope = nextPt.slope
-                            bestBlock = b
-                        }
-                    }
-                }
-                if bestBlock >= 0 {
-                    let curPt = hulls[bestBlock][selectedIdx[bestBlock]]
-                    selectedIdx[bestBlock] += 1
-                    let nextPt = hulls[bestBlock][selectedIdx[bestBlock]]
-                    currentBytes += (nextPt.bytes - curPt.bytes)
-                } else {
-                    break
                 }
             }
 
             // Ensure at least the LL block has 1 pass if budget > 0 and nothing was selected yet:
             if layerIdx == layerCount - 1 && budget > 0 && currentBytes == 0 && !blockPassBytes[0].isEmpty {
-                result[0][layerIdx] = max(minPasses[0], 1)
-                minPasses[0] = result[0][layerIdx]
+                let prevPasses = hulls[0][Int(minHullIdx[0])].passes
+                result[0][layerIdx] = max(prevPasses, 1)
             } else {
                 for b in 0..<blockCount {
-                    let passes = max(minPasses[b], hulls[b][selectedIdx[b]].passes)
-                    result[b][layerIdx] = passes
-                    minPasses[b] = passes
+                    let hIdx = max(minHullIdx[b], selectedHullIdx[b])
+                    minHullIdx[b] = hIdx
+                    result[b][layerIdx] = hulls[b][Int(hIdx)].passes
                 }
+                minBytes = currentBytes
             }
         }
 
